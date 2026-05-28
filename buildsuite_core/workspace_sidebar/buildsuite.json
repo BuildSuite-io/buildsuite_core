@@ -78,10 +78,10 @@
    "type": "Link"
   }
  ],
- "modified": "2026-05-28 12:23:32.150535",
+ "modified": "2026-05-28 13:49:40.128715",
  "modified_by": "Administrator",
  "module": "Core",
- "module_onboarding": "Accounting Onboarding",
+ "module_onboarding": "BuildSuite Onboarding",
  "name": "BuildSuite",
  "owner": "Administrator",
  "standard": 1,

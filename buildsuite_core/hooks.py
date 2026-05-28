@@ -11,15 +11,15 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "buildsuite_core",
-# 		"logo": "/assets/buildsuite_core/logo.png",
-# 		"title": "Buildsuite Core",
-# 		"route": "/buildsuite_core",
-# 		"has_permission": "buildsuite_core.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "buildsuite_core",
+		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
+		"title": "Buildsuite Core",
+		"route": "/buildsuite_core",
+		# "has_permission": "buildsuite_core.api.permission.has_app_permission"
+	}
+]
 
 # Includes in <head>
 # ------------------
@@ -256,3 +256,14 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+# Automatically update python controller files with type annotations for this app.
+export_python_type_annotations = True
+
+fixtures = [
+    {
+        "doctype": "Custom HTML Block",
+        "filters": [
+            ["name", "in", ["Site Execution Workspace"]]
+        ]
+    }
+]
