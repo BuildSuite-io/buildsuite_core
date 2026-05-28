@@ -1,0 +1,89 @@
+{
+ "app": "buildsuite_core",
+ "creation": "2026-05-28 11:36:29.788171",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 1,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83c\udfd7\ufe0f",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Site Execution",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83d\udcd0",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Estimation",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83d\uded2",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Procurement",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83e\udd1d",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Subcontract",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83d\udc77\u200d\u2640\ufe0f",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Workforce",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "\ud83d\udcb5",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Finance",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-05-28 12:23:32.150535",
+ "modified_by": "Administrator",
+ "module": "Core",
+ "module_onboarding": "Accounting Onboarding",
+ "name": "BuildSuite",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "BuildSuite"
+}

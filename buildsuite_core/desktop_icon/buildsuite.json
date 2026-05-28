@@ -1,0 +1,23 @@
+{
+ "app": "buildsuite_core",
+ "bg_color": "gray",
+ "creation": "2026-05-28 12:07:34.192227",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "BuildSuite",
+ "link_to": "BuildSuite",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/buildsuite_core/images/bs-icon.svg",
+ "modified": "2026-05-28 12:07:34.192227",
+ "modified_by": "Administrator",
+ "name": "BuildSuite",
+ "owner": "Administrator",
+ "parent_icon": "ERPNext",
+ "restrict_removal": 0,
+ "roles": [],
+ "sidebar": "BuildSuite",
+ "standard": 1
+}
