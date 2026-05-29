@@ -1,5 +1,6 @@
 [
   {
+    "name": "Project-custom_project_id",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_project_id",
@@ -12,6 +13,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-is_group",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "is_group",
@@ -22,6 +24,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-parent_project",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "parent_project",
@@ -33,6 +36,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_subprojects",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_subprojects",
@@ -42,6 +46,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_subprojects_html",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_subprojects_html",
@@ -51,6 +56,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_work_packages",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_work_packages",
@@ -60,6 +66,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_work_packages_html",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_work_packages_html",
@@ -69,6 +76,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_tasks",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_tasks",
@@ -78,6 +86,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_tasks_html",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_tasks_html",
@@ -87,6 +96,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_stage_planning",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_stage_planning",
@@ -96,6 +106,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_stage_planning_html",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_stage_planning_html",
@@ -105,6 +116,7 @@
     "module": "BuildSuite Core"
   },
   {
+    "name": "Project-custom_scope_changes",
     "doctype": "Custom Field",
     "dt": "Project",
     "fieldname": "custom_scope_changes",
