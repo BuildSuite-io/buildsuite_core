@@ -29,20 +29,23 @@
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "quick_entry": 1
   },
   {
    "fieldname": "code",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Code"
+   "label": "Code",
+   "quick_entry": 1
   },
   {
    "fieldname": "work_package_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Work Package Name",
-   "reqd": 1
+   "reqd": 1,
+   "quick_entry": 1
   },
   {
    "fieldname": "column_break_1",
@@ -54,7 +57,8 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Planned\nIn Progress\nOn Hold\nCompleted"
+   "options": "Planned\nIn Progress\nOn Hold\nCompleted",
+   "quick_entry": 1
   },
   {
    "default": "0",
@@ -136,6 +140,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

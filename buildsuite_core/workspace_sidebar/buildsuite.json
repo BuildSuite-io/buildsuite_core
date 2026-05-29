@@ -76,9 +76,20 @@
    "link_type": "Workspace",
    "show_arrow": 0,
    "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Projects",
+   "link_to": "Project",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-05-28 13:49:40.128715",
+ "modified": "2026-05-29 11:54:16.386647",
  "modified_by": "Administrator",
  "module": "Core",
  "module_onboarding": "BuildSuite Onboarding",
