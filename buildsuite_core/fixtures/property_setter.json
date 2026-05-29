@@ -1,5 +1,6 @@
 [
   {
+    "name": "Project-status-options",
     "doctype": "Property Setter",
     "doctype_or_field": "DocField",
     "doc_type": "Project",
