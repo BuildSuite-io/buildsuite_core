@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "STG-.YYYY.-.###",
+ "creation": "2026-05-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "stage_name",
+  "project",
+  "column_break_1",
+  "planned_start",
+  "planned_end",
+  "section_break_metrics",
+  "planned_task_count",
+  "planned_completion_pct",
+  "section_break_desc",
+  "description",
+  "section_break_deps",
+  "dependencies",
+  "section_break_tasks",
+  "stage_planning_tasks"
+ ],
+ "fields": [
+  {
+   "fieldname": "stage_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Stage Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_start",
+   "fieldtype": "Date",
+   "label": "Planned Start"
+  },
+  {
+   "fieldname": "planned_end",
+   "fieldtype": "Date",
+   "label": "Planned End"
+  },
+  {
+   "fieldname": "section_break_metrics",
+   "fieldtype": "Section Break",
+   "label": "Metrics"
+  },
+  {
+   "default": "0",
+   "fieldname": "planned_task_count",
+   "fieldtype": "Int",
+   "label": "Planned Task Count"
+  },
+  {
+   "default": "0",
+   "fieldname": "planned_completion_pct",
+   "fieldtype": "Percent",
+   "label": "Planned Completion %"
+  },
+  {
+   "fieldname": "section_break_desc",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "section_break_deps",
+   "fieldtype": "Section Break",
+   "label": "Dependencies"
+  },
+  {
+   "fieldname": "dependencies",
+   "fieldtype": "Table",
+   "label": "Dependencies",
+   "options": "Stage Planning Dependency"
+  },
+  {
+   "fieldname": "section_break_tasks",
+   "fieldtype": "Section Break",
+   "label": "Stage Tasks"
+  },
+  {
+   "fieldname": "stage_planning_tasks",
+   "fieldtype": "Table",
+   "label": "Stage Tasks",
+   "options": "Stage Planning Task"
+  }
+ ],
+ "links": [],
+ "modified": "2026-05-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "Stage Planning",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
