@@ -265,5 +265,22 @@ fixtures = [
         "filters": [
             ["name", "in", ["Site Execution Workspace"]]
         ]
-    }
+    },
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["dt", "=", "Project"]
+        ]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [
+            ["doc_type", "=", "Project"]
+        ]
+    },
 ]
+
+# include js in doctype views
+doctype_js = {
+    "Project": "public/js/project.js"
+}

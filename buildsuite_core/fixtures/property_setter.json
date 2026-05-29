@@ -1,0 +1,11 @@
+[
+  {
+    "doctype": "Property Setter",
+    "doctype_or_field": "DocField",
+    "doc_type": "Project",
+    "field_name": "status",
+    "property": "options",
+    "value": "Open\nWorking\nCompleted\nOn Hold\nCancelled",
+    "property_type": "Text"
+  }
+]

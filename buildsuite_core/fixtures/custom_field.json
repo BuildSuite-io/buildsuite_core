@@ -1,0 +1,116 @@
+[
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_project_id",
+    "fieldtype": "Data",
+    "label": "Project ID",
+    "reqd": 1,
+    "unique": 1,
+    "in_list_view": 1,
+    "insert_after": "project_name",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "is_group",
+    "fieldtype": "Check",
+    "label": "Is Group",
+    "default": "0",
+    "insert_after": "company",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "parent_project",
+    "fieldtype": "Link",
+    "label": "Parent Project",
+    "options": "Project",
+    "depends_on": "eval:doc.is_group==0",
+    "insert_after": "is_group",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_subprojects",
+    "fieldtype": "Tab Break",
+    "label": "Subprojects",
+    "insert_after": "actual_end_date",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_subprojects_html",
+    "fieldtype": "HTML",
+    "label": "Subprojects HTML",
+    "insert_after": "custom_subprojects",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_work_packages",
+    "fieldtype": "Tab Break",
+    "label": "Work Packages",
+    "insert_after": "custom_subprojects_html",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_work_packages_html",
+    "fieldtype": "HTML",
+    "label": "Work Packages HTML",
+    "insert_after": "custom_work_packages",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_tasks",
+    "fieldtype": "Tab Break",
+    "label": "Tasks",
+    "insert_after": "custom_work_packages_html",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_tasks_html",
+    "fieldtype": "HTML",
+    "label": "Tasks HTML",
+    "insert_after": "custom_tasks",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_stage_planning",
+    "fieldtype": "Tab Break",
+    "label": "Stage Planning",
+    "insert_after": "custom_tasks_html",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_stage_planning_html",
+    "fieldtype": "HTML",
+    "label": "Stage Planning HTML",
+    "insert_after": "custom_stage_planning",
+    "module": "BuildSuite Core"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Project",
+    "fieldname": "custom_scope_changes",
+    "fieldtype": "Tab Break",
+    "label": "Scope Changes",
+    "insert_after": "custom_stage_planning_html",
+    "module": "BuildSuite Core"
+  }
+]
