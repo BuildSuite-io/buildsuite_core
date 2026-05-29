@@ -27,7 +27,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Stage Name",
-   "reqd": 1
+   "reqd": 1,
+   "quick_entry": 1
   },
   {
    "fieldname": "project",
@@ -36,7 +37,8 @@
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "quick_entry": 1
   },
   {
    "fieldname": "column_break_1",
@@ -45,12 +47,14 @@
   {
    "fieldname": "planned_start",
    "fieldtype": "Date",
-   "label": "Planned Start"
+   "label": "Planned Start",
+   "quick_entry": 1
   },
   {
    "fieldname": "planned_end",
    "fieldtype": "Date",
-   "label": "Planned End"
+   "label": "Planned End",
+   "quick_entry": 1
   },
   {
    "fieldname": "section_break_metrics",
@@ -138,5 +142,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "quick_entry": 1
 }
