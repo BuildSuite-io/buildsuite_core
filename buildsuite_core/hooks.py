@@ -265,5 +265,9 @@ fixtures = [
         "filters": [
             ["name", "in", ["Site Execution Workspace"]]
         ]
-    }
+    },
+    {
+		"doctype": "Custom Field",
+		"filters": [["module", "in", ["Buildsuite Core"]]]
+	}
 ]
