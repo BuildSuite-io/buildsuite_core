@@ -267,7 +267,20 @@ fixtures = [
         ]
     },
     {
-		"doctype": "Custom Field",
-		"filters": [["module", "in", ["Buildsuite Core"]]]
-	}
+        "doctype": "Custom Field",
+        "filters": [
+            ["dt", "=", "Project"]
+        ]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [
+            ["doc_type", "=", "Project"]
+        ]
+    },
 ]
+
+# include js in doctype views
+doctype_js = {
+    "Project": "public/js/project.js"
+}

@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "creation": "2026-05-29 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "task",
+  "planned_start",
+  "planned_end",
+  "planned_qty",
+  "qty_unit"
+ ],
+ "fields": [
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "in_grid_view": 1,
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "planned_start",
+   "fieldtype": "Date",
+   "in_grid_view": 1,
+   "label": "Planned Start"
+  },
+  {
+   "fieldname": "planned_end",
+   "fieldtype": "Date",
+   "in_grid_view": 1,
+   "label": "Planned End"
+  },
+  {
+   "fieldname": "planned_qty",
+   "fieldtype": "Float",
+   "in_grid_view": 1,
+   "label": "Planned Qty"
+  },
+  {
+   "fieldname": "qty_unit",
+   "fieldtype": "Data",
+   "in_grid_view": 1,
+   "label": "Qty Unit"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "Stage Planning Task",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
