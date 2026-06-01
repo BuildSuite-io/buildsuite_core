@@ -97,7 +97,12 @@ Deliverable:
 - Start with read-only APIs (dashboard cards, lookup lists).
 - Migrate one bounded CRUD module next.
 - Keep heavy mutation paths and uploads until CSRF/permission paths are fully stable.
-- When the first read slice needs it, introduce the reusable generic ListView shell backed by the Phase 6 doctype adapter contract.
+- Introduce and harden a reusable generic DocType ListView shell first, then route read slices through it.
+  - Inputs: `doctype`, ordered `fieldOrder`, filter map, and optional cache key.
+  - Behavior: fetch doctype meta via standard Frappe call, derive real columns/labels/fieldtypes, and render from actual field metadata.
+  - Sorting: default to `meta.sort_field/meta.sort_order` when present; fallback to `modified desc`.
+  - Reload contract: when resolved columns/fields change after meta fetch, reload the list resource with the new ordered field set.
+  - UX: list-count summary (e.g. `4 of 4`) belongs with the list component/footer, not the page title.
 - Introduce a generic Link field/autocomplete component only when a migrated form actually needs remote DocType lookup.
 
 Deliverable:

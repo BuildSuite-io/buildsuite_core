@@ -52,6 +52,8 @@
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
 | `createLocalDataAdapter(store)` | `frontend/src/data/adapters/localDataAdapter.js` | Adapter implementation over current Pinia local state for phased migration | `createDataAdapter` |
 | `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | `ProjectsView.vue` |
+| `useDocTypeList(doctype, options)` | `frontend/src/composables/useDocTypeList.js` | Generic Frappe list-resource wrapper for read-only DocType list calls | `createRemoteDataAdapter`, `DocTypeListView.vue`, `ProjectsView.vue` |
+| `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
 
@@ -136,10 +138,11 @@
   - Reference (PR/commit):
 
 - [ ] **Phase 7 — Migrate Data in Safe Vertical Slices**
-  - Status: Not started
+  - Status: In progress
   - Read-only slice migrated first
   - One bounded CRUD slice migrated second
   - High-risk mutation/upload paths deferred until stable
+  - Generic DocType list shell introduced first (`DocTypeListView`) to support repeatable read-only slices across modules
   - Date completed:
   - Reference (PR/commit):
 
@@ -178,6 +181,7 @@
 | 2026-06-01 | Phase 5 | Added forbidden-route recovery flow with forced access recheck and return-to-target behavior | Copilot | working tree |
 | 2026-06-01 | Phase 6 | Added initial data adapter seam and migrated `ProjectsView` reads to the adapter interface | Copilot | working tree |
 | 2026-06-01 | Phase 6 | Locked the remote adapter direction to generic Frappe DocType/resource calls and deferred generic list/link UI until a real slice needs them | Copilot | working tree |
+| 2026-06-01 | Phase 7 | Introduced reusable `DocTypeListView` (meta-driven columns, Frappe default sort fallback, reload-on-field-resolution) and moved project list-count summary into the list component footer | Copilot | working tree |
 
 ---
 

@@ -39,7 +39,12 @@ No TypeScript. No test framework. No state management beyond Pinia. Keep it that
 - The current local Pinia/localStorage model is transitional. As screens migrate, prefer a generic DocType-aware adapter layer over screen-specific services.
 - For normal list/read/write/link-search flows, use Frappe-native calls via `frappe-ui` resources so standard permissions, user permissions, and filters continue to apply automatically.
 - Do not introduce bespoke backend APIs for operations that standard Frappe DocType/resource calls can already handle.
-- Generic reusable UI primitives such as a DocType-driven list view or link autocomplete should be introduced only when an actual migration slice needs them; lock contracts first, then extract components from real usage.
+- Generic reusable UI primitives are now active for list migration slices:
+  - `src/components/doctype/DocTypeListView.vue` is the standard read-only list shell.
+  - Inputs are `doctype` + ordered `fieldOrder`; it fetches doctype meta from standard Frappe API, derives labels/fieldtypes, and renders real columns from meta.
+  - Sort defaults to doctype meta (`sort_field` / `sort_order`) and falls back to `modified desc` when meta does not provide one.
+  - List-count text (e.g. `4 of 4`) belongs below the list component, not in the page header subtitle.
+  - Any screen-specific rendering remains slot-based (`cell-<fieldname>`), keeping the base list generic.
 
 ---
 
