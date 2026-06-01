@@ -1,5 +1,8 @@
 const DEFAULT_ROUTE = '/buildsuite_core'
 const DEFAULT_FRAPPE_HOST = 'http://localhost:8001'
+const ACCESS_API_URL = '/api/method/buildsuite_core.api.permission.get_access_context'
+
+let accessContextPromise = null
 
 export function getCookie(name) {
   const cookie = document.cookie
@@ -60,4 +63,51 @@ export function applyBootToWindow(boot) {
   }
 
   syncSessionFromCookie()
+}
+
+export async function getAccessContext() {
+  if (accessContextPromise) {
+    return accessContextPromise
+  }
+
+  accessContextPromise = fetch(ACCESS_API_URL, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Accept': 'application/json',
+      'X-Frappe-CSRF-Token': window.csrf_token || '',
+    },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Access check failed with status ${response.status}`)
+      }
+
+      const payload = await response.json()
+      const context = payload?.message || payload
+      if (!context || typeof context !== 'object') {
+        return { allowed: false, user: getSessionUser(), roles: [], reason: 'invalid_response' }
+      }
+
+      if (context.user) {
+        window.session_user = context.user
+      }
+
+      return context
+    })
+    .catch((error) => {
+      console.warn('[buildsuite] Access context check failed', error)
+      return {
+        allowed: isAuthenticated(),
+        user: getSessionUser(),
+        roles: [],
+        reason: 'fallback',
+      }
+    })
+
+  return accessContextPromise
+}
+
+export function clearAccessContextCache() {
+  accessContextPromise = null
 }
