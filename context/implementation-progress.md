@@ -50,6 +50,8 @@
 | `ensureAccess(options)` | `frontend/src/stores/session.js` | Central guard entrypoint that initializes then revalidates access | `router/index.js` |
 | `recheckAccess()` | `frontend/src/stores/session.js` | Force-clear access cache and re-evaluate backend authorization | `AccessDeniedView.vue` |
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
+| `createLocalDataAdapter(store)` | `frontend/src/data/adapters/localDataAdapter.js` | Adapter implementation over current Pinia local state for phased migration | `createDataAdapter` |
+| `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | `ProjectsView.vue` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
 
@@ -122,8 +124,10 @@
   - Reference (PR/commit):
 
 - [ ] **Phase 6 — Keep Seed Data, Add Data Adapter Seam**
-  - Status: Not started
+  - Status: In progress
   - Data adapter supports local + remote modes
+  - Adapter seam initialized (`frontend/src/data/adapters`) with local implementation and factory
+  - `ProjectsView` now reads via adapter instead of direct store coupling
   - Existing local Pinia/localStorage mode still works
   - Date completed:
   - Reference (PR/commit):
@@ -169,6 +173,7 @@
 | 2026-06-01 | Phase 5 | Added backend-backed unauthorized route handling (`/forbidden`) and time-bound access-context caching for guard revalidation | Copilot | working tree |
 | 2026-06-01 | Phase 5 | Added a dedicated Pinia session store to centralize auth/access bootstrap and route-guard checks | Copilot | working tree |
 | 2026-06-01 | Phase 5 | Added forbidden-route recovery flow with forced access recheck and return-to-target behavior | Copilot | working tree |
+| 2026-06-01 | Phase 6 | Added initial data adapter seam and migrated `ProjectsView` reads to the adapter interface | Copilot | working tree |
 
 ---
 
