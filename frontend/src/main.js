@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 import { applyBootToWindow, syncSessionFromCookie } from './utils/session'
+import { useSessionStore } from './stores/session'
 
 const DEV_BOOT_URL = '/api/method/buildsuite_core.www.buildsuite_core.get_context_for_dev'
 
@@ -37,7 +38,12 @@ async function mountApp() {
 	await hydrateDevBoot()
 
 	const app = createApp(App)
-	app.use(createPinia())
+	const pinia = createPinia()
+	app.use(pinia)
+
+	const sessionStore = useSessionStore(pinia)
+	await sessionStore.bootstrapSession()
+
 	app.use(router)
 	app.mount('#app')
 }
