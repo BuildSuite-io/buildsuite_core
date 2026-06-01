@@ -1,0 +1,150 @@
+<script setup>
+// New Work Package — Desk-styled. Accepts `?projectId=` on the route query to
+// pre-fill the project (the entry point from Project Detail's Work Packages
+// tab). When no projectId is supplied, the first project is selected as a
+// default.
+
+import { reactive, ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useDataStore } from '@/stores'
+import DeskPage from '@/components/desk/DeskPage.vue'
+import DeskForm from '@/components/desk/DeskForm.vue'
+import DeskActionBar from '@/components/desk/DeskActionBar.vue'
+import DeskSection from '@/components/desk/DeskSection.vue'
+import DeskField from '@/components/desk/DeskField.vue'
+import DeskInput from '@/components/desk/DeskInput.vue'
+import DeskSelect from '@/components/desk/DeskSelect.vue'
+import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+
+const router = useRouter()
+const route = useRoute()
+const store = useDataStore()
+
+const form = reactive({
+  projectId: route.query.projectId || (store.projects[0] && store.projects[0].id) || '',
+  code: '',
+  name: '',
+  description: '',
+  status: 'Planned',
+  budget: '',
+  startDate: '',
+  endDate: '',
+  owner: store.team[1]?.id || store.team[0]?.id || '',
+})
+const errors = ref({})
+const saving = ref(false)
+
+const lockedProject = computed(() => !!route.query.projectId)
+const parentProject = computed(() => store.projectById(form.projectId) || null)
+
+function validate() {
+  const e = {}
+  if (!form.name.trim()) e.name = 'Work package name is required'
+  if (!form.projectId)   e.projectId = 'Project is required'
+  if (form.endDate && form.startDate && form.endDate < form.startDate) {
+    e.endDate = 'End must be after start'
+  }
+  errors.value = e
+  return Object.keys(e).length === 0
+}
+
+function save() {
+  if (!validate()) return
+  saving.value = true
+  const wp = store.addWorkPackage({
+    projectId: form.projectId,
+    code: form.code.trim(),
+    name: form.name.trim(),
+    description: form.description,
+    status: form.status,
+    budget: Number(form.budget) || 0,
+    startDate: form.startDate,
+    endDate: form.endDate,
+    owner: form.owner,
+  })
+  saving.value = false
+  router.push(`/app/work-packages/${wp.id}`)
+}
+function cancel() { router.back() }
+
+const breadcrumbs = computed(() => {
+  const out = [
+    { label: 'BuildSuite Core', to: '/' },
+    { label: 'Work Package', to: '/app/work-packages' },
+  ]
+  if (parentProject.value) {
+    out.push({ label: parentProject.value.name, to: `/app/projects/${parentProject.value.id}` })
+  }
+  out.push({ label: 'New' })
+  return out
+})
+
+const subtitle = computed(() =>
+  parentProject.value
+    ? `Under ${parentProject.value.name}`
+    : 'Cost / control boundary inside a project'
+)
+</script>
+
+<template>
+  <DeskPage title="New Work Package" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+    <DeskForm>
+      <template #action-bar>
+        <DeskActionBar
+          :save-label="saving ? 'Creating…' : 'Create work package'"
+          :saving="saving"
+          @save="save"
+          @cancel="cancel"
+        />
+      </template>
+
+      <div class="max-w-3xl mx-auto">
+      <DeskSection title="Basic information">
+        <DeskField label="Project" required :error="errors.projectId" :hint="lockedProject ? 'Pre-selected from where you came in — locked.' : ''">
+          <DeskSelect v-model="form.projectId" :disabled="lockedProject">
+            <option value="">— Select project —</option>
+            <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </DeskSelect>
+        </DeskField>
+        <DeskField label="Work Package name" required :error="errors.name">
+          <DeskInput v-model="form.name" placeholder="e.g. Foundation Works" />
+        </DeskField>
+        <DeskField label="Code" hint="Short identifier — auto-generated if left blank.">
+          <DeskInput v-model="form.code" placeholder="e.g. WP-FND" />
+        </DeskField>
+        <DeskField label="Description">
+          <DeskTextarea v-model="form.description" :rows="3" placeholder="What this work package covers." />
+        </DeskField>
+      </DeskSection>
+
+      <DeskSection title="Schedule & cost">
+        <DeskField label="Start date">
+          <DeskInput v-model="form.startDate" type="date" />
+        </DeskField>
+        <DeskField label="Expected end date" :error="errors.endDate">
+          <DeskInput v-model="form.endDate" type="date" />
+        </DeskField>
+        <DeskField label="Budget (₹)">
+          <DeskInput v-model="form.budget" type="number" placeholder="0" />
+        </DeskField>
+        <DeskField label="Status">
+          <DeskSelect v-model="form.status">
+            <option>Planned</option>
+            <option>In Progress</option>
+            <option>On Hold</option>
+            <option>Completed</option>
+          </DeskSelect>
+        </DeskField>
+      </DeskSection>
+
+      <DeskSection title="Ownership">
+        <DeskField label="Owner">
+          <DeskSelect v-model="form.owner">
+            <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
+          </DeskSelect>
+        </DeskField>
+      </DeskSection>
+      </div>
+    </DeskForm>
+  </DeskPage>
+</template>

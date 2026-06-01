@@ -57,3 +57,7 @@ jspm_packages/
 # BuildSuite
 
 context/
+
+# Generated frontend build output (from frontend/vite build)
+buildsuite_core/public/frontend/**
+!buildsuite_core/public/frontend/.gitkeep
