@@ -136,7 +136,10 @@ router.beforeEach(async (to) => {
 
   return {
     path: '/forbidden',
-    query: { reason: accessContext.reason || 'missing_role' },
+    query: {
+      reason: accessContext.reason || 'missing_role',
+      from: to.fullPath,
+    },
   }
 })
 

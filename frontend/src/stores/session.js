@@ -74,6 +74,11 @@ export const useSessionStore = defineStore('session', {
       return this.refreshAccess(options)
     },
 
+    async recheckAccess() {
+      clearAccessContextCache()
+      return this.refreshAccess({ force: true })
+    },
+
     resetSession() {
       clearAccessContextCache()
       this.initialized = false

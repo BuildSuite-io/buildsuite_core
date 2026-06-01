@@ -1,13 +1,37 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { useSessionStore } from '@/stores/session'
 
 const route = useRoute()
+const router = useRouter()
+const sessionStore = useSessionStore()
+const { access } = storeToRefs(sessionStore)
+
+const checkingAccess = ref(false)
 
 const deniedReason = computed(() => {
   const reason = route.query.reason
   return typeof reason === 'string' && reason ? reason : 'missing_role'
 })
+
+const blockedPath = computed(() => {
+  const from = route.query.from
+  return typeof from === 'string' && from ? from : '/app'
+})
+
+async function retryAccess() {
+  checkingAccess.value = true
+  try {
+    const latest = await sessionStore.recheckAccess()
+    if (latest.allowed) {
+      router.replace(blockedPath.value)
+    }
+  } finally {
+    checkingAccess.value = false
+  }
+}
 </script>
 
 <template>
@@ -23,12 +47,29 @@ const deniedReason = computed(() => {
       <div class="mt-6 bg-ink-50 border border-ink-200 rounded-lg p-4">
         <p class="text-xs text-ink-500">Access check reason</p>
         <p class="mt-1 text-sm font-medium text-ink-800">{{ deniedReason }}</p>
+        <p class="mt-3 text-xs text-ink-500">Target route</p>
+        <p class="mt-1 text-sm font-medium text-ink-800 break-all">{{ blockedPath }}</p>
+      </div>
+
+      <div class="mt-4 bg-ink-50 border border-ink-200 rounded-lg p-4">
+        <p class="text-xs text-ink-500">Required access</p>
+        <p class="mt-1 text-sm font-medium text-ink-800">System Manager role</p>
+        <p class="mt-3 text-xs text-ink-500">Your roles</p>
+        <p class="mt-1 text-sm text-ink-700 break-all">{{ (access.roles || []).join(', ') || 'None reported' }}</p>
       </div>
 
       <div class="mt-8 flex flex-wrap gap-3">
+        <button
+          type="button"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          :disabled="checkingAccess"
+          @click="retryAccess"
+        >
+          {{ checkingAccess ? 'Rechecking access...' : 'Retry Access Check' }}
+        </button>
         <RouterLink
           to="/"
-          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium border border-ink-300 text-ink-700 rounded-md hover:bg-ink-100 transition-colors"
         >
           Go to Home
         </RouterLink>
