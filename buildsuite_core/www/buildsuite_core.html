@@ -6,6 +6,11 @@
 		<meta name="description" content="{{ meta.description }}" />
 		<title>{{ title }}</title>
 		<link rel="icon" href="{{ favicon }}" />
+		{% if frontend_assets %}
+		{% for stylesheet in frontend_assets.styles %}
+		<link rel="stylesheet" href="{{ stylesheet }}" />
+		{% endfor %}
+		{% endif %}
 		<style>
 			body {
 				margin: 0;
@@ -23,6 +28,12 @@
 	</head>
 	<body>
 		<div id="app"></div>
+		{% if not frontend_assets %}
+		<main class="noscript-shell">
+			<h1>BuildSuite Core</h1>
+			<p>Frontend assets have not been built yet. Run the frontend build to mount the app here.</p>
+		</main>
+		{% endif %}
 		<noscript>
 			<main class="noscript-shell">
 				<h1>BuildSuite Core</h1>
@@ -36,5 +47,8 @@
 			{% endfor %}
 			document.documentElement.lang = window.lang || 'en';
 		</script>
+		{% if frontend_assets %}
+		<script type="module" src="{{ frontend_assets.entry }}"></script>
+		{% endif %}
 	</body>
 </html>

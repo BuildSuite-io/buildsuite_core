@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import frappe
 from frappe import _
 from frappe.translate import get_messages_for_boot, get_translated_doctypes, get_user_lang
@@ -15,6 +18,7 @@ def get_context():
 
 	context = frappe._dict()
 	context.boot = get_boot()
+	context.frontend_assets = get_frontend_assets()
 	context.title = "BuildSuite Core"
 	context.favicon = "/assets/buildsuite_core/images/bs-icon.svg"
 	context.meta = {
@@ -50,5 +54,28 @@ def get_boot():
 				"user": frappe.db.get_value("User", frappe.session.user, "time_zone")
 				or get_system_timezone(),
 			},
+		}
+	)
+
+
+def get_frontend_assets():
+	manifest_path = Path(
+		frappe.get_app_path(
+			"buildsuite_core", "public", "frontend", "manifest.json"
+		)
+	)
+	if not manifest_path.exists():
+		return None
+
+	manifest = json.loads(manifest_path.read_text())
+	entry = manifest.get("index.html")
+	if not entry:
+		return None
+
+	base_path = "/assets/buildsuite_core/frontend/"
+	return frappe._dict(
+		{
+			"entry": f"{base_path}{entry['file']}",
+			"styles": [f"{base_path}{css_file}" for css_file in entry.get("css", [])],
 		}
 	)

@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #0F172A;
+    background: #F8FAFC;
+  }
+  body { @apply m-0 p-0; }
+  button { @apply outline-none; }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #22C55E;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  }
+  /* Dark mode base — html.dark is set by App.vue based on store.theme. Warm
+     dark-grey canvas (not pitch black) + a slightly lighter grey for cards,
+     topbar and the sidebar so they lift off the page surface. Brand / status
+     colors keep their light-mode values because they read well on this base. */
+  html.dark { color-scheme: dark; }
+  html.dark body {
+    color: #E5E5E5;
+    background: #1A1A1A;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-3 py-1.5 text-sm bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors font-medium;
+  }
+  .btn-secondary {
+    @apply px-3 py-1.5 text-sm bg-white border border-ink-200 text-ink-700 rounded-md hover:bg-ink-50 transition-colors;
+  }
+  .btn-ghost {
+    @apply px-2.5 py-1.5 text-sm text-ink-700 rounded hover:bg-ink-100 transition-colors;
+  }
+  .input-field {
+    @apply w-full px-3 py-2 border border-ink-200 rounded-md text-sm focus:border-brand-500 bg-white;
+  }
+  .input-label {
+    @apply block text-xs font-medium text-ink-600 mb-1;
+  }
+  .card {
+    @apply bg-white border border-ink-200 rounded-lg;
+  }
+  .desk-nav-link.active {
+    background: #F0FDF4;
+    color: #15803D;
+    font-weight: 500;
+  }
+  .desk-nav-link.active .desk-icon { color: #16A34A; }
+  html.dark .desk-nav-link.active {
+    background: rgba(22, 163, 74, 0.16);
+    color: #4ADE80;
+  }
+  html.dark .desk-nav-link.active .desk-icon { color: #4ADE80; }
+
+  /* ===== Desk-style primitives ===== */
+  .desk-page {
+    @apply bg-white px-5 py-3 min-h-full;
+  }
+  html.dark .desk-page { background: #1A1A1A; }
+
+  .desk-link {
+    color: #16A34A;   /* brand-600 */
+    cursor: pointer;
+  }
+  .desk-link:hover { text-decoration: underline; }
+  html.dark .desk-link { color: #4ADE80; }
+
+  .desk-divider {
+    @apply border-0 border-t border-ink-200 mt-1 mb-3;
+  }
+  .desk-section-title {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-ink-700;
+  }
+  html.dark .desk-section-title { color: #CBD5E1; }
+
+  .desk-row-stripe { /* stripes removed S37 */ }
+
+  .desk-input {
+    @apply w-full text-sm bg-white border border-ink-200 text-ink-900;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .desk-input:focus {
+    outline: none;
+    border-color: #16A34A;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+  }
+  .desk-input:disabled {
+    @apply bg-ink-50 text-ink-500 cursor-not-allowed;
+  }
+  html.dark .desk-input {
+    background-color: #242424;
+    border-color: #333333;
+    color: #F5F5F5;
+  }
+  html.dark .desk-input:disabled {
+    background-color: #1A1A1A;
+    color: #737373;
+  }
+
+  .desk-save-btn {
+    @apply text-xs font-medium text-white px-3 py-1.5;
+    background-color: #0F172A;
+    border-radius: 6px;
+    transition: background-color 0.1s;
+  }
+  .desk-save-btn:hover:not(:disabled) { background-color: #1E293B; }
+  .desk-save-btn:disabled {
+    @apply bg-ink-200 text-ink-500 cursor-not-allowed;
+  }
+  html.dark .desk-save-btn {
+    background-color: #16A34A;
+    color: #FFFFFF;
+  }
+  html.dark .desk-save-btn:hover:not(:disabled) { background-color: #15803D; }
+  html.dark .desk-save-btn:disabled {
+    background-color: #262626;
+    color: #737373;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; }
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* ===== Global dark-mode surface remaps =====================================
+     Tailwind dark: prefixes would require touching every view file. To deliver
+     "every list/detail page" coverage in one pass, we remap the most common
+     Tailwind utility classes wholesale via the html.dark scope. Brand /
+     success / warning / danger / info palettes deliberately KEEP their light
+     values so status colours stay legible — only the neutral ink / white
+     surfaces flip.
+
+     Specificity note: html.dark .bg-white beats .bg-white from Tailwind's
+     utility layer because of the parent selector. */
+
+  /* Warm-grey palette
+       1A1A1A = page canvas (body, .desk-page)
+       242424 = card / topbar / sidebar / modal (bg-white target — lifts off)
+       1F1F1F = muted band (bg-ink-50)
+       2E2E2E = hover surface / ink-100 chip background
+       333333 = ink-200 / subtle border
+       404040 = ink-300 / stronger border
+       737373 = muted text */
+  html.dark .bg-white  { background-color: #242424; }
+  /* Tailwind opacity-modifier variants on bg-white (e.g. bg-white/90 on the
+     LandingShell sticky header) — Tailwind emits a class like .bg-white\/90,
+     not .bg-white, so the rule above doesn't catch them. */
+  html.dark .bg-white\/90 { background-color: rgba(36, 36, 36, 0.9); }
+  html.dark .bg-white\/80 { background-color: rgba(36, 36, 36, 0.8); }
+  html.dark .bg-white\/70 { background-color: rgba(36, 36, 36, 0.7); }
+  html.dark .bg-white\/60 { background-color: rgba(36, 36, 36, 0.6); }
+  html.dark .bg-ink-50 { background-color: #1F1F1F; }
+  html.dark .bg-ink-100 { background-color: #2E2E2E; }
+  html.dark .bg-ink-200 { background-color: #333333; }
+  html.dark .bg-ink-900\/40 { background-color: rgba(0, 0, 0, 0.7); }
+  html.dark .bg-ink-900\/30 { background-color: rgba(0, 0, 0, 0.6); }
+
+  /* Borders — subtle on cards, slightly stronger on dividers */
+  html.dark .border-ink-100 { border-color: #2E2E2E; }
+  html.dark .border-ink-200 { border-color: #333333; }
+  html.dark .border-ink-300 { border-color: #404040; }
+  html.dark .divide-ink-100 > * + * { border-top-color: #2E2E2E; }
+  html.dark .divide-ink-200 > * + * { border-top-color: #333333; }
+
+  /* Text — neutral greys (not blue-tinted slate) */
+  html.dark .text-ink-900 { color: #F5F5F5; }
+  html.dark .text-ink-800 { color: #E5E5E5; }
+  html.dark .text-ink-700 { color: #D4D4D4; }
+  html.dark .text-ink-600 { color: #A3A3A3; }
+  html.dark .text-ink-500 { color: #A3A3A3; }
+  html.dark .text-ink-400 { color: #737373; }
+  html.dark .text-ink-300 { color: #525252; }
+
+  /* Hover states — subtle warm-grey lifts */
+  html.dark .hover\:bg-ink-50:hover  { background-color: #2E2E2E; }
+  html.dark .hover\:bg-ink-100:hover { background-color: #333333; }
+  html.dark .hover\:bg-brand-50:hover { background-color: rgba(22, 163, 74, 0.16); }
+  html.dark .hover\:bg-brand-50\/40:hover { background-color: rgba(22, 163, 74, 0.1); }
+  html.dark .hover\:border-ink-300:hover { border-color: #525252; }
+  html.dark .hover\:text-ink-900:hover { color: #F5F5F5; }
+  html.dark .hover\:text-ink-700:hover { color: #D4D4D4; }
+
+  /* Gradient bands (used on Project Detail Overview card headers) — soften
+     into the dark card surface so the band reads as a tinted header. */
+  html.dark .from-brand-50   { --tw-gradient-from: rgba(22, 163, 74, 0.14);  --tw-gradient-to: rgba(22, 163, 74, 0); }
+  html.dark .from-info-50    { --tw-gradient-from: rgba(59, 130, 246, 0.14); --tw-gradient-to: rgba(59, 130, 246, 0); }
+  html.dark .from-warning-50 { --tw-gradient-from: rgba(245, 158, 11, 0.16); --tw-gradient-to: rgba(245, 158, 11, 0); }
+  html.dark .from-ink-50     { --tw-gradient-from: #1F1F1F; --tw-gradient-to: rgba(31, 31, 31, 0); }
+  html.dark .to-white        { --tw-gradient-to: #242424; }
+
+  /* Status / accent tints — keep colourful in dark mode but on darker bases */
+  html.dark .bg-brand-50    { background-color: rgba(22, 163, 74, 0.18); color: #86EFAC; }
+  html.dark .bg-success-50  { background-color: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
+  html.dark .bg-warning-50  { background-color: rgba(245, 158, 11, 0.18); color: #FCD34D; }
+  html.dark .bg-danger-50   { background-color: rgba(239, 68, 68, 0.18);  color: #FCA5A5; }
+  html.dark .bg-info-50     { background-color: rgba(59, 130, 246, 0.18); color: #93C5FD; }
+  /* The *-100 shades inherit the same dark surface but a touch more opaque */
+  html.dark .bg-brand-100   { background-color: rgba(22, 163, 74, 0.28); color: #86EFAC; }
+  html.dark .bg-success-100 { background-color: rgba(16, 185, 129, 0.28); color: #6EE7B7; }
+  html.dark .bg-warning-100 { background-color: rgba(245, 158, 11, 0.28); color: #FCD34D; }
+  html.dark .bg-danger-100  { background-color: rgba(239, 68, 68, 0.28);  color: #FCA5A5; }
+  html.dark .bg-info-100    { background-color: rgba(59, 130, 246, 0.28); color: #93C5FD; }
+
+  /* Status text shades — bump lightness so the *-700 reads on the dark base */
+  html.dark .text-success-700 { color: #6EE7B7; }
+  html.dark .text-warning-700 { color: #FCD34D; }
+  html.dark .text-danger-700  { color: #FCA5A5; }
+  html.dark .text-info-700    { color: #93C5FD; }
+  html.dark .text-brand-700   { color: #86EFAC; }
+  html.dark .text-brand-600   { color: #4ADE80; }
+}

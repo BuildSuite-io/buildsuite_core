@@ -53,22 +53,22 @@
   - Date completed: 2026-06-01
   - Reference (PR/commit): commit pending capture
 
-- [ ] **Phase 2 — Create Backend Boot Contract**
-  - Status: In progress
+- [x] **Phase 2 — Create Backend Boot Contract**
+  - Status: Completed
   - `buildsuite_core/www/buildsuite_core.py` created
   - `buildsuite_core/www/buildsuite_core.html` created
   - Boot keys include csrf/site/read-only/lang/direction/timezone
   - `get_context_for_dev` whitelisted and permission-gated
   - HTML now exposes a real `#app` mount target
-  - Frontend app mount and bundle wiring still pending
-  - Date completed:
-  - Reference (PR/commit):
+  - Date completed: 2026-06-01
+  - Reference (PR/commit): `3d9b2c2`
 
 - [ ] **Phase 3 — Replace Prototype Vite Setup with Frappe-Compatible Build**
-  - Status: Not started
+  - Status: In progress
   - Frontend moved to app-owned frontend workspace
-  - Vite uses frappe-ui plugin with `frappeProxy` + `jinjaBootData`
-  - `indexHtmlPath` targets Frappe `www` page
+  - Vite now builds into `buildsuite_core/public/frontend` and emits a manifest
+  - Website shell loads built frontend assets from the Vite manifest
+  - `frappe-ui` plugin and dev boot parity still pending
   - Date completed:
   - Reference (PR/commit):
 
@@ -129,7 +129,8 @@
 
 | Date | Phase | Change summary | Owner | Link |
 |---|---|---|---|---|
-| 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985` |
+| 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985`, `3d9b2c2` |
+| 2026-06-01 | Phase 3 | Copied the Vue prototype into an app-owned `frontend/` workspace, pointed Vite output at app public assets, and wired the website shell to the built asset manifest | Copilot | working tree |
 
 ---
 
