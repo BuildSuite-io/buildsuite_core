@@ -48,6 +48,7 @@
 | `refreshAccess(options)` | `frontend/src/stores/session.js` | Pull backend access context and normalize auth/access store state | `bootstrapSession`, `ensureAccess` |
 | `bootstrapSession()` | `frontend/src/stores/session.js` | One-time session/access initialization before route handling | `main.js`, `ensureAccess` |
 | `ensureAccess(options)` | `frontend/src/stores/session.js` | Central guard entrypoint that initializes then revalidates access | `router/index.js` |
+| `recheckAccess()` | `frontend/src/stores/session.js` | Force-clear access cache and re-evaluate backend authorization | `AccessDeniedView.vue` |
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
@@ -113,7 +114,8 @@
   - Session store based on `user_id` cookie (`frontend/src/stores/session.js`) now bootstraps before router navigation
   - Router guards for anonymous/unauthorized users
   - Frontend now fetches backend access context via `buildsuite_core.api.permission.get_access_context`
-  - Unauthorized authenticated users are routed to `/forbidden` with backend reason details
+  - Unauthorized authenticated users are routed to `/forbidden` with backend reason + target route details
+  - `/forbidden` now supports retrying access checks after role changes and redirecting back to the blocked route
   - Access-context cache now has a freshness window to avoid stale authorization decisions
   - Backend APIs enforce permission (no UI-only security)
   - Date completed:
@@ -166,6 +168,7 @@
 | 2026-06-01 | Phase 4 | Added Vite dev proxy and frontend pre-mount DEV boot hydration from `get_context_for_dev` | Copilot | working tree |
 | 2026-06-01 | Phase 5 | Added backend-backed unauthorized route handling (`/forbidden`) and time-bound access-context caching for guard revalidation | Copilot | working tree |
 | 2026-06-01 | Phase 5 | Added a dedicated Pinia session store to centralize auth/access bootstrap and route-guard checks | Copilot | working tree |
+| 2026-06-01 | Phase 5 | Added forbidden-route recovery flow with forced access recheck and return-to-target behavior | Copilot | working tree |
 
 ---
 
