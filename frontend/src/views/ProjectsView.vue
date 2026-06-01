@@ -23,20 +23,27 @@ const store = useDataStore()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 
+const projectsResource = adapter.getRootProjects()
+const companiesResource = adapter.getCompanies()
+
 const search = ref('')
 const statusFilter = ref('')
 const typeFilter = ref('')
-// §14 — Company filter (filter-only, no column). Gated on store.isMultiCompany,
+// §14 — Company filter (filter-only, no column). Gated on isMultiCompany,
 // so single-company sites never see it. User-driven — not auto-set from the
 // active company.
 const companyFilter = ref('')
-const rootProjects = computed(() => adapter.getRootProjects())
+
+// Derived from the companies resource so both local and remote modes work.
+const isMultiCompany = computed(() => (companiesResource.data?.length ?? 0) > 1)
 
 // Flat list of root projects only — no recursion, no subproject rows. Subs
 // are reached via Project Detail > Subprojects tab.
 const rows = computed(() => {
+  const projects = projectsResource.data
+  if (!projects) return []
   const term = search.value.trim().toLowerCase()
-  return rootProjects.value.filter(p =>
+  return projects.filter(p =>
     (!term ||
       p.name.toLowerCase().includes(term) ||
       p.code.toLowerCase().includes(term) ||
@@ -47,7 +54,9 @@ const rows = computed(() => {
   )
 })
 
-function companyName(id) { return adapter.getCompanyById(id)?.name || id }
+function companyName(id) {
+  return companiesResource.data?.find(c => c.id === id)?.name || id
+}
 
 // Schedule-based variance per project — drives the progress-bar traffic-light color.
 // Positive = behind plan (red/amber), negative or near-zero = on track or ahead (green).
@@ -86,7 +95,7 @@ const breadcrumbs = [
   { label: 'Project' },
 ]
 
-const subtitle = computed(() => `${rows.value.length} of ${rootProjects.value.length}`)
+const subtitle = computed(() => `${rows.value.length} of ${projectsResource.data?.length ?? 0}`)
 
 function onRowClick(row) {
   router.push(`/app/projects/${row.id}`)
@@ -99,7 +108,12 @@ function onRowClick(row) {
       <RouterLink to="/app/projects/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
+    <div v-if="projectsResource.loading" class="py-8 text-center text-sm text-ink-500">
+      Loading projects…
+    </div>
+
     <DeskList
+      v-else
       v-model="search"
       :rows="rows"
       :columns="columns"
@@ -124,10 +138,10 @@ function onRowClick(row) {
         </DeskSelect>
         <!-- §14 — Company filter (filter-only, no column). Single-company sites
              never see this. DeskSelect ↔ DeskFilterChip toggle pattern. -->
-        <template v-if="adapter.isMultiCompany()">
+        <template v-if="isMultiCompany">
           <DeskSelect v-if="!companyFilter" v-model="companyFilter" class="!w-44">
             <option value="">Company: Any</option>
-            <option v-for="c in adapter.getCompanies()" :key="c.id" :value="c.id">{{ c.name }}</option>
+            <option v-for="c in companiesResource.data" :key="c.id" :value="c.id">{{ c.name }}</option>
           </DeskSelect>
           <DeskFilterChip
             v-else
