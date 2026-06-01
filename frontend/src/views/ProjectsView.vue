@@ -17,9 +17,11 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { fmtCompactINR, fmtDate } from '@/utils/format'
+import { createDataAdapter } from '@/data/adapters'
 
 const store = useDataStore()
 const router = useRouter()
+const adapter = createDataAdapter(store)
 
 const search = ref('')
 const statusFilter = ref('')
@@ -28,12 +30,13 @@ const typeFilter = ref('')
 // so single-company sites never see it. User-driven — not auto-set from the
 // active company.
 const companyFilter = ref('')
+const rootProjects = computed(() => adapter.getRootProjects())
 
 // Flat list of root projects only — no recursion, no subproject rows. Subs
 // are reached via Project Detail > Subprojects tab.
 const rows = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return store.rootProjects.filter(p =>
+  return rootProjects.value.filter(p =>
     (!term ||
       p.name.toLowerCase().includes(term) ||
       p.code.toLowerCase().includes(term) ||
@@ -44,7 +47,7 @@ const rows = computed(() => {
   )
 })
 
-function companyName(id) { return store.companyById(id)?.name || id }
+function companyName(id) { return adapter.getCompanyById(id)?.name || id }
 
 // Schedule-based variance per project — drives the progress-bar traffic-light color.
 // Positive = behind plan (red/amber), negative or near-zero = on track or ahead (green).
@@ -83,7 +86,7 @@ const breadcrumbs = [
   { label: 'Project' },
 ]
 
-const subtitle = computed(() => `${rows.value.length} of ${store.rootProjects.length}`)
+const subtitle = computed(() => `${rows.value.length} of ${rootProjects.value.length}`)
 
 function onRowClick(row) {
   router.push(`/app/projects/${row.id}`)
@@ -121,10 +124,10 @@ function onRowClick(row) {
         </DeskSelect>
         <!-- §14 — Company filter (filter-only, no column). Single-company sites
              never see this. DeskSelect ↔ DeskFilterChip toggle pattern. -->
-        <template v-if="store.isMultiCompany">
+        <template v-if="adapter.isMultiCompany()">
           <DeskSelect v-if="!companyFilter" v-model="companyFilter" class="!w-44">
             <option value="">Company: Any</option>
-            <option v-for="c in store.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+            <option v-for="c in adapter.getCompanies()" :key="c.id" :value="c.id">{{ c.name }}</option>
           </DeskSelect>
           <DeskFilterChip
             v-else
