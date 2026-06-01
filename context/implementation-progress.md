@@ -128,6 +128,9 @@
   - Data adapter supports local + remote modes
   - Adapter seam initialized (`frontend/src/data/adapters`) with local implementation and factory
   - `ProjectsView` now reads via adapter instead of direct store coupling
+  - Remote adapter direction is locked: generic DocType operations first, using `frappe-ui` resources so native permissions/filters remain authoritative
+  - No new bespoke backend APIs for standard list/read/write/link-search flows; only add server endpoints for behavior that generic Frappe resource calls cannot express
+  - Reusable generic ListView / Link autocomplete components are intentionally deferred until a vertical migration slice needs them
   - Existing local Pinia/localStorage mode still works
   - Date completed:
   - Reference (PR/commit):
@@ -174,6 +177,7 @@
 | 2026-06-01 | Phase 5 | Added a dedicated Pinia session store to centralize auth/access bootstrap and route-guard checks | Copilot | working tree |
 | 2026-06-01 | Phase 5 | Added forbidden-route recovery flow with forced access recheck and return-to-target behavior | Copilot | working tree |
 | 2026-06-01 | Phase 6 | Added initial data adapter seam and migrated `ProjectsView` reads to the adapter interface | Copilot | working tree |
+| 2026-06-01 | Phase 6 | Locked the remote adapter direction to generic Frappe DocType/resource calls and deferred generic list/link UI until a real slice needs them | Copilot | working tree |
 
 ---
 
