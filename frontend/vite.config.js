@@ -1,10 +1,21 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import frappeui from 'frappe-ui/vite'
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/assets/buildsuite_core/frontend/' : '/',
-  plugins: [vue()],
+  plugins: [
+    // lucideIcons resolves ~icons/lucide/* used inside frappe-ui components.
+    // frappeProxy / jinjaBootData / buildConfig are disabled — BuildSuite manages them separately.
+    ...frappeui({
+      lucideIcons: true,
+      frappeProxy: false,
+      jinjaBootData: false,
+      buildConfig: false,
+    }),
+    vue(),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
