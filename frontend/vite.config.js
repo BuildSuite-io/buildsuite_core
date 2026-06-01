@@ -21,6 +21,12 @@ export default defineConfig(({ command }) => ({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // frappe-ui uses ~icons/lucide/* virtual modules resolved by a custom Rollup
+  // plugin. Exclude it from esbuild pre-bundling so Vite's plugin pipeline
+  // (which has the lucideIcons Rollup plugin) handles it in dev mode.
+  optimizeDeps: {
+    exclude: ['frappe-ui'],
+  },
   build: {
     outDir: path.resolve(__dirname, '../buildsuite_core/public/frontend'),
     emptyOutDir: true,
