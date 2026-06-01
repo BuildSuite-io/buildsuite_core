@@ -28,7 +28,7 @@ export function createRemoteDataAdapter() {
           'estimated_costing',
           'owner',
         ],
-        filters: [['is_group', '=', 0]],
+        filters: [['is_group', '=', 1]],
         orderBy: 'creation desc',
         pageLength: 100,
         cache: 'buildsuite-root-projects',
