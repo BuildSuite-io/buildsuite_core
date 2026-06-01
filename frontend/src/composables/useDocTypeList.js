@@ -1,4 +1,4 @@
-import { createListResource } from 'frappe-ui'
+import { createListResource } from 'frappe-ui-list-resource'
 
 /**
  * Generic composable for a read-only Frappe DocType list.
