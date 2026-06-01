@@ -1,8 +1,11 @@
 const DEFAULT_ROUTE = '/buildsuite_core'
 const DEFAULT_FRAPPE_HOST = 'http://localhost:8001'
 const ACCESS_API_URL = '/api/method/buildsuite_core.api.permission.get_access_context'
+const DEFAULT_ACCESS_CONTEXT_MAX_AGE_MS = 30_000
 
 let accessContextPromise = null
+let accessContextValue = null
+let accessContextFetchedAt = 0
 
 export function getCookie(name) {
   const cookie = document.cookie
@@ -65,7 +68,18 @@ export function applyBootToWindow(boot) {
   syncSessionFromCookie()
 }
 
-export async function getAccessContext() {
+export function isAccessContextFresh(maxAgeMs = DEFAULT_ACCESS_CONTEXT_MAX_AGE_MS) {
+  if (!accessContextValue) return false
+  return (Date.now() - accessContextFetchedAt) <= maxAgeMs
+}
+
+export async function getAccessContext(options = {}) {
+  const { force = false, maxAgeMs = DEFAULT_ACCESS_CONTEXT_MAX_AGE_MS } = options
+
+  if (!force && isAccessContextFresh(maxAgeMs)) {
+    return accessContextValue
+  }
+
   if (accessContextPromise) {
     return accessContextPromise
   }
@@ -93,16 +107,25 @@ export async function getAccessContext() {
         window.session_user = context.user
       }
 
+      accessContextValue = context
+      accessContextFetchedAt = Date.now()
       return context
     })
     .catch((error) => {
       console.warn('[buildsuite] Access context check failed', error)
-      return {
+      const fallback = {
         allowed: isAuthenticated(),
         user: getSessionUser(),
         roles: [],
         reason: 'fallback',
       }
+
+      accessContextValue = fallback
+      accessContextFetchedAt = Date.now()
+      return fallback
+    })
+    .finally(() => {
+      accessContextPromise = null
     })
 
   return accessContextPromise
@@ -110,4 +133,6 @@ export async function getAccessContext() {
 
 export function clearAccessContextCache() {
   accessContextPromise = null
+  accessContextValue = null
+  accessContextFetchedAt = 0
 }

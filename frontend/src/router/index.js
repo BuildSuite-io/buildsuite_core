@@ -5,6 +5,7 @@ const routeBase = getRouteBase()
 
 const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
+  { path: '/forbidden', name: 'forbidden', component: () => import('@/views/AccessDeniedView.vue') },
   {
     path: '/app',
     meta: { requiresAuth: true },
@@ -121,14 +122,14 @@ router.beforeEach(async (to) => {
   }
 
   if (isAuthenticated()) {
-    const accessContext = await getAccessContext()
+    const accessContext = await getAccessContext({ maxAgeMs: 10_000 })
     if (accessContext.allowed) {
       return true
     }
 
     return {
-      path: '/',
-      query: { denied: '1' },
+      path: '/forbidden',
+      query: { reason: accessContext.reason || 'missing_role' },
     }
   }
 

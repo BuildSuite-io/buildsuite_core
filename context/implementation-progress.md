@@ -42,6 +42,7 @@
 | `getLoginUrl(path)` | `frontend/src/utils/session.js` | Build login URL with redirect-to anchored to app base | `router/index.js` |
 | `applyBootToWindow(boot)` | `frontend/src/utils/session.js` | Hydrate boot payload into `window` and DOM lang/dir | `main.js` |
 | `getAccessContext()` | `frontend/src/utils/session.js` | Fetch + cache backend access status (`allowed`, `reason`) | `router/index.js` |
+| `isAccessContextFresh(maxAgeMs)` | `frontend/src/utils/session.js` | Validate whether cached backend access status is still usable | `getAccessContext` |
 | `clearAccessContextCache()` | `frontend/src/utils/session.js` | Reset cached access-context promise | Reserved for future re-check flows |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
@@ -107,6 +108,8 @@
   - Session store based on `user_id` cookie
   - Router guards for anonymous/unauthorized users
   - Frontend now fetches backend access context via `buildsuite_core.api.permission.get_access_context`
+  - Unauthorized authenticated users are routed to `/forbidden` with backend reason details
+  - Access-context cache now has a freshness window to avoid stale authorization decisions
   - Backend APIs enforce permission (no UI-only security)
   - Date completed:
   - Reference (PR/commit):
@@ -156,6 +159,7 @@
 | 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985`, `3d9b2c2` |
 | 2026-06-01 | Phase 3 | Copied the Vue prototype into an app-owned `frontend/` workspace, pointed Vite output at app public assets, and wired the website shell to the built asset manifest | Copilot | working tree |
 | 2026-06-01 | Phase 4 | Added Vite dev proxy and frontend pre-mount DEV boot hydration from `get_context_for_dev` | Copilot | working tree |
+| 2026-06-01 | Phase 5 | Added backend-backed unauthorized route handling (`/forbidden`) and time-bound access-context caching for guard revalidation | Copilot | working tree |
 
 ---
 
