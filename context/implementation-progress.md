@@ -105,7 +105,7 @@
 
 - [ ] **Phase 5 — Add Frontend Session and Access Guards**
   - Status: In progress
-  - Session store based on `user_id` cookie
+  - Session store based on `user_id` cookie (`frontend/src/stores/session.js`) now bootstraps before router navigation
   - Router guards for anonymous/unauthorized users
   - Frontend now fetches backend access context via `buildsuite_core.api.permission.get_access_context`
   - Unauthorized authenticated users are routed to `/forbidden` with backend reason details

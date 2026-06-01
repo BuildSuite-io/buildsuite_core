@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getAccessContext, getLoginUrl, getRouteBase, isAuthenticated } from '@/utils/session'
+import { useSessionStore } from '@/stores/session'
+import { getLoginUrl, getRouteBase } from '@/utils/session'
 
 const routeBase = getRouteBase()
 
@@ -121,20 +122,22 @@ router.beforeEach(async (to) => {
     return true
   }
 
-  if (isAuthenticated()) {
-    const accessContext = await getAccessContext({ maxAgeMs: 10_000 })
-    if (accessContext.allowed) {
-      return true
-    }
+  const sessionStore = useSessionStore()
+  const accessContext = await sessionStore.ensureAccess({ maxAgeMs: 10_000 })
 
-    return {
-      path: '/forbidden',
-      query: { reason: accessContext.reason || 'missing_role' },
-    }
+  if (!sessionStore.authenticated) {
+    window.location.assign(getLoginUrl(to.fullPath))
+    return false
   }
 
-  window.location.assign(getLoginUrl(to.fullPath))
-  return false
+  if (accessContext.allowed) {
+    return true
+  }
+
+  return {
+    path: '/forbidden',
+    query: { reason: accessContext.reason || 'missing_role' },
+  }
 })
 
 export default router
