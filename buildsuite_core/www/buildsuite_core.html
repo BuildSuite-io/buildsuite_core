@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{ boot.lang }}" dir="{{ boot.text_direction }}">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{{ title }}</title>
+		<link rel="icon" href="{{ favicon }}" />
+	</head>
+	<body>
+		<main style="font-family: system-ui, sans-serif; padding: 32px; max-width: 960px; margin: 0 auto;">
+			<h1>BuildSuite Core</h1>
+			<p>The frontend shell is wired. The prototype app will mount here in the next phase.</p>
+		</main>
+
+		<script>
+			{% for key in boot %}
+			window["{{ key }}"] = {{ boot[key] | tojson }};
+			{% endfor %}
+		</script>
+	</body>
+</html>
