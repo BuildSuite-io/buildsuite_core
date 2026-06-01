@@ -1,25 +1,17 @@
 import { useDocTypeList } from '@/composables/useDocTypeList'
 
 /**
- * Remote data adapter — reads from the live Frappe backend via frappe-ui resources.
+ * Remote adapter — reads from the live Frappe backend via frappe-ui resources.
  *
- * Each method returns a reactive createListResource result:
+ * Each list method returns a createListResource result:
  *   { data, loading, error, reload(), fetch() }
  *
- * Callers must wait for .loading to be false before reading .data.
+ * The transform function maps Frappe field names → the view's expected field
+ * shape so consumers are adapter-agnostic (same fields in local and remote mode).
  * Standard Frappe permissions and user-permissions are enforced server-side.
  */
 export function createRemoteDataAdapter() {
   return {
-    /**
-     * Generic list factory. Use this for any doctype not explicitly modelled below.
-     * @param {string} doctype
-     * @param {object} [options]  see useDocTypeList for option shape
-     */
-    createList(doctype, options) {
-      return useDocTypeList(doctype, options)
-    },
-
     getRootProjects() {
       return useDocTypeList('Project', {
         fields: [
@@ -31,10 +23,32 @@ export function createRemoteDataAdapter() {
           'percent_complete',
           'expected_start_date',
           'expected_end_date',
+          'customer',
+          'project_type',
+          'estimated_costing',
+          'owner',
         ],
         filters: [['is_group', '=', 0]],
         orderBy: 'creation desc',
+        pageLength: 100,
         cache: 'buildsuite-root-projects',
+        transform(projects) {
+          return projects.map((p) => ({
+            id: p.name,
+            code: p.custom_project_id || '',
+            name: p.project_name || p.name,
+            client: p.customer || '',
+            status: p.status || '',
+            type: p.project_type || '',
+            company: p.company || '',
+            startDate: p.expected_start_date || null,
+            endDate: p.expected_end_date || null,
+            budget: p.estimated_costing || 0,
+            progress: p.percent_complete || 0,
+            pm: p.owner || '',
+            parentId: null,
+          }))
+        },
       })
     },
 
@@ -43,23 +57,14 @@ export function createRemoteDataAdapter() {
         fields: ['name', 'abbr'],
         orderBy: 'name asc',
         cache: 'buildsuite-companies',
+        transform(companies) {
+          return companies.map((c) => ({
+            id: c.name,
+            name: c.name,
+            abbr: c.abbr || '',
+          }))
+        },
       })
-    },
-
-    /**
-     * Remote mode cannot determine multi-company synchronously.
-     * Check companies.data.length after the companies resource loads.
-     */
-    isMultiCompany() {
-      return null
-    },
-
-    /**
-     * Remote mode cannot look up a company by id without a loaded list.
-     * Use getCompanies() and filter .data client-side.
-     */
-    getCompanyById(_id) {
-      return null
     },
   }
 }
