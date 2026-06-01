@@ -1,11 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getLoginUrl, getRouteBase, isAuthenticated } from '@/utils/session'
 
-const routeBase = window.default_route || '/buildsuite_core'
+const routeBase = getRouteBase()
 
 const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
   {
     path: '/app',
+    meta: { requiresAuth: true },
     component: () => import('@/layouts/DeskShell.vue'),
     children: [
       { path: '',                              redirect: '/app/dashboard' },
@@ -107,8 +109,23 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(routeBase),
   routes,
   scrollBehavior() { return { top: 0 } },
 })
+
+router.beforeEach((to) => {
+  if (!to.matched.some((record) => record.meta.requiresAuth)) {
+    return true
+  }
+
+  if (isAuthenticated()) {
+    return true
+  }
+
+  window.location.assign(getLoginUrl(to.fullPath))
+  return false
+})
+
+export default router

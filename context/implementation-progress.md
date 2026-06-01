@@ -63,19 +63,21 @@
   - Date completed: 2026-06-01
   - Reference (PR/commit): `3d9b2c2`
 
-- [ ] **Phase 3 — Replace Prototype Vite Setup with Frappe-Compatible Build**
-  - Status: In progress
+- [x] **Phase 3 — Replace Prototype Vite Setup with Frappe-Compatible Build**
+  - Status: Completed
   - Frontend moved to app-owned frontend workspace
   - Vite now builds into `buildsuite_core/public/frontend` and emits a manifest
   - Website shell loads built frontend assets from the Vite manifest
   - `frappe-ui` plugin and dev boot parity still pending
-  - Date completed:
-  - Reference (PR/commit):
+  - Date completed: 2026-06-01
+  - Reference (PR/commit): `42cbcff`
 
 - [ ] **Phase 4 — Add Dev Boot Parity**
-  - Status: Not started
+  - Status: In progress
   - DEV calls `get_context_for_dev` before app mount
   - Boot values assigned to `window` in DEV
+  - Frontend route guard now checks session via boot/cookie and redirects guests to login for `/app` routes
+  - Session handling is centralized in `frontend/src/utils/session.js` and reused by bootstrap + router guard
   - Date completed:
   - Reference (PR/commit):
 
@@ -131,6 +133,7 @@
 |---|---|---|---|---|
 | 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985`, `3d9b2c2` |
 | 2026-06-01 | Phase 3 | Copied the Vue prototype into an app-owned `frontend/` workspace, pointed Vite output at app public assets, and wired the website shell to the built asset manifest | Copilot | working tree |
+| 2026-06-01 | Phase 4 | Added Vite dev proxy and frontend pre-mount DEV boot hydration from `get_context_for_dev` | Copilot | working tree |
 
 ---
 
