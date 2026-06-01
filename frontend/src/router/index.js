@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getLoginUrl, getRouteBase, isAuthenticated } from '@/utils/session'
+import { getAccessContext, getLoginUrl, getRouteBase, isAuthenticated } from '@/utils/session'
 
 const routeBase = getRouteBase()
 
@@ -115,13 +115,21 @@ const router = createRouter({
   scrollBehavior() { return { top: 0 } },
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (!to.matched.some((record) => record.meta.requiresAuth)) {
     return true
   }
 
   if (isAuthenticated()) {
-    return true
+    const accessContext = await getAccessContext()
+    if (accessContext.allowed) {
+      return true
+    }
+
+    return {
+      path: '/',
+      query: { denied: '1' },
+    }
   }
 
   window.location.assign(getLoginUrl(to.fullPath))
