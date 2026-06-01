@@ -58,6 +58,8 @@
   - `buildsuite_core/www/buildsuite_core.py` created
   - `buildsuite_core/www/buildsuite_core.html` created
   - Boot keys include csrf/site/read-only/lang/direction/timezone
+  - `get_context_for_dev` whitelisted and permission-gated
+  - HTML now exposes a real `#app` mount target
   - Frontend app mount and bundle wiring still pending
   - Date completed:
   - Reference (PR/commit):
@@ -127,7 +129,7 @@
 
 | Date | Phase | Change summary | Owner | Link |
 |---|---|---|---|---|
-| 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, and BuildSuite website boot shell | Copilot | commit pending capture |
+| 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985` |
 
 ---
 

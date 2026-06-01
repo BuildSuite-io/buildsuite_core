@@ -1,21 +1,40 @@
 <!doctype html>
-<html lang="{{ boot.lang }}" dir="{{ boot.text_direction }}">
+<html lang="en" dir="{{ boot.text_direction }}">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="{{ meta.description }}" />
 		<title>{{ title }}</title>
 		<link rel="icon" href="{{ favicon }}" />
+		<style>
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background: #f5f7fb;
+			}
+
+			.noscript-shell {
+				font-family: system-ui, sans-serif;
+				padding: 32px;
+				max-width: 960px;
+				margin: 0 auto;
+			}
+		</style>
 	</head>
 	<body>
-		<main style="font-family: system-ui, sans-serif; padding: 32px; max-width: 960px; margin: 0 auto;">
-			<h1>BuildSuite Core</h1>
-			<p>The frontend shell is wired. The prototype app will mount here in the next phase.</p>
-		</main>
+		<div id="app"></div>
+		<noscript>
+			<main class="noscript-shell">
+				<h1>BuildSuite Core</h1>
+				<p>JavaScript is required to load the BuildSuite frontend.</p>
+			</main>
+		</noscript>
 
 		<script>
 			{% for key in boot %}
 			window["{{ key }}"] = {{ boot[key] | tojson }};
 			{% endfor %}
+			document.documentElement.lang = window.lang || 'en';
 		</script>
 	</body>
 </html>
