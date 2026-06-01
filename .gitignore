@@ -61,3 +61,6 @@ context/
 # Generated frontend build output (from frontend/vite build)
 buildsuite_core/public/frontend/**
 !buildsuite_core/public/frontend/.gitkeep
+buildsuite_core.code-workspace
+frontend/auto-imports.d.ts
+frontend/components.d.ts
