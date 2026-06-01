@@ -38,13 +38,23 @@ def get_context_for_dev():
 
 
 def get_boot():
+	csrf_token = getattr(frappe.session, "csrf_token", None)
+	if not csrf_token:
+		try:
+			from frappe.sessions import get_csrf_token
+
+			csrf_token = get_csrf_token()
+		except Exception:
+			csrf_token = ""
+
 	return frappe._dict(
 		{
 			"frappe_version": frappe.__version__,
+			"session_user": frappe.session.user,
 			"default_route": "/buildsuite_core",
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
-			"csrf_token": frappe.sessions.get_csrf_token(),
+			"csrf_token": csrf_token,
 			"lang": get_user_lang(),
 			"text_direction": "rtl" if is_rtl() else "ltr",
 			"translated_doctypes": get_translated_doctypes(),

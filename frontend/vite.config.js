@@ -19,5 +19,12 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 5173,
     open: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_FRAPPE_HOST || 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 }))
