@@ -88,6 +88,36 @@ function make_new_doc_with_defaults(doctype, defaults) {
 	return doc;
 }
 
+function get_project_scope(frm) {
+	const project_labels = {
+		[frm.doc.name]: frm.doc.project_name || frm.doc.name,
+	};
+
+	if (!frm.doc.is_group) {
+		return Promise.resolve({
+			project_names: [frm.doc.name],
+			project_labels,
+		});
+	}
+
+	return frappe.db
+		.get_list("Project", {
+			filters: { parent_project: frm.doc.name },
+			fields: ["name", "project_name"],
+			limit: 500,
+		})
+		.then((rows) => {
+			rows.forEach((row) => {
+				project_labels[row.name] = row.project_name || row.name;
+			});
+
+			return {
+				project_names: [frm.doc.name, ...rows.map((row) => row.name)],
+				project_labels,
+			};
+		});
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Subprojects tab
 // ──────────────────────────────────────────────────────────────────────────────
@@ -188,19 +218,27 @@ function render_work_packages(frm) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 function render_tasks(frm) {
-	frappe.db
-		.get_list("Task", {
-			filters: { project: frm.doc.name },
-			fields: ["name", "subject", "status", "priority", "exp_end_date", "progress"],
-			limit: 100,
-		})
-		.then((rows) => {
+	get_project_scope(frm).then(({ project_names, project_labels }) => {
+		const task_filters = {
+			project: project_names.length === 1 ? project_names[0] : ["in", project_names],
+		};
+
+		frappe.db
+			.get_list("Task", {
+				filters: task_filters,
+				fields: ["name", "subject", "project", "status", "priority", "exp_end_date", "progress"],
+				limit: 100,
+			})
+			.then((rows) => {
 			const columns = [
 				{
 					label: "Task",
 					render: (r) =>
 						`<a href="/app/task/${r.name}">${r.subject || r.name}</a>`,
 				},
+				...(frm.doc.is_group
+					? [{ label: "Project", render: (r) => project_labels[r.project] || r.project || "-" }]
+					: []),
 				{ label: "Status", render: (r) => status_indicator(r.status) },
 				{ label: "Priority", render: (r) => status_indicator(r.priority) },
 				{ label: "Progress", render: (r) => progress_bar(r.progress) },
@@ -227,7 +265,8 @@ function render_tasks(frm) {
 					);
 				});
 			});
-		});
+			});
+	});
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -235,19 +274,27 @@ function render_tasks(frm) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 function render_stage_plannings(frm) {
-	frappe.db
-		.get_list("Stage Planning", {
-			filters: { project: frm.doc.name },
-			fields: ["name", "stage_name", "planned_start", "planned_end", "planned_task_count", "planned_completion_pct"],
-			limit: 100,
-		})
-		.then((rows) => {
+	get_project_scope(frm).then(({ project_names, project_labels }) => {
+		const stage_filters = {
+			project: project_names.length === 1 ? project_names[0] : ["in", project_names],
+		};
+
+		frappe.db
+			.get_list("Stage Planning", {
+				filters: stage_filters,
+				fields: ["name", "stage_name", "project", "planned_start", "planned_end", "planned_task_count", "planned_completion_pct"],
+				limit: 100,
+			})
+			.then((rows) => {
 			const columns = [
 				{
 					label: "Stage",
 					render: (r) =>
 						`<a href="/app/stage-planning/${r.name}">${r.stage_name}</a>`,
 				},
+				...(frm.doc.is_group
+					? [{ label: "Project", render: (r) => project_labels[r.project] || r.project || "-" }]
+					: []),
 				{ label: "Planned Start", key: "planned_start" },
 				{ label: "Planned End", key: "planned_end" },
 				{ label: "Tasks", key: "planned_task_count" },
@@ -274,5 +321,6 @@ function render_stage_plannings(frm) {
 					);
 				});
 			});
-		});
+			});
+	});
 }
