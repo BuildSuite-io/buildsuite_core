@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { FrappeUI, setConfig, frappeRequest } from 'frappe-ui'
+import { setConfig } from 'frappe-ui-config'
+import { frappeRequest } from 'frappe-ui-frappe-request'
 import App from './App.vue'
 import router from './router'
 import './style.css'
@@ -44,7 +45,6 @@ async function mountApp() {
 	setConfig('resourceFetcher', frappeRequest)
 
 	app.use(pinia)
-	app.use(FrappeUI)
 
 	const sessionStore = useSessionStore(pinia)
 	await sessionStore.bootstrapSession()

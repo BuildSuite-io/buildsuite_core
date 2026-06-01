@@ -17,9 +17,15 @@ export default defineConfig(({ command }) => ({
     vue(),
   ],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+      { find: 'frappe-ui-config', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/utils/config.ts') },
+      { find: 'frappe-ui-frappe-request', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/utils/frappeRequest.js') },
+      { find: 'frappe-ui-list-resource', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/resources/listResource.js') },
+      // frappe-ui imports feather-icons as a default export, but modern ESM
+      // resolution exposes named exports only. Route bare imports through a shim.
+      { find: /^feather-icons$/, replacement: path.resolve(__dirname, './src/shims/feather-icons-default.js') },
+    ],
   },
   // frappe-ui uses ~icons/lucide/* virtual modules resolved by a custom Rollup
   // plugin. Exclude it from esbuild pre-bundling so Vite's plugin pipeline
