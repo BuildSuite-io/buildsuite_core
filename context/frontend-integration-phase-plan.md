@@ -7,6 +7,8 @@ Scope: Integrate the Vue prototype into the Frappe app before replacing local se
 
 Use the CRM integration model as the primary blueprint (server-side permission gate, explicit dev boot hydration, route-level UI access control), and borrow LMS patterns only where useful (path flexibility / guest-oriented route behavior).
 
+For remote data access, prefer Frappe-native primitives over custom APIs. The adapter seam should target generic DocType operations first (list, read, create, update, delete, link search) using `frappe-ui` resources so standard Frappe/ERPNext permissions, user permissions, and filters apply automatically. Add custom server endpoints only when the required behavior cannot be expressed through normal DocType/resource calls.
+
 ## Phase 0: Lock Route and Access Model
 
 - Set canonical app route to /buildsuite_core.
@@ -79,6 +81,13 @@ Deliverable:
 - Introduce an adapter layer with two modes:
   - local mode (existing behavior)
   - remote mode (Frappe API)
+- Define the remote adapter around generic DocType capabilities:
+  - list by doctype + fields + filters + order_by + pagination
+  - read one document by doctype + name
+  - create / save / delete through standard Frappe document calls
+  - link-field search by doctype for autocomplete inputs
+- Implement extension points for doctype-specific behavior only when a doctype needs extra orchestration beyond the generic contract.
+- Do not build a generic ListView or LinkAutocomplete component yet; lock the contract now and create those components only when a real vertical slice needs them.
 
 Deliverable:
 - Incremental backend migration path without freezing product work.
@@ -88,6 +97,8 @@ Deliverable:
 - Start with read-only APIs (dashboard cards, lookup lists).
 - Migrate one bounded CRUD module next.
 - Keep heavy mutation paths and uploads until CSRF/permission paths are fully stable.
+- When the first read slice needs it, introduce the reusable generic ListView shell backed by the Phase 6 doctype adapter contract.
+- Introduce a generic Link field/autocomplete component only when a migrated form actually needs remote DocType lookup.
 
 Deliverable:
 - Working hybrid system with low-risk rollout.

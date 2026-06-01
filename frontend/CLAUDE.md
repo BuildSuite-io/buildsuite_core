@@ -34,6 +34,13 @@ Never silently drift. Surface divergences to the user before resolving.
 
 No TypeScript. No test framework. No state management beyond Pinia. Keep it that way unless the user asks.
 
+### Integration direction (locked for Frappe migration)
+
+- The current local Pinia/localStorage model is transitional. As screens migrate, prefer a generic DocType-aware adapter layer over screen-specific services.
+- For normal list/read/write/link-search flows, use Frappe-native calls via `frappe-ui` resources so standard permissions, user permissions, and filters continue to apply automatically.
+- Do not introduce bespoke backend APIs for operations that standard Frappe DocType/resource calls can already handle.
+- Generic reusable UI primitives such as a DocType-driven list view or link autocomplete should be introduced only when an actual migration slice needs them; lock contracts first, then extract components from real usage.
+
 ---
 
 ## 3. Working directory layout
