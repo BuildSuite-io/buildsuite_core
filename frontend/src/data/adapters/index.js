@@ -2,9 +2,9 @@ import { createLocalDataAdapter } from './localDataAdapter'
 import { createRemoteDataAdapter } from './remoteDataAdapter'
 
 // Controlled by VITE_DATA_MODE at build/dev time.
-// Set VITE_DATA_MODE=remote in .env.local to test against the live Frappe backend.
-// Defaults to 'local' so seed-data mode remains the safe default until Phase 9.
-const DEFAULT_MODE = import.meta.env.VITE_DATA_MODE || 'local'
+// Set VITE_DATA_MODE=local in .env.local to force seed-data mode.
+// Defaults to 'remote' for the current read-only Doctype list slice.
+const DEFAULT_MODE = import.meta.env.VITE_DATA_MODE || 'remote'
 
 export function createDataAdapter(store, mode = DEFAULT_MODE) {
   if (mode === 'remote') {
