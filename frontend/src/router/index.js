@@ -1,15 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useSessionStore } from '@/stores/session'
-import { getLoginUrl, getRouteBase } from '@/utils/session'
-
-const routeBase = getRouteBase()
 
 const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
-  { path: '/forbidden', name: 'forbidden', component: () => import('@/views/AccessDeniedView.vue') },
   {
     path: '/app',
-    meta: { requiresAuth: true },
     component: () => import('@/layouts/DeskShell.vue'),
     children: [
       { path: '',                              redirect: '/app/dashboard' },
@@ -111,36 +105,8 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
-const router = createRouter({
-  history: createWebHistory(routeBase),
+export default createRouter({
+  history: createWebHistory(),
   routes,
   scrollBehavior() { return { top: 0 } },
 })
-
-router.beforeEach(async (to) => {
-  if (!to.matched.some((record) => record.meta.requiresAuth)) {
-    return true
-  }
-
-  const sessionStore = useSessionStore()
-  const accessContext = await sessionStore.ensureAccess({ maxAgeMs: 10_000 })
-
-  if (!sessionStore.authenticated) {
-    window.location.assign(getLoginUrl(to.fullPath))
-    return false
-  }
-
-  if (accessContext.allowed) {
-    return true
-  }
-
-  return {
-    path: '/forbidden',
-    query: {
-      reason: accessContext.reason || 'missing_role',
-      from: to.fullPath,
-    },
-  }
-})
-
-export default router
