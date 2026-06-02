@@ -1,18 +1,22 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import DeskList from '@/components/desk/DeskList.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { fmtDate } from '@/utils/format'
 import { useDocTypeList } from '@/composables/useDocTypeList'
 
 const props = defineProps({
   doctype: { type: String, required: true },
   fieldOrder: { type: Array, required: true },
+  columns: { type: Array, default: null },
   searchFields: { type: Array, default: () => ['name'] },
   baseFilters: { type: Array, default: () => [] },
   filterValues: { type: Object, default: () => ({}) },
   filterFieldMap: { type: Object, default: () => ({}) },
   pageLength: { type: Number, default: 100 },
+  paginated: { type: Boolean, default: true },
+  pageSize: { type: Number, default: 10 },
+  pageSizeOptions: { type: Array, default: () => [10, 20, 50, 100] },
   cacheKey: { type: [String, Array], default: null },
   initialOrderBy: { type: String, default: '' },
   rowKey: { type: String, default: 'name' },
@@ -77,13 +81,55 @@ const fieldMetaMap = computed(() => {
   return map
 })
 
+const configuredColumns = computed(() => {
+  if (!Array.isArray(props.columns) || !props.columns.length) return null
+  return props.columns.filter((column) => column?.key)
+})
+
 const resolvedFields = computed(() => {
-  const valid = props.fieldOrder.filter((fieldname) => fieldMetaMap.value.has(fieldname))
+  const candidates = configuredColumns.value
+    ? configuredColumns.value.flatMap((column) => {
+        if (Array.isArray(column.fields) && column.fields.length) return column.fields
+        return [column.key]
+      })
+    : props.fieldOrder
+
+  const valid = candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname))
   const withName = valid.includes('name') ? valid : ['name', ...valid]
   return Array.from(new Set(withName))
 })
 
+function defaultColumnLabel(column) {
+  const fallbackField = Array.isArray(column.fields) && column.fields.length ? column.fields[0] : column.key
+  const metaField = fieldMetaMap.value.get(fallbackField)
+  return column.label || metaField?.label || column.key
+}
+
+function defaultColumnAlign(column) {
+  if (column.align) return column.align
+
+  if (column.preset === 'progress') return 'right'
+  if (column.preset === 'timeline') return 'left'
+
+  const fallbackField = Array.isArray(column.fields) && column.fields.length ? column.fields[0] : column.key
+  const fieldtype = fieldMetaMap.value.get(fallbackField)?.fieldtype
+  const numericTypes = ['Currency', 'Float', 'Int', 'Percent']
+  return numericTypes.includes(fieldtype) ? 'right' : 'left'
+}
+
 const resolvedColumns = computed(() => {
+  if (configuredColumns.value) {
+    return configuredColumns.value.map((column) => ({
+      key: column.key,
+      label: defaultColumnLabel(column),
+      align: defaultColumnAlign(column),
+      preset: column.preset || '',
+      fields: Array.isArray(column.fields) ? column.fields : [],
+      renderer: column.renderer || null,
+      rendererProps: column.rendererProps || null,
+    }))
+  }
+
   return resolvedFields.value.map((fieldname) => {
     const metaField = fieldMetaMap.value.get(fieldname) || {}
     const numericTypes = ['Currency', 'Float', 'Int', 'Percent']
@@ -205,7 +251,15 @@ watch(
 
 loadMeta()
 
-function formatValue(row, fieldname) {
+function getColumnValue(row, column) {
+  if (!column) return null
+  if (Array.isArray(column.fields) && column.fields.length) {
+    return column.fields.map((fieldname) => row?.[fieldname])
+  }
+  return row?.[column.key]
+}
+
+function formatValue(row, fieldname, column = null) {
   const value = row?.[fieldname]
   if (value === null || value === undefined || value === '') return '—'
 
@@ -222,6 +276,63 @@ function formatValue(row, fieldname) {
   }
 
   return value
+}
+
+function resolvePreset(column) {
+  if (!column) return ''
+  if (typeof column.renderer === 'string') return column.renderer
+  return column.preset || ''
+}
+
+function getTimelineValues(row, column) {
+  const [startField = 'expected_start_date', endField = 'expected_end_date'] = column?.fields || []
+  return {
+    start: row?.[startField],
+    end: row?.[endField],
+  }
+}
+
+function renderPresetText(row, column) {
+  const preset = resolvePreset(column)
+  if (preset === 'timeline') {
+    const { start, end } = getTimelineValues(row, column)
+    if (!start && !end) return '—'
+    return `${start ? fmtDate(start) : '—'} -> ${end ? fmtDate(end) : '—'}`
+  }
+
+  if (preset === 'progress') {
+    const value = Number(row?.[column.key])
+    return Number.isFinite(value) ? `${value}%` : '—'
+  }
+
+  return formatValue(row, column.key, column)
+}
+
+function hasComponentRenderer(column) {
+  return !!column?.renderer && typeof column.renderer !== 'string'
+}
+
+function getRendererProps(row, column) {
+  return {
+    row,
+    column,
+    value: getColumnValue(row, column),
+    meta: fieldMetaMap.value.get(column.key) || null,
+    ...(column?.rendererProps || {}),
+  }
+}
+
+function progressValue(row, column) {
+  const value = Number(row?.[column.key])
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.min(100, value))
+}
+
+function progressTone(row, column) {
+  const value = progressValue(row, column)
+  if (value >= 100) return 'bg-success-500'
+  if (value >= 50) return 'bg-info-500'
+  return 'bg-warning-500'
 }
 
 const filteredRows = computed(() => {
@@ -252,6 +363,9 @@ const listCountText = computed(() => `${filteredRows.value.length} of ${resource
       :rows="filteredRows"
       :columns="resolvedColumns"
       :row-key="rowKey"
+      :paginated="paginated"
+      :page-size="pageSize"
+      :page-size-options="pageSizeOptions"
       :search-placeholder="searchPlaceholder"
       :show-sort="false"
       @row-click="(row) => emit('row-click', row)"
@@ -264,22 +378,38 @@ const listCountText = computed(() => `${filteredRows.value.length} of ${resource
           :meta-loading="metaLoading"
           :fields="resolvedFields"
         />
+      </template>
 
-        <DeskSelect v-model="sortField" class="!w-44" :disabled="!sortableFields.length">
-          <option v-if="!sortableFields.length" value="">Sort: unavailable</option>
-          <option
-            v-for="option in sortableFields"
-            :key="option.value"
-            :value="option.value"
+      <template #pre-columns-controls>
+        <div
+          class="flex items-center border border-ink-200 bg-white"
+          style="border-radius: 6px; overflow: hidden;"
+        >
+          <button
+            type="button"
+            class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border-r border-ink-200 disabled:text-ink-300 disabled:hover:bg-white"
+            :title="sortDirection === 'desc' ? 'Descending' : 'Ascending'"
+            :disabled="!sortableFields.length"
+            @click="sortDirection = sortDirection === 'desc' ? 'asc' : 'desc'"
+          >{{ sortDirection === 'desc' ? '↓' : '↑' }}</button>
+
+          <select
+            v-model="sortField"
+            class="text-xs text-ink-600 bg-white hover:bg-ink-50 pl-2.5 pr-7 py-1 appearance-none"
+            :disabled="!sortableFields.length"
+            style="border: none; outline: none; min-width: 9.5rem;"
+            :title="!sortableFields.length ? 'Sort unavailable' : 'Sort field'"
           >
-            Sort: {{ option.label }}
-          </option>
-        </DeskSelect>
+            <option v-if="!sortableFields.length" value="">Sort unavailable</option>
+            <option
+              v-for="option in sortableFields"
+              :key="option.value"
+              :value="option.value"
+            >{{ option.label }}</option>
+          </select>
 
-        <DeskSelect v-model="sortDirection" class="!w-32">
-          <option value="desc">Order: Desc</option>
-          <option value="asc">Order: Asc</option>
-        </DeskSelect>
+          <span class="-ml-6 pointer-events-none text-ink-400 text-[10px]">▾</span>
+        </div>
       </template>
 
       <template
@@ -288,7 +418,37 @@ const listCountText = computed(() => `${filteredRows.value.length} of ${resource
         #[`cell-${column.key}`]="slotProps"
       >
         <slot :name="`cell-${column.key}`" v-bind="slotProps">
-          <span>{{ formatValue(slotProps.row, column.key) }}</span>
+          <component
+            :is="column.renderer"
+            v-if="hasComponentRenderer(column)"
+            v-bind="getRendererProps(slotProps.row, column)"
+          />
+
+          <StatusBadge
+            v-else-if="resolvePreset(column) === 'status'"
+            :status="slotProps.row?.[column.key]"
+          />
+
+          <div
+            v-else-if="resolvePreset(column) === 'progress'"
+            class="flex items-center justify-end gap-2"
+          >
+            <div class="w-16 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px;">
+              <div
+                class="h-full"
+                :class="progressTone(slotProps.row, column)"
+                :style="`width:${progressValue(slotProps.row, column)}%`"
+              ></div>
+            </div>
+            <span class="text-xs text-ink-700 tabular-nums w-8 text-right">{{ renderPresetText(slotProps.row, column) }}</span>
+          </div>
+
+          <span
+            v-else-if="resolvePreset(column) === 'timeline'"
+            class="text-xs text-ink-500 whitespace-nowrap"
+          >{{ renderPresetText(slotProps.row, column) }}</span>
+
+          <span v-else>{{ formatValue(slotProps.row, column.key, column) }}</span>
         </slot>
       </template>
 
