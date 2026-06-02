@@ -6,7 +6,8 @@ const routes = [
     path: '/app',
     component: () => import('@/layouts/DeskShell.vue'),
     children: [
-      { path: '',                              redirect: '/app/dashboard' },
+      { path: '',                              redirect: '/app/home' },
+      { path: 'home',                          name: 'app-home',      component: () => import('@/views/AppHomeView.vue') },
       { path: 'dashboard',                     name: 'dashboard',     component: () => import('@/views/DashboardView.vue') },
       { path: 'projects',                      name: 'projects',      component: () => import('@/views/ProjectsView.vue') },
       { path: 'projects/new',                  name: 'project-new',   component: () => import('@/views/NewProjectView.vue') },
