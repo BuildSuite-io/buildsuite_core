@@ -1156,14 +1156,14 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             >+ Add Task</RouterLink>
           </template>
           <template #cell-name="{ row }">
-            <DeskLink :to="`/app/tasks/${row.id}`" @click.stop>{{ row.name }}</DeskLink>
+            <DeskLink :to="`/app/tasks/${row.id}`" @click.stop class="text-ink-900 hover:text-ink-900">{{ row.name }}</DeskLink>
           </template>
           <template #cell-project="{ row }">
             <DeskLink
               v-if="row.projectId"
               :to="`/app/projects/${row.projectId}`"
               @click.stop
-              class="text-xs"
+              class="text-xs text-ink-900 hover:text-ink-900"
             >{{ taskProjectNameById.get(row.projectId) || row.projectId }}</DeskLink>
             <span v-else class="text-xs text-ink-500">—</span>
           </template>

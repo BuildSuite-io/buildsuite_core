@@ -5,6 +5,7 @@ import { useDataStore } from '@/stores'
 import LogoIcon from '@/components/LogoIcon.vue'
 import RoleSwitcher from '@/components/RoleSwitcher.vue'
 import CompanySwitcher from '@/components/CompanySwitcher.vue'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const route = useRoute()
 const store = useDataStore()
@@ -47,21 +48,35 @@ const ACCESS_HINTS = {
   'mr-only':      { label: 'MR', title: 'Material-request raise only' },
 }
 
-// Sidebar groups for the active role. Reactive — re-derives when store.role changes.
-// One pass over store.visibleWorkspaces (already ordered + filtered for the active role),
-// bucketed into the two groups by WORKSPACES[slug].group. Empty groups are dropped.
+// Sidebar groups for the active role.
+// Home is synthesized as the first BuildSuite item and Site Execution is pinned
+// second when visible because it is the highest-frequency workspace.
 const navGroups = computed(() => {
-  const buildsuiteItems = []
+  const HOME_ITEM = { slug: 'home', name: 'Home', to: '/app/home', group: 'buildsuite', hint: null }
+  const buildsuiteItems = [HOME_ITEM]
   const erpnextItems = []
+  const otherBuildsuiteItems = []
   for (const slug of store.visibleWorkspaces) {
+    if (slug === 'site-execution') continue
     const meta = WORKSPACES[slug]
     if (!meta) continue
     const access = store.workspaceAccess(slug)
     const hint = access && access !== 'full' ? ACCESS_HINTS[access] : null
     const item = { slug, ...meta, hint }
-    if (meta.group === 'buildsuite') buildsuiteItems.push(item)
+    if (meta.group === 'buildsuite') otherBuildsuiteItems.push(item)
     else erpnextItems.push(item)
   }
+
+  if (store.visibleWorkspaces.includes('site-execution')) {
+    const meta = WORKSPACES['site-execution']
+    if (meta) {
+      const access = store.workspaceAccess('site-execution')
+      const hint = access && access !== 'full' ? ACCESS_HINTS[access] : null
+      buildsuiteItems.push({ slug: 'site-execution', ...meta, hint })
+    }
+  }
+  buildsuiteItems.push(...otherBuildsuiteItems)
+
   const groups = []
   if (buildsuiteItems.length) {
     groups.push({ key: 'buildsuite', title: 'BuildSuite', muted: false, topSeparator: false, items: buildsuiteItems })
@@ -70,7 +85,6 @@ const navGroups = computed(() => {
     groups.push({
       key: 'erpnext',
       title: 'ERPNext',
-      caption: 'via ERPNext / Frappe HR',
       muted: true,
       // Only render the top-border separator when there's a BuildSuite group above it;
       // otherwise it looks like an orphan rule at the top of the nav.
@@ -81,73 +95,7 @@ const navGroups = computed(() => {
   return groups
 })
 
-const breadcrumb = computed(() => {
-  const meta = {
-    // Workspace landings (§12.2)
-    'site-execution':  'Site Execution',
-    'estimation':      'Estimation',
-    'procurement':     'Procurement',
-    'subcontract':     'Subcontract',
-    'workforce':       'Workforce',
-    'scope-change':    'Scope Change',
-    'project-finance': 'Project Finance',
-    'accounting':      'Accounting',
-    'buying':          'Buying',
-    'stock':           'Stock',
-    'assets':          'Assets',
-    'hr':              'HR',
-
-    // Existing detail routes (no longer in sidebar — reached from inside workspace landings)
-    'dashboard':       'Dashboard',
-    'projects':        'Projects',
-    'project-new':     'New Project',
-    'project-detail':  'Project Detail',
-    'work-packages':   'Work Packages',
-    'wp-new':          'New Work Package',
-    'wp-detail':       'Work Package',
-    'tasks':           'Tasks',
-    'task-new':        'New Task',
-    'task-detail':     'Task Detail',
-    'activity-types':        'Activity Types',
-    'activity-type-new':     'New Activity Type',
-    'activity-type-detail':  'Activity Type',
-    'stage-plannings':        'Stage Planning',
-    'stage-planning-new':     'New Stage',
-    'stage-planning-detail':  'Stage',
-    'progress-entries':       'Task Progress Entry',
-    'progress-entry-new':     'New Progress Entry',
-    'progress-entry-detail':  'Progress Entry',
-    'schedule':        'Schedule',
-    'sco':             'Scope Change',
-    'boq':             'BOQ',
-    'boq-detail':      'BOQ Detail',
-    'rate-master':     'Rate Master',
-
-    // Session 35 — exploratory visualisation (NOT M1 scope)
-    'project-dashboard': 'Project Dashboard',
-    'report-stub':       'Report',
-
-    // Legacy placeholders (kept registered, off the sidebar)
-    'subcontractor':   'Subcontractor',
-    'labour':          'Labour',
-    'financials':      'Financials',
-    'reports':         'Reports',
-
-    'settings':                'Settings',
-    'settings-companies':      'Companies',
-    'settings-company-new':    'New Company',
-    'settings-company-detail': 'Company',
-    'settings-users':                'Users',
-    'settings-data':                 'Data Tools',
-    'settings-core':                 'BuildSuite Core Settings',
-    'settings-site-execution':       'Site Execution Settings',
-    'settings-workspace-structure':  'Workspace Structure',
-    'settings-project-types':        'Project Types',
-    'settings-project-type-new':     'New Project Type',
-    'settings-project-type-detail':  'Project Type',
-  }
-  return meta[route.name] || ''
-})
+// Topbar breadcrumb removed; each view already renders richer page breadcrumbs.
 </script>
 
 <template>
@@ -202,9 +150,21 @@ const breadcrumb = computed(() => {
             @click="closeSidebar"
           >
             <span
-              class="desk-icon w-4 text-center text-xs flex-shrink-0"
+              class="desk-icon w-5 h-5 flex items-center justify-center leading-none flex-shrink-0"
               :class="group.muted ? 'text-ink-300' : 'text-ink-400'"
-            >{{ item.icon }}</span>
+            >
+              <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                v-html="getWorkspaceIconPath(item.slug)"
+              />
+            </span>
             <span class="flex-1 truncate">{{ item.name }}</span>
             <span
               v-if="item.hint"
@@ -218,7 +178,18 @@ const breadcrumb = computed(() => {
 
       <div class="border-t border-ink-200 p-3">
         <RouterLink to="/app/settings" class="flex items-center gap-2 px-2 py-1 text-xs text-ink-500 hover:text-ink-900">
-          <span>⚙</span> Settings
+          <svg
+            class="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            v-html="getWorkspaceIconPath('settings')"
+          />
+          Settings
         </RouterLink>
       </div>
     </aside>
@@ -235,11 +206,6 @@ const breadcrumb = computed(() => {
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <div class="flex items-center gap-1 text-sm min-w-0">
-          <RouterLink to="/app/dashboard" class="text-ink-500 hover:text-ink-900 hidden sm:inline">BuildSuite Core</RouterLink>
-          <span class="text-ink-300 mx-1 hidden sm:inline">/</span>
-          <span class="text-ink-900 font-medium truncate">{{ breadcrumb }}</span>
-        </div>
         <div class="ml-auto flex items-center gap-1 sm:gap-2">
           <!-- Theme toggle — sun in dark mode, moon in light mode -->
           <button
