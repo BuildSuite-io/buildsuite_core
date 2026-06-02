@@ -162,6 +162,9 @@ const showPagination = computed(() =>
           style="border-radius: 6px;"
           @click="emit('sort')"
         >Sort by ▾</button>
+
+        <slot name="pre-columns-controls" />
+
         <button
           v-if="showColumns"
           type="button"
