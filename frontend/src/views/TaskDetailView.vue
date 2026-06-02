@@ -17,6 +17,7 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { fmtDate } from '@/utils/format'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
@@ -272,7 +273,7 @@ const progressColor = computed(() => {
     <section class="bg-white border border-ink-200 mb-4 overflow-hidden" style="border-radius: 10px;">
       <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="text-base">📊</span>
+          <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
           <h3 class="text-sm font-semibold text-ink-900">Progress</h3>
         </div>
         <button
@@ -365,7 +366,7 @@ const progressColor = computed(() => {
               <DeskLink :to="`/app/progress-entries/${e.id}`" class="font-medium tabular-nums">{{ e.progressPct }}%</DeskLink>
               <span class="text-ink-500 flex-1 truncate">{{ fmtDate(e.entryDate) }}</span>
               <UserAvatar :user-id="e.enteredBy" size="xs" />
-              <span v-if="e.blockerFlag" class="text-danger-700" title="Blocker flagged">🚩</span>
+              <svg v-if="e.blockerFlag" class="w-3.5 h-3.5 text-danger-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" title="Blocker flagged" v-html="getWorkspaceIconPath('flag')" />
             </li>
           </ul>
           <div v-else class="text-xs text-ink-400 italic">None yet</div>
@@ -580,7 +581,7 @@ const progressColor = computed(() => {
                         style="border-radius: 4px;"
                         alt=""
                       />
-                      <span v-else class="text-base leading-none">📎</span>
+                      <svg v-else class="w-4 h-4 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('paperclip')" />
                       <span class="flex-1 min-w-0 truncate text-ink-800">{{ att.fileName }}</span>
                       <span class="text-[11px] text-ink-500 tabular-nums">{{ fmtBytes(att.size) }}</span>
                       <button
@@ -607,7 +608,7 @@ const progressColor = computed(() => {
                       style="border-radius: 6px;"
                       @click="openProgressCamera"
                     >
-                      <span class="text-sm leading-none">📷</span>
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('camera')" />
                       <span>Capture photo</span>
                     </button>
                   </div>

@@ -20,6 +20,7 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
@@ -538,14 +539,14 @@ function formatFileSize(bytes) {
   return (i === 0 ? n : n.toFixed(n < 10 ? 1 : 0)) + ' ' + units[i]
 }
 function fileIcon(mime) {
-  if (!mime) return '📄'
-  if (mime.startsWith('image/')) return '🖼️'
-  if (mime === 'application/pdf') return '📕'
-  if (mime.includes('acad') || mime.includes('dwg')) return '📐'
-  if (mime.includes('word') || mime.includes('document')) return '📝'
-  if (mime.includes('sheet') || mime.includes('excel')) return '📊'
-  if (mime.includes('zip') || mime.includes('compress')) return '🗜️'
-  return '📄'
+  if (!mime) return 'file'
+  if (mime.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'file-text'
+  if (mime.includes('acad') || mime.includes('dwg')) return 'estimation'
+  if (mime.includes('word') || mime.includes('document')) return 'file-text'
+  if (mime.includes('sheet') || mime.includes('excel')) return 'chart-line'
+  if (mime.includes('zip') || mime.includes('compress')) return 'archive'
+  return 'file'
 }
 
 // Cost roll-up by work package (unchanged from pre-rebuild)
@@ -588,11 +589,11 @@ const isSubproject = computed(() => !!project.value?.parentId)
 // report tiles — the stub views aren't project-scoped today, but the routing
 // is in place so the slugs match.
 const projectReports = computed(() => ([
-  { slug: 'project-status-summary',  icon: '📊', label: 'Status summary',          desc: 'Status, progress and schedule variance.' },
-  { slug: 'stage-vs-actual',         icon: '📅', label: 'Stage plan vs actual',    desc: 'Planned vs completed task counts per stage.' },
-  { slug: 'task-completion-by-week', icon: '📈', label: 'Task completion by week', desc: 'Weekly completion burn for this project.' },
-  { slug: 'pending-progress-entries',icon: '📝', label: 'Pending progress',        desc: 'Tasks silent for 3+ days.' },
-  { slug: 'labour-deployed',         icon: '👷', label: 'Labour deployed',         desc: 'Skilled + unskilled labour by task / week.' },
+  { slug: 'project-status-summary',  icon: 'chart-line', label: 'Status summary',          desc: 'Status, progress and schedule variance.' },
+  { slug: 'stage-vs-actual',         icon: 'calendar',   label: 'Stage plan vs actual',    desc: 'Planned vs completed task counts per stage.' },
+  { slug: 'task-completion-by-week', icon: 'chart-line', label: 'Task completion by week', desc: 'Weekly completion burn for this project.' },
+  { slug: 'pending-progress-entries',icon: 'file-text',  label: 'Pending progress',        desc: 'Tasks silent for 3+ days.' },
+  { slug: 'labour-deployed',         icon: 'workforce',  label: 'Labour deployed',         desc: 'Skilled + unskilled labour by task / week.' },
 ]))
 
 const tabs = computed(() => {
@@ -836,7 +837,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           <!-- Client -->
           <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
             <div class="flex items-center gap-2">
-              <span class="text-base">🏢</span>
+              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('building-2')" />
               <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Client</div>
             </div>
             <div class="text-sm text-ink-900 font-medium mt-1.5 truncate">{{ project.client || '—' }}</div>
@@ -845,7 +846,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           <!-- Actual vs Planned -->
           <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
             <div class="flex items-center gap-2">
-              <span class="text-base">💰</span>
+              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('wallet')" />
               <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Actual vs Planned</div>
             </div>
             <div class="flex items-baseline gap-1 mt-1.5 tabular-nums">
@@ -862,7 +863,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           <!-- Progress + delayed -->
           <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
             <div class="flex items-center gap-2">
-              <span class="text-base">📊</span>
+              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
               <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Progress</div>
             </div>
             <div class="flex items-center gap-2 mt-1.5">
@@ -885,7 +886,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           <!-- Timeline -->
           <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
             <div class="flex items-center gap-2">
-              <span class="text-base">📅</span>
+              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('calendar')" />
               <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Timeline</div>
             </div>
             <div class="text-xs text-ink-900 font-medium mt-1.5 tabular-nums">
@@ -906,7 +907,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             <!-- About this project — gradient accent header + body -->
             <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
               <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <span class="text-base">📋</span>
+                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('clipboard-list')" />
                 <h3 class="text-sm font-semibold text-ink-900">About this project</h3>
               </header>
               <div class="p-5">
@@ -917,7 +918,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             <!-- Reports — project-context reports -->
             <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
               <header class="px-5 py-3 bg-gradient-to-r from-info-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <span class="text-base">📈</span>
+                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
                 <h3 class="text-sm font-semibold text-ink-900">Reports</h3>
               </header>
               <div class="p-4">
@@ -930,7 +931,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
                     style="border-radius: 8px;"
                   >
                     <div class="flex items-start gap-2.5">
-                      <span class="text-xl leading-none flex-shrink-0">{{ rt.icon }}</span>
+                      <svg class="w-5 h-5 text-ink-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath(rt.icon)" />
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
                           <div class="text-sm font-medium text-ink-900 group-hover:text-brand-700 transition-colors">{{ rt.label }}</div>
@@ -951,7 +952,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             <!-- Project Manager card -->
             <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
               <header class="px-4 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <span class="text-base">👤</span>
+                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('hr')" />
                 <h3 class="text-sm font-semibold text-ink-900">Project Manager</h3>
               </header>
               <div class="p-4 flex items-center gap-3">
@@ -966,7 +967,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             <!-- Project metadata card -->
             <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
               <header class="px-4 py-3 bg-gradient-to-r from-ink-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <span class="text-base">📌</span>
+                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('tag')" />
                 <h3 class="text-sm font-semibold text-ink-900">Project details</h3>
                 <button
                   type="button"
@@ -1405,7 +1406,9 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
             class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 items-center text-sm"
             style="grid-template-columns: 28px minmax(220px, 2fr) 80px 110px 130px 32px;"
           >
-            <div class="px-2 py-2 text-base text-center">{{ fileIcon(att.mime) }}</div>
+            <div class="px-2 py-2 text-center">
+              <svg class="w-4 h-4 text-ink-500 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath(fileIcon(att.mime))" />
+            </div>
             <div class="px-3 py-2">
               <button
                 type="button"
@@ -1511,17 +1514,17 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
       <section class="mt-8 pt-4 border-t border-ink-200">
         <div class="flex items-center gap-6 text-xs text-ink-500 flex-wrap">
           <div class="flex items-center gap-1.5">
-            <span>💬</span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('message-circle')" />
             <span>Comments — <span class="font-medium text-ink-700">0</span></span>
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>📎</span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('paperclip')" />
             <span>Attachments — <span class="font-medium text-ink-700">0</span></span>
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>👥</span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('users')" />
             <span>Assigned to —</span>
             <UserAvatar :user-id="project.pm" size="xs" />
           </div>
