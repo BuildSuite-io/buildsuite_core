@@ -35,6 +35,9 @@ const props = defineProps({
   paginated: { type: Boolean, default: true },
   pageSize: { type: Number, default: 10 },
   pageSizeOptions: { type: Array, default: () => [10, 20, 50, 100] },
+  serverPaginated: { type: Boolean, default: false },
+  currentPage: { type: Number, default: 1 },
+  totalRows: { type: Number, default: null },
 })
 
 const emit = defineEmits([
@@ -44,6 +47,8 @@ const emit = defineEmits([
   'add-filter',
   'sort',
   'toggle-columns',
+  'page-change',
+  'page-size-change',
 ])
 
 function keyFor(row) {
@@ -83,44 +88,85 @@ function alignClass(col) {
 const currentPage = ref(1)
 const currentPageSize = ref(props.pageSize)
 
+const pageSizeValue = computed(() =>
+  props.serverPaginated ? props.pageSize : currentPageSize.value,
+)
+
+const pageValue = computed(() =>
+  props.serverPaginated ? Math.max(1, props.currentPage || 1) : currentPage.value,
+)
+
+const totalRowsValue = computed(() => {
+  if (props.serverPaginated) {
+    return Number.isFinite(props.totalRows) ? props.totalRows : props.rows.length
+  }
+  return props.rows.length
+})
+
 const totalPages = computed(() => {
   if (!props.paginated) return 1
-  return Math.max(1, Math.ceil(props.rows.length / currentPageSize.value))
+  return Math.max(1, Math.ceil(totalRowsValue.value / pageSizeValue.value))
 })
 
 const pagedRows = computed(() => {
   if (!props.paginated) return props.rows
+  if (props.serverPaginated) return props.rows
   const start = (currentPage.value - 1) * currentPageSize.value
   return props.rows.slice(start, start + currentPageSize.value)
 })
 
 const rangeStart = computed(() => {
-  if (!props.rows.length) return 0
-  return (currentPage.value - 1) * currentPageSize.value + 1
+  if (!totalRowsValue.value) return 0
+  return (pageValue.value - 1) * pageSizeValue.value + 1
 })
 const rangeEnd = computed(() =>
-  Math.min(currentPage.value * currentPageSize.value, props.rows.length)
+  Math.min(rangeStart.value + pagedRows.value.length - 1, totalRowsValue.value),
 )
 
 // Clamp current page when rows shrink (filtering / search) so we don't end up
 // past the last available page.
 watch(() => props.rows.length, () => {
+  if (props.serverPaginated) return
   if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
 })
 // When the search input changes (consumer-driven), jump back to page 1 so
 // the user sees their fresh result set from the start.
 watch(() => props.modelValue, () => { currentPage.value = 1 })
 
-function goPrev() { if (currentPage.value > 1) currentPage.value -= 1 }
-function goNext() { if (currentPage.value < totalPages.value) currentPage.value += 1 }
+function goPrev() {
+  if (pageValue.value <= 1) return
+  if (props.serverPaginated) {
+    emit('page-change', pageValue.value - 1)
+    return
+  }
+  currentPage.value -= 1
+}
+
+function goNext() {
+  if (pageValue.value >= totalPages.value) return
+  if (props.serverPaginated) {
+    emit('page-change', pageValue.value + 1)
+    return
+  }
+  currentPage.value += 1
+}
+
 function setPageSize(size) {
-  currentPageSize.value = Number(size) || props.pageSize
+  const parsed = Number(size) || props.pageSize
+  if (props.serverPaginated) {
+    emit('page-size-change', parsed)
+    emit('page-change', 1)
+    return
+  }
+  currentPageSize.value = parsed
   currentPage.value = 1
 }
 
-const showPagination = computed(() =>
-  props.paginated && props.rows.length > Math.min(...props.pageSizeOptions)
-)
+const showPagination = computed(() => {
+  if (!props.paginated) return false
+  if (props.serverPaginated) return true
+  return totalRowsValue.value > Math.min(...props.pageSizeOptions)
+})
 </script>
 
 <template>
@@ -162,6 +208,9 @@ const showPagination = computed(() =>
           style="border-radius: 6px;"
           @click="emit('sort')"
         >Sort by ▾</button>
+
+        <slot name="pre-columns-controls" />
+
         <button
           v-if="showColumns"
           type="button"
@@ -246,7 +295,7 @@ const showPagination = computed(() =>
       <div class="flex items-center gap-2">
         <span class="text-ink-500">Rows per page</span>
         <select
-          :value="currentPageSize"
+          :value="pageSizeValue"
           class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
           style="border-radius: 6px; padding: 4px 8px;"
           @change="setPageSize($event.target.value)"
@@ -257,7 +306,7 @@ const showPagination = computed(() =>
 
       <div class="text-ink-500 tabular-nums">
         Showing <span class="text-ink-800 font-medium">{{ rangeStart }}–{{ rangeEnd }}</span>
-        of <span class="text-ink-800 font-medium">{{ rows.length }}</span>
+        of <span class="text-ink-800 font-medium">{{ totalRowsValue }}</span>
       </div>
 
       <div class="ml-auto flex items-center gap-1">
@@ -265,18 +314,18 @@ const showPagination = computed(() =>
           type="button"
           class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
           style="border-radius: 6px; padding: 4px 10px;"
-          :disabled="currentPage <= 1"
+          :disabled="pageValue <= 1"
           @click="goPrev"
         >‹ Prev</button>
         <span class="text-ink-500 tabular-nums px-2">
-          Page <span class="text-ink-800 font-medium">{{ currentPage }}</span>
+          Page <span class="text-ink-800 font-medium">{{ pageValue }}</span>
           of <span class="text-ink-800 font-medium">{{ totalPages }}</span>
         </span>
         <button
           type="button"
           class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
           style="border-radius: 6px; padding: 4px 10px;"
-          :disabled="currentPage >= totalPages"
+          :disabled="pageValue >= totalPages"
           @click="goNext"
         >Next ›</button>
       </div>

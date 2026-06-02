@@ -5,7 +5,7 @@ import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtCompactINR } from '@/utils/format'
@@ -73,6 +73,23 @@ function onRowClick(row) {
         'owner',
         'company',
       ]"
+      :columns="[
+        { key: 'custom_project_id', label: 'Project ID' },
+        { key: 'project_name', label: 'Project Name' },
+        { key: 'customer', label: 'Client' },
+        { key: 'project_type', label: 'Project Type' },
+        {
+          key: 'status',
+          label: 'Status',
+          preset: 'status',
+          statusClassMap: { Open: 'bg-success-50 text-success-700' },
+        },
+        { key: 'estimated_costing', label: 'Budget' },
+        { key: 'percent_complete', label: 'Progress', preset: 'progress' },
+        { key: 'timeline', label: 'Timeline', preset: 'timeline', fields: ['expected_start_date', 'expected_end_date'] },
+        { key: 'owner', label: 'Owner' },
+        { key: 'company', label: 'Company' },
+      ]"
       :search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
       :base-filters="[['is_group', '=', 1]]"
       :filter-values="filterValues"
@@ -101,18 +118,17 @@ function onRowClick(row) {
           <option>Renovation</option>
         </DeskSelect>
 
-        <template v-if="isMultiCompany">
-          <DeskSelect v-if="!companyFilter" v-model="companyFilter" class="!w-44">
-            <option value="">Company: Any</option>
-            <option v-for="c in companiesResource.data" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </DeskSelect>
-          <DeskFilterChip
-            v-else
-            label="Company"
-            :value="companyName(companyFilter)"
-            @remove="companyFilter = ''"
-          />
-        </template>
+        <DeskLinkPicker
+          v-if="isMultiCompany"
+          v-model="companyFilter"
+          class="!w-44"
+          doctype="Company"
+          label-field="name"
+          value-field="name"
+          :search-fields="['name', 'abbr']"
+          :page-length="10"
+          placeholder="Company: Any"
+        />
       </template>
 
       <template #cell-custom_project_id="{ row }">
@@ -123,10 +139,6 @@ function onRowClick(row) {
 
       <template #cell-project_name="{ row }">
         <span class="text-ink-900 font-medium">{{ row.project_name || row.name }}</span>
-      </template>
-
-      <template #cell-status="{ row }">
-        <StatusBadge :status="row.status" />
       </template>
 
       <template #cell-estimated_costing="{ row }">
