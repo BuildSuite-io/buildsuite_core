@@ -1,140 +1,165 @@
 <script setup>
-// Work Packages list — Desk-styled (CLAUDE.md §12.4 destination: Desk in production).
-// Data flow (single projectFilter dropdown filtering store.workPackages) is unchanged.
+// Work Packages list — migrated to the generic DocType list shell and
+// adapter-backed project lookup filters.
 
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
-import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskList from '@/components/desk/DeskList.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
-import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
-import { fmtCompactINR, fmtDate } from '@/utils/format'
+import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
+import { fmtCompactINR } from '@/utils/format'
+import { createDataAdapter } from '@/data/adapters'
 
 const store = useDataStore()
 const router = useRouter()
-const search = ref('')
 const projectFilter = ref('')
 
-const items = computed(() => {
-  const term = search.value.trim().toLowerCase()
-  return store.workPackages.filter(wp => {
-    if (projectFilter.value && wp.projectId !== projectFilter.value) return false
-    if (term && !(wp.name.toLowerCase().includes(term) || (wp.code || '').toLowerCase().includes(term))) return false
-    return true
-  })
+const adapter = createDataAdapter(store)
+
+const projectsResource = adapter.list('Project', {
+  fields: ['name', 'project_name', 'custom_project_id'],
+  orderBy: 'project_name asc',
+  pageLength: 100,
+  cache: 'buildsuite-project-filter-options',
 })
 
-function projectName(id) {
-  return store.projectById(id)?.name || id
-}
+const projectRows = computed(() => {
+  const raw = projectsResource.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
 
-// Schedule-based traffic-light for the progress bar — same shape as ProjectsView.
-const today = new Date()
-function wpVariance(w) {
-  if (!w.startDate || !w.endDate) return 0
-  const start = new Date(w.startDate).getTime()
-  const end = new Date(w.endDate).getTime()
+const projectLabelMap = computed(() => {
+  const map = new Map()
+  for (const p of projectRows.value) {
+    const label = p?.project_name || p?.name
+    if (p?.name) map.set(p.name, label)
+  }
+  return map
+})
+
+const filterValues = computed(() => ({
+  project: projectFilter.value,
+}))
+
+// Schedule-based traffic-light for the progress bar.
+function wpVariance(row) {
+  if (!row?.start_date || !row?.end_date) return 0
+  const today = new Date().getTime()
+  const start = new Date(row.start_date).getTime()
+  const end = new Date(row.end_date).getTime()
   const total = end - start
   if (total <= 0) return 0
-  const elapsed = Math.max(0, Math.min(total, today.getTime() - start))
+  const elapsed = Math.max(0, Math.min(total, today - start))
   const expected = (elapsed / total) * 100
   if (expected <= 0) return 0
-  return ((expected - w.progress) / expected) * 100
+  return ((expected - (Number(row?.progress) || 0)) / expected) * 100
 }
-function progressBarColor(w) {
-  const v = wpVariance(w)
+
+function progressBarColor(row) {
+  const v = wpVariance(row)
   if (v > 15) return 'bg-danger-500'
   if (v > 5) return 'bg-warning-500'
   return 'bg-success-500'
 }
-
-const columns = [
-  { key: 'code',      label: 'Code' },
-  { key: 'name',      label: 'Name' },
-  { key: 'projectId', label: 'Project' },
-  { key: 'status',    label: 'Status' },
-  { key: 'budget',    label: 'Budget',   align: 'right' },
-  { key: 'progress',  label: 'Progress', align: 'right' },
-  { key: 'timeline',  label: 'Timeline' },
-  { key: 'owner',     label: 'Owner' },
-]
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
   { label: 'Work Package' },
 ]
 
-const subtitle = computed(() => `${items.value.length} of ${store.workPackages.length}`)
-
-function onRowClick(row) { router.push(`/app/work-packages/${row.id}`) }
-function clearProjectFilter() { projectFilter.value = '' }
-const filteredProjectName = computed(() => projectName(projectFilter.value))
+function onRowClick(row) { router.push(`/app/work-packages/${row.name}`) }
 </script>
 
 <template>
-  <DeskPage title="Work Package" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+  <DeskPage title="Work Package" :breadcrumbs="breadcrumbs">
     <template #actions>
       <RouterLink to="/app/work-packages/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
-    <DeskList
-      v-model="search"
-      :rows="items"
-      :columns="columns"
-      row-key="id"
+    <DocTypeListView
+      doctype="Work Package"
+      :field-order="[
+        'code',
+        'work_package_name',
+        'project',
+        'status',
+        'budget',
+        'progress',
+        'start_date',
+        'end_date',
+        'owner_user',
+      ]"
+      :columns="[
+        { key: 'code', label: 'Code' },
+        { key: 'work_package_name', label: 'Name' },
+        { key: 'project', label: 'Project' },
+        { key: 'status', label: 'Status', preset: 'status' },
+        { key: 'budget', label: 'Budget' },
+        { key: 'progress', label: 'Progress', preset: 'progress' },
+        { key: 'timeline', label: 'Timeline', preset: 'timeline', fields: ['start_date', 'end_date'] },
+        { key: 'owner_user', label: 'Owner' },
+      ]"
+      :search-fields="['work_package_name', 'code', 'name']"
+      :filter-values="filterValues"
+      :filter-field-map="{ project: 'project' }"
+      cache-key="buildsuite-work-package-list-generic"
+      row-key="name"
       search-placeholder="Search by name or code…"
       @row-click="onRowClick"
     >
       <template #filter-chips>
-        <DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-48">
-          <option value="">Project: Any</option>
-          <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </DeskSelect>
-        <DeskFilterChip
-          v-else
-          label="Project"
-          :value="filteredProjectName"
-          @remove="clearProjectFilter"
+        <DeskLinkPicker
+          v-model="projectFilter"
+          class="!w-56"
+          doctype="Project"
+          label-field="project_name"
+          value-field="name"
+          :search-fields="['project_name', 'custom_project_id', 'name']"
+          :page-length="10"
+          placeholder="Project: Any"
         />
       </template>
 
       <template #cell-code="{ row }">
-        <DeskLink :to="`/app/work-packages/${row.id}`" @click.stop class="font-mono text-xs">{{ row.code }}</DeskLink>
+        <DeskLink :to="`/app/work-packages/${row.name}`" @click.stop class="font-mono text-xs">
+          {{ row.code || row.name }}
+        </DeskLink>
       </template>
-      <template #cell-name="{ row }">
-        <span class="text-ink-900 font-medium">{{ row.name }}</span>
+      <template #cell-work_package_name="{ row }">
+        <span class="text-ink-900 font-medium">{{ row.work_package_name || row.name }}</span>
       </template>
-      <template #cell-projectId="{ row }">
-        <span class="text-ink-700 text-xs">{{ projectName(row.projectId) }}</span>
-      </template>
-      <template #cell-status="{ row }">
-        <StatusBadge :status="row.status" />
+      <template #cell-project="{ row }">
+        <DeskLink
+          v-if="row.project"
+          :to="`/app/projects/${row.project}`"
+          @click.stop
+          class="text-xs"
+        >{{ projectLabelMap.get(row.project) || row.project }}</DeskLink>
+        <span v-else class="text-ink-500 text-xs">—</span>
       </template>
       <template #cell-budget="{ row }">
-        <span class="tabular-nums">{{ fmtCompactINR(row.budget) }}</span>
+        <span class="tabular-nums">{{ fmtCompactINR(row.budget || 0) }}</span>
       </template>
       <template #cell-progress="{ row }">
         <div class="flex items-center justify-end gap-2">
           <div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px;">
-            <div class="h-full" :class="progressBarColor(row)" :style="`width:${row.progress}%`"></div>
+            <div class="h-full" :class="progressBarColor(row)" :style="`width:${row.progress || 0}%`"></div>
           </div>
-          <span class="text-xs tabular-nums w-8 text-right">{{ row.progress }}%</span>
+          <span class="text-xs tabular-nums w-8 text-right">{{ Number(row.progress || 0) }}%</span>
         </div>
       </template>
-      <template #cell-timeline="{ row }">
-        <span class="text-xs text-ink-500 whitespace-nowrap">{{ fmtDate(row.startDate) }} → {{ fmtDate(row.endDate) }}</span>
-      </template>
-      <template #cell-owner="{ row }">
-        <UserAvatar :user-id="row.owner" size="xs" />
+      <template #cell-owner_user="{ row }">
+        <UserAvatar :user-id="row.owner_user || row.owner" size="xs" />
       </template>
 
       <template #empty>
         <div class="text-sm text-ink-500">No work packages match these filters.</div>
       </template>
-    </DeskList>
+    </DocTypeListView>
   </DeskPage>
 </template>
