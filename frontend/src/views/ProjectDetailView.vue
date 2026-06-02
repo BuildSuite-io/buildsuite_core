@@ -25,16 +25,27 @@ const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
 
-const project = computed(() => store.projectById(props.id))
+// Route param can arrive as internal id, custom project code, or project name
+// depending on which list/source navigated here.
+const project = computed(() => {
+  const key = props.id
+  return (
+    store.projectById(key)
+    || store.projects.find((p) => p.code === key)
+    || store.projects.find((p) => p.name === key)
+    || null
+  )
+})
+const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
-const subs = computed(() => store.subProjects(props.id))
-const workPackages = computed(() => store.workPackagesByProject(props.id))
-const tasks = computed(() => store.tasksByProject(props.id))
-const scos = computed(() => store.scosByProject(props.id))
-const stages = computed(() => store.stagePlanningsByProject(props.id))
-const attachments = computed(() => store.attachmentsByParent('Project', props.id))
-const boqs = computed(() => store.boqsByProject(props.id).slice().sort((a,b) => (b.preparedDate || '').localeCompare(a.preparedDate || '')))
-const activeBoq = computed(() => store.activeBoqForProject(props.id) ||
+const subs = computed(() => store.subProjects(resolvedProjectId.value))
+const workPackages = computed(() => store.workPackagesByProject(resolvedProjectId.value))
+const tasks = computed(() => store.tasksByProject(resolvedProjectId.value))
+const scos = computed(() => store.scosByProject(resolvedProjectId.value))
+const stages = computed(() => store.stagePlanningsByProject(resolvedProjectId.value))
+const attachments = computed(() => store.attachmentsByParent('Project', resolvedProjectId.value))
+const boqs = computed(() => store.boqsByProject(resolvedProjectId.value).slice().sort((a,b) => (b.preparedDate || '').localeCompare(a.preparedDate || '')))
+const activeBoq = computed(() => store.activeBoqForProject(resolvedProjectId.value) ||
   boqs.value.find(b => b.status === 'Approved'))
 
 // Cost rollups for the summary strip. Planned honours the active BOQ's
@@ -106,7 +117,7 @@ const editForm = ref({})
 const taskModalOpen = ref(false)
 
 // Project team — PM always first, then user-added members.
-const projectTeam = computed(() => store.projectTeamMembers(props.id))
+const projectTeam = computed(() => store.projectTeamMembers(resolvedProjectId.value))
 
 // Add-team-member modal state.
 const teamModalOpen = ref(false)
@@ -124,14 +135,14 @@ function closeTeamModal() {
 }
 function confirmAddMember() {
   if (!teamPickUserId.value) return
-  store.addProjectTeamMember(props.id, teamPickUserId.value)
+  store.addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
   teamModalOpen.value = false
 }
 function removeTeamMember(userId) {
   if (!userId || userId === project.value?.pm) return
   const m = store.teamMember(userId)
   if (!confirm(`Remove ${m?.name || userId} from this project's team?`)) return
-  store.removeProjectTeamMember(props.id, userId)
+  store.removeProjectTeamMember(resolvedProjectId.value, userId)
 }
 
 // Reset to the Overview tab whenever the route navigates to a different
@@ -150,7 +161,7 @@ function startEdit() {
   editing.value = true
 }
 function saveEdit() {
-  store.updateProject(props.id, editForm.value)
+  store.updateProject(resolvedProjectId.value, editForm.value)
   editing.value = false
 }
 function cancelEdit() {
@@ -163,7 +174,7 @@ function onPrimary() {
 
 function deleteProject() {
   if (confirm(`Delete ${project.value.name} and all its subprojects, work packages, and tasks?`)) {
-    store.deleteProject(props.id)
+    store.deleteProject(resolvedProjectId.value)
     router.push('/app/projects')
   }
 }
@@ -172,7 +183,7 @@ function addSubproject() {
   // Nested subprojects are not allowed — guard the action even though the
   // entry button is hidden by `isSubproject`.
   if (project.value?.parentId) return
-  router.push({ path: '/app/projects/new', query: { parentId: props.id } })
+  router.push({ path: '/app/projects/new', query: { parentId: resolvedProjectId.value } })
 }
 
 function seedFromTemplate() {
@@ -180,7 +191,7 @@ function seedFromTemplate() {
   if (!tpl) return
   const n = tpl.defaultStages.length
   if (!confirm(`Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`)) return
-  store.seedStagesFromTemplate(props.id)
+  store.seedStagesFromTemplate(resolvedProjectId.value)
 }
 
 // ===== Attachments (§13.3 items 13 + 26) =====
@@ -199,7 +210,7 @@ function onFilesPicked(e) {
     const url = URL.createObjectURL(f)
     store.addAttachment({
       parentDoctype: 'Project',
-      parentId: props.id,
+      parentId: resolvedProjectId.value,
       fileName: f.name,
       mime: f.type || 'application/octet-stream',
       size: f.size,
