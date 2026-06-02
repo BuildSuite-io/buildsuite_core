@@ -11,7 +11,9 @@ import { createListResource } from 'frappe-ui-list-resource'
  * @param {object} [options]
  *   @param {string[]} [options.fields]      Fields to fetch (default: ['name'])
  *   @param {Array|Object} [options.filters] Frappe-style list filters
+ *   @param {Array|Object} [options.orFilters] Frappe-style OR filters
  *   @param {string} [options.orderBy]       e.g. 'creation desc'
+ *   @param {number} [options.start]         Start offset for server pagination
  *   @param {number} [options.pageLength]    Page size (default: 20)
  *   @param {string|Array} [options.cache]   frappe-ui cache key
  *   @param {boolean} [options.auto]         Fetch immediately (default: true)
@@ -25,11 +27,13 @@ export function useDocTypeList(doctype, options = {}) {
     doctype,
     fields: options.fields ?? ['name'],
     orderBy: options.orderBy,
+    start: options.start ?? 0,
     pageLength: options.pageLength ?? 20,
     auto: options.auto !== false,
   }
 
   if (options.filters !== undefined) resourceConfig.filters = options.filters
+  if (options.orFilters !== undefined) resourceConfig.orFilters = options.orFilters
   if (options.cache !== undefined) resourceConfig.cache = options.cache
   if (options.transform !== undefined) resourceConfig.transform = options.transform
 

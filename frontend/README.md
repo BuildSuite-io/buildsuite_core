@@ -4,6 +4,8 @@ A clickable, functional prototype of BuildSuite Core — the open source constru
 
 This is **not** the production Frappe app. It's a **design and feedback artifact** that lets you walk customers, the dev team, and Frappe reviewers through the BuildSuite UX before code is written on the Frappe side.
 
+Developer-facing implementation details (including list view APIs and renderer presets) are documented in `DEVELOPER_GUIDE.md`.
+
 ---
 
 ## What's in this prototype

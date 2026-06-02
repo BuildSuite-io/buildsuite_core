@@ -4,10 +4,11 @@ import { computed } from 'vue'
 const props = defineProps({
   status: { type: String, required: true },
   size: { type: String, default: 'sm' },
+  statusClassMap: { type: Object, default: () => ({}) },
 })
 
 const classes = computed(() => {
-  const map = {
+  const baseMap = {
     'Active': 'bg-success-50 text-success-700',
     'In Progress': 'bg-info-50 text-info-700',
     'Completed': 'bg-brand-50 text-brand-700',
@@ -27,6 +28,7 @@ const classes = computed(() => {
     'Milestone':  'bg-warning-100 text-warning-700',
     'Inspection': 'bg-info-100 text-info-700',
   }
+  const map = { ...baseMap, ...(props.statusClassMap || {}) }
   // Session 37 — pill shape (rounded-full + bumped horizontal padding) matching
   // the Frappe Cloud reference. Used on both Desk and Vue pages; both look
   // consistent with the new visual standard.
