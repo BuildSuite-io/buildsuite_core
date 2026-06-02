@@ -28,6 +28,7 @@ import { RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import UserAvatar from '@/components/UserAvatar.vue'
 import WorkspaceShortcut from '@/components/WorkspaceShortcut.vue'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const store = useDataStore()
 
@@ -71,35 +72,35 @@ const showProjectDashboard = computed(() => OWNER_ROLES.includes(store.role))
 const REPORT_TILES = [
   {
     slug: 'project-status-summary',
-    icon: '📊',
+    icon: 'chart-line',
     label: 'Project Status Summary',
     desc: 'Active projects · status · progress · variance.',
     roles: 'all',
   },
   {
     slug: 'task-completion-by-week',
-    icon: '📈',
+    icon: 'chart-line',
     label: 'Task Completion by Week',
     desc: 'Tasks completed per project per week.',
     roles: 'all',
   },
   {
     slug: 'pending-progress-entries',
-    icon: '📝',
+    icon: 'file-text',
     label: 'Pending Progress Entries',
     desc: 'Open tasks with no progress entry in N days.',
     roles: 'all',
   },
   {
     slug: 'stage-vs-actual',
-    icon: '📅',
+    icon: 'calendar',
     label: 'Stage Plan vs Actual',
     desc: 'Planned stages vs actual task progress per stage.',
     roles: ['director', 'pm', 'qs', 'admin', 'bsa'],
   },
   {
     slug: 'labour-deployed',
-    icon: '👷',
+    icon: 'workforce',
     label: 'Labour Deployed',
     desc: 'Skilled + unskilled labour by task / week.',
     roles: ['director', 'pm', 'site-engineer', 'foreman', 'admin', 'bsa'],
@@ -142,7 +143,19 @@ const visibleReportTiles = computed(() =>
         style="border-radius: 8px;"
       >
         <div class="flex items-start gap-4">
-          <div class="text-4xl leading-none flex-shrink-0">📊</div>
+          <div class="w-10 h-10 rounded-lg bg-white/80 text-brand-700 flex items-center justify-center flex-shrink-0">
+            <svg
+              class="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              v-html="getWorkspaceIconPath('chart-line')"
+            />
+          </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <div class="text-base font-semibold text-brand-900 group-hover:text-brand-700 transition-colors">Project Dashboard</div>
@@ -150,7 +163,18 @@ const visibleReportTiles = computed(() =>
             </div>
             <div class="text-xs text-brand-700 mt-1 leading-snug">Portfolio health, top risks, and high-value approvals at a glance.</div>
           </div>
-          <div class="text-brand-400 group-hover:text-brand-600 transition-colors text-xl">→</div>
+          <svg
+            class="w-5 h-5 text-brand-400 group-hover:text-brand-600 transition-colors"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
         </div>
       </RouterLink>
 

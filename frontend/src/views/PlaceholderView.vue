@@ -8,6 +8,7 @@
 
 import { RouterLink } from 'vue-router'
 import WorkspaceShortcut from '@/components/WorkspaceShortcut.vue'
+import { getWorkspaceIconPath, resolveWorkspaceIconSlug } from '@/utils/workspaceIcons'
 
 defineProps({
   title: { type: String, required: true },
@@ -23,7 +24,19 @@ defineProps({
   <div class="px-6 py-10">
     <div class="max-w-3xl mx-auto">
       <div class="flex items-start gap-4 mb-6">
-        <div class="w-12 h-12 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center text-2xl flex-shrink-0">{{ icon }}</div>
+        <div class="w-12 h-12 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center flex-shrink-0">
+          <svg
+            class="w-6 h-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            v-html="getWorkspaceIconPath(resolveWorkspaceIconSlug(icon))"
+          />
+        </div>
         <div class="min-w-0 flex-1">
           <h1 class="text-xl font-semibold text-ink-900">{{ title }}</h1>
           <p class="text-sm text-ink-500 mt-1 leading-relaxed">{{ desc }}</p>

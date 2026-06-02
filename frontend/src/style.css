@@ -170,8 +170,8 @@
   html.dark .border-ink-100 { border-color: #2E2E2E; }
   html.dark .border-ink-200 { border-color: #333333; }
   html.dark .border-ink-300 { border-color: #404040; }
-  html.dark .divide-ink-100 > * + * { border-top-color: #2E2E2E; }
-  html.dark .divide-ink-200 > * + * { border-top-color: #333333; }
+  html.dark .divide-ink-100 > :not([hidden]) ~ :not([hidden]) { border-top-color: #2A2A2A; }
+  html.dark .divide-ink-200 > :not([hidden]) ~ :not([hidden]) { border-top-color: #2F2F2F; }
 
   /* Text — neutral greys (not blue-tinted slate) */
   html.dark .text-ink-900 { color: #F5F5F5; }

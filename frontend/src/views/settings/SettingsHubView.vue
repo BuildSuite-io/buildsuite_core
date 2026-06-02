@@ -4,10 +4,11 @@
 // rest are visible placeholders for the eventual sub-sections.
 
 import { computed } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const store = useDataStore()
 const router = useRouter()
@@ -28,14 +29,14 @@ const groups = computed(() => [
     title: 'Organisation',
     tiles: [
       {
-        slug: 'companies', icon: '🏢', label: 'Company',
+        slug: 'companies', icon: 'building-2', label: 'Company',
         desc: 'Companies, addresses, fiscal year per entity.',
         to: '/app/settings/companies',
         count: store.companies.length,
         countLabel: store.companies.length === 1 ? 'company' : 'companies',
       },
       {
-        slug: 'users', icon: '👥', label: 'Users',
+        slug: 'users', icon: 'users', label: 'Users',
         desc: 'People who can log in. Role assignment and enabled status.',
         to: '/app/settings/users',
         count: store.team.length,
@@ -43,13 +44,13 @@ const groups = computed(() => [
         adminOnly: true,
       },
       {
-        slug: 'roles', icon: '🛡️', label: 'Roles & Permissions',
+        slug: 'roles', icon: 'shield', label: 'Roles & Permissions',
         desc: 'Role definitions, workspace visibility and record-level permissions.',
         adminOnly: true,
         stub: true,
       },
       {
-        slug: 'naming', icon: '🏷️', label: 'Naming Series',
+        slug: 'naming', icon: 'tag', label: 'Naming Series',
         desc: 'ID prefixes for Project, Task, BOQ, SCO etc.',
         adminOnly: true,
         stub: true,
@@ -60,25 +61,25 @@ const groups = computed(() => [
     title: 'BuildSuite product settings',
     tiles: [
       {
-        slug: 'core', icon: '🧩', label: 'BuildSuite Core Settings',
+        slug: 'core', icon: 'puzzle', label: 'BuildSuite Core Settings',
         desc: 'Org-wide BuildSuite toggles — company segregation, default project type, default company.',
         to: '/app/settings/core',
         adminOnly: true,
       },
       {
-        slug: 'site-execution-settings', icon: '🏗️', label: 'Site Execution Settings',
+        slug: 'site-execution-settings', icon: 'site-execution', label: 'Site Execution Settings',
         desc: 'Module defaults for Projects, Work Packages, Tasks, Progress Entries and Stage Planning.',
         to: '/app/settings/site-execution',
         adminOnly: true,
       },
       {
-        slug: 'workspace-structure', icon: '🪟', label: 'Workspace Structure',
+        slug: 'workspace-structure', icon: 'layout-grid', label: 'Workspace Structure',
         desc: 'Configure workspaces and per-role shortcut grids.',
         to: '/app/settings/workspace-structure',
         bsaOnly: true,
       },
       {
-        slug: 'project-types', icon: '🏷️', label: 'Project Types',
+        slug: 'project-types', icon: 'tag', label: 'Project Types',
         desc: 'Configurable list of project types. Per-type Work Package label and default template picker.',
         to: '/app/settings/project-types',
         adminOnly: true,
@@ -90,32 +91,32 @@ const groups = computed(() => [
     adminOnly: true,
     tiles: [
       {
-        slug: 'general', icon: '⚙️', label: 'General Settings',
+        slug: 'general', icon: 'settings', label: 'General Settings',
         desc: 'Date format, currency, time zone, default company, fiscal year.',
         adminOnly: true, stub: true,
       },
       {
-        slug: 'email', icon: '✉️', label: 'Email & Notifications',
+        slug: 'email', icon: 'mail', label: 'Email & Notifications',
         desc: 'SMTP, notification rules, email templates, recipients.',
         adminOnly: true, stub: true,
       },
       {
-        slug: 'workflows', icon: '🔁', label: 'Workflows',
+        slug: 'workflows', icon: 'refresh-ccw', label: 'Workflows',
         desc: 'Approval chains for BOQ, SCO, Petty Cash and RA Bills.',
         adminOnly: true, stub: true,
       },
       {
-        slug: 'custom-fields', icon: '🛠️', label: 'Custom Fields',
+        slug: 'custom-fields', icon: 'wrench', label: 'Custom Fields',
         desc: 'Add fields to existing DocTypes.',
         adminOnly: true, stub: true,
       },
       {
-        slug: 'print', icon: '📄', label: 'Print Templates',
+        slug: 'print', icon: 'file', label: 'Print Templates',
         desc: 'Letter heads, print formats per DocType, page sizes.',
         adminOnly: true, stub: true,
       },
       {
-        slug: 'integrations', icon: '🔌', label: 'Integrations',
+        slug: 'integrations', icon: 'plug', label: 'Integrations',
         desc: 'API keys, webhooks, OAuth apps and social login providers.',
         adminOnly: true, stub: true,
       },
@@ -125,12 +126,12 @@ const groups = computed(() => [
     title: 'Data & Diagnostics',
     tiles: [
       {
-        slug: 'data', icon: '💾', label: 'Data Tools',
+        slug: 'data', icon: 'database', label: 'Data Tools',
         desc: 'Export the dataset, reset to defaults, inspect local storage.',
         to: '/app/settings/data',
       },
       {
-        slug: 'audit', icon: '📋', label: 'Audit Log',
+        slug: 'audit', icon: 'clipboard-list', label: 'Audit Log',
         desc: 'Recent user actions across the system — who changed what when.',
         adminOnly: true, stub: true,
       },
@@ -185,7 +186,19 @@ function onTileClick(tile) {
           @click="onTileClick(tile)"
         >
           <div class="flex items-start gap-3">
-            <div class="text-2xl leading-none flex-shrink-0">{{ tile.icon }}</div>
+            <div class="w-9 h-9 rounded-lg bg-ink-50 text-ink-600 flex items-center justify-center flex-shrink-0">
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                v-html="getWorkspaceIconPath(tile.icon)"
+              />
+            </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <div class="text-sm font-medium text-ink-900">{{ tile.label }}</div>
