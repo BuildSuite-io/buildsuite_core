@@ -18,23 +18,334 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
-import TaskFormModal from '@/components/TaskFormModal.vue'
+import { createDataAdapter } from '@/data/adapters'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-const project = computed(() => store.projectById(props.id))
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
+
+/**
+ * Compact entity label for console diagnostics: "id (name)".
+ */
+function entityLabel(id, name) {
+  const safeId = id || 'unknown'
+  const safeName = name || safeId
+  return `${safeId} (${safeName})`
+}
+
+/**
+ * Builds a single-line text representation of the DocType list query config.
+ */
+function docTypeListQueryText({ doctype, fields, filters, orderBy, pageLength, start = 0 }) {
+  const fieldText = JSON.stringify(fields || ['name'])
+  const filterText = JSON.stringify(filters || {})
+  return `doctype=${doctype} fields=${fieldText} filters=${filterText} orderBy=${orderBy || ''} start=${start} pageLength=${pageLength ?? ''}`
+}
+
+const projectResource = ref(null)
+
+// Route param is a Frappe record name first; seed-data aliases are only a
+// fallback for local prototype sessions that still carry older records.
+function loadProjectResource() {
+  if (!props.id) {
+    projectResource.value = null
+    return
+  }
+
+  projectResource.value = adapter.read('Project', props.id, {
+    nameField: 'name',
+    fields: [
+      'name',
+      'custom_project_id',
+      'project_name',
+      'customer',
+      'project_type',
+      'status',
+      'estimated_costing',
+      'percent_complete',
+      'expected_start_date',
+      'expected_end_date',
+      'owner',
+      'company',
+      'creation',
+      'modified',
+      'parent_project',
+    ],
+    cache: `buildsuite-project-detail:${props.id}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.custom_project_id || '',
+        name: row?.project_name || row?.name || '',
+        client: row?.customer || '',
+        status: row?.status || '',
+        priority: row?.priority || 'Medium',
+        type: row?.project_type || '',
+        company: row?.company || '',
+        startDate: row?.expected_start_date || null,
+        endDate: row?.expected_end_date || null,
+        budget: Number(row?.estimated_costing) || 0,
+        progress: Number(row?.percent_complete) || 0,
+        pm: row?.owner || '',
+        location: row?.location || '',
+        description: row?.notes || row?.description || '',
+        parentId: row?.parent_project || null,
+        createdAt: row?.creation || null,
+      }))
+    },
+  })
+}
+
+watch(() => props.id, loadProjectResource, { immediate: true })
+
+const project = computed(() => {
+  const backendProject = firstResourceRow(projectResource.value)
+  if (backendProject) return backendProject
+
+  const key = props.id
+  return (
+    store.projectById(key)
+    || store.projects.find((p) => p.code === key)
+    || store.projects.find((p) => p.name === key)
+    || null
+  )
+})
+const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
-const subs = computed(() => store.subProjects(props.id))
-const workPackages = computed(() => store.workPackagesByProject(props.id))
-const tasks = computed(() => store.tasksByProject(props.id))
-const scos = computed(() => store.scosByProject(props.id))
-const stages = computed(() => store.stagePlanningsByProject(props.id))
-const attachments = computed(() => store.attachmentsByParent('Project', props.id))
-const boqs = computed(() => store.boqsByProject(props.id).slice().sort((a,b) => (b.preparedDate || '').localeCompare(a.preparedDate || '')))
-const activeBoq = computed(() => store.activeBoqForProject(props.id) ||
+const subprojectsResource = ref(null)
+const subprojectFilterKey = computed(() => resolvedProjectId.value)
+
+function loadSubprojectsResource() {
+  if (!resolvedProjectId.value) {
+    subprojectsResource.value = null
+    return
+  }
+
+  const subprojectFields = [
+    'name',
+    'custom_project_id',
+    'project_name',
+    'status',
+    'estimated_costing',
+    'percent_complete',
+    'owner',
+    'parent_project',
+  ]
+  const subprojectFilters = {
+    parent_project: ['=', resolvedProjectId.value],
+  }
+  console.log(
+    `[ProjectDetail] Subprojects query | root=${entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)} | ${docTypeListQueryText({ doctype: 'Project', fields: subprojectFields, filters: subprojectFilters, orderBy: 'modified desc', pageLength: 100 })}`,
+  )
+
+  subprojectsResource.value = adapter.list('Project', {
+    fields: subprojectFields,
+    filters: subprojectFilters,
+    orderBy: 'modified desc',
+    pageLength: 100,
+    cache: `buildsuite-project-detail-subs:${resolvedProjectId.value}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.custom_project_id || '',
+        name: row?.project_name || row?.name || '',
+        status: row?.status || '',
+        budget: Number(row?.estimated_costing) || 0,
+        progress: Number(row?.percent_complete) || 0,
+        pm: row?.owner || '',
+        parentId: row?.parent_project || resolvedProjectId.value,
+      }))
+    },
+  })
+}
+
+watch(subprojectFilterKey, () => {
+  loadSubprojectsResource()
+}, { immediate: true })
+
+const subs = computed(() => {
+  const raw = subprojectsResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
+
+watch(subs, (rows) => {
+  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
+  const subText = rows.length
+    ? rows.map((row) => entityLabel(row.id, row.name)).join(', ')
+    : '(none)'
+  console.log(`[ProjectDetail] Project scope | root=${rootText} | subprojects=${subText}`)
+}, { immediate: true })
+const subprojectIdsKey = computed(() => subs.value.map((p) => p.id).filter(Boolean).join('|'))
+
+const workPackageProjectIds = computed(() => {
+  const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
+  return Array.from(new Set(ids))
+})
+const workPackagesResource = ref(null)
+const workPackageFilterKey = computed(() => workPackageProjectIds.value.join('|'))
+
+function loadWorkPackagesResource() {
+  if (!workPackageProjectIds.value.length) {
+    workPackagesResource.value = null
+    return
+  }
+
+  const workPackageFields = [
+    'name',
+    'code',
+    'work_package_name',
+    'project',
+    'status',
+    'budget',
+    'progress',
+    'start_date',
+    'end_date',
+    'owner_user',
+  ]
+  const workPackageFilters = {
+    project: ['in', workPackageProjectIds.value],
+  }
+  const workPackageScopeKey = workPackageProjectIds.value.join('|')
+  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
+  const subText = subs.value.length
+    ? subs.value.map((row) => entityLabel(row.id, row.name)).join(', ')
+    : '(none)'
+  console.log(
+    `[ProjectDetail] Work Package query | root=${rootText} | subprojects=${subText} | scopeKey=${workPackageScopeKey} | ${docTypeListQueryText({ doctype: 'Work Package', fields: workPackageFields, filters: workPackageFilters, orderBy: 'modified desc', pageLength: 200 })}`,
+  )
+
+  workPackagesResource.value = adapter.list('Work Package', {
+    fields: workPackageFields,
+    filters: workPackageFilters,
+    orderBy: 'modified desc',
+    pageLength: 200,
+    cache: `buildsuite-project-detail-wp:${resolvedProjectId.value}:${workPackageScopeKey}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.code || '',
+        name: row?.work_package_name || row?.name || '',
+        projectId: row?.project || row?.projectId || '',
+        status: row?.status || '',
+        budget: Number(row?.budget) || 0,
+        progress: Number(row?.progress) || 0,
+        startDate: row?.start_date || row?.startDate || null,
+        endDate: row?.end_date || row?.endDate || null,
+        owner: row?.owner_user || row?.owner || '',
+      }))
+    },
+  })
+}
+
+watch(workPackageFilterKey, () => {
+  loadWorkPackagesResource()
+}, { immediate: true })
+
+watch(subprojectIdsKey, (next, prev) => {
+  if (next === prev) return
+  loadWorkPackagesResource()
+})
+
+const workPackages = computed(() => {
+  const raw = workPackagesResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
+
+const taskProjectIds = computed(() => {
+  const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
+  return Array.from(new Set(ids))
+})
+const tasksResource = ref(null)
+const taskFilterKey = computed(() => taskProjectIds.value.join('|'))
+
+function loadTasksResource() {
+  if (!taskProjectIds.value.length) {
+    tasksResource.value = null
+    return
+  }
+
+  const taskFields = [
+    'name',
+    'subject',
+    'project',
+    'status',
+    'priority',
+    'progress',
+    'owner',
+    'exp_start_date',
+    'exp_end_date',
+  ]
+  const taskFilters = {
+    project: ['in', taskProjectIds.value],
+  }
+  const taskScopeKey = taskProjectIds.value.join('|')
+  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
+  const subText = subs.value.length
+    ? subs.value.map((row) => entityLabel(row.id, row.name)).join(', ')
+    : '(none)'
+  console.log(
+    `[ProjectDetail] Task query | root=${rootText} | subprojects=${subText} | scopeKey=${taskScopeKey} | ${docTypeListQueryText({ doctype: 'Task', fields: taskFields, filters: taskFilters, orderBy: 'modified desc', pageLength: 300 })}`,
+  )
+
+  tasksResource.value = adapter.list('Task', {
+    fields: taskFields,
+    filters: taskFilters,
+    orderBy: 'modified desc',
+    pageLength: 300,
+    cache: `buildsuite-project-detail-task:${resolvedProjectId.value}:${taskScopeKey}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        name: row?.subject || row?.task_name || row?.name || '',
+        projectId: row?.project || '',
+        status: row?.status || 'Open',
+        priority: row?.priority || 'Medium',
+        task_type: row?.task_type || 'Activity',
+        assignee: row?.owner || row?.assignee || '',
+        startDate: row?.exp_start_date || row?.start_date || null,
+        endDate: row?.exp_end_date || row?.end_date || null,
+        progress: Number(row?.progress) || 0,
+      }))
+    },
+  })
+}
+
+watch(taskFilterKey, () => {
+  loadTasksResource()
+}, { immediate: true })
+
+watch(subprojectIdsKey, (next, prev) => {
+  if (next === prev) return
+  loadTasksResource()
+})
+
+const tasks = computed(() => {
+  const raw = tasksResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
+
+const scos = computed(() => store.scosByProject(resolvedProjectId.value))
+const stages = computed(() => store.stagePlanningsByProject(resolvedProjectId.value))
+const attachments = computed(() => store.attachmentsByParent('Project', resolvedProjectId.value))
+const boqs = computed(() => store.boqsByProject(resolvedProjectId.value).slice().sort((a,b) => (b.preparedDate || '').localeCompare(a.preparedDate || '')))
+const activeBoq = computed(() => store.activeBoqForProject(resolvedProjectId.value) ||
   boqs.value.find(b => b.status === 'Approved'))
 
 // Cost rollups for the summary strip. Planned honours the active BOQ's
@@ -102,11 +413,9 @@ const delayedDays = computed(() => {
 const tab = ref('overview')
 const editing = ref(false)
 const editForm = ref({})
-// Task creation modal — replaces the routing entry to /app/tasks/new.
-const taskModalOpen = ref(false)
 
 // Project team — PM always first, then user-added members.
-const projectTeam = computed(() => store.projectTeamMembers(props.id))
+const projectTeam = computed(() => store.projectTeamMembers(resolvedProjectId.value))
 
 // Add-team-member modal state.
 const teamModalOpen = ref(false)
@@ -124,14 +433,14 @@ function closeTeamModal() {
 }
 function confirmAddMember() {
   if (!teamPickUserId.value) return
-  store.addProjectTeamMember(props.id, teamPickUserId.value)
+  store.addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
   teamModalOpen.value = false
 }
 function removeTeamMember(userId) {
   if (!userId || userId === project.value?.pm) return
   const m = store.teamMember(userId)
   if (!confirm(`Remove ${m?.name || userId} from this project's team?`)) return
-  store.removeProjectTeamMember(props.id, userId)
+  store.removeProjectTeamMember(resolvedProjectId.value, userId)
 }
 
 // Reset to the Overview tab whenever the route navigates to a different
@@ -150,7 +459,7 @@ function startEdit() {
   editing.value = true
 }
 function saveEdit() {
-  store.updateProject(props.id, editForm.value)
+  store.updateProject(resolvedProjectId.value, editForm.value)
   editing.value = false
 }
 function cancelEdit() {
@@ -163,7 +472,7 @@ function onPrimary() {
 
 function deleteProject() {
   if (confirm(`Delete ${project.value.name} and all its subprojects, work packages, and tasks?`)) {
-    store.deleteProject(props.id)
+    store.deleteProject(resolvedProjectId.value)
     router.push('/app/projects')
   }
 }
@@ -172,7 +481,7 @@ function addSubproject() {
   // Nested subprojects are not allowed — guard the action even though the
   // entry button is hidden by `isSubproject`.
   if (project.value?.parentId) return
-  router.push({ path: '/app/projects/new', query: { parentId: props.id } })
+  router.push({ path: '/app/projects/new', query: { parentId: resolvedProjectId.value } })
 }
 
 function seedFromTemplate() {
@@ -180,7 +489,7 @@ function seedFromTemplate() {
   if (!tpl) return
   const n = tpl.defaultStages.length
   if (!confirm(`Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`)) return
-  store.seedStagesFromTemplate(props.id)
+  store.seedStagesFromTemplate(resolvedProjectId.value)
 }
 
 // ===== Attachments (§13.3 items 13 + 26) =====
@@ -199,7 +508,7 @@ function onFilesPicked(e) {
     const url = URL.createObjectURL(f)
     store.addAttachment({
       parentDoctype: 'Project',
-      parentId: props.id,
+      parentId: resolvedProjectId.value,
       fileName: f.name,
       mime: f.type || 'application/octet-stream',
       size: f.size,
@@ -340,9 +649,52 @@ function progressBarColor(p) {
 // view via its own search ref). Hooked up to DeskList's v-model.
 const subSearch = ref('')
 const wpSearch = ref('')
+const wpProjectFilter = ref('')
 const taskSearch = ref('')
+const taskProjectFilter = ref('')
 const scoSearch = ref('')
 const boqSearch = ref('')
+
+const wpProjectFilterOptions = computed(() => {
+  const root = project.value
+    ? [{ id: project.value.id, name: project.value.name || project.value.id }]
+    : []
+  const children = subs.value.map((p) => ({
+    id: p.id,
+    name: p.name || p.id,
+  }))
+  return [...root, ...children]
+})
+
+const taskProjectFilterOptions = computed(() => {
+  const root = project.value
+    ? [{ id: project.value.id, name: project.value.name || project.value.id }]
+    : []
+  const children = subs.value.map((p) => ({
+    id: p.id,
+    name: p.name || p.id,
+  }))
+  return [...root, ...children]
+})
+
+const taskProjectNameById = computed(() => {
+  const map = new Map()
+  for (const p of taskProjectFilterOptions.value) {
+    map.set(p.id, p.name)
+  }
+  return map
+})
+
+// Utility used by inner list filters: when a parent project is selected,
+// include records owned by that parent and all currently loaded subprojects.
+function expandProjectFilterIds(selectedProjectId) {
+  if (!selectedProjectId) return []
+  const ids = [selectedProjectId]
+  if (selectedProjectId === project.value?.id) {
+    ids.push(...subs.value.map((p) => p.id).filter(Boolean))
+  }
+  return Array.from(new Set(ids))
+}
 
 const subsFiltered = computed(() => {
   const term = subSearch.value.trim().toLowerCase()
@@ -351,13 +703,21 @@ const subsFiltered = computed(() => {
 })
 const wpFiltered = computed(() => {
   const term = wpSearch.value.trim().toLowerCase()
-  if (!term) return workPackages.value
-  return workPackages.value.filter(w => w.name.toLowerCase().includes(term) || (w.code || '').toLowerCase().includes(term))
+  const allowedProjectIds = new Set(expandProjectFilterIds(wpProjectFilter.value))
+  return workPackages.value.filter((w) => {
+    if (wpProjectFilter.value && !allowedProjectIds.has(w.projectId)) return false
+    if (!term) return true
+    return w.name.toLowerCase().includes(term) || (w.code || '').toLowerCase().includes(term)
+  })
 })
 const tasksFiltered = computed(() => {
   const term = taskSearch.value.trim().toLowerCase()
-  if (!term) return tasks.value
-  return tasks.value.filter(t => t.name.toLowerCase().includes(term))
+  const allowedProjectIds = new Set(expandProjectFilterIds(taskProjectFilter.value))
+  return tasks.value.filter((t) => {
+    if (taskProjectFilter.value && !allowedProjectIds.has(t.projectId)) return false
+    if (!term) return true
+    return t.name.toLowerCase().includes(term)
+  })
 })
 const scosFiltered = computed(() => {
   const term = scoSearch.value.trim().toLowerCase()
@@ -390,6 +750,7 @@ const wpCols = [
 ]
 const taskCols = [
   { key: 'name',     label: 'Task' },
+  { key: 'project',  label: 'Project' },
   { key: 'status',   label: 'Status' },
   { key: 'priority', label: 'Priority' },
   // proposal §M2 — task_type Select (Activity / Milestone / Inspection)
@@ -431,7 +792,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
   <DeskPage
     v-if="project"
     :title="project.name"
-    :subtitle="`${project.code} · ${project.id}`"
+    :subtitle="`${project.id}${project.code ? ` · ${project.code}` : ''}`"
     :breadcrumbs="breadcrumbs"
     :status="titleStatuses"
   >
@@ -715,6 +1076,16 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           search-placeholder="Search work packages…"
           @row-click="onWpRowClick"
         >
+          <template #filter-chips>
+            <DeskSelect v-model="wpProjectFilter" class="!w-52">
+              <option value="">Project: Any</option>
+              <option
+                v-for="p in wpProjectFilterOptions"
+                :key="p.id"
+                :value="p.id"
+              >{{ p.name }}</option>
+            </DeskSelect>
+          </template>
           <template #actions>
             <RouterLink
               :to="{ name: 'wp-new', query: { projectId: project.id } }"
@@ -767,11 +1138,33 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           search-placeholder="Search tasks…"
           @row-click="onTaskRowClick"
         >
+          <template #filter-chips>
+            <DeskSelect v-model="taskProjectFilter" class="!w-52">
+              <option value="">Project: Any</option>
+              <option
+                v-for="p in taskProjectFilterOptions"
+                :key="p.id"
+                :value="p.id"
+              >{{ p.name }}</option>
+            </DeskSelect>
+          </template>
           <template #actions>
-            <button type="button" class="desk-save-btn" @click="taskModalOpen = true">+ Add Task</button>
+            <RouterLink
+              :to="{ name: 'task-new', query: { projectId: project.id } }"
+              class="desk-save-btn"
+            >+ Add Task</RouterLink>
           </template>
           <template #cell-name="{ row }">
             <DeskLink :to="`/app/tasks/${row.id}`" @click.stop>{{ row.name }}</DeskLink>
+          </template>
+          <template #cell-project="{ row }">
+            <DeskLink
+              v-if="row.projectId"
+              :to="`/app/projects/${row.projectId}`"
+              @click.stop
+              class="text-xs"
+            >{{ taskProjectNameById.get(row.projectId) || row.projectId }}</DeskLink>
+            <span v-else class="text-xs text-ink-500">—</span>
           </template>
           <template #cell-status="{ row }">
             <StatusBadge :status="row.status" />
@@ -799,7 +1192,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           <template #empty>
             <div class="text-sm text-ink-500">
               No tasks yet ·
-              <button type="button" class="desk-link" @click="taskModalOpen = true">Create the first task →</button>
+              <RouterLink :to="{ name: 'task-new', query: { projectId: project.id } }" class="desk-link">Create the first task →</RouterLink>
             </div>
           </template>
         </DeskList>
@@ -1260,14 +1653,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
         </div>
       </div>
     </Teleport>
-
-    <!-- New Task modal — pre-fills project from this record. Work Package
-         stays user-pickable so the task can land directly under a WP or
-         under the project. -->
-    <TaskFormModal
-      v-model:open="taskModalOpen"
-      :project-id="project.id"
-    />
 
     <!-- Add Team Member modal -->
     <Teleport to="body">
