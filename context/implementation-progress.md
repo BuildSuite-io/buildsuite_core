@@ -10,8 +10,8 @@
 - **App title**: BuildSuite Core
 - **Publisher**: Infraholic Innovations Pvt. Ltd
 - **Site**: `build.local` (bench at `/Users/yemikudaisi/frappe-bench-16`)
-- **Active branch**: `agents/project-view-custom-fields-implementation`
-- **App path**: `/Users/yemikudaisi/frappe-bench-16/apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation`
+- **Active branch**: `vue`
+- **App path**: `/Users/yemikudaisi/frappe-bench-16/apps/buildsuite_core`
 - **Module**: `Buildsuite Core` (exact string used in all DocType JSONs and custom fields)
 
 ---
@@ -51,9 +51,11 @@
 | `recheckAccess()` | `frontend/src/stores/session.js` | Force-clear access cache and re-evaluate backend authorization | `AccessDeniedView.vue` |
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
 | `createLocalDataAdapter(store)` | `frontend/src/data/adapters/localDataAdapter.js` | Adapter implementation over current Pinia local state for phased migration | `createDataAdapter` |
+| `createRemoteDataAdapter()` | `frontend/src/data/adapters/remoteDataAdapter.js` | Generic remote DocType adapter contract (`list/read/create/update/remove/linkSearch`) over frappe-ui list resources | `createDataAdapter`, filter/link/read slices |
 | `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | `ProjectsView.vue` |
 | `useDocTypeList(doctype, options)` | `frontend/src/composables/useDocTypeList.js` | Generic Frappe list-resource wrapper for read-only DocType list calls | `createRemoteDataAdapter`, `DocTypeListView.vue`, `ProjectsView.vue` |
 | `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue` |
+| `DeskLinkPicker` | `frontend/src/components/desk/DeskLinkPicker.vue` | Generic inline Link/autocomplete control backed by `useDocTypeList` with server-side search + first-page limit | `ProjectsView.vue` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
 
@@ -104,17 +106,17 @@
   - Date completed: 2026-06-01
   - Reference (PR/commit): `42cbcff`
 
-- [ ] **Phase 4 — Add Dev Boot Parity**
-  - Status: In progress
+- [x] **Phase 4 — Add Dev Boot Parity**
+  - Status: Completed
   - DEV calls `get_context_for_dev` before app mount
   - Boot values assigned to `window` in DEV
   - Frontend route guard now checks session via boot/cookie and redirects guests to login for `/app` routes
   - Session handling is centralized in `frontend/src/utils/session.js` and reused by bootstrap + router guard
-  - Date completed:
-  - Reference (PR/commit):
+  - Date completed: 2026-06-01
+  - Reference (PR/commit): `b2f750e`
 
-- [ ] **Phase 5 — Add Frontend Session and Access Guards**
-  - Status: In progress
+- [x] **Phase 5 — Add Frontend Session and Access Guards**
+  - Status: Completed
   - Session store based on `user_id` cookie (`frontend/src/stores/session.js`) now bootstraps before router navigation
   - Router guards for anonymous/unauthorized users
   - Frontend now fetches backend access context via `buildsuite_core.api.permission.get_access_context`
@@ -122,20 +124,22 @@
   - `/forbidden` now supports retrying access checks after role changes and redirecting back to the blocked route
   - Access-context cache now has a freshness window to avoid stale authorization decisions
   - Backend APIs enforce permission (no UI-only security)
-  - Date completed:
-  - Reference (PR/commit):
+  - Date completed: 2026-06-01
+  - Reference (PR/commit): `9b31b1a`, `6251c9b`, `d15427b`, `6090955`, `e321859`
 
 - [ ] **Phase 6 — Keep Seed Data, Add Data Adapter Seam**
-  - Status: In progress
+  - Status: Completed
   - Data adapter supports local + remote modes
   - Adapter seam initialized (`frontend/src/data/adapters`) with local implementation and factory
   - `ProjectsView` now reads via adapter instead of direct store coupling
   - Remote adapter direction is locked: generic DocType operations first, using `frappe-ui` resources so native permissions/filters remain authoritative
   - No new bespoke backend APIs for standard list/read/write/link-search flows; only add server endpoints for behavior that generic Frappe resource calls cannot express
-  - Reusable generic ListView / Link autocomplete components are intentionally deferred until a vertical migration slice needs them
+  - Reusable generic Link autocomplete is now introduced via `DeskLinkPicker` because the Projects filter slice needed remote Link lookup
+  - Generic remote adapter contract expanded to `list/read/create/update/remove/linkSearch` behind the same seam
+  - Second migrated consumer now present (`WorkPackagesView` read slice via generic list shell)
   - Existing local Pinia/localStorage mode still works
-  - Date completed:
-  - Reference (PR/commit):
+  - Date completed: 2026-06-02
+  - Reference (PR/commit): `c20425d`, `80e9375`, `7dd59ff`, `f6522e7`, `128291f`, `08f66cb`, `23362ac` (plus current working tree)
 
 - [ ] **Phase 7 — Migrate Data in Safe Vertical Slices**
   - Status: In progress
@@ -143,8 +147,25 @@
   - One bounded CRUD slice migrated second
   - High-risk mutation/upload paths deferred until stable
   - Generic DocType list shell introduced first (`DocTypeListView`) to support repeatable read-only slices across modules
+  - Current list shell now includes: backend pagination, grouped sort/order control, column renderer presets (`status`, `progress`, `timeline`), and optional status color mapping by value
+  - `ProjectsView` is migrated onto the generic list shell + link picker filter flow
+  - `WorkPackagesView` is now migrated onto the same generic list shell with `DeskLinkPicker` project filter
   - Date completed:
-  - Reference (PR/commit):
+  - Reference (PR/commit): `e871cbb`, `fb07d56`, `d724908`, `3595122`, `23362ac`, `f8acd2f`
+  - Remaining to close Phase 7:
+    - Migrate one bounded CRUD slice using the same adapter seam with no custom list/read APIs.
+
+### Current Position Snapshot (2026-06-02)
+
+- Phase 0-5: complete
+- Phase 6: complete
+- Phase 7: in progress (active execution zone)
+- Phase 8-9: not started
+- Integration baseline on `vue` now includes:
+  - Permission-gated dev boot hydration before app mount
+  - Centralized auth/access guard flow with forbidden recovery
+  - Generic doctype list shell with backend pagination and renderer presets
+  - Generic link picker (`DeskLinkPicker`) for remote permission-safe link lookup
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
   - Status: Not started
@@ -182,6 +203,10 @@
 | 2026-06-01 | Phase 6 | Added initial data adapter seam and migrated `ProjectsView` reads to the adapter interface | Copilot | working tree |
 | 2026-06-01 | Phase 6 | Locked the remote adapter direction to generic Frappe DocType/resource calls and deferred generic list/link UI until a real slice needs them | Copilot | working tree |
 | 2026-06-01 | Phase 7 | Introduced reusable `DocTypeListView` (meta-driven columns, Frappe default sort fallback, reload-on-field-resolution) and moved project list-count summary into the list component footer | Copilot | working tree |
+| 2026-06-02 | Phase 7 | Completed `doclist -> vue` merge with generic list-shell maturation: server-side pagination, renderer presets, grouped sort control, list docs, and projects migration | Copilot | `3595122`, `23362ac`, `811c743` |
+| 2026-06-02 | Phase 6/7 | Added `DeskLinkPicker` (permission-safe server-backed Link search via `useDocTypeList`) and wired company filter in `ProjectsView` | Copilot | `23362ac`, `811c743` |
+| 2026-06-02 | Phase 7 | Added optional per-status badge color map support from column config (`Open` green in Projects) | Copilot | `23362ac`, `811c743` |
+| 2026-06-02 | Phase 6/7 | Expanded generic remote adapter contract (`list/read/create/update/remove/linkSearch`) and migrated `WorkPackagesView` to `DocTypeListView` + `DeskLinkPicker` project filter | Copilot | working tree |
 
 ---
 
