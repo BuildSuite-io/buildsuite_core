@@ -23,6 +23,7 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -443,8 +444,8 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
               class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm"
               style="border-radius: 2px;"
             >
-              <button type="button" @click.stop="openEditGroup(g)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit group">✏</button>
-              <button type="button" @click.stop="deleteGroupConfirm(g)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete group">🗑</button>
+              <button type="button" @click.stop="openEditGroup(g)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit group"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('pencil')" /></button>
+              <button type="button" @click.stop="deleteGroupConfirm(g)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete group"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('trash')" /></button>
             </div>
           </div>
 
@@ -462,8 +463,8 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
                   class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
                   style="border-radius: 2px;"
                 >
-                  <button type="button" @click.stop="openEditItem(item)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit item">✏</button>
-                  <button type="button" @click.stop="deleteItemConfirm(item)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete item">🗑</button>
+                  <button type="button" @click.stop="openEditItem(item)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit item"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('pencil')" /></button>
+                  <button type="button" @click.stop="deleteItemConfirm(item)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete item"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('trash')" /></button>
                 </div>
                 <div class="px-2 text-ink-400 text-[10px]">
                   {{ store.boqSubItemsByItem(item.id).length ? (expandedItems[item.id] ? '▾' : '▸') : '·' }}
@@ -542,8 +543,8 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
                     class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
                     style="border-radius: 2px;"
                   >
-                    <button type="button" @click.stop="openEditSubItem(si, item)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit sub-item">✏</button>
-                    <button type="button" @click.stop="deleteSubItemConfirm(si)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete sub-item">🗑</button>
+                      <button type="button" @click.stop="openEditSubItem(si, item)" class="px-1.5 py-0.5 text-xs hover:bg-ink-50" title="Edit sub-item"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('pencil')" /></button>
+                      <button type="button" @click.stop="deleteSubItemConfirm(si)" class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50" title="Delete sub-item"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('trash')" /></button>
                   </div>
                 </div>
                 <div
@@ -613,7 +614,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
             <h2 class="text-sm font-semibold text-ink-900">
               {{ groupModal.mode === 'add' ? 'New group' : 'Edit group' }}
             </h2>
-            <button type="button" @click="groupModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close">✕</button>
+            <button type="button" @click="groupModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('x')" /></button>
           </div>
           <div class="p-4 space-y-3">
             <div class="grid grid-cols-3 gap-3">
@@ -651,7 +652,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
             <h2 class="text-sm font-semibold text-ink-900">
               {{ itemModal.mode === 'add' ? 'New item' : 'Edit item' }}
             </h2>
-            <button type="button" @click="itemModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close">✕</button>
+            <button type="button" @click="itemModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('x')" /></button>
           </div>
           <div class="p-4 space-y-3">
             <div class="grid grid-cols-3 gap-3">
@@ -711,7 +712,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
             <h2 class="text-sm font-semibold text-ink-900">
               {{ subItemModal.mode === 'add' ? 'New sub-item · rate analysis' : 'Edit sub-item' }}
             </h2>
-            <button type="button" @click="subItemModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close">✕</button>
+            <button type="button" @click="subItemModal = null" class="ml-auto text-ink-400 hover:text-ink-900" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('x')" /></button>
           </div>
           <div class="p-4 space-y-3">
             <DeskField label="From Rate Master" hint="Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.">
@@ -753,15 +754,15 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
       <section class="mt-8 pt-4 border-t border-ink-200">
         <div class="flex items-center gap-6 text-xs text-ink-500 flex-wrap">
           <div class="flex items-center gap-1.5">
-            <span>💬</span><span>Comments — <span class="font-medium text-ink-700">0</span></span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('message-circle')" /><span>Comments — <span class="font-medium text-ink-700">0</span></span>
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>📎</span><span>Attachments — <span class="font-medium text-ink-700">0</span></span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('paperclip')" /><span>Attachments — <span class="font-medium text-ink-700">0</span></span>
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>👥</span><span>Prepared by —</span>
+            <svg class="w-3.5 h-3.5 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('users')" /><span>Prepared by —</span>
             <UserAvatar :user-id="boq.preparedBy" size="xs" />
           </div>
         </div>
