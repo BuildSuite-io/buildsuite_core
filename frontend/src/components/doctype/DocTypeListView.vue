@@ -30,6 +30,8 @@ const search = ref('')
 const meta = ref(null)
 const metaError = ref(null)
 const metaLoading = ref(false)
+const currentPage = ref(1)
+const currentPageSize = ref(props.pageSize)
 
 const sortField = ref('')
 const sortDirection = ref('desc')
@@ -152,6 +154,15 @@ const serverFilters = computed(() => {
   return filters
 })
 
+const serverOrFilters = computed(() => {
+  const term = search.value.trim()
+  if (!props.paginated || !term) return []
+
+  return props.searchFields
+    .filter((fieldname) => fieldMetaMap.value.has(fieldname))
+    .map((fieldname) => [fieldname, 'like', `%${term}%`])
+})
+
 const sortableFields = computed(() => {
   const base = new Set()
   const sortFieldFromMeta = meta.value?.sort_field
@@ -184,10 +195,12 @@ const sortableFields = computed(() => {
 const resource = useDocTypeList(props.doctype, {
   fields: props.fieldOrder,
   filters: serverFilters.value,
+  orFilters: serverOrFilters.value,
   orderBy: props.initialOrderBy || 'modified desc',
-  pageLength: props.pageLength,
+  pageLength: props.paginated ? currentPageSize.value : props.pageLength,
+  start: props.paginated ? 0 : 0,
   cache: props.cacheKey || `doctype-list:${props.doctype}`,
-  auto: true,
+  auto: false,
 })
 
 const parsedDefaultOrder = computed(() => {
@@ -213,12 +226,61 @@ watch(
 )
 
 const activeOrderBy = computed(() => `${sortField.value || 'modified'} ${sortDirection.value}`)
+const hasNextPage = computed(() => !!resource.hasNextPage)
+
+const backendRangeStart = computed(() => {
+  if (!props.paginated) return 0
+  const length = resource.data?.length ?? 0
+  if (!length) return 0
+  return (currentPage.value - 1) * currentPageSize.value + 1
+})
+
+const backendRangeEnd = computed(() => {
+  if (!props.paginated) return 0
+  const length = resource.data?.length ?? 0
+  if (!length) return 0
+  return backendRangeStart.value + length - 1
+})
+
+async function fetchCurrentPage(resetPage = false) {
+  if (resetPage) currentPage.value = 1
+
+  const start = props.paginated
+    ? (currentPage.value - 1) * currentPageSize.value
+    : 0
+
+  const pageLength = props.paginated ? currentPageSize.value : props.pageLength
+
+  resource.update({
+    doctype: props.doctype,
+    fields: resolvedFields.value,
+    filters: serverFilters.value,
+    orFilters: serverOrFilters.value,
+    orderBy: activeOrderBy.value,
+    start,
+    pageLength,
+  })
+
+  // frappe-ui list resource appends rows when start > 0 by default;
+  // reset local list data so each request represents one page.
+  if (props.paginated && start > 0) {
+    resource.setData([])
+  }
+
+  return resource.list.fetch()
+}
 
 watch(
   () => JSON.stringify(serverFilters.value),
   () => {
-    resource.update({ filters: serverFilters.value })
-    resource.reload()
+    fetchCurrentPage(true)
+  },
+)
+
+watch(
+  () => JSON.stringify(serverOrFilters.value),
+  () => {
+    fetchCurrentPage(true)
   },
 )
 
@@ -226,8 +288,7 @@ watch(
   () => resolvedFields.value.join(','),
   (next, prev) => {
     if (!prev || next === prev) return
-    resource.update({ fields: resolvedFields.value })
-    resource.reload()
+    fetchCurrentPage(true)
   },
 )
 
@@ -235,8 +296,7 @@ watch(
   activeOrderBy,
   (next, prev) => {
     if (!next || next === prev) return
-    resource.update({ orderBy: next })
-    resource.reload()
+    fetchCurrentPage(true)
   },
 )
 
@@ -244,12 +304,23 @@ watch(
   () => props.doctype,
   () => {
     loadMeta()
-    resource.update({ doctype: props.doctype })
-    resource.reload()
+    fetchCurrentPage(true)
+  },
+)
+
+watch(
+  () => props.pageSize,
+  (next) => {
+    if (!props.paginated) return
+    const parsed = Number(next)
+    if (!Number.isFinite(parsed) || parsed <= 0) return
+    currentPageSize.value = parsed
+    fetchCurrentPage(true)
   },
 )
 
 loadMeta()
+fetchCurrentPage(true)
 
 function getColumnValue(row, column) {
   if (!column) return null
@@ -337,6 +408,8 @@ function progressTone(row, column) {
 
 const filteredRows = computed(() => {
   const rows = resource.data || []
+  if (props.paginated) return rows
+
   const term = search.value.trim().toLowerCase()
   if (!term) return rows
 
@@ -349,7 +422,37 @@ const filteredRows = computed(() => {
   })
 })
 
-const listCountText = computed(() => `${filteredRows.value.length} of ${resource.data?.length ?? 0}`)
+const estimatedTotalRows = computed(() => {
+  if (!props.paginated) return filteredRows.value.length
+  if (hasNextPage.value) {
+    return currentPage.value * currentPageSize.value + 1
+  }
+  return backendRangeEnd.value
+})
+
+const listCountText = computed(() => {
+  if (!props.paginated) {
+    return `${filteredRows.value.length} of ${resource.data?.length ?? 0}`
+  }
+
+  if (!filteredRows.value.length) return '0 records'
+  return `${backendRangeStart.value}-${backendRangeEnd.value} records`
+})
+
+function onPageChange(page) {
+  const parsed = Number(page)
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed === currentPage.value) return
+  currentPage.value = parsed
+  fetchCurrentPage(false)
+}
+
+function onPageSizeChange(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return
+  if (parsed === currentPageSize.value) return
+  currentPageSize.value = parsed
+  fetchCurrentPage(true)
+}
 </script>
 
 <template>
@@ -364,11 +467,16 @@ const listCountText = computed(() => `${filteredRows.value.length} of ${resource
       :columns="resolvedColumns"
       :row-key="rowKey"
       :paginated="paginated"
-      :page-size="pageSize"
+      :page-size="currentPageSize"
       :page-size-options="pageSizeOptions"
+      :server-paginated="paginated"
+      :current-page="currentPage"
+      :total-rows="estimatedTotalRows"
       :search-placeholder="searchPlaceholder"
       :show-sort="false"
       @row-click="(row) => emit('row-click', row)"
+      @page-change="onPageChange"
+      @page-size-change="onPageSizeChange"
     >
       <template #filter-chips>
         <slot
