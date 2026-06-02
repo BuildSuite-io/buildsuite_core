@@ -48,7 +48,7 @@ const breadcrumbs = [
 ]
 
 function onRowClick(row) {
-  const key = row.custom_project_id || row.name
+  const key = row.name
   router.push(`/app/projects/${key}`)
 }
 </script>
@@ -133,7 +133,7 @@ function onRowClick(row) {
       </template>
 
       <template #cell-custom_project_id="{ row }">
-        <DeskLink :to="`/app/projects/${row.custom_project_id || row.name}`" @click.stop class="font-mono text-xs">
+        <DeskLink :to="`/app/projects/${row.name}`" @click.stop class="font-mono text-xs">
           {{ row.custom_project_id || row.name }}
         </DeskLink>
       </template>

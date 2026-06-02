@@ -12,6 +12,7 @@ export function createLocalDataAdapter(store) {
         name: p.id,
         project_name: p.name,
         custom_project_id: p.code || '',
+        parent_project: p.parentId || '',
         status: p.status || '',
         company: p.company || '',
         percent_complete: p.progress || 0,
@@ -50,34 +51,65 @@ export function createLocalDataAdapter(store) {
     return []
   }
 
+  function matchesFilterValue(actual, operator, expected) {
+    if (operator === '=') return actual === expected
+    if (operator === 'like') {
+      const needle = String(expected || '').replaceAll('%', '').toLowerCase()
+      return String(actual || '').toLowerCase().includes(needle)
+    }
+    if (operator === 'in') {
+      const candidates = Array.isArray(expected) ? expected : []
+      return candidates.includes(actual)
+    }
+    return true
+  }
+
   function applyFilters(rows, filters = []) {
-    if (!Array.isArray(filters) || !filters.length) return rows
+    if (!filters || (Array.isArray(filters) && !filters.length)) return rows
+
+    if (!Array.isArray(filters) && typeof filters === 'object') {
+      return rows.filter((row) => {
+        return Object.entries(filters).every(([fieldname, condition]) => {
+          const actual = row?.[fieldname]
+          if (Array.isArray(condition)) {
+            const [operator = '=', expected] = condition
+            return matchesFilterValue(actual, operator, expected)
+          }
+          return actual === condition
+        })
+      })
+    }
+
     return rows.filter((row) => {
       return filters.every((f) => {
         const [fieldname, operator = '=', value] = f || []
         const actual = row?.[fieldname]
-        if (operator === '=') return actual === value
-        if (operator === 'like') {
-          const needle = String(value || '').replaceAll('%', '').toLowerCase()
-          return String(actual || '').toLowerCase().includes(needle)
-        }
-        return true
+        return matchesFilterValue(actual, operator, value)
       })
     })
   }
 
   function applyOrFilters(rows, orFilters = []) {
-    if (!Array.isArray(orFilters) || !orFilters.length) return rows
+    if (!orFilters || (Array.isArray(orFilters) && !orFilters.length)) return rows
+
+    if (!Array.isArray(orFilters) && typeof orFilters === 'object') {
+      return rows.filter((row) => {
+        return Object.entries(orFilters).some(([fieldname, condition]) => {
+          const actual = row?.[fieldname]
+          if (Array.isArray(condition)) {
+            const [operator = '=', expected] = condition
+            return matchesFilterValue(actual, operator, expected)
+          }
+          return actual === condition
+        })
+      })
+    }
+
     return rows.filter((row) => {
       return orFilters.some((f) => {
         const [fieldname, operator = '=', value] = f || []
         const actual = row?.[fieldname]
-        if (operator === '=') return actual === value
-        if (operator === 'like') {
-          const needle = String(value || '').replaceAll('%', '').toLowerCase()
-          return String(actual || '').toLowerCase().includes(needle)
-        }
-        return true
+        return matchesFilterValue(actual, operator, value)
       })
     })
   }

@@ -19,15 +19,83 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import TaskFormModal from '@/components/TaskFormModal.vue'
+import { createDataAdapter } from '@/data/adapters'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-// Route param can arrive as internal id, custom project code, or project name
-// depending on which list/source navigated here.
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
+
+const projectResource = ref(null)
+
+// Route param is a Frappe record name first; seed-data aliases are only a
+// fallback for local prototype sessions that still carry older records.
+function loadProjectResource() {
+  if (!props.id) {
+    projectResource.value = null
+    return
+  }
+
+  projectResource.value = adapter.read('Project', props.id, {
+    nameField: 'name',
+    fields: [
+      'name',
+      'custom_project_id',
+      'project_name',
+      'customer',
+      'project_type',
+      'status',
+      'estimated_costing',
+      'percent_complete',
+      'expected_start_date',
+      'expected_end_date',
+      'owner',
+      'company',
+      'creation',
+      'modified',
+      'parent_project',
+    ],
+    cache: `buildsuite-project-detail:${props.id}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.custom_project_id || '',
+        name: row?.project_name || row?.name || '',
+        client: row?.customer || '',
+        status: row?.status || '',
+        priority: row?.priority || 'Medium',
+        type: row?.project_type || '',
+        company: row?.company || '',
+        startDate: row?.expected_start_date || null,
+        endDate: row?.expected_end_date || null,
+        budget: Number(row?.estimated_costing) || 0,
+        progress: Number(row?.percent_complete) || 0,
+        pm: row?.owner || '',
+        location: row?.location || '',
+        description: row?.notes || row?.description || '',
+        parentId: row?.parent_project || null,
+        createdAt: row?.creation || null,
+      }))
+    },
+  })
+}
+
+watch(() => props.id, loadProjectResource, { immediate: true })
+
 const project = computed(() => {
+  const backendProject = firstResourceRow(projectResource.value)
+  if (backendProject) return backendProject
+
   const key = props.id
   return (
     store.projectById(key)
@@ -38,8 +106,117 @@ const project = computed(() => {
 })
 const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
-const subs = computed(() => store.subProjects(resolvedProjectId.value))
-const workPackages = computed(() => store.workPackagesByProject(resolvedProjectId.value))
+const subprojectsResource = ref(null)
+const subprojectFilterKey = computed(() => resolvedProjectId.value)
+
+function loadSubprojectsResource() {
+  if (!resolvedProjectId.value) {
+    subprojectsResource.value = null
+    return
+  }
+
+  subprojectsResource.value = adapter.list('Project', {
+    fields: [
+      'name',
+      'custom_project_id',
+      'project_name',
+      'status',
+      'estimated_costing',
+      'percent_complete',
+      'owner',
+      'parent_project',
+    ],
+    filters: {
+      parent_project: ['=', resolvedProjectId.value],
+    },
+    orderBy: 'modified desc',
+    pageLength: 100,
+    cache: `buildsuite-project-detail-subs:${resolvedProjectId.value}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.custom_project_id || '',
+        name: row?.project_name || row?.name || '',
+        status: row?.status || '',
+        budget: Number(row?.estimated_costing) || 0,
+        progress: Number(row?.percent_complete) || 0,
+        pm: row?.owner || '',
+        parentId: row?.parent_project || resolvedProjectId.value,
+      }))
+    },
+  })
+}
+
+watch(subprojectFilterKey, () => {
+  loadSubprojectsResource()
+}, { immediate: true })
+
+const subs = computed(() => {
+  const raw = subprojectsResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
+
+const workPackageProjectIds = computed(() => {
+  const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
+  return Array.from(new Set(ids))
+})
+const workPackagesResource = ref(null)
+const workPackageFilterKey = computed(() => workPackageProjectIds.value.join('|'))
+
+function loadWorkPackagesResource() {
+  if (!workPackageProjectIds.value.length) {
+    workPackagesResource.value = null
+    return
+  }
+
+  workPackagesResource.value = adapter.list('Work Package', {
+    fields: [
+      'name',
+      'code',
+      'work_package_name',
+      'project',
+      'status',
+      'budget',
+      'progress',
+      'start_date',
+      'end_date',
+      'owner_user',
+    ],
+    filters: {
+      project: ['in', workPackageProjectIds.value],
+    },
+    orderBy: 'modified desc',
+    pageLength: 200,
+    cache: `buildsuite-project-detail-wp:${resolvedProjectId.value}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || row?.id,
+        code: row?.code || '',
+        name: row?.work_package_name || row?.name || '',
+        projectId: row?.project || row?.projectId || '',
+        status: row?.status || '',
+        budget: Number(row?.budget) || 0,
+        progress: Number(row?.progress) || 0,
+        startDate: row?.start_date || row?.startDate || null,
+        endDate: row?.end_date || row?.endDate || null,
+        owner: row?.owner_user || row?.owner || '',
+      }))
+    },
+  })
+}
+
+watch(workPackageFilterKey, () => {
+  loadWorkPackagesResource()
+}, { immediate: true })
+
+const workPackages = computed(() => {
+  const raw = workPackagesResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
 const tasks = computed(() => store.tasksByProject(resolvedProjectId.value))
 const scos = computed(() => store.scosByProject(resolvedProjectId.value))
 const stages = computed(() => store.stagePlanningsByProject(resolvedProjectId.value))
@@ -442,7 +619,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
   <DeskPage
     v-if="project"
     :title="project.name"
-    :subtitle="`${project.code} · ${project.id}`"
+    :subtitle="`${project.id}${project.code ? ` · ${project.code}` : ''}`"
     :breadcrumbs="breadcrumbs"
     :status="titleStatuses"
   >
