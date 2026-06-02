@@ -48,6 +48,21 @@ export function createLocalDataAdapter(store) {
       }))
     }
 
+    if (doctype === 'Task') {
+      return store.tasks.map((task) => ({
+        name: task.id,
+        subject: task.name || '',
+        project: task.projectId || '',
+        status: task.status || 'Open',
+        priority: task.priority || 'Medium',
+        progress: task.progress || 0,
+        owner: task.assignee || '',
+        exp_start_date: task.startDate || null,
+        exp_end_date: task.endDate || null,
+        task_type: task.task_type || 'Activity',
+      }))
+    }
+
     return []
   }
 
