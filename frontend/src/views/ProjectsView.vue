@@ -5,6 +5,7 @@ import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtCompactINR } from '@/utils/format'
@@ -77,7 +78,12 @@ function onRowClick(row) {
         { key: 'project_name', label: 'Project Name' },
         { key: 'customer', label: 'Client' },
         { key: 'project_type', label: 'Project Type' },
-        { key: 'status', label: 'Status', preset: 'status' },
+        {
+          key: 'status',
+          label: 'Status',
+          preset: 'status',
+          statusClassMap: { Open: 'bg-success-50 text-success-700' },
+        },
         { key: 'estimated_costing', label: 'Budget' },
         { key: 'percent_complete', label: 'Progress', preset: 'progress' },
         { key: 'timeline', label: 'Timeline', preset: 'timeline', fields: ['expected_start_date', 'expected_end_date'] },
@@ -112,18 +118,17 @@ function onRowClick(row) {
           <option>Renovation</option>
         </DeskSelect>
 
-        <template v-if="isMultiCompany">
-          <DeskSelect v-if="!companyFilter" v-model="companyFilter" class="!w-44">
-            <option value="">Company: Any</option>
-            <option v-for="c in companiesResource.data" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </DeskSelect>
-          <DeskFilterChip
-            v-else
-            label="Company"
-            :value="companyName(companyFilter)"
-            @remove="companyFilter = ''"
-          />
-        </template>
+        <DeskLinkPicker
+          v-if="isMultiCompany"
+          v-model="companyFilter"
+          class="!w-44"
+          doctype="Company"
+          label-field="name"
+          value-field="name"
+          :search-fields="['name', 'abbr']"
+          :page-length="10"
+          placeholder="Company: Any"
+        />
       </template>
 
       <template #cell-custom_project_id="{ row }">

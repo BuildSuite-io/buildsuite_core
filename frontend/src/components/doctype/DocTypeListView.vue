@@ -129,6 +129,7 @@ const resolvedColumns = computed(() => {
       fields: Array.isArray(column.fields) ? column.fields : [],
       renderer: column.renderer || null,
       rendererProps: column.rendererProps || null,
+      statusClassMap: column.statusClassMap || null,
     }))
   }
 
@@ -532,10 +533,14 @@ function onPageSizeChange(value) {
             v-bind="getRendererProps(slotProps.row, column)"
           />
 
-          <StatusBadge
-            v-else-if="resolvePreset(column) === 'status'"
-            :status="slotProps.row?.[column.key]"
-          />
+          <template v-else-if="resolvePreset(column) === 'status'">
+            <StatusBadge
+              v-if="typeof slotProps.row?.[column.key] === 'string' && slotProps.row?.[column.key].trim()"
+              :status="slotProps.row?.[column.key]"
+              :status-class-map="column.statusClassMap || {}"
+            />
+            <span v-else>—</span>
+          </template>
 
           <div
             v-else-if="resolvePreset(column) === 'progress'"
