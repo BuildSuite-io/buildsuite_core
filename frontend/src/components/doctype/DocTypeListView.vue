@@ -35,7 +35,7 @@ async function loadMeta() {
   metaError.value = null
   try {
     const response = await fetch(
-      `/api/method/frappe.client.get_meta?doctype=${encodeURIComponent(props.doctype)}`,
+      `/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(props.doctype)}&with_parent=1`,
       {
         method: 'GET',
         credentials: 'include',
@@ -51,7 +51,7 @@ async function loadMeta() {
     }
 
     const payload = await response.json()
-    meta.value = payload?.message || null
+    meta.value = payload?.docs?.[0] || payload?.message || null
   } catch (error) {
     metaError.value = error
     meta.value = null
