@@ -188,12 +188,6 @@ function onChange(option) {
 function onQueryUpdate(value) {
   query.value = value || ''
 }
-
-function clearSelection(closePopover) {
-  emit('update:modelValue', '')
-  emit('change', '')
-  closePopover()
-}
 </script>
 
 <template>
@@ -210,7 +204,7 @@ function clearSelection(closePopover) {
       :max-options="maxOptions"
       :placement="placement"
       :hide-search="false"
-      :body-classes="'!bg-white border border-ink-200 shadow-lg'"
+      :body-classes="'desk-link-picker-popover !bg-white border border-ink-200 shadow-lg'"
       :compare-fn="(a, b) => a?.value === b?.value"
       @change="onChange"
       @update:query="onQueryUpdate"
@@ -230,30 +224,88 @@ function clearSelection(closePopover) {
           <span class="text-[10px] text-ink-400">▾</span>
         </button>
       </template>
-
-      <template #footer="{ close }">
-        <div class="border-t border-ink-200 p-1">
-          <button
-            v-if="selectedOption?.value !== '' && selectedOption?.value != null"
-            type="button"
-            class="w-full rounded px-2 py-1 text-left text-xs text-ink-600 hover:bg-ink-50"
-            @click="clearSelection(close)"
-          >
-            Clear
-          </button>
-        </div>
-      </template>
     </Autocomplete>
   </div>
 </template>
 
-<style scoped>
-.desk-link-picker :deep(.bg-surface-modal) {
+<style>
+.desk-link-picker-popover {
   background-color: #ffffff !important;
   opacity: 1 !important;
+  border: 1px solid theme('colors.ink.200') !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
-.desk-link-picker :deep(.sticky.bg-surface-modal) {
+/* Force compact typography inside teleported popover */
+.desk-link-picker-popover,
+.desk-link-picker-popover * {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+/* Tighter padding for list items to feel more like Desk */
+.desk-link-picker-popover li {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Ensure the description/abbr is also small */
+.desk-link-picker-popover li .text-sm {
+  font-size: 0.6875rem !important;
+}
+
+/* Style the search input to match DeskInput */
+.desk-link-picker-popover input.form-input {
+  border-radius: 4px !important;
+  border: 1px solid theme('colors.ink.200') !important;
+  height: 24px !important;
+  padding: 2px 8px !important;
+  padding-right: 24px !important; /* space for x button */
+}
+
+.desk-link-picker-popover input.form-input:focus {
+  border-color: #16A34A !important;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2) !important;
+}
+
+/* Fix the 'x' button alignment in the search bar */
+.desk-link-picker-popover .relative.w-full > .absolute {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  right: 0px !important;
+  height: 24px !important;
+  width: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.desk-link-picker-popover .relative.w-full > .absolute button {
+  height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.desk-link-picker-popover .relative.w-full > .absolute svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Hide groups if they are empty or styled weirdly */
+.desk-link-picker-popover .truncate.bg-surface-modal {
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.025em !important;
+  color: theme('colors.ink.400') !important;
+  padding-top: 8px !important;
+}
+
+.desk-link-picker-popover .sticky.bg-surface-modal {
   background-color: #ffffff !important;
 }
 </style>
