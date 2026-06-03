@@ -9,6 +9,7 @@
 import { computed, ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskList from '@/components/desk/DeskList.vue'
@@ -20,6 +21,7 @@ import { fmtDate } from '@/utils/format'
 const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
+const adapter = createDataAdapter(store)
 
 const search = ref('')
 const taskFilter = ref(route.query.task || '')
@@ -32,26 +34,35 @@ function daysAgo(n) {
   d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
 }
-const SEVEN_DAYS_AGO = daysAgo(6)  // inclusive 7-day window
+const SEVEN_DAYS_AGO = daysAgo(6)
 
-const allEntries = computed(() => store.taskProgressEntries)
-function taskName(id) { return store.taskById(id)?.name || id }
+const entriesResource = adapter.list('Task Progress Entry', {
+  orderBy: 'entry_date desc'
+})
+const allEntries = computed(() => entriesResource.data)
+
+// For mapping IDs to names, we might need other resources
+const tasksResource = adapter.list('Task')
+const tasksMap = computed(() => {
+  const map = {}
+  tasksResource.data.forEach(t => map[t.name] = t.subject)
+  return map
+})
+
+function taskName(id) { return tasksMap.value[id] || id }
 function memberName(id) { return store.teamMember(id)?.name || id }
 
 const items = computed(() => {
   const term = search.value.trim().toLowerCase()
   return allEntries.value.filter(e => {
-    if (taskFilter.value && e.taskId !== taskFilter.value) return false
-    if (enteredByFilter.value && e.enteredBy !== enteredByFilter.value) return false
-    if (blockerOnly.value && !e.blockerFlag) return false
+    if (taskFilter.value && e.task !== taskFilter.value) return false
+    if (enteredByFilter.value && e.owner !== enteredByFilter.value) return false
+    if (blockerOnly.value && !e.blocker_flag) return false
     if (term) {
-      const hay = `${e.id} ${e.narrative || ''} ${taskName(e.taskId)} ${e.blockerNote || ''}`.toLowerCase()
+      const hay = `${e.name} ${e.narrative || ''} ${taskName(e.task)} ${e.blocker_note || ''}`.toLowerCase()
       if (!hay.includes(term)) return false
     }
     return true
-  }).slice().sort((a, b) => {
-    const cmp = (b.entryDate || '').localeCompare(a.entryDate || '')
-    return cmp !== 0 ? cmp : (b.id || '').localeCompare(a.id || '')
   })
 })
 
@@ -59,9 +70,9 @@ const kpis = computed(() => {
   const all = allEntries.value
   return {
     total:        all.length,
-    today:        all.filter(e => e.entryDate === TODAY).length,
-    thisWeek:     all.filter(e => e.entryDate >= SEVEN_DAYS_AGO).length,
-    blockers:     all.filter(e => e.blockerFlag).length,
+    today:        all.filter(e => e.entry_date === TODAY).length,
+    thisWeek:     all.filter(e => e.entry_date >= SEVEN_DAYS_AGO).length,
+    blockers:     all.filter(e => e.blocker_flag).length,
   }
 })
 
@@ -168,30 +179,30 @@ function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
       </template>
 
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/progress-entries/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/app/progress-entries/${row.name}`" @click.stop class="font-mono text-xs">{{ row.name }}</DeskLink>
       </template>
       <template #cell-entryDate="{ row }">
-        <span class="text-xs text-ink-700">{{ fmtDate(row.entryDate) }}</span>
+        <span class="text-xs text-ink-700">{{ fmtDate(row.entry_date) }}</span>
       </template>
       <template #cell-task="{ row }">
-        <DeskLink :to="`/app/tasks/${row.taskId}`" @click.stop>{{ taskName(row.taskId) }}</DeskLink>
+        <DeskLink :to="`/app/tasks/${row.task}`" @click.stop>{{ taskName(row.task) }}</DeskLink>
       </template>
       <template #cell-progressPct="{ row }">
         <div class="flex items-center justify-end gap-2">
           <div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px;">
             <div
               class="h-full"
-              :class="row.progressPct === 100 ? 'bg-success-500' : row.progressPct > 0 ? 'bg-brand-500' : 'bg-ink-300'"
-              :style="`width:${row.progressPct}%`"
+              :class="row.progress_pct === 100 ? 'bg-success-500' : row.progress_pct > 0 ? 'bg-brand-500' : 'bg-ink-300'"
+              :style="`width:${row.progress_pct}%`"
             ></div>
           </div>
-          <span class="text-xs tabular-nums w-8 text-right font-medium">{{ row.progressPct }}%</span>
+          <span class="text-xs tabular-nums w-8 text-right font-medium">{{ row.progress_pct }}%</span>
         </div>
       </template>
       <template #cell-labour="{ row }">
         <span class="text-xs text-ink-700 tabular-nums">
-          {{ row.skilledLabour }}+{{ row.unskilledLabour }}
-          <span class="text-ink-400">({{ row.skilledLabour + row.unskilledLabour }})</span>
+          {{ row.skilled_labour }}+{{ row.unskilled_labour }}
+          <span class="text-ink-400">({{ row.skilled_labour + row.unskilled_labour }})</span>
         </span>
       </template>
       <template #cell-weather="{ row }">
@@ -202,15 +213,15 @@ function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
       </template>
       <template #cell-flags="{ row }">
         <span
-          v-if="row.blockerFlag"
+          v-if="row.blocker_flag"
           class="text-[10px] px-1.5 py-0.5 bg-danger-50 text-danger-700 font-medium"
           style="border-radius: 2px;"
-          :title="row.blockerNote || 'Blocker flagged'"
+          :title="row.blocker_note || 'Blocker flagged'"
         >🚩 Blocker</span>
         <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
       <template #cell-enteredBy="{ row }">
-        <UserAvatar :user-id="row.enteredBy" size="xs" />
+        <UserAvatar :user-id="row.owner" size="xs" />
       </template>
 
       <template #empty>
