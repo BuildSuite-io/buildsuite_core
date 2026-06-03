@@ -9,6 +9,7 @@
 import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -21,22 +22,19 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-// Capture the originating taskId at mount — if the user got here via the "+ File
-// Progress Entry" button on a task detail page (?taskId=…), save should return
-// them to that same task instead of the entry detail. If they got here from the
-// list / direct URL, fall through to the entry detail (the historical default).
+const tasksResource = adapter.list('Task')
+
+// Capture the originating taskId at mount
 const cameFromTaskId = route.query.taskId || null
-const initialTaskId = cameFromTaskId || (store.tasks.find(t => t.status !== 'Completed')?.id || store.tasks[0]?.id || '')
+const initialTaskId = cameFromTaskId || '' // let it be empty if unknown
 
 const form = reactive({
   taskId: initialTaskId,
   entryDate: new Date().toISOString().slice(0, 10),
   enteredBy: store.user?.id || store.team[0]?.id || '',
-  // Default to the selected task's current progress — the field is cumulative
-  // (not delta), so pre-filling it lets the user type over the current value
-  // instead of having to look it up.
-  progressPct: store.taskById(initialTaskId)?.progress ?? 0,
+  progressPct: 0,
   narrative: '',
   skilledLabour: 0,
   unskilledLabour: 0,
@@ -47,17 +45,21 @@ const form = reactive({
 const errors = ref({})
 const saving = ref(false)
 
-// Show selected task's current progress so the user knows what cumulative % they
-// should be setting (since this field is cumulative, not delta).
-const selectedTask = computed(() => store.taskById(form.taskId))
+const taskResource = adapter.read('Task', computed(() => form.taskId))
+const selectedTask = computed(() => taskResource.data)
 
-// Keep the progress field in sync when the user changes the task. If they've
-// already started filing for one task and then switch to a different one, the
-// previous task's % no longer makes sense — overwrite with the new task's
-// current value.
-watch(() => form.taskId, (newId) => {
-  form.progressPct = store.taskById(newId)?.progress ?? 0
+watch(selectedTask, (t) => {
+  if (t && form.progressPct === 0) {
+    form.progressPct = t.progress || 0
+  }
 })
+
+// If taskId is empty and tasks load, pick the first one if we don't have cameFromTaskId
+watch(() => tasksResource.data, (tasks) => {
+  if (!form.taskId && tasks.length && !cameFromTaskId) {
+    form.taskId = tasks.find(t => t.status !== 'Completed')?.name || tasks[0]?.name
+  }
+}, { immediate: true })
 
 function validate() {
   const e = {}
@@ -73,17 +75,32 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function save() {
+async function save() {
   if (!validate()) return
   saving.value = true
-  const created = store.addTaskProgressEntry({ ...form })
-  saving.value = false
-  // Return to the originating task if the user came from a task page; otherwise
-  // route to the new entry's detail (the list/direct-URL fallback).
-  if (cameFromTaskId) {
-    router.push(`/app/tasks/${cameFromTaskId}`)
-  } else {
-    router.push(`/app/progress-entries/${created.id}`)
+  try {
+    const created = await adapter.create('Task Progress Entry', {
+      task: form.taskId,
+      entry_date: form.entryDate,
+      owner: form.enteredBy,
+      progress_pct: form.progressPct,
+      skilled_labour: form.skilledLabour,
+      unskilled_labour: form.unskilledLabour,
+      narrative: form.narrative,
+      weather: form.weather,
+      blocker_flag: form.blockerFlag ? 1 : 0,
+      blocker_note: form.blockerNote,
+    })
+
+    if (cameFromTaskId) {
+      router.push(`/app/tasks/${cameFromTaskId}`)
+    } else {
+      router.push(`/app/progress-entries/${created.name || created.id}`)
+    }
+  } catch (error) {
+    console.error('Failed to create progress entry', error)
+  } finally {
+    saving.value = false
   }
 }
 function cancel() { router.back() }

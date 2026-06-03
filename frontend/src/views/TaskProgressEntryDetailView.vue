@@ -10,6 +10,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -25,16 +26,28 @@ import { fmtDate } from '@/utils/format'
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-const entry = computed(() => store.taskProgressEntries.find(e => e.id === props.id))
-const task = computed(() => entry.value ? store.taskById(entry.value.taskId) : null)
-const project = computed(() => task.value ? store.projectById(task.value.projectId) : null)
-const wp = computed(() => task.value?.workPackageId ? store.workPackageById(task.value.workPackageId) : null)
+const entryResource = adapter.read('Task Progress Entry', props.id)
+const entry = computed(() => entryResource.data)
 
-// Latest entry on the parent task — useful context when viewing an older entry,
-// since this entry's progressPct may differ from the task's current progress.
-const latestOnTask = computed(() => task.value ? store.latestProgressEntry(task.value.id) : null)
-const isLatestOnTask = computed(() => latestOnTask.value && entry.value && latestOnTask.value.id === entry.value.id)
+const taskResource = adapter.read('Task', computed(() => entry.value?.task))
+const task = computed(() => taskResource.data)
+
+const projectResource = adapter.read('Project', computed(() => task.value?.project))
+const project = computed(() => projectResource.data)
+
+const wpResource = adapter.read('Work Package', computed(() => task.value?.work_package))
+const wp = computed(() => wpResource.data)
+
+// Latest entry on the parent task
+const entriesResource = adapter.list('Task Progress Entry', {
+  filters: computed(() => task.value ? [['task', '=', task.value.name]] : null),
+  orderBy: 'entry_date desc',
+  pageLength: 1
+})
+const latestOnTask = computed(() => entriesResource.data[0] || null)
+const isLatestOnTask = computed(() => latestOnTask.value && entry.value && latestOnTask.value.name === entry.value.name)
 
 const editing = ref(false)
 const form = ref({})
@@ -45,9 +58,20 @@ function startEdit() {
   if (entry.value) form.value = { ...entry.value }
   editing.value = true
 }
-function saveEdit() {
-  store.updateTaskProgressEntry(props.id, form.value)
+async function saveEdit() {
+  await adapter.update('Task Progress Entry', props.id, {
+    entry_date: form.value.entry_date,
+    owner: form.value.owner,
+    progress_pct: form.value.progress_pct,
+    skilled_labour: form.value.skilled_labour,
+    unskilled_labour: form.value.unskilled_labour,
+    narrative: form.value.narrative,
+    weather: form.value.weather,
+    blocker_flag: form.value.blocker_flag ? 1 : 0,
+    blocker_note: form.value.blocker_note,
+  })
   editing.value = false
+  entryResource.fetch()
 }
 function cancelEdit() {
   if (entry.value) form.value = { ...entry.value }
@@ -57,13 +81,13 @@ function onPrimary() {
   if (editing.value) saveEdit()
   else startEdit()
 }
-function deleteEntry() {
+async function deleteEntry() {
   const wasLatest = isLatestOnTask.value
-  const taskId = entry.value?.taskId
+  const taskId = entry.value?.task
   if (!confirm(wasLatest
     ? `Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).`
     : `Delete this entry? It's a historical entry; the task's current progress will not change.`)) return
-  store.deleteTaskProgressEntry(props.id)
+  await adapter.remove('Task Progress Entry', props.id)
   // Return to the parent task if we have it, otherwise the list.
   router.push(taskId ? `/app/tasks/${taskId}` : '/app/progress-entries')
 }
