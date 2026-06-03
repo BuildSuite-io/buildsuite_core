@@ -36,15 +36,12 @@ const form = reactive({
   client: '',
   status: 'Open',
   priority: 'Medium',
-  // Default type pulled from store.activeProjectTypes first record so the
-  // hardcoded 'Commercial' fallback only fires if the projectTypes slice is
-  // empty (shouldn't happen with the S39 seed).
-  type: (store.activeProjectTypes[0]?.name) || 'Commercial',
+  type: '',
   company: initialCompany,
   startDate: new Date().toISOString().slice(0, 10),
   endDate: '',
   budget: '',
-  pm: store.team[1]?.id || '',
+  pm: '',
   location: '',
   description: '',
   parentId: route.query.parentId || null,
