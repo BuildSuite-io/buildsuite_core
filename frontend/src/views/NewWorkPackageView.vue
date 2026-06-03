@@ -15,10 +15,12 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import { createDataAdapter } from '@/data/adapters'
 
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
 const form = reactive({
   projectId: route.query.projectId || (store.projects[0] && store.projects[0].id) || '',
@@ -48,22 +50,27 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function save() {
+async function save() {
   if (!validate()) return
   saving.value = true
-  const wp = store.addWorkPackage({
-    projectId: form.projectId,
-    code: form.code.trim(),
-    name: form.name.trim(),
-    description: form.description,
-    status: form.status,
-    budget: Number(form.budget) || 0,
-    startDate: form.startDate,
-    endDate: form.endDate,
-    owner: form.owner,
-  })
-  saving.value = false
-  router.push(`/app/work-packages/${wp.id}`)
+  try {
+    const res = await adapter.create('Work Package', {
+      project: form.projectId,
+      code: form.code.trim(),
+      work_package_name: form.name.trim(),
+      description: form.description,
+      status: form.status,
+      budget: Number(form.budget) || 0,
+      start_date: form.startDate,
+      end_date: form.endDate,
+      owner_user: form.owner,
+    })
+    router.push(`/app/work-packages/${res.name}`)
+  } catch (err) {
+    console.error('Failed to create work package:', err)
+  } finally {
+    saving.value = false
+  }
 }
 function cancel() { router.back() }
 
