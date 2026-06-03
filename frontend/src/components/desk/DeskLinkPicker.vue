@@ -279,7 +279,7 @@ function onQueryUpdate(value) {
       :max-options="maxOptions"
       :placement="placement"
       :hide-search="false"
-      :body-classes="'desk-link-picker-popover !bg-white border border-ink-200 shadow-lg'"
+      :body-classes="'desk-link-picker-popover !bg-white border border-ink-200 shadow-lg z-[80]'"
       :compare-fn="(a, b) => a?.value === b?.value"
       @change="onChange"
       @update:query="onQueryUpdate"
@@ -304,9 +304,17 @@ function onQueryUpdate(value) {
 </template>
 
 <style>
+/* Reka popover renders through a portal wrapper; this wrapper must sit above
+   modal overlays, otherwise the list appears to not open inside modals. */
+[data-radix-popper-content-wrapper]:has(.desk-link-picker-popover),
+.PopoverContent:has(.desk-link-picker-popover) {
+  z-index: 80 !important;
+}
+
 .desk-link-picker-popover {
   background-color: #ffffff !important;
   opacity: 1 !important;
+  z-index: 80 !important;
   border: 1px solid theme('colors.ink.200') !important;
   border-radius: 6px !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;

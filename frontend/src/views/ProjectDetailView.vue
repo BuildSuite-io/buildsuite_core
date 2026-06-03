@@ -81,6 +81,7 @@ function loadProjectResource() {
       'expected_end_date',
       'owner',
       'company',
+      'is_group',
       'notes',
       'creation',
       'modified',
@@ -104,6 +105,7 @@ function loadProjectResource() {
         pm: row?.owner || '',
         location: row?.location || '',
         description: row?.notes || row?.description || '',
+        isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
         parentId: row?.parent_project || null,
         createdAt: row?.creation || null,
       }))
@@ -466,6 +468,7 @@ async function saveEdit() {
   await adapter.update('Project', resolvedProjectId.value, {
     project_name: editForm.value.name,
     custom_project_id: editForm.value.code,
+    is_group: editForm.value.isGroup ? 1 : 0,
     status: editForm.value.status,
     priority: editForm.value.priority,
     percent_complete: editForm.value.progress,
@@ -500,6 +503,7 @@ function addSubproject() {
   // Nested subprojects are not allowed — guard the action even though the
   // entry button is hidden by `isSubproject`.
   if (project.value?.parentId) return
+  if (project.value?.isGroup === false) return
   router.push({ path: '/app/projects/new', query: { parentId: resolvedProjectId.value } })
 }
 
@@ -602,6 +606,7 @@ function stageStatusClass(s) {
 // Subprojects tab + the "+ Add Subproject" button are hidden when this
 // record IS itself a subproject — nested subprojects are not allowed.
 const isSubproject = computed(() => !!project.value?.parentId)
+const subprojectsEnabled = computed(() => !isSubproject.value && project.value?.isGroup !== false)
 
 // Project-context reports. Same destinations as the Site Execution workspace's
 // report tiles — the stub views aren't project-scoped today, but the routing
@@ -630,7 +635,7 @@ const tabs = computed(() => {
     { id: 'team',           label: 'Team',           count: projectTeam.value.length },
     { id: 'activity',       label: 'Activity',       count: null },
   ]
-  return isSubproject.value ? all.filter(t => t.id !== 'subprojects') : all
+  return subprojectsEnabled.value ? all : all.filter(t => t.id !== 'subprojects')
 })
 
 const breadcrumbs = computed(() => {
@@ -1038,7 +1043,7 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
       </div>
 
       <!-- Subprojects — hidden when this record is itself a subproject -->
-      <div v-if="tab === 'subprojects' && !isSubproject" class="pt-4">
+      <div v-if="tab === 'subprojects' && subprojectsEnabled" class="pt-4">
         <DeskList
           v-model="subSearch"
           :rows="subsFiltered"
@@ -1630,6 +1635,24 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
               </DeskField>
               <DeskField label="Note">
                 <DeskTextarea v-model="editForm.description" :rows="3" />
+              </DeskField>
+              <DeskField
+                v-if="!isSubproject"
+                label="Subprojects"
+                :hint="subs.length > 0
+                  ? `Locked on - this project has ${subs.length} subproject${subs.length === 1 ? '' : 's'}. Delete or move them out before turning this off.`
+                  : 'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
+                "
+              >
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    v-model="editForm.isGroup"
+                    :disabled="subs.length > 0"
+                    class="accent-brand-600 disabled:cursor-not-allowed"
+                  />
+                  <span class="text-sm text-ink-700">Allow subprojects under this project</span>
+                </label>
               </DeskField>
             </DeskSection>
 
