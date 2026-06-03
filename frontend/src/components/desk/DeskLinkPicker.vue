@@ -157,15 +157,7 @@ const selectedOption = computed(() => {
 
 const options = computed(() => {
   const rows = applyClientFilters(optionsResource.data || [], serverFilters.value)
-  const mapped = rows.map(buildOption)
-  if (!selectedOption.value) return mapped
-
-  const selectedValue = selectedOption.value.value
-  if (mapped.some((option) => option.value === selectedValue)) {
-    return mapped
-  }
-
-  return [selectedOption.value, ...mapped]
+  return rows.map(buildOption)
 })
 
 const loading = computed(() => optionsResource.loading || selectedResource.loading)
