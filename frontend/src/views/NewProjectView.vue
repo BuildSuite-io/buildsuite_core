@@ -28,7 +28,7 @@ const adapter = createDataAdapter(store)
 // project, the field defaults to the active company and the user can change it
 // when multi-company. Single-company sites never see the field.
 const initialParent = route.query.parentId ? store.projectById(route.query.parentId) : null
-const initialCompany = initialParent?.company || store.activeCompany || ''
+const initialCompany = initialParent?.company || ''
 
 const form = reactive({
   code: '',
