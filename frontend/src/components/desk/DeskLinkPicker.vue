@@ -32,11 +32,86 @@ const resolvedSearchFields = computed(() => {
   return Array.from(new Set(fields.filter(Boolean)))
 })
 
+const filterFieldNames = computed(() => {
+  const filters = props.filters
+  if (!filters) return []
+
+  if (!Array.isArray(filters) && typeof filters === 'object') {
+    return Object.keys(filters)
+  }
+
+  if (!Array.isArray(filters)) return []
+
+  return filters
+    .map((f) => (Array.isArray(f) ? f[0] : null))
+    .filter(Boolean)
+})
+
 const resolvedFields = computed(() => {
-  return Array.from(new Set([props.valueField, props.labelField, ...resolvedSearchFields.value]))
+  return Array.from(new Set([
+    props.valueField,
+    props.labelField,
+    ...resolvedSearchFields.value,
+    ...filterFieldNames.value,
+  ]))
 })
 
 const serverFilters = computed(() => props.filters)
+
+function matchesFilterValue(actual, operator, expected) {
+  if (operator === '=') {
+    if (actual === expected) return true
+    if (actual == null || expected == null) return false
+
+    // Frappe list responses often mix numeric-like strings and numbers
+    // (e.g. is_group as "1" vs filter value 1). Normalize before compare.
+    const actualText = String(actual).trim()
+    const expectedText = String(expected).trim()
+    if (actualText === expectedText) return true
+
+    const actualNum = Number(actualText)
+    const expectedNum = Number(expectedText)
+    if (!Number.isNaN(actualNum) && !Number.isNaN(expectedNum)) {
+      return actualNum === expectedNum
+    }
+
+    return false
+  }
+  if (operator === 'like') {
+    const needle = String(expected || '').replaceAll('%', '').toLowerCase()
+    return String(actual || '').toLowerCase().includes(needle)
+  }
+  if (operator === 'in') {
+    const candidates = Array.isArray(expected) ? expected : []
+    return candidates.some((candidate) => matchesFilterValue(actual, '=', candidate))
+  }
+  return true
+}
+
+function applyClientFilters(rows, filters = []) {
+  if (!filters || (Array.isArray(filters) && !filters.length)) return rows
+
+  if (!Array.isArray(filters) && typeof filters === 'object') {
+    return rows.filter((row) => {
+      return Object.entries(filters).every(([fieldname, condition]) => {
+        const actual = row?.[fieldname]
+        if (Array.isArray(condition)) {
+          const [operator = '=', expected] = condition
+          return matchesFilterValue(actual, operator, expected)
+        }
+        return actual === condition
+      })
+    })
+  }
+
+  return rows.filter((row) => {
+    return filters.every((f) => {
+      const [fieldname, operator = '=', value] = f || []
+      const actual = row?.[fieldname]
+      return matchesFilterValue(actual, operator, value)
+    })
+  })
+}
 
 const serverOrFilters = computed(() => {
   const term = query.value.trim()
@@ -81,7 +156,7 @@ const selectedOption = computed(() => {
 })
 
 const options = computed(() => {
-  const rows = optionsResource.data || []
+  const rows = applyClientFilters(optionsResource.data || [], serverFilters.value)
   const mapped = rows.map(buildOption)
   if (!selectedOption.value) return mapped
 
