@@ -17,8 +17,8 @@ const deniedReason = computed(() => {
 })
 
 const blockedPath = computed(() => {
-  const from = route.query.from
-  return typeof from === 'string' && from ? from : '/app'
+  const target = route.query.target
+  return typeof target === 'string' && target ? target : '/app'
 })
 
 async function retryAccess() {
