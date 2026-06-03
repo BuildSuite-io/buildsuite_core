@@ -127,7 +127,7 @@
   - Date completed: 2026-06-01
   - Reference (PR/commit): `9b31b1a`, `6251c9b`, `d15427b`, `6090955`, `e321859`
 
-- [ ] **Phase 6 — Keep Seed Data, Add Data Adapter Seam**
+- [x] **Phase 6 — Keep Seed Data, Add Data Adapter Seam**
   - Status: Completed
   - Data adapter supports local + remote modes
   - Adapter seam initialized (`frontend/src/data/adapters`) with local implementation and factory
@@ -155,24 +155,29 @@
   - Remaining to close Phase 7:
     - Migrate one bounded CRUD slice using the same adapter seam with no custom list/read APIs.
 
-### Current Position Snapshot (2026-06-02)
+### Current Position Snapshot (2026-06-03)
 
 - Phase 0-5: complete
 - Phase 6: complete
 - Phase 7: in progress (active execution zone)
-- Phase 8-9: not started
+- Phase 8: in progress
+- Phase 9: not started
 - Integration baseline on `vue` now includes:
   - Permission-gated dev boot hydration before app mount
   - Centralized auth/access guard flow with forbidden recovery
   - Generic doctype list shell with backend pagination and renderer presets
   - Generic link picker (`DeskLinkPicker`) for remote permission-safe link lookup
+  - Stable direct-fetch flow for boot/access utility endpoints plus generic list metadata loading via the standard Frappe doctype method
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
-  - Status: Not started
-  - Manual upload/mutation paths send `X-Frappe-CSRF-Token`
-  - `frappeRequest` set as default fetcher where applicable
+  - Status: In progress
+  - Global `resourceFetcher` remains `frappeRequest` for resource-backed requests
+  - Attempted conversion of boot/access utility endpoints to `createResource` caused runtime regressions and was rolled back
+  - Generic `DocTypeListView` metadata loading was stabilized with a direct call to the standard `frappe.desk.form.load.getdoctype` method
+  - Remaining to close Phase 8:
+    - Revisit non-upload utility endpoint consolidation only after runtime-safe patterns are verified in this app.
   - Date completed:
-  - Reference (PR/commit):
+  - Reference (PR/commit): current working tree
 
 - [ ] **Phase 9 — Validation Gate Before Seed Replacement**
   - Status: Not started
@@ -207,6 +212,7 @@
 | 2026-06-02 | Phase 6/7 | Added `DeskLinkPicker` (permission-safe server-backed Link search via `useDocTypeList`) and wired company filter in `ProjectsView` | Copilot | `23362ac`, `811c743` |
 | 2026-06-02 | Phase 7 | Added optional per-status badge color map support from column config (`Open` green in Projects) | Copilot | `23362ac`, `811c743` |
 | 2026-06-02 | Phase 6/7 | Expanded generic remote adapter contract (`list/read/create/update/remove/linkSearch`) and migrated `WorkPackagesView` to `DocTypeListView` + `DeskLinkPicker` project filter | Copilot | working tree |
+| 2026-06-03 | Phase 8 | Attempted `createResource` migration for boot/access/meta utility calls, rolled back boot/access after runtime regression, and stabilized generic doctype meta loading with direct fetch to the standard Frappe method | Copilot | working tree |
 
 ---
 
