@@ -3,7 +3,7 @@
 // validate() rules, same store.addProject call, parentId pre-fill from the route
 // query for the "+ Add Subproject" entry point.
 
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
@@ -47,6 +47,9 @@ const form = reactive({
   location: '',
   description: '',
   parentId: route.query.parentId || null,
+  // Group project by default. Turning this off makes the project a child
+  // record under a selected parent (is_group = 0).
+  allowSubprojects: !route.query.parentId,
   // §13.3 item 19 — Light-template stage seeding. Default ON for top-level
   // projects, OFF for subprojects (parent already owns the timeline).
   seedDefaultStages: !route.query.parentId,
@@ -60,6 +63,20 @@ const errors = ref({})
 const saving = ref(false)
 
 const parentProject = computed(() => form.parentId ? store.projectById(form.parentId) : null)
+
+watch(
+  () => form.allowSubprojects,
+  (allow) => {
+    if (allow) {
+      form.parentId = null
+      return
+    }
+
+    // Child projects inherit the parent timeline/breakdown.
+    form.seedDefaultStages = false
+    form.seedDefaultWorkPackagesAndTasks = false
+  },
+)
 
 // Template preview — re-derives from the picked Project Type. Resolves via
 // the Session 39 projectTypes record's defaultTemplate field, falling back to
@@ -84,6 +101,7 @@ function validate() {
   const e = {}
   if (!form.name) e.name = 'Project name is required'
   if (!form.code) e.code = 'Project ID is required'
+  if (!form.allowSubprojects && !form.parentId) e.parentId = 'Parent Project is required'
   if (form.endDate && form.startDate && form.endDate < form.startDate) e.endDate = 'End must be after start'
   errors.value = e
   return Object.keys(e).length === 0
@@ -96,8 +114,8 @@ async function save() {
     const res = await adapter.create('Project', {
       project_name: form.name,
       custom_project_id: form.code,
-      parent_project: form.parentId,
-      is_group: form.parentId ? 0 : 1,
+      parent_project: form.allowSubprojects ? null : form.parentId,
+      is_group: form.allowSubprojects ? 1 : 0,
       status: form.status,
       priority: form.priority,
       company: form.company,
@@ -246,6 +264,38 @@ const breadcrumbs = computed(() => {
         </DeskField>
         <DeskField label="Description">
           <DeskTextarea v-model="form.description" :rows="3" placeholder="Brief description of project scope" />
+        </DeskField>
+        <DeskField
+          v-if="!route.query.parentId"
+          label="Subprojects"
+          hint="Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1)."
+        >
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              v-model="form.allowSubprojects"
+              class="accent-brand-600"
+            />
+            <span class="text-sm text-ink-700">Allow subprojects under this project</span>
+          </label>
+        </DeskField>
+        <DeskField
+          v-if="!form.allowSubprojects"
+          label="Parent Project"
+          :error="errors.parentId"
+          hint="Pick the group project this project should roll up under."
+        >
+          <DeskLinkPicker
+            v-model="form.parentId"
+            doctype="Project"
+            placeholder="Select parent project"
+            label-field="project_name"
+            value-field="name"
+            :search-fields="['project_name', 'custom_project_id', 'name']"
+            :filters="[['is_group', '=', 1]]"
+            order-by="modified desc"
+            :page-length="20"
+          />
         </DeskField>
       </DeskSection>
 
