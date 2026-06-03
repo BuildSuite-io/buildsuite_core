@@ -114,10 +114,10 @@ export async function getAccessContext(options = {}) {
     .catch((error) => {
       console.warn('[buildsuite] Access context check failed', error)
       const fallback = {
-        allowed: isAuthenticated(),
+        allowed: false,
         user: getSessionUser(),
         roles: [],
-        reason: 'fallback',
+        reason: 'access_check_failed',
       }
 
       accessContextValue = fallback
