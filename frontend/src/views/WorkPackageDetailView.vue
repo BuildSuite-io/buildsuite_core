@@ -19,15 +19,94 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskList from '@/components/desk/DeskList.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import TaskFormModal from '@/components/TaskFormModal.vue'
+import { createDataAdapter } from '@/data/adapters'
 import { fmtCompactINR, fmtDate } from '@/utils/format'
 
 const props = defineProps({ id: String })
 const store = useDataStore()
 const router = useRouter()
+const adapter = createDataAdapter(store)
 
-const wp = computed(() => store.workPackageById(props.id))
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
+
+const workPackageResource = ref(null)
+
+function loadWorkPackageResource() {
+  if (!props.id) {
+    workPackageResource.value = null
+    return
+  }
+  workPackageResource.value = adapter.read('Work Package', props.id, {
+    fields: ['*'],
+    cache: `buildsuite-wp-detail:${props.id}`,
+    transform(rows) {
+      return rows.map(row => ({
+        id: row.name || row.id,
+        code: row.code || '',
+        name: row.work_package_name || row.name || '',
+        projectId: row.project || '',
+        status: row.status || '',
+        budget: Number(row.budget) || 0,
+        progress: Number(row.progress) || 0,
+        startDate: row.start_date || null,
+        endDate: row.end_date || null,
+        owner: row.owner_user || '',
+        description: row.description || '',
+      }))
+    }
+  })
+}
+
+watch(() => props.id, loadWorkPackageResource, { immediate: true })
+
+const wp = computed(() => {
+  const backend = firstResourceRow(workPackageResource.value)
+  return backend || store.workPackageById(props.id)
+})
 const project = computed(() => wp.value ? store.projectById(wp.value.projectId) : null)
-const tasks = computed(() => store.tasksByWorkPackage(props.id))
+
+const tasksResource = ref(null)
+function loadTasksResource() {
+  if (!wp.value?.id) {
+    tasksResource.value = null
+    return
+  }
+  tasksResource.value = adapter.list('Task', {
+    filters: [['work_package', '=', wp.value.id]],
+    orderBy: 'modified desc',
+    pageLength: 300,
+    cache: `buildsuite-wp-tasks:${wp.value.id}`,
+    transform(rows) {
+      return rows.map(row => ({
+        id: row.name || row.id,
+        name: row.subject || row.task_name || row.name || '',
+        projectId: row.project || '',
+        status: row.status || 'Open',
+        priority: row.priority || 'Medium',
+        task_type: row.task_type || 'Activity',
+        assignee: row.owner || '',
+        startDate: row.exp_start_date || null,
+        endDate: row.exp_end_date || null,
+        progress: Number(row.progress) || 0,
+      }))
+    }
+  })
+}
+watch(() => wp.value?.id, loadTasksResource, { immediate: true })
+
+const tasks = computed(() => {
+  const raw = tasksResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return store.tasksByWorkPackage(props.id)
+})
 
 // Edit-mode state. `form` is a working copy that gets reset on cancel so the
 // store record isn't mutated mid-edit.
@@ -38,7 +117,11 @@ const errors = ref({})
 
 function snapshot() {
   if (!wp.value) return {}
-  return JSON.parse(JSON.stringify(wp.value))
+  const data = JSON.parse(JSON.stringify(wp.value))
+  // Normalize date field names for the form
+  if (data.startDate) data.startDate = data.startDate
+  if (data.endDate) data.endDate = data.endDate
+  return data
 }
 watch(wp, (v) => { if (v && !editing.value) form.value = snapshot() }, { immediate: true })
 
@@ -61,25 +144,31 @@ function validate() {
   errors.value = e
   return Object.keys(e).length === 0
 }
-function saveEdit() {
+async function saveEdit() {
   if (!validate()) return
   saving.value = true
-  store.updateWorkPackage(wp.value.id, {
-    code: form.value.code || wp.value.code,
-    name: form.value.name,
-    description: form.value.description || '',
-    status: form.value.status,
-    budget: Number(form.value.budget) || 0,
-    startDate: form.value.startDate || '',
-    endDate: form.value.endDate || '',
-    owner: form.value.owner,
-  })
-  saving.value = false
-  editing.value = false
+  try {
+    await adapter.update('Work Package', wp.value.id, {
+      code: form.value.code || wp.value.code,
+      work_package_name: form.value.name,
+      description: form.value.description || '',
+      status: form.value.status,
+      budget: Number(form.value.budget) || 0,
+      start_date: form.value.startDate || '',
+      end_date: form.value.endDate || '',
+      owner_user: form.value.owner,
+    })
+    workPackageResource.value?.reload?.()
+    editing.value = false
+  } catch (err) {
+    console.error('Failed to update work package:', err)
+  } finally {
+    saving.value = false
+  }
 }
 function onPrimary() { editing.value ? saveEdit() : startEdit() }
 
-function onDelete() {
+async function onDelete() {
   if (!wp.value) return
   const n = tasks.value.length
   const msg = n
@@ -87,8 +176,12 @@ function onDelete() {
     : `Delete "${wp.value.name}"?`
   if (!confirm(msg)) return
   const wpId = wp.value.id
-  store.deleteWorkPackage(wpId)
-  router.push('/app/work-packages')
+  try {
+    await adapter.remove('Work Package', wpId)
+    router.push('/app/work-packages')
+  } catch (err) {
+    console.error('Failed to delete work package:', err)
+  }
 }
 
 const taskSearch = ref('')
