@@ -7,6 +7,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -18,29 +19,47 @@ import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
+const adapter = createDataAdapter(store)
 
 const search = ref('')
 const statusFilter = ref('')
 const priorityFilter = ref('')
 const projectFilter = ref('')
 const assigneeFilter = ref('')
-const taskTypeFilter = ref('')  // proposal §M2 Select — Activity / Milestone / Inspection
+const taskTypeFilter = ref('')
+
+const tasksResource = adapter.list('Task')
+const allTasks = computed(() => tasksResource.data)
+
+const projectsResource = adapter.list('Project')
+const projectsMap = computed(() => {
+  const map = {}
+  projectsResource.data.forEach(p => map[p.name] = p.project_name)
+  return map
+})
+
+const wpsResource = adapter.list('Work Package')
+const wpsMap = computed(() => {
+  const map = {}
+  wpsResource.data.forEach(wp => map[wp.name] = wp.package_name)
+  return map
+})
 
 const items = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return store.tasks.filter(t => {
-    if (term && !t.name.toLowerCase().includes(term)) return false
+  return allTasks.value.filter(t => {
+    if (term && !t.subject.toLowerCase().includes(term)) return false
     if (statusFilter.value && t.status !== statusFilter.value) return false
     if (priorityFilter.value && t.priority !== priorityFilter.value) return false
-    if (projectFilter.value && t.projectId !== projectFilter.value) return false
-    if (assigneeFilter.value && t.assignee !== assigneeFilter.value) return false
+    if (projectFilter.value && t.project !== projectFilter.value) return false
+    if (assigneeFilter.value && t.owner !== assigneeFilter.value) return false
     if (taskTypeFilter.value && (t.task_type || 'Activity') !== taskTypeFilter.value) return false
     return true
   })
 })
 
-function projectName(id) { return store.projectById(id)?.name || id }
-function wpName(id) { return store.workPackageById(id)?.name || '—' }
+function projectName(id) { return projectsMap.value[id] || id }
+function wpName(id) { return wpsMap.value[id] || '—' }
 function memberName(id) { return store.teamMember(id)?.name || id }
 
 const columns = [
@@ -48,7 +67,6 @@ const columns = [
   { key: 'project',  label: 'Project · WP' },
   { key: 'status',   label: 'Status' },
   { key: 'priority', label: 'Priority' },
-  // proposal §M2 — task_type Select inserted between Priority and Assignee.
   { key: 'task_type', label: 'Task Type' },
   { key: 'assignee', label: 'Assignee' },
   { key: 'endDate',  label: 'Due' },
@@ -60,9 +78,9 @@ const breadcrumbs = [
   { label: 'Task' },
 ]
 
-const subtitle = computed(() => `${items.value.length} of ${store.tasks.length}`)
+const subtitle = computed(() => `${items.value.length} of ${allTasks.value.length}`)
 
-function onRowClick(row) { router.push(`/app/tasks/${row.id}`) }
+function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
 </script>
 
 <template>
@@ -150,12 +168,12 @@ function onRowClick(row) { router.push(`/app/tasks/${row.id}`) }
       </template>
 
       <template #cell-name="{ row }">
-        <DeskLink :to="`/app/tasks/${row.id}`" @click.stop>{{ row.name }}</DeskLink>
+        <DeskLink :to="`/app/tasks/${row.name}`" @click.stop>{{ row.subject }}</DeskLink>
       </template>
       <template #cell-project="{ row }">
         <div class="text-xs text-ink-500">
-          <div>{{ projectName(row.projectId) }}</div>
-          <div class="text-ink-400">{{ wpName(row.workPackageId) }}</div>
+          <div>{{ projectName(row.project) }}</div>
+          <div class="text-ink-400">{{ wpName(row.work_package) }}</div>
         </div>
       </template>
       <template #cell-status="{ row }">
@@ -168,10 +186,10 @@ function onRowClick(row) { router.push(`/app/tasks/${row.id}`) }
         <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
       <template #cell-assignee="{ row }">
-        <UserAvatar :user-id="row.assignee" size="xs" />
+        <UserAvatar :user-id="row.owner" size="xs" />
       </template>
       <template #cell-endDate="{ row }">
-        <span class="text-xs text-ink-500">{{ fmtDate(row.endDate) }}</span>
+        <span class="text-xs text-ink-500">{{ fmtDate(row.exp_start_date) }}</span>
       </template>
       <template #cell-progress="{ row }">
         <div class="flex items-center justify-end gap-2">

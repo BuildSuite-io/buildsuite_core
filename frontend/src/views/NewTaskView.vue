@@ -6,6 +6,7 @@
 import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -18,9 +19,13 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
+
+const projectsResource = adapter.list('Project')
+const wpsResource = adapter.list('Work Package')
 
 const form = reactive({
-  projectId: route.query.projectId || (store.projects[0] && store.projects[0].id),
+  projectId: route.query.projectId || (projectsResource.data[0]?.name || ''),
   workPackageId: route.query.workPackageId || null,
   task_type: 'Activity',     // proposal §M2 Select — Activity / Milestone / Inspection
   activityType: null,        // optional Link to Activity Type master (renamed from taskType in S31)
@@ -34,22 +39,23 @@ const form = reactive({
   estimatedHours: 0,
 })
 const errors = ref({})
+const saving = ref(false)
 
-const availableWPs = computed(() => store.workPackages.filter(wp => wp.projectId === form.projectId))
+const availableWPs = computed(() => wpsResource.data.filter(wp => wp.project === form.projectId))
 
 // Activity Types filtered by the selected project's type (per §13.3 item 16 — the
 // Project Type → Activity Type mapping). Falls back to all activity types if no
 // project is selected. We deliberately don't pre-fill any other fields when an
 // activity type is picked — the user opted into that conservative scope.
-const selectedProject = computed(() => store.projectById(form.projectId))
+const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
 const availableActivityTypes = computed(() => {
-  const pt = selectedProject.value?.type
+  const pt = selectedProject.value?.project_type
   return pt ? store.activityTypesForProjectType(pt) : store.activityTypes
 })
 
 watch(() => form.projectId, () => {
   // Reset WP when the parent project changes if the existing WP doesn't belong.
-  if (form.workPackageId && !availableWPs.value.find(wp => wp.id === form.workPackageId)) {
+  if (form.workPackageId && !availableWPs.value.find(wp => wp.name === form.workPackageId)) {
     form.workPackageId = null
   }
   // Same for activity type — if the picked type isn't applicable to the new project type, clear it.
@@ -67,10 +73,29 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function save() {
+async function save() {
   if (!validate()) return
-  const task = store.addTask({ ...form })
-  router.push(`/app/tasks/${task.id}`)
+  saving.value = true
+  try {
+    const res = await adapter.create('Task', {
+      subject: form.name,
+      project: form.projectId,
+      work_package: form.workPackageId,
+      task_type: form.task_type,
+      description: form.description,
+      status: form.status,
+      priority: form.priority,
+      exp_start_date: form.startDate,
+      exp_end_date: form.endDate,
+      owner: form.assignee, // Map to owner for the adapter/Frappe consistency
+      activity_type: form.activityType,
+    })
+    router.push(`/app/tasks/${res.name}`)
+  } catch (err) {
+    console.error('Failed to create task:', err)
+  } finally {
+    saving.value = false
+  }
 }
 function cancel() { router.back() }
 
@@ -126,13 +151,14 @@ const breadcrumbs = [
       <DeskSection title="Hierarchy">
         <DeskField label="Project" required :error="errors.projectId">
           <DeskSelect v-model="form.projectId">
-            <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+            <option value="">— Select project —</option>
+            <option v-for="p in projectsResource.data" :key="p.name" :value="p.name">{{ p.project_name }}</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Work Package" hint="Optional · direct project tasks leave blank">
           <DeskSelect v-model="form.workPackageId">
             <option :value="null">— None · Direct project task —</option>
-            <option v-for="wp in availableWPs" :key="wp.id" :value="wp.id">{{ wp.name }}</option>
+            <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.package_name }}</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Activity Type" hint="Activity Type provides default labour mix and productivity baseline for this task.">

@@ -11,6 +11,7 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import { createDataAdapter } from '@/data/adapters'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -20,8 +21,12 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'created'])
 
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 const errors = ref({})
 const saving = ref(false)
+
+const projectsResource = adapter.list('Project')
+const wpsResource = adapter.list('Work Package')
 
 const form = reactive({
   projectId: '',
@@ -40,7 +45,7 @@ const form = reactive({
 // Reset the form whenever the modal opens. Pre-fill from props.
 watch(() => props.open, (isOpen) => {
   if (!isOpen) return
-  form.projectId      = props.projectId || (store.projects[0]?.id || '')
+  form.projectId      = props.projectId || (projectsResource.data[0]?.name || '')
   form.workPackageId  = props.workPackageId || null
   form.task_type      = 'Activity'
   form.activityType   = null
@@ -54,10 +59,10 @@ watch(() => props.open, (isOpen) => {
   errors.value = {}
 })
 
-const selectedProject = computed(() => store.projectById(form.projectId))
-const availableWPs = computed(() => store.workPackages.filter(wp => wp.projectId === form.projectId))
+const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
+const availableWPs = computed(() => wpsResource.data.filter(wp => wp.project === form.projectId))
 const availableActivityTypes = computed(() => {
-  const pt = selectedProject.value?.type
+  const pt = selectedProject.value?.project_type
   return pt ? store.activityTypesForProjectType(pt) : store.activityTypes
 })
 
@@ -90,13 +95,28 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function save() {
+async function save() {
   if (!validate()) return
   saving.value = true
-  const task = store.addTask({ ...form })
-  saving.value = false
-  emit('created', task)
-  close()
+  try {
+    const task = await adapter.create('Task', {
+      project: form.projectId,
+      work_package: form.workPackageId,
+      task_type: form.task_type,
+      activity_type: form.activityType,
+      subject: form.name,
+      description: form.description,
+      status: form.status,
+      priority: form.priority,
+      owner: form.assignee,
+      exp_start_date: form.startDate,
+      exp_end_date: form.endDate,
+    })
+    emit('created', task)
+    close()
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
@@ -152,13 +172,13 @@ function save() {
             <DeskField label="Project" required :error="errors.projectId" :hint="projectLocked ? 'Pre-selected from where you came in — locked.' : ''">
               <DeskSelect v-model="form.projectId" :disabled="projectLocked">
                 <option value="">— Select project —</option>
-                <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+                <option v-for="p in projectsResource.data" :key="p.name" :value="p.name">{{ p.project_name }}</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Work Package" :hint="wpLocked ? 'Pre-selected — locked.' : 'Optional — leave blank to attach directly to the project.'">
               <DeskSelect v-model="form.workPackageId" :disabled="wpLocked">
                 <option :value="null">— None —</option>
-                <option v-for="wp in availableWPs" :key="wp.id" :value="wp.id">{{ wp.name }}</option>
+                <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.package_name }}</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Activity Type" hint="Optional — provides default labour mix and productivity baseline.">
