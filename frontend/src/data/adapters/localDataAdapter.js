@@ -53,6 +53,7 @@ export function createLocalDataAdapter(store) {
         name: task.id,
         subject: task.name || '',
         project: task.projectId || '',
+        work_package: task.workPackageId || '',
         status: task.status || 'Open',
         priority: task.priority || 'Medium',
         progress: task.progress || 0,
@@ -60,6 +61,36 @@ export function createLocalDataAdapter(store) {
         exp_start_date: task.startDate || null,
         exp_end_date: task.endDate || null,
         task_type: task.task_type || 'Activity',
+        activity_type: task.activityType || null,
+        description: task.description || '',
+      }))
+    }
+
+    if (doctype === 'Task Progress Entry') {
+      return store.taskProgressEntries.map((e) => ({
+        name: e.id,
+        task: e.taskId,
+        entry_date: e.entryDate,
+        owner: e.enteredBy,
+        progress_pct: e.progressPct,
+        skilled_labour: e.skilledLabour,
+        unskilled_labour: e.unskilledLabour,
+        narrative: e.narrative,
+        weather: e.weather,
+        blocker_flag: e.blockerFlag ? 1 : 0,
+        blocker_note: e.blockerNote,
+      }))
+    }
+
+    if (doctype === 'Attachment') {
+      return store.attachments.map((a) => ({
+        name: a.id,
+        parent_doctype: a.parentDoctype,
+        parent_name: a.parentId,
+        file_name: a.fileName,
+        file_url: a.url,
+        file_size: a.size,
+        owner: a.uploadedBy,
       }))
     }
 
@@ -204,15 +235,188 @@ export function createLocalDataAdapter(store) {
     })
   }
 
-  async function create(doctype, _values = {}) {
+  async function create(doctype, values = {}) {
+    if (doctype === 'Project') {
+      const data = {
+        name: values.project_name,
+        code: values.custom_project_id,
+        parentId: values.parent_project,
+        status: values.status,
+        company: values.company,
+        progress: values.percent_complete,
+        startDate: values.expected_start_date,
+        endDate: values.expected_end_date,
+        client: values.customer,
+        type: values.project_type,
+        budget: values.estimated_costing,
+        pm: values.owner,
+        seedDefaultStages: values.seedDefaultStages,
+        seedDefaultWorkPackagesAndTasks: values.seedDefaultWorkPackagesAndTasks,
+      }
+      const record = store.addProject(data)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Work Package') {
+      const data = {
+        projectId: values.project,
+        code: values.code,
+        name: values.work_package_name,
+        description: values.description,
+        status: values.status,
+        budget: values.budget,
+        startDate: values.start_date,
+        endDate: values.end_date,
+        owner: values.owner_user,
+      }
+      const record = store.addWorkPackage(data)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Task') {
+      const data = {
+        projectId: values.project,
+        workPackageId: values.work_package,
+        task_type: values.task_type || 'Activity',
+        activityType: values.activity_type,
+        name: values.subject,
+        description: values.description,
+        status: values.status,
+        priority: values.priority,
+        assignee: values.owner,
+        startDate: values.exp_start_date,
+        endDate: values.exp_end_date,
+      }
+      const record = store.addTask(data)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Task Progress Entry') {
+      const data = {
+        taskId: values.task,
+        entryDate: values.entry_date,
+        enteredBy: values.owner,
+        progressPct: values.progress_pct,
+        skilledLabour: values.skilled_labour,
+        unskilledLabour: values.unskilled_labour,
+        narrative: values.narrative,
+        weather: values.weather,
+        blockerFlag: !!values.blocker_flag,
+        blockerNote: values.blocker_note,
+      }
+      const record = store.addTaskProgressEntry(data)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Attachment') {
+      const data = {
+        parentDoctype: values.parent_doctype,
+        parentId: values.parent_name,
+        fileName: values.file_name,
+        url: values.file_url,
+        size: values.file_size,
+        uploadedBy: values.owner,
+      }
+      const record = store.addAttachment(data)
+      return { ...record, name: record.id }
+    }
+
     return unsupported(`create on ${doctype}`)
   }
 
-  async function update(doctype, _name, _values = {}) {
+  async function update(doctype, name, values = {}) {
+    if (doctype === 'Project') {
+      const patch = {}
+      if (values.project_name !== undefined) patch.name = values.project_name
+      if (values.custom_project_id !== undefined) patch.code = values.custom_project_id
+      if (values.status !== undefined) patch.status = values.status
+      if (values.percent_complete !== undefined) patch.progress = values.percent_complete
+      if (values.expected_start_date !== undefined) patch.startDate = values.expected_start_date
+      if (values.expected_end_date !== undefined) patch.endDate = values.expected_end_date
+      if (values.customer !== undefined) patch.client = values.customer
+      if (values.project_type !== undefined) patch.type = values.project_type
+      if (values.estimated_costing !== undefined) patch.budget = values.estimated_costing
+      if (values.owner !== undefined) patch.pm = values.owner
+
+      const record = store.updateProject(name, patch)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Work Package') {
+      const patch = {}
+      if (values.work_package_name !== undefined) patch.name = values.work_package_name
+      if (values.code !== undefined) patch.code = values.code
+      if (values.description !== undefined) patch.description = values.description
+      if (values.status !== undefined) patch.status = values.status
+      if (values.budget !== undefined) patch.budget = values.budget
+      if (values.start_date !== undefined) patch.startDate = values.start_date
+      if (values.end_date !== undefined) patch.endDate = values.end_date
+      if (values.owner_user !== undefined) patch.owner = values.owner_user
+
+      const record = store.updateWorkPackage(name, patch)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Task') {
+      const patch = {}
+      if (values.subject !== undefined) patch.name = values.subject
+      if (values.status !== undefined) patch.status = values.status
+      if (values.priority !== undefined) patch.priority = values.priority
+      if (values.task_type !== undefined) patch.task_type = values.task_type
+      if (values.owner !== undefined) patch.assignee = values.owner
+      if (values.exp_start_date !== undefined) patch.startDate = values.exp_start_date
+      if (values.exp_end_date !== undefined) patch.endDate = values.exp_end_date
+      if (values.description !== undefined) patch.description = values.description
+
+      const record = store.updateTask(name, patch)
+      return { ...record, name: record.id }
+    }
+
+    if (doctype === 'Task Progress Entry') {
+      const patch = {}
+      if (values.entry_date !== undefined) patch.entryDate = values.entry_date
+      if (values.owner !== undefined) patch.enteredBy = values.owner
+      if (values.progress_pct !== undefined) patch.progressPct = values.progress_pct
+      if (values.skilled_labour !== undefined) patch.skilledLabour = values.skilled_labour
+      if (values.unskilled_labour !== undefined) patch.unskilledLabour = values.unskilled_labour
+      if (values.narrative !== undefined) patch.narrative = values.narrative
+      if (values.weather !== undefined) patch.weather = values.weather
+      if (values.blocker_flag !== undefined) patch.blockerFlag = !!values.blocker_flag
+      if (values.blocker_note !== undefined) patch.blockerNote = values.blocker_note
+
+      const record = store.updateTaskProgressEntry(name, patch)
+      return { ...record, name: record.id }
+    }
+
     return unsupported(`update on ${doctype}`)
   }
 
-  async function remove(doctype, _name) {
+  async function remove(doctype, name) {
+    if (doctype === 'Project') {
+      store.deleteProject(name)
+      return { ok: true }
+    }
+
+    if (doctype === 'Work Package') {
+      store.deleteWorkPackage(name)
+      return { ok: true }
+    }
+
+    if (doctype === 'Task') {
+      store.deleteTask(name)
+      return { ok: true }
+    }
+
+    if (doctype === 'Task Progress Entry') {
+      store.deleteTaskProgressEntry(name)
+      return { ok: true }
+    }
+
+    if (doctype === 'Attachment') {
+      store.deleteAttachment(name)
+      return { ok: true }
+    }
+
     return unsupported(`remove on ${doctype}`)
   }
 
