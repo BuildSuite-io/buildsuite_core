@@ -6,6 +6,7 @@
 import { reactive, ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -18,6 +19,7 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
 // §14 — pre-fill company on the form. For a subproject route (?parentId=), the
 // company is inherited from the parent and the field is locked. For a top-level
@@ -86,12 +88,31 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function save() {
+async function save() {
   if (!validate()) return
   saving.value = true
-  const project = store.addProject({ ...form })
-  saving.value = false
-  router.push(`/app/projects/${project.id}`)
+  try {
+    const res = await adapter.create('Project', {
+      project_name: form.name,
+      custom_project_id: form.code,
+      parent_project: form.parentId,
+      status: form.status,
+      company: form.company,
+      expected_start_date: form.startDate,
+      expected_end_date: form.endDate,
+      customer: form.client,
+      project_type: form.type,
+      estimated_costing: Number(form.budget),
+      owner: form.pm,
+      seedDefaultStages: form.seedDefaultStages,
+      seedDefaultWorkPackagesAndTasks: form.seedDefaultWorkPackagesAndTasks,
+    })
+    router.push(`/app/projects/${res.name}`)
+  } catch (err) {
+    console.error('Failed to create project:', err)
+  } finally {
+    saving.value = false
+  }
 }
 function cancel() { router.back() }
 

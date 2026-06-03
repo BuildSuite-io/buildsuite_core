@@ -459,9 +459,21 @@ function startEdit() {
   editForm.value = { ...project.value }
   editing.value = true
 }
-function saveEdit() {
-  store.updateProject(resolvedProjectId.value, editForm.value)
+async function saveEdit() {
+  await adapter.update('Project', resolvedProjectId.value, {
+    project_name: editForm.value.name,
+    custom_project_id: editForm.value.code,
+    status: editForm.value.status,
+    percent_complete: editForm.value.progress,
+    expected_start_date: editForm.value.startDate,
+    expected_end_date: editForm.value.endDate,
+    customer: editForm.value.client,
+    project_type: editForm.value.type,
+    estimated_costing: Number(editForm.value.budget),
+    owner: editForm.value.pm,
+  })
   editing.value = false
+  projectResource.value?.reload?.()
 }
 function cancelEdit() {
   editing.value = false
@@ -471,9 +483,9 @@ function onPrimary() {
   else startEdit()
 }
 
-function deleteProject() {
+async function deleteProject() {
   if (confirm(`Delete ${project.value.name} and all its subprojects, work packages, and tasks?`)) {
-    store.deleteProject(resolvedProjectId.value)
+    await adapter.remove('Project', resolvedProjectId.value)
     router.push('/app/projects')
   }
 }
