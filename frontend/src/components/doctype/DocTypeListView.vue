@@ -37,27 +37,36 @@ const sortField = ref('')
 const sortDirection = ref('desc')
 
 async function loadMeta() {
+  const mode = import.meta.env.VITE_DATA_MODE || 'remote'
+  if (mode === 'local') {
+    meta.value = { fields: [] } // empty meta for local mode
+    return
+  }
+
   metaLoading.value = true
   metaError.value = null
   try {
-    const response = await fetch(
-      `/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(props.doctype)}&with_parent=1`,
-      {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'X-Frappe-CSRF-Token': window.csrf_token || '',
-        },
+    const response = await fetch('/api/method/frappe.desk.form.load.getdoctype', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': window.csrf_token || '',
       },
-    )
+      body: JSON.stringify({
+        doctype: props.doctype,
+        with_parent: 1,
+      }),
+    })
 
     if (!response.ok) {
-      throw new Error(`Meta fetch failed with status ${response.status}`)
+      throw new Error(`Doctype meta fetch failed with status ${response.status}`)
     }
 
     const payload = await response.json()
-    meta.value = payload?.docs?.[0] || payload?.message || null
+    const resolved = payload?.docs ? payload : payload?.message
+    meta.value = resolved?.docs?.[0] || null
   } catch (error) {
     metaError.value = error
     meta.value = null
@@ -268,7 +277,7 @@ async function fetchCurrentPage(resetPage = false) {
     resource.setData([])
   }
 
-  return resource.list.fetch()
+  return resource.fetch()
 }
 
 watch(

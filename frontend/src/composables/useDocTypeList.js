@@ -1,11 +1,14 @@
 import { createListResource } from 'frappe-ui-list-resource'
+import { useDataStore } from '@/stores'
+import { createLocalDataAdapter } from '@/data/adapters/localDataAdapter'
 
 /**
  * Generic composable for a read-only Frappe DocType list.
  *
- * Wraps createListResource so that standard Frappe permissions, user-permissions,
- * and server-side filters are enforced by the backend automatically.
- * Never add a bespoke /api/method endpoint for standard list reads — use this.
+ * In 'remote' mode (default), it wraps createListResource so that standard
+ * Frappe permissions, user-permissions, and server-side filters are enforced.
+ * In 'local' mode (VITE_DATA_MODE=local), it uses the LocalDataAdapter which
+ * mocks list reads against the Pinia store's seed data.
  *
  * @param {string} doctype      Frappe DocType name, e.g. 'Project'
  * @param {object} [options]
@@ -19,10 +22,17 @@ import { createListResource } from 'frappe-ui-list-resource'
  *   @param {boolean} [options.auto]         Fetch immediately (default: true)
  *   @param {function} [options.transform]   Post-process the data array
  *
- * @returns {import('frappe-ui').ListResource} Reactive resource with
- *   .data, .loading, .error, .reload(), .fetch()
+ * @returns {import('frappe-ui').ListResource} Reactive resource
  */
 export function useDocTypeList(doctype, options = {}) {
+  const mode = import.meta.env.VITE_DATA_MODE || 'remote'
+
+  if (mode === 'local') {
+    const store = useDataStore()
+    const adapter = createLocalDataAdapter(store)
+    return adapter.list(doctype, options)
+  }
+
   const resourceConfig = {
     doctype,
     fields: options.fields ?? ['name'],
