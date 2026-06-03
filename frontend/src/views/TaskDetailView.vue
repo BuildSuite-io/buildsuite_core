@@ -16,20 +16,35 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import { createDataAdapter } from '@/data/adapters'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-const task = computed(() => store.taskById(props.id))
-const project = computed(() => task.value ? store.projectById(task.value.projectId) : null)
-const wp = computed(() => task.value?.workPackageId ? store.workPackageById(task.value.workPackageId) : null)
-const activityType = computed(() => task.value?.activityType ? store.activityTypeById(task.value.activityType) : null)
-const latestEntry = computed(() => task.value ? store.latestProgressEntry(task.value.id) : null)
-const recentEntries = computed(() => task.value ? store.taskProgressEntriesByTask(task.value.id).slice(0, 3) : [])
-const entryCount = computed(() => task.value ? store.taskProgressEntriesByTask(task.value.id).length : 0)
+const taskResource = adapter.read('Task', props.id)
+const task = computed(() => taskResource.data)
+
+const projectResource = adapter.read('Project', computed(() => task.value?.project))
+const project = computed(() => projectResource.data)
+
+const wpResource = adapter.read('Work Package', computed(() => task.value?.work_package))
+const wp = computed(() => wpResource.data)
+
+// Activity types are usually static or fetched once. I'll keep them from the store for now
+// unless I want to be 100% adapter driven.
+const activityType = computed(() => task.value?.activity_type ? store.activityTypeById(task.value.activity_type) : null)
+
+const entriesResource = adapter.list('Task Progress Entry', {
+  filters: [['task', '=', props.id]],
+  orderBy: 'entry_date desc'
+})
+const recentEntries = computed(() => entriesResource.data.slice(0, 3))
+const entryCount = computed(() => entriesResource.data.length)
+const latestEntry = computed(() => entriesResource.data[0] || null)
 
 // ----- File Progress Entry modal -----------------------------------------
 // Replaces the previous route-jump to /app/progress-entries/new. Keeps the
@@ -145,30 +160,46 @@ function validateProgressEntry() {
   progressErrors.value = e
   return Object.keys(e).length === 0
 }
-function saveProgressEntry() {
+async function saveProgressEntry() {
   if (!validateProgressEntry()) return
   savingProgress.value = true
-  const entry = store.addTaskProgressEntry({ ...progressForm, taskId: props.id })
-  // Persist any pending attachments against the new entry. Polymorphic
-  // attachments slice — parentDoctype + parentId form the back-reference,
-  // and the cascade in deleteTaskProgressEntry sweeps them when the entry
-  // is deleted (same shape as Project attachments).
-  for (const f of pendingAttachments.value) {
-    store.addAttachment({
-      parentDoctype: 'Task Progress Entry',
-      parentId: entry.id,
-      fileName: f.fileName,
-      mime: f.mime,
-      size: f.size,
-      url: f.url,
-      uploadedBy: progressForm.enteredBy,
+  try {
+    const entry = await adapter.create('Task Progress Entry', {
+      task: props.id,
+      entry_date: progressForm.entryDate,
+      owner: progressForm.enteredBy,
+      progress_pct: progressForm.progressPct,
+      skilled_labour: progressForm.skilledLabour,
+      unskilled_labour: progressForm.unskilledLabour,
+      narrative: progressForm.narrative,
+      weather: progressForm.weather,
+      blocker_flag: progressForm.blockerFlag ? 1 : 0,
+      blocker_note: progressForm.blockerNote,
     })
+
+    // Persist any pending attachments against the new entry.
+    for (const f of pendingAttachments.value) {
+      await adapter.create('Attachment', {
+        parent_doctype: 'Task Progress Entry',
+        parent_name: entry.name,
+        file_name: f.fileName,
+        file_url: f.url,
+        file_size: f.size,
+        owner: progressForm.enteredBy,
+      })
+    }
+    // Clear local ref WITHOUT revoking blob URLs
+    pendingAttachments.value = []
+    filingProgress.value = false
+
+    // Refresh task and entries list
+    await Promise.all([
+      taskResource.fetch(),
+      entriesResource.fetch()
+    ])
+  } finally {
+    savingProgress.value = false
   }
-  // Clear local ref WITHOUT revoking blob URLs — the store now owns them and
-  // expects to use them on click-to-open. Revoking here would invalidate them.
-  pendingAttachments.value = []
-  savingProgress.value = false
-  filingProgress.value = false
 }
 
 // Edit modal state. `editing` controls visibility; `form` is the working copy
@@ -183,24 +214,37 @@ function startEdit() {
   form.value = { ...task.value }
   editing.value = true
 }
-function saveEdit() {
-  store.updateTask(props.id, form.value)
+async function saveEdit() {
+  await adapter.update('Task', props.id, {
+    subject: form.value.name,
+    status: form.value.status,
+    priority: form.value.priority,
+    task_type: form.value.task_type,
+    activity_type: form.value.activityType,
+    owner: form.value.assignee,
+    exp_start_date: form.value.startDate,
+    exp_end_date: form.value.endDate,
+    description: form.value.description,
+  })
   editing.value = false
+  taskResource.fetch()
 }
 function cancelEdit() {
   form.value = { ...task.value }
   editing.value = false
 }
 
-function quickStatus(status) {
+async function quickStatus(status) {
   const patch = { status }
   if (status === 'Completed') patch.progress = 100
   if (status === 'Open') patch.progress = 0
-  store.updateTask(props.id, patch)
+
+  await adapter.update('Task', props.id, patch)
+  taskResource.fetch()
 }
-function deleteTask() {
+async function deleteTask() {
   if (confirm('Delete this task?')) {
-    store.deleteTask(props.id)
+    await adapter.remove('Task', props.id)
     router.push('/app/tasks')
   }
 }
