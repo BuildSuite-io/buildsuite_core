@@ -5,6 +5,7 @@
 
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { toast } from 'frappe-ui'
 import { useDataStore } from '@/stores'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -465,24 +466,30 @@ function startEdit() {
   editing.value = true
 }
 async function saveEdit() {
-  await adapter.update('Project', resolvedProjectId.value, {
-    project_name: editForm.value.name,
-    custom_project_id: editForm.value.code,
-    is_group: editForm.value.isGroup ? 1 : 0,
-    status: editForm.value.status,
-    priority: editForm.value.priority,
-    percent_complete: editForm.value.progress,
-    expected_start_date: editForm.value.startDate,
-    expected_end_date: editForm.value.endDate,
-    customer: editForm.value.client,
-    project_type: editForm.value.type,
-    company: editForm.value.company,
-    estimated_costing: Number(editForm.value.budget),
-    owner: editForm.value.pm,
-    notes: editForm.value.description,
-  })
-  editing.value = false
-  projectResource.value?.reload?.()
+  try {
+    await adapter.update('Project', resolvedProjectId.value, {
+      project_name: editForm.value.name,
+      custom_project_id: editForm.value.code,
+      is_group: editForm.value.isGroup ? 1 : 0,
+      status: editForm.value.status,
+      priority: editForm.value.priority,
+      percent_complete: editForm.value.progress,
+      expected_start_date: editForm.value.startDate,
+      expected_end_date: editForm.value.endDate,
+      customer: editForm.value.client,
+      project_type: editForm.value.type,
+      company: editForm.value.company,
+      estimated_costing: Number(editForm.value.budget),
+      owner: editForm.value.pm,
+      notes: editForm.value.description,
+    })
+    editing.value = false
+    projectResource.value?.reload?.()
+    toast.create({ message: 'Project updated', type: 'success' })
+  } catch (err) {
+    toast.create({ message: 'Failed to save project', type: 'error' })
+    console.error('saveEdit failed:', err)
+  }
 }
 function cancelEdit() {
   editing.value = false

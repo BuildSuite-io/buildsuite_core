@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, watch } from 'vue'
 import { useDataStore } from '@/stores'
+import { FrappeUIProvider } from 'frappe-ui'
 
 const store = useDataStore()
 onMounted(() => store.hydrate())
@@ -17,11 +18,13 @@ watch(() => store.theme, (t) => applyThemeClass(t), { immediate: true })
 </script>
 
 <template>
-  <router-view v-slot="{ Component }">
-    <transition name="fade" mode="out-in">
-      <component :is="Component" />
-    </transition>
-  </router-view>
+  <FrappeUIProvider>
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+  </FrappeUIProvider>
 </template>
 
 <style>
