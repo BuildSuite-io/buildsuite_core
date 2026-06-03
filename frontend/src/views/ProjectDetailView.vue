@@ -9,6 +9,7 @@ import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -499,10 +500,24 @@ function onPrimary() {
   else startEdit()
 }
 
-async function deleteProject() {
-  if (confirm(`Delete ${project.value.name} and all its subprojects, work packages, and tasks?`)) {
+const showDeleteConfirm = ref(false)
+const deleteLoading = ref(false)
+
+function deleteProject() {
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  deleteLoading.value = true
+  try {
     await adapter.remove('Project', resolvedProjectId.value)
+    showDeleteConfirm.value = false
     router.push('/app/projects')
+  } catch (err) {
+    showToast('Failed to delete project', 'error')
+    console.error('deleteProject failed:', err)
+  } finally {
+    deleteLoading.value = false
   }
 }
 
@@ -1781,6 +1796,17 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
         </div>
       </div>
     </Teleport>
+
+    <!-- Delete confirmation dialog -->
+    <ConfirmDialog
+      v-model:open="showDeleteConfirm"
+      title="Delete project"
+      :message="`Delete '${project?.name}' and all its subprojects, work packages, and tasks? This cannot be undone.`"
+      confirm-label="Delete"
+      :destructive="true"
+      :loading="deleteLoading"
+      @confirm="confirmDelete"
+    />
   </DeskPage>
 
   <div v-else class="px-6 py-20 text-center">
