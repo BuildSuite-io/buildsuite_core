@@ -3,7 +3,7 @@
 // All computed properties, actions, and store calls are preserved exactly from the
 // pre-rebuild version. Only markup and styling change.
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
@@ -512,7 +512,9 @@ async function confirmDelete() {
   try {
     await adapter.remove('Project', resolvedProjectId.value)
     showDeleteConfirm.value = false
-    router.push('/app/projects')
+    await router.push('/app/projects')
+    await nextTick()
+    showToast('Project deleted')
   } catch (err) {
     showToast('Failed to delete project', 'error')
     console.error('deleteProject failed:', err)
