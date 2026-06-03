@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, watch } from 'vue'
 import { useDataStore } from '@/stores'
-import { FrappeUIProvider } from 'frappe-ui'
+import { toasts } from '@/utils/appToast'
 
 const store = useDataStore()
 onMounted(() => store.hydrate())
@@ -18,16 +18,38 @@ watch(() => store.theme, (t) => applyThemeClass(t), { immediate: true })
 </script>
 
 <template>
-  <FrappeUIProvider>
-    <router-view v-slot="{ Component }">
-      <transition name="fade" mode="out-in">
-        <component :is="Component" />
-      </transition>
-    </router-view>
-  </FrappeUIProvider>
+  <router-view v-slot="{ Component }">
+    <transition name="fade" mode="out-in">
+      <component :is="Component" />
+    </transition>
+  </router-view>
+
+  <!-- App-level toast notifications (bottom-right) -->
+  <Teleport to="body">
+    <div class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <TransitionGroup name="toast">
+        <div
+          v-for="t in toasts"
+          :key="t.id"
+          class="pointer-events-auto flex items-center gap-2.5 rounded-lg px-4 py-2.5 shadow-fp-md text-sm font-medium min-w-[240px] max-w-[360px]"
+          :class="{
+            'bg-ink-800 text-white':          t.type === 'success',
+            'bg-danger-500 text-white':        t.type === 'error',
+            'bg-warning-500 text-ink-900':     t.type === 'warning',
+            'bg-info-500 text-white':          t.type === 'info',
+          }"
+        >
+          <span class="flex-1">{{ t.message }}</span>
+        </div>
+      </TransitionGroup>
+    </div>
+  </Teleport>
 </template>
 
 <style>
 .fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(8px); }
 </style>

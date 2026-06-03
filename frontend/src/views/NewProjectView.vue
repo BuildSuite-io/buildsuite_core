@@ -5,8 +5,8 @@
 
 import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { toast } from 'frappe-ui'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -130,10 +130,10 @@ async function save() {
       seedDefaultStages: form.seedDefaultStages,
       seedDefaultWorkPackagesAndTasks: form.seedDefaultWorkPackagesAndTasks,
     })
-    toast.create({ message: 'Project created', type: 'success' })
+    showToast('Project created')
     router.push(`/app/projects/${res.name}`)
   } catch (err) {
-    toast.create({ message: 'Failed to create project', type: 'error' })
+    showToast('Failed to create project', 'error')
     console.error('Failed to create project:', err)
   } finally {
     saving.value = false

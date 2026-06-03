@@ -5,8 +5,8 @@
 
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import { toast } from 'frappe-ui'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -485,9 +485,9 @@ async function saveEdit() {
     })
     editing.value = false
     projectResource.value?.reload?.()
-    toast.create({ message: 'Project updated', type: 'success' })
+    showToast('Project updated')
   } catch (err) {
-    toast.create({ message: 'Failed to save project', type: 'error' })
+    showToast('Failed to save project', 'error')
     console.error('saveEdit failed:', err)
   }
 }
