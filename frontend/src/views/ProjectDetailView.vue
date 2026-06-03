@@ -17,6 +17,7 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
@@ -73,12 +74,14 @@ function loadProjectResource() {
       'customer',
       'project_type',
       'status',
+      'priority',
       'estimated_costing',
       'percent_complete',
       'expected_start_date',
       'expected_end_date',
       'owner',
       'company',
+      'notes',
       'creation',
       'modified',
       'parent_project',
@@ -464,13 +467,16 @@ async function saveEdit() {
     project_name: editForm.value.name,
     custom_project_id: editForm.value.code,
     status: editForm.value.status,
+    priority: editForm.value.priority,
     percent_complete: editForm.value.progress,
     expected_start_date: editForm.value.startDate,
     expected_end_date: editForm.value.endDate,
     customer: editForm.value.client,
     project_type: editForm.value.type,
+    company: editForm.value.company,
     estimated_costing: Number(editForm.value.budget),
     owner: editForm.value.pm,
+    notes: editForm.value.description,
   })
   editing.value = false
   projectResource.value?.reload?.()
@@ -1580,34 +1586,49 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
                 <DeskInput v-model="editForm.name" />
               </DeskField>
               <DeskField label="Client">
-                <DeskSelect v-model="editForm.client">
-                  <option value="">— Select a customer —</option>
-                  <option v-for="c in store.sortedCustomers" :key="c.id" :value="c.name">{{ c.name }}<template v-if="c.type"> · {{ c.type }}</template></option>
-                </DeskSelect>
+                <DeskLinkPicker
+                  v-model="editForm.client"
+                  doctype="Customer"
+                  placeholder="Select customer"
+                  label-field="customer_name"
+                  value-field="name"
+                  :search-fields="['customer_name', 'name']"
+                  order-by="modified desc"
+                  :page-length="20"
+                />
               </DeskField>
               <DeskField label="Type">
-                <DeskSelect v-model="editForm.type">
-                  <option v-for="pt in (store.activeProjectTypes.length ? store.activeProjectTypes : [{ id:'_x', name: editForm.type }])" :key="pt.id" :value="pt.name">{{ pt.name }}</option>
-                </DeskSelect>
+                <DeskLinkPicker
+                  v-model="editForm.type"
+                  doctype="Project Type"
+                  placeholder="Select project type"
+                  label-field="name"
+                  value-field="name"
+                  :search-fields="['name']"
+                  order-by="modified desc"
+                  :page-length="20"
+                />
               </DeskField>
               <DeskField
-                v-if="store.isMultiCompany && project.company"
+                v-if="store.isMultiCompany"
                 label="Company"
-                hint="Locked after create — to move a project, delete and recreate."
+                hint="Legal entity this project belongs to."
               >
-                <div class="flex items-center gap-2 py-1">
-                  <span
-                    v-if="store.companyById(project.company)"
-                    :class="store.companyById(project.company).color"
-                    class="w-2.5 h-2.5 rounded flex-shrink-0"
-                  ></span>
-                  <span class="text-sm text-ink-700">{{ store.companyById(project.company)?.name || project.company }}</span>
-                </div>
+                <DeskLinkPicker
+                  v-model="editForm.company"
+                  doctype="Company"
+                  placeholder="Select company"
+                  label-field="name"
+                  value-field="name"
+                  :search-fields="['name', 'abbr']"
+                  order-by="modified desc"
+                  :page-length="20"
+                />
               </DeskField>
               <DeskField label="Location">
                 <DeskInput v-model="editForm.location" />
               </DeskField>
-              <DeskField label="Description">
+              <DeskField label="Note">
                 <DeskTextarea v-model="editForm.description" :rows="3" />
               </DeskField>
             </DeskSection>
@@ -1629,16 +1650,24 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
             <DeskSection title="Team & status">
               <DeskField label="Project Manager">
-                <DeskSelect v-model="editForm.pm">
-                  <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-                </DeskSelect>
+                <DeskLinkPicker
+                  v-model="editForm.pm"
+                  doctype="Employee"
+                  placeholder="Select project manager"
+                  label-field="employee_name"
+                  value-field="name"
+                  :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
+                  order-by="modified desc"
+                  :page-length="20"
+                />
               </DeskField>
               <DeskField label="Status">
                 <DeskSelect v-model="editForm.status">
-                  <option>Active</option>
+                  <option>Open</option>
+                  <option>Working</option>
                   <option>On Hold</option>
                   <option>Completed</option>
-                  <option>Planned</option>
+                  <option>Cancelled</option>
                 </DeskSelect>
               </DeskField>
               <DeskField label="Priority">

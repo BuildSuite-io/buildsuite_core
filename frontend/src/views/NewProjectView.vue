@@ -15,6 +15,7 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -32,7 +33,7 @@ const form = reactive({
   code: '',
   name: '',
   client: '',
-  status: 'Active',
+  status: 'Open',
   priority: 'Medium',
   // Default type pulled from store.activeProjectTypes first record so the
   // hardcoded 'Commercial' fallback only fires if the projectTypes slice is
@@ -96,7 +97,9 @@ async function save() {
       project_name: form.name,
       custom_project_id: form.code,
       parent_project: form.parentId,
+      is_group: form.parentId ? 0 : 1,
       status: form.status,
+      priority: form.priority,
       company: form.company,
       expected_start_date: form.startDate,
       expected_end_date: form.endDate,
@@ -104,6 +107,7 @@ async function save() {
       project_type: form.type,
       estimated_costing: Number(form.budget),
       owner: form.pm,
+      notes: form.description,
       seedDefaultStages: form.seedDefaultStages,
       seedDefaultWorkPackagesAndTasks: form.seedDefaultWorkPackagesAndTasks,
     })
@@ -161,28 +165,28 @@ const breadcrumbs = computed(() => {
              customer's `name` so existing project records (whose client was
              plain text) still resolve. -->
         <DeskField label="Client" hint="Pick a customer from the master list.">
-          <DeskSelect v-model="form.client">
-            <option value="">— Select a customer —</option>
-            <option v-for="c in store.sortedCustomers" :key="c.id" :value="c.name">{{ c.name }}<template v-if="c.type"> · {{ c.type }}</template></option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.client"
+            doctype="Customer"
+            placeholder="Select customer"
+            label-field="customer_name"
+            value-field="name"
+            :search-fields="['customer_name', 'name']"
+            order-by="modified desc"
+            :page-length="20"
+          />
         </DeskField>
         <DeskField label="Project type">
-          <DeskSelect v-model="form.type">
-            <!-- Session 39: pulled from store.activeProjectTypes so admins can
-                 add / disable / reorder types from /app/settings/project-types
-                 without code. Fallback to the hardcoded list if the slice is
-                 somehow empty. -->
-            <template v-if="store.activeProjectTypes.length">
-              <option v-for="pt in store.activeProjectTypes" :key="pt.id" :value="pt.name">{{ pt.name }}</option>
-            </template>
-            <template v-else>
-              <option>Commercial</option>
-              <option>Residential</option>
-              <option>Infrastructure</option>
-              <option>Industrial</option>
-              <option>Renovation</option>
-            </template>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.type"
+            doctype="Project Type"
+            placeholder="Select project type"
+            label-field="name"
+            value-field="name"
+            :search-fields="['name']"
+            order-by="modified desc"
+            :page-length="20"
+          />
           <!-- Template preview (§13.3 item 19). Shows the default stages /
                work packages / tasks that the template will seed on create.
                Updates reactively as the user changes the Project Type. -->
@@ -225,9 +229,17 @@ const breadcrumbs = computed(() => {
           required
           :hint="parentProject ? 'Inherited from parent project — locked.' : 'Legal entity this project belongs to. Drives downstream accounting, GST and banking segregation.'"
         >
-          <DeskSelect v-model="form.company" :disabled="!!parentProject">
-            <option v-for="c in store.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.company"
+            doctype="Company"
+            placeholder="Select company"
+            label-field="name"
+            value-field="name"
+            :search-fields="['name', 'abbr']"
+            order-by="modified desc"
+            :page-length="20"
+            :disabled="!!parentProject"
+          />
         </DeskField>
         <DeskField label="Location">
           <DeskInput v-model="form.location" placeholder="Site address" />
@@ -258,15 +270,24 @@ const breadcrumbs = computed(() => {
 
       <DeskSection title="Team &amp; status">
         <DeskField label="Project Manager">
-          <DeskSelect v-model="form.pm">
-            <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.pm"
+            doctype="Employee"
+            placeholder="Select project manager"
+            label-field="employee_name"
+            value-field="name"
+            :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
+            order-by="modified desc"
+            :page-length="20"
+          />
         </DeskField>
         <DeskField label="Initial status">
           <DeskSelect v-model="form.status">
-            <option>Active</option>
+            <option>Open</option>
+            <option>Working</option>
+            <option>Completed</option>
             <option>On Hold</option>
-            <option>Planned</option>
+            <option>Cancelled</option>
           </DeskSelect>
         </DeskField>
       </DeskSection>
