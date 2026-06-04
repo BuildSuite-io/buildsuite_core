@@ -90,6 +90,8 @@ website_route_rules = [
 # Installation
 # ------------
 
+after_migrate = "buildsuite_core.install.after_migrate"
+before_migrate = "buildsuite_core.install.before_migrate"
 # before_install = "buildsuite_core.install.before_install"
 # after_install = "buildsuite_core.install.after_install"
 
@@ -143,7 +145,12 @@ website_route_rules = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
+doc_events = {
+	"Project": {
+		"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
+		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
+	}
+}
 # 	"*": {
 # 		"on_update": "method",
 # 		"on_cancel": "method",
@@ -264,26 +271,26 @@ website_route_rules = [
 # Automatically update python controller files with type annotations for this app.
 export_python_type_annotations = True
 
-fixtures = [
-    {
-        "doctype": "Custom HTML Block",
-        "filters": [
-            ["name", "in", ["Site Execution Workspace"]]
-        ]
-    },
-    {
-        "doctype": "Custom Field",
-        "filters": [
-            ["dt", "=", "Project"]
-        ]
-    },
-    {
-        "doctype": "Property Setter",
-        "filters": [
-            ["doc_type", "=", "Project"]
-        ]
-    },
-]
+# fixtures = [
+#     {
+#         "doctype": "Custom HTML Block",
+#         "filters": [
+#             ["name", "in", ["Site Execution Workspace"]]
+#         ]
+#     },
+#     {
+#         "doctype": "Custom Field",
+#         "filters": [
+#             ["dt", "=", "Project"]
+#         ]
+#     },
+#     {
+#         "doctype": "Property Setter",
+#         "filters": [
+#             ["doc_type", "=", "Project"]
+#         ]
+#     },
+# ]
 
 # include js in doctype views
 doctype_js = {
