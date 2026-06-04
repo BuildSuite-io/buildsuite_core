@@ -94,7 +94,7 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
       v-model="search"
       :rows="items"
       :columns="columns"
-      row-key="id"
+      row-key="name"
       search-placeholder="Search tasks…"
       @row-click="onRowClick"
     >
@@ -189,7 +189,7 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
         <UserAvatar :user-id="row.owner" size="xs" />
       </template>
       <template #cell-endDate="{ row }">
-        <span class="text-xs text-ink-500">{{ fmtDate(row.exp_start_date) }}</span>
+        <span class="text-xs text-ink-500">{{ fmtDate(row.exp_end_date) }}</span>
       </template>
       <template #cell-progress="{ row }">
         <div class="flex items-center justify-end gap-2">

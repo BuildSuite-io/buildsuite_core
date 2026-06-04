@@ -4,11 +4,13 @@
 // stays readable. Progress block is pinned to the top so the headline number
 // is the first thing visible.
 
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSection from '@/components/desk/DeskSection.vue'
 import DeskField from '@/components/desk/DeskField.vue'
@@ -25,13 +27,73 @@ const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 
-const taskResource = adapter.read('Task', props.id)
-const task = computed(() => taskResource.data)
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
 
-const projectResource = adapter.read('Project', computed(() => task.value?.project))
+const taskResource = ref(null)
+
+function loadTaskResource() {
+  if (!props.id) {
+    taskResource.value = null
+    return
+  }
+
+  taskResource.value = adapter.read('Task', props.id, {
+    nameField: 'name',
+    fields: [
+      'name',
+      'subject',
+      'project',
+      'work_package',
+      'status',
+      'priority',
+      'progress',
+      'owner',
+      'exp_start_date',
+      'exp_end_date',
+      'task_type',
+      'activity_type',
+      'description',
+    ],
+    cache: `buildsuite-task-detail:${props.id}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        name: row?.subject || row?.name || '',
+        projectId: row?.project || '',
+        workPackageId: row?.work_package || '',
+        status: row?.status || 'Open',
+        priority: row?.priority || 'Medium',
+        progress: Number(row?.progress) || 0,
+        assignee: row?.owner || '',
+        startDate: row?.exp_start_date || null,
+        endDate: row?.exp_end_date || null,
+        task_type: row?.task_type || 'Activity',
+        activityType: row?.activity_type || null,
+        description: row?.description || '',
+      }))
+    },
+  })
+}
+
+watch(() => props.id, loadTaskResource, { immediate: true })
+
+const task = computed(() => {
+  const backendTask = firstResourceRow(taskResource.value)
+  if (backendTask) return backendTask
+  return store.taskById(props.id) || null
+})
+
+const projectResource = adapter.read('Project', computed(() => task.value?.projectId))
 const project = computed(() => projectResource.data)
 
-const wpResource = adapter.read('Work Package', computed(() => task.value?.work_package))
+const wpResource = adapter.read('Work Package', computed(() => task.value?.workPackageId))
 const wp = computed(() => wpResource.data)
 
 // Activity types are usually static or fetched once. I'll keep them from the store for now
@@ -194,9 +256,13 @@ async function saveProgressEntry() {
 
     // Refresh task and entries list
     await Promise.all([
-      taskResource.fetch(),
+      taskResource.value?.reload?.(),
       entriesResource.fetch()
     ])
+    showToast('Progress entry filed')
+  } catch (err) {
+    showToast('Failed to file progress entry', 'error')
+    console.error('saveProgressEntry failed:', err)
   } finally {
     savingProgress.value = false
   }
@@ -215,19 +281,25 @@ function startEdit() {
   editing.value = true
 }
 async function saveEdit() {
-  await adapter.update('Task', props.id, {
-    subject: form.value.name,
-    status: form.value.status,
-    priority: form.value.priority,
-    task_type: form.value.task_type,
-    activity_type: form.value.activityType,
-    owner: form.value.assignee,
-    exp_start_date: form.value.startDate,
-    exp_end_date: form.value.endDate,
-    description: form.value.description,
-  })
-  editing.value = false
-  taskResource.fetch()
+  try {
+    await adapter.update('Task', props.id, {
+      subject: form.value.name,
+      status: form.value.status,
+      priority: form.value.priority,
+      task_type: form.value.task_type,
+      activity_type: form.value.activityType,
+      owner: form.value.assignee,
+      exp_start_date: form.value.startDate,
+      exp_end_date: form.value.endDate,
+      description: form.value.description,
+    })
+    editing.value = false
+    taskResource.value?.reload?.()
+    showToast('Task updated')
+  } catch (err) {
+    showToast('Failed to save task', 'error')
+    console.error('saveEdit failed:', err)
+  }
 }
 function cancelEdit() {
   form.value = { ...task.value }
@@ -239,13 +311,35 @@ async function quickStatus(status) {
   if (status === 'Completed') patch.progress = 100
   if (status === 'Open') patch.progress = 0
 
-  await adapter.update('Task', props.id, patch)
-  taskResource.fetch()
+  try {
+    await adapter.update('Task', props.id, patch)
+    taskResource.value?.reload?.()
+  } catch (err) {
+    showToast('Failed to update task status', 'error')
+    console.error('quickStatus failed:', err)
+  }
 }
-async function deleteTask() {
-  if (confirm('Delete this task?')) {
+
+const showDeleteConfirm = ref(false)
+const deleteLoading = ref(false)
+
+function deleteTask() {
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  deleteLoading.value = true
+  try {
     await adapter.remove('Task', props.id)
-    router.push('/app/tasks')
+    showDeleteConfirm.value = false
+    await router.push('/app/tasks')
+    await nextTick()
+    showToast('Task deleted')
+  } catch (err) {
+    showToast('Failed to delete task', 'error')
+    console.error('confirmDelete failed:', err)
+  } finally {
+    deleteLoading.value = false
   }
 }
 
@@ -308,6 +402,7 @@ const progressColor = computed(() => {
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
         style="border-radius: 6px;"
+        :disabled="deleteLoading"
         @click="deleteTask"
       >Delete</button>
     </template>
@@ -679,6 +774,16 @@ const progressColor = computed(() => {
         </div>
       </div>
     </Teleport>
+
+    <ConfirmDialog
+      v-model:open="showDeleteConfirm"
+      title="Delete task"
+      :message="`Delete '${task?.name}'? This cannot be undone.`"
+      confirm-label="Delete"
+      :destructive="true"
+      :loading="deleteLoading"
+      @confirm="confirmDelete"
+    />
   </DeskPage>
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">Task not found</div>
