@@ -9,6 +9,7 @@ import DeskList from '@/components/desk/DeskList.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
@@ -66,10 +67,9 @@ const tasksResource = adapter.list('Task', {
     }))
   },
 })
-const tasksList = computed(() => toArray(tasksResource.data))
 const tasksMap = computed(() => {
   const map = {}
-  tasksList.value.forEach(t => { map[t.id] = t.name })
+  toArray(tasksResource.data).forEach(t => { map[t.id] = t.name })
   return map
 })
 
@@ -163,15 +163,15 @@ function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
     >
       <template #filter-chips>
         <!-- Task filter -->
-        <DeskSelect v-if="!taskFilter" v-model="taskFilter" class="!w-56">
-          <option value="">Task: Any</option>
-          <option v-for="t in tasksList" :key="t.id" :value="t.id">{{ t.name }}</option>
-        </DeskSelect>
-        <DeskFilterChip
-          v-else
-          label="Task"
-          :value="taskName(taskFilter)"
-          @remove="taskFilter = ''"
+        <DeskLinkPicker
+          v-model="taskFilter"
+          class="!w-56"
+          doctype="Task"
+          label-field="subject"
+          value-field="name"
+          :search-fields="['subject', 'name']"
+          :page-length="10"
+          placeholder="Task: Any"
         />
 
         <!-- Entered by filter -->
