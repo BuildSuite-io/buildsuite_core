@@ -90,7 +90,7 @@ function loadTasksResource() {
         projectId: row.project || '',
         status: row.status || 'Open',
         priority: row.priority || 'Medium',
-        task_type: row.task_type || 'Activity',
+        task_type: row.type || row.task_type || 'Activity',
         assignee: row.owner || '',
         startDate: row.exp_start_date || null,
         endDate: row.exp_end_date || null,
