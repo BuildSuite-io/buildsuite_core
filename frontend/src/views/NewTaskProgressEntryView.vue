@@ -1,15 +1,9 @@
 <script setup>
-// New Task Progress Entry — create form. Desk-styled (CLAUDE.md §12.4).
-// On save, calls store.addTaskProgressEntry which triggers the M1 server-hook
-// simulation (parent Task's progress + status auto-update from this entry's
-// progressPct). Pre-fills the Task select from a ?taskId= query param so the
-// form can be opened from a task detail page in the future without losing
-// context.
-
 import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
+import { showToast } from '@/utils/appToast'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -24,40 +18,50 @@ const route = useRoute()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 
-const tasksResource = adapter.list('Task')
+const tasksResource = adapter.list('Task', {
+  fields: ['name', 'subject', 'status', 'progress'],
+  orderBy: 'modified desc',
+  transform(rows) {
+    return rows.map(row => ({
+      id:       row?.name || '',
+      name:     row?.subject || row?.name || '',
+      status:   row?.status || '',
+      progress: Number(row?.progress) || 0,
+    }))
+  },
+})
 
-// Capture the originating taskId at mount
 const cameFromTaskId = route.query.taskId || null
-const initialTaskId = cameFromTaskId || '' // let it be empty if unknown
 
 const form = reactive({
-  taskId: initialTaskId,
-  entryDate: new Date().toISOString().slice(0, 10),
-  enteredBy: store.user?.id || store.team[0]?.id || '',
-  progressPct: 0,
-  narrative: '',
-  skilledLabour: 0,
+  taskId:          cameFromTaskId || '',
+  entryDate:       new Date().toISOString().slice(0, 10),
+  progressPct:     0,
+  narrative:       '',
+  skilledLabour:   0,
   unskilledLabour: 0,
-  weather: '',
-  blockerFlag: false,
-  blockerNote: '',
+  weather:         '',
+  blockerFlag:     false,
+  blockerNote:     '',
 })
 const errors = ref({})
 const saving = ref(false)
 
-const taskResource = adapter.read('Task', computed(() => form.taskId))
-const selectedTask = computed(() => taskResource.data)
+const selectedTask = computed(() =>
+  form.taskId ? tasksResource.data.find(t => t.id === form.taskId) || null : null
+)
 
+// Pre-fill progress from current task progress when a task is first selected
 watch(selectedTask, (t) => {
   if (t && form.progressPct === 0) {
     form.progressPct = t.progress || 0
   }
 })
 
-// If taskId is empty and tasks load, pick the first one if we don't have cameFromTaskId
+// Auto-select first non-completed task when no taskId was supplied via query
 watch(() => tasksResource.data, (tasks) => {
   if (!form.taskId && tasks.length && !cameFromTaskId) {
-    form.taskId = tasks.find(t => t.status !== 'Completed')?.name || tasks[0]?.name
+    form.taskId = tasks.find(t => t.status !== 'Completed')?.id || tasks[0]?.id || ''
   }
 }, { immediate: true })
 
@@ -79,26 +83,25 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    const created = await adapter.create('Task Progress Entry', {
-      task: form.taskId,
-      entry_date: form.entryDate,
-      owner: form.enteredBy,
-      progress_pct: form.progressPct,
-      skilled_labour: form.skilledLabour,
-      unskilled_labour: form.unskilledLabour,
-      narrative: form.narrative,
-      weather: form.weather,
-      blocker_flag: form.blockerFlag ? 1 : 0,
-      blocker_note: form.blockerNote,
+    const created = await adapter.create('Task Update', {
+      task:                form.taskId,
+      entry_date:          form.entryDate,
+      cumulative_progress: Number(form.progressPct),
+      narrative:           form.narrative,
+      skilled:             Number(form.skilledLabour) || 0,
+      unskilled:           Number(form.unskilledLabour) || 0,
+      weather:             form.weather,
+      blocker:             form.blockerFlag ? 1 : 0,
+      blocker_detail:      form.blockerNote,
     })
-
     if (cameFromTaskId) {
       router.push(`/app/tasks/${cameFromTaskId}`)
     } else {
       router.push(`/app/progress-entries/${created.name || created.id}`)
     }
-  } catch (error) {
-    console.error('Failed to create progress entry', error)
+  } catch (err) {
+    showToast('Failed to file progress entry', 'error')
+    console.error('Failed to create progress entry', err)
   } finally {
     saving.value = false
   }
@@ -130,72 +133,65 @@ const breadcrumbs = [
         />
       </template>
 
-      <!-- Narrow centered column so the form doesn't feel sprawling. Save bar
-           above stays full-width (matches Frappe Desk's form layout). -->
       <div class="max-w-3xl mx-auto">
-      <DeskSection title="Task &amp; date" :cols="2">
-        <DeskField label="Task" required :error="errors.taskId">
-          <DeskSelect v-model="form.taskId">
-            <option value="">— Select task —</option>
-            <option v-for="t in store.tasks" :key="t.id" :value="t.id">
-              {{ t.name }} · {{ t.status }} · {{ t.progress }}%
-            </option>
-          </DeskSelect>
-        </DeskField>
-        <DeskField label="Entry date">
-          <DeskInput v-model="form.entryDate" type="date" />
-        </DeskField>
-        <div v-if="selectedTask" class="md:col-span-2 text-xs text-ink-500 bg-ink-50 border border-ink-200 px-3 py-2" style="border-radius: 2px;">
-          Selected task <strong class="text-ink-800">{{ selectedTask.name }}</strong> is currently at
-          <strong class="text-ink-800 tabular-nums">{{ selectedTask.progress }}% · {{ selectedTask.status }}</strong>.
-          The Cumulative progress % you enter below will become the task's new state on save.
-        </div>
-      </DeskSection>
-
-      <DeskSection title="Progress" :cols="2">
-        <DeskField label="Cumulative progress (%)" required hint="The NEW cumulative % after this entry — not a delta. 0–100." :error="errors.progressPct">
-          <DeskInput v-model="form.progressPct" type="number" min="0" max="100" step="1" />
-        </DeskField>
-        <DeskField label="Entered by">
-          <DeskSelect v-model="form.enteredBy">
-            <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-          </DeskSelect>
-        </DeskField>
-        <div class="md:col-span-2">
-          <DeskField label="Narrative" hint="What was completed today? Any context worth recording?">
-            <DeskTextarea v-model="form.narrative" :rows="3" placeholder="e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken." />
+        <DeskSection title="Task &amp; date" :cols="2">
+          <DeskField label="Task" required :error="errors.taskId">
+            <DeskSelect v-model="form.taskId">
+              <option value="">— Select task —</option>
+              <option v-for="t in tasksResource.data" :key="t.id" :value="t.id">
+                {{ t.name }} · {{ t.status }} · {{ t.progress }}%
+              </option>
+            </DeskSelect>
           </DeskField>
-        </div>
-      </DeskSection>
-
-      <DeskSection title="Labour deployed today" :cols="2">
-        <DeskField label="Skilled labour" hint="Count of skilled workers on site today">
-          <DeskInput v-model="form.skilledLabour" type="number" />
-        </DeskField>
-        <DeskField label="Unskilled labour" hint="Count of unskilled workers / helpers">
-          <DeskInput v-model="form.unskilledLabour" type="number" />
-        </DeskField>
-      </DeskSection>
-
-      <DeskSection title="Site conditions" :cols="2">
-        <DeskField label="Weather" hint="Optional · only if it's worth recording">
-          <DeskSelect v-model="form.weather">
-            <option value="">— No record —</option>
-            <option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">{{ w }}</option>
-          </DeskSelect>
-        </DeskField>
-        <DeskField label="Blocker">
-          <label class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer">
-            <input v-model="form.blockerFlag" type="checkbox" class="h-3.5 w-3.5" />
-            Flag a blocker on this entry
-          </label>
-        </DeskField>
-        <div v-if="form.blockerFlag" class="md:col-span-2">
-          <DeskField label="Blocker detail" required hint="What blocked progress today?" :error="errors.blockerNote">
-            <DeskTextarea v-model="form.blockerNote" :rows="2" placeholder="e.g. Afternoon shower delayed final bay by 2 hours" />
+          <DeskField label="Entry date">
+            <DeskInput v-model="form.entryDate" type="date" />
           </DeskField>
-        </div>
-      </DeskSection>
+          <div v-if="selectedTask" class="md:col-span-2 text-xs text-ink-500 bg-ink-50 border border-ink-200 px-3 py-2" style="border-radius: 2px;">
+            Selected task <strong class="text-ink-800">{{ selectedTask.name }}</strong> is currently at
+            <strong class="text-ink-800 tabular-nums">{{ selectedTask.progress }}% · {{ selectedTask.status }}</strong>.
+            The Cumulative progress % you enter below will become the task's new state on save.
+          </div>
+        </DeskSection>
+
+        <DeskSection title="Progress" :cols="2">
+          <DeskField label="Cumulative progress (%)" required hint="The NEW cumulative % after this entry — not a delta. 0–100." :error="errors.progressPct">
+            <DeskInput v-model="form.progressPct" type="number" min="0" max="100" step="1" />
+          </DeskField>
+          <div class="md:col-span-2">
+            <DeskField label="Narrative" hint="What was completed today? Any context worth recording?">
+              <DeskTextarea v-model="form.narrative" :rows="3" placeholder="e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken." />
+            </DeskField>
+          </div>
+        </DeskSection>
+
+        <DeskSection title="Labour deployed today" :cols="2">
+          <DeskField label="Skilled labour" hint="Count of skilled workers on site today">
+            <DeskInput v-model="form.skilledLabour" type="number" />
+          </DeskField>
+          <DeskField label="Unskilled labour" hint="Count of unskilled workers / helpers">
+            <DeskInput v-model="form.unskilledLabour" type="number" />
+          </DeskField>
+        </DeskSection>
+
+        <DeskSection title="Site conditions" :cols="2">
+          <DeskField label="Weather" hint="Optional · only if it's worth recording">
+            <DeskSelect v-model="form.weather">
+              <option value="">— No record —</option>
+              <option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">{{ w }}</option>
+            </DeskSelect>
+          </DeskField>
+          <DeskField label="Blocker">
+            <label class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer">
+              <input v-model="form.blockerFlag" type="checkbox" class="h-3.5 w-3.5" />
+              Flag a blocker on this entry
+            </label>
+          </DeskField>
+          <div v-if="form.blockerFlag" class="md:col-span-2">
+            <DeskField label="Blocker detail" required hint="What blocked progress today?" :error="errors.blockerNote">
+              <DeskTextarea v-model="form.blockerNote" :rows="2" placeholder="e.g. Afternoon shower delayed final bay by 2 hours" />
+            </DeskField>
+          </div>
+        </DeskSection>
       </div>
     </DeskForm>
   </DeskPage>
