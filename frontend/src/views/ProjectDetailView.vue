@@ -22,6 +22,7 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { toDateInputValue } from '@/utils/dateInput'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
@@ -291,6 +292,7 @@ function loadTasksResource() {
     'name',
     'subject',
     'project',
+    'type',
     'status',
     'priority',
     'progress',
@@ -323,7 +325,7 @@ function loadTasksResource() {
         projectId: row?.project || '',
         status: row?.status || 'Open',
         priority: row?.priority || 'Medium',
-        task_type: row?.task_type || 'Activity',
+        task_type: row?.type || row?.task_type || 'Activity',
         assignee: row?.owner || row?.assignee || '',
         startDate: row?.exp_start_date || row?.start_date || null,
         endDate: row?.exp_end_date || row?.end_date || null,
@@ -462,8 +464,18 @@ watch(() => props.id, () => {
   editing.value = false
 })
 
+function buildProjectEditForm(source) {
+  if (!source) return {}
+
+  return {
+    ...source,
+    startDate: toDateInputValue(source.startDate),
+    endDate: toDateInputValue(source.endDate),
+  }
+}
+
 function startEdit() {
-  editForm.value = { ...project.value }
+  editForm.value = buildProjectEditForm(project.value)
   editing.value = true
 }
 async function saveEdit() {
@@ -493,6 +505,7 @@ async function saveEdit() {
   }
 }
 function cancelEdit() {
+  editForm.value = buildProjectEditForm(project.value)
   editing.value = false
 }
 function onPrimary() {
