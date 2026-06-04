@@ -45,6 +45,8 @@
 | `isAccessContextFresh(maxAgeMs)` | `frontend/src/utils/session.js` | Validate whether cached backend access status is still usable | `getAccessContext` |
 | `clearAccessContextCache()` | `frontend/src/utils/session.js` | Reset cached access-context promise | Reserved for future re-check flows |
 | `toDateInputValue(value)` | `frontend/src/utils/dateInput.js` | Normalize date-like values to native date-input format (`YYYY-MM-DD`) | `ProjectDetailView.vue` edit modal |
+| `useProjectDetailListFilters({ ... })` | `frontend/src/views/project-detail/useProjectDetailListFilters.js` | Centralize Project Detail list-search state, per-tab filtering, and derived list stats | `ProjectDetailView.vue` |
+| `PROJECT_REPORTS`, `*_COLS` constants | `frontend/src/views/project-detail/projectDetailConfig.js` | Canonical report tile metadata and DeskList column definitions for Project Detail tabs | `ProjectDetailView.vue` |
 | `hydrateFromRuntime()` | `frontend/src/stores/session.js` | Sync session user/authenticated state from runtime cookie globals | `refreshAccess`, `bootstrapSession` |
 | `refreshAccess(options)` | `frontend/src/stores/session.js` | Pull backend access context and normalize auth/access store state | `bootstrapSession`, `ensureAccess` |
 | `bootstrapSession()` | `frontend/src/stores/session.js` | One-time session/access initialization before route handling | `main.js`, `ensureAccess` |
