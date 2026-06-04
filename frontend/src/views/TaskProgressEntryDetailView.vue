@@ -1,17 +1,12 @@
 <script setup>
-// Task Progress Entry — detail view. Desk-styled (CLAUDE.md §12.4).
-// Edits and deletes go through store.updateTaskProgressEntry / deleteTaskProgressEntry,
-// both of which trigger _recomputeTaskFromEntries (the M1 server-hook simulation that
-// auto-updates the parent Task's progress + status from the latest entry — see §13.3
-// item 20). So saving a smaller progressPct on the latest entry will pull the parent
-// task back; deleting the latest entry will revert the task to the prior entry's value
-// (or to 0/Open if no entries remain).
-
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
+import { showToast } from '@/utils/appToast'
+import { toDateInputValue } from '@/utils/dateInput'
 import UserAvatar from '@/components/UserAvatar.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -28,72 +23,254 @@ const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 
-const entryResource = adapter.read('Task Progress Entry', props.id)
-const entry = computed(() => entryResource.data)
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
 
-const taskResource = adapter.read('Task', computed(() => entry.value?.task))
-const task = computed(() => taskResource.data)
+// ── Entry ────────────────────────────────────────────────────────────────────
 
-const projectResource = adapter.read('Project', computed(() => task.value?.project))
-const project = computed(() => projectResource.data)
+const entryResource = ref(null)
 
-const wpResource = adapter.read('Work Package', computed(() => task.value?.work_package))
-const wp = computed(() => wpResource.data)
+function loadEntryResource() {
+  if (!props.id) { entryResource.value = null; return }
+  entryResource.value = adapter.read('Task Update', props.id, {
+    nameField: 'name',
+    fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner', 'creation'],
+    cache: `buildsuite-task-update-detail:${props.id}`,
+    transform(rows) {
+      return rows.map(row => ({
+        id:              row?.name || '',
+        task:            row?.task || '',
+        entryDate:       row?.entry_date || null,
+        progressPct:     Number(row?.cumulative_progress) || 0,
+        narrative:       row?.narrative || '',
+        skilledLabour:   Number(row?.skilled) || 0,
+        unskilledLabour: Number(row?.unskilled) || 0,
+        weather:         row?.weather || '',
+        blockerFlag:     !!Number(row?.blocker),
+        blockerNote:     row?.blocker_detail || '',
+        enteredBy:       row?.owner || '',
+        createdAt:       row?.creation || null,
+      }))
+    },
+  })
+}
 
-// Latest entry on the parent task
-const entriesResource = adapter.list('Task Progress Entry', {
-  filters: computed(() => task.value ? [['task', '=', task.value.name]] : null),
-  orderBy: 'entry_date desc',
-  pageLength: 1
+watch(() => props.id, loadEntryResource, { immediate: true })
+
+const entry = computed(() => {
+  const backendEntry = firstResourceRow(entryResource.value)
+  if (backendEntry) return backendEntry
+  const local = store.taskProgressEntries?.find(e => e.id === props.id || e.name === props.id)
+  if (!local) return null
+  return {
+    id:              local.id,
+    task:            local.taskId || local.task || '',
+    entryDate:       local.entryDate || local.entry_date || null,
+    progressPct:     Number(local.progressPct ?? local.progress_pct) || 0,
+    narrative:       local.narrative || '',
+    skilledLabour:   Number(local.skilledLabour ?? local.skilled_labour) || 0,
+    unskilledLabour: Number(local.unskilledLabour ?? local.unskilled_labour) || 0,
+    weather:         local.weather || '',
+    blockerFlag:     !!(local.blockerFlag ?? local.blocker_flag),
+    blockerNote:     local.blockerNote || local.blocker_note || '',
+    enteredBy:       local.enteredBy || local.owner || '',
+    createdAt:       local.createdAt || null,
+  }
 })
-const latestOnTask = computed(() => entriesResource.data[0] || null)
-const isLatestOnTask = computed(() => latestOnTask.value && entry.value && latestOnTask.value.name === entry.value.name)
+
+// ── Related records ──────────────────────────────────────────────────────────
+
+const taskResource = ref(null)
+
+function loadTaskResource(taskId) {
+  if (!taskId) { taskResource.value = null; return }
+  taskResource.value = adapter.read('Task', taskId, {
+    fields: ['name', 'subject', 'project', 'work_package', 'status', 'progress'],
+    transform(rows) {
+      return rows.map(row => ({
+        id:            row?.name || '',
+        name:          row?.subject || row?.name || '',
+        projectId:     row?.project || '',
+        workPackageId: row?.work_package || '',
+        status:        row?.status || '',
+        progress:      Number(row?.progress) || 0,
+      }))
+    },
+  })
+}
+
+watch(() => entry.value?.task, loadTaskResource, { immediate: true })
+const task = computed(() => firstResourceRow(taskResource.value))
+
+const projectResource = ref(null)
+
+function loadProjectResource(projectId) {
+  if (!projectId) { projectResource.value = null; return }
+  projectResource.value = adapter.read('Project', projectId, {
+    fields: ['name', 'project_name'],
+    transform(rows) {
+      return rows.map(row => ({
+        id:   row?.name || '',
+        name: row?.project_name || row?.name || '',
+      }))
+    },
+  })
+}
+
+watch(() => task.value?.projectId, loadProjectResource, { immediate: true })
+const project = computed(() => firstResourceRow(projectResource.value))
+
+const wpResource = ref(null)
+
+function loadWpResource(wpId) {
+  if (!wpId) { wpResource.value = null; return }
+  wpResource.value = adapter.read('Work Package', wpId, {
+    fields: ['name', 'work_package_name'],
+    transform(rows) {
+      return rows.map(row => ({
+        id:   row?.name || '',
+        name: row?.work_package_name || row?.name || '',
+      }))
+    },
+  })
+}
+
+watch(() => task.value?.workPackageId, loadWpResource, { immediate: true })
+const wp = computed(() => firstResourceRow(wpResource.value))
+
+// ── Latest-on-task check ─────────────────────────────────────────────────────
+
+const latestEntriesResource = ref(null)
+
+function loadLatestEntriesResource(taskId) {
+  if (!taskId) { latestEntriesResource.value = null; return }
+  latestEntriesResource.value = adapter.list('Task Update', {
+    filters: [['task', '=', taskId]],
+    fields: ['name', 'entry_date', 'cumulative_progress'],
+    orderBy: 'entry_date desc',
+    pageLength: 1,
+    transform(rows) {
+      return rows.map(row => ({
+        id:          row?.name || '',
+        entryDate:   row?.entry_date || null,
+        progressPct: Number(row?.cumulative_progress) || 0,
+      }))
+    },
+  })
+}
+
+watch(() => task.value?.id, loadLatestEntriesResource, { immediate: true })
+
+const latestOnTask = computed(() => {
+  const raw = latestEntriesResource.value?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  return null
+})
+const isLatestOnTask = computed(() =>
+  latestOnTask.value && entry.value && latestOnTask.value.id === entry.value.id
+)
+
+// ── Edit form ────────────────────────────────────────────────────────────────
 
 const editing = ref(false)
+const saving = ref(false)
 const form = ref({})
 
-watch(entry, (e) => { if (e) form.value = { ...e } }, { immediate: true })
+function buildEntryForm(source) {
+  if (!source) return {}
+  return {
+    entryDate:       toDateInputValue(source.entryDate),
+    progressPct:     source.progressPct ?? 0,
+    narrative:       source.narrative || '',
+    skilledLabour:   source.skilledLabour ?? 0,
+    unskilledLabour: source.unskilledLabour ?? 0,
+    weather:         source.weather || '',
+    blockerFlag:     !!source.blockerFlag,
+    blockerNote:     source.blockerNote || '',
+  }
+}
+
+watch(entry, (e) => { if (e && !editing.value) form.value = buildEntryForm(e) }, { immediate: true })
 
 function startEdit() {
-  if (entry.value) form.value = { ...entry.value }
+  if (entry.value) form.value = buildEntryForm(entry.value)
   editing.value = true
 }
+
 async function saveEdit() {
-  await adapter.update('Task Progress Entry', props.id, {
-    entry_date: form.value.entry_date,
-    owner: form.value.owner,
-    progress_pct: form.value.progress_pct,
-    skilled_labour: form.value.skilled_labour,
-    unskilled_labour: form.value.unskilled_labour,
-    narrative: form.value.narrative,
-    weather: form.value.weather,
-    blocker_flag: form.value.blocker_flag ? 1 : 0,
-    blocker_note: form.value.blocker_note,
-  })
-  editing.value = false
-  entryResource.fetch()
+  saving.value = true
+  try {
+    await adapter.update('Task Update', props.id, {
+      entry_date:          form.value.entryDate,
+      cumulative_progress: Number(form.value.progressPct),
+      narrative:           form.value.narrative,
+      skilled:             Number(form.value.skilledLabour) || 0,
+      unskilled:           Number(form.value.unskilledLabour) || 0,
+      weather:             form.value.weather,
+      blocker:             form.value.blockerFlag ? 1 : 0,
+      blocker_detail:      form.value.blockerNote,
+    })
+    editing.value = false
+    entryResource.value?.reload?.()
+    showToast('Progress entry updated')
+  } catch (err) {
+    showToast('Failed to save progress entry', 'error')
+    console.error('saveEdit failed:', err)
+  } finally {
+    saving.value = false
+  }
 }
+
 function cancelEdit() {
-  if (entry.value) form.value = { ...entry.value }
+  if (entry.value) form.value = buildEntryForm(entry.value)
   editing.value = false
 }
+
 function onPrimary() {
   if (editing.value) saveEdit()
   else startEdit()
 }
-async function deleteEntry() {
-  const wasLatest = isLatestOnTask.value
+
+// ── Delete ───────────────────────────────────────────────────────────────────
+
+const showDeleteConfirm = ref(false)
+const deleteLoading = ref(false)
+
+function deleteEntry() { showDeleteConfirm.value = true }
+
+async function confirmDelete() {
+  deleteLoading.value = true
   const taskId = entry.value?.task
-  if (!confirm(wasLatest
-    ? `Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).`
-    : `Delete this entry? It's a historical entry; the task's current progress will not change.`)) return
-  await adapter.remove('Task Progress Entry', props.id)
-  // Return to the parent task if we have it, otherwise the list.
-  router.push(taskId ? `/app/tasks/${taskId}` : '/app/progress-entries')
+  try {
+    await adapter.remove('Task Update', props.id)
+    showDeleteConfirm.value = false
+    await router.push(taskId ? `/app/tasks/${taskId}` : '/app/progress-entries')
+    await nextTick()
+    showToast('Progress entry deleted')
+  } catch (err) {
+    showToast('Failed to delete progress entry', 'error')
+    console.error('confirmDelete failed:', err)
+  } finally {
+    deleteLoading.value = false
+  }
 }
+
+// ── Display helpers ──────────────────────────────────────────────────────────
 
 const WEATHER_OPTIONS = ['Clear', 'Rainy', 'Hot', 'Cold', 'Storm']
 const WEATHER_ICON = { Clear: '☀️', Rainy: '🌧️', Hot: '🌡️', Cold: '❄️', Storm: '⛈️' }
+
+const deleteMessage = computed(() => isLatestOnTask.value
+  ? `Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).`
+  : `Delete this entry? It's a historical entry; the task's current progress will not change.`
+)
 
 const breadcrumbs = computed(() => {
   const out = [
@@ -114,7 +291,8 @@ const titleStatuses = computed(() => {
 
 const subtitle = computed(() => entry.value
   ? `${entry.value.id} · ${fmtDate(entry.value.entryDate)}`
-  : '')
+  : ''
+)
 </script>
 
 <template>
@@ -128,7 +306,7 @@ const subtitle = computed(() => entry.value
     <DeskForm>
       <template #action-bar>
         <DeskActionBar
-          :save-label="editing ? 'Save' : 'Edit'"
+          :save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
           :show-cancel="editing"
           cancel-label="Cancel"
           @save="onPrimary"
@@ -137,7 +315,9 @@ const subtitle = computed(() => entry.value
           <template #left>
             <span v-if="!isLatestOnTask && latestOnTask" class="text-[11px] text-ink-500">
               ⚠ Older entry — task's current progress is
-              <DeskLink :to="`/app/progress-entries/${latestOnTask.id}`" class="font-medium">{{ latestOnTask.progressPct }}% from TPE-{{ latestOnTask.id.split('-').slice(-2).join('-') }}</DeskLink>
+              <DeskLink :to="`/app/progress-entries/${latestOnTask.id}`" class="font-medium">
+                {{ latestOnTask.progressPct }}% ({{ latestOnTask.id }})
+              </DeskLink>
             </span>
           </template>
           <template #menu>
@@ -151,11 +331,12 @@ const subtitle = computed(() => entry.value
         </DeskActionBar>
       </template>
 
-      <!-- 2-col body: main details on the left, Connections on the right -->
+      <!-- 2-col body: main details left, Connections right -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2">
-          <!-- Progress section -->
-          <DeskSection title="Progress" v-if="!editing">
+
+          <!-- Progress section — view mode -->
+          <DeskSection v-if="!editing" title="Progress">
             <DeskField label="Entry date">
               <div class="text-sm text-ink-900 py-1">{{ fmtDate(entry.entryDate) }}</div>
             </DeskField>
@@ -176,7 +357,8 @@ const subtitle = computed(() => entry.value
             </DeskField>
           </DeskSection>
 
-          <DeskSection title="Progress" v-else>
+          <!-- Progress section — edit mode -->
+          <DeskSection v-else title="Progress">
             <DeskField label="Entry date">
               <DeskInput v-model="form.entryDate" type="date" />
             </DeskField>
@@ -188,8 +370,8 @@ const subtitle = computed(() => entry.value
             </DeskField>
           </DeskSection>
 
-          <!-- Labour section -->
-          <DeskSection title="Labour deployed today" :cols="2" v-if="!editing">
+          <!-- Labour section — view mode -->
+          <DeskSection v-if="!editing" title="Labour deployed today" :cols="2">
             <DeskField label="Skilled labour">
               <div class="text-sm text-ink-900 py-1 tabular-nums">{{ entry.skilledLabour || 0 }}</div>
             </DeskField>
@@ -198,7 +380,8 @@ const subtitle = computed(() => entry.value
             </DeskField>
           </DeskSection>
 
-          <DeskSection title="Labour deployed today" :cols="2" v-else>
+          <!-- Labour section — edit mode -->
+          <DeskSection v-else title="Labour deployed today" :cols="2">
             <DeskField label="Skilled labour" hint="Count of skilled workers on site today">
               <DeskInput v-model="form.skilledLabour" type="number" />
             </DeskField>
@@ -207,8 +390,8 @@ const subtitle = computed(() => entry.value
             </DeskField>
           </DeskSection>
 
-          <!-- Conditions section -->
-          <DeskSection title="Site conditions" :cols="2" v-if="!editing">
+          <!-- Site conditions — view mode -->
+          <DeskSection v-if="!editing" title="Site conditions" :cols="2">
             <DeskField label="Weather">
               <div class="text-sm text-ink-900 py-1">
                 <span v-if="entry.weather">
@@ -234,7 +417,8 @@ const subtitle = computed(() => entry.value
             </div>
           </DeskSection>
 
-          <DeskSection title="Site conditions" :cols="2" v-else>
+          <!-- Site conditions — edit mode -->
+          <DeskSection v-else title="Site conditions" :cols="2">
             <DeskField label="Weather">
               <DeskSelect v-model="form.weather">
                 <option value="">— No record —</option>
@@ -254,23 +438,9 @@ const subtitle = computed(() => entry.value
             </div>
           </DeskSection>
 
-          <!-- Attachments (stub — full upload pipeline lives in Phase 4) -->
-          <DeskSection title="Attachments">
-            <div class="md:col-span-2 text-xs text-ink-500">
-              <template v-if="(entry.attachments || []).length">
-                <ul class="space-y-1">
-                  <li v-for="(f, i) in entry.attachments" :key="i" class="font-mono">📎 {{ f }}</li>
-                </ul>
-              </template>
-              <template v-else>
-                <span class="italic">No attachments on this entry.</span>
-                <span class="text-ink-400 italic ml-1">Full upload pipeline — Phase 4.</span>
-              </template>
-            </div>
-          </DeskSection>
         </div>
 
-        <!-- Connections panel (Frappe-style related-records) -->
+        <!-- Connections panel -->
         <aside class="lg:col-span-1 space-y-2">
           <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Task</div>
@@ -310,8 +480,8 @@ const subtitle = computed(() => entry.value
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>📎</span><span>Attachments — <span class="font-medium text-ink-700">{{ (entry.attachments || []).length }}</span></span>
-            <span v-if="!(entry.attachments || []).length" class="text-ink-400 italic ml-1">stub</span>
+            <span>📎</span><span>Attachments — <span class="font-medium text-ink-700">0</span></span>
+            <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span>👥</span><span>Entered by —</span>
@@ -320,6 +490,16 @@ const subtitle = computed(() => entry.value
         </div>
       </section>
     </DeskForm>
+
+    <ConfirmDialog
+      v-model:open="showDeleteConfirm"
+      title="Delete progress entry"
+      :message="deleteMessage"
+      confirm-label="Delete"
+      :destructive="true"
+      :loading="deleteLoading"
+      @confirm="confirmDelete"
+    />
   </DeskPage>
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">Progress entry not found.</div>
