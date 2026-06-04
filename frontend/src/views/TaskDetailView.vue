@@ -36,6 +36,13 @@ function firstResourceRow(resource) {
   return raw || null
 }
 
+function resourceRows(resource) {
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+}
+
 const taskResource = ref(null)
 
 function loadTaskResource() {
@@ -57,8 +64,7 @@ function loadTaskResource() {
       'owner',
       'exp_start_date',
       'exp_end_date',
-      'task_type',
-      'activity_type',
+      'type',
       'description',
     ],
     cache: `buildsuite-task-detail:${props.id}`,
@@ -74,8 +80,7 @@ function loadTaskResource() {
         assignee: row?.owner || '',
         startDate: row?.exp_start_date || null,
         endDate: row?.exp_end_date || null,
-        task_type: row?.task_type || 'Activity',
-        activityType: row?.activity_type || null,
+        task_type: row?.type || 'Activity',
         description: row?.description || '',
       }))
     },
@@ -90,23 +95,89 @@ const task = computed(() => {
   return store.taskById(props.id) || null
 })
 
-const projectResource = adapter.read('Project', computed(() => task.value?.projectId))
-const project = computed(() => projectResource.data)
+const projectResource = ref(null)
 
-const wpResource = adapter.read('Work Package', computed(() => task.value?.workPackageId))
-const wp = computed(() => wpResource.data)
+function loadProjectResource(projectId) {
+  if (!projectId) {
+    projectResource.value = null
+    return
+  }
 
-// Activity types are usually static or fetched once. I'll keep them from the store for now
-// unless I want to be 100% adapter driven.
-const activityType = computed(() => task.value?.activity_type ? store.activityTypeById(task.value.activity_type) : null)
+  projectResource.value = adapter.read('Project', projectId, {
+    fields: ['name', 'project_name'],
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        name: row?.project_name || row?.name || '',
+      }))
+    },
+  })
+}
 
-const entriesResource = adapter.list('Task Progress Entry', {
+watch(() => task.value?.projectId, loadProjectResource, { immediate: true })
+
+const project = computed(() => firstResourceRow(projectResource.value))
+
+const wpResource = ref(null)
+
+function loadWpResource(workPackageId) {
+  if (!workPackageId) {
+    wpResource.value = null
+    return
+  }
+
+  wpResource.value = adapter.read('Work Package', workPackageId, {
+    fields: ['name', 'work_package_name'],
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        name: row?.work_package_name || row?.name || '',
+      }))
+    },
+  })
+}
+
+watch(() => task.value?.workPackageId, loadWpResource, { immediate: true })
+
+const wp = computed(() => firstResourceRow(wpResource.value))
+
+const entriesResource = adapter.list('Task Update', {
+  fields: [
+    'name',
+    'task',
+    'entry_date',
+    'cumulative_progress',
+    'narrative',
+    'skilled',
+    'unskilled',
+    'weather',
+    'blocker',
+    'blocker_detail',
+    'owner',
+  ],
   filters: [['task', '=', props.id]],
-  orderBy: 'entry_date desc'
+  orderBy: 'entry_date desc',
+  transform(rows) {
+    return rows.map((row) => ({
+      id: row?.name || '',
+      task: row?.task || '',
+      entryDate: row?.entry_date || null,
+      progressPct: Number(row?.cumulative_progress) || 0,
+      narrative: row?.narrative || '',
+      skilledLabour: Number(row?.skilled) || 0,
+      unskilledLabour: Number(row?.unskilled) || 0,
+      weather: row?.weather || '',
+      blockerFlag: !!row?.blocker,
+      blockerNote: row?.blocker_detail || '',
+      enteredBy: row?.owner || '',
+      owner: row?.owner || '',
+    }))
+  },
 })
-const recentEntries = computed(() => entriesResource.data.slice(0, 3))
-const entryCount = computed(() => entriesResource.data.length)
-const latestEntry = computed(() => entriesResource.data[0] || null)
+const entryRows = computed(() => resourceRows(entriesResource))
+const recentEntries = computed(() => entryRows.value.slice(0, 3))
+const entryCount = computed(() => entryRows.value.length)
+const latestEntry = computed(() => entryRows.value[0] || null)
 
 // ----- File Progress Entry modal -----------------------------------------
 // Replaces the previous route-jump to /app/progress-entries/new. Keeps the
@@ -226,23 +297,22 @@ async function saveProgressEntry() {
   if (!validateProgressEntry()) return
   savingProgress.value = true
   try {
-    const entry = await adapter.create('Task Progress Entry', {
+    const entry = await adapter.create('Task Update', {
       task: props.id,
       entry_date: progressForm.entryDate,
-      owner: progressForm.enteredBy,
-      progress_pct: progressForm.progressPct,
-      skilled_labour: progressForm.skilledLabour,
-      unskilled_labour: progressForm.unskilledLabour,
+      cumulative_progress: progressForm.progressPct,
       narrative: progressForm.narrative,
+      skilled: progressForm.skilledLabour,
+      unskilled: progressForm.unskilledLabour,
       weather: progressForm.weather,
-      blocker_flag: progressForm.blockerFlag ? 1 : 0,
-      blocker_note: progressForm.blockerNote,
+      blocker: progressForm.blockerFlag ? 1 : 0,
+      blocker_detail: progressForm.blockerNote,
     })
 
     // Persist any pending attachments against the new entry.
     for (const f of pendingAttachments.value) {
       await adapter.create('Attachment', {
-        parent_doctype: 'Task Progress Entry',
+        parent_doctype: 'Task Update',
         parent_name: entry.name,
         file_name: f.fileName,
         file_url: f.url,
@@ -273,11 +343,32 @@ async function saveProgressEntry() {
 const editing = ref(false)
 const form = ref({})
 
-watch(task, (t) => { if (t && !editing.value) form.value = { ...t } }, { immediate: true })
+// Normalize task fields for the edit modal so native date inputs receive a
+// browser-compatible YYYY-MM-DD value instead of a full datetime string.
+function toDateInputValue(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value.slice(0, 10)
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toISOString().slice(0, 10)
+}
+
+function buildEditForm(source) {
+  if (!source) return {}
+
+  return {
+    ...source,
+    startDate: toDateInputValue(source.startDate),
+    endDate: toDateInputValue(source.endDate),
+  }
+}
+
+watch(task, (t) => { if (t && !editing.value) form.value = buildEditForm(t) }, { immediate: true })
 
 function startEdit() {
   if (!task.value) return
-  form.value = { ...task.value }
+  form.value = buildEditForm(task.value)
   editing.value = true
 }
 async function saveEdit() {
@@ -286,8 +377,7 @@ async function saveEdit() {
       subject: form.value.name,
       status: form.value.status,
       priority: form.value.priority,
-      task_type: form.value.task_type,
-      activity_type: form.value.activityType,
+      type: form.value.task_type,
       owner: form.value.assignee,
       exp_start_date: form.value.startDate,
       exp_end_date: form.value.endDate,
@@ -302,7 +392,7 @@ async function saveEdit() {
   }
 }
 function cancelEdit() {
-  form.value = { ...task.value }
+  form.value = buildEditForm(task.value)
   editing.value = false
 }
 
@@ -477,11 +567,6 @@ const progressColor = computed(() => {
         <div v-if="wp" class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Work Package</div>
           <DeskLink :to="`/app/work-packages/${wp.id}`" class="text-sm font-medium">{{ wp.name }}</DeskLink>
-        </div>
-        <div v-if="activityType" class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
-          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Activity Type</div>
-          <DeskLink :to="`/app/activity-types/${activityType.id}`" class="text-sm font-medium">{{ activityType.name }}</DeskLink>
-          <div class="text-[11px] text-ink-500 mt-0.5">{{ activityType.category }} · {{ activityType.expectedProductivityPerManDay }} {{ activityType.productivityUnit }}/man-day</div>
         </div>
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Assignee</div>

@@ -1,4 +1,5 @@
 import { useDocTypeList } from '@/composables/useDocTypeList'
+import { unref } from 'vue'
 
 /**
  * Remote adapter — reads from the live Frappe backend via frappe-ui resources.
@@ -26,9 +27,11 @@ export function createRemoteDataAdapter() {
   }
 
   function read(doctype, name, options = {}) {
+    const resolvedName = unref(name)
+
     return list(doctype, {
       fields: options.fields ?? ['name'],
-      filters: [[options.nameField || 'name', '=', name]],
+      filters: [[options.nameField || 'name', '=', resolvedName]],
       pageLength: 1,
       cache: options.cache,
       auto: options.auto !== false,

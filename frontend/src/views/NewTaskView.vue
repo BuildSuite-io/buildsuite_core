@@ -16,25 +16,33 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 
-const projectsResource = adapter.list('Project')
-const wpsResource = adapter.list('Work Package')
+const projectsResource = adapter.list('Project', {
+  fields: ['name', 'project_name'],
+  orderBy: 'modified desc',
+  pageLength: 500,
+})
+const wpsResource = adapter.list('Work Package', {
+  fields: ['name', 'work_package_name', 'project', 'code'],
+  orderBy: 'modified desc',
+  pageLength: 500,
+})
 
 const form = reactive({
-  projectId: route.query.projectId || (projectsResource.data[0]?.name || ''),
-  workPackageId: route.query.workPackageId || null,
-  task_type: 'Activity',     // proposal §M2 Select — Activity / Milestone / Inspection
-  activityType: null,        // optional Link to Activity Type master (renamed from taskType in S31)
+  projectId: route.query.projectId || '',
+  workPackageId: route.query.workPackageId || '',
+  taskType: '',
   name: '',
   description: '',
   status: 'Open',
   priority: 'Medium',
-  assignee: store.team[1]?.id || '',
+  assignee: '',
   startDate: new Date().toISOString().slice(0, 10),
   endDate: '',
   estimatedHours: 0,
@@ -42,26 +50,14 @@ const form = reactive({
 const errors = ref({})
 const saving = ref(false)
 
-const availableWPs = computed(() => wpsResource.data.filter(wp => wp.project === form.projectId))
-
-// Activity Types filtered by the selected project's type (per §13.3 item 16 — the
-// Project Type → Activity Type mapping). Falls back to all activity types if no
-// project is selected. We deliberately don't pre-fill any other fields when an
-// activity type is picked — the user opted into that conservative scope.
-const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
-const availableActivityTypes = computed(() => {
-  const pt = selectedProject.value?.project_type
-  return pt ? store.activityTypesForProjectType(pt) : store.activityTypes
-})
+const projectRows = computed(() => (Array.isArray(projectsResource.data) ? projectsResource.data : []))
+const wpRows = computed(() => (Array.isArray(wpsResource.data) ? wpsResource.data : []))
+const availableWPs = computed(() => wpRows.value.filter((wp) => wp.project === form.projectId))
 
 watch(() => form.projectId, () => {
   // Reset WP when the parent project changes if the existing WP doesn't belong.
   if (form.workPackageId && !availableWPs.value.find(wp => wp.name === form.workPackageId)) {
-    form.workPackageId = null
-  }
-  // Same for activity type — if the picked type isn't applicable to the new project type, clear it.
-  if (form.activityType && !availableActivityTypes.value.find(at => at.id === form.activityType)) {
-    form.activityType = null
+    form.workPackageId = ''
   }
 })
 
@@ -81,17 +77,33 @@ async function save() {
     const res = await adapter.create('Task', {
       subject: form.name,
       project: form.projectId,
-      work_package: form.workPackageId,
-      task_type: form.task_type,
+      work_package: form.workPackageId || null,
+      type: form.taskType || null,
       description: form.description,
       status: form.status,
       priority: form.priority,
       exp_start_date: form.startDate,
       exp_end_date: form.endDate,
+      expected_time: Number(form.estimatedHours) || 0,
       owner: form.assignee, // Map to owner for the adapter/Frappe consistency
-      activity_type: form.activityType,
     })
-    await router.push(`/app/tasks/${res.name}`)
+
+    const createdTaskId =
+      res?.name ||
+      res?.id ||
+      res?.message?.name ||
+      res?.message?.id ||
+      res?.data?.name ||
+      res?.data?.id ||
+      ''
+
+    if (!createdTaskId) {
+      showToast('Task created, but could not resolve its ID for navigation', 'error')
+      await router.push('/app/tasks')
+      return
+    }
+
+    await router.push(`/app/tasks/${createdTaskId}`)
     await nextTick()
     showToast('Task created')
   } catch (err) {
@@ -132,20 +144,16 @@ const breadcrumbs = [
         <DeskField label="Task name" required :error="errors.name">
           <DeskInput v-model="form.name" placeholder="e.g. Block A — Level 6 column casting" />
         </DeskField>
-        <!-- Task Type per proposal §M2 — drives the task's workflow.
-             Activity = standard work with progress entries (default).
-             Milestone = checkpoint, no qty progress (status-only).
-             Inspection = pass/fail gate (QC workflow). -->
-        <DeskField
-          label="Task Type"
-          required
-          hint="Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate."
-        >
-          <DeskSelect v-model="form.task_type">
-            <option value="Activity">Activity</option>
-            <option value="Milestone">Milestone</option>
-            <option value="Inspection">Inspection</option>
-          </DeskSelect>
+        <DeskField label="Task Type">
+          <DeskLinkPicker
+            v-model="form.taskType"
+            doctype="Task Type"
+            label-field="name"
+            value-field="name"
+            :search-fields="['name']"
+            :page-length="20"
+            placeholder="— Select task type —"
+          />
         </DeskField>
         <DeskField label="Description">
           <DeskTextarea v-model="form.description" :rows="3" placeholder="Details about the task, location, scope…" />
@@ -154,22 +162,28 @@ const breadcrumbs = [
 
       <DeskSection title="Hierarchy">
         <DeskField label="Project" required :error="errors.projectId">
-          <DeskSelect v-model="form.projectId">
-            <option value="">— Select project —</option>
-            <option v-for="p in projectsResource.data" :key="p.name" :value="p.name">{{ p.project_name }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.projectId"
+            doctype="Project"
+            label-field="project_name"
+            value-field="name"
+            :search-fields="['project_name', 'custom_project_id', 'name']"
+            :filters="[['is_group', '=', 1]]"
+            :page-length="20"
+            placeholder="— Select project —"
+          />
         </DeskField>
         <DeskField label="Work Package" hint="Optional · direct project tasks leave blank">
-          <DeskSelect v-model="form.workPackageId">
-            <option :value="null">— None · Direct project task —</option>
-            <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.package_name }}</option>
-          </DeskSelect>
-        </DeskField>
-        <DeskField label="Activity Type" hint="Activity Type provides default labour mix and productivity baseline for this task.">
-          <DeskSelect v-model="form.activityType">
-            <option :value="null">— None —</option>
-            <option v-for="at in availableActivityTypes" :key="at.id" :value="at.id">{{ at.name }} · {{ at.category }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.workPackageId"
+            doctype="Work Package"
+            label-field="work_package_name"
+            value-field="name"
+            :search-fields="['work_package_name', 'code', 'name']"
+            :filters="form.projectId ? [['project', '=', form.projectId]] : []"
+            :page-length="20"
+            placeholder="— None · Direct project task —"
+          />
         </DeskField>
       </DeskSection>
 
@@ -187,15 +201,25 @@ const breadcrumbs = [
 
       <DeskSection title="Assignment" :cols="3">
         <DeskField label="Assignee">
-          <DeskSelect v-model="form.assignee">
-            <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.assignee"
+            doctype="User"
+            label-field="full_name"
+            value-field="name"
+            :search-fields="['full_name', 'name', 'email']"
+            :page-length="20"
+            placeholder="— Select assignee —"
+          />
         </DeskField>
         <DeskField label="Status">
           <DeskSelect v-model="form.status">
             <option>Open</option>
-            <option>In Progress</option>
+            <option>Working</option>
+            <option>Pending Review</option>
+            <option>Overdue</option>
+            <option>Template</option>
             <option>Completed</option>
+            <option>Cancelled</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Priority">
@@ -203,6 +227,7 @@ const breadcrumbs = [
             <option>Low</option>
             <option>Medium</option>
             <option>High</option>
+            <option>Urgent</option>
           </DeskSelect>
         </DeskField>
       </DeskSection>

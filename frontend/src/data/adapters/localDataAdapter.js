@@ -1,4 +1,4 @@
-import { reactive, computed } from 'vue'
+import { reactive, computed, unref } from 'vue'
 
 /**
  * Local adapter — wraps existing Pinia store getters in the shared
@@ -200,9 +200,11 @@ export function createLocalDataAdapter(store) {
   }
 
   function read(doctype, name, options = {}) {
+    const resolvedName = unref(name)
+
     return list(doctype, {
       ...options,
-      filters: [[options.nameField || 'name', '=', name]],
+      filters: [[options.nameField || 'name', '=', resolvedName]],
       pageLength: 1,
       transform(rows) {
         const data = options.transform ? options.transform(rows) : rows
