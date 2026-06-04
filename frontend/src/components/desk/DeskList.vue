@@ -5,10 +5,10 @@
 // indicator + prev/next) renders below the table when pagination is enabled
 // AND the row set spans more than one page.
 //
-// The consumer passes pre-filtered/sorted rows in via props — DeskList only
-// renders the chrome; it does not own filtering or sorting state. The sort
-// and column buttons emit events so the consumer can wire up dropdown panels
-// if/when they need them. The search input uses two-way binding via v-model.
+// The consumer passes pre-filtered rows in via props. DeskList owns the shared
+// sort chrome and can apply client-side sorting using either explicit
+// `sortOptions` or the visible columns. The search input uses two-way binding
+// via v-model.
 //
 // Custom cell rendering: pass `render(row)` for simple text transforms, OR
 // provide a scoped slot named `cell-<columnKey>` for HTML / component
@@ -17,6 +17,7 @@
 // Columns: [{ key, label, align?: 'left'|'right'|'center', render?: (row)=>string, class?: string }]
 
 import { computed, ref, watch } from 'vue'
+import DeskSortControl from '@/components/desk/DeskSortControl.vue'
 
 const props = defineProps({
   rows: { type: Array, required: true },
@@ -29,6 +30,9 @@ const props = defineProps({
   showSort: { type: Boolean, default: true },
   showColumns: { type: Boolean, default: true },
   showAddFilter: { type: Boolean, default: true },
+  sortField: { type: String, default: '' },
+  sortDirection: { type: String, default: 'desc' },
+  sortOptions: { type: Array, default: null },
   // Pagination. Opt out by passing `:paginated="false"` (small fixed lists
   // like Settings → Users don't need it). `pageSize` is the initial value;
   // the user can change it via the dropdown.
@@ -46,10 +50,81 @@ const emit = defineEmits([
   'row-click',
   'add-filter',
   'sort',
+  'update:sortField',
+  'update:sortDirection',
   'toggle-columns',
   'page-change',
   'page-size-change',
 ])
+
+const internalSortField = ref(props.sortField)
+const internalSortDirection = ref(props.sortDirection)
+
+watch(() => props.sortField, (next) => {
+  internalSortField.value = next
+})
+
+watch(() => props.sortDirection, (next) => {
+  internalSortDirection.value = next
+})
+
+const resolvedSortOptions = computed(() => {
+  if (Array.isArray(props.sortOptions) && props.sortOptions.length) {
+    return props.sortOptions.filter((option) => option?.value)
+  }
+
+  return props.columns
+    .filter((column) => column?.key)
+    .map((column) => ({
+      value: column.key,
+      label: column.label || column.key,
+    }))
+})
+
+function updateSortField(value) {
+  internalSortField.value = value
+  emit('update:sortField', value)
+}
+
+function updateSortDirection(value) {
+  internalSortDirection.value = value
+  emit('update:sortDirection', value)
+}
+
+function sortValueFor(row, field) {
+  return row?.[field]
+}
+
+function compareSortValues(a, b) {
+  if (a === b) return 0
+  if (a == null || a === '') return 1
+  if (b == null || b === '') return -1
+
+  const aNumber = Number(a)
+  const bNumber = Number(b)
+  const numeric = Number.isFinite(aNumber) && Number.isFinite(bNumber)
+  if (numeric) return aNumber - bNumber
+
+  return String(a).localeCompare(String(b), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  })
+}
+
+const sortedRows = computed(() => {
+  if (!props.showSort || !internalSortField.value) return props.rows
+
+  const direction = internalSortDirection.value === 'asc' ? 1 : -1
+  const field = internalSortField.value
+
+  return [...props.rows].sort((left, right) => {
+    const result = compareSortValues(
+      sortValueFor(left, field),
+      sortValueFor(right, field),
+    )
+    return result * direction
+  })
+})
 
 function keyFor(row) {
   return typeof props.rowKey === 'function' ? props.rowKey(row) : row[props.rowKey]
@@ -100,7 +175,7 @@ const totalRowsValue = computed(() => {
   if (props.serverPaginated) {
     return Number.isFinite(props.totalRows) ? props.totalRows : props.rows.length
   }
-  return props.rows.length
+  return sortedRows.value.length
 })
 
 const totalPages = computed(() => {
@@ -109,10 +184,10 @@ const totalPages = computed(() => {
 })
 
 const pagedRows = computed(() => {
-  if (!props.paginated) return props.rows
-  if (props.serverPaginated) return props.rows
+  if (!props.paginated) return sortedRows.value
+  if (props.serverPaginated) return sortedRows.value
   const start = (currentPage.value - 1) * currentPageSize.value
-  return props.rows.slice(start, start + currentPageSize.value)
+  return sortedRows.value.slice(start, start + currentPageSize.value)
 })
 
 const rangeStart = computed(() => {
@@ -201,15 +276,14 @@ const showPagination = computed(() => {
       >+ Add filter</button>
 
       <div class="ml-auto flex items-center gap-1">
-        <button
+        <DeskSortControl
           v-if="showSort"
-          type="button"
-          class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border border-ink-200 bg-white"
-          style="border-radius: 6px;"
-          @click="emit('sort')"
-        >Sort by ▾</button>
-
-        <slot name="pre-columns-controls" />
+          :sort-field="internalSortField"
+          :sort-direction="internalSortDirection"
+          :options="resolvedSortOptions"
+          @update:sort-field="updateSortField"
+          @update:sort-direction="updateSortDirection"
+        />
 
         <button
           v-if="showColumns"
