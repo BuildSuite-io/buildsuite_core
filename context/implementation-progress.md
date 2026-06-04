@@ -44,6 +44,7 @@
 | `getAccessContext()` | `frontend/src/utils/session.js` | Fetch + cache backend access status (`allowed`, `reason`) | `router/index.js` |
 | `isAccessContextFresh(maxAgeMs)` | `frontend/src/utils/session.js` | Validate whether cached backend access status is still usable | `getAccessContext` |
 | `clearAccessContextCache()` | `frontend/src/utils/session.js` | Reset cached access-context promise | Reserved for future re-check flows |
+| `toDateInputValue(value)` | `frontend/src/utils/dateInput.js` | Normalize date-like values to native date-input format (`YYYY-MM-DD`) | `ProjectDetailView.vue` edit modal |
 | `hydrateFromRuntime()` | `frontend/src/stores/session.js` | Sync session user/authenticated state from runtime cookie globals | `refreshAccess`, `bootstrapSession` |
 | `refreshAccess(options)` | `frontend/src/stores/session.js` | Pull backend access context and normalize auth/access store state | `bootstrapSession`, `ensureAccess` |
 | `bootstrapSession()` | `frontend/src/stores/session.js` | One-time session/access initialization before route handling | `main.js`, `ensureAccess` |
@@ -169,6 +170,48 @@
   - Generic link picker (`DeskLinkPicker`) for remote permission-safe link lookup
   - Stable direct-fetch flow for boot/access utility endpoints plus generic list metadata loading via the standard Frappe doctype method
 
+### CRUD Lessons Learned (Project + DocType Slices)
+
+#### What is now stable
+
+- Task CRUD contract alignment is stabilized around backend field names for recent slices (`type`, `Task Update`, and compatible payload mapping in views/adapters).
+- Generic list sorting UX is standardized at the shared list shell level, reducing per-view divergence and one-off sort implementations.
+- Project edit-date hydration is stabilized through explicit date-input normalization before modal bind.
+
+#### Repeated failure patterns observed
+
+1. Field-name drift between prototype and backend schemas
+  - Example pattern: UI/local model aliases (`task_type`) diverging from backend fields (`type`).
+  - Impact: read/query failures or silent write no-ops depending on adapter mode.
+
+2. Local/remote adapter parity drift
+  - Generic adapters can diverge in accepted payload keys and behavior if only one mode is validated.
+  - Impact: feature appears fixed in one mode and broken in the other.
+
+3. Native date-input hydration mismatch
+  - Browser date inputs require `YYYY-MM-DD`; datetime-like strings render blank.
+  - Impact: edit modals appear unpopulated for date fields.
+
+4. Resource shape assumptions in list rendering
+  - Some resources expose arrays, others wrapped values during transition points.
+  - Impact: runtime render errors when list code assumes one shape.
+
+#### Ongoing concerns for upcoming CRUD slices
+
+- Contract governance: maintain a single source of truth for field aliases and backend names before each slice.
+- Mutation verification: each CRUD slice should validate both local and remote adapter behavior before sign-off.
+- Date hygiene: all edit forms binding `type="date"` should normalize inbound values via shared utility.
+- Embedded-list consistency: detail-page embedded lists may bypass generic shells; ensure shared list behavior still applies.
+- Query strictness: doctype list calls fail hard on invalid fieldnames; keep requested fields explicitly schema-validated.
+
+#### Suggested acceptance checks per CRUD slice
+
+1. Create: record persists and route navigation resolves the created record id deterministically.
+2. Read: detail form binds all editable fields, including dates and linked values.
+3. Update: changed values persist in both local and remote modes.
+4. Delete: confirms, removes, and routes back to parent list safely.
+5. List: sort/filter controls are consistent with shared list standards.
+
 - [ ] **Phase 8 — CSRF and Upload Hardening**
   - Status: In progress
   - Global `resourceFetcher` remains `frappeRequest` for resource-backed requests
@@ -213,6 +256,9 @@
 | 2026-06-02 | Phase 7 | Added optional per-status badge color map support from column config (`Open` green in Projects) | Copilot | `23362ac`, `811c743` |
 | 2026-06-02 | Phase 6/7 | Expanded generic remote adapter contract (`list/read/create/update/remove/linkSearch`) and migrated `WorkPackagesView` to `DocTypeListView` + `DeskLinkPicker` project filter | Copilot | working tree |
 | 2026-06-03 | Phase 8 | Attempted `createResource` migration for boot/access/meta utility calls, rolled back boot/access after runtime regression, and stabilized generic doctype meta loading with direct fetch to the standard Frappe method | Copilot | working tree |
+| 2026-06-04 | Phase 7 | Task CRUD alignment slice: normalized Task/Task Update field contracts across create/read/update surfaces and adapter read name unwrapping for reactive sources | Copilot | `6e188f7` |
+| 2026-06-04 | Phase 7 | Standardized grouped sort control at shared list level and migrated Tasks list to generic doctype shell | Copilot | `5d95fcc` |
+| 2026-06-04 | Phase 7 | Added shared date-input normalization utility and applied to Project detail edit modal date hydration | Copilot | `062c5e5` |
 
 ---
 
