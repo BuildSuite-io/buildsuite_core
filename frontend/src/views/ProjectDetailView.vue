@@ -684,6 +684,12 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
       <!-- Subprojects — hidden when this record is itself a subproject -->
       <div v-if="tab === 'subprojects' && subprojectsEnabled" class="pt-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-ink-500">
+            <span class="text-ink-900 font-medium">{{ subs.length }} subproject{{ subs.length === 1 ? '' : 's' }}</span>
+          </span>
+          <button type="button" class="desk-save-btn ml-auto" @click="addSubproject">+ New Subproject</button>
+        </div>
         <DeskList
           v-model="subSearch"
           :rows="subsFiltered"
@@ -692,9 +698,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           search-placeholder="Search subprojects…"
           @row-click="onSubRowClick"
         >
-          <template #actions>
-            <button type="button" class="desk-save-btn" @click="addSubproject">+ New Subproject</button>
-          </template>
           <template #cell-code="{ row }">
             <DeskLink :to="`/app/projects/${row.id}`" @click.stop class="font-mono text-xs">{{ row.code }}</DeskLink>
           </template>
@@ -728,9 +731,15 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
       <!-- Work Packages -->
       <div v-if="tab === 'work-packages'" class="pt-4">
-        <div class="text-xs text-ink-500 mb-2">
-          {{ workPackages.length }} package{{ workPackages.length === 1 ? '' : 's' }} · avg progress
-          <span class="text-ink-900 font-medium">{{ wpProgress }}%</span>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-ink-500">
+            {{ workPackages.length }} package{{ workPackages.length === 1 ? '' : 's' }} · avg progress
+            <span class="text-ink-900 font-medium">{{ wpProgress }}%</span>
+          </span>
+          <RouterLink
+            :to="{ name: 'wp-new', query: { projectId: project.id } }"
+            class="desk-save-btn ml-auto"
+          >+ Add Work Package</RouterLink>
         </div>
         <DeskList
           v-model="wpSearch"
@@ -749,12 +758,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
                 :value="p.id"
               >{{ p.name }}</option>
             </DeskSelect>
-          </template>
-          <template #actions>
-            <RouterLink
-              :to="{ name: 'wp-new', query: { projectId: project.id } }"
-              class="desk-save-btn"
-            >+ Add Work Package</RouterLink>
           </template>
           <template #cell-code="{ row }">
             <DeskLink :to="`/app/work-packages/${row.id}`" @click.stop class="font-mono text-xs">{{ row.code }}</DeskLink>
@@ -790,9 +793,15 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
       <!-- Tasks -->
       <div v-if="tab === 'tasks'" class="pt-4">
-        <div class="text-xs text-ink-500 mb-2">
-          <span class="text-ink-900 font-medium">{{ taskStats.total }} tasks</span>
-          · {{ taskStats.completed }} completed · {{ taskStats.inProgress }} in progress · {{ taskStats.open }} open
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-ink-500">
+            <span class="text-ink-900 font-medium">{{ taskStats.total }} tasks</span>
+            · {{ taskStats.completed }} completed · {{ taskStats.inProgress }} in progress · {{ taskStats.open }} open
+          </span>
+          <RouterLink
+            :to="{ name: 'task-new', query: { projectId: project.id } }"
+            class="desk-save-btn ml-auto"
+          >+ Add Task</RouterLink>
         </div>
         <DeskList
           v-model="taskSearch"
@@ -811,12 +820,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
                 :value="p.id"
               >{{ p.name }}</option>
             </DeskSelect>
-          </template>
-          <template #actions>
-            <RouterLink
-              :to="{ name: 'task-new', query: { projectId: project.id } }"
-              class="desk-save-btn"
-            >+ Add Task</RouterLink>
           </template>
           <template #cell-name="{ row }">
             <DeskLink :to="`/app/tasks/${row.id}`" @click.stop class="text-ink-900 hover:text-ink-900">{{ row.name }}</DeskLink>
@@ -945,12 +948,15 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
       <!-- BOQ -->
       <div v-if="tab === 'boq'" class="pt-4">
-        <div class="text-xs text-ink-500 mb-2">
-          {{ boqs.length }} BOQ revision{{ boqs.length === 1 ? '' : 's' }}
-          <template v-if="activeBoq">
-            · active: <DeskLink :to="`/app/boq/${activeBoq.id}`" class="font-mono">{{ activeBoq.id }}</DeskLink>
-            ({{ fmtCompactINR(store.boqTotals(activeBoq.id).planned) }} planned · {{ fmtCompactINR(store.boqTotals(activeBoq.id).actual) }} actual)
-          </template>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-ink-500">
+            {{ boqs.length }} BOQ revision{{ boqs.length === 1 ? '' : 's' }}
+            <template v-if="activeBoq">
+              · active: <DeskLink :to="`/app/boq/${activeBoq.id}`" class="font-mono">{{ activeBoq.id }}</DeskLink>
+              ({{ fmtCompactINR(store.boqTotals(activeBoq.id).planned) }} planned · {{ fmtCompactINR(store.boqTotals(activeBoq.id).actual) }} actual)
+            </template>
+          </span>
+          <RouterLink to="/app/boq" class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white ml-auto" style="border-radius: 2px;">Open BOQ module →</RouterLink>
         </div>
         <DeskList
           v-model="boqSearch"
@@ -960,9 +966,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           search-placeholder="Search BOQ revisions…"
           @row-click="onBoqRowClick"
         >
-          <template #actions>
-            <RouterLink to="/app/boq" class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white" style="border-radius: 2px;">Open BOQ module →</RouterLink>
-          </template>
           <template #cell-id="{ row }">
             <DeskLink :to="`/app/boq/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
           </template>
@@ -998,6 +1001,12 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
 
       <!-- SCOs -->
       <div v-if="tab === 'scos'" class="pt-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-ink-500">
+            <span class="text-ink-900 font-medium">{{ scos.length }} scope change{{ scos.length === 1 ? '' : 's' }}</span>
+          </span>
+          <RouterLink to="/app/sco" class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white ml-auto" style="border-radius: 2px;">Open SCO module →</RouterLink>
+        </div>
         <DeskList
           v-model="scoSearch"
           :rows="scosFiltered"
@@ -1005,9 +1014,6 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
           row-key="id"
           search-placeholder="Search scope changes…"
         >
-          <template #actions>
-            <RouterLink to="/app/sco" class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white" style="border-radius: 2px;">Open SCO module →</RouterLink>
-          </template>
           <template #cell-id="{ row }">
             <DeskLink to="/app/sco" class="font-mono text-xs">{{ row.id }}</DeskLink>
           </template>
