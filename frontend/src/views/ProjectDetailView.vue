@@ -11,20 +11,29 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskForm from '@/components/desk/DeskForm.vue'
-import DeskActionBar from '@/components/desk/DeskActionBar.vue'
 import DeskList from '@/components/desk/DeskList.vue'
-import DeskSection from '@/components/desk/DeskSection.vue'
-import DeskField from '@/components/desk/DeskField.vue'
-import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
-import DeskTextarea from '@/components/desk/DeskTextarea.vue'
-import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { toDateInputValue } from '@/utils/dateInput'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
+import ProjectEditModal from '@/views/project-detail/ProjectEditModal.vue'
+import ProjectTeamMemberModal from '@/views/project-detail/ProjectTeamMemberModal.vue'
+import OverviewTab from '@/views/project-detail/tabs/OverviewTab.vue'
+import AttachmentsTab from '@/views/project-detail/tabs/AttachmentsTab.vue'
+import TeamTab from '@/views/project-detail/tabs/TeamTab.vue'
+import ActivityTab from '@/views/project-detail/tabs/ActivityTab.vue'
+import {
+  BOQ_COLS,
+  PROJECT_REPORTS,
+  SCO_COLS,
+  SUB_COLS,
+  TASK_COLS,
+  TEAM_COLS,
+  WP_COLS,
+} from '@/views/project-detail/projectDetailConfig'
+import { useProjectDetailListFilters } from '@/views/project-detail/useProjectDetailListFilters'
 
 const props = defineProps({ id: String })
 const router = useRouter()
@@ -38,24 +47,6 @@ function firstResourceRow(resource) {
   if (Array.isArray(raw?.value)) return raw.value[0] || null
   if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
   return raw || null
-}
-
-/**
- * Compact entity label for console diagnostics: "id (name)".
- */
-function entityLabel(id, name) {
-  const safeId = id || 'unknown'
-  const safeName = name || safeId
-  return `${safeId} (${safeName})`
-}
-
-/**
- * Builds a single-line text representation of the DocType list query config.
- */
-function docTypeListQueryText({ doctype, fields, filters, orderBy, pageLength, start = 0 }) {
-  const fieldText = JSON.stringify(fields || ['name'])
-  const filterText = JSON.stringify(filters || {})
-  return `doctype=${doctype} fields=${fieldText} filters=${filterText} orderBy=${orderBy || ''} start=${start} pageLength=${pageLength ?? ''}`
 }
 
 const projectResource = ref(null)
@@ -154,9 +145,6 @@ function loadSubprojectsResource() {
   const subprojectFilters = {
     parent_project: ['=', resolvedProjectId.value],
   }
-  console.log(
-    `[ProjectDetail] Subprojects query | root=${entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)} | ${docTypeListQueryText({ doctype: 'Project', fields: subprojectFields, filters: subprojectFilters, orderBy: 'modified desc', pageLength: 100 })}`,
-  )
 
   subprojectsResource.value = adapter.list('Project', {
     fields: subprojectFields,
@@ -190,13 +178,6 @@ const subs = computed(() => {
   return []
 })
 
-watch(subs, (rows) => {
-  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
-  const subText = rows.length
-    ? rows.map((row) => entityLabel(row.id, row.name)).join(', ')
-    : '(none)'
-  console.log(`[ProjectDetail] Project scope | root=${rootText} | subprojects=${subText}`)
-}, { immediate: true })
 const subprojectIdsKey = computed(() => subs.value.map((p) => p.id).filter(Boolean).join('|'))
 
 const workPackageProjectIds = computed(() => {
@@ -228,13 +209,6 @@ function loadWorkPackagesResource() {
     project: ['in', workPackageProjectIds.value],
   }
   const workPackageScopeKey = workPackageProjectIds.value.join('|')
-  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
-  const subText = subs.value.length
-    ? subs.value.map((row) => entityLabel(row.id, row.name)).join(', ')
-    : '(none)'
-  console.log(
-    `[ProjectDetail] Work Package query | root=${rootText} | subprojects=${subText} | scopeKey=${workPackageScopeKey} | ${docTypeListQueryText({ doctype: 'Work Package', fields: workPackageFields, filters: workPackageFilters, orderBy: 'modified desc', pageLength: 200 })}`,
-  )
 
   workPackagesResource.value = adapter.list('Work Package', {
     fields: workPackageFields,
@@ -304,13 +278,6 @@ function loadTasksResource() {
     project: ['in', taskProjectIds.value],
   }
   const taskScopeKey = taskProjectIds.value.join('|')
-  const rootText = entityLabel(project.value?.id || resolvedProjectId.value, project.value?.name)
-  const subText = subs.value.length
-    ? subs.value.map((row) => entityLabel(row.id, row.name)).join(', ')
-    : '(none)'
-  console.log(
-    `[ProjectDetail] Task query | root=${rootText} | subprojects=${subText} | scopeKey=${taskScopeKey} | ${docTypeListQueryText({ doctype: 'Task', fields: taskFields, filters: taskFilters, orderBy: 'modified desc', pageLength: 300 })}`,
-  )
 
   tasksResource.value = adapter.list('Task', {
     fields: taskFields,
@@ -420,9 +387,20 @@ const delayedDays = computed(() => {
   return Math.max(progressSlip, overdueDays)
 })
 
+// Reset to the Overview tab whenever the route navigates to a different
+// project record (Vue Router reuses the component instance when only the
+// `id` param changes, so the previously-active tab would otherwise persist
+// across projects — surfaces a blank panel when clicking into a subproject
+// from the parent's Subprojects tab, since Subprojects is filtered out for
+// subprojects themselves).
 const tab = ref('overview')
 const editing = ref(false)
 const editForm = ref({})
+
+watch(() => props.id, () => {
+  tab.value = 'overview'
+  editing.value = false
+})
 
 // Project team — PM always first, then user-added members.
 const projectTeam = computed(() => store.projectTeamMembers(resolvedProjectId.value))
@@ -452,17 +430,6 @@ function removeTeamMember(userId) {
   if (!confirm(`Remove ${m?.name || userId} from this project's team?`)) return
   store.removeProjectTeamMember(resolvedProjectId.value, userId)
 }
-
-// Reset to the Overview tab whenever the route navigates to a different
-// project record (Vue Router reuses the component instance when only the
-// `id` param changes, so the previously-active tab would otherwise persist
-// across projects — surfaces a blank panel when clicking into a subproject
-// from the parent's Subprojects tab, since Subprojects is filtered out for
-// subprojects themselves).
-watch(() => props.id, () => {
-  tab.value = 'overview'
-  editing.value = false
-})
 
 function buildProjectEditForm(source) {
   if (!source) return {}
@@ -552,77 +519,31 @@ function seedFromTemplate() {
   store.seedStagesFromTemplate(resolvedProjectId.value)
 }
 
-// ===== Attachments (§13.3 items 13 + 26) =====
-// Production uses Frappe's File DocType with persistent storage. In the
-// prototype, file bytes are held as browser blob URLs created via
-// URL.createObjectURL on upload. **Blob URLs are SESSION-ONLY** — they're lost
-// on tab close because the binary lives in the renderer process, not in
-// localStorage. The store metadata persists, but clicking a row after a tab
-// close will hit a stale URL. This is the documented and expected behavior
-// for the prototype.
-const fileInput = ref(null)
-function openFilePicker() { fileInput.value?.click() }
-function onFilesPicked(e) {
-  const files = Array.from(e.target.files || [])
-  for (const f of files) {
-    const url = URL.createObjectURL(f)
-    store.addAttachment({
-      parentDoctype: 'Project',
-      parentId: resolvedProjectId.value,
-      fileName: f.name,
-      mime: f.type || 'application/octet-stream',
-      size: f.size,
-      url,
-    })
-  }
-  // Reset so picking the same file twice in a row still fires the change event.
-  if (e.target) e.target.value = ''
-}
-function openAttachment(att) {
-  if (!att.url) {
-    alert('Seed sample — no actual file attached. Upload a real file to test the open-in-new-tab flow.')
-    return
-  }
-  window.open(att.url, '_blank', 'noopener')
-}
-function deleteAttachment(att) {
-  if (!confirm(`Delete "${att.fileName}"?`)) return
-  store.deleteAttachment(att.id)
-}
-function formatFileSize(bytes) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let n = bytes
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++ }
-  return (i === 0 ? n : n.toFixed(n < 10 ? 1 : 0)) + ' ' + units[i]
-}
-function fileIcon(mime) {
-  if (!mime) return 'file'
-  if (mime.startsWith('image/')) return 'image'
-  if (mime === 'application/pdf') return 'file-text'
-  if (mime.includes('acad') || mime.includes('dwg')) return 'estimation'
-  if (mime.includes('word') || mime.includes('document')) return 'file-text'
-  if (mime.includes('sheet') || mime.includes('excel')) return 'chart-line'
-  if (mime.includes('zip') || mime.includes('compress')) return 'archive'
-  return 'file'
-}
-
-// Cost roll-up by work package (unchanged from pre-rebuild)
-const wpProgress = computed(() => {
-  const items = workPackages.value
-  if (!items.length) return 0
-  return Math.round(items.reduce((a, w) => a + w.progress, 0) / items.length)
-})
-
-const taskStats = computed(() => {
-  const all = tasks.value
-  return {
-    total: all.length,
-    completed: all.filter(t => t.status === 'Completed').length,
-    inProgress: all.filter(t => t.status === 'In Progress').length,
-    open: all.filter(t => t.status === 'Open').length,
-  }
+const {
+  boqSearch,
+  boqsFiltered,
+  scoSearch,
+  scosFiltered,
+  subSearch,
+  subsFiltered,
+  taskProjectFilter,
+  taskProjectFilterOptions,
+  taskProjectNameById,
+  taskSearch,
+  taskStats,
+  tasksFiltered,
+  wpFiltered,
+  wpProgress,
+  wpProjectFilter,
+  wpProjectFilterOptions,
+  wpSearch,
+} = useProjectDetailListFilters({
+  project,
+  subs,
+  workPackages,
+  tasks,
+  scos,
+  boqs,
 })
 
 // Visual-only stage status derivation. Same logic as StagePlanningsView; kept
@@ -645,16 +566,7 @@ function stageStatusClass(s) {
 const isSubproject = computed(() => !!project.value?.parentId)
 const subprojectsEnabled = computed(() => !isSubproject.value && project.value?.isGroup !== false)
 
-// Project-context reports. Same destinations as the Site Execution workspace's
-// report tiles — the stub views aren't project-scoped today, but the routing
-// is in place so the slugs match.
-const projectReports = computed(() => ([
-  { slug: 'project-status-summary',  icon: 'chart-line', label: 'Status summary',          desc: 'Status, progress and schedule variance.' },
-  { slug: 'stage-vs-actual',         icon: 'calendar',   label: 'Stage plan vs actual',    desc: 'Planned vs completed task counts per stage.' },
-  { slug: 'task-completion-by-week', icon: 'chart-line', label: 'Task completion by week', desc: 'Weekly completion burn for this project.' },
-  { slug: 'pending-progress-entries',icon: 'file-text',  label: 'Pending progress',        desc: 'Tasks silent for 3+ days.' },
-  { slug: 'labour-deployed',         icon: 'workforce',  label: 'Labour deployed',         desc: 'Skilled + unskilled labour by task / week.' },
-]))
+const projectReports = PROJECT_REPORTS
 
 const tabs = computed(() => {
   // Each tab carries a count when it corresponds to a list of child records.
@@ -706,142 +618,12 @@ function progressBarColor(p) {
   return 'bg-success-500'
 }
 
-// Per-search state for the inner lists (kept simple — each list filters its own
-// view via its own search ref). Hooked up to DeskList's v-model.
-const subSearch = ref('')
-const wpSearch = ref('')
-const wpProjectFilter = ref('')
-const taskSearch = ref('')
-const taskProjectFilter = ref('')
-const scoSearch = ref('')
-const boqSearch = ref('')
-
-const wpProjectFilterOptions = computed(() => {
-  const root = project.value
-    ? [{ id: project.value.id, name: project.value.name || project.value.id }]
-    : []
-  const children = subs.value.map((p) => ({
-    id: p.id,
-    name: p.name || p.id,
-  }))
-  return [...root, ...children]
-})
-
-const taskProjectFilterOptions = computed(() => {
-  const root = project.value
-    ? [{ id: project.value.id, name: project.value.name || project.value.id }]
-    : []
-  const children = subs.value.map((p) => ({
-    id: p.id,
-    name: p.name || p.id,
-  }))
-  return [...root, ...children]
-})
-
-const taskProjectNameById = computed(() => {
-  const map = new Map()
-  for (const p of taskProjectFilterOptions.value) {
-    map.set(p.id, p.name)
-  }
-  return map
-})
-
-// Utility used by inner list filters: when a parent project is selected,
-// include records owned by that parent and all currently loaded subprojects.
-function expandProjectFilterIds(selectedProjectId) {
-  if (!selectedProjectId) return []
-  const ids = [selectedProjectId]
-  if (selectedProjectId === project.value?.id) {
-    ids.push(...subs.value.map((p) => p.id).filter(Boolean))
-  }
-  return Array.from(new Set(ids))
-}
-
-const subsFiltered = computed(() => {
-  const term = subSearch.value.trim().toLowerCase()
-  if (!term) return subs.value
-  return subs.value.filter(s => s.name.toLowerCase().includes(term) || s.code.toLowerCase().includes(term))
-})
-const wpFiltered = computed(() => {
-  const term = wpSearch.value.trim().toLowerCase()
-  const allowedProjectIds = new Set(expandProjectFilterIds(wpProjectFilter.value))
-  return workPackages.value.filter((w) => {
-    if (wpProjectFilter.value && !allowedProjectIds.has(w.projectId)) return false
-    if (!term) return true
-    return w.name.toLowerCase().includes(term) || (w.code || '').toLowerCase().includes(term)
-  })
-})
-const tasksFiltered = computed(() => {
-  const term = taskSearch.value.trim().toLowerCase()
-  const allowedProjectIds = new Set(expandProjectFilterIds(taskProjectFilter.value))
-  return tasks.value.filter((t) => {
-    if (taskProjectFilter.value && !allowedProjectIds.has(t.projectId)) return false
-    if (!term) return true
-    return t.name.toLowerCase().includes(term)
-  })
-})
-const scosFiltered = computed(() => {
-  const term = scoSearch.value.trim().toLowerCase()
-  if (!term) return scos.value
-  return scos.value.filter(s => s.title.toLowerCase().includes(term) || s.id.toLowerCase().includes(term))
-})
-const boqsFiltered = computed(() => {
-  const term = boqSearch.value.trim().toLowerCase()
-  if (!term) return boqs.value
-  return boqs.value.filter(b => b.title.toLowerCase().includes(term) || b.id.toLowerCase().includes(term))
-})
-
-// Column defs for the inner lists.
-const subCols = [
-  { key: 'code',     label: 'ID' },
-  { key: 'name',     label: 'Name' },
-  { key: 'status',   label: 'Status' },
-  { key: 'budget',   label: 'Budget',   align: 'right' },
-  { key: 'progress', label: 'Progress', align: 'right' },
-  { key: 'pm',       label: 'PM' },
-]
-const wpCols = [
-  { key: 'code',     label: 'Code' },
-  { key: 'name',     label: 'Name' },
-  { key: 'status',   label: 'Status' },
-  { key: 'budget',   label: 'Budget',   align: 'right' },
-  { key: 'progress', label: 'Progress', align: 'right' },
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'owner',    label: 'Owner' },
-]
-const taskCols = [
-  { key: 'name',     label: 'Task' },
-  { key: 'project',  label: 'Project' },
-  { key: 'status',   label: 'Status' },
-  { key: 'priority', label: 'Priority' },
-  // proposal §M2 — task_type Select (Activity / Milestone / Inspection)
-  { key: 'task_type', label: 'Task Type' },
-  { key: 'assignee', label: 'Assignee' },
-  { key: 'endDate',  label: 'Due' },
-  { key: 'progress', label: 'Progress', align: 'right' },
-]
-const boqCols = [
-  { key: 'id',           label: 'ID' },
-  { key: 'title',        label: 'Title' },
-  { key: 'revision',     label: 'Rev.', align: 'center' },
-  { key: 'status',       label: 'Status' },
-  { key: 'sourceScoId',  label: 'Source SCO' },
-  { key: 'planned',      label: 'Planned',  align: 'right' },
-  { key: 'actual',       label: 'Actual',   align: 'right' },
-  { key: 'preparedDate', label: 'Prepared' },
-]
-const scoCols = [
-  { key: 'id',       label: 'ID' },
-  { key: 'title',    label: 'Title' },
-  { key: 'impact',   label: 'Impact', align: 'right' },
-  { key: 'status',   label: 'Status' },
-  { key: 'raisedBy', label: 'Raised by' },
-]
-const teamCols = [
-  { key: 'member', label: 'Member' },
-  { key: 'role',   label: 'Role' },
-  { key: 'flag',   label: '' },
-]
+const subCols = SUB_COLS
+const wpCols = WP_COLS
+const taskCols = TASK_COLS
+const boqCols = BOQ_COLS
+const scoCols = SCO_COLS
+const teamCols = TEAM_COLS
 
 function onSubRowClick(row) { router.push(`/app/projects/${row.id}`) }
 function onWpRowClick(row) { router.push(`/app/work-packages/${row.id}`) }
@@ -889,195 +671,16 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
       <!-- ===== Tab content ===== -->
 
       <!-- Overview — view mode -->
-      <div v-if="tab === 'overview'" class="pt-5">
-
-        <!-- Summary strip — moved into Overview so it fills the page first.
-             Slightly more generous than the old above-tabs version. -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          <!-- Client -->
-          <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('building-2')" />
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Client</div>
-            </div>
-            <div class="text-sm text-ink-900 font-medium mt-1.5 truncate">{{ project.client || '—' }}</div>
-          </div>
-
-          <!-- Actual vs Planned -->
-          <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('wallet')" />
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Actual vs Planned</div>
-            </div>
-            <div class="flex items-baseline gap-1 mt-1.5 tabular-nums">
-              <span class="text-base font-semibold text-ink-900">{{ fmtCompactINR(actualCost) }}</span>
-              <span class="text-xs text-ink-400">/ {{ fmtCompactINR(plannedCost) }}</span>
-            </div>
-            <div class="text-[11px] mt-1 tabular-nums" :class="deviationColor(costDeviationPct)">
-              <span class="font-medium">{{ costDeviation > 0 ? '+' : '' }}{{ fmtCompactINR(Math.abs(costDeviation)) }}</span>
-              <span class="ml-0.5">({{ costDeviationPct > 0 ? '+' : '' }}{{ costDeviationPct.toFixed(1) }}%)</span>
-              <span class="text-ink-400 ml-0.5">{{ costDeviationPct > 0 ? 'over' : 'under' }}</span>
-            </div>
-          </div>
-
-          <!-- Progress + delayed -->
-          <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Progress</div>
-            </div>
-            <div class="flex items-center gap-2 mt-1.5">
-              <div class="flex-1 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 999px;">
-                <div class="h-full" :class="progressBarColor(project)" :style="`width:${project.progress}%`"></div>
-              </div>
-              <span class="text-sm text-ink-900 font-semibold tabular-nums">{{ project.progress }}%</span>
-            </div>
-            <div v-if="delayedDays > 0" class="text-[11px] text-danger-700 font-medium mt-1">
-              Delayed by {{ delayedDays }}d
-            </div>
-            <div v-else-if="project.progress >= 100" class="text-[11px] text-success-700 font-medium mt-1">
-              Completed
-            </div>
-            <div v-else class="text-[11px] text-success-700 font-medium mt-1">
-              On track
-            </div>
-          </div>
-
-          <!-- Timeline -->
-          <div class="bg-white border border-ink-200 p-3.5" style="border-radius: 8px;">
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('calendar')" />
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Timeline</div>
-            </div>
-            <div class="text-xs text-ink-900 font-medium mt-1.5 tabular-nums">
-              {{ fmtDate(project.startDate) }} → {{ fmtDate(project.endDate) }}
-            </div>
-            <div v-if="scheduleSummary" class="text-[11px] text-ink-500 mt-1 tabular-nums">
-              {{ scheduleSummary.totalDays }}d total · {{ scheduleSummary.remainingDays }}d remaining
-            </div>
-          </div>
-        </div>
-
-        <!-- Two-column main / sidebar layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          <!-- Main column (span 2) -->
-          <div class="lg:col-span-2 space-y-4">
-
-            <!-- About this project — gradient accent header + body -->
-            <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
-              <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('clipboard-list')" />
-                <h3 class="text-sm font-semibold text-ink-900">About this project</h3>
-              </header>
-              <div class="p-5">
-                <p class="text-sm text-ink-800 leading-relaxed whitespace-pre-wrap">{{ project.description || 'No description provided yet.' }}</p>
-              </div>
-            </section>
-
-            <!-- Reports — project-context reports -->
-            <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
-              <header class="px-5 py-3 bg-gradient-to-r from-info-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
-                <h3 class="text-sm font-semibold text-ink-900">Reports</h3>
-              </header>
-              <div class="p-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <RouterLink
-                    v-for="rt in projectReports"
-                    :key="rt.slug"
-                    :to="`/app/reports/${rt.slug}`"
-                    class="bg-white border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 p-3 transition-colors group block"
-                    style="border-radius: 8px;"
-                  >
-                    <div class="flex items-start gap-2.5">
-                      <svg class="w-5 h-5 text-ink-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath(rt.icon)" />
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                          <div class="text-sm font-medium text-ink-900 group-hover:text-brand-700 transition-colors">{{ rt.label }}</div>
-                          <span class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider" style="border-radius: 2px;">Report</span>
-                        </div>
-                        <div class="text-[11px] text-ink-500 mt-0.5 leading-snug">{{ rt.desc }}</div>
-                      </div>
-                    </div>
-                  </RouterLink>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <!-- Sidebar (span 1) -->
-          <div class="space-y-4">
-
-            <!-- Project Manager card -->
-            <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
-              <header class="px-4 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('hr')" />
-                <h3 class="text-sm font-semibold text-ink-900">Project Manager</h3>
-              </header>
-              <div class="p-4 flex items-center gap-3">
-                <UserAvatar :user-id="project.pm" size="md" />
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-semibold text-ink-900 truncate">{{ store.teamMember(project.pm)?.name || '—' }}</div>
-                  <div class="text-[11px] text-ink-500 truncate">{{ store.teamMember(project.pm)?.role || '' }}</div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Project metadata card -->
-            <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
-              <header class="px-4 py-3 bg-gradient-to-r from-ink-50 to-white border-b border-ink-100 flex items-center gap-2">
-                <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('tag')" />
-                <h3 class="text-sm font-semibold text-ink-900">Project details</h3>
-                <button
-                  type="button"
-                  class="ml-auto text-[11px] text-brand-700 hover:text-brand-800 font-medium"
-                  @click="startEdit"
-                >Edit</button>
-              </header>
-              <dl class="divide-y divide-ink-100">
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Status</dt>
-                  <dd><StatusBadge :status="project.status" /></dd>
-                </div>
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Priority</dt>
-                  <dd><StatusBadge :status="project.priority" /></dd>
-                </div>
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Type</dt>
-                  <dd class="text-ink-800">{{ project.type || '—' }}</dd>
-                </div>
-                <div v-if="store.isMultiCompany && project.company" class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Company</dt>
-                  <dd class="flex items-center gap-1.5 text-ink-800 min-w-0">
-                    <span
-                      v-if="store.companyById(project.company)"
-                      :class="store.companyById(project.company).color"
-                      class="w-2 h-2 flex-shrink-0"
-                      style="border-radius: 999px;"
-                    ></span>
-                    <span class="truncate">{{ store.companyById(project.company)?.shortName || project.company }}</span>
-                  </dd>
-                </div>
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Location</dt>
-                  <dd class="text-ink-800 truncate ml-2">{{ project.location || '—' }}</dd>
-                </div>
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Project ID</dt>
-                  <dd class="text-ink-800 font-mono">{{ project.code }}</dd>
-                </div>
-                <div class="flex items-center justify-between px-4 py-2.5 text-xs">
-                  <dt class="text-ink-500 font-medium">Created</dt>
-                  <dd class="text-ink-700 tabular-nums">{{ fmtDate(project.createdAt) }}</dd>
-                </div>
-              </dl>
-            </section>
-
-          </div>
-        </div>
-      </div>
+      <OverviewTab
+        v-if="tab === 'overview'"
+        :project="project"
+        :active-boq="activeBoq"
+        :project-reports="projectReports"
+        :delayed-days="delayedDays"
+        :schedule-summary="scheduleSummary"
+        :progress-bar-color="progressBarColor"
+        @edit="startEdit"
+      />
 
       <!-- Subprojects — hidden when this record is itself a subproject -->
       <div v-if="tab === 'subprojects' && subprojectsEnabled" class="pt-4">
@@ -1428,147 +1031,26 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
         </DeskList>
       </div>
 
-      <!-- Attachments — §13.3 items 13 + 26. Mirror of Frappe's native sidebar
-           pattern: file rows + uploader avatar + delete + a single "+ Upload"
-           CTA at the top right. NO inline preview, no folder structure — flat
-           list, by design. Blob URLs are SESSION-ONLY (lost on tab close). -->
-      <div v-if="tab === 'attachments'" class="pt-4">
-        <input
-          ref="fileInput"
-          type="file"
-          multiple
-          class="hidden"
-          @change="onFilesPicked"
-        />
-        <div v-if="attachments.length" class="bg-white border border-ink-200" style="border-radius: 8px;">
-          <!-- Filter / action bar -->
-          <div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-            <div class="text-xs text-ink-500">
-              <span class="text-ink-900 font-medium">{{ attachments.length }} {{ attachments.length === 1 ? 'file' : 'files' }}</span>
-              · drawings, contracts, sanctioned plans, site documents
-            </div>
-            <div class="ml-auto">
-              <button type="button" class="desk-save-btn" @click="openFilePicker">+ Upload</button>
-            </div>
-          </div>
-          <div class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-               style="grid-template-columns: 28px minmax(220px, 2fr) 80px 110px 130px 32px;">
-            <div></div>
-            <div class="px-3 py-1.5">File</div>
-            <div class="px-3 py-1.5 text-right">Size</div>
-            <div class="px-3 py-1.5">Uploaded</div>
-            <div class="px-3 py-1.5">By</div>
-            <div></div>
-          </div>
-          <div
-            v-for="att in attachments"
-            :key="att.id"
-            class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 items-center text-sm"
-            style="grid-template-columns: 28px minmax(220px, 2fr) 80px 110px 130px 32px;"
-          >
-            <div class="px-2 py-2 text-center">
-              <svg class="w-4 h-4 text-ink-500 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath(fileIcon(att.mime))" />
-            </div>
-            <div class="px-3 py-2">
-              <button
-                type="button"
-                class="text-left text-sm text-ink-900 hover:underline truncate w-full"
-                :title="att.fileName"
-                @click="openAttachment(att)"
-              >{{ att.fileName }}</button>
-              <div v-if="!att.url" class="text-[10px] text-ink-400 italic mt-0.5">metadata only</div>
-            </div>
-            <div class="px-3 py-2 text-right text-xs text-ink-600 tabular-nums">{{ formatFileSize(att.size) }}</div>
-            <div class="px-3 py-2 text-xs text-ink-600">{{ fmtDate(att.uploadedAt) }}</div>
-            <div class="px-3 py-2">
-              <UserAvatar :user-id="att.uploadedBy" :show-name="true" size="xs" />
-            </div>
-            <div class="px-1 py-2 flex justify-center">
-              <button
-                type="button"
-                class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-ink-50 text-danger-700"
-                style="border-radius: 2px;"
-                :title="`Delete ${att.fileName}`"
-                @click="deleteAttachment(att)"
-              >✕</button>
-            </div>
-          </div>
-        </div>
-        <div v-else class="py-8 text-center">
-          <div class="text-sm text-ink-500 mb-2">No attachments yet.</div>
-          <div class="text-xs text-ink-400 italic mb-4">Drawings, contracts, and site documents go here.</div>
-          <button type="button" class="desk-save-btn" @click="openFilePicker">+ Upload first file</button>
-        </div>
-      </div>
+      <AttachmentsTab
+        v-if="tab === 'attachments'"
+        :project-id="resolvedProjectId"
+        :attachments="attachments"
+      />
 
-      <!-- Team — project-scoped. PM is always shown first and cannot be
-           removed (change PM via the Edit project modal). Other members are
-           added / removed via the action button + the modal below. -->
-      <div v-if="tab === 'team'" class="pt-4">
-        <DeskList
-          :rows="projectTeam"
-          :columns="teamCols"
-          row-key="id"
-          :show-add-filter="false"
-          :show-sort="false"
-          :show-columns="false"
-          :paginated="false"
-        >
-          <template #actions>
-            <button
-              type="button"
-              class="desk-save-btn"
-              :disabled="!availableTeamCandidates.length"
-              @click="openTeamModal"
-            >+ Add Member</button>
-          </template>
-          <template #cell-member="{ row }">
-            <div class="flex items-center gap-2">
-              <div :class="[row.color, 'w-6 h-6 rounded-full text-white flex items-center justify-center font-medium text-[10px]']">{{ row.initials }}</div>
-              <span class="text-ink-900 text-sm">{{ row.name }}</span>
-            </div>
-          </template>
-          <template #cell-role="{ row }">
-            <span class="text-ink-700 text-sm">{{ row.role }}</span>
-          </template>
-          <template #cell-flag="{ row }">
-            <div class="flex items-center justify-end gap-2">
-              <span
-                v-if="row.id === project.pm"
-                class="text-[10px] font-medium px-1.5 py-0.5 bg-brand-50 text-brand-700"
-                style="border-radius: 9999px;"
-              >Project Manager</span>
-              <button
-                v-else
-                type="button"
-                class="text-xs px-2 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 hover:border-danger-200 text-ink-500 hover:text-danger-700"
-                style="border-radius: 6px;"
-                :title="`Remove ${row.name} from this project`"
-                @click.stop="removeTeamMember(row.id)"
-              >Remove</button>
-            </div>
-          </template>
-          <template #empty>
-            <div class="text-sm text-ink-500">
-              No team members yet.
-              <button v-if="availableTeamCandidates.length" type="button" class="desk-link" @click="openTeamModal">Add the first one →</button>
-            </div>
-          </template>
-        </DeskList>
-      </div>
+      <TeamTab
+        v-if="tab === 'team'"
+        :project="project"
+        :team="projectTeam"
+        :team-cols="teamCols"
+        :has-candidates="availableTeamCandidates.length > 0"
+        @add="openTeamModal"
+        @remove="removeTeamMember"
+      />
 
-      <!-- Activity -->
-      <div v-if="tab === 'activity'" class="pt-4">
-        <div class="bg-white border border-ink-200 p-4" style="border-radius: 2px;">
-          <div class="flex gap-3 text-sm">
-            <UserAvatar :user-id="store.user?.id || 'USR-001'" size="sm" />
-            <div>
-              <div class="text-ink-700">Project created</div>
-              <div class="text-xs text-ink-400 mt-0.5">{{ fmtDate(project.createdAt) }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ActivityTab
+        v-if="tab === 'activity'"
+        :project="project"
+      />
 
       <!-- Comments / Attachments / Assignment — stub footer per CLAUDE.md §12.4 Desk convention -->
       <section class="mt-8 pt-4 border-t border-ink-200">
@@ -1592,225 +1074,26 @@ function onBoqRowClick(row) { router.push(`/app/boq/${row.id}`) }
       </section>
     </div>
 
-    <!-- ===== Edit modal — opens via the title-row Edit button OR the
-         Edit link inside the Overview's Project details card. The card is
-         a flex column with header + footer pinned (flex-shrink-0) and the
-         body as the only scrollable region. ===== -->
-    <Teleport to="body">
-      <div
-        v-if="editing"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
-        @click.self="cancelEdit"
-      >
-        <div
-          class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
-          style="border-radius: 12px; max-height: calc(100vh - 3rem);"
-          @click.stop
-        >
-          <!-- Modal header (pinned) -->
-          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white" style="border-radius: 12px 12px 0 0;">
-            <div class="min-w-0 flex-1">
-              <h2 class="text-sm font-semibold text-ink-900">Edit project</h2>
-              <p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ project.name }}</p>
-            </div>
-            <button
-              type="button"
-              class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
-              aria-label="Close"
-              @click="cancelEdit"
-            >×</button>
-          </header>
+    <ProjectEditModal
+      :open="editing"
+      :project="project"
+      :edit-form="editForm"
+      :is-subproject="isSubproject"
+      :subs-count="subs.length"
+      :is-multi-company="store.isMultiCompany"
+      @close="cancelEdit"
+      @save="saveEdit"
+    />
 
-          <!-- Modal body — the only scrolling region -->
-          <div class="p-5 overflow-y-auto flex-1">
-            <DeskSection title="Basic information">
-              <DeskField label="Project name" required>
-                <DeskInput v-model="editForm.name" />
-              </DeskField>
-              <DeskField label="Client">
-                <DeskLinkPicker
-                  v-model="editForm.client"
-                  doctype="Customer"
-                  placeholder="Select customer"
-                  label-field="customer_name"
-                  value-field="name"
-                  :search-fields="['customer_name', 'name']"
-                  order-by="modified desc"
-                  :page-length="20"
-                />
-              </DeskField>
-              <DeskField label="Type">
-                <DeskLinkPicker
-                  v-model="editForm.type"
-                  doctype="Project Type"
-                  placeholder="Select project type"
-                  label-field="name"
-                  value-field="name"
-                  :search-fields="['name']"
-                  order-by="modified desc"
-                  :page-length="20"
-                />
-              </DeskField>
-              <DeskField
-                v-if="store.isMultiCompany"
-                label="Company"
-                hint="Legal entity this project belongs to."
-              >
-                <DeskLinkPicker
-                  v-model="editForm.company"
-                  doctype="Company"
-                  placeholder="Select company"
-                  label-field="name"
-                  value-field="name"
-                  :search-fields="['name', 'abbr']"
-                  order-by="modified desc"
-                  :page-length="20"
-                />
-              </DeskField>
-              <DeskField label="Location">
-                <DeskInput v-model="editForm.location" />
-              </DeskField>
-              <DeskField label="Note">
-                <DeskTextarea v-model="editForm.description" :rows="3" />
-              </DeskField>
-              <DeskField
-                v-if="!isSubproject"
-                label="Subprojects"
-                :hint="subs.length > 0
-                  ? `Locked on - this project has ${subs.length} subproject${subs.length === 1 ? '' : 's'}. Delete or move them out before turning this off.`
-                  : 'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
-                "
-              >
-                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    v-model="editForm.isGroup"
-                    :disabled="subs.length > 0"
-                    class="accent-brand-600 disabled:cursor-not-allowed"
-                  />
-                  <span class="text-sm text-ink-700">Allow subprojects under this project</span>
-                </label>
-              </DeskField>
-            </DeskSection>
-
-            <DeskSection title="Schedule & cost">
-              <DeskField label="Start date">
-                <DeskInput v-model="editForm.startDate" type="date" />
-              </DeskField>
-              <DeskField label="End date">
-                <DeskInput v-model="editForm.endDate" type="date" />
-              </DeskField>
-              <DeskField label="Budget" hint="In INR">
-                <DeskInput v-model="editForm.budget" type="number" />
-              </DeskField>
-              <DeskField label="Progress" hint="0–100">
-                <DeskInput v-model="editForm.progress" type="number" />
-              </DeskField>
-            </DeskSection>
-
-            <DeskSection title="Team & status">
-              <DeskField label="Project Manager">
-                <DeskLinkPicker
-                  v-model="editForm.pm"
-                  doctype="Employee"
-                  placeholder="Select project manager"
-                  label-field="employee_name"
-                  value-field="name"
-                  :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
-                  order-by="modified desc"
-                  :page-length="20"
-                />
-              </DeskField>
-              <DeskField label="Status">
-                <DeskSelect v-model="editForm.status">
-                  <option>Open</option>
-                  <option>Working</option>
-                  <option>On Hold</option>
-                  <option>Completed</option>
-                  <option>Cancelled</option>
-                </DeskSelect>
-              </DeskField>
-              <DeskField label="Priority">
-                <DeskSelect v-model="editForm.priority">
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </DeskSelect>
-              </DeskField>
-            </DeskSection>
-          </div>
-
-          <!-- Modal footer (pinned) -->
-          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white" style="border-radius: 0 0 12px 12px;">
-            <button
-              type="button"
-              class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-              style="border-radius: 6px;"
-              @click="cancelEdit"
-            >Cancel</button>
-            <button
-              type="button"
-              class="desk-save-btn"
-              @click="saveEdit"
-            >Save</button>
-          </footer>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- Add Team Member modal -->
-    <Teleport to="body">
-      <div
-        v-if="teamModalOpen"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
-        @click.self="closeTeamModal"
-      >
-        <div
-          class="bg-white border border-ink-200 w-full max-w-md shadow-fp-lg flex flex-col"
-          style="border-radius: 12px;"
-          @click.stop
-        >
-          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white" style="border-radius: 12px 12px 0 0;">
-            <div class="min-w-0 flex-1">
-              <h2 class="text-sm font-semibold text-ink-900">Add team member</h2>
-              <p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ project.name }}</p>
-            </div>
-            <button
-              type="button"
-              class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
-              aria-label="Close"
-              @click="closeTeamModal"
-            >×</button>
-          </header>
-          <div class="p-5">
-            <div v-if="availableTeamCandidates.length">
-              <DeskField label="User" hint="Pick from users not already on this project.">
-                <DeskSelect v-model="teamPickUserId">
-                  <option v-for="m in availableTeamCandidates" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-                </DeskSelect>
-              </DeskField>
-            </div>
-            <div v-else class="text-sm text-ink-500 italic">
-              Every user is already on this project.
-            </div>
-          </div>
-          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white" style="border-radius: 0 0 12px 12px;">
-            <button
-              type="button"
-              class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-              style="border-radius: 6px;"
-              @click="closeTeamModal"
-            >Cancel</button>
-            <button
-              type="button"
-              class="desk-save-btn"
-              :disabled="!teamPickUserId"
-              @click="confirmAddMember"
-            >Add member</button>
-          </footer>
-        </div>
-      </div>
-    </Teleport>
+    <ProjectTeamMemberModal
+      :open="teamModalOpen"
+      :project-name="project?.name || ''"
+      :available-team-candidates="availableTeamCandidates"
+      :team-pick-user-id="teamPickUserId"
+      @update:team-pick-user-id="(value) => (teamPickUserId = value)"
+      @close="closeTeamModal"
+      @confirm="confirmAddMember"
+    />
 
     <!-- Delete confirmation dialog -->
     <ConfirmDialog
