@@ -3,9 +3,10 @@
 // exactly: the watch on form.projectId clears the workPackageId when the new project
 // doesn't include the previously-selected WP. Validate / save behavior unchanged.
 
-import { reactive, ref, computed, watch } from 'vue'
+import { reactive, ref, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -90,8 +91,11 @@ async function save() {
       owner: form.assignee, // Map to owner for the adapter/Frappe consistency
       activity_type: form.activityType,
     })
-    router.push(`/app/tasks/${res.name}`)
+    await router.push(`/app/tasks/${res.name}`)
+    await nextTick()
+    showToast('Task created')
   } catch (err) {
+    showToast('Failed to create task', 'error')
     console.error('Failed to create task:', err)
   } finally {
     saving.value = false
