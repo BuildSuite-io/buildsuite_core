@@ -105,7 +105,9 @@ const resolvedFields = computed(() => {
       })
     : props.fieldOrder
 
-  const valid = candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname))
+  const valid = meta.value
+    ? candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname))
+    : candidates
   const withName = valid.includes('name') ? valid : ['name', ...valid]
   return Array.from(new Set(withName))
 })
@@ -483,8 +485,12 @@ function onPageSizeChange(value) {
       :current-page="currentPage"
       :total-rows="estimatedTotalRows"
       :search-placeholder="searchPlaceholder"
-      :show-sort="false"
+      :sort-field="sortField"
+      :sort-direction="sortDirection"
+      :sort-options="sortableFields"
       @row-click="(row) => emit('row-click', row)"
+      @update:sort-field="sortField = $event"
+      @update:sort-direction="sortDirection = $event"
       @page-change="onPageChange"
       @page-size-change="onPageSizeChange"
     >
@@ -496,38 +502,6 @@ function onPageSizeChange(value) {
           :meta-loading="metaLoading"
           :fields="resolvedFields"
         />
-      </template>
-
-      <template #pre-columns-controls>
-        <div
-          class="flex items-center border border-ink-200 bg-white"
-          style="border-radius: 6px; overflow: hidden;"
-        >
-          <button
-            type="button"
-            class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border-r border-ink-200 disabled:text-ink-300 disabled:hover:bg-white"
-            :title="sortDirection === 'desc' ? 'Descending' : 'Ascending'"
-            :disabled="!sortableFields.length"
-            @click="sortDirection = sortDirection === 'desc' ? 'asc' : 'desc'"
-          >{{ sortDirection === 'desc' ? '↓' : '↑' }}</button>
-
-          <select
-            v-model="sortField"
-            class="text-xs text-ink-600 bg-white hover:bg-ink-50 pl-2.5 pr-7 py-1 appearance-none"
-            :disabled="!sortableFields.length"
-            style="border: none; outline: none; min-width: 9.5rem;"
-            :title="!sortableFields.length ? 'Sort unavailable' : 'Sort field'"
-          >
-            <option v-if="!sortableFields.length" value="">Sort unavailable</option>
-            <option
-              v-for="option in sortableFields"
-              :key="option.value"
-              :value="option.value"
-            >{{ option.label }}</option>
-          </select>
-
-          <span class="-ml-6 pointer-events-none text-ink-400 text-[10px]">▾</span>
-        </div>
       </template>
 
       <template

@@ -1,8 +1,6 @@
 <script setup>
-// Tasks list — Desk-styled (CLAUDE.md §12.4). Multi-filter preserved exactly:
-// search + status + priority + project + assignee. Inactive filters show as a
-// DeskSelect picker; active filters render as DeskFilterChip with × to clear,
-// matching real Frappe Desk's filter-chip pattern.
+// Tasks list — use the generic DocType list shell so sort controls stay
+// consistent with other meta-backed list screens.
 
 import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
@@ -11,89 +9,119 @@ import { createDataAdapter } from '@/data/adapters'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskList from '@/components/desk/DeskList.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 
-const search = ref('')
 const statusFilter = ref('')
 const priorityFilter = ref('')
 const projectFilter = ref('')
 const assigneeFilter = ref('')
 const taskTypeFilter = ref('')
 
-const tasksResource = adapter.list('Task')
-const allTasks = computed(() => tasksResource.data)
+function resourceRows(resource) {
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+}
 
-const projectsResource = adapter.list('Project')
+const projectsResource = adapter.list('Project', {
+  fields: ['name', 'project_name'],
+  orderBy: 'project_name asc',
+  pageLength: 100,
+  cache: 'buildsuite-task-project-filters',
+})
+const projectRows = computed(() => resourceRows(projectsResource))
 const projectsMap = computed(() => {
   const map = {}
-  projectsResource.data.forEach(p => map[p.name] = p.project_name)
+  projectRows.value.forEach((p) => {
+    map[p.name] = p.project_name || p.name
+  })
   return map
 })
 
-const wpsResource = adapter.list('Work Package')
+const wpsResource = adapter.list('Work Package', {
+  fields: ['name', 'work_package_name', 'package_name'],
+  pageLength: 200,
+  cache: 'buildsuite-task-work-package-map',
+})
+const wpRows = computed(() => resourceRows(wpsResource))
 const wpsMap = computed(() => {
   const map = {}
-  wpsResource.data.forEach(wp => map[wp.name] = wp.package_name)
-  return map
-})
-
-const items = computed(() => {
-  const term = search.value.trim().toLowerCase()
-  return allTasks.value.filter(t => {
-    if (term && !t.subject.toLowerCase().includes(term)) return false
-    if (statusFilter.value && t.status !== statusFilter.value) return false
-    if (priorityFilter.value && t.priority !== priorityFilter.value) return false
-    if (projectFilter.value && t.project !== projectFilter.value) return false
-    if (assigneeFilter.value && t.owner !== assigneeFilter.value) return false
-    if (taskTypeFilter.value && (t.task_type || 'Activity') !== taskTypeFilter.value) return false
-    return true
+  wpRows.value.forEach((wp) => {
+    map[wp.name] = wp.work_package_name || wp.package_name || wp.name
   })
+  return map
 })
 
 function projectName(id) { return projectsMap.value[id] || id }
 function wpName(id) { return wpsMap.value[id] || '—' }
 function memberName(id) { return store.teamMember(id)?.name || id }
 
-const columns = [
-  { key: 'name',     label: 'Task' },
-  { key: 'project',  label: 'Project · WP' },
-  { key: 'status',   label: 'Status' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'task_type', label: 'Task Type' },
-  { key: 'assignee', label: 'Assignee' },
-  { key: 'endDate',  label: 'Due' },
-  { key: 'progress', label: 'Progress', align: 'right' },
-]
+const filterValues = computed(() => ({
+  status: statusFilter.value,
+  priority: priorityFilter.value,
+  project: projectFilter.value,
+  assignee: assigneeFilter.value,
+  taskType: taskTypeFilter.value,
+}))
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
   { label: 'Task' },
 ]
 
-const subtitle = computed(() => `${items.value.length} of ${allTasks.value.length}`)
-
 function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
 </script>
 
 <template>
-  <DeskPage title="Task" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+  <DeskPage title="Task" :breadcrumbs="breadcrumbs">
     <template #actions>
       <RouterLink to="/app/activity-types" class="desk-link text-xs mr-3">View Activity Types →</RouterLink>
       <RouterLink to="/app/tasks/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
-    <DeskList
-      v-model="search"
-      :rows="items"
-      :columns="columns"
+    <DocTypeListView
+      doctype="Task"
+      :field-order="[
+        'subject',
+        'project',
+        'work_package',
+        'status',
+        'priority',
+        'type',
+        'owner',
+        'exp_end_date',
+        'progress',
+        'modified',
+      ]"
+      :columns="[
+        { key: 'subject', label: 'Task' },
+        { key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
+        { key: 'status', label: 'Status', preset: 'status' },
+        { key: 'priority', label: 'Priority', preset: 'status' },
+        { key: 'type', label: 'Task Type', preset: 'status' },
+        { key: 'owner', label: 'Assignee' },
+        { key: 'exp_end_date', label: 'Due' },
+        { key: 'progress', label: 'Progress', preset: 'progress' },
+      ]"
+      :search-fields="['subject', 'name']"
+      :filter-values="filterValues"
+      :filter-field-map="{
+        status: 'status',
+        priority: 'priority',
+        project: 'project',
+        assignee: 'owner',
+        taskType: 'type',
+      }"
+      cache-key="buildsuite-task-list-generic"
       row-key="name"
       search-placeholder="Search tasks…"
       @row-click="onRowClick"
@@ -131,7 +159,7 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
         <!-- Project -->
         <DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-48">
           <option value="">Project: Any</option>
-          <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+          <option v-for="p in projectRows" :key="p.name" :value="p.name">{{ p.project_name || p.name }}</option>
         </DeskSelect>
         <DeskFilterChip
           v-else
@@ -167,36 +195,36 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
         />
       </template>
 
-      <template #cell-name="{ row }">
-        <DeskLink :to="`/app/tasks/${row.name}`" @click.stop>{{ row.subject }}</DeskLink>
+      <template #cell-subject="{ row }">
+        <DeskLink :to="`/app/tasks/${row.name}`" @click.stop>{{ row.subject || row.name || 'Untitled task' }}</DeskLink>
       </template>
       <template #cell-project="{ row }">
         <div class="text-xs text-ink-500">
-          <div>{{ projectName(row.project) }}</div>
-          <div class="text-ink-400">{{ wpName(row.work_package) }}</div>
+          <div>{{ projectName(row.project || '') }}</div>
+          <div class="text-ink-400">{{ wpName(row.work_package || '') }}</div>
         </div>
       </template>
       <template #cell-status="{ row }">
-        <StatusBadge :status="row.status" />
+        <StatusBadge :status="row.status || 'Open'" />
       </template>
       <template #cell-priority="{ row }">
-        <StatusBadge :status="row.priority" size="xs" />
+        <StatusBadge :status="row.priority || 'Medium'" size="xs" />
       </template>
-      <template #cell-task_type="{ row }">
-        <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
+      <template #cell-type="{ row }">
+        <StatusBadge :status="row.type || 'Activity'" size="xs" />
       </template>
-      <template #cell-assignee="{ row }">
-        <UserAvatar :user-id="row.owner" size="xs" />
+      <template #cell-owner="{ row }">
+        <UserAvatar :user-id="row.owner || ''" size="xs" />
       </template>
-      <template #cell-endDate="{ row }">
+      <template #cell-exp_end_date="{ row }">
         <span class="text-xs text-ink-500">{{ fmtDate(row.exp_end_date) }}</span>
       </template>
       <template #cell-progress="{ row }">
         <div class="flex items-center justify-end gap-2">
           <div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px;">
-            <div class="h-full" :class="row.progress === 100 ? 'bg-success-500' : 'bg-info-500'" :style="`width:${row.progress}%`"></div>
+            <div class="h-full" :class="Number(row.progress) === 100 ? 'bg-success-500' : 'bg-info-500'" :style="`width:${Number(row.progress) || 0}%`"></div>
           </div>
-          <span class="text-xs tabular-nums w-8 text-right">{{ row.progress }}%</span>
+          <span class="text-xs tabular-nums w-8 text-right">{{ Number(row.progress) || 0 }}%</span>
         </div>
       </template>
 
@@ -206,6 +234,6 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
           <RouterLink to="/app/tasks/new" class="desk-link">Create a task →</RouterLink>
         </div>
       </template>
-    </DeskList>
+    </DocTypeListView>
   </DeskPage>
 </template>
