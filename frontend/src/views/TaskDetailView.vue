@@ -399,7 +399,7 @@ function cancelEdit() {
 async function quickStatus(status) {
   const patch = { status }
   if (status === 'Completed') patch.progress = 100
-  if (status === 'Open') patch.progress = 0
+  if (status === 'Yet To Start') patch.progress = 0
 
   try {
     await adapter.update('Task', props.id, patch)
@@ -469,7 +469,7 @@ const progressColor = computed(() => {
     <!-- Edit / Delete / quick-status actions share the title row -->
     <template #actions>
       <button
-        v-if="task.status === 'Open'"
+        v-if="task.status === 'Yet To Start'"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
@@ -497,47 +497,47 @@ const progressColor = computed(() => {
       >Delete</button>
     </template>
 
-    <!-- ===== Progress block — pinned at top so the headline number is the
-         first thing visible on the task home. ===== -->
-    <section class="bg-white border border-ink-200 mb-4 overflow-hidden" style="border-radius: 10px;">
-      <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
-          <h3 class="text-sm font-semibold text-ink-900">Progress</h3>
-        </div>
-        <button
-          type="button"
-          class="desk-save-btn text-xs"
-          @click="fileProgressEntry"
-        >+ File Progress Entry</button>
-      </header>
-      <div class="p-5">
-        <div class="flex items-center gap-4">
-          <div class="flex-1 h-2.5 bg-ink-100 overflow-hidden" style="border-radius: 999px;">
-            <div
-              class="h-full transition-all"
-              :class="progressColor"
-              :style="{ width: `${task.progress}%` }"
-            />
-          </div>
-          <span class="text-2xl font-semibold text-ink-900 tabular-nums w-16 text-right">{{ task.progress }}%</span>
-        </div>
-        <div class="text-[11px] text-ink-500 mt-3">
-          <template v-if="latestEntry">
-            Latest:
-            <DeskLink :to="`/progress-entries/${latestEntry.id}`">{{ latestEntry.progressPct }}% on {{ fmtDate(latestEntry.entryDate) }}</DeskLink>
-            by <UserAvatar :user-id="latestEntry.enteredBy" size="xs" /> · {{ entryCount }} {{ entryCount === 1 ? 'entry' : 'entries' }} total
-          </template>
-          <template v-else>
-            No progress entries filed yet — progress derives from the latest entry.
-          </template>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== Two-column body: details on left, connections panel on right ===== -->
+    <!-- ===== Two-column body: progress + details on left, connections
+         panel on right (S82 — progress block moved inside the left column). ===== -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="lg:col-span-2">
+      <div class="lg:col-span-2 space-y-4">
+        <!-- Progress block -->
+        <section class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 10px;">
+          <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-brand-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-bar')" />
+              <h3 class="text-sm font-semibold text-ink-900">Progress</h3>
+            </div>
+            <button
+              type="button"
+              class="desk-save-btn text-xs"
+              @click="fileProgressEntry"
+            >+ File Progress Entry</button>
+          </header>
+          <div class="p-5">
+            <div class="flex items-center gap-4">
+              <div class="flex-1 h-2.5 bg-ink-100 overflow-hidden" style="border-radius: 999px;">
+                <div
+                  class="h-full transition-all"
+                  :class="progressColor"
+                  :style="{ width: `${task.progress}%` }"
+                />
+              </div>
+              <span class="text-2xl font-semibold text-ink-900 tabular-nums w-16 text-right">{{ task.progress }}%</span>
+            </div>
+            <div class="text-[11px] text-ink-500 mt-3">
+              <template v-if="latestEntry">
+                Latest:
+                <DeskLink :to="`/progress-entries/${latestEntry.id}`">{{ latestEntry.progressPct }}% on {{ fmtDate(latestEntry.entryDate) }}</DeskLink>
+                by <UserAvatar :user-id="latestEntry.enteredBy" size="xs" /> · {{ entryCount }} {{ entryCount === 1 ? 'entry' : 'entries' }} total
+              </template>
+              <template v-else>
+                No progress entries filed yet — progress derives from the latest entry.
+              </template>
+            </div>
+          </div>
+        </section>
+
         <DeskSection title="Details">
           <DeskField label="Name">
             <div class="text-sm text-ink-900 py-1">{{ task.name }}</div>
@@ -589,8 +589,8 @@ const progressColor = computed(() => {
             <li v-for="e in recentEntries" :key="e.id" class="flex items-center justify-between gap-2 text-xs">
               <DeskLink :to="`/progress-entries/${e.id}`" class="font-medium tabular-nums">{{ e.progressPct }}%</DeskLink>
               <span class="text-ink-500 flex-1 truncate">{{ fmtDate(e.entryDate) }}</span>
+              <span v-if="e.blockerFlag" class="text-danger-700 flex-shrink-0" title="Blocker flagged">🚩</span>
               <UserAvatar :user-id="e.enteredBy" size="xs" />
-              <svg v-if="e.blockerFlag" class="w-3.5 h-3.5 text-danger-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" title="Blocker flagged" v-html="getWorkspaceIconPath('flag')" />
             </li>
           </ul>
           <div v-else class="text-xs text-ink-400 italic">None yet</div>
@@ -602,7 +602,7 @@ const progressColor = computed(() => {
     <Teleport to="body">
       <div
         v-if="editing"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
         @click.self="cancelEdit"
       >
         <div
@@ -660,10 +660,11 @@ const progressColor = computed(() => {
               </DeskField>
               <DeskField label="Status">
                 <DeskSelect v-model="form.status">
-                  <option>Open</option>
+                  <option>Yet To Start</option>
                   <option>In Progress</option>
+                  <option>In Delay</option>
                   <option>Completed</option>
-                  <option>Cancelled</option>
+                  <option>Blocked</option>
                 </DeskSelect>
               </DeskField>
               <DeskField label="Priority">
@@ -701,7 +702,7 @@ const progressColor = computed(() => {
     <Teleport to="body">
       <div
         v-if="filingProgress"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
         @click.self="cancelProgressEntry"
       >
         <div
@@ -732,10 +733,12 @@ const progressColor = computed(() => {
               <DeskField label="Entry date">
                 <DeskInput v-model="progressForm.entryDate" type="date" />
               </DeskField>
-              <DeskField label="Entered by">
-                <DeskSelect v-model="progressForm.enteredBy">
-                  <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-                </DeskSelect>
+              <DeskField label="Entered by" hint="Stamped automatically from the signed-in user.">
+                <div class="flex items-center gap-2 py-1">
+                  <UserAvatar :user-id="progressForm.enteredBy" size="xs" />
+                  <span class="text-sm text-ink-800">{{ store.teamMember(progressForm.enteredBy)?.name || '—' }}</span>
+                  <span v-if="store.teamMember(progressForm.enteredBy)?.role" class="text-[11px] text-ink-500">· {{ store.teamMember(progressForm.enteredBy).role }}</span>
+                </div>
               </DeskField>
               <div class="md:col-span-2">
                 <DeskField label="Narrative" hint="What was completed today? Any context worth recording?">
