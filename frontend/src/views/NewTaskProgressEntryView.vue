@@ -12,24 +12,12 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
-
-const tasksResource = adapter.list('Task', {
-  fields: ['name', 'subject', 'status', 'progress'],
-  orderBy: 'modified desc',
-  transform(rows) {
-    return rows.map(row => ({
-      id:       row?.name || '',
-      name:     row?.subject || row?.name || '',
-      status:   row?.status || '',
-      progress: Number(row?.progress) || 0,
-    }))
-  },
-})
 
 const cameFromTaskId = route.query.taskId || null
 
@@ -47,31 +35,39 @@ const form = reactive({
 const errors = ref({})
 const saving = ref(false)
 
-function toArray(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.value)) return data.value
-  return []
+// Load the selected task to show the info banner and pre-fill progress.
+const taskResource = ref(null)
+
+function loadTaskResource(taskId) {
+  if (!taskId) { taskResource.value = null; return }
+  taskResource.value = adapter.read('Task', taskId, {
+    fields: ['name', 'subject', 'status', 'progress'],
+    transform(rows) {
+      return rows.map(row => ({
+        id:       row?.name || '',
+        name:     row?.subject || row?.name || '',
+        status:   row?.status || '',
+        progress: Number(row?.progress) || 0,
+      }))
+    },
+  })
 }
 
-const tasksList = computed(() => toArray(tasksResource.data))
+watch(() => form.taskId, loadTaskResource, { immediate: true })
 
-const selectedTask = computed(() =>
-  form.taskId ? tasksList.value.find(t => t.id === form.taskId) || null : null
-)
+const selectedTask = computed(() => {
+  const raw = taskResource.value?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  return null
+})
 
-// Pre-fill progress from current task progress when a task is first selected
+// Pre-fill progress when a task is first selected
 watch(selectedTask, (t) => {
   if (t && form.progressPct === 0) {
     form.progressPct = t.progress || 0
   }
 })
-
-// Auto-select first non-completed task when no taskId was supplied via query
-watch(tasksList, (tasks) => {
-  if (!form.taskId && tasks.length && !cameFromTaskId) {
-    form.taskId = tasks.find(t => t.status !== 'Completed')?.id || tasks[0]?.id || ''
-  }
-}, { immediate: true })
 
 function validate() {
   const e = {}
@@ -144,12 +140,15 @@ const breadcrumbs = [
       <div class="max-w-3xl mx-auto">
         <DeskSection title="Task &amp; date" :cols="2">
           <DeskField label="Task" required :error="errors.taskId">
-            <DeskSelect v-model="form.taskId">
-              <option value="">— Select task —</option>
-              <option v-for="t in tasksList" :key="t.id" :value="t.id">
-                {{ t.name }} · {{ t.status }} · {{ t.progress }}%
-              </option>
-            </DeskSelect>
+            <DeskLinkPicker
+              v-model="form.taskId"
+              doctype="Task"
+              label-field="subject"
+              value-field="name"
+              :search-fields="['subject', 'name']"
+              :page-length="20"
+              placeholder="— Select task —"
+            />
           </DeskField>
           <DeskField label="Entry date">
             <DeskInput v-model="form.entryDate" type="date" />
