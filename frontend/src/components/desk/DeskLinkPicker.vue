@@ -383,4 +383,7 @@ function onQueryUpdate(value) {
 .desk-link-picker-popover .sticky.bg-surface-modal {
   background-color: #ffffff !important;
 }
+html.dark .desk-link-picker-popover .sticky.bg-surface-modal {
+  background-color: #242424 !important;
+}
 </style>
