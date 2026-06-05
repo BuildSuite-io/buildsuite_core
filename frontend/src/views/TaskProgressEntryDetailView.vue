@@ -16,7 +16,9 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import FileUploadHandler from 'frappe-ui-file-upload-handler'
 import { fmtDate } from '@/utils/format'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
@@ -262,6 +264,101 @@ async function confirmDelete() {
   }
 }
 
+// ── Attachments ──────────────────────────────────────────────────────────────
+
+const attachmentsResource = ref(null)
+const uploadingCount = ref(0)
+const attachFileInput = ref(null)
+
+function loadAttachmentsResource(entryId) {
+  if (!entryId) { attachmentsResource.value = null; return }
+  attachmentsResource.value = adapter.list('File', {
+    filters: [
+      ['attached_to_doctype', '=', 'Task Update'],
+      ['attached_to_name',    '=', entryId],
+    ],
+    fields: ['name', 'file_name', 'file_url', 'file_size', 'is_private', 'creation', 'owner'],
+    orderBy: 'creation desc',
+  })
+}
+
+watch(() => entry.value?.id, loadAttachmentsResource, { immediate: true })
+
+const attachedFiles = computed(() => {
+  const raw = attachmentsResource.value?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+})
+
+async function onAttachFilesPicked(e) {
+  const files = Array.from(e.target.files || [])
+  if (!files.length) return
+  uploadingCount.value += files.length
+  for (const file of files) {
+    const handler = new FileUploadHandler()
+    try {
+      await handler.upload(file, {
+        doctype: 'Task Update',
+        docname: props.id,
+        private: true,
+      })
+    } catch (err) {
+      showToast(`Failed to upload ${file.name}`, 'error')
+      console.error('upload failed:', err)
+    } finally {
+      uploadingCount.value--
+    }
+  }
+  attachmentsResource.value?.reload?.()
+  if (e.target) e.target.value = ''
+}
+
+const showFileDeleteConfirm = ref(false)
+const fileDeleteLoading = ref(false)
+const pendingFileDelete = ref(null)
+
+function deleteFile(fileId, fileName) {
+  pendingFileDelete.value = { id: fileId, name: fileName }
+  showFileDeleteConfirm.value = true
+}
+
+async function confirmFileDelete() {
+  if (!pendingFileDelete.value) return
+  fileDeleteLoading.value = true
+  try {
+    await adapter.remove('File', pendingFileDelete.value.id)
+    showFileDeleteConfirm.value = false
+    pendingFileDelete.value = null
+    attachmentsResource.value?.reload?.()
+    showToast('Attachment deleted')
+  } catch (err) {
+    showToast('Failed to delete attachment', 'error')
+    console.error('deleteFile failed:', err)
+  } finally {
+    fileDeleteLoading.value = false
+  }
+}
+
+function fileIcon(url) {
+  const ext = (url || '').split('.').pop().toLowerCase()
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image'
+  if (ext === 'pdf') return 'file-text'
+  if (['dwg', 'dxf'].includes(ext)) return 'estimation'
+  if (['doc', 'docx'].includes(ext)) return 'file-text'
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'chart-line'
+  if (['zip', 'rar', '7z'].includes(ext)) return 'archive'
+  return 'file'
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0, n = bytes
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++ }
+  return (i === 0 ? n : n.toFixed(n < 10 ? 1 : 0)) + ' ' + units[i]
+}
+
 // ── Display helpers ──────────────────────────────────────────────────────────
 
 const WEATHER_OPTIONS = ['Clear', 'Rainy', 'Hot', 'Cold', 'Storm']
@@ -438,6 +535,55 @@ const subtitle = computed(() => entry.value
             </div>
           </DeskSection>
 
+          <!-- Attachments -->
+          <DeskSection title="Attachments">
+            <div class="md:col-span-2">
+              <div v-if="attachedFiles.length" class="bg-white border border-ink-200 mb-3" style="border-radius: 6px;">
+                <div class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+                     style="grid-template-columns: 24px 1fr 70px 32px;">
+                  <div></div>
+                  <div class="px-3 py-1.5">File</div>
+                  <div class="px-3 py-1.5 text-right">Size</div>
+                  <div></div>
+                </div>
+                <div
+                  v-for="f in attachedFiles"
+                  :key="f.name"
+                  class="grid hover:bg-brand-50 border-b border-ink-100 last:border-b-0 items-center"
+                  style="grid-template-columns: 24px 1fr 70px 32px;"
+                >
+                  <div class="px-1 py-2 text-center">
+                    <svg class="w-3.5 h-3.5 text-ink-400 mx-auto" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                         stroke-linejoin="round" v-html="getWorkspaceIconPath(fileIcon(f.file_url))" />
+                  </div>
+                  <div class="px-3 py-2 min-w-0">
+                    <a :href="f.file_url" target="_blank" rel="noopener"
+                       class="text-xs text-brand-700 hover:underline truncate block">{{ f.file_name }}</a>
+                  </div>
+                  <div class="px-3 py-2 text-right text-xs text-ink-500 tabular-nums">{{ formatFileSize(f.file_size) }}</div>
+                  <div class="px-1 py-2 flex justify-center">
+                    <button
+                      type="button"
+                      class="text-xs px-1 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 text-danger-700"
+                      style="border-radius: 4px;"
+                      @click="deleteFile(f.name, f.file_name)"
+                    >✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <input ref="attachFileInput" type="file" multiple class="hidden" @change="onAttachFilesPicked" />
+              <button
+                type="button"
+                class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+                style="border-radius: 6px;"
+                :disabled="uploadingCount > 0"
+                @click="attachFileInput?.click()"
+              >{{ uploadingCount > 0 ? `Uploading… (${uploadingCount})` : '+ Attach file' }}</button>
+            </div>
+          </DeskSection>
+
         </div>
 
         <!-- Connections panel -->
@@ -480,8 +626,7 @@ const subtitle = computed(() => entry.value
             <span class="text-ink-400 italic ml-1">stub</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span>📎</span><span>Attachments — <span class="font-medium text-ink-700">0</span></span>
-            <span class="text-ink-400 italic ml-1">stub</span>
+            <span>📎</span><span>Attachments — <span class="font-medium text-ink-700">{{ attachedFiles.length }}</span></span>
           </div>
           <div class="flex items-center gap-1.5">
             <span>👥</span><span>Entered by —</span>
@@ -499,6 +644,16 @@ const subtitle = computed(() => entry.value
       :destructive="true"
       :loading="deleteLoading"
       @confirm="confirmDelete"
+    />
+
+    <ConfirmDialog
+      v-model:open="showFileDeleteConfirm"
+      title="Delete attachment"
+      :message="pendingFileDelete ? `Delete '${pendingFileDelete.name}'? This cannot be undone.` : ''"
+      confirm-label="Delete"
+      :destructive="true"
+      :loading="fileDeleteLoading"
+      @confirm="confirmFileDelete"
     />
   </DeskPage>
 

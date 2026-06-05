@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "TPE-.YYYY.-.####",
  "creation": "2026-06-03 14:23:02.607464",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -99,10 +100,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-03 14:41:40.735175",
+ "modified": "2026-06-04 10:58:44.309809",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Task Update",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
