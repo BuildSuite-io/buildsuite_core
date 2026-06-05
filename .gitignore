@@ -56,7 +56,8 @@ jspm_packages/
 
 # BuildSuite
 
-context/
+context/buildsuite-core-demo
+context/semgrep-rules
 
 # Generated frontend build output (from frontend/vite build)
 buildsuite_core/public/frontend/**
