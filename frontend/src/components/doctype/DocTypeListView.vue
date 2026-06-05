@@ -4,6 +4,7 @@ import DeskList from '@/components/desk/DeskList.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { fmtDate } from '@/utils/format'
 import { useDocTypeList } from '@/composables/useDocTypeList'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({
   doctype: { type: String, required: true },
@@ -24,7 +25,7 @@ const props = defineProps({
   emptyMessage: { type: String, default: 'No records found' },
 })
 
-const emit = defineEmits(['row-click'])
+const emit = defineEmits(['row-click', 'count-change'])
 
 const search = ref('')
 const meta = ref(null)
@@ -113,9 +114,10 @@ const resolvedFields = computed(() => {
 })
 
 function defaultColumnLabel(column) {
+  if (column.label != null) return column.label
   const fallbackField = Array.isArray(column.fields) && column.fields.length ? column.fields[0] : column.key
   const metaField = fieldMetaMap.value.get(fallbackField)
-  return column.label || metaField?.label || column.key
+  return metaField?.label || column.key
 }
 
 function defaultColumnAlign(column) {
@@ -141,6 +143,7 @@ const resolvedColumns = computed(() => {
       renderer: column.renderer || null,
       rendererProps: column.rendererProps || null,
       statusClassMap: column.statusClassMap || null,
+      iconFn: typeof column.iconFn === 'function' ? column.iconFn : null,
     }))
   }
 
@@ -404,6 +407,8 @@ function getRendererProps(row, column) {
   }
 }
 
+defineExpose({ reload: () => fetchCurrentPage(false) })
+
 function progressValue(row, column) {
   const value = Number(row?.[column.key])
   if (!Number.isFinite(value)) return 0
@@ -432,6 +437,12 @@ const filteredRows = computed(() => {
     })
   })
 })
+
+watch(
+  () => filteredRows.value.length,
+  (n) => emit('count-change', n),
+  { immediate: true },
+)
 
 const estimatedTotalRows = computed(() => {
   if (!props.paginated) return filteredRows.value.length
@@ -503,6 +514,10 @@ function onPageSizeChange(value) {
         />
       </template>
 
+      <template #actions>
+        <slot name="actions" />
+      </template>
+
       <template
         v-for="column in resolvedColumns"
         :key="column.key"
@@ -542,6 +557,22 @@ function onPageSizeChange(value) {
             v-else-if="resolvePreset(column) === 'timeline'"
             class="text-xs text-ink-500 whitespace-nowrap"
           >{{ renderPresetText(slotProps.row, column) }}</span>
+
+          <div
+            v-else-if="resolvePreset(column) === 'icon'"
+            class="flex items-center justify-center"
+          >
+            <svg
+              class="w-4 h-4 text-ink-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              v-html="getWorkspaceIconPath(column.iconFn ? column.iconFn(slotProps.row) : 'file')"
+            />
+          </div>
 
           <span v-else>{{ formatValue(slotProps.row, column.key, column) }}</span>
         </slot>
