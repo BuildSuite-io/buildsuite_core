@@ -13,7 +13,7 @@ const store = useDataStore()
 // is populated).
 const skipLink = computed(() => {
   const first = store.visibleWorkspaces?.[0]
-  return first ? `/app/${first}` : '/app/dashboard'
+  return first ? `/${first}` : '/dashboard'
 })
 </script>
 

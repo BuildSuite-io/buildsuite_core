@@ -83,7 +83,7 @@ const approvals = computed(() => {
       amount: s.impact,
       raisedBy: s.raisedBy,
       daysAgo,
-      to: '/app/sco',
+      to: '/sco',
     }
   })
   // Order most urgent (oldest pending) first
@@ -126,7 +126,7 @@ const pendingApprovalsCount = computed(() => approvals.value.length)
         <RouterLink
           v-for="p in projectCards"
           :key="p.id"
-          :to="`/app/projects/${p.id}`"
+          :to="`/projects/${p.id}`"
           class="block bg-white border border-ink-200 rounded-xl p-4 hover:border-brand-400 hover:shadow-fp-md transition-all"
         >
           <div class="flex items-start justify-between gap-3 mb-3">
@@ -162,7 +162,7 @@ const pendingApprovalsCount = computed(() => approvals.value.length)
       </div>
       <div v-else class="bg-white border border-ink-200 rounded-xl px-4 py-8 text-center text-sm text-ink-500">
         No projects assigned to you.
-        <RouterLink to="/app/projects/new" class="text-brand-600 hover:underline">Create one →</RouterLink>
+        <RouterLink to="/projects/new" class="text-brand-600 hover:underline">Create one →</RouterLink>
       </div>
 
       <!-- Pending approvals -->
@@ -217,7 +217,7 @@ const pendingApprovalsCount = computed(() => approvals.value.length)
           <RouterLink
             v-for="t in criticalTasks"
             :key="t.id"
-            :to="`/app/tasks/${t.id}`"
+            :to="`/tasks/${t.id}`"
             class="flex items-center gap-3 px-4 py-3 hover:bg-ink-50"
           >
             <span

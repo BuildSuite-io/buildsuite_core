@@ -70,7 +70,7 @@ const topRisks = computed(() => {
         kind: 'Schedule risk',
         title: `${p.progress}% complete with ${days} days to deadline`,
         project: p.name,
-        to: `/app/projects/${p.id}`,
+        to: `/projects/${p.id}`,
       })
     }
     const v = projectVariance(p)
@@ -81,7 +81,7 @@ const topRisks = computed(() => {
         kind: 'Cost / pace risk',
         title: `${v.toFixed(1)}% behind expected pace`,
         project: p.name,
-        to: `/app/projects/${p.id}`,
+        to: `/projects/${p.id}`,
       })
     }
   })
@@ -95,7 +95,7 @@ const topRisks = computed(() => {
         kind: 'Decision risk',
         title: `${s.title} — ${daysAgo}d awaiting decision`,
         project: proj?.name || '—',
-        to: '/app/sco',
+        to: '/sco',
       })
     }
   })
@@ -150,13 +150,13 @@ const highValueApprovals = computed(() =>
         <div class="lg:col-span-2 bg-white border border-ink-200 rounded-xl overflow-hidden">
           <div class="px-4 py-3 border-b border-ink-200 flex items-center justify-between">
             <h2 class="font-semibold text-ink-900 text-sm">Project health</h2>
-            <RouterLink v-if="showProjectsMore" to="/app/projects" class="text-xs text-brand-600 hover:underline">View all →</RouterLink>
+            <RouterLink v-if="showProjectsMore" to="/projects" class="text-xs text-brand-600 hover:underline">View all →</RouterLink>
           </div>
           <div class="divide-y divide-ink-100">
             <RouterLink
               v-for="p in projectHealthRows"
               :key="p.id"
-              :to="`/app/projects/${p.id}`"
+              :to="`/projects/${p.id}`"
               class="block px-4 py-3.5 hover:bg-ink-50"
             >
               <div class="flex items-center gap-3">
@@ -182,7 +182,7 @@ const highValueApprovals = computed(() =>
             </RouterLink>
             <div v-if="!projectHealthRows.length" class="px-4 py-8 text-center text-sm text-ink-400">
               No projects yet ·
-              <RouterLink to="/app/projects/new" class="text-brand-600 hover:underline">Create one →</RouterLink>
+              <RouterLink to="/projects/new" class="text-brand-600 hover:underline">Create one →</RouterLink>
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ const highValueApprovals = computed(() =>
           <RouterLink
             v-for="s in highValueApprovals"
             :key="s.id"
-            to="/app/sco"
+            to="/sco"
             class="flex items-center gap-4 px-4 py-3 hover:bg-ink-50"
           >
             <div class="w-8 h-8 rounded-lg bg-warning-50 text-warning-700 flex items-center justify-center text-sm">🔁</div>

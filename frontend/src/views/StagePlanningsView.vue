@@ -73,13 +73,13 @@ const subtitle = computed(() =>
   `${items.value.length} of ${store.stagePlannings.length} · Stages-as-structure · §13.3 item 18`
 )
 
-function onRowClick(row) { router.push(`/app/stage-plannings/${row.id}`) }
+function onRowClick(row) { router.push(`/stage-plannings/${row.id}`) }
 </script>
 
 <template>
   <DeskPage title="Stage Planning" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
+      <RouterLink to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
     </template>
 
     <DeskList
@@ -134,14 +134,14 @@ function onRowClick(row) { router.push(`/app/stage-plannings/${row.id}`) }
       </template>
 
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/stage-plannings/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/stage-plannings/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
       </template>
       <template #cell-stageName="{ row }">
         <div class="text-sm font-medium text-ink-900">{{ row.stageName }}</div>
         <div v-if="row.description" class="text-[11px] text-ink-500 truncate max-w-md">{{ row.description }}</div>
       </template>
       <template #cell-project="{ row }">
-        <DeskLink :to="`/app/projects/${row.project}`" @click.stop class="text-xs">{{ projectName(row.project) }}</DeskLink>
+        <DeskLink :to="`/projects/${row.project}`" @click.stop class="text-xs">{{ projectName(row.project) }}</DeskLink>
       </template>
       <template #cell-plannedStart="{ row }">
         <span class="text-xs text-ink-700">{{ fmtDate(row.plannedStart) || '—' }}</span>
@@ -165,7 +165,7 @@ function onRowClick(row) { router.push(`/app/stage-plannings/${row.id}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No stages match these filters ·
-          <RouterLink to="/app/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
+          <RouterLink to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
         </div>
       </template>
     </DeskList>

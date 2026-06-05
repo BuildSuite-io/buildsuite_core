@@ -95,9 +95,9 @@ async function save() {
       blocker_detail:      form.blockerNote,
     })
     if (cameFromTaskId) {
-      router.push(`/app/tasks/${cameFromTaskId}`)
+      router.push(`/tasks/${cameFromTaskId}`)
     } else {
-      router.push(`/app/progress-entries/${created.name || created.id}`)
+      router.push(`/progress-entries/${created.name || created.id}`)
     }
   } catch (err) {
     showToast('Failed to file progress entry', 'error')
@@ -112,7 +112,7 @@ const WEATHER_OPTIONS = ['Clear', 'Rainy', 'Hot', 'Cold', 'Storm']
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Task Progress Entry', to: '/app/progress-entries' },
+  { label: 'Task Progress Entry', to: '/progress-entries' },
   { label: 'New' },
 ]
 </script>

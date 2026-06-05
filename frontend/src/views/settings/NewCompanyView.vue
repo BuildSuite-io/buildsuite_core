@@ -80,14 +80,14 @@ function save() {
   saving.value = true
   const created = store.addCompany({ ...form })
   saving.value = false
-  router.push(`/app/settings/companies/${created.id}`)
+  router.push(`/settings/companies/${created.id}`)
 }
 function cancel() { router.back() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
-  { label: 'Companies', to: '/app/settings/companies' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Companies', to: '/settings/companies' },
   { label: 'New' },
 ]
 </script>

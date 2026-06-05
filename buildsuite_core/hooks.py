@@ -16,14 +16,14 @@ add_to_apps_screen = [
 		"name": "buildsuite_core",
 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
 		"title": "Buildsuite Core",
-		"route": "/buildsuite_core",
+		"route": "/client",
         "has_permission": "buildsuite_core.api.permission.has_app_permission",
 	}
 ]
 
 website_route_rules = [
-    {"from_route": "/buildsuite_core/<path:app_path>", "to_route": "buildsuite_core"},
-    {"from_route": "/buildsuite_core", "to_route": "buildsuite_core"},
+    {"from_route": "/client/<path:app_path>", "to_route": "client"},
+    {"from_route": "/client", "to_route": "client"},
 ]
 
 # Includes in <head>

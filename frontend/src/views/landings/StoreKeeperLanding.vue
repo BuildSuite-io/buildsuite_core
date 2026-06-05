@@ -81,7 +81,7 @@ const tiles = computed(() =>
           <RouterLink
             v-for="g in todaysGRNs"
             :key="g.id"
-            to="/app/stock"
+            to="/stock"
             class="flex items-center gap-3 px-4 py-3 hover:bg-ink-50"
           >
             <div class="w-8 h-8 rounded-lg bg-info-50 text-info-700 flex items-center justify-center text-xs font-mono">📦</div>

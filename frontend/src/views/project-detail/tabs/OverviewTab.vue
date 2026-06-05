@@ -131,7 +131,7 @@ function deviationColor(pct) {
               <RouterLink
                 v-for="rt in projectReports"
                 :key="rt.slug"
-                :to="`/app/reports/${rt.slug}`"
+                :to="`/reports/${rt.slug}`"
                 class="bg-white border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 p-3 transition-colors group block"
                 style="border-radius: 8px;"
               >

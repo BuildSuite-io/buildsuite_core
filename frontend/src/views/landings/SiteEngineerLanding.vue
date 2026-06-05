@@ -60,10 +60,10 @@ const todaysTasks = computed(() =>
 )
 
 const quickActions = computed(() => [
-  { icon: '👷', label: 'Mark attendance',   to: '/app/workforce',    sub: 'Open Workforce' },
-  { icon: '📸', label: 'Daily progress',    to: '/app/tasks',        sub: `${inProgressCount.value} task${inProgressCount.value === 1 ? '' : 's'} in progress` },
-  { icon: '🧾', label: 'Raise material request', to: '/app/procurement', sub: 'Open Procurement' },
-  { icon: '⚠️', label: 'Report issue / SCO', to: '/app/sco', sub: pendingScosOnPrimary.value === 0 ? 'No SCOs pending on this project' : `${pendingScosOnPrimary.value} pending on this project` },
+  { icon: '👷', label: 'Mark attendance',   to: '/workforce',    sub: 'Open Workforce' },
+  { icon: '📸', label: 'Daily progress',    to: '/tasks',        sub: `${inProgressCount.value} task${inProgressCount.value === 1 ? '' : 's'} in progress` },
+  { icon: '🧾', label: 'Raise material request', to: '/procurement', sub: 'Open Procurement' },
+  { icon: '⚠️', label: 'Report issue / SCO', to: '/sco', sub: pendingScosOnPrimary.value === 0 ? 'No SCOs pending on this project' : `${pendingScosOnPrimary.value} pending on this project` },
 ])
 
 const alerts = computed(() => {
@@ -79,7 +79,7 @@ const alerts = computed(() => {
         severity: 'danger',
         title: `Overdue: ${t.name}`,
         sub: `${daysOver}d past due · ${t.progress}% complete`,
-        to: `/app/tasks/${t.id}`,
+        to: `/tasks/${t.id}`,
       })
     }
   })
@@ -98,7 +98,7 @@ const alerts = computed(() => {
         severity: 'warning',
         title: `${wp.name} behind schedule`,
         sub: `${wp.progress}% complete · ${timeElapsedPct.toFixed(0)}% of time elapsed`,
-        to: `/app/work-packages/${wp.id}`,
+        to: `/work-packages/${wp.id}`,
       })
     }
   })
@@ -145,7 +145,7 @@ const alerts = computed(() => {
           <RouterLink
             v-for="t in todaysTasks"
             :key="t.id"
-            :to="`/app/tasks/${t.id}`"
+            :to="`/tasks/${t.id}`"
             class="flex items-center gap-3 px-4 py-3 hover:bg-ink-50"
           >
             <span

@@ -86,12 +86,12 @@ function createRevision() {
   if (note === null) return
   const sco = note?.trim() ? note.trim() : null
   const newBoq = store.createBoqRevisionFrom(boq.value.id, { sourceScoId: sco })
-  if (newBoq) router.push(`/app/boq/${newBoq.id}`)
+  if (newBoq) router.push(`/boq/${newBoq.id}`)
 }
 function removeBoq() {
   if (confirm(`Delete BOQ ${boq.value.id} and all its rows? This cannot be undone.`)) {
     store.deleteBoq(boq.value.id)
-    router.push('/app/boq')
+    router.push('/boq')
   }
 }
 
@@ -256,9 +256,9 @@ function onPrimary() {
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'BOQ', to: '/app/boq' },
+    { label: 'BOQ', to: '/boq' },
   ]
-  if (project.value) out.push({ label: project.value.name, to: `/app/projects/${project.value.id}` })
+  if (project.value) out.push({ label: project.value.name, to: `/projects/${project.value.id}` })
   return out
 })
 
@@ -271,7 +271,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
 <template>
   <div v-if="!boq" class="px-6 py-12 text-center text-ink-500">
     <div class="text-sm">BOQ <span class="font-mono">{{ id }}</span> not found.</div>
-    <DeskLink to="/app/boq" class="text-sm mt-2 inline-block">← Back to BOQ list</DeskLink>
+    <DeskLink to="/boq" class="text-sm mt-2 inline-block">← Back to BOQ list</DeskLink>
   </div>
 
   <DeskPage
@@ -292,7 +292,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
           <template #left>
             <span v-if="sourceSco" class="text-xs text-ink-500">
               from SCO
-              <DeskLink to="/app/sco" class="font-mono">{{ sourceSco.id }}</DeskLink>
+              <DeskLink to="/sco" class="font-mono">{{ sourceSco.id }}</DeskLink>
             </span>
           </template>
           <template #menu>
@@ -337,7 +337,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Revision</div>
           <div class="text-base font-semibold text-ink-900 mt-0.5">R{{ boq.revision }}</div>
           <div v-if="baseBoq" class="text-[10px] text-ink-500 mt-0.5">
-            from <DeskLink :to="`/app/boq/${baseBoq.id}`" class="font-mono">R{{ baseBoq.revision }}</DeskLink>
+            from <DeskLink :to="`/boq/${baseBoq.id}`" class="font-mono">R{{ baseBoq.revision }}</DeskLink>
           </div>
           <div v-else class="text-[10px] text-ink-400 mt-0.5">original</div>
         </div>
@@ -502,7 +502,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
                 <div class="px-3 py-1.5 text-center">
                   <DeskLink
                     v-if="item.taskId"
-                    :to="`/app/tasks/${item.taskId}`"
+                    :to="`/tasks/${item.taskId}`"
                     @click.stop
                     class="text-[10px] font-mono"
                   >{{ item.taskId.slice(-4) }}</DeskLink>
@@ -524,7 +524,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
                     ↳ {{ si.description }}
                     <DeskLink
                       v-if="si.rateMasterId"
-                      to="/app/rate-master"
+                      to="/rate-master"
                       @click.stop
                       class="ml-2 text-[10px] font-mono"
                     >{{ si.rateMasterId }}</DeskLink>

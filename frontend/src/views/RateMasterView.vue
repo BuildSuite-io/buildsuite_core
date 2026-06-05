@@ -109,7 +109,7 @@ const columns = [
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Estimation', to: '/app/estimation' },
+  { label: 'Estimation', to: '/estimation' },
   { label: 'Rate Master' },
 ]
 

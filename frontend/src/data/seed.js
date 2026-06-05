@@ -473,10 +473,10 @@ export const seedData = {
           // tabs inside Project Detail (Work Packages tab, Stage Planning tab, Scope
           // Changes tab). BSA can re-surface any of them via Workspace Structure
           // Settings without code changes.
-          { id: 'WSST-001', label: 'Projects',             icon: '📋', route_path: '/app/projects',          visible_to_roles: null,                       sort_order: 1 },
-          { id: 'WSST-003', label: 'Tasks',                icon: '✓',  route_path: '/app/tasks',             visible_to_roles: null,                       sort_order: 3 },
-          { id: 'WSST-005', label: 'Progress Entries',     icon: '📝', route_path: '/app/progress-entries',  visible_to_roles: ['admin','bsa','director','pm','site-engineer','foreman'], sort_order: 5 },
-          { id: 'WSST-007', label: 'Schedule',             icon: '📅', route_path: '/app/schedule',          visible_to_roles: null,                       sort_order: 7 },
+          { id: 'WSST-001', label: 'Projects',             icon: '📋', route_path: '/projects',          visible_to_roles: null,                       sort_order: 1 },
+          { id: 'WSST-003', label: 'Tasks',                icon: '✓',  route_path: '/tasks',             visible_to_roles: null,                       sort_order: 3 },
+          { id: 'WSST-005', label: 'Progress Entries',     icon: '📝', route_path: '/progress-entries',  visible_to_roles: ['admin','bsa','director','pm','site-engineer','foreman'], sort_order: 5 },
+          { id: 'WSST-007', label: 'Schedule',             icon: '📅', route_path: '/schedule',          visible_to_roles: null,                       sort_order: 7 },
         ],
       },
     ],

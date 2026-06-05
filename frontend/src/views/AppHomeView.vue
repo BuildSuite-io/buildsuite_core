@@ -56,12 +56,12 @@ const progressTodayCount = computed(() =>
 )
 
 const quickActions = [
-  { label: 'Users', to: '/app/settings/users', icon: 'users' },
-  { label: 'Companies', to: '/app/settings/companies', icon: 'companies' },
-  { label: 'Project Types', to: '/app/settings/project-types', icon: 'project-types' },
-  { label: 'Workspace Structure', to: '/app/settings/workspace-structure', icon: 'workspace-structure' },
-  { label: 'All Projects', to: '/app/projects', icon: 'projects' },
-  { label: 'Data Tools', to: '/app/settings/data', icon: 'data-tools' },
+  { label: 'Users', to: '/settings/users', icon: 'users' },
+  { label: 'Companies', to: '/settings/companies', icon: 'companies' },
+  { label: 'Project Types', to: '/settings/project-types', icon: 'project-types' },
+  { label: 'Workspace Structure', to: '/settings/workspace-structure', icon: 'workspace-structure' },
+  { label: 'All Projects', to: '/projects', icon: 'projects' },
+  { label: 'Data Tools', to: '/settings/data', icon: 'data-tools' },
 ]
 
 function showCount(value, fallback) {
@@ -130,7 +130,7 @@ function showCount(value, fallback) {
         </div>
       </section>
 
-      <RouterLink to="/app/settings" class="bg-brand-50 hover:bg-brand-100 rounded-lg p-5 flex flex-col justify-between transition-colors group">
+      <RouterLink to="/settings" class="bg-brand-50 hover:bg-brand-100 rounded-lg p-5 flex flex-col justify-between transition-colors group">
         <div class="flex items-start gap-3">
           <div class="w-9 h-9 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -145,7 +145,7 @@ function showCount(value, fallback) {
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-      <RouterLink to="/app/sco" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
+      <RouterLink to="/sco" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
         <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-warning-50 text-warning-700">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
         </div>
@@ -156,7 +156,7 @@ function showCount(value, fallback) {
         <div class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0">View →</div>
       </RouterLink>
 
-      <RouterLink to="/app/tasks" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
+      <RouterLink to="/tasks" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
         <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-danger-50 text-danger-700">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
         </div>
@@ -167,7 +167,7 @@ function showCount(value, fallback) {
         <div class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0">View →</div>
       </RouterLink>
 
-      <RouterLink to="/app/progress-entries" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
+      <RouterLink to="/progress-entries" class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group">
         <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-ink-50 text-ink-400">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><line x1="10" x2="8" y1="9" y2="9"></line></svg>
         </div>

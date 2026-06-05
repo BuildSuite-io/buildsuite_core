@@ -56,15 +56,15 @@ const subtitle = computed(() =>
   `${items.value.length} of ${store.activityTypes.length} · Master record · §13.3 item 16`
 )
 
-function onRowClick(row) { router.push(`/app/activity-types/${row.id}`) }
+function onRowClick(row) { router.push(`/activity-types/${row.id}`) }
 function pct(n) { return Math.round((Number(n) || 0) * 100) }
 </script>
 
 <template>
   <DeskPage title="Activity Type" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/tasks" class="text-xs text-ink-600 hover:text-ink-900 mr-2">← Back to Tasks</RouterLink>
-      <RouterLink to="/app/activity-types/new" class="desk-save-btn">+ New Activity Type</RouterLink>
+      <RouterLink to="/tasks" class="text-xs text-ink-600 hover:text-ink-900 mr-2">← Back to Tasks</RouterLink>
+      <RouterLink to="/activity-types/new" class="desk-save-btn">+ New Activity Type</RouterLink>
     </template>
 
     <DeskList
@@ -89,7 +89,7 @@ function pct(n) { return Math.round((Number(n) || 0) * 100) }
       </template>
 
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/activity-types/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/activity-types/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
       </template>
       <template #cell-name="{ row }">
         <div class="text-sm font-medium text-ink-900">{{ row.name }}</div>
@@ -122,7 +122,7 @@ function pct(n) { return Math.round((Number(n) || 0) * 100) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No activity types match these filters ·
-          <RouterLink to="/app/activity-types/new" class="desk-link">Create one →</RouterLink>
+          <RouterLink to="/activity-types/new" class="desk-link">Create one →</RouterLink>
         </div>
       </template>
     </DeskList>

@@ -52,19 +52,19 @@ function save() {
     sort_order: form.sort_order,
   })
   saving.value = false
-  router.push(`/app/settings/project-types/${record.id}`)
+  router.push(`/settings/project-types/${record.id}`)
 }
 function cancel() { router.back() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
-  { label: 'Project Types', to: '/app/settings/project-types' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Project Types', to: '/settings/project-types' },
   { label: 'New' },
 ]
 
 onMounted(() => {
-  if (!store.isAdmin) router.replace('/app/settings')
+  if (!store.isAdmin) router.replace('/settings')
 })
 </script>
 

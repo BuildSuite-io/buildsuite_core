@@ -8,7 +8,7 @@ import './style.css'
 import { applyBootToWindow, syncSessionFromCookie } from './utils/session'
 import { useSessionStore } from './stores/session'
 
-const DEV_BOOT_URL = '/api/method/buildsuite_core.www.buildsuite_core.get_context_for_dev'
+const DEV_BOOT_URL = '/api/method/buildsuite_core.www.client.get_context_for_dev'
 
 async function hydrateDevBoot() {
 	if (!import.meta.env.DEV) return

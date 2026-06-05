@@ -73,7 +73,7 @@ function deleteCompany() {
   if (!confirm(`Delete company "${company.value.name}"?\n\nThis is permanent. No project references this company so the delete is safe.`)) return
   const result = store.deleteCompany(props.id)
   if (result.ok) {
-    router.push('/app/settings/companies')
+    router.push('/settings/companies')
   } else {
     // Defensive — shouldn't happen since we pre-checked, but in case of a race.
     alert(`Delete refused: ${result.reason}`)
@@ -82,8 +82,8 @@ function deleteCompany() {
 
 const breadcrumbs = computed(() => [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
-  { label: 'Companies', to: '/app/settings/companies' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Companies', to: '/settings/companies' },
 ])
 
 const titleStatus = computed(() => {
@@ -209,7 +209,7 @@ const titleStatus = computed(() => {
             >
               <div class="px-3 py-1.5 font-mono text-xs text-ink-600">{{ p.code }}</div>
               <div class="px-3 py-1.5">
-                <DeskLink :to="`/app/projects/${p.id}`">{{ p.name }}</DeskLink>
+                <DeskLink :to="`/projects/${p.id}`">{{ p.name }}</DeskLink>
               </div>
               <div class="px-3 py-1.5 text-xs text-ink-500">{{ p.status }}</div>
             </div>
@@ -229,6 +229,6 @@ const titleStatus = computed(() => {
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">
     Company not found ·
-    <RouterLink to="/app/settings/companies" class="desk-link">Back to list →</RouterLink>
+    <RouterLink to="/settings/companies" class="desk-link">Back to list →</RouterLink>
   </div>
 </template>

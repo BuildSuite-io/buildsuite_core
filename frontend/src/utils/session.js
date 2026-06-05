@@ -1,4 +1,4 @@
-const DEFAULT_ROUTE = '/buildsuite_core'
+const DEFAULT_ROUTE = '/client'
 const DEFAULT_FRAPPE_HOST = 'http://localhost:8001'
 const ACCESS_API_URL = '/api/method/buildsuite_core.api.permission.get_access_context'
 const DEFAULT_ACCESS_CONTEXT_MAX_AGE_MS = 30_000

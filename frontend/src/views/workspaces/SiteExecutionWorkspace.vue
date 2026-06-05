@@ -46,13 +46,13 @@ const today = computed(() => {
 // schema migration to add `description` to the WSST child table is straight-
 // forward but out of scope for this UX tweak.
 const SHORTCUT_DESCRIPTIONS = {
-  '/app/projects':         'Plan, track, and manage construction projects.',
-  '/app/work-packages':    'Cost-and-control boundaries within a project.',
-  '/app/tasks':            'Day-to-day execution items with progress tracking.',
-  '/app/stage-plannings':  'Time-phased delivery stages and dependencies.',
-  '/app/progress-entries': 'Daily task progress, labour, and blockers.',
-  '/app/sco':              'Scope change orders and BOQ revision tie-ins.',
-  '/app/schedule':         'Gantt view across projects and stages.',
+  '/projects':         'Plan, track, and manage construction projects.',
+  '/work-packages':    'Cost-and-control boundaries within a project.',
+  '/tasks':            'Day-to-day execution items with progress tracking.',
+  '/stage-plannings':  'Time-phased delivery stages and dependencies.',
+  '/progress-entries': 'Daily task progress, labour, and blockers.',
+  '/sco':              'Scope change orders and BOQ revision tie-ins.',
+  '/schedule':         'Gantt view across projects and stages.',
 }
 function descriptionFor(routePath) {
   return SHORTCUT_DESCRIPTIONS[routePath] || ''
@@ -130,7 +130,7 @@ const visibleReportTiles = computed(() =>
       <!-- BSA hint banner — only visible to BSA (the audience who can reconfigure) -->
       <div v-if="store.isBSA" class="mb-5 px-3 py-2 bg-brand-50 border border-brand-100 text-[11px] text-brand-700 flex items-center justify-between" style="border-radius: 6px;">
         <span>Customize shortcuts shown on this workspace — reorder, hide per role, or add new ones.</span>
-        <RouterLink to="/app/settings/workspace-structure" class="font-medium hover:underline whitespace-nowrap ml-3">
+        <RouterLink to="/settings/workspace-structure" class="font-medium hover:underline whitespace-nowrap ml-3">
           Configure →
         </RouterLink>
       </div>
@@ -138,7 +138,7 @@ const visibleReportTiles = computed(() =>
       <!-- Session 35 additive — Project Dashboard tile (owner-gated, hardcoded) -->
       <RouterLink
         v-if="showProjectDashboard"
-        to="/app/project-dashboard"
+        to="/project-dashboard"
         class="mb-5 block bg-brand-50 border border-brand-200 hover:border-brand-400 hover:shadow-sm p-4 transition-all group"
         style="border-radius: 8px;"
       >
@@ -195,7 +195,7 @@ const visibleReportTiles = computed(() =>
       <!-- Empty / disabled state -->
       <div v-else-if="!definition || !definition.enabled" class="bg-white border border-ink-200 px-4 py-6 text-center" style="border-radius: 8px;">
         <div class="text-sm text-ink-500 mb-1">Site Execution workspace is not configured.</div>
-        <RouterLink v-if="store.isBSA" to="/app/settings/workspace-structure" class="text-xs text-brand-700 hover:underline">
+        <RouterLink v-if="store.isBSA" to="/settings/workspace-structure" class="text-xs text-brand-700 hover:underline">
           Open Workspace Structure Settings →
         </RouterLink>
         <div v-else class="text-[11px] text-ink-400 italic">Contact your BuildSuite Administrator to enable.</div>
@@ -216,7 +216,7 @@ const visibleReportTiles = computed(() =>
           <WorkspaceShortcut
             v-for="rt in visibleReportTiles"
             :key="rt.slug"
-            :to="`/app/reports/${rt.slug}`"
+            :to="`/reports/${rt.slug}`"
             :icon="rt.icon"
             :label="rt.label"
             :description="rt.desc"

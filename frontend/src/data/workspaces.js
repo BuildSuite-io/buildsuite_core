@@ -7,29 +7,29 @@
 // parallel copies for now to avoid a refactor outside the prompt's scope.
 
 export const WORKSPACE_META = {
-  'site-execution':  { name: 'Site Execution',  icon: '🏗️', to: '/app/site-execution',  group: 'buildsuite',
+  'site-execution':  { name: 'Site Execution',  icon: '🏗️', to: '/site-execution',  group: 'buildsuite',
                         desc: 'Projects, work packages, tasks, schedule.' },
-  'estimation':      { name: 'Estimation',      icon: '📐', to: '/app/estimation',      group: 'buildsuite',
+  'estimation':      { name: 'Estimation',      icon: '📐', to: '/estimation',      group: 'buildsuite',
                         desc: 'BOQ, Rate Master, revision compare.' },
-  'procurement':     { name: 'Procurement',     icon: '🛒', to: '/app/procurement',     group: 'buildsuite',
+  'procurement':     { name: 'Procurement',     icon: '🛒', to: '/procurement',     group: 'buildsuite',
                         desc: 'Material requests, supplier follow-up, GRN.' },
-  'subcontract':     { name: 'Subcontract',     icon: '🤝', to: '/app/subcontract',     group: 'buildsuite',
+  'subcontract':     { name: 'Subcontract',     icon: '🤝', to: '/subcontract',     group: 'buildsuite',
                         desc: 'Vendors, work orders, RA bills, retention.' },
-  'workforce':       { name: 'Workforce',       icon: '👷', to: '/app/workforce',       group: 'buildsuite',
+  'workforce':       { name: 'Workforce',       icon: '👷', to: '/workforce',       group: 'buildsuite',
                         desc: 'Crews, overtime, wages to contractor.' },
   // 'scope-change' removed Session 33 — merged into Site Execution. SCO surface
   // lives at /app/sco and is reached via the Site Execution workspace tile grid.
-  'project-finance': { name: 'Project Finance', icon: '💵', to: '/app/project-finance', group: 'buildsuite',
+  'project-finance': { name: 'Project Finance', icon: '💵', to: '/project-finance', group: 'buildsuite',
                         desc: 'Petty cash, cost summary, project P&L.' },
-  'accounting':      { name: 'Accounting',      icon: '📊', to: '/app/accounting',      group: 'erpnext',
+  'accounting':      { name: 'Accounting',      icon: '📊', to: '/accounting',      group: 'erpnext',
                         desc: 'Inherited from ERPNext.' },
-  'buying':          { name: 'Buying',          icon: '📥', to: '/app/buying',          group: 'erpnext',
+  'buying':          { name: 'Buying',          icon: '📥', to: '/buying',          group: 'erpnext',
                         desc: 'Inherited from ERPNext.' },
-  'stock':           { name: 'Stock',           icon: '📦', to: '/app/stock',           group: 'erpnext',
+  'stock':           { name: 'Stock',           icon: '📦', to: '/stock',           group: 'erpnext',
                         desc: 'Inherited from ERPNext.' },
-  'assets':          { name: 'Assets',          icon: '🏭', to: '/app/assets',          group: 'erpnext',
+  'assets':          { name: 'Assets',          icon: '🏭', to: '/assets',          group: 'erpnext',
                         desc: 'Inherited from ERPNext — extended for Plant & Machinery.' },
-  'hr':              { name: 'HR',              icon: '👤', to: '/app/hr',              group: 'erpnext',
+  'hr':              { name: 'HR',              icon: '👤', to: '/hr',              group: 'erpnext',
                         desc: 'Inherited from Frappe HR — office staff only.' },
 }
 

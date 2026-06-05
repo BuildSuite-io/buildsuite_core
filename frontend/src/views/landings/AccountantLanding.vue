@@ -81,7 +81,7 @@ const tiles = computed(() =>
           <RouterLink
             v-for="p in pendingPayments"
             :key="p.id"
-            to="/app/accounting"
+            to="/accounting"
             class="flex items-center gap-3 px-4 py-3 hover:bg-ink-50"
           >
             <div

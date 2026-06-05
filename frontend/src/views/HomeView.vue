@@ -25,7 +25,7 @@ const tiles = computed(() => {
     {
       key: 'buildsuite-app',
       label: 'BuildSuite',
-      to: '/app/home',
+      to: '/home',
       style: TILE_STYLE.brand,
       isLogo: true,
       iconSlug: null,
@@ -49,7 +49,7 @@ const tiles = computed(() => {
     out.push({
       key: 'settings',
       label: 'Settings',
-      to: '/app/settings',
+      to: '/settings',
       style: TILE_STYLE.settings,
       isLogo: false,
       iconSlug: 'settings',
@@ -61,7 +61,7 @@ const tiles = computed(() => {
 
 const search = ref('')
 function onSearchSubmit() {
-  if (search.value.trim()) router.push('/app/projects')
+  if (search.value.trim()) router.push('/projects')
 }
 </script>
 

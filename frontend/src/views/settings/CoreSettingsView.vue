@@ -44,7 +44,7 @@ function onPrimary() { editing.value ? saveEdit() : startEdit() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'BuildSuite Core Settings' },
 ]
 

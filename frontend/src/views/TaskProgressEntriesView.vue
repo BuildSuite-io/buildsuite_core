@@ -124,13 +124,13 @@ const subtitle = computed(() =>
   `${items.value.length} of ${allEntries.value.length}`
 )
 
-function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
+function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
 </script>
 
 <template>
   <DeskPage title="Task Progress Entry" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/progress-entries/new" class="desk-save-btn">+ New Entry</RouterLink>
+      <RouterLink to="/progress-entries/new" class="desk-save-btn">+ New Entry</RouterLink>
     </template>
 
     <!-- KPI strip -->
@@ -203,13 +203,13 @@ function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
       </template>
 
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/progress-entries/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/progress-entries/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
       </template>
       <template #cell-entryDate="{ row }">
         <span class="text-xs text-ink-700">{{ fmtDate(row.entryDate) }}</span>
       </template>
       <template #cell-task="{ row }">
-        <DeskLink :to="`/app/tasks/${row.task}`" @click.stop>{{ taskName(row.task) }}</DeskLink>
+        <DeskLink :to="`/tasks/${row.task}`" @click.stop>{{ taskName(row.task) }}</DeskLink>
       </template>
       <template #cell-progressPct="{ row }">
         <div class="flex items-center justify-end gap-2">
@@ -251,7 +251,7 @@ function onRowClick(row) { router.push(`/app/progress-entries/${row.id}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No progress entries match these filters ·
-          <RouterLink to="/app/progress-entries/new" class="desk-link">File a new entry →</RouterLink>
+          <RouterLink to="/progress-entries/new" class="desk-link">File a new entry →</RouterLink>
         </div>
       </template>
     </DeskList>
