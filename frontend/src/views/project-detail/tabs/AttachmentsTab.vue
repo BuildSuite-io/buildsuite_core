@@ -6,7 +6,7 @@ import { showToast } from '@/utils/appToast'
 import FileUploadHandler from 'frappe-ui-file-upload-handler'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import UserAvatar from '@/components/UserAvatar.vue'
+import FrappeUserBadge from '@/components/FrappeUserBadge.vue'
 import { fmtDate } from '@/utils/format'
 
 const props = defineProps({
@@ -190,7 +190,7 @@ function formatFileSize(bytes) {
       </template>
 
       <template #cell-owner="{ row }">
-        <UserAvatar :user-id="row?.owner" :show-name="true" size="xs" />
+        <FrappeUserBadge :user-id="row?.owner" size="xs" />
       </template>
 
       <template #cell-__delete="{ row }">
