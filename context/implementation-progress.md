@@ -13,6 +13,8 @@
 - **Active branch**: `vue`
 - **App path**: `/Users/yemikudaisi/frappe-bench-16/apps/buildsuite_core`
 - **Module**: `Buildsuite Core` (exact string used in all DocType JSONs and custom fields)
+- **Frontend entry URL**: `/client` (was `/buildsuite_core` before 2026-06-05)
+- **Vue Router base**: `/client` — all Vue routes are prefixed with this base automatically
 
 ---
 
@@ -21,9 +23,66 @@
 | File | Purpose |
 |---|---|
 | `context/project-field-mapping.md` | Frappeline → ERPNext field mapping, lists exactly 3 custom fields needed + 1 property setter |
-| `context/buildsuite-core-demo/` | Vue 3 prototype — ground truth for field shapes, UX flows, seed data |
+| `context/buildsuite-core-demo/` | Vue 3 prototype — ground truth for field shapes, UX flows, layout decisions. **Always check this before changing layout/UX** |
 | `context/buildsuite-core-demo/src/data/seed.js` | Work Package + Stage Planning field shapes from demo |
 | `context/implementation-progress.md` | **This file** |
+
+---
+
+## URL and Routing Architecture
+
+### Entry point
+- Frappe serves the Vue app at `/client` (file: `buildsuite_core/www/client.py` + `client.html`)
+- `website_route_rules` in `hooks.py` routes `/client` and `/client/<path>` to the `client` page
+- `add_to_apps_screen` entry uses `"route": "/client"`
+
+### Vue Router
+- Base: `createWebHistory('/client')` — Vue Router prepends `/client` to all generated links and strips it when matching
+- Route definitions use plain paths without any prefix (e.g. `path: 'projects'` not `path: 'app/projects'`)
+- All route `<RouterLink>` and `router.push()` calls use paths WITHOUT `/client` prefix — the router handles it automatically
+- The old `/app/` prefix was removed from every route in commit `28fd46b`
+- Route guard protects all routes except `name: 'forbidden'`
+
+### Backend boot
+- `default_route` in boot payload: `/client`
+- Dev boot URL: `/api/method/buildsuite_core.www.client.get_context_for_dev`
+- `DEFAULT_ROUTE` constant in `session.js`: `/client`
+
+---
+
+## DocType Field Mappings (Backend ↔ Frontend)
+
+### Task Update (progress entries)
+
+The frontend prototype used different field names than the backend. All three views now use the correct backend names.
+
+| Frontend alias (old prototype) | Backend field (Task Update) | Type |
+|---|---|---|
+| `progress_pct` | `cumulative_progress` | Float |
+| `skilled_labour` | `skilled` | Int |
+| `unskilled_labour` | `unskilled` | Int |
+| `blocker_flag` | `blocker` | Check (0/1) |
+| `blocker_note` | `blocker_detail` | Small Text |
+| `entry_date` | `entry_date` | Date ✓ unchanged |
+| `task` | `task` | Link→Task ✓ unchanged |
+| `narrative` | `narrative` | Small Text ✓ unchanged |
+| `weather` | `weather` | Select ✓ unchanged |
+| `owner` | `owner` | Standard Frappe field ✓ unchanged |
+
+**Transform convention**: All three Task Update views use a `transform()` in adapter calls that maps backend snake_case → camelCase for the view layer (`cumulative_progress` → `progressPct`, etc.). The backend mutation payloads (create/update) use the backend field names directly.
+
+### Task (for reference)
+
+| Frontend alias | Backend field |
+|---|---|
+| `id` | `name` |
+| `name` | `subject` |
+| `projectId` | `project` |
+| `workPackageId` | `work_package` |
+| `assignee` | `owner` |
+| `startDate` | `exp_start_date` |
+| `endDate` | `exp_end_date` |
+| `task_type` | `type` |
 
 ---
 
@@ -37,16 +96,17 @@
 | `syncSessionFromCookie()` | `frontend/src/utils/session.js` | Populate `window.session_user` from `user_id` cookie | `main.js`, `getSessionUser`, `applyBootToWindow` |
 | `getSessionUser()` | `frontend/src/utils/session.js` | Canonical current session user getter | `isAuthenticated`, `getAccessContext` |
 | `isAuthenticated()` | `frontend/src/utils/session.js` | Auth state check (`session_user != Guest`) | `router/index.js`, `getAccessContext` fallback |
-| `getRouteBase()` | `frontend/src/utils/session.js` | Resolve app base route (`/buildsuite_core`) | `router/index.js`, `getLoginUrl` |
+| `getRouteBase()` | `frontend/src/utils/session.js` | Resolve app base route (`/client`) | `router/index.js`, `getLoginUrl` |
 | `getFrappeHost()` | `frontend/src/utils/session.js` | Resolve dev frappe host for redirects/APIs | `getLoginUrl` |
 | `getLoginUrl(path)` | `frontend/src/utils/session.js` | Build login URL with redirect-to anchored to app base | `router/index.js` |
 | `applyBootToWindow(boot)` | `frontend/src/utils/session.js` | Hydrate boot payload into `window` and DOM lang/dir | `main.js` |
 | `getAccessContext()` | `frontend/src/utils/session.js` | Fetch + cache backend access status (`allowed`, `reason`) | `router/index.js` |
 | `isAccessContextFresh(maxAgeMs)` | `frontend/src/utils/session.js` | Validate whether cached backend access status is still usable | `getAccessContext` |
 | `clearAccessContextCache()` | `frontend/src/utils/session.js` | Reset cached access-context promise | Reserved for future re-check flows |
-| `toDateInputValue(value)` | `frontend/src/utils/dateInput.js` | Normalize date-like values to native date-input format (`YYYY-MM-DD`) | `ProjectDetailView.vue` edit modal |
+| `toDateInputValue(value)` | `frontend/src/utils/dateInput.js` | Normalize date-like values to native date-input format (`YYYY-MM-DD`) | `ProjectDetailView.vue` edit modal, `TaskProgressEntryDetailView.vue` |
 | `useProjectDetailListFilters({ ... })` | `frontend/src/views/project-detail/useProjectDetailListFilters.js` | Centralize Project Detail list-search state, per-tab filtering, and derived list stats | `ProjectDetailView.vue` |
 | `PROJECT_REPORTS`, `*_COLS` constants | `frontend/src/views/project-detail/projectDetailConfig.js` | Canonical report tile metadata and DeskList column definitions for Project Detail tabs | `ProjectDetailView.vue` |
+| `toArray(data)` | Inline helper in several views | Guard frappe-ui resource `.data` against `null` before calling array methods. Pattern: `if (Array.isArray(data)) return data; if (Array.isArray(data?.value)) return data.value; return []` | `TaskProgressEntriesView.vue`, `NewTaskProgressEntryView.vue`, `TaskProgressEntryDetailView.vue` |
 | `hydrateFromRuntime()` | `frontend/src/stores/session.js` | Sync session user/authenticated state from runtime cookie globals | `refreshAccess`, `bootstrapSession` |
 | `refreshAccess(options)` | `frontend/src/stores/session.js` | Pull backend access context and normalize auth/access store state | `bootstrapSession`, `ensureAccess` |
 | `bootstrapSession()` | `frontend/src/stores/session.js` | One-time session/access initialization before route handling | `main.js`, `ensureAccess` |
@@ -55,10 +115,11 @@
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
 | `createLocalDataAdapter(store)` | `frontend/src/data/adapters/localDataAdapter.js` | Adapter implementation over current Pinia local state for phased migration | `createDataAdapter` |
 | `createRemoteDataAdapter()` | `frontend/src/data/adapters/remoteDataAdapter.js` | Generic remote DocType adapter contract (`list/read/create/update/remove/linkSearch`) over frappe-ui list resources | `createDataAdapter`, filter/link/read slices |
-| `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | `ProjectsView.vue` |
+| `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | All migrated views |
 | `useDocTypeList(doctype, options)` | `frontend/src/composables/useDocTypeList.js` | Generic Frappe list-resource wrapper for read-only DocType list calls | `createRemoteDataAdapter`, `DocTypeListView.vue`, `ProjectsView.vue` |
-| `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue` |
-| `DeskLinkPicker` | `frontend/src/components/desk/DeskLinkPicker.vue` | Generic inline Link/autocomplete control backed by `useDocTypeList` with server-side search + first-page limit | `ProjectsView.vue` |
+| `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue`, `WorkPackagesView.vue`, `TasksView.vue` |
+| `DeskLinkPicker` | `frontend/src/components/desk/DeskLinkPicker.vue` | Generic inline Link/autocomplete backed by `useDocTypeList` with server-side search. **Use for all Link-field inputs and list filters** (replaces DeskSelect for DocType-backed fields) | `ProjectsView.vue`, `TaskProgressEntriesView.vue`, `NewTaskProgressEntryView.vue`, form modals |
+| `FileUploadHandler` | Via alias `frappe-ui-file-upload-handler` → `node_modules/frappe-ui/src/utils/fileUploadHandler.ts` | XHR-based file upload class from frappe-ui. Use this instead of `FileUploader` component (which requires unregistered `Button` global). Handles CSRF, progress, FormData. | `TaskProgressEntryDetailView.vue` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
 
@@ -66,430 +127,307 @@
 
 ## Frontend Integration Execution Tracker
 
-> Source plan: `context/frontend-integration-phase-plan.md`
->
-> How to use:
-> - Mark each phase checkbox when complete.
-> - Fill actual dates and PR/commit references.
-> - Do not start seed-data replacement until Phase 9 passes.
-
 ### Phase Status Board
 
-- [x] **Phase 0 — Lock Route and Access Model**
-  - Status: Completed
-  - Target route fixed: `/buildsuite_core`
-  - Backend app permission function implemented
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): commit pending capture
-
-- [x] **Phase 1 — Wire Frappe Route to Frontend Shell**
-  - Status: Completed
-  - `website_route_rules` added for `/buildsuite_core` + deep path
-  - App selector permission hook added in `add_to_apps_screen`
-  - Frontend portal shell target created
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): commit pending capture
-
-- [x] **Phase 2 — Create Backend Boot Contract**
-  - Status: Completed
-  - `buildsuite_core/www/buildsuite_core.py` created
-  - `buildsuite_core/www/buildsuite_core.html` created
-  - Boot keys include csrf/site/read-only/lang/direction/timezone
-  - `get_context_for_dev` whitelisted and permission-gated
-  - HTML now exposes a real `#app` mount target
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): `3d9b2c2`
-
-- [x] **Phase 3 — Replace Prototype Vite Setup with Frappe-Compatible Build**
-  - Status: Completed
-  - Frontend moved to app-owned frontend workspace
-  - Vite now builds into `buildsuite_core/public/frontend` and emits a manifest
-  - Website shell loads built frontend assets from the Vite manifest
-  - `frappe-ui` plugin and dev boot parity still pending
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): `42cbcff`
-
-- [x] **Phase 4 — Add Dev Boot Parity**
-  - Status: Completed
-  - DEV calls `get_context_for_dev` before app mount
-  - Boot values assigned to `window` in DEV
-  - Frontend route guard now checks session via boot/cookie and redirects guests to login for `/app` routes
-  - Session handling is centralized in `frontend/src/utils/session.js` and reused by bootstrap + router guard
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): `b2f750e`
-
-- [x] **Phase 5 — Add Frontend Session and Access Guards**
-  - Status: Completed
-  - Session store based on `user_id` cookie (`frontend/src/stores/session.js`) now bootstraps before router navigation
-  - Router guards for anonymous/unauthorized users
-  - Frontend now fetches backend access context via `buildsuite_core.api.permission.get_access_context`
-  - Unauthorized authenticated users are routed to `/forbidden` with backend reason + target route details
-  - `/forbidden` now supports retrying access checks after role changes and redirecting back to the blocked route
-  - Access-context cache now has a freshness window to avoid stale authorization decisions
-  - Backend APIs enforce permission (no UI-only security)
-  - Date completed: 2026-06-01
-  - Reference (PR/commit): `9b31b1a`, `6251c9b`, `d15427b`, `6090955`, `e321859`
-
-- [x] **Phase 6 — Keep Seed Data, Add Data Adapter Seam**
-  - Status: Completed
-  - Data adapter supports local + remote modes
-  - Adapter seam initialized (`frontend/src/data/adapters`) with local implementation and factory
-  - `ProjectsView` now reads via adapter instead of direct store coupling
-  - Remote adapter direction is locked: generic DocType operations first, using `frappe-ui` resources so native permissions/filters remain authoritative
-  - No new bespoke backend APIs for standard list/read/write/link-search flows; only add server endpoints for behavior that generic Frappe resource calls cannot express
-  - Reusable generic Link autocomplete is now introduced via `DeskLinkPicker` because the Projects filter slice needed remote Link lookup
-  - Generic remote adapter contract expanded to `list/read/create/update/remove/linkSearch` behind the same seam
-  - Second migrated consumer now present (`WorkPackagesView` read slice via generic list shell)
-  - Existing local Pinia/localStorage mode still works
-  - Date completed: 2026-06-02
-  - Reference (PR/commit): `c20425d`, `80e9375`, `7dd59ff`, `f6522e7`, `128291f`, `08f66cb`, `23362ac` (plus current working tree)
+- [x] **Phase 0 — Lock Route and Access Model** — Completed 2026-06-01
+- [x] **Phase 1 — Wire Frappe Route to Frontend Shell** — Completed 2026-06-01
+- [x] **Phase 2 — Create Backend Boot Contract** — Completed 2026-06-01 (`3d9b2c2`)
+- [x] **Phase 3 — Replace Prototype Vite Setup with Frappe-Compatible Build** — Completed 2026-06-01 (`42cbcff`)
+- [x] **Phase 4 — Add Dev Boot Parity** — Completed 2026-06-01 (`b2f750e`)
+- [x] **Phase 5 — Add Frontend Session and Access Guards** — Completed 2026-06-01
+- [x] **Phase 6 — Keep Seed Data, Add Data Adapter Seam** — Completed 2026-06-02
 
 - [ ] **Phase 7 — Migrate Data in Safe Vertical Slices**
   - Status: In progress
-  - Read-only slice migrated first
-  - One bounded CRUD slice migrated second
-  - High-risk mutation/upload paths deferred until stable
-  - Generic DocType list shell introduced first (`DocTypeListView`) to support repeatable read-only slices across modules
-  - Current list shell now includes: backend pagination, grouped sort/order control, column renderer presets (`status`, `progress`, `timeline`), and optional status color mapping by value
-  - `ProjectsView` is migrated onto the generic list shell + link picker filter flow
-  - `WorkPackagesView` is now migrated onto the same generic list shell with `DeskLinkPicker` project filter
-  - Date completed:
-  - Reference (PR/commit): `e871cbb`, `fb07d56`, `d724908`, `3595122`, `23362ac`, `f8acd2f`
-  - Remaining to close Phase 7:
-    - Migrate one bounded CRUD slice using the same adapter seam with no custom list/read APIs.
-
-### Current Position Snapshot (2026-06-03)
-
-- Phase 0-5: complete
-- Phase 6: complete
-- Phase 7: in progress (active execution zone)
-- Phase 8: in progress
-- Phase 9: not started
-- Integration baseline on `vue` now includes:
-  - Permission-gated dev boot hydration before app mount
-  - Centralized auth/access guard flow with forbidden recovery
-  - Generic doctype list shell with backend pagination and renderer presets
-  - Generic link picker (`DeskLinkPicker`) for remote permission-safe link lookup
-  - Stable direct-fetch flow for boot/access utility endpoints plus generic list metadata loading via the standard Frappe doctype method
-
-### CRUD Lessons Learned (Project + DocType Slices)
-
-#### What is now stable
-
-- Task CRUD contract alignment is stabilized around backend field names for recent slices (`type`, `Task Update`, and compatible payload mapping in views/adapters).
-- Generic list sorting UX is standardized at the shared list shell level, reducing per-view divergence and one-off sort implementations.
-- Project edit-date hydration is stabilized through explicit date-input normalization before modal bind.
-
-#### Repeated failure patterns observed
-
-1. Field-name drift between prototype and backend schemas
-  - Example pattern: UI/local model aliases (`task_type`) diverging from backend fields (`type`).
-  - Impact: read/query failures or silent write no-ops depending on adapter mode.
-
-2. Local/remote adapter parity drift
-  - Generic adapters can diverge in accepted payload keys and behavior if only one mode is validated.
-  - Impact: feature appears fixed in one mode and broken in the other.
-
-3. Native date-input hydration mismatch
-  - Browser date inputs require `YYYY-MM-DD`; datetime-like strings render blank.
-  - Impact: edit modals appear unpopulated for date fields.
-
-4. Resource shape assumptions in list rendering
-  - Some resources expose arrays, others wrapped values during transition points.
-  - Impact: runtime render errors when list code assumes one shape.
-
-#### Ongoing concerns for upcoming CRUD slices
-
-- Contract governance: maintain a single source of truth for field aliases and backend names before each slice.
-- Mutation verification: each CRUD slice should validate both local and remote adapter behavior before sign-off.
-- Date hygiene: all edit forms binding `type="date"` should normalize inbound values via shared utility.
-- Embedded-list consistency: detail-page embedded lists may bypass generic shells; ensure shared list behavior still applies.
-- Query strictness: doctype list calls fail hard on invalid fieldnames; keep requested fields explicitly schema-validated.
-
-#### Suggested acceptance checks per CRUD slice
-
-1. Create: record persists and route navigation resolves the created record id deterministically.
-2. Read: detail form binds all editable fields, including dates and linked values.
-3. Update: changed values persist in both local and remote modes.
-4. Delete: confirms, removes, and routes back to parent list safely.
-5. List: sort/filter controls are consistent with shared list standards.
+  - **Migrated views** (adapter-backed, working against real backend):
+    - `ProjectsView` — generic list shell + DeskLinkPicker company filter
+    - `WorkPackagesView` — generic list shell + DeskLinkPicker project filter
+    - `TasksView` — generic list shell with DeskLinkPicker filters
+    - `ProjectDetailView` — adapter.read + adapter.list for all tabs; adapter.update/remove for CRUD
+    - `TaskDetailView` — adapter.read/update/remove; Task Update entries via adapter.list
+    - `TaskProgressEntriesView` — adapter.list('Task Update') with transform
+    - `TaskProgressEntryDetailView` — adapter.read/update/remove('Task Update') + adapter.list('File') for attachments
+    - `NewTaskProgressEntryView` — adapter.create('Task Update') + DeskLinkPicker task picker
+  - **Remaining to close Phase 7**: WorkPackageDetailView, StagePlanningsView full CRUD, NewTaskView, NewProjectView
+  - Reference: `6e188f7`, `5d95fcc`, `062c5e5`, `c50f8c8`, `37d27e9`, `c8b6224`, `845f567`, `cccc79e`, `28fd46b`, `70cfcb6`
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
   - Status: In progress
-  - Global `resourceFetcher` remains `frappeRequest` for resource-backed requests
-  - Attempted conversion of boot/access utility endpoints to `createResource` caused runtime regressions and was rolled back
-  - Generic `DocTypeListView` metadata loading was stabilized with a direct call to the standard `frappe.desk.form.load.getdoctype` method
-  - Remaining to close Phase 8:
-    - Revisit non-upload utility endpoint consolidation only after runtime-safe patterns are verified in this app.
-  - Date completed:
-  - Reference (PR/commit): current working tree
+  - File upload via `FileUploadHandler` XHR is live for Task Update attachments (uses `window.csrf_token`)
+  - Standard adapter mutations (create/update/remove) go through frappe-ui resources which handle CSRF
+  - Remaining: validate PROD upload flow end-to-end
 
 - [ ] **Phase 9 — Validation Gate Before Seed Replacement**
   - Status: Not started
-  - Deep-link refresh works
-  - Login redirect + return works
-  - Unauthorized users blocked in backend and UI
-  - Upload works in DEV and PROD with CSRF
-  - Date completed:
-  - Reference (PR/commit):
 
-### Final Go/No-Go Checklist (Seed Data Replacement)
+### Current Position Snapshot (2026-06-05)
 
-- [ ] All phases 0–9 completed
-- [ ] Validation gate passed and signed off
-- [ ] Rollback path documented
-- [ ] Team approval to switch from local seed mode to API-backed mode
+- Phases 0–6: complete
+- Phase 7: in progress — 8 views fully migrated to adapter, ~6 remaining
+- Phase 8: in progress — file upload working, full PROD validation pending
+- Phase 9: not started
 
-### Execution Notes Log
-
-| Date | Phase | Change summary | Owner | Link |
-|---|---|---|---|---|
-| 2026-06-01 | Phase 0-2 | Added `website_route_rules`, app permission hook, initial website boot shell, and whitelisted dev boot endpoint | Copilot | `873d985`, `3d9b2c2` |
-| 2026-06-01 | Phase 3 | Copied the Vue prototype into an app-owned `frontend/` workspace, pointed Vite output at app public assets, and wired the website shell to the built asset manifest | Copilot | working tree |
-| 2026-06-01 | Phase 4 | Added Vite dev proxy and frontend pre-mount DEV boot hydration from `get_context_for_dev` | Copilot | working tree |
-| 2026-06-01 | Phase 5 | Added backend-backed unauthorized route handling (`/forbidden`) and time-bound access-context caching for guard revalidation | Copilot | working tree |
-| 2026-06-01 | Phase 5 | Added a dedicated Pinia session store to centralize auth/access bootstrap and route-guard checks | Copilot | working tree |
-| 2026-06-01 | Phase 5 | Added forbidden-route recovery flow with forced access recheck and return-to-target behavior | Copilot | working tree |
-| 2026-06-01 | Phase 6 | Added initial data adapter seam and migrated `ProjectsView` reads to the adapter interface | Copilot | working tree |
-| 2026-06-01 | Phase 6 | Locked the remote adapter direction to generic Frappe DocType/resource calls and deferred generic list/link UI until a real slice needs them | Copilot | working tree |
-| 2026-06-01 | Phase 7 | Introduced reusable `DocTypeListView` (meta-driven columns, Frappe default sort fallback, reload-on-field-resolution) and moved project list-count summary into the list component footer | Copilot | working tree |
-| 2026-06-02 | Phase 7 | Completed `doclist -> vue` merge with generic list-shell maturation: server-side pagination, renderer presets, grouped sort control, list docs, and projects migration | Copilot | `3595122`, `23362ac`, `811c743` |
-| 2026-06-02 | Phase 6/7 | Added `DeskLinkPicker` (permission-safe server-backed Link search via `useDocTypeList`) and wired company filter in `ProjectsView` | Copilot | `23362ac`, `811c743` |
-| 2026-06-02 | Phase 7 | Added optional per-status badge color map support from column config (`Open` green in Projects) | Copilot | `23362ac`, `811c743` |
-| 2026-06-02 | Phase 6/7 | Expanded generic remote adapter contract (`list/read/create/update/remove/linkSearch`) and migrated `WorkPackagesView` to `DocTypeListView` + `DeskLinkPicker` project filter | Copilot | working tree |
-| 2026-06-03 | Phase 8 | Attempted `createResource` migration for boot/access/meta utility calls, rolled back boot/access after runtime regression, and stabilized generic doctype meta loading with direct fetch to the standard Frappe method | Copilot | working tree |
-| 2026-06-04 | Phase 7 | Task CRUD alignment slice: normalized Task/Task Update field contracts across create/read/update surfaces and adapter read name unwrapping for reactive sources | Copilot | `6e188f7` |
-| 2026-06-04 | Phase 7 | Standardized grouped sort control at shared list level and migrated Tasks list to generic doctype shell | Copilot | `5d95fcc` |
-| 2026-06-04 | Phase 7 | Added shared date-input normalization utility and applied to Project detail edit modal date hydration | Copilot | `062c5e5` |
+**What works against the real Frappe backend today:**
+- Projects list, create, read, update, delete
+- Work Packages list, create, read, update, delete
+- Tasks list, read, update, delete (create via TaskDetailView progress modal)
+- Project detail page — all tabs loading from backend
+- Task detail page — full CRUD + progress entry filing
+- Task Progress Entry list, detail, create (all against Task Update doctype)
+- Task Update file attachments (upload, list, delete via Frappe File doctype)
 
 ---
 
-## Milestones Completed
+## CRUD Patterns and Lessons Learned
 
-### M1-A: Site Execution Workspace (done before this session)
-- Custom HTML Block fixture at `buildsuite_core/fixtures/custom_html_block.json`
-- Workspace sidebar at `buildsuite_core/buildsuite_core/workspace/buildsuite/buildsuite.json`
-- `hooks.py` wires the Custom HTML Block fixture
+### Stable patterns (copy from these)
 
-### M1-B: Project View Custom Fields (this session — 2026-05-29)
+**adapter.read() with transform:**
+```js
+const taskResource = ref(null)
+function loadTaskResource(id) {
+  if (!id) { taskResource.value = null; return }
+  taskResource.value = adapter.read('Task', id, {
+    nameField: 'name',
+    fields: ['name', 'subject', 'project', ...],
+    cache: `buildsuite-task-detail:${id}`,
+    transform(rows) {
+      return rows.map(row => ({
+        id: row?.name || '',
+        name: row?.subject || row?.name || '',
+        projectId: row?.project || '',
+        // ... map every backend field to frontend alias
+      }))
+    },
+  })
+}
+watch(() => props.id, loadTaskResource, { immediate: true })
+const task = computed(() => {
+  const backendTask = firstResourceRow(taskResource.value)
+  if (backendTask) return backendTask
+  return store.taskById(props.id) || null  // local fallback
+})
+```
 
-**Branch**: `agents/project-view-custom-fields-implementation`
+**toArray() guard — ALWAYS use when accessing resource.data for array operations:**
+```js
+// frappe-ui initializes resource.data to null, not []. Without this, .filter()/.length throws.
+function toArray(data) {
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.value)) return data.value
+  return []
+}
+const items = computed(() => toArray(someResource.data))
+```
 
-#### Files created / modified
+**File upload (use FileUploadHandler, NOT frappe-ui FileUploader component):**
+```js
+import FileUploadHandler from 'frappe-ui-file-upload-handler'
+// FileUploader component requires <Button> globally registered — don't use it.
+const handler = new FileUploadHandler()
+await handler.upload(file, { doctype: 'Task Update', docname: props.id, private: true })
+```
 
-| Path | What |
-|---|---|
-| `buildsuite_core/fixtures/custom_field.json` | 12 Custom Field records for Project |
-| `buildsuite_core/fixtures/property_setter.json` | Extends Project.status with Working + On Hold |
-| `buildsuite_core/buildsuite_core/doctype/work_package/` | New Work Package DocType |
-| `buildsuite_core/buildsuite_core/doctype/stage_planning/` | New Stage Planning DocType |
-| `buildsuite_core/buildsuite_core/doctype/stage_planning_task/` | Child table: Stage Planning Task |
-| `buildsuite_core/buildsuite_core/doctype/stage_planning_dependency/` | Child table: Stage Planning Dependency |
-| `buildsuite_core/public/js/project.js` | Project form JS — renders related records in tabs |
-| `buildsuite_core/hooks.py` | Added Custom Field + Property Setter fixtures; added `doctype_js` |
+**Fetching attachments from Frappe File doctype:**
+```js
+attachmentsResource.value = adapter.list('File', {
+  filters: [['attached_to_doctype', '=', 'Task Update'], ['attached_to_name', '=', entryId]],
+  fields: ['name', 'file_name', 'file_url', 'file_size', 'is_private', 'creation', 'owner'],
+  orderBy: 'creation desc',
+})
+```
 
----
+**DeskLinkPicker for Link/filter fields (NOT DeskSelect):**
+```html
+<DeskLinkPicker
+  v-model="form.taskId"
+  doctype="Task"
+  label-field="subject"
+  value-field="name"
+  :search-fields="['subject', 'name']"
+  :page-length="20"
+  placeholder="— Select task —"
+/>
+```
 
-## Schema Reference
+### Repeated failure patterns
 
-### Custom Fields on Project (fixtures)
+1. **Resource data is null on first render** — frappe-ui inits `.data` to `null`. Never call `.filter()`, `.length`, or `.find()` directly on `resource.data`. Always use `toArray()` or check `Array.isArray()` first.
 
-All use `"module": "Buildsuite Core"`.
+2. **Field-name drift** — prototype uses camelCase aliases; backend uses snake_case. Add a `transform()` to every adapter call. Failing to do this causes silent write no-ops or read errors.
 
-| Fieldname | Type | Notes |
-|---|---|---|
-| `custom_project_id` | Data | reqd, unique, in_list_view, insert_after: project_name |
-| `is_group` | Check | default 0, insert_after: company |
-| `parent_project` | Link→Project | depends_on: eval:doc.is_group==0, insert_after: is_group |
-| `custom_subprojects` | Tab Break | insert_after: actual_end_date |
-| `custom_subprojects_html` | HTML | mount point for JS, insert_after: custom_subprojects |
-| `custom_work_packages` | Tab Break | insert_after: custom_subprojects_html |
-| `custom_work_packages_html` | HTML | mount point for JS |
-| `custom_tasks` | Tab Break | insert_after: custom_work_packages_html |
-| `custom_tasks_html` | HTML | mount point for JS |
-| `custom_stage_planning` | Tab Break | insert_after: custom_tasks_html |
-| `custom_stage_planning_html` | HTML | mount point for JS |
-| `custom_scope_changes` | Tab Break | insert_after: custom_stage_planning_html |
+3. **DeskSelect for backend Link fields** — DeskSelect with a locally-fetched list breaks in remote mode because the list may not contain the current value. Use DeskLinkPicker for any field that links to a Frappe DocType.
 
-> **Note**: The 5 Tab Break fields (`custom_subprojects`, `custom_work_packages`, `custom_tasks`, `custom_stage_planning`, `custom_scope_changes`) were created directly in the DB in the previous session and already exist on `build.local`. After `bench migrate` they will be managed by the fixture. The HTML fields are new.
+4. **frappe-ui FileUploader component needs global Button** — the component's fallback slot uses `<Button>` which must be globally registered. Use `FileUploadHandler` class directly instead.
 
-### Property Setter on Project
+5. **Sub-path imports of frappe-ui blocked in production build** — e.g. `import X from 'frappe-ui/src/utils/X'` fails in Rollup (not in exports map). Add an alias in `vite.config.js` following the existing `frappe-ui-*` pattern.
 
-| Field | Property | New Value |
-|---|---|---|
-| `Project.status` | options | `Open\nWorking\nCompleted\nOn Hold\nCancelled` |
+6. **Modal z-index below sidebar** — DeskShell sidebar is `z-50`. All modal backdrops must be `z-[60]` or higher.
 
-### Work Package DocType
+7. **Date inputs need YYYY-MM-DD** — use `toDateInputValue()` from `frontend/src/utils/dateInput.js` before binding to `<input type="date">`.
 
-- **Naming**: `WP-.YYYY.-.###`
-- **Module**: `Buildsuite Core`
-- **Permissions**: System Manager (full), Projects User (no delete)
+### Acceptance checks per CRUD slice
 
-| Fieldname | Type | Notes |
-|---|---|---|
-| `project` | Link→Project | reqd, in_list_view, in_standard_filter |
-| `code` | Data | in_list_view |
-| `work_package_name` | Data | reqd, in_list_view |
-| `status` | Select | Planned/In Progress/On Hold/Completed, default: Planned |
-| `progress` | Percent | default: 0 |
-| `budget` | Currency | |
-| `start_date` | Date | |
-| `end_date` | Date | Expected End Date |
-| `owner_user` | Link→User | Named `owner_user` to avoid conflict with Frappe built-in `owner` |
-| `description` | Text | |
-
-### Stage Planning DocType
-
-- **Naming**: `STG-.YYYY.-.###`
-- **Module**: `Buildsuite Core`
-
-| Fieldname | Type | Notes |
-|---|---|---|
-| `stage_name` | Data | reqd, in_list_view |
-| `project` | Link→Project | reqd, in_list_view, in_standard_filter |
-| `planned_start` | Date | |
-| `planned_end` | Date | |
-| `planned_task_count` | Int | default 0 |
-| `planned_completion_pct` | Percent | default 0 |
-| `description` | Text | |
-| `dependencies` | Table→Stage Planning Dependency | |
-| `stage_planning_tasks` | Table→Stage Planning Task | |
-
-### Stage Planning Task (Child Table, `istable: 1`)
-
-| Fieldname | Type |
-|---|---|
-| `task` | Link→Task |
-| `planned_start` | Date |
-| `planned_end` | Date |
-| `planned_qty` | Float |
-| `qty_unit` | Data |
-
-### Stage Planning Dependency (Child Table, `istable: 1`)
-
-| Fieldname | Type |
-|---|---|
-| `stage` | Link→Stage Planning |
+1. Create: record persists and route navigation resolves the created record id
+2. Read: detail form binds all fields including dates and linked values
+3. Update: changed values persist in remote mode
+4. Delete: confirms (ConfirmDialog), removes, routes back to parent list with toast
+5. List: sort/filter controls work; count shown in table footer
 
 ---
 
-## Project Form JS (`public/js/project.js`)
+## Vite Config Notes (`frontend/vite.config.js`)
 
-Registered in `hooks.py` as `doctype_js = {"Project": "public/js/project.js"}`.
+Key non-obvious settings:
 
-On `refresh` (existing docs only), fetches related records using `frappe.db.get_list()` and injects HTML tables into the HTML mount-point fields:
+- `optimizeDeps.exclude: ['frappe-ui']` — frappe-ui is excluded from esbuild pre-bundling so Vite's plugin pipeline handles its lucide virtual modules
+- `optimizeDeps.include: ['debug']` — `debug` is a CJS-only package pulled transitively by frappe-ui's TextEditor (tiptap). Must be pre-bundled explicitly or it crashes the dev server with a missing default export
+- `frappe-ui-file-upload-handler` alias — points to `node_modules/frappe-ui/src/utils/fileUploadHandler.ts` so it can be imported across the exports-map restriction
+- `feather-icons` alias — routes through a shim at `src/shims/feather-icons-default.js` because frappe-ui imports feather-icons as a default export but modern ESM only exposes named exports
 
-| Tab field | HTML field | Fetches from |
-|---|---|---|
-| `custom_subprojects` | `custom_subprojects_html` | `Project` where `parent_project == frm.doc.name` |
-| `custom_work_packages` | `custom_work_packages_html` | `Work Package` where `project == frm.doc.name` |
-| `custom_tasks` | `custom_tasks_html` | `Task` where `project == frm.doc.name` |
-| `custom_stage_planning` | `custom_stage_planning_html` | `Stage Planning` where `project == frm.doc.name` |
+---
 
-Each tab has a **+ Add** button using Frappe's standard `btn btn-primary btn-sm` class with `frappe.utils.icon("add", "xs")` icon. Clicking it opens a **Quick Entry dialog** via `frappe.ui.form.make_quick_entry()` with the parent `project` (or `parent_project` for sub-projects) pre-filled. After saving, the tab list refreshes automatically — no full-page redirect.
+## ProjectDetailView Tab Architecture
 
-### Quick Entry per DocType
+`ProjectDetailView.vue` has been split — tabs with substantial content are extracted into components under `frontend/src/views/project-detail/`:
 
-| DocType | quick_entry | Fields shown in dialog |
-|---|---|---|
-| Work Package | `1` (enabled) | project, code, work_package_name, status |
-| Stage Planning | `1` (enabled) | stage_name, project, planned_start, planned_end |
-| Task | n/a (ERPNext built-in — uses mandatory fields fallback) | subject, project, status |
-| Project (sub-project) | n/a (force=true passed) | project_name + mandatory fields |
+| File | Responsibility |
+|---|---|
+| `tabs/OverviewTab.vue` | Summary strip (4 KPI cards) + About/Reports/PM/Details sidebar layout |
+| `tabs/AttachmentsTab.vue` | File list + upload via `<input>` + delete (uses local store blob URLs) |
+| `tabs/TeamTab.vue` | Team member list with PM badge and remove buttons |
+| `tabs/ActivityTab.vue` | Project created entry (stub feed) |
+| `ProjectEditModal.vue` | Edit project form (DeskLinkPicker fields for customer/type/company/PM) |
+| `ProjectTeamMemberModal.vue` | Add team member picker modal |
+| `projectDetailConfig.js` | `BOQ_COLS`, `TASK_COLS`, `WP_COLS`, `SCO_COLS`, `TEAM_COLS`, `SUB_COLS`, `PROJECT_REPORTS` column/tile definitions |
+| `useProjectDetailListFilters.js` | All filter state, computed filtered lists, task stats for the inline tabs |
+
+Inline tabs (still in `ProjectDetailView.vue`): Subprojects, Work Packages, Tasks, Stage Planning, BOQ, SCOs.
+
+---
+
+## Dark Mode Implementation Notes
+
+Dark mode is driven by `html.dark` class (set by `store.theme` → `App.vue`). Key rules in `frontend/src/style.css`:
+
+- `html.dark .bg-white` → `#242424` (card/modal surface)
+- `html.dark body` → `#1A1A1A` (page canvas)
+- `html.dark .desk-input` → `background: #242424; border: #333333; color: #F5F5F5`
+- `html.dark .text-ink-900` → `#F5F5F5`
+
+**Known dark-mode pitfalls:**
+- `html.dark .desk-input` is in `@layer components`. If it doesn't apply, add `dark:bg-[#242424]` etc. directly as Tailwind utility classes on the element (lands in `@layer utilities` which has higher priority).
+- DeskLinkPicker dropdown header had a hardcoded `!important` white background — overridden in `DeskLinkPicker.vue` `<style>` with a matching `html.dark ... !important` rule.
+- `from-success-50` and similar gradient-from classes have no dark override in the default palette — add them to `style.css` if used in gradient headers.
 
 ---
 
 ## Development Workflow
 
-### Recommended: symlink worktree as the installed app (zero-merge dev loop)
+### Run the frontend dev server
 ```bash
-cd /Users/yemikudaisi/frappe-bench-16
-mv apps/buildsuite_core apps/buildsuite_core.bak   # first time only
-ln -s apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation apps/buildsuite_core
-bench --site build.local migrate
-bench build --app buildsuite_core
+cd /Users/yemikudaisi/frappe-bench-16/apps/buildsuite_core/frontend
+npm run dev
+# Opens at http://localhost:5173
+# Proxies /api/* to http://localhost:8001 (Frappe dev server)
 ```
-Undo when done: `rm apps/buildsuite_core && mv apps/buildsuite_core.bak apps/buildsuite_core`
 
-### Alternative: rsync (no symlink)
+### Build
 ```bash
-rsync -av \
-  apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation/buildsuite_core/ \
-  apps/buildsuite_core/buildsuite_core/
-bench --site build.local migrate && bench build --app buildsuite_core
+npm run build
+# Outputs to buildsuite_core/public/frontend/
 ```
+
+### Test against Frappe site
+Access via `http://build.local/client` after `bench start`.
+
+### Key env
+- `VITE_FRAPPE_HOST` — override Frappe host for the dev proxy (default `http://localhost:8001`)
+- `VITE_DATA_MODE` — `remote` (default) or `local` to switch adapter mode
 
 ---
 
-> **Important**: The site `build.local` is installed from the **main** app path at `/apps/buildsuite_core` (on branch `version-16`), NOT from the worktree. The worktree at `/apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation` is the development branch.
+## Schema Reference
 
-### To test changes on `build.local`
+### Task Update DocType
 
-**Option A — Merge/PR workflow (recommended)**
-1. Commit all changes in the worktree branch
-2. Create a PR and merge into the target branch
-3. In the main app path, `git pull` then run migrate
+Custom DocType in `buildsuite_core` module.
 
-**Option B — Quick local test (override the installed path)**
-```bash
-# Temporarily install the worktree version
-cd /Users/yemikudaisi/frappe-bench-16
-bench --site build.local uninstall-app buildsuite_core
-bench install-app buildsuite_core --app-path apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation
-bench --site build.local migrate
-bench build --app buildsuite_core
-```
+| Fieldname | Fieldtype | Required | Notes |
+|---|---|---|---|
+| `task` | Link→Task | Yes | |
+| `entry_date` | Date | Yes | |
+| `cumulative_progress` | Float | Yes | precision: 0 |
+| `narrative` | Small Text | No | |
+| `skilled` | Int | No | Skilled labour count |
+| `unskilled` | Int | No | Unskilled labour count |
+| `weather` | Select | No | Clear/Rainy/Hot/Cold/Storm |
+| `blocker` | Check | No | default: 0 |
+| `blocker_detail` | Small Text | No | mandatory_depends_on: `eval:doc.blocker==1` |
 
-**Option C — Copy only changed files to main app**
-```bash
-cp -r apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation/buildsuite_core/* \
-      apps/buildsuite_core/buildsuite_core/
-cp apps/buildsuite_core.worktrees/agents-project-view-custom-fields-implementation/buildsuite_core/fixtures/*.json \
-   apps/buildsuite_core/buildsuite_core/fixtures/
-bench --site build.local migrate
-bench build --app buildsuite_core
-```
+Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 
-After `bench migrate`:
-1. Creates `Work Package`, `Stage Planning`, `Stage Planning Task`, `Stage Planning Dependency` tables
-2. Applies Custom Field records from `custom_field.json` (adds `custom_project_id`, `is_group`, `parent_project`, HTML fields)
-3. Applies Property Setter — `Project.status` gains **Working** and **On Hold** options
+### Work Package DocType
 
-After `bench build`: `public/js/project.js` is included in the Frappe asset bundle.
+| Fieldname | Type | Notes |
+|---|---|---|
+| `project` | Link→Project | reqd, in_list_view |
+| `code` | Data | in_list_view |
+| `work_package_name` | Data | reqd, in_list_view |
+| `status` | Select | Planned/In Progress/On Hold/Completed |
+| `progress` | Percent | default: 0 |
+| `budget` | Currency | |
+| `start_date` | Date | |
+| `end_date` | Date | |
+| `owner_user` | Link→User | Named `owner_user` to avoid conflict with Frappe built-in `owner` |
+| `description` | Text | |
 
----
+### Custom Fields on Project (fixtures)
 
-## Known Issues / Migration Notes
-
-- **`KeyError: 'name'` on `bench migrate`** (reported during session): Caused by a Custom Field or Property Setter fixture record missing a `name` field. Fixed in commit `acfe733` — both `custom_field.json` and `property_setter.json` now include explicit `name` values. Migration should succeed after that commit.
+| Fieldname | Type | Notes |
+|---|---|---|
+| `custom_project_id` | Data | reqd, unique, in_list_view |
+| `is_group` | Check | default 0 |
+| `parent_project` | Link→Project | depends_on: eval:doc.is_group==0 |
 
 ---
 
 ## Known Constraints / Future Work
 
-- **`custom_scope_changes` tab**: Content not yet implemented — reserved for scope change management (future milestone)
-- **Tab ordering conflict**: The 5 Tab Break fields already exist in the DB with different `insert_after` values. After `bench migrate` with fixtures, Frappe will reconcile them to the fixture values. Verify ordering in Customize Form after migration.
-- **Work Package → Tasks relationship**: The demo uses a `workPackageId` field on Task. ERPNext's standard Task has no such field. A future custom field `custom_work_package` (Link→Work Package) on Task would be needed for full fidelity. Not in scope for M1-B.
-- **Stage Planning Dependency**: The `stage` link currently points to any Stage Planning. A filter to restrict to same-project stages should be added via a `get_query` in a future `stage_planning.js` file.
-
----
-
-## Next Milestone Candidates (M2)
-
-| Priority | Task |
-|---|---|
-| High | Implement `custom_scope_changes` tab — define Scope Change DocType and render in tab |
-| High | Add `custom_work_package` (Link→Work Package) custom field on Task for full WP→Task traceability |
-| Medium | `stage_planning.js` — add `get_query` on dependency `stage` field to restrict to same project |
-| Medium | Sub-project guard: prevent more than 1 level of nesting (validate `parent_project` depth in Python) |
-| Low | Gantt / timeline view for Stage Planning |
+- **NewTaskView / NewProjectView**: Still use store-based task/project creation. Not yet migrated to adapter.
+- **StagePlanningsView / StagePlanningDetailView**: Not yet migrated to adapter (reads from store).
+- **WorkPackageDetailView**: Partially migrated (read via adapter, mutations still store-based).
+- **Task Update attachments in NewTaskProgressEntryView**: The `+ New Entry` form doesn't yet support attachments — those are only available in the detail view post-creation.
+- **Entered by filter in TaskProgressEntriesView**: Shows `store.team` members in the dropdown but the backend `owner` field is a Frappe User email/ID. The filter works correctly in local mode; in remote mode it won't match unless the Frappe User IDs happen to match the team member IDs.
+- **`custom_scope_changes` tab**: Content not yet implemented.
+- **`custom_work_package` on Task**: ERPNext's standard Task has no `work_package` link field. A custom field is needed for full WP→Task traceability in the Frappe Desk view.
 
 ---
 
 ## Session Log
 
-| Date | Session | What |
-|---|---|---|
-| 2026-05-28 | M1-A | Site Execution workspace HTML block + sidebar created |
-| 2026-05-29 | M1-B | Custom fields, Work Package DocType, Stage Planning DocType, Project form JS |
-| 2026-05-29 | M1-C | Standard Frappe UI: `btn btn-primary btn-sm` add buttons, quick entry dialogs (no redirect), Bootstrap progress bars, `table table-hover` |
+| Date | What |
+|---|---|
+| 2026-05-28 | M1-A: Site Execution workspace HTML block + sidebar |
+| 2026-05-29 | M1-B: Custom fields, Work Package DocType, Stage Planning DocType, Project form JS |
+| 2026-05-29 | M1-C: Standard Frappe UI: add buttons, quick entry dialogs, Bootstrap progress bars |
+| 2026-06-01 | Phases 0–5: Route/access model, boot contract, Frappe-compatible Vite build, session + guard |
+| 2026-06-02 | Phase 6: Data adapter seam, ProjectsView + WorkPackagesView migrated, DeskLinkPicker introduced |
+| 2026-06-03 | Phase 7 start: DocTypeListView shell, generic sort/pagination, Projects fully migrated |
+| 2026-06-04 | Phase 7: Task CRUD alignment, sort standardization, date normalization utility |
+| 2026-06-04 | Refactor: ProjectDetailView tabs extracted into `project-detail/tabs/` components; debug logs removed |
+| 2026-06-04 | Feat: Task Progress Entry views wired to Task Update backend doctype (field name corrections, transforms) |
+| 2026-06-04 | Fix: `toArray()` null guard for frappe-ui resource.data in progress entry list + new entry form |
+| 2026-06-04 | Refactor: Task filter in progress entries list replaced with DeskLinkPicker |
+| 2026-06-04 | Feat: File attachment support on Task Progress Entry detail (FileUploadHandler + Frappe File doctype) |
+| 2026-06-04 | Fix: DeskLinkPicker dropdown sticky search bar stayed white in dark mode (hardcoded `!important`) |
+| 2026-06-05 | Refactor: App entry URL changed from `/buildsuite_core` to `/client`; www files renamed; hooks.py updated |
+| 2026-06-05 | Refactor: `/app/` route prefix removed from all 51 Vue files; router base set to `/client`; HomeView replaced by AppHomeView as landing |
+| 2026-06-05 | Fix: Workspace shortcuts localStorage migration strips stale `/app/` route_path values on hydrate |
+| 2026-06-05 | Fix: NewTaskProgressEntryView null crash — tasksResource.data null on first render |
+| 2026-06-05 | Refactor: Task select in NewTaskProgressEntryView replaced with DeskLinkPicker |
+| 2026-06-05 | Fix: `debug` CJS package added to Vite `optimizeDeps.include` to fix dev server crash |
+| 2026-06-05 | Fix: `frappe-ui-file-upload-handler` alias added to vite.config.js for production build |
+| 2026-06-05 | Fix: DeskList search input dark mode via Tailwind `dark:` utility classes |
+| 2026-06-05 | Fix: Task name column in TasksView changed from DeskLink (green) to neutral ink-900 span |
+| 2026-06-05 | Refactor: TaskDetailView aligned with prototype — progress block inside grid, chart-bar icon, status enum updated (Yet To Start/In Delay/Blocked), quick-status check fixed, Entered by locked, modal z-indexes fixed |
