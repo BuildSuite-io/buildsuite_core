@@ -47,8 +47,16 @@ const form = reactive({
 const errors = ref({})
 const saving = ref(false)
 
+function toArray(data) {
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.value)) return data.value
+  return []
+}
+
+const tasksList = computed(() => toArray(tasksResource.data))
+
 const selectedTask = computed(() =>
-  form.taskId ? tasksResource.data.find(t => t.id === form.taskId) || null : null
+  form.taskId ? tasksList.value.find(t => t.id === form.taskId) || null : null
 )
 
 // Pre-fill progress from current task progress when a task is first selected
@@ -59,7 +67,7 @@ watch(selectedTask, (t) => {
 })
 
 // Auto-select first non-completed task when no taskId was supplied via query
-watch(() => tasksResource.data, (tasks) => {
+watch(tasksList, (tasks) => {
   if (!form.taskId && tasks.length && !cameFromTaskId) {
     form.taskId = tasks.find(t => t.status !== 'Completed')?.id || tasks[0]?.id || ''
   }
@@ -138,7 +146,7 @@ const breadcrumbs = [
           <DeskField label="Task" required :error="errors.taskId">
             <DeskSelect v-model="form.taskId">
               <option value="">— Select task —</option>
-              <option v-for="t in tasksResource.data" :key="t.id" :value="t.id">
+              <option v-for="t in tasksList" :key="t.id" :value="t.id">
                 {{ t.name }} · {{ t.status }} · {{ t.progress }}%
               </option>
             </DeskSelect>
