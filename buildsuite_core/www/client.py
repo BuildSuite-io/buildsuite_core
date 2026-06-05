@@ -51,7 +51,7 @@ def get_boot():
 		{
 			"frappe_version": frappe.__version__,
 			"session_user": frappe.session.user,
-			"default_route": "/buildsuite_core",
+			"default_route": "/client",
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
 			"csrf_token": csrf_token,

@@ -38,7 +38,7 @@ const recentActivity = computed(() => {
       kindClass: 'bg-info-50 text-info-700',
       title: `Project created: ${p.name}`,
       date: p.createdAt,
-      to: `/app/projects/${p.id}`,
+      to: `/projects/${p.id}`,
     })
   })
   store.scos.forEach(s => {
@@ -51,7 +51,7 @@ const recentActivity = computed(() => {
         title: `SCO raised: ${s.title}`,
         date: s.raisedDate,
         sub: proj?.name,
-        to: '/app/sco',
+        to: '/sco',
       })
     }
   })
@@ -65,7 +65,7 @@ const recentActivity = computed(() => {
         title: `BOQ revision ${b.revision} approved`,
         date: b.approvedDate,
         sub: proj?.name,
-        to: `/app/boq/${b.id}`,
+        to: `/boq/${b.id}`,
       })
     } else if (b.preparedDate) {
       const proj = store.projectById(b.projectId)
@@ -76,7 +76,7 @@ const recentActivity = computed(() => {
         title: `BOQ revision ${b.revision} drafted`,
         date: b.preparedDate,
         sub: proj?.name,
-        to: `/app/boq/${b.id}`,
+        to: `/boq/${b.id}`,
       })
     }
   })

@@ -43,7 +43,7 @@ function createBoq() {
   })
   store.addBoqGroup({ boqId: boq.id, code: 'A', name: 'Civil Works — RCC', order: 1 })
   showNew.value = false
-  router.push(`/app/boq/${boq.id}`)
+  router.push(`/boq/${boq.id}`)
 }
 
 const rootProjects = computed(() => store.rootProjects)
@@ -87,7 +87,7 @@ function variancePill(pct) {
   return pct > 0 ? 'text-danger-700' : 'text-success-700'
 }
 
-function onRowClick(row) { router.push(`/app/boq/${row.id}`) }
+function onRowClick(row) { router.push(`/boq/${row.id}`) }
 
 const columns = [
   { key: 'id',         label: 'ID' },
@@ -110,7 +110,7 @@ const subtitle = computed(() => `${rows.value.length} of ${store.boqs.length} ·
 <template>
   <DeskPage title="Bill of Quantities" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <DeskLink to="/app/rate-master" class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50" style="border-radius: 2px;">₹ Rate Master</DeskLink>
+      <DeskLink to="/rate-master" class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50" style="border-radius: 2px;">₹ Rate Master</DeskLink>
       <button type="button" class="desk-save-btn" @click="openNew">+ New BOQ</button>
     </template>
 
@@ -178,7 +178,7 @@ const subtitle = computed(() => `${rows.value.length} of ${store.boqs.length} ·
       </template>
 
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/boq/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/boq/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
       </template>
       <template #cell-project="{ row }">
         <div class="text-xs">

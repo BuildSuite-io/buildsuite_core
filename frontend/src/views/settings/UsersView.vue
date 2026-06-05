@@ -40,7 +40,7 @@ const columns = [
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'Users' },
 ]
 
@@ -52,7 +52,7 @@ const subtitle = computed(() =>
 <template>
   <DeskPage title="Users" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
+      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
     </template>
 
     <!-- Non-admin guard — direct URL access. -->

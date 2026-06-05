@@ -253,7 +253,7 @@ async function confirmDelete() {
   try {
     await adapter.remove('Task Update', props.id)
     showDeleteConfirm.value = false
-    await router.push(taskId ? `/app/tasks/${taskId}` : '/app/progress-entries')
+    await router.push(taskId ? `/tasks/${taskId}` : '/progress-entries')
     await nextTick()
     showToast('Progress entry deleted')
   } catch (err) {
@@ -372,9 +372,9 @@ const deleteMessage = computed(() => isLatestOnTask.value
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Task Progress Entry', to: '/app/progress-entries' },
+    { label: 'Task Progress Entry', to: '/progress-entries' },
   ]
-  if (task.value) out.push({ label: task.value.name, to: `/app/tasks/${task.value.id}` })
+  if (task.value) out.push({ label: task.value.name, to: `/tasks/${task.value.id}` })
   return out
 })
 
@@ -412,7 +412,7 @@ const subtitle = computed(() => entry.value
           <template #left>
             <span v-if="!isLatestOnTask && latestOnTask" class="text-[11px] text-ink-500">
               ⚠ Older entry — task's current progress is
-              <DeskLink :to="`/app/progress-entries/${latestOnTask.id}`" class="font-medium">
+              <DeskLink :to="`/progress-entries/${latestOnTask.id}`" class="font-medium">
                 {{ latestOnTask.progressPct }}% ({{ latestOnTask.id }})
               </DeskLink>
             </span>
@@ -590,7 +590,7 @@ const subtitle = computed(() => entry.value
         <aside class="lg:col-span-1 space-y-2">
           <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Task</div>
-            <DeskLink v-if="task" :to="`/app/tasks/${task.id}`" class="text-sm font-medium">{{ task.name }}</DeskLink>
+            <DeskLink v-if="task" :to="`/tasks/${task.id}`" class="text-sm font-medium">{{ task.name }}</DeskLink>
             <span v-else class="text-sm text-ink-500">—</span>
             <div v-if="task" class="text-[11px] text-ink-500 mt-1">
               Currently {{ task.progress }}% · {{ task.status }}
@@ -598,11 +598,11 @@ const subtitle = computed(() => entry.value
           </div>
           <div v-if="project" class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Project</div>
-            <DeskLink :to="`/app/projects/${project.id}`" class="text-sm font-medium">{{ project.name }}</DeskLink>
+            <DeskLink :to="`/projects/${project.id}`" class="text-sm font-medium">{{ project.name }}</DeskLink>
           </div>
           <div v-if="wp" class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Work Package</div>
-            <DeskLink :to="`/app/work-packages/${wp.id}`" class="text-sm font-medium">{{ wp.name }}</DeskLink>
+            <DeskLink :to="`/work-packages/${wp.id}`" class="text-sm font-medium">{{ wp.name }}</DeskLink>
           </div>
           <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Entered by</div>

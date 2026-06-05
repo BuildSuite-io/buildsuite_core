@@ -61,13 +61,13 @@ function validate() {
 function save() {
   if (!validate()) return
   const stage = store.addStagePlanning({ ...form })
-  router.push(`/app/stage-plannings/${stage.id}`)
+  router.push(`/stage-plannings/${stage.id}`)
 }
 function cancel() { router.back() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Stage Planning', to: '/app/stage-plannings' },
+  { label: 'Stage Planning', to: '/stage-plannings' },
   { label: 'New' },
 ]
 </script>

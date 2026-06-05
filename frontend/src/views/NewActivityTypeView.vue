@@ -62,13 +62,13 @@ function validate() {
 function save() {
   if (!validate()) return
   const at = store.addActivityType({ ...form })
-  router.push(`/app/activity-types/${at.id}`)
+  router.push(`/activity-types/${at.id}`)
 }
 function cancel() { router.back() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Activity Type', to: '/app/activity-types' },
+  { label: 'Activity Type', to: '/activity-types' },
   { label: 'New' },
 ]
 </script>

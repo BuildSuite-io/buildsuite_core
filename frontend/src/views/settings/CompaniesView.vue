@@ -37,7 +37,7 @@ const columns = [
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'Companies' },
 ]
 
@@ -45,16 +45,16 @@ const subtitle = computed(() =>
   `${items.value.length} of ${store.companies.length} · multi-company per CLAUDE.md §14`
 )
 
-function onRowClick(row) { router.push(`/app/settings/companies/${row.id}`) }
+function onRowClick(row) { router.push(`/settings/companies/${row.id}`) }
 </script>
 
 <template>
   <DeskPage title="Company" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/settings" class="text-xs text-ink-600 hover:text-ink-900 mr-2">← Back to Settings</RouterLink>
+      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900 mr-2">← Back to Settings</RouterLink>
       <RouterLink
         v-if="store.isAdmin"
-        to="/app/settings/companies/new"
+        to="/settings/companies/new"
         class="desk-save-btn"
       >+ New Company</RouterLink>
     </template>
@@ -74,7 +74,7 @@ function onRowClick(row) { router.push(`/app/settings/companies/${row.id}`) }
       @row-click="onRowClick"
     >
       <template #cell-id="{ row }">
-        <DeskLink :to="`/app/settings/companies/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+        <DeskLink :to="`/settings/companies/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
       </template>
       <template #cell-name="{ row }">
         <div class="flex items-center gap-2">
@@ -105,7 +105,7 @@ function onRowClick(row) { router.push(`/app/settings/companies/${row.id}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No companies match this search.
-          <RouterLink v-if="store.isAdmin" to="/app/settings/companies/new" class="desk-link">Create a company →</RouterLink>
+          <RouterLink v-if="store.isAdmin" to="/settings/companies/new" class="desk-link">Create a company →</RouterLink>
         </div>
       </template>
     </DeskList>

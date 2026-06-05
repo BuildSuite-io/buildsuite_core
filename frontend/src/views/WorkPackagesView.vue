@@ -72,13 +72,13 @@ const breadcrumbs = [
   { label: 'Work Package' },
 ]
 
-function onRowClick(row) { router.push(`/app/work-packages/${row.name}`) }
+function onRowClick(row) { router.push(`/work-packages/${row.name}`) }
 </script>
 
 <template>
   <DeskPage title="Work Package" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/work-packages/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink to="/work-packages/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView
@@ -126,7 +126,7 @@ function onRowClick(row) { router.push(`/app/work-packages/${row.name}`) }
       </template>
 
       <template #cell-code="{ row }">
-        <DeskLink :to="`/app/work-packages/${row.name}`" @click.stop class="font-mono text-xs">
+        <DeskLink :to="`/work-packages/${row.name}`" @click.stop class="font-mono text-xs">
           {{ row.code || row.name }}
         </DeskLink>
       </template>
@@ -136,7 +136,7 @@ function onRowClick(row) { router.push(`/app/work-packages/${row.name}`) }
       <template #cell-project="{ row }">
         <DeskLink
           v-if="row.project"
-          :to="`/app/projects/${row.project}`"
+          :to="`/projects/${row.project}`"
           @click.stop
           class="text-xs"
         >{{ projectLabelMap.get(row.project) || row.project }}</DeskLink>

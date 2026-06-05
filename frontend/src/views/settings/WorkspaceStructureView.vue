@@ -106,7 +106,7 @@ function toggleRole(target, roleId) {
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'Workspace Structure' },
 ]
 
@@ -230,7 +230,7 @@ const totalShortcuts = computed(() =>
 
               <!-- Route -->
               <div class="px-2 py-1.5">
-                <DeskInput v-if="editing" v-model="sc.route_path" placeholder="/app/…" class="!text-xs font-mono" />
+                <DeskInput v-if="editing" v-model="sc.route_path" placeholder="/…" class="!text-xs font-mono" />
                 <div v-else class="text-xs font-mono text-ink-600">{{ sc.route_path }}</div>
               </div>
 

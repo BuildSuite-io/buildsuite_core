@@ -83,7 +83,7 @@ function onSkilledChange() {
 function deleteActivityType() {
   if (!confirm(`Delete Activity Type "${activityType.value.name}"?\n\nTasks that reference it will keep the link as a dangling reference (treated as no-link by the UI).`)) return
   store.deleteActivityType(props.id)
-  router.push('/app/activity-types')
+  router.push('/activity-types')
 }
 
 const linkedTaskCount = computed(() =>
@@ -92,7 +92,7 @@ const linkedTaskCount = computed(() =>
 
 const breadcrumbs = computed(() => [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Activity Type', to: '/app/activity-types' },
+  { label: 'Activity Type', to: '/activity-types' },
 ])
 
 function pct(n) { return Math.round((Number(n) || 0) * 100) }
@@ -301,6 +301,6 @@ function pct(n) { return Math.round((Number(n) || 0) * 100) }
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">
     Activity Type not found ·
-    <RouterLink to="/app/activity-types" class="desk-link">Back to list →</RouterLink>
+    <RouterLink to="/activity-types" class="desk-link">Back to list →</RouterLink>
   </div>
 </template>

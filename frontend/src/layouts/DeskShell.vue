@@ -20,20 +20,20 @@ function toggleTheme() { store.toggleTheme() }
 // and per-role ordering live in src/data/roles.js (CLAUDE.md §12.2, §12.3) — this
 // table is the UI-side mapping from slug → presentation.
 const WORKSPACES = {
-  'site-execution':  { name: 'Site Execution',  to: '/app/site-execution',  icon: '🏗️', group: 'buildsuite' },
-  'estimation':      { name: 'Estimation',      to: '/app/estimation',      icon: '📐', group: 'buildsuite' },
-  'procurement':     { name: 'Procurement',     to: '/app/procurement',     icon: '🛒', group: 'buildsuite' },
-  'subcontract':     { name: 'Subcontract',     to: '/app/subcontract',     icon: '🤝', group: 'buildsuite' },
-  'workforce':       { name: 'Workforce',       to: '/app/workforce',       icon: '👷', group: 'buildsuite' },
+  'site-execution':  { name: 'Site Execution',  to: '/site-execution',  icon: '🏗️', group: 'buildsuite' },
+  'estimation':      { name: 'Estimation',      to: '/estimation',      icon: '📐', group: 'buildsuite' },
+  'procurement':     { name: 'Procurement',     to: '/procurement',     icon: '🛒', group: 'buildsuite' },
+  'subcontract':     { name: 'Subcontract',     to: '/subcontract',     icon: '🤝', group: 'buildsuite' },
+  'workforce':       { name: 'Workforce',       to: '/workforce',       icon: '👷', group: 'buildsuite' },
   // 'scope-change' removed Session 33 — merged into Site Execution. The
   // /app/scope-change route stays registered as a legacy redirect target but
   // doesn't appear in the sidebar anymore.
-  'project-finance': { name: 'Project Finance', to: '/app/project-finance', icon: '💵', group: 'buildsuite' },
-  'accounting':      { name: 'Accounting',      to: '/app/accounting',      icon: '📊', group: 'erpnext' },
-  'buying':          { name: 'Buying',          to: '/app/buying',          icon: '📥', group: 'erpnext' },
-  'stock':           { name: 'Stock',           to: '/app/stock',           icon: '📦', group: 'erpnext' },
-  'assets':          { name: 'Assets',          to: '/app/assets',          icon: '🏭', group: 'erpnext' },
-  'hr':              { name: 'HR',              to: '/app/hr',              icon: '👤', group: 'erpnext' },
+  'project-finance': { name: 'Project Finance', to: '/project-finance', icon: '💵', group: 'buildsuite' },
+  'accounting':      { name: 'Accounting',      to: '/accounting',      icon: '📊', group: 'erpnext' },
+  'buying':          { name: 'Buying',          to: '/buying',          icon: '📥', group: 'erpnext' },
+  'stock':           { name: 'Stock',           to: '/stock',           icon: '📦', group: 'erpnext' },
+  'assets':          { name: 'Assets',          to: '/assets',          icon: '🏭', group: 'erpnext' },
+  'hr':              { name: 'HR',              to: '/hr',              icon: '👤', group: 'erpnext' },
 }
 
 // Access-level hint pills (CLAUDE.md §12.3). Shown next to a workspace link when
@@ -52,7 +52,7 @@ const ACCESS_HINTS = {
 // Home is synthesized as the first BuildSuite item and Site Execution is pinned
 // second when visible because it is the highest-frequency workspace.
 const navGroups = computed(() => {
-  const HOME_ITEM = { slug: 'home', name: 'Home', to: '/app/home', group: 'buildsuite', hint: null }
+  const HOME_ITEM = { slug: 'home', name: 'Home', to: '/home', group: 'buildsuite', hint: null }
   const buildsuiteItems = [HOME_ITEM]
   const erpnextItems = []
   const otherBuildsuiteItems = []
@@ -177,7 +177,7 @@ const navGroups = computed(() => {
       </nav>
 
       <div class="border-t border-ink-200 p-3">
-        <RouterLink to="/app/settings" class="flex items-center gap-2 px-2 py-1 text-xs text-ink-500 hover:text-ink-900">
+        <RouterLink to="/settings" class="flex items-center gap-2 px-2 py-1 text-xs text-ink-500 hover:text-ink-900">
           <svg
             class="w-3.5 h-3.5"
             viewBox="0 0 24 24"
@@ -227,9 +227,9 @@ const navGroups = computed(() => {
           <!-- Settings (Session 32) — Frappe-standard topbar placement (gear icon
                near the user / role chip). Active state when on a /app/settings/* route. -->
           <RouterLink
-            to="/app/settings"
+            to="/settings"
             class="p-1.5 rounded-md"
-            :class="route.path.startsWith('/app/settings') ? 'text-brand-700 bg-brand-50' : 'text-ink-400 hover:text-ink-700'"
+            :class="route.path.startsWith('/settings') ? 'text-brand-700 bg-brand-50' : 'text-ink-400 hover:text-ink-700'"
             title="Settings"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>

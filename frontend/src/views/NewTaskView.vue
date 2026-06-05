@@ -99,11 +99,11 @@ async function save() {
 
     if (!createdTaskId) {
       showToast('Task created, but could not resolve its ID for navigation', 'error')
-      await router.push('/app/tasks')
+      await router.push('/tasks')
       return
     }
 
-    await router.push(`/app/tasks/${createdTaskId}`)
+    await router.push(`/tasks/${createdTaskId}`)
     await nextTick()
     showToast('Task created')
   } catch (err) {
@@ -117,7 +117,7 @@ function cancel() { router.back() }
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Task', to: '/app/tasks' },
+  { label: 'Task', to: '/tasks' },
   { label: 'New' },
 ]
 </script>

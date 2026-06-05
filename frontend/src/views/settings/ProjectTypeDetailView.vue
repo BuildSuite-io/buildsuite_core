@@ -64,7 +64,7 @@ function onDelete() {
     if (!ok) return
   }
   store.deleteProjectType(record.value.id)
-  router.push('/app/settings/project-types')
+  router.push('/settings/project-types')
 }
 
 const templateOptions = computed(() => Object.keys(PROJECT_TYPE_TEMPLATES))
@@ -75,8 +75,8 @@ const templatePreview = computed(() => {
 
 const breadcrumbs = computed(() => [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
-  { label: 'Project Types', to: '/app/settings/project-types' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Project Types', to: '/settings/project-types' },
   { label: record.value?.name || 'Project Type' },
 ])
 
@@ -85,7 +85,7 @@ const projectsUsingThis = computed(() =>
 )
 
 onMounted(() => {
-  if (!store.isAdmin) router.replace('/app/settings')
+  if (!store.isAdmin) router.replace('/settings')
 })
 </script>
 
@@ -196,7 +196,7 @@ onMounted(() => {
         <DeskField :label="`${projectsUsingThis.length} project${projectsUsingThis.length === 1 ? '' : 's'}`">
           <ul class="text-sm py-1 space-y-1">
             <li v-for="p in projectsUsingThis.slice(0, 10)" :key="p.id">
-              <RouterLink :to="`/app/projects/${p.id}`" class="desk-link">{{ p.name }}</RouterLink>
+              <RouterLink :to="`/projects/${p.id}`" class="desk-link">{{ p.name }}</RouterLink>
               <span class="text-ink-500 text-xs"> · {{ p.code }}</span>
             </li>
             <li v-if="projectsUsingThis.length > 10" class="text-xs text-ink-500 italic">…and {{ projectsUsingThis.length - 10 }} more.</li>
@@ -211,7 +211,7 @@ onMounted(() => {
   <DeskPage v-else title="Project Type not found" :breadcrumbs="breadcrumbs">
     <div class="border border-ink-200 px-4 py-8 text-center" style="border-radius: 6px;">
       <div class="text-sm text-ink-700 mb-2">No record with id <span class="font-mono">{{ props.id }}</span>.</div>
-      <RouterLink to="/app/settings/project-types" class="desk-link">← Back to Project Types</RouterLink>
+      <RouterLink to="/settings/project-types" class="desk-link">← Back to Project Types</RouterLink>
     </div>
   </DeskPage>
 </template>

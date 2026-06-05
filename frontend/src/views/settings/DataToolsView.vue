@@ -52,7 +52,7 @@ function exportData() {
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'Data Tools' },
 ]
 </script>
@@ -60,7 +60,7 @@ const breadcrumbs = [
 <template>
   <DeskPage title="Data Tools" subtitle="Prototype dataset · export · reset · localStorage inspector" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
+      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
     </template>
 
     <div class="max-w-3xl">

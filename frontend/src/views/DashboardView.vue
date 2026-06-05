@@ -2,7 +2,7 @@
 // Admin working dashboard inside the Desk shell (CLAUDE.md §12.4). NOT the AdminLanding
 // at `/` — that one is Vue-styled with the workspace launcher + greeting. This is the
 // denser Desk-styled overview accessed via "Browse all workspaces" from a landing, or
-// the legacy `/app/` redirect.
+// the legacy `/` redirect.
 
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -44,8 +44,8 @@ const breadcrumbs = [
 <template>
   <DeskPage title="Dashboard" subtitle="Operations overview · live from local storage" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/tasks/new" class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50" style="border-radius: 2px;">+ New Task</RouterLink>
-      <RouterLink to="/app/projects/new" class="desk-save-btn">+ New Project</RouterLink>
+      <RouterLink to="/tasks/new" class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50" style="border-radius: 2px;">+ New Task</RouterLink>
+      <RouterLink to="/projects/new" class="desk-save-btn">+ New Project</RouterLink>
     </template>
 
     <!-- KPI strip — Desk-tight, 4 cards -->
@@ -74,13 +74,13 @@ const breadcrumbs = [
       <div class="lg:col-span-2 bg-white border border-ink-200 overflow-hidden" style="border-radius: 2px;">
         <div class="px-3 py-2 bg-ink-50 border-b border-ink-200 flex items-center justify-between">
           <h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700">Active projects</h2>
-          <DeskLink to="/app/projects" class="text-xs">See all →</DeskLink>
+          <DeskLink to="/projects" class="text-xs">See all →</DeskLink>
         </div>
         <div>
           <RouterLink
             v-for="(p, idx) in rootProjects"
             :key="p.id"
-            :to="`/app/projects/${p.id}`"
+            :to="`/projects/${p.id}`"
             class="flex items-center gap-3 px-3 py-2 border-b border-ink-100 last:border-b-0 hover:bg-brand-50"
             :class="idx % 2 === 1 ? 'bg-[#FAFBFC]' : 'bg-white'"
           >
@@ -115,7 +115,7 @@ const breadcrumbs = [
             <RouterLink
               v-for="(s, idx) in pendingScos"
               :key="s.id"
-              to="/app/sco"
+              to="/sco"
               class="block px-3 py-2 border-b border-ink-100 last:border-b-0 hover:bg-brand-50"
               :class="idx % 2 === 1 ? 'bg-[#FAFBFC]' : 'bg-white'"
             >
@@ -134,7 +134,7 @@ const breadcrumbs = [
             <RouterLink
               v-for="(t, idx) in inProgressTasks"
               :key="t.id"
-              :to="`/app/tasks/${t.id}`"
+              :to="`/tasks/${t.id}`"
               class="block px-3 py-2 border-b border-ink-100 last:border-b-0 hover:bg-brand-50"
               :class="idx % 2 === 1 ? 'bg-[#FAFBFC]' : 'bg-white'"
             >

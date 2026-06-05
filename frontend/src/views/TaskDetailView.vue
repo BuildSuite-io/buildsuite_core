@@ -422,7 +422,7 @@ async function confirmDelete() {
   try {
     await adapter.remove('Task', props.id)
     showDeleteConfirm.value = false
-    await router.push('/app/tasks')
+    await router.push('/tasks')
     await nextTick()
     showToast('Task deleted')
   } catch (err) {
@@ -436,9 +436,9 @@ async function confirmDelete() {
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Task', to: '/app/tasks' },
+    { label: 'Task', to: '/tasks' },
   ]
-  if (project.value) out.push({ label: project.value.name, to: `/app/projects/${project.value.id}` })
+  if (project.value) out.push({ label: project.value.name, to: `/projects/${project.value.id}` })
   return out
 })
 
@@ -525,7 +525,7 @@ const progressColor = computed(() => {
         <div class="text-[11px] text-ink-500 mt-3">
           <template v-if="latestEntry">
             Latest:
-            <DeskLink :to="`/app/progress-entries/${latestEntry.id}`">{{ latestEntry.progressPct }}% on {{ fmtDate(latestEntry.entryDate) }}</DeskLink>
+            <DeskLink :to="`/progress-entries/${latestEntry.id}`">{{ latestEntry.progressPct }}% on {{ fmtDate(latestEntry.entryDate) }}</DeskLink>
             by <UserAvatar :user-id="latestEntry.enteredBy" size="xs" /> · {{ entryCount }} {{ entryCount === 1 ? 'entry' : 'entries' }} total
           </template>
           <template v-else>
@@ -561,12 +561,12 @@ const progressColor = computed(() => {
       <aside class="lg:col-span-1 space-y-2">
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Project</div>
-          <DeskLink v-if="project" :to="`/app/projects/${project.id}`" class="text-sm font-medium">{{ project.name }}</DeskLink>
+          <DeskLink v-if="project" :to="`/projects/${project.id}`" class="text-sm font-medium">{{ project.name }}</DeskLink>
           <span v-else class="text-sm text-ink-500">—</span>
         </div>
         <div v-if="wp" class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Work Package</div>
-          <DeskLink :to="`/app/work-packages/${wp.id}`" class="text-sm font-medium">{{ wp.name }}</DeskLink>
+          <DeskLink :to="`/work-packages/${wp.id}`" class="text-sm font-medium">{{ wp.name }}</DeskLink>
         </div>
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Assignee</div>
@@ -581,13 +581,13 @@ const progressColor = computed(() => {
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Recent entries</div>
             <DeskLink
               v-if="entryCount > 3"
-              :to="{ path: '/app/progress-entries', query: { task: task.id } }"
+              :to="{ path: '/progress-entries', query: { task: task.id } }"
               class="text-[10px]"
             >View all {{ entryCount }} →</DeskLink>
           </div>
           <ul v-if="recentEntries.length" class="space-y-1.5">
             <li v-for="e in recentEntries" :key="e.id" class="flex items-center justify-between gap-2 text-xs">
-              <DeskLink :to="`/app/progress-entries/${e.id}`" class="font-medium tabular-nums">{{ e.progressPct }}%</DeskLink>
+              <DeskLink :to="`/progress-entries/${e.id}`" class="font-medium tabular-nums">{{ e.progressPct }}%</DeskLink>
               <span class="text-ink-500 flex-1 truncate">{{ fmtDate(e.entryDate) }}</span>
               <UserAvatar :user-id="e.enteredBy" size="xs" />
               <svg v-if="e.blockerFlag" class="w-3.5 h-3.5 text-danger-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" title="Blocker flagged" v-html="getWorkspaceIconPath('flag')" />

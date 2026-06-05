@@ -508,6 +508,16 @@ export const useDataStore = defineStore('data', {
           def.shortcuts = (def.shortcuts || []).filter(s => !RETIRED_SITE_EXEC_SHORTCUTS.includes(s.id))
           if (def.shortcuts.length !== before) workspaceMigrationDirty = true
         }
+        // Strip legacy /app/ prefix from any route_path values left in localStorage
+        // from before the /app prefix was removed from all routes.
+        for (const def of (this.workspaceStructure.workspace_definitions || [])) {
+          for (const sc of (def.shortcuts || [])) {
+            if (sc.route_path && sc.route_path.startsWith('/app/')) {
+              sc.route_path = sc.route_path.slice(4)
+              workspaceMigrationDirty = true
+            }
+          }
+        }
         // §M2 task field migration: stored tasks may still have `taskType` (old
         // field name) instead of `activityType`. Mirror the value over and stamp
         // a default `task_type` of 'Activity' on any task that lacks it.

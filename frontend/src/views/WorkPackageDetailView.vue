@@ -178,7 +178,7 @@ async function onDelete() {
   const wpId = wp.value.id
   try {
     await adapter.remove('Work Package', wpId)
-    router.push('/app/work-packages')
+    router.push('/work-packages')
   } catch (err) {
     console.error('Failed to delete work package:', err)
   }
@@ -197,9 +197,9 @@ const taskModalOpen = ref(false)
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Work Package', to: '/app/work-packages' },
+    { label: 'Work Package', to: '/work-packages' },
   ]
-  if (project.value) out.push({ label: project.value.name, to: `/app/projects/${project.value.id}` })
+  if (project.value) out.push({ label: project.value.name, to: `/projects/${project.value.id}` })
   return out
 })
 
@@ -213,7 +213,7 @@ const taskCols = [
   { key: 'progress', label: 'Progress', align: 'right' },
 ]
 
-function onTaskRowClick(row) { router.push(`/app/tasks/${row.id}`) }
+function onTaskRowClick(row) { router.push(`/tasks/${row.id}`) }
 
 // Schedule-based traffic-light color for the summary progress bar.
 const today = new Date()
@@ -355,7 +355,7 @@ function progressBarColor(w) {
           </template>
 
           <template #cell-name="{ row }">
-            <DeskLink :to="`/app/tasks/${row.id}`" @click.stop>{{ row.name }}</DeskLink>
+            <DeskLink :to="`/tasks/${row.id}`" @click.stop>{{ row.name }}</DeskLink>
           </template>
           <template #cell-status="{ row }">
             <StatusBadge :status="row.status" />

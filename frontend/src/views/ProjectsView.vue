@@ -49,14 +49,14 @@ const breadcrumbs = [
 
 function onRowClick(row) {
   const key = row.name
-  router.push(`/app/projects/${key}`)
+  router.push(`/projects/${key}`)
 }
 </script>
 
 <template>
   <DeskPage title="Project" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/projects/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink to="/projects/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView
@@ -133,7 +133,7 @@ function onRowClick(row) {
       </template>
 
       <template #cell-custom_project_id="{ row }">
-        <DeskLink :to="`/app/projects/${row.name}`" @click.stop class="font-mono text-xs">
+        <DeskLink :to="`/projects/${row.name}`" @click.stop class="font-mono text-xs">
           {{ row.custom_project_id || row.name }}
         </DeskLink>
       </template>
@@ -153,7 +153,7 @@ function onRowClick(row) {
       <template #empty>
         <div class="text-sm text-ink-500">
           No projects match your filters ·
-          <DeskLink to="/app/projects/new">Create one →</DeskLink>
+          <DeskLink to="/projects/new">Create one →</DeskLink>
         </div>
       </template>
     </DocTypeListView>

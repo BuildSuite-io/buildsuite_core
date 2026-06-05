@@ -48,26 +48,26 @@ function projectCountFor(typeName) {
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Settings', to: '/app/settings' },
+  { label: 'Settings', to: '/settings' },
   { label: 'Project Types' },
 ]
 
 const subtitle = computed(() => `${rows.value.length} of ${store.projectTypes.length}`)
 
 function onRowClick(row) {
-  router.push(`/app/settings/project-types/${row.id}`)
+  router.push(`/settings/project-types/${row.id}`)
 }
 
 // Admin/BSA guard — non-admins bounce back to settings hub
 onMounted(() => {
-  if (!store.isAdmin) router.replace('/app/settings')
+  if (!store.isAdmin) router.replace('/settings')
 })
 </script>
 
 <template>
   <DeskPage title="Project Types" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/settings/project-types/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink to="/settings/project-types/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DeskList
@@ -79,7 +79,7 @@ onMounted(() => {
       @row-click="onRowClick"
     >
       <template #cell-name="{ row }">
-        <DeskLink :to="`/app/settings/project-types/${row.id}`" @click.stop class="font-medium">{{ row.name }}</DeskLink>
+        <DeskLink :to="`/settings/project-types/${row.id}`" @click.stop class="font-medium">{{ row.name }}</DeskLink>
       </template>
 
       <template #cell-workPackageLabel="{ row }">
@@ -110,7 +110,7 @@ onMounted(() => {
       <template #empty>
         <div class="text-sm text-ink-500">
           No Project Types yet ·
-          <DeskLink to="/app/settings/project-types/new">Create one →</DeskLink>
+          <DeskLink to="/settings/project-types/new">Create one →</DeskLink>
         </div>
       </template>
     </DeskList>

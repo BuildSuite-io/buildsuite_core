@@ -65,7 +65,7 @@ async function save() {
       end_date: form.endDate,
       owner_user: form.owner,
     })
-    router.push(`/app/work-packages/${res.name}`)
+    router.push(`/work-packages/${res.name}`)
   } catch (err) {
     console.error('Failed to create work package:', err)
   } finally {
@@ -77,10 +77,10 @@ function cancel() { router.back() }
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Work Package', to: '/app/work-packages' },
+    { label: 'Work Package', to: '/work-packages' },
   ]
   if (parentProject.value) {
-    out.push({ label: parentProject.value.name, to: `/app/projects/${parentProject.value.id}` })
+    out.push({ label: parentProject.value.name, to: `/projects/${parentProject.value.id}` })
   }
   out.push({ label: 'New' })
   return out

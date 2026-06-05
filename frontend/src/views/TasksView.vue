@@ -78,14 +78,14 @@ const breadcrumbs = [
   { label: 'Task' },
 ]
 
-function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
+function onRowClick(row) { router.push(`/tasks/${row.name}`) }
 </script>
 
 <template>
   <DeskPage title="Task" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/app/activity-types" class="desk-link text-xs mr-3">View Activity Types →</RouterLink>
-      <RouterLink to="/app/tasks/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink to="/activity-types" class="desk-link text-xs mr-3">View Activity Types →</RouterLink>
+      <RouterLink to="/tasks/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView
@@ -196,7 +196,7 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
       </template>
 
       <template #cell-subject="{ row }">
-        <DeskLink :to="`/app/tasks/${row.name}`" @click.stop>{{ row.subject || row.name || 'Untitled task' }}</DeskLink>
+        <DeskLink :to="`/tasks/${row.name}`" @click.stop>{{ row.subject || row.name || 'Untitled task' }}</DeskLink>
       </template>
       <template #cell-project="{ row }">
         <div class="text-xs text-ink-500">
@@ -231,7 +231,7 @@ function onRowClick(row) { router.push(`/app/tasks/${row.name}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No tasks match these filters ·
-          <RouterLink to="/app/tasks/new" class="desk-link">Create a task →</RouterLink>
+          <RouterLink to="/tasks/new" class="desk-link">Create a task →</RouterLink>
         </div>
       </template>
     </DocTypeListView>

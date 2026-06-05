@@ -105,16 +105,16 @@ function taskStatus(id) { return store.taskById(id)?.status || '—' }
 function deleteStage() {
   if (!confirm(`Delete stage "${stage.value.stageName}"?\n\nDependencies in other stages pointing at this one will be cleaned up automatically.`)) return
   store.deleteStagePlanning(props.id)
-  if (project.value) router.push(`/app/projects/${project.value.id}`)
-  else router.push('/app/stage-plannings')
+  if (project.value) router.push(`/projects/${project.value.id}`)
+  else router.push('/stage-plannings')
 }
 
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Stage Planning', to: '/app/stage-plannings' },
+    { label: 'Stage Planning', to: '/stage-plannings' },
   ]
-  if (project.value) out.push({ label: project.value.name, to: `/app/projects/${project.value.id}` })
+  if (project.value) out.push({ label: project.value.name, to: `/projects/${project.value.id}` })
   return out
 })
 </script>
@@ -158,7 +158,7 @@ const breadcrumbs = computed(() => {
         </DeskField>
         <DeskField label="Project">
           <div class="text-sm py-1">
-            <DeskLink v-if="project" :to="`/app/projects/${project.id}`">{{ project.name }}</DeskLink>
+            <DeskLink v-if="project" :to="`/projects/${project.id}`">{{ project.name }}</DeskLink>
             <span v-else class="text-ink-500">{{ stage.project }}</span>
           </div>
         </DeskField>
@@ -210,7 +210,7 @@ const breadcrumbs = computed(() => {
               <DeskLink
                 v-for="depId in stage.dependencies"
                 :key="depId"
-                :to="`/app/stage-plannings/${depId}`"
+                :to="`/stage-plannings/${depId}`"
                 class="text-[11px] px-2 py-0.5 bg-brand-50 text-brand-700 font-medium hover:no-underline"
                 style="border-radius: 2px;"
               >{{ store.stagePlanningById(depId)?.stageName || depId }}</DeskLink>
@@ -267,7 +267,7 @@ const breadcrumbs = computed(() => {
                 style="grid-template-columns: minmax(220px, 1fr) 110px 110px 90px 60px 90px;"
               >
                 <div class="px-3 py-1.5">
-                  <DeskLink v-if="row.task" :to="`/app/tasks/${row.task}`">{{ taskName(row.task) }}</DeskLink>
+                  <DeskLink v-if="row.task" :to="`/tasks/${row.task}`">{{ taskName(row.task) }}</DeskLink>
                   <span v-else class="text-ink-400 italic">No task linked</span>
                 </div>
                 <div class="px-3 py-1.5 text-xs text-ink-700">{{ fmtDate(row.plannedStart) || '—' }}</div>
@@ -356,6 +356,6 @@ const breadcrumbs = computed(() => {
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">
     Stage not found ·
-    <RouterLink to="/app/stage-plannings" class="desk-link">Back to list →</RouterLink>
+    <RouterLink to="/stage-plannings" class="desk-link">Back to list →</RouterLink>
   </div>
 </template>

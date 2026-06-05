@@ -97,7 +97,7 @@ const tiles = computed(() =>
           <RouterLink
             v-for="b in recentEstimates"
             :key="b.id"
-            :to="`/app/boq/${b.id}`"
+            :to="`/boq/${b.id}`"
             class="flex items-center gap-3 px-4 py-3 hover:bg-ink-50"
           >
             <div class="w-8 h-8 rounded-lg bg-warning-50 text-warning-700 flex items-center justify-center text-xs font-semibold">R{{ b.revision }}</div>
@@ -112,7 +112,7 @@ const tiles = computed(() =>
           </RouterLink>
           <div v-if="!recentEstimates.length" class="px-4 py-8 text-center text-sm text-ink-400">
             No draft BOQs ·
-            <RouterLink to="/app/boq" class="text-brand-600 hover:underline">Open Estimation →</RouterLink>
+            <RouterLink to="/boq" class="text-brand-600 hover:underline">Open Estimation →</RouterLink>
           </div>
         </div>
         <div v-if="draftValueTotal > 0" class="px-4 py-2 bg-ink-50 text-[11px] text-ink-600 text-right">

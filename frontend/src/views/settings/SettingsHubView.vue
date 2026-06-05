@@ -31,14 +31,14 @@ const groups = computed(() => [
       {
         slug: 'companies', icon: 'building-2', label: 'Company',
         desc: 'Companies, addresses, fiscal year per entity.',
-        to: '/app/settings/companies',
+        to: '/settings/companies',
         count: store.companies.length,
         countLabel: store.companies.length === 1 ? 'company' : 'companies',
       },
       {
         slug: 'users', icon: 'users', label: 'Users',
         desc: 'People who can log in. Role assignment and enabled status.',
-        to: '/app/settings/users',
+        to: '/settings/users',
         count: store.team.length,
         countLabel: 'users',
         adminOnly: true,
@@ -63,25 +63,25 @@ const groups = computed(() => [
       {
         slug: 'core', icon: 'puzzle', label: 'BuildSuite Core Settings',
         desc: 'Org-wide BuildSuite toggles — company segregation, default project type, default company.',
-        to: '/app/settings/core',
+        to: '/settings/core',
         adminOnly: true,
       },
       {
         slug: 'site-execution-settings', icon: 'site-execution', label: 'Site Execution Settings',
         desc: 'Module defaults for Projects, Work Packages, Tasks, Progress Entries and Stage Planning.',
-        to: '/app/settings/site-execution',
+        to: '/settings/site-execution',
         adminOnly: true,
       },
       {
         slug: 'workspace-structure', icon: 'layout-grid', label: 'Workspace Structure',
         desc: 'Configure workspaces and per-role shortcut grids.',
-        to: '/app/settings/workspace-structure',
+        to: '/settings/workspace-structure',
         bsaOnly: true,
       },
       {
         slug: 'project-types', icon: 'tag', label: 'Project Types',
         desc: 'Configurable list of project types. Per-type Work Package label and default template picker.',
-        to: '/app/settings/project-types',
+        to: '/settings/project-types',
         adminOnly: true,
       },
     ],
@@ -128,7 +128,7 @@ const groups = computed(() => [
       {
         slug: 'data', icon: 'database', label: 'Data Tools',
         desc: 'Export the dataset, reset to defaults, inspect local storage.',
-        to: '/app/settings/data',
+        to: '/settings/data',
       },
       {
         slug: 'audit', icon: 'clipboard-list', label: 'Audit Log',

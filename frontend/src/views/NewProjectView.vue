@@ -128,7 +128,7 @@ async function save() {
       seedDefaultWorkPackagesAndTasks: form.seedDefaultWorkPackagesAndTasks,
     })
     showToast('Project created')
-    router.push(`/app/projects/${res.name}`)
+    router.push(`/projects/${res.name}`)
   } catch (err) {
     showToast('Failed to create project', 'error')
     console.error('Failed to create project:', err)
@@ -147,9 +147,9 @@ const subtitle = computed(() =>
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
-    { label: 'Project', to: '/app/projects' },
+    { label: 'Project', to: '/projects' },
   ]
-  if (parentProject.value) out.push({ label: parentProject.value.name, to: `/app/projects/${parentProject.value.id}` })
+  if (parentProject.value) out.push({ label: parentProject.value.name, to: `/projects/${parentProject.value.id}` })
   out.push({ label: 'New' })
   return out
 })
