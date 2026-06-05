@@ -320,7 +320,31 @@ const tasks = computed(() => {
 
 const scos = computed(() => store.scosByProject(resolvedProjectId.value))
 const stages = computed(() => store.stagePlanningsByProject(resolvedProjectId.value))
-const attachments = computed(() => store.attachmentsByParent('Project', resolvedProjectId.value))
+
+// Attachment count — fetched eagerly (not behind the tab v-if) so the badge
+// shows on the tab heading without the user needing to open the tab first.
+const fileCountResource = ref(null)
+
+function loadFileCount(projectId) {
+  if (!projectId) { fileCountResource.value = null; return }
+  fileCountResource.value = adapter.list('File', {
+    filters: [
+      ['attached_to_doctype', '=', 'Project'],
+      ['attached_to_name', '=', projectId],
+    ],
+    fields: ['name'],
+    pageLength: 500,
+  })
+}
+
+watch(resolvedProjectId, loadFileCount, { immediate: true })
+
+const attachmentCount = computed(() => {
+  const raw = fileCountResource.value?.data
+  if (Array.isArray(raw)) return raw.length
+  if (Array.isArray(raw?.value)) return raw.value.length
+  return null
+})
 const boqs = computed(() => store.boqsByProject(resolvedProjectId.value).slice().sort((a,b) => (b.preparedDate || '').localeCompare(a.preparedDate || '')))
 const activeBoq = computed(() => store.activeBoqForProject(resolvedProjectId.value) ||
   boqs.value.find(b => b.status === 'Approved'))
@@ -580,7 +604,7 @@ const tabs = computed(() => {
     { id: 'stage-planning', label: 'Stage Planning', count: stages.value.length },
     { id: 'boq',            label: 'BOQ',            count: boqs.value.length },
     { id: 'scos',           label: 'Scope Changes',  count: scos.value.length },
-    { id: 'attachments',    label: 'Attachments',    count: attachments.value.length },
+    { id: 'attachments',    label: 'Attachments',    count: attachmentCount.value },
     { id: 'team',           label: 'Team',           count: projectTeam.value.length },
     { id: 'activity',       label: 'Activity',       count: null },
   ]
@@ -1040,7 +1064,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       <AttachmentsTab
         v-if="tab === 'attachments'"
         :project-id="resolvedProjectId"
-        :attachments="attachments"
+        @count-change="loadFileCount(resolvedProjectId)"
       />
 
       <TeamTab
