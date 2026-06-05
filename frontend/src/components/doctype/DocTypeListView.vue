@@ -191,9 +191,8 @@ const sortableFields = computed(() => {
     }
   }
 
-  if (fieldMetaMap.value.has('modified')) {
-    base.add('modified')
-  }
+  base.add('modified')
+  base.add('creation')
 
   return Array.from(base).map((fieldname) => {
     const field = fieldMetaMap.value.get(fieldname)

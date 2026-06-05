@@ -6,7 +6,6 @@ import { createDataAdapter } from '@/data/adapters'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskList from '@/components/desk/DeskList.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
@@ -31,7 +30,7 @@ function daysAgo(n) {
 const SEVEN_DAYS_AGO = daysAgo(6)
 
 const entriesResource = adapter.list('Task Update', {
-  fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner'],
+  fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner', 'modified', 'creation'],
   orderBy: 'entry_date desc',
   transform(rows) {
     return rows.map(row => ({
@@ -46,6 +45,8 @@ const entriesResource = adapter.list('Task Update', {
       blockerFlag:   !!Number(row?.blocker),
       blockerNote:   row?.blocker_detail || '',
       enteredBy:     row?.owner || '',
+      modified:      row?.modified || null,
+      creation:      row?.creation || null,
     }))
   },
 })
@@ -74,7 +75,18 @@ const tasksMap = computed(() => {
 })
 
 function taskName(id) { return tasksMap.value[id] || id }
-function memberName(id) { return store.teamMember(id)?.name || id }
+
+const sortField = ref('entryDate')
+const sortDirection = ref('desc')
+
+const SORT_OPTIONS = [
+  { value: 'entryDate',   label: 'Entry Date' },
+  { value: 'progressPct', label: 'Progress %' },
+  { value: 'task',        label: 'Task' },
+  { value: 'enteredBy',   label: 'Entered By' },
+  { value: 'modified',    label: 'Last Updated' },
+  { value: 'creation',    label: 'Created' },
+]
 
 const items = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -159,6 +171,11 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
       :columns="columns"
       row-key="id"
       search-placeholder="Search narrative, task, blocker note…"
+      :sort-field="sortField"
+      :sort-direction="sortDirection"
+      :sort-options="SORT_OPTIONS"
+      @update:sort-field="sortField = $event"
+      @update:sort-direction="sortDirection = $event"
       @row-click="onRowClick"
     >
       <template #filter-chips>
@@ -175,15 +192,15 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
         />
 
         <!-- Entered by filter -->
-        <DeskSelect v-if="!enteredByFilter" v-model="enteredByFilter" class="!w-44">
-          <option value="">Entered by: Any</option>
-          <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }}</option>
-        </DeskSelect>
-        <DeskFilterChip
-          v-else
-          label="Entered by"
-          :value="memberName(enteredByFilter)"
-          @remove="enteredByFilter = ''"
+        <DeskLinkPicker
+          v-model="enteredByFilter"
+          class="!w-44"
+          doctype="User"
+          label-field="full_name"
+          value-field="name"
+          :search-fields="['full_name', 'name']"
+          :page-length="10"
+          placeholder="Entered by: Any"
         />
 
         <!-- Blocker-only toggle -->
