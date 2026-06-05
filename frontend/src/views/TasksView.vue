@@ -11,7 +11,6 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
-import DeskLink from '@/components/desk/DeskLink.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtDate } from '@/utils/format'
 
@@ -196,7 +195,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       </template>
 
       <template #cell-subject="{ row }">
-        <DeskLink :to="`/tasks/${row.name}`" @click.stop>{{ row.subject || row.name || 'Untitled task' }}</DeskLink>
+        <span class="text-ink-900 font-medium">{{ row.subject || row.name || 'Untitled task' }}</span>
       </template>
       <template #cell-project="{ row }">
         <div class="text-xs text-ink-500">
