@@ -7,6 +7,7 @@ import { reactive, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -57,7 +58,16 @@ const form = reactive({
   // subprojects since their breakdown lives under the parent.
   seedDefaultWorkPackagesAndTasks: false,
 })
-const errors = ref({})
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
+  project_name:        'name',
+  custom_project_id:   'code',
+  company:             'company',
+  customer:            'client',
+  project_type:        'type',
+  expected_end_date:   'endDate',
+  expected_start_date: 'startDate',
+  owner:               'pm',
+})
 const saving = ref(false)
 
 const parentProject = computed(() => form.parentId ? store.projectById(form.parentId) : null)
@@ -101,7 +111,7 @@ function validate() {
   if (!form.code) e.code = 'Project ID is required'
   if (!form.allowSubprojects && !form.parentId) e.parentId = 'Parent Project is required'
   if (form.endDate && form.startDate && form.endDate < form.startDate) e.endDate = 'End must be after start'
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 
@@ -130,8 +140,7 @@ async function save() {
     showToast('Project created')
     router.push(`/projects/${res.name}`)
   } catch (err) {
-    showToast('Failed to create project', 'error')
-    console.error('Failed to create project:', err)
+    showToast(applyServerErrors(err) ?? 'Failed to create project', 'error')
   } finally {
     saving.value = false
   }
@@ -182,7 +191,7 @@ const breadcrumbs = computed(() => {
              (ERPNext-native Customer DocType). The stored value is the
              customer's `name` so existing project records (whose client was
              plain text) still resolve. -->
-        <DeskField label="Client" hint="Pick a customer from the master list.">
+        <DeskField label="Client" :error="errors.client">
           <DeskLinkPicker
             v-model="form.client"
             doctype="Customer"
@@ -192,9 +201,11 @@ const breadcrumbs = computed(() => {
             :search-fields="['customer_name', 'name']"
             order-by="modified desc"
             :page-length="20"
+            :error="errors.client"
+            @change="clearError('client')"
           />
         </DeskField>
-        <DeskField label="Project type">
+        <DeskField label="Project type" :error="errors.type">
           <DeskLinkPicker
             v-model="form.type"
             doctype="Project Type"
@@ -204,6 +215,8 @@ const breadcrumbs = computed(() => {
             :search-fields="['name']"
             order-by="modified desc"
             :page-length="20"
+            :error="errors.type"
+            @change="clearError('type')"
           />
           <!-- Template preview (§13.3 item 19). Shows the default stages /
                work packages / tasks that the template will seed on create.
@@ -245,7 +258,8 @@ const breadcrumbs = computed(() => {
           v-if="store.isMultiCompany"
           label="Company"
           required
-          :hint="parentProject ? 'Inherited from parent project — locked.' : 'Legal entity this project belongs to. Drives downstream accounting, GST and banking segregation.'"
+          :error="errors.company"
+          :hint="errors.company ? '' : (parentProject ? 'Inherited from parent project — locked.' : 'Legal entity this project belongs to. Drives downstream accounting, GST and banking segregation.')"
         >
           <DeskLinkPicker
             v-model="form.company"
@@ -257,6 +271,8 @@ const breadcrumbs = computed(() => {
             order-by="modified desc"
             :page-length="20"
             :disabled="!!parentProject"
+            :error="errors.company"
+            @change="clearError('company')"
           />
         </DeskField>
         <DeskField label="Location">

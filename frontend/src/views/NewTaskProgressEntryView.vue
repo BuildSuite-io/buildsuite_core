@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
 import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -32,7 +33,12 @@ const form = reactive({
   blockerFlag:     false,
   blockerNote:     '',
 })
-const errors = ref({})
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+  task:                'taskId',
+  entry_date:          'entryDate',
+  cumulative_progress: 'progressPct',
+  blocker_detail:      'blockerNote',
+})
 const saving = ref(false)
 
 // Load the selected task to show the info banner and pre-fill progress.
@@ -79,7 +85,7 @@ function validate() {
   if (form.blockerFlag && !form.blockerNote.trim()) {
     e.blockerNote = 'Describe the blocker'
   }
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 
@@ -104,8 +110,7 @@ async function save() {
       router.push(`/progress-entries/${created.name || created.id}`)
     }
   } catch (err) {
-    showToast('Failed to file progress entry', 'error')
-    console.error('Failed to create progress entry', err)
+    showToast(applyServerErrors(err) ?? 'Failed to file progress entry', 'error')
   } finally {
     saving.value = false
   }

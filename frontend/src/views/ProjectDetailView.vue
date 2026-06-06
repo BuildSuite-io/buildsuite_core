@@ -7,6 +7,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
+import { parseFrappeError } from '@/utils/frappeError'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -491,8 +492,7 @@ async function saveEdit() {
     projectResource.value?.reload?.()
     showToast('Project updated')
   } catch (err) {
-    showToast('Failed to save project', 'error')
-    console.error('saveEdit failed:', err)
+    showToast(parseFrappeError(err).summary ?? 'Failed to save project', 'error')
   }
 }
 function cancelEdit() {

@@ -18,7 +18,8 @@ const props = defineProps({
   maxOptions: { type: Number, default: 10 },
   orderBy: { type: String, default: '' },
   placement: { type: String, default: 'bottom-start' },
-  size: { type: String, default: 'sm' },
+  size:      { type: String, default: 'sm' },
+  error:     { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -279,9 +280,14 @@ function onQueryUpdate(value) {
       <template #target="{ togglePopover, isOpen }">
         <button
           type="button"
-          class="flex h-7 w-full items-center justify-between gap-2 border border-ink-200 bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
+          class="flex h-7 w-full items-center justify-between gap-2 border bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
           style="border-radius: 6px;"
-          :class="{ 'ring-2 ring-brand-100 border-brand-300': isOpen, 'opacity-60 cursor-not-allowed': disabled }"
+          :class="{
+            'border-ink-200': !error && !isOpen,
+            'ring-2 ring-brand-100 border-brand-300': isOpen && !error,
+            'border-danger-500 ring-2 ring-danger-100': error,
+            'opacity-60 cursor-not-allowed': disabled,
+          }"
           :disabled="disabled"
           @click="togglePopover"
         >
