@@ -7,6 +7,8 @@
 import { reactive, ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -33,7 +35,13 @@ const form = reactive({
   endDate: '',
   owner: store.team[1]?.id || store.team[0]?.id || '',
 })
-const errors = ref({})
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+  project:          'projectId',
+  work_package_name:'name',
+  end_date:         'endDate',
+  start_date:       'startDate',
+  owner_user:       'owner',
+})
 const saving = ref(false)
 
 const lockedProject = computed(() => !!route.query.projectId)
@@ -46,7 +54,7 @@ function validate() {
   if (form.endDate && form.startDate && form.endDate < form.startDate) {
     e.endDate = 'End must be after start'
   }
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 
@@ -67,7 +75,7 @@ async function save() {
     })
     router.push(`/work-packages/${res.name}`)
   } catch (err) {
-    console.error('Failed to create work package:', err)
+    showToast(applyServerErrors(err) ?? 'Failed to create work package', 'error')
   } finally {
     saving.value = false
   }

@@ -6,6 +6,8 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -113,7 +115,12 @@ const tasks = computed(() => {
 const editing = ref(false)
 const saving = ref(false)
 const form = ref({})
-const errors = ref({})
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+  work_package_name: 'name',
+  end_date:          'endDate',
+  start_date:        'startDate',
+  owner_user:        'owner',
+})
 
 function snapshot() {
   if (!wp.value) return {}
@@ -127,12 +134,12 @@ watch(wp, (v) => { if (v && !editing.value) form.value = snapshot() }, { immedia
 
 function startEdit() {
   form.value = snapshot()
-  errors.value = {}
+  setErrors({})
   editing.value = true
 }
 function cancelEdit() {
   form.value = snapshot()
-  errors.value = {}
+  setErrors({})
   editing.value = false
 }
 function validate() {
@@ -141,7 +148,7 @@ function validate() {
   if (form.value.endDate && form.value.startDate && form.value.endDate < form.value.startDate) {
     e.endDate = 'End must be after start'
   }
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 async function saveEdit() {
@@ -161,7 +168,7 @@ async function saveEdit() {
     workPackageResource.value?.reload?.()
     editing.value = false
   } catch (err) {
-    console.error('Failed to update work package:', err)
+    showToast(applyServerErrors(err) ?? 'Failed to update work package', 'error')
   } finally {
     saving.value = false
   }
@@ -180,7 +187,7 @@ async function onDelete() {
     await adapter.remove('Work Package', wpId)
     router.push('/work-packages')
   } catch (err) {
-    console.error('Failed to delete work package:', err)
+    showToast(applyServerErrors(err) ?? 'Failed to delete work package', 'error')
   }
 }
 

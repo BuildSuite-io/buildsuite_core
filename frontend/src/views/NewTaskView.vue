@@ -7,6 +7,7 @@ import { reactive, ref, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -47,7 +48,14 @@ const form = reactive({
   endDate: '',
   estimatedHours: 0,
 })
-const errors = ref({})
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
+  subject:        'name',
+  project:        'projectId',
+  exp_start_date: 'startDate',
+  exp_end_date:   'endDate',
+  work_package:   'workPackageId',
+  owner:          'assignee',
+})
 const saving = ref(false)
 
 const projectRows = computed(() => (Array.isArray(projectsResource.data) ? projectsResource.data : []))
@@ -66,7 +74,7 @@ function validate() {
   if (!form.name) e.name = 'Task name is required'
   if (!form.projectId) e.projectId = 'Project is required'
   if (form.endDate && form.startDate && form.endDate < form.startDate) e.endDate = 'End must be after start'
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 
@@ -107,8 +115,7 @@ async function save() {
     await nextTick()
     showToast('Task created')
   } catch (err) {
-    showToast('Failed to create task', 'error')
-    console.error('Failed to create task:', err)
+    showToast(applyServerErrors(err) ?? 'Failed to create task', 'error')
   } finally {
     saving.value = false
   }
@@ -171,6 +178,8 @@ const breadcrumbs = [
             :filters="[['is_group', '=', 1]]"
             :page-length="20"
             placeholder="— Select project —"
+            :error="errors.projectId"
+            @change="clearError('projectId')"
           />
         </DeskField>
         <DeskField label="Work Package" hint="Optional · direct project tasks leave blank">
@@ -183,6 +192,8 @@ const breadcrumbs = [
             :filters="form.projectId ? [['project', '=', form.projectId]] : []"
             :page-length="20"
             placeholder="— None · Direct project task —"
+            :error="errors.workPackageId"
+            @change="clearError('workPackageId')"
           />
         </DeskField>
       </DeskSection>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
 import { showToast } from '@/utils/appToast'
+import { parseFrappeError } from '@/utils/frappeError'
 import { toDateInputValue } from '@/utils/dateInput'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -223,8 +224,7 @@ async function saveEdit() {
     entryResource.value?.reload?.()
     showToast('Progress entry updated')
   } catch (err) {
-    showToast('Failed to save progress entry', 'error')
-    console.error('saveEdit failed:', err)
+    showToast(parseFrappeError(err).summary ?? 'Failed to save progress entry', 'error')
   } finally {
     saving.value = false
   }
@@ -257,8 +257,7 @@ async function confirmDelete() {
     await nextTick()
     showToast('Progress entry deleted')
   } catch (err) {
-    showToast('Failed to delete progress entry', 'error')
-    console.error('confirmDelete failed:', err)
+    showToast(parseFrappeError(err).summary ?? 'Failed to delete progress entry', 'error')
   } finally {
     deleteLoading.value = false
   }

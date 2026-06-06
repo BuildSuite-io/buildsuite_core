@@ -8,6 +8,7 @@ import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
+import { parseFrappeError } from '@/utils/frappeError'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -387,8 +388,7 @@ async function saveEdit() {
     taskResource.value?.reload?.()
     showToast('Task updated')
   } catch (err) {
-    showToast('Failed to save task', 'error')
-    console.error('saveEdit failed:', err)
+    showToast(parseFrappeError(err).summary ?? 'Failed to save task', 'error')
   }
 }
 function cancelEdit() {
@@ -405,8 +405,7 @@ async function quickStatus(status) {
     await adapter.update('Task', props.id, patch)
     taskResource.value?.reload?.()
   } catch (err) {
-    showToast('Failed to update task status', 'error')
-    console.error('quickStatus failed:', err)
+    showToast(parseFrappeError(err).summary ?? 'Failed to update task status', 'error')
   }
 }
 
