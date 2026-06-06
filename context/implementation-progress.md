@@ -436,3 +436,5 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | 2026-06-05 | Feat: Project Detail Attachments tab migrated to real Frappe File doctype (FileUploadHandler upload, adapter.remove delete, DocTypeListView list with mime-type SVG icon column via new `icon` preset) |
 | 2026-06-05 | Feat: DocTypeListView `icon` preset — renders SVG icon from `column.iconFn(row)`; `defineExpose({ reload })`; `defaultColumnLabel` respects explicit empty string |
 | 2026-06-06 | Feat: Frappe error parsing — `parseFrappeError` utility + `useFormErrors` composable; checks `err.messages` (frappe-ui pre-parsed) then falls back to `_server_messages`; `DeskLinkPicker` gains `error` prop (red border); wired into all create/update form views |
+| 2026-06-06 | Feat: ProjectEditModal wired for field-level server errors — `errors` prop + `clear-error` emit; ProjectDetailView uses `useFormErrors` for edit path |
+| 2026-06-06 | Feat: TaskFormModal and TaskDetailView inline modals (edit + progress entry) wired for field-level server errors via `useFormErrors` |

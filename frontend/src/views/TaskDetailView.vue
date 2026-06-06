@@ -9,6 +9,7 @@ import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { parseFrappeError } from '@/utils/frappeError'
+import { useFormErrors } from '@/composables/useFormErrors'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -199,7 +200,34 @@ const progressForm = reactive({
   blockerFlag: false,
   blockerNote: '',
 })
-const progressErrors = ref({})
+// --- Edit modal error handling ---
+const {
+  errors: editErrors,
+  applyServerErrors: applyEditErrors,
+  setErrors: setEditErrors,
+  clearError: clearEditError,
+  reset: resetEditErrors,
+} = useFormErrors({
+  subject:         'name',
+  status:          'status',
+  priority:        'priority',
+  type:            'task_type',
+  owner:           'assignee',
+  exp_start_date:  'startDate',
+  exp_end_date:    'endDate',
+})
+
+// --- Progress entry modal error handling ---
+const {
+  errors: progressErrors,
+  applyServerErrors: applyProgressErrors,
+  setErrors: setProgressErrors,
+  clearError: clearProgressError,
+} = useFormErrors({
+  cumulative_progress: 'progressPct',
+  entry_date:          'entryDate',
+  blocker_detail:      'blockerNote',
+})
 
 // Pending attachments — files the user picked but haven't been persisted yet
 // (the entry record doesn't exist until save). On save we mint the entry
@@ -269,7 +297,7 @@ function resetProgressForm() {
   progressForm.weather       = ''
   progressForm.blockerFlag   = false
   progressForm.blockerNote   = ''
-  progressErrors.value = {}
+  setProgressErrors({})
   clearPendingAttachments()
 }
 
@@ -291,7 +319,7 @@ function validateProgressEntry() {
   if (progressForm.blockerFlag && !progressForm.blockerNote.trim()) {
     e.blockerNote = 'Describe the blocker'
   }
-  progressErrors.value = e
+  setProgressErrors(e)
   return Object.keys(e).length === 0
 }
 async function saveProgressEntry() {
@@ -332,7 +360,8 @@ async function saveProgressEntry() {
     ])
     showToast('Progress entry filed')
   } catch (err) {
-    showToast('Failed to file progress entry', 'error')
+    const summary = applyProgressErrors(err)
+    showToast(summary ?? 'Failed to file progress entry', 'error')
     console.error('saveProgressEntry failed:', err)
   } finally {
     savingProgress.value = false
@@ -370,6 +399,7 @@ watch(task, (t) => { if (t && !editing.value) form.value = buildEditForm(t) }, {
 function startEdit() {
   if (!task.value) return
   form.value = buildEditForm(task.value)
+  resetEditErrors()
   editing.value = true
 }
 async function saveEdit() {
@@ -388,11 +418,12 @@ async function saveEdit() {
     taskResource.value?.reload?.()
     showToast('Task updated')
   } catch (err) {
-    showToast(parseFrappeError(err).summary ?? 'Failed to save task', 'error')
+    showToast(applyEditErrors(err) ?? 'Failed to save task', 'error')
   }
 }
 function cancelEdit() {
   form.value = buildEditForm(task.value)
+  resetEditErrors()
   editing.value = false
 }
 
@@ -626,15 +657,15 @@ const progressColor = computed(() => {
           <!-- Modal body — the only scrolling region -->
           <div class="p-5 overflow-y-auto flex-1">
             <DeskSection title="Details">
-              <DeskField label="Name" required>
-                <DeskInput v-model="form.name" />
+              <DeskField label="Name" required :error="editErrors.name">
+                <DeskInput v-model="form.name" @input="clearEditError('name')" />
               </DeskField>
               <DeskField
                 label="Task Type"
                 required
                 hint="Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate."
               >
-                <DeskSelect v-model="form.task_type">
+                <DeskSelect v-model="form.task_type" @change="clearEditError('task_type')">
                   <option value="Activity">Activity</option>
                   <option value="Milestone">Milestone</option>
                   <option value="Inspection">Inspection</option>
@@ -643,22 +674,22 @@ const progressColor = computed(() => {
               <DeskField label="Description">
                 <DeskTextarea v-model="form.description" :rows="4" />
               </DeskField>
-              <DeskField label="Start">
-                <DeskInput v-model="form.startDate" type="date" />
+              <DeskField label="Start" :error="editErrors.startDate">
+                <DeskInput v-model="form.startDate" type="date" @change="clearEditError('startDate')" />
               </DeskField>
-              <DeskField label="Due">
-                <DeskInput v-model="form.endDate" type="date" />
+              <DeskField label="Due" :error="editErrors.endDate">
+                <DeskInput v-model="form.endDate" type="date" @change="clearEditError('endDate')" />
               </DeskField>
             </DeskSection>
 
             <DeskSection title="Assignment & status">
-              <DeskField label="Assignee">
-                <DeskSelect v-model="form.assignee">
+              <DeskField label="Assignee" :error="editErrors.assignee">
+                <DeskSelect v-model="form.assignee" @change="clearEditError('assignee')">
                   <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
                 </DeskSelect>
               </DeskField>
-              <DeskField label="Status">
-                <DeskSelect v-model="form.status">
+              <DeskField label="Status" :error="editErrors.status">
+                <DeskSelect v-model="form.status" @change="clearEditError('status')">
                   <option>Yet To Start</option>
                   <option>In Progress</option>
                   <option>In Delay</option>
@@ -666,8 +697,8 @@ const progressColor = computed(() => {
                   <option>Blocked</option>
                 </DeskSelect>
               </DeskField>
-              <DeskField label="Priority">
-                <DeskSelect v-model="form.priority">
+              <DeskField label="Priority" :error="editErrors.priority">
+                <DeskSelect v-model="form.priority" @change="clearEditError('priority')">
                   <option>Low</option>
                   <option>Medium</option>
                   <option>High</option>
@@ -727,10 +758,10 @@ const progressColor = computed(() => {
           <div class="p-5 overflow-y-auto flex-1">
             <DeskSection title="Progress" :cols="2">
               <DeskField label="Cumulative progress (%)" required hint="The NEW cumulative % after this entry — not a delta. 0–100." :error="progressErrors.progressPct">
-                <DeskInput v-model="progressForm.progressPct" type="number" min="0" max="100" step="1" />
+                <DeskInput v-model="progressForm.progressPct" type="number" min="0" max="100" step="1" @input="clearProgressError('progressPct')" />
               </DeskField>
-              <DeskField label="Entry date">
-                <DeskInput v-model="progressForm.entryDate" type="date" />
+              <DeskField label="Entry date" :error="progressErrors.entryDate">
+                <DeskInput v-model="progressForm.entryDate" type="date" @change="clearProgressError('entryDate')" />
               </DeskField>
               <DeskField label="Entered by" hint="Stamped automatically from the signed-in user.">
                 <div class="flex items-center gap-2 py-1">
@@ -770,7 +801,7 @@ const progressColor = computed(() => {
               </DeskField>
               <div v-if="progressForm.blockerFlag" class="md:col-span-2">
                 <DeskField label="Blocker detail" required hint="What blocked progress today?" :error="progressErrors.blockerNote">
-                  <DeskTextarea v-model="progressForm.blockerNote" :rows="2" placeholder="e.g. Afternoon shower delayed final bay by 2 hours" />
+                  <DeskTextarea v-model="progressForm.blockerNote" :rows="2" placeholder="e.g. Afternoon shower delayed final bay by 2 hours" @input="clearProgressError('blockerNote')" />
                 </DeskField>
               </div>
             </DeskSection>

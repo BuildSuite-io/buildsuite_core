@@ -7,7 +7,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
-import { parseFrappeError } from '@/utils/frappeError'
+import { useFormErrors } from '@/composables/useFormErrors'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -40,6 +40,17 @@ const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
+
+const { errors: editErrors, applyServerErrors: applyEditErrors, setErrors: setEditErrors, clearError: clearEditError } = useFormErrors({
+  project_name:        'name',
+  custom_project_id:   'code',
+  company:             'company',
+  customer:            'client',
+  project_type:        'type',
+  expected_end_date:   'endDate',
+  expected_start_date: 'startDate',
+  owner:               'pm',
+})
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -468,6 +479,7 @@ function buildProjectEditForm(source) {
 
 function startEdit() {
   editForm.value = buildProjectEditForm(project.value)
+  setEditErrors({})
   editing.value = true
 }
 async function saveEdit() {
@@ -492,11 +504,12 @@ async function saveEdit() {
     projectResource.value?.reload?.()
     showToast('Project updated')
   } catch (err) {
-    showToast(parseFrappeError(err).summary ?? 'Failed to save project', 'error')
+    showToast(applyEditErrors(err) ?? 'Failed to save project', 'error')
   }
 }
 function cancelEdit() {
   editForm.value = buildProjectEditForm(project.value)
+  setEditErrors({})
   editing.value = false
 }
 function onPrimary() {
@@ -1108,11 +1121,13 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       :open="editing"
       :project="project"
       :edit-form="editForm"
+      :errors="editErrors"
       :is-subproject="isSubproject"
       :subs-count="subs.length"
       :is-multi-company="store.isMultiCompany"
       @close="cancelEdit"
       @save="saveEdit"
+      @clear-error="clearEditError"
     />
 
     <ProjectTeamMemberModal

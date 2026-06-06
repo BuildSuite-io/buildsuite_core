@@ -7,33 +7,16 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 
 defineProps({
-  open: {
-    type: Boolean,
-    default: false,
-  },
-  project: {
-    type: Object,
-    default: null,
-  },
-  editForm: {
-    type: Object,
-    required: true,
-  },
-  isSubproject: {
-    type: Boolean,
-    default: false,
-  },
-  subsCount: {
-    type: Number,
-    default: 0,
-  },
-  isMultiCompany: {
-    type: Boolean,
-    default: false,
-  },
+  open:          { type: Boolean, default: false },
+  project:       { type: Object,  default: null },
+  editForm:      { type: Object,  required: true },
+  errors:        { type: Object,  default: () => ({}) },
+  isSubproject:  { type: Boolean, default: false },
+  subsCount:     { type: Number,  default: 0 },
+  isMultiCompany:{ type: Boolean, default: false },
 })
 
-const emit = defineEmits(['close', 'save'])
+const emit = defineEmits(['close', 'save', 'clear-error'])
 </script>
 
 <template>
@@ -63,10 +46,10 @@ const emit = defineEmits(['close', 'save'])
 
         <div class="p-5 overflow-y-auto flex-1">
           <DeskSection title="Basic information">
-            <DeskField label="Project name" required>
-              <DeskInput v-model="editForm.name" />
+            <DeskField label="Project name" required :error="errors.name">
+              <DeskInput v-model="editForm.name" @input="emit('clear-error', 'name')" />
             </DeskField>
-            <DeskField label="Client">
+            <DeskField label="Client" :error="errors.client">
               <DeskLinkPicker
                 v-model="editForm.client"
                 doctype="Customer"
@@ -76,9 +59,11 @@ const emit = defineEmits(['close', 'save'])
                 :search-fields="['customer_name', 'name']"
                 order-by="modified desc"
                 :page-length="20"
+                :error="errors.client"
+                @change="emit('clear-error', 'client')"
               />
             </DeskField>
-            <DeskField label="Type">
+            <DeskField label="Type" :error="errors.type">
               <DeskLinkPicker
                 v-model="editForm.type"
                 doctype="Project Type"
@@ -88,12 +73,15 @@ const emit = defineEmits(['close', 'save'])
                 :search-fields="['name']"
                 order-by="modified desc"
                 :page-length="20"
+                :error="errors.type"
+                @change="emit('clear-error', 'type')"
               />
             </DeskField>
             <DeskField
               v-if="isMultiCompany"
               label="Company"
-              hint="Legal entity this project belongs to."
+              :error="errors.company"
+              :hint="errors.company ? '' : 'Legal entity this project belongs to.'"
             >
               <DeskLinkPicker
                 v-model="editForm.company"
@@ -104,6 +92,8 @@ const emit = defineEmits(['close', 'save'])
                 :search-fields="['name', 'abbr']"
                 order-by="modified desc"
                 :page-length="20"
+                :error="errors.company"
+                @change="emit('clear-error', 'company')"
               />
             </DeskField>
             <DeskField label="Location">

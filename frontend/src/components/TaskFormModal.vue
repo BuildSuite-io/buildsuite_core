@@ -6,6 +6,8 @@
 
 import { reactive, ref, computed, watch } from 'vue'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
 import DeskSection from '@/components/desk/DeskSection.vue'
 import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
@@ -22,8 +24,18 @@ const emit = defineEmits(['update:open', 'created'])
 
 const store = useDataStore()
 const adapter = createDataAdapter(store)
-const errors = ref({})
 const saving = ref(false)
+
+const {
+  errors,
+  applyServerErrors,
+  setErrors,
+  clearError,
+} = useFormErrors({
+  subject:       'name',
+  project:       'projectId',
+  exp_end_date:  'endDate',
+})
 
 const projectsResource = adapter.list('Project')
 const wpsResource = adapter.list('Work Package')
@@ -56,7 +68,7 @@ watch(() => props.open, (isOpen) => {
   form.assignee       = store.team[1]?.id || store.team[0]?.id || ''
   form.startDate      = new Date().toISOString().slice(0, 10)
   form.endDate        = ''
-  errors.value = {}
+  setErrors({})
 })
 
 const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
@@ -91,7 +103,7 @@ function validate() {
   if (form.endDate && form.startDate && form.endDate < form.startDate) {
     e.endDate = 'End must be after start'
   }
-  errors.value = e
+  setErrors(e)
   return Object.keys(e).length === 0
 }
 
@@ -114,6 +126,9 @@ async function save() {
     })
     emit('created', task)
     close()
+  } catch (err) {
+    const summary = applyServerErrors(err)
+    showToast(summary ?? 'Failed to create task', 'error')
   } finally {
     saving.value = false
   }
@@ -150,7 +165,7 @@ async function save() {
         <div class="p-5 overflow-y-auto flex-1">
           <DeskSection title="Task details">
             <DeskField label="Task name" required :error="errors.name">
-              <DeskInput v-model="form.name" placeholder="e.g. Level 5 column casting" />
+              <DeskInput v-model="form.name" placeholder="e.g. Level 5 column casting" @input="clearError('name')" />
             </DeskField>
             <DeskField
               label="Task Type"
@@ -170,7 +185,7 @@ async function save() {
 
           <DeskSection title="Hierarchy">
             <DeskField label="Project" required :error="errors.projectId" :hint="projectLocked ? 'Pre-selected from where you came in — locked.' : ''">
-              <DeskSelect v-model="form.projectId" :disabled="projectLocked">
+              <DeskSelect v-model="form.projectId" :disabled="projectLocked" @change="clearError('projectId')">
                 <option value="">— Select project —</option>
                 <option v-for="p in projectsResource.data" :key="p.name" :value="p.name">{{ p.project_name }}</option>
               </DeskSelect>
@@ -194,7 +209,7 @@ async function save() {
               <DeskInput v-model="form.startDate" type="date" />
             </DeskField>
             <DeskField label="End date" :error="errors.endDate">
-              <DeskInput v-model="form.endDate" type="date" />
+              <DeskInput v-model="form.endDate" type="date" @change="clearError('endDate')" />
             </DeskField>
           </DeskSection>
 
