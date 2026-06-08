@@ -101,6 +101,25 @@ CUSTOM_FIELD = {
         "in_list_view": 1,
         "insert_after": "status",
         "module": "BuildSuite Core"
+    },
+    {
+        "fieldname": "custom_task_id",
+        "fieldtype": "Data",
+        "label": "Task ID",
+        "reqd": 1,
+        "unique": 1,
+        "in_list_view": 1,
+        "insert_after": "custom_work_package",
+        "module": "BuildSuite Core"
+    },
+    {
+        "fieldname": "task_progress_details",
+        "fieldtype": "Table",
+        "label": "Task Progress Details",
+        "options": "Task Progress Details",
+        "insert_after": "description",
+        "module": "BuildSuite Core",
+        "read_only": 1
     }
    ],
    "Warehouse":[
