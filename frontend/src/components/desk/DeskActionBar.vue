@@ -19,16 +19,17 @@ defineEmits(['save', 'cancel'])
 <template>
   <div class="flex items-center justify-between gap-3 px-5 py-2 bg-white">
     <div class="flex items-center gap-3 min-w-0">
-      <button
-        v-if="showCancel"
-        type="button"
-        class="text-xs text-ink-600 hover:text-ink-900"
-        @click="$emit('cancel')"
-      >{{ cancelLabel }}</button>
       <slot name="left" />
     </div>
     <div class="flex items-center gap-2 flex-shrink-0">
       <slot name="menu" />
+      <button
+        v-if="showCancel"
+        type="button"
+        class="text-xs text-ink-600 hover:text-ink-900 px-2.5 py-1.5 border border-ink-200 hover:bg-ink-50"
+        style="border-radius: 6px;"
+        @click="$emit('cancel')"
+      >{{ cancelLabel }}</button>
       <button
         v-if="showSave"
         type="button"
