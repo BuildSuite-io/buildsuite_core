@@ -149,6 +149,10 @@ doc_events = {
 	"Project": {
 		"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
 		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
+	},
+	"Task": {
+		"on_update": "buildsuite_core.utils.task.update_work_package_progress",
+		"on_trash": "buildsuite_core.utils.task.recalculate_work_package_on_task_trash"
 	}
 }
 # 	"*": {
@@ -283,5 +287,6 @@ fixtures = [
 
 # include js in doctype views
 doctype_js = {
-    "Project": "public/js/project.js"
+    "Project": "public/js/project.js",
+    "Task": "public/js/task.js"
 }
