@@ -29,7 +29,7 @@ function daysAgo(n) {
 }
 const SEVEN_DAYS_AGO = daysAgo(6)
 
-const entriesResource = adapter.list('Task Update', {
+const entriesResource = adapter.list('Task Progress Entry', {
   fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner', 'modified', 'creation'],
   orderBy: 'entry_date desc',
   transform(rows) {

@@ -41,7 +41,7 @@ const entryResource = ref(null)
 
 function loadEntryResource() {
   if (!props.id) { entryResource.value = null; return }
-  entryResource.value = adapter.read('Task Update', props.id, {
+  entryResource.value = adapter.read('Task Progress Entry', props.id, {
     nameField: 'name',
     fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner', 'creation'],
     cache: `buildsuite-task-update-detail:${props.id}`,
@@ -153,7 +153,7 @@ const latestEntriesResource = ref(null)
 
 function loadLatestEntriesResource(taskId) {
   if (!taskId) { latestEntriesResource.value = null; return }
-  latestEntriesResource.value = adapter.list('Task Update', {
+  latestEntriesResource.value = adapter.list('Task Progress Entry', {
     filters: [['task', '=', taskId]],
     fields: ['name', 'entry_date', 'cumulative_progress'],
     orderBy: 'entry_date desc',
@@ -210,7 +210,7 @@ function startEdit() {
 async function saveEdit() {
   saving.value = true
   try {
-    await adapter.update('Task Update', props.id, {
+    await adapter.update('Task Progress Entry', props.id, {
       entry_date:          form.value.entryDate,
       cumulative_progress: Number(form.value.progressPct),
       narrative:           form.value.narrative,
@@ -251,7 +251,7 @@ async function confirmDelete() {
   deleteLoading.value = true
   const taskId = entry.value?.task
   try {
-    await adapter.remove('Task Update', props.id)
+    await adapter.remove('Task Progress Entry', props.id)
     showDeleteConfirm.value = false
     await router.push(taskId ? `/tasks/${taskId}` : '/progress-entries')
     await nextTick()
@@ -273,7 +273,7 @@ function loadAttachmentsResource(entryId) {
   if (!entryId) { attachmentsResource.value = null; return }
   attachmentsResource.value = adapter.list('File', {
     filters: [
-      ['attached_to_doctype', '=', 'Task Update'],
+      ['attached_to_doctype', '=', 'Task Progress Entry'],
       ['attached_to_name',    '=', entryId],
     ],
     fields: ['name', 'file_name', 'file_url', 'file_size', 'is_private', 'creation', 'owner'],
@@ -298,7 +298,7 @@ async function onAttachFilesPicked(e) {
     const handler = new FileUploadHandler()
     try {
       await handler.upload(file, {
-        doctype: 'Task Update',
+        doctype: 'Task Progress Entry',
         docname: props.id,
         private: true,
       })

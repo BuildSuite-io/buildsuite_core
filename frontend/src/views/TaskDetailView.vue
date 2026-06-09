@@ -144,7 +144,7 @@ watch(() => task.value?.workPackageId, loadWpResource, { immediate: true })
 
 const wp = computed(() => firstResourceRow(wpResource.value))
 
-const entriesResource = adapter.list('Task Update', {
+const entriesResource = adapter.list('Task Progress Entry', {
   fields: [
     'name',
     'task',
@@ -328,7 +328,7 @@ async function saveProgressEntry() {
   if (!validateProgressEntry()) return
   savingProgress.value = true
   try {
-    const entry = await adapter.create('Task Update', {
+    const entry = await adapter.create('Task Progress Entry', {
       task: props.id,
       entry_date: progressForm.entryDate,
       cumulative_progress: progressForm.progressPct,
@@ -343,7 +343,7 @@ async function saveProgressEntry() {
     // Persist any pending attachments against the new entry.
     for (const f of pendingAttachments.value) {
       await adapter.create('Attachment', {
-        parent_doctype: 'Task Update',
+        parent_doctype: 'Task Progress Entry',
         parent_name: entry.name,
         file_name: f.fileName,
         file_url: f.url,
