@@ -90,6 +90,8 @@ website_route_rules = [
 # Installation
 # ------------
 
+after_migrate = "buildsuite_core.install.after_migrate"
+before_migrate = "buildsuite_core.install.before_migrate"
 # before_install = "buildsuite_core.install.before_install"
 # after_install = "buildsuite_core.install.after_install"
 
@@ -143,13 +145,17 @@ website_route_rules = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
+doc_events = {
+	"Project": {
+		"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
+		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
+	}
+}
 # 	"*": {
 # 		"on_update": "method",
 # 		"on_cancel": "method",
 # 		"on_trash": "method"
 # 	}
-# }
 
 # Scheduled Tasks
 # ---------------
@@ -271,18 +277,8 @@ fixtures = [
             ["name", "in", ["Site Execution Workspace"]]
         ]
     },
-    {
-        "doctype": "Custom Field",
-        "filters": [
-            ["dt", "in", ["Project", "Task"]],
-        ]
-    },
-    {
-        "doctype": "Property Setter",
-        "filters": [
-            ["doc_type", "=", "Project"]
-        ]
-    },
+    # Custom Field and Property Setter are managed via after_migrate / before_migrate
+    # hooks in buildsuite_core.install — not as JSON fixtures.
 ]
 
 # include js in doctype views
