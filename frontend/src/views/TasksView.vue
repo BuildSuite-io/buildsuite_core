@@ -47,21 +47,21 @@ const projectsMap = computed(() => {
 })
 
 const wpsResource = adapter.list('Work Package', {
-  fields: ['name', 'work_package_name', 'package_name'],
+  fields: ['name', 'work_package_name'],
   pageLength: 200,
-  cache: 'buildsuite-task-work-package-map',
+  cache: 'buildsuite-task-wp-map-v2',
 })
 const wpRows = computed(() => resourceRows(wpsResource))
 const wpsMap = computed(() => {
   const map = {}
   wpRows.value.forEach((wp) => {
-    map[wp.name] = wp.work_package_name || wp.package_name || wp.name
+    map[wp.name] = wp.work_package_name || wp.name
   })
   return map
 })
 
 function projectName(id) { return projectsMap.value[id] || id }
-function wpName(id) { return wpsMap.value[id] || '—' }
+function wpName(id) { return wpsMap.value[id] || id }
 function memberName(id) { return store.teamMember(id)?.name || id }
 
 const filterValues = computed(() => ({
@@ -200,7 +200,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #cell-project="{ row }">
         <div class="text-xs text-ink-500">
           <div>{{ projectName(row.project || '') }}</div>
-          <div class="text-ink-400">{{ wpName(row.work_package || '') }}</div>
+          <div v-if="row.work_package" class="text-ink-400">{{ wpName(row.work_package) }}</div>
         </div>
       </template>
       <template #cell-status="{ row }">

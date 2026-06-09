@@ -120,7 +120,8 @@ The frontend prototype used different field names than the backend. All three vi
 | `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue`, `WorkPackagesView.vue`, `TasksView.vue` |
 | `DeskLinkPicker` | `frontend/src/components/desk/DeskLinkPicker.vue` | Generic inline Link/autocomplete backed by `useDocTypeList` with server-side search. **Use for all Link-field inputs and list filters** (replaces DeskSelect for DocType-backed fields) | `ProjectsView.vue`, `TaskProgressEntriesView.vue`, `NewTaskProgressEntryView.vue`, form modals |
 | `FileUploadHandler` | Via alias `frappe-ui-file-upload-handler` → `node_modules/frappe-ui/src/utils/fileUploadHandler.ts` | XHR-based file upload class from frappe-ui. Use this instead of `FileUploader` component (which requires unregistered `Button` global). Handles CSRF, progress, FormData. | `TaskProgressEntryDetailView.vue` |
-| `parseFrappeError(err)` | `frontend/src/utils/frappeError.js` | Parse any Frappe HTTP error response into `{ summary, fieldErrors }`. Checks `err.messages` (frappe-ui pre-parsed array) first, then falls back to `_server_messages`. Extracts field names from `MandatoryError` traceback. | `useFormErrors`, direct imports in detail views |
+| `stripHtml(html)` | `frontend/src/utils/frappeError.js` (internal) | Strip HTML tags and decode entities from Frappe server messages using DOM `createElement('div')`. Applied to all message paths in `parseFrappeError` — Frappe wraps field/doc names in `<strong><a href="/desk/...">` which point to ERPNext, not the Vue app. | `parseFrappeError` internals |
+| `parseFrappeError(err)` | `frontend/src/utils/frappeError.js` | Parse any Frappe HTTP error response into `{ summary, fieldErrors }`. Checks `err.messages` (frappe-ui pre-parsed array) first, then falls back to `_server_messages`. Extracts field names from `MandatoryError` traceback. All message strings are HTML-stripped before returning. | `useFormErrors`, direct imports in detail views |
 | `useFormErrors(backendToFormField)` | `frontend/src/composables/useFormErrors.js` | Form error state composable. Returns `{ errors, applyServerErrors(err), setErrors(e), clearError(key), reset() }`. Pass a `{ backendFieldName: formKey }` map once; use `applyServerErrors` in catch blocks and `setErrors` in `validate()`. Replaces `const errors = ref({})` + manual field mapping in every form view. | `NewProjectView`, `NewTaskView`, `NewWorkPackageView`, `WorkPackageDetailView`, `NewTaskProgressEntryView` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
@@ -150,7 +151,7 @@ The frontend prototype used different field names than the backend. All three vi
     - `TaskProgressEntriesView` — adapter.list('Task Update') with transform
     - `TaskProgressEntryDetailView` — adapter.read/update/remove('Task Update') + adapter.list('File') for attachments
     - `NewTaskProgressEntryView` — adapter.create('Task Update') + DeskLinkPicker task picker
-  - **Remaining to close Phase 7**: WorkPackageDetailView, StagePlanningsView full CRUD, NewTaskView, NewProjectView
+  - **Remaining to close Phase 7**: StagePlanningsView full CRUD, NewTaskView, NewProjectView
   - Reference: `6e188f7`, `5d95fcc`, `062c5e5`, `c50f8c8`, `37d27e9`, `c8b6224`, `845f567`, `cccc79e`, `28fd46b`, `70cfcb6`
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
@@ -381,7 +382,7 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | `budget` | Currency | |
 | `start_date` | Date | |
 | `end_date` | Date | |
-| `owner_user` | Link→User | Named `owner_user` to avoid conflict with Frappe built-in `owner` |
+| ~~`owner_user`~~ | ~~Link→User~~ | **Do not request this field.** Causes `DataError: Field not permitted in query`. Use the Frappe built-in `owner` field (tracks creator) for read surfaces instead. |
 | `description` | Text | |
 
 ### Custom Fields on Project (fixtures)
@@ -438,3 +439,9 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | 2026-06-06 | Feat: Frappe error parsing — `parseFrappeError` utility + `useFormErrors` composable; checks `err.messages` (frappe-ui pre-parsed) then falls back to `_server_messages`; `DeskLinkPicker` gains `error` prop (red border); wired into all create/update form views |
 | 2026-06-06 | Feat: ProjectEditModal wired for field-level server errors — `errors` prop + `clear-error` emit; ProjectDetailView uses `useFormErrors` for edit path |
 | 2026-06-06 | Feat: TaskFormModal and TaskDetailView inline modals (edit + progress entry) wired for field-level server errors via `useFormErrors` |
+| 2026-06-08 | Fix: `owner_user` field purged from all Work Package views (NewWorkPackageView, WorkPackageDetailView, ProjectDetailView, WorkPackagesView) — Frappe built-in `owner` tracks creator; `owner_user` is not a DocType field and caused `DataError: Field not permitted in query` |
+| 2026-06-08 | Fix: TaskFormModal `work_package: null` — wpsResource was fetching only `['name']` (adapter default); added explicit `fields: ['name', 'work_package_name', 'project']`; fixed cascade watch `wp.id` → `wp.name` with `wpLocked` guard; added `selectedWP` computed; fixed WP dropdown label `package_name` → `work_package_name`; fixed assignee default to `''` |
+| 2026-06-08 | Fix: WorkPackageDetailView task list not updating after modal task creation — wired `@created="tasksResource?.reload?.()"` on TaskFormModal |
+| 2026-06-08 | Fix: Frappe server error messages containing HTML (`<strong><a href="/desk/...">`) now stripped to plain text in `parseFrappeError` — `stripHtml()` helper applied to both `err.messages` (frappe-ui pre-parsed path) and `parseServerMessages` internal path |
+| 2026-06-08 | Feat: Work Package field added to TaskDetailView edit modal — DeskLinkPicker filtered by task's project, wired into `saveEdit` payload and `useFormErrors` mapping |
+| 2026-06-08 | Fix: TasksView WP column showed `—` for all tasks — `package_name` (non-existent field) was causing backend DataError, silently emptying the WP map; fixed fields to `['name', 'work_package_name']`, cache key bumped to `buildsuite-task-wp-map-v2`, WP sub-line now hidden via `v-if` when task has no WP |
