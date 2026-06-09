@@ -93,7 +93,7 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    const created = await adapter.create('Task Update', {
+    const created = await adapter.create('Task Progress Entry', {
       task:                form.taskId,
       entry_date:          form.entryDate,
       cumulative_progress: Number(form.progressPct),
