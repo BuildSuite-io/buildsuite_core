@@ -24,17 +24,6 @@ const route = useRoute()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 
-const projectsResource = adapter.list('Project', {
-  fields: ['name', 'project_name'],
-  orderBy: 'modified desc',
-  pageLength: 500,
-})
-const wpsResource = adapter.list('Work Package', {
-  fields: ['name', 'work_package_name', 'project', 'code'],
-  orderBy: 'modified desc',
-  pageLength: 500,
-})
-
 const form = reactive({
   projectId: route.query.projectId || '',
   workPackageId: route.query.workPackageId || '',
@@ -58,15 +47,12 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 })
 const saving = ref(false)
 
-const projectRows = computed(() => (Array.isArray(projectsResource.data) ? projectsResource.data : []))
-const wpRows = computed(() => (Array.isArray(wpsResource.data) ? wpsResource.data : []))
-const availableWPs = computed(() => wpRows.value.filter((wp) => wp.project === form.projectId))
+const lockedProject = computed(() => !!route.query.projectId)
+const lockedWP = computed(() => !!route.query.workPackageId)
 
-watch(() => form.projectId, () => {
-  // Reset WP when the parent project changes if the existing WP doesn't belong.
-  if (form.workPackageId && !availableWPs.value.find(wp => wp.name === form.workPackageId)) {
-    form.workPackageId = ''
-  }
+watch(() => form.projectId, (newVal, oldVal) => {
+  if (lockedWP.value) return
+  if (newVal !== oldVal) form.workPackageId = ''
 })
 
 function validate() {
@@ -168,7 +154,7 @@ const breadcrumbs = [
       </DeskSection>
 
       <DeskSection title="Hierarchy">
-        <DeskField label="Project" required :error="errors.projectId">
+        <DeskField label="Project" required :error="errors.projectId" :hint="lockedProject ? 'Pre-selected — locked.' : ''">
           <DeskLinkPicker
             v-model="form.projectId"
             doctype="Project"
@@ -178,20 +164,22 @@ const breadcrumbs = [
             :filters="[['is_group', '=', 1]]"
             :page-length="20"
             placeholder="— Select project —"
+            :disabled="lockedProject"
             :error="errors.projectId"
             @change="clearError('projectId')"
           />
         </DeskField>
-        <DeskField label="Work Package" hint="Optional · direct project tasks leave blank">
+        <DeskField label="Work Package" :hint="lockedWP ? 'Pre-selected — locked.' : 'Optional · direct project tasks leave blank'">
           <DeskLinkPicker
             v-model="form.workPackageId"
             doctype="Work Package"
             label-field="work_package_name"
             value-field="name"
             :search-fields="['work_package_name', 'code', 'name']"
-            :filters="form.projectId ? [['project', '=', form.projectId]] : []"
+            :filters="lockedWP ? [] : (form.projectId ? [['project', '=', form.projectId]] : [])"
             :page-length="20"
             placeholder="— None · Direct project task —"
+            :disabled="lockedWP"
             :error="errors.workPackageId"
             @change="clearError('workPackageId')"
           />
