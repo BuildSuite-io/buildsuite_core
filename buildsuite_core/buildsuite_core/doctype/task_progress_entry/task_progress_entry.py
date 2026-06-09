@@ -22,9 +22,9 @@ class TaskProgressEntry(Document):
 		cumulative_progress: DF.Float
 		entry_date: DF.Date
 		narrative: DF.SmallText | None
-		skilled_labour: DF.Int
+		skilled: DF.Int
 		task: DF.Link
-		unskilled_labour: DF.Int
+		unskilled: DF.Int
 		weather: DF.Literal["", "Clear", "Rainy", "Hot", "Cold", "Storm"]
 	# end: auto-generated types
 

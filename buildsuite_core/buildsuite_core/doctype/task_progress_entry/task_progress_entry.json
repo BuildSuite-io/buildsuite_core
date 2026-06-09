@@ -12,9 +12,9 @@
   "entry_date",
   "narrative",
   "labour_deployed_today_section",
-  "skilled_labour",
+  "skilled",
   "column_break_t8np",
-  "unskilled_labour",
+  "unskilled",
   "site_conditions_section",
   "weather",
   "column_break_0hc4",
@@ -47,13 +47,13 @@
   },
   {
    "description": "Count of skilled workers on site today",
-   "fieldname": "skilled_labour",
+   "fieldname": "skilled",
    "fieldtype": "Int",
    "label": "Skilled labour"
   },
   {
    "description": "Count of unskilled workers / helpers",
-   "fieldname": "unskilled_labour",
+   "fieldname": "unskilled",
    "fieldtype": "Int",
    "label": "Unskilled labour"
   },
