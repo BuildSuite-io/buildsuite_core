@@ -94,7 +94,7 @@ CUSTOM_FIELD = {
     "Task": [
         {
             # fieldname kept as "work_package" (not "custom_work_package") to match
-            # the vue frontend and existing fixture convention
+            # the vue frontend and existing data — frontend calls task.work_package
             "fieldname": "work_package",
             "fieldtype": "Link",
             "label": "Work Package",
@@ -102,6 +102,25 @@ CUSTOM_FIELD = {
             "in_list_view": 0,
             "insert_after": "parent_task",
             "module": "BuildSuite Core"
+        },
+        {
+            "fieldname": "custom_task_id",
+            "fieldtype": "Data",
+            "label": "Task ID",
+            "reqd": 0,
+            "unique": 0,
+            "in_list_view": 1,
+            "insert_after": "work_package",
+            "module": "BuildSuite Core"
+        },
+        {
+            "fieldname": "task_progress_details",
+            "fieldtype": "Table",
+            "label": "Task Progress Details",
+            "options": "Task Progress Details",
+            "insert_after": "description",
+            "module": "BuildSuite Core",
+            "read_only": 1
         }
     ],
     "Warehouse": [
