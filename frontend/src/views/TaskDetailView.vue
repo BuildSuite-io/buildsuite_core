@@ -20,6 +20,7 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
@@ -209,6 +210,7 @@ const {
   reset: resetEditErrors,
 } = useFormErrors({
   subject:         'name',
+  work_package:    'workPackageId',
   status:          'status',
   priority:        'priority',
   type:            'task_type',
@@ -406,6 +408,7 @@ async function saveEdit() {
   try {
     await adapter.update('Task', props.id, {
       subject: form.value.name,
+      work_package: form.value.workPackageId || null,
       status: form.value.status,
       priority: form.value.priority,
       type: form.value.task_type,
@@ -670,6 +673,18 @@ const progressColor = computed(() => {
                   <option value="Milestone">Milestone</option>
                   <option value="Inspection">Inspection</option>
                 </DeskSelect>
+              </DeskField>
+              <DeskField label="Work Package" hint="Optional — leave blank for a direct project task.">
+                <DeskLinkPicker
+                  v-model="form.workPackageId"
+                  doctype="Work Package"
+                  label-field="work_package_name"
+                  value-field="name"
+                  :search-fields="['work_package_name', 'code', 'name']"
+                  :filters="task.projectId ? [['project', '=', task.projectId]] : []"
+                  :page-length="20"
+                  placeholder="— None · Direct project task —"
+                />
               </DeskField>
               <DeskField label="Description">
                 <DeskTextarea v-model="form.description" :rows="4" />

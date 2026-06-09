@@ -5,7 +5,6 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
-import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
@@ -92,7 +91,6 @@ function onRowClick(row) { router.push(`/work-packages/${row.name}`) }
         'progress',
         'start_date',
         'end_date',
-        'owner_user',
       ]"
       :columns="[
         { key: 'code', label: 'Code' },
@@ -102,7 +100,6 @@ function onRowClick(row) { router.push(`/work-packages/${row.name}`) }
         { key: 'budget', label: 'Budget' },
         { key: 'progress', label: 'Progress', preset: 'progress' },
         { key: 'timeline', label: 'Timeline', preset: 'timeline', fields: ['start_date', 'end_date'] },
-        { key: 'owner_user', label: 'Owner' },
       ]"
       :search-fields="['work_package_name', 'code', 'name']"
       :filter-values="filterValues"
@@ -153,10 +150,6 @@ function onRowClick(row) { router.push(`/work-packages/${row.name}`) }
           <span class="text-xs tabular-nums w-8 text-right">{{ Number(row.progress || 0) }}%</span>
         </div>
       </template>
-      <template #cell-owner_user="{ row }">
-        <UserAvatar :user-id="row.owner_user || row.owner" size="xs" />
-      </template>
-
       <template #empty>
         <div class="text-sm text-ink-500">No work packages match these filters.</div>
       </template>

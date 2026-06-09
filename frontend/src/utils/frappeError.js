@@ -37,6 +37,18 @@ function fieldLabel(name) {
 }
 
 /**
+ * Strip HTML tags from a Frappe server message and decode HTML entities.
+ * Frappe often wraps field names and document links in <strong><a> tags that
+ * point to /desk/... URLs, which are useless in the Vue app.
+ */
+function stripHtml(html) {
+  if (!html || !html.includes('<')) return html
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return (div.textContent || div.innerText || '').trim()
+}
+
+/**
  * Frappe encodes _server_messages as a JSON string whose elements are
  * themselves JSON strings or objects. Unwrap both layers safely.
  */
@@ -45,15 +57,18 @@ function parseServerMessages(raw) {
   try {
     const arr = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : [])
     return arr.map((item) => {
+      let text
       if (typeof item === 'string') {
         try {
           const inner = JSON.parse(item)
-          return typeof inner === 'object' ? (inner.message ?? '') : String(inner)
+          text = typeof inner === 'object' ? (inner.message ?? '') : String(inner)
         } catch {
-          return item
+          text = item
         }
+      } else {
+        text = typeof item === 'object' ? (item.message ?? '') : String(item)
       }
-      return typeof item === 'object' ? (item.message ?? '') : String(item)
+      return stripHtml(text)
     }).filter(Boolean)
   } catch {
     return []
@@ -76,7 +91,7 @@ export function parseFrappeError(err) {
   // Check that first; fall back to the raw _server_messages path for
   // non-frappe-ui callers that still carry the double-encoded JSON string.
   const messages = (Array.isArray(err.messages) && err.messages.length)
-    ? err.messages
+    ? err.messages.map(stripHtml).filter(Boolean)
     : parseServerMessages(err._server_messages)
 
   const fieldErrors = {}
@@ -110,7 +125,7 @@ export function parseFrappeError(err) {
 
   // For any other error type use the first server message, then err.message.
   return {
-    summary: messages[0] ?? err.message ?? 'An unexpected error occurred',
+    summary: messages[0] ?? stripHtml(err.message) ?? 'An unexpected error occurred',
     fieldErrors: {},
   }
 }

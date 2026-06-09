@@ -215,7 +215,6 @@ function loadWorkPackagesResource() {
     'progress',
     'start_date',
     'end_date',
-    'owner_user',
   ]
   const workPackageFilters = {
     project: ['in', workPackageProjectIds.value],
@@ -239,7 +238,6 @@ function loadWorkPackagesResource() {
         progress: Number(row?.progress) || 0,
         startDate: row?.start_date || row?.startDate || null,
         endDate: row?.end_date || row?.endDate || null,
-        owner: row?.owner_user || row?.owner || '',
       }))
     },
   })

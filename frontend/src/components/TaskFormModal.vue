@@ -37,8 +37,16 @@ const {
   exp_end_date:  'endDate',
 })
 
-const projectsResource = adapter.list('Project')
-const wpsResource = adapter.list('Work Package')
+const projectsResource = adapter.list('Project', {
+  fields: ['name', 'project_name', 'project_type'],
+  orderBy: 'modified desc',
+  pageLength: 200,
+})
+const wpsResource = adapter.list('Work Package', {
+  fields: ['name', 'work_package_name', 'project'],
+  orderBy: 'modified desc',
+  pageLength: 500,
+})
 
 const form = reactive({
   projectId: '',
@@ -65,13 +73,14 @@ watch(() => props.open, (isOpen) => {
   form.description    = ''
   form.status         = 'Open'
   form.priority       = 'Medium'
-  form.assignee       = store.team[1]?.id || store.team[0]?.id || ''
+  form.assignee       = ''
   form.startDate      = new Date().toISOString().slice(0, 10)
   form.endDate        = ''
   setErrors({})
 })
 
 const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
+const selectedWP = computed(() => wpsResource.data.find(wp => wp.name === form.workPackageId))
 const availableWPs = computed(() => wpsResource.data.filter(wp => wp.project === form.projectId))
 const availableActivityTypes = computed(() => {
   const pt = selectedProject.value?.project_type
@@ -86,7 +95,7 @@ const projectLocked = computed(() => !!props.projectId)
 const wpLocked = computed(() => !!props.workPackageId)
 
 watch(() => form.projectId, () => {
-  if (form.workPackageId && !availableWPs.value.find(wp => wp.id === form.workPackageId)) {
+  if (!wpLocked.value && form.workPackageId && !availableWPs.value.find(wp => wp.name === form.workPackageId)) {
     form.workPackageId = null
   }
   if (form.activityType && !availableActivityTypes.value.find(at => at.id === form.activityType)) {
@@ -151,7 +160,7 @@ async function save() {
           <div class="min-w-0 flex-1">
             <h2 class="text-sm font-semibold text-ink-900">New task</h2>
             <p v-if="selectedProject" class="text-[11px] text-ink-500 mt-0.5 truncate">
-              {{ selectedProject.name }}<template v-if="wpLocked && store.workPackageById(form.workPackageId)"> · {{ store.workPackageById(form.workPackageId).name }}</template>
+              {{ selectedProject.project_name }}<template v-if="selectedWP"> · {{ selectedWP.work_package_name }}</template>
             </p>
           </div>
           <button
@@ -193,7 +202,7 @@ async function save() {
             <DeskField label="Work Package" :hint="wpLocked ? 'Pre-selected — locked.' : 'Optional — leave blank to attach directly to the project.'">
               <DeskSelect v-model="form.workPackageId" :disabled="wpLocked">
                 <option :value="null">— None —</option>
-                <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.package_name }}</option>
+                <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.work_package_name }}</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Activity Type" hint="Optional — provides default labour mix and productivity baseline.">

@@ -17,6 +17,7 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
 
 const router = useRouter()
@@ -25,7 +26,7 @@ const store = useDataStore()
 const adapter = createDataAdapter(store)
 
 const form = reactive({
-  projectId: route.query.projectId || (store.projects[0] && store.projects[0].id) || '',
+  projectId: route.query.projectId || '',
   code: '',
   name: '',
   description: '',
@@ -33,14 +34,12 @@ const form = reactive({
   budget: '',
   startDate: '',
   endDate: '',
-  owner: store.team[1]?.id || store.team[0]?.id || '',
 })
-const { errors, applyServerErrors, setErrors } = useFormErrors({
-  project:          'projectId',
-  work_package_name:'name',
-  end_date:         'endDate',
-  start_date:       'startDate',
-  owner_user:       'owner',
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
+  project:           'projectId',
+  work_package_name: 'name',
+  end_date:          'endDate',
+  start_date:        'startDate',
 })
 const saving = ref(false)
 
@@ -63,15 +62,14 @@ async function save() {
   saving.value = true
   try {
     const res = await adapter.create('Work Package', {
-      project: form.projectId,
-      code: form.code.trim(),
+      project:           form.projectId,
+      code:              form.code.trim(),
       work_package_name: form.name.trim(),
-      description: form.description,
-      status: form.status,
-      budget: Number(form.budget) || 0,
-      start_date: form.startDate,
-      end_date: form.endDate,
-      owner_user: form.owner,
+      description:       form.description,
+      status:            form.status,
+      budget:            Number(form.budget) || 0,
+      start_date:        form.startDate,
+      end_date:          form.endDate,
     })
     router.push(`/work-packages/${res.name}`)
   } catch (err) {
@@ -116,10 +114,19 @@ const subtitle = computed(() =>
       <div class="max-w-3xl mx-auto">
       <DeskSection title="Basic information">
         <DeskField label="Project" required :error="errors.projectId" :hint="lockedProject ? 'Pre-selected from where you came in — locked.' : ''">
-          <DeskSelect v-model="form.projectId" :disabled="lockedProject">
-            <option value="">— Select project —</option>
-            <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </DeskSelect>
+          <DeskLinkPicker
+            v-model="form.projectId"
+            doctype="Project"
+            placeholder="Select project"
+            label-field="project_name"
+            value-field="name"
+            :search-fields="['project_name', 'name', 'custom_project_id']"
+            order-by="modified desc"
+            :page-length="20"
+            :disabled="lockedProject"
+            :error="errors.projectId"
+            @change="clearError('projectId')"
+          />
         </DeskField>
         <DeskField label="Work Package name" required :error="errors.name">
           <DeskInput v-model="form.name" placeholder="e.g. Foundation Works" />
@@ -152,13 +159,6 @@ const subtitle = computed(() =>
         </DeskField>
       </DeskSection>
 
-      <DeskSection title="Ownership">
-        <DeskField label="Owner">
-          <DeskSelect v-model="form.owner">
-            <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-          </DeskSelect>
-        </DeskField>
-      </DeskSection>
       </div>
     </DeskForm>
   </DeskPage>

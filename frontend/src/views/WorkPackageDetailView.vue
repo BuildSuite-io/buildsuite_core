@@ -59,7 +59,6 @@ function loadWorkPackageResource() {
         progress: Number(row.progress) || 0,
         startDate: row.start_date || null,
         endDate: row.end_date || null,
-        owner: row.owner_user || '',
         description: row.description || '',
       }))
     }
@@ -81,6 +80,7 @@ function loadTasksResource() {
     return
   }
   tasksResource.value = adapter.list('Task', {
+    fields: ['name', 'subject', 'project', 'status', 'priority', 'type', 'owner', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['work_package', '=', wp.value.id]],
     orderBy: 'modified desc',
     pageLength: 300,
@@ -119,7 +119,6 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
   work_package_name: 'name',
   end_date:          'endDate',
   start_date:        'startDate',
-  owner_user:        'owner',
 })
 
 function snapshot() {
@@ -162,8 +161,7 @@ async function saveEdit() {
       status: form.value.status,
       budget: Number(form.value.budget) || 0,
       start_date: form.value.startDate || '',
-      end_date: form.value.endDate || '',
-      owner_user: form.value.owner,
+      end_date:   form.value.endDate || '',
     })
     workPackageResource.value?.reload?.()
     editing.value = false
@@ -270,7 +268,7 @@ function progressBarColor(w) {
       </template>
 
       <!-- Summary strip — view mode only (becomes Details section when editing) -->
-      <div v-if="!editing" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+      <div v-if="!editing" class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Budget</div>
           <div class="text-sm text-ink-900 mt-0.5 tabular-nums">{{ fmtCompactINR(wp.budget) }}</div>
@@ -287,10 +285,6 @@ function progressBarColor(w) {
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Timeline</div>
           <div class="text-xs text-ink-700 mt-0.5">{{ fmtDate(wp.startDate) }} → {{ fmtDate(wp.endDate) }}</div>
-        </div>
-        <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
-          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Owner</div>
-          <div class="mt-1"><UserAvatar :user-id="wp.owner" :show-name="true" /></div>
         </div>
       </div>
 
@@ -337,13 +331,6 @@ function progressBarColor(w) {
           </DeskField>
         </DeskSection>
 
-        <DeskSection title="Ownership">
-          <DeskField label="Owner">
-            <DeskSelect v-model="form.owner">
-              <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-            </DeskSelect>
-          </DeskField>
-        </DeskSection>
       </div>
 
       <!-- Tasks list — view mode only (hidden while editing the WP itself) -->
@@ -401,6 +388,7 @@ function progressBarColor(w) {
       v-model:open="taskModalOpen"
       :project-id="wp.projectId"
       :work-package-id="wp.id"
+      @created="tasksResource?.reload?.()"
     />
   </DeskPage>
 
