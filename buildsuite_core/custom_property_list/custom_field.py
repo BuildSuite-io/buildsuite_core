@@ -89,6 +89,24 @@ CUSTOM_FIELD = {
             "label": "Scope Changes",
             "insert_after": "custom_stage_planning_html",
             "module": "BuildSuite Core"
+        },
+        {
+            "fieldname": "custom_seed_default_stages",
+            "fieldtype": "Check",
+            "label": "Seed Default Stages",
+            "default": "0",
+            "hidden": 1,
+            "insert_after": "project_type",
+            "module": "BuildSuite Core"
+        },
+        {
+            "fieldname": "custom_seed_default_tasks",
+            "fieldtype": "Check",
+            "label": "Seed Default Tasks",
+            "default": "0",
+            "hidden": 1,
+            "insert_after": "custom_seed_default_stages",
+            "module": "BuildSuite Core"
         }
     ],
     "Task": [

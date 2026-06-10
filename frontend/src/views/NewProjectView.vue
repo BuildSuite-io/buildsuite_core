@@ -49,14 +49,12 @@ const form = reactive({
   // Group project by default. Turning this off makes the project a child
   // record under a selected parent (is_group = 0).
   allowSubprojects: !route.query.parentId,
-  // §13.3 item 19 — Light-template stage seeding. Default ON for top-level
-  // projects, OFF for subprojects (parent already owns the timeline).
+  // Seed stages from the matching BuildSuite Project Template on create.
+  // Default ON for top-level projects, OFF for subprojects.
   seedDefaultStages: !route.query.parentId,
-  // Session 39 — import default Work Packages + Tasks from the project type's
-  // template. Off by default (more invasive than stages — creates breakdown
-  // structure + tasks rather than just timeline rows). Disabled entirely for
-  // subprojects since their breakdown lives under the parent.
-  seedDefaultWorkPackagesAndTasks: false,
+  // Import project-level tasks from the template. Off by default; disabled
+  // entirely for subprojects since the parent owns the breakdown.
+  seedDefaultTasks: false,
 })
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
   project_name:        'name',
@@ -82,28 +80,58 @@ watch(
 
     // Child projects inherit the parent timeline/breakdown.
     form.seedDefaultStages = false
-    form.seedDefaultWorkPackagesAndTasks = false
+    form.seedDefaultTasks = false
   },
 )
 
-// Template preview — re-derives from the picked Project Type. Resolves via
-// the Session 39 projectTypes record's defaultTemplate field, falling back to
-// the type name itself (matches the addProject server behaviour).
-const projectTypeRecord = computed(() => store.projectTypeByName(form.type))
-const templateKey = computed(() => projectTypeRecord.value?.defaultTemplate || form.type)
-const template = computed(() => store.templateForProjectType(templateKey.value))
-const templateStageNames = computed(() => (template.value?.defaultStages || []).map(s => s.stageName))
-const templateWPCount    = computed(() => (template.value?.defaultWorkPackages || []).length)
-const templateTaskCount  = computed(() => (template.value?.defaultTasks        || []).length)
+// Template preview — fetches the matching BuildSuite Project Template for the
+// selected Project Type. Since Stage Plan Template is autonamed by stage_name,
+// each stage_plans row's `stage_plan` field value IS the stage name.
+const templateLoading = ref(false)
+const bsTemplate = ref(null)
 
-// Work Package label for the picked type (Session 36 + 39). Used for the
-// import-checkbox copy so "Import Towers + tasks" reads naturally for a
-// Residential project, "Import Blocks + tasks" for Commercial, etc.
-const wpLabelPlural = computed(() => {
-  if (projectTypeRecord.value?.workPackageLabelPlural) return projectTypeRecord.value.workPackageLabelPlural
-  if (store.coreSettings?.workPackageLabelPlural)      return store.coreSettings.workPackageLabelPlural
-  return 'Work Packages'
-})
+const templateStageNames = computed(() =>
+  (bsTemplate.value?.stage_plans || []).map(row => row.stage_plan)
+)
+const templateTaskCount = computed(() =>
+  (bsTemplate.value?.project_task || []).length
+)
+
+async function loadTemplateForType(projectType) {
+  bsTemplate.value = null
+  if (!projectType) return
+  templateLoading.value = true
+  try {
+    const listRes = await fetch(
+      '/api/method/frappe.client.get_list?' + new URLSearchParams({
+        doctype: 'BuildSuite Project Template',
+        fields: JSON.stringify(['name']),
+        filters: JSON.stringify([['project_type', '=', projectType]]),
+        limit_page_length: 1,
+      }),
+      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
+    )
+    const listData = await listRes.json()
+    const rows = listData?.message || []
+    if (!rows.length) return
+
+    const docRes = await fetch(
+      '/api/method/frappe.client.get?' + new URLSearchParams({
+        doctype: 'BuildSuite Project Template',
+        name: rows[0].name,
+      }),
+      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
+    )
+    const docData = await docRes.json()
+    bsTemplate.value = docData?.message || null
+  } catch (err) {
+    console.warn('[NewProjectView] Failed to load template for type', projectType, err)
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+watch(() => form.type, (type) => loadTemplateForType(type))
 
 function validate() {
   const e = {}
@@ -134,8 +162,8 @@ async function save() {
       estimated_costing: Number(form.budget),
       owner: form.pm,
       notes: form.description,
-      seedDefaultStages: form.seedDefaultStages,
-      seedDefaultWorkPackagesAndTasks: form.seedDefaultWorkPackagesAndTasks,
+      custom_seed_default_stages: form.seedDefaultStages ? 1 : 0,
+      custom_seed_default_tasks: form.seedDefaultTasks ? 1 : 0,
     })
     showToast('Project created')
     router.push(`/projects/${res.name}`)
@@ -218,13 +246,15 @@ const breadcrumbs = computed(() => {
             :error="errors.type"
             @change="clearError('type')"
           />
-          <!-- Template preview (§13.3 item 19). Shows the default stages /
-               work packages / tasks that the template will seed on create.
-               Updates reactively as the user changes the Project Type. -->
-          <div v-if="template" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 space-y-1.5" style="border-radius: 6px;">
+          <!-- Template preview: fetched from BuildSuite Project Template where
+               project_type matches the selected type. Reacts as type changes. -->
+          <div v-if="templateLoading" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-500 italic" style="border-radius: 6px;">
+            Loading template…
+          </div>
+          <div v-else-if="bsTemplate" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 space-y-1.5" style="border-radius: 6px;">
             <div class="flex items-center justify-between gap-2 flex-wrap">
               <div>
-                Template seeds <span class="font-medium text-ink-900">{{ template.defaultStages.length }} default stages</span>:
+                Template seeds <span class="font-medium text-ink-900">{{ templateStageNames.length }} default stages</span>:
                 <span class="text-ink-600">{{ templateStageNames.join(' → ') }}</span>
               </div>
               <label class="inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -232,24 +262,21 @@ const breadcrumbs = computed(() => {
                 <span class="text-ink-700">Seed default stages</span>
               </label>
             </div>
-            <!-- Session 39: WP + tasks import. Disabled / hidden for subprojects
-                 since their WP / task breakdown lives under the parent. -->
-            <div v-if="!parentProject && templateWPCount > 0" class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100">
+            <div v-if="!parentProject && templateTaskCount > 0" class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100">
               <div>
-                <span class="font-medium text-ink-900">{{ templateWPCount }} {{ wpLabelPlural.toLowerCase() }}</span>
-                + <span class="font-medium text-ink-900">{{ templateTaskCount }} tasks</span> from this template can also be imported.
+                <span class="font-medium text-ink-900">{{ templateTaskCount }} tasks</span> from this template can also be imported.
               </div>
               <label class="inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                <input type="checkbox" v-model="form.seedDefaultWorkPackagesAndTasks" class="accent-brand-600" />
-                <span class="text-ink-700">Import {{ wpLabelPlural.toLowerCase() }} + tasks</span>
+                <input type="checkbox" v-model="form.seedDefaultTasks" class="accent-brand-600" />
+                <span class="text-ink-700">Import default tasks</span>
               </label>
             </div>
             <div v-if="parentProject" class="text-[10px] text-ink-500 italic">
-              Subproject — stage / breakdown defaults are off; the parent project owns the timeline and {{ wpLabelPlural.toLowerCase() }}.
+              Subproject — stage and task defaults are off; the parent project owns the timeline.
             </div>
           </div>
-          <div v-else class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-500 italic" style="border-radius: 6px;">
-            No template configured for <span class="font-medium text-ink-700">{{ form.type }}</span>. You'll plan stages manually after create — or pick a different type whose record points at a template.
+          <div v-else-if="form.type" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-500 italic" style="border-radius: 6px;">
+            No template configured for <span class="font-medium text-ink-700">{{ form.type }}</span>. You'll plan stages manually after create.
           </div>
         </DeskField>
         <!-- §14 — Company. Hidden on single-company sites. For subprojects the

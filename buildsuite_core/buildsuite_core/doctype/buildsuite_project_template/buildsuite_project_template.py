@@ -34,6 +34,9 @@ def create_erpnext_project_from_template(template):
     project.custom_project_id = frappe.generate_hash(length=10)
     project.insert(ignore_permissions=True)
 
+    for project_task_row in template.get('project_task', []):
+        create_task(project.name, project_task_row)
+
     for stage_plan_row in template.get('stage_plans', []):
         # Each row only has a 'stage_plan' link — fetch the actual Stage Plan Template doc
         stage_plan_doc = frappe.get_doc('Stage Plan Template', stage_plan_row.get('stage_plan'))
@@ -71,7 +74,7 @@ def dummy_project_from_template():
 	# In a real implementation, you would replace the template data with actual data from your application.
 	# bench execute buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.buildsuite_project_template.dummy_project_from_template
 
-	template = frappe.get_doc("BuildSuite Project Template","7jf3739410")
+	template = frappe.get_doc("BuildSuite Project Template","Demo")
 
 	project_name = create_erpnext_project_from_template(template.as_dict())
 	print(f"Project created: {project_name}")
