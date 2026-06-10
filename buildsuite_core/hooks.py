@@ -151,8 +151,8 @@ doc_events = {
 		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	},
 	"Task": {
-		"on_update": "buildsuite_core.utils.task.update_work_package_progress",
-		"on_trash": "buildsuite_core.utils.task.recalculate_work_package_on_task_trash"
+		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
+		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
 	}
 }
 # 	"*": {
