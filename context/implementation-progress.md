@@ -151,7 +151,8 @@ The frontend prototype used different field names than the backend. All three vi
     - `TaskProgressEntriesView` — adapter.list('Task Update') with transform
     - `TaskProgressEntryDetailView` — adapter.read/update/remove('Task Update') + adapter.list('File') for attachments
     - `NewTaskProgressEntryView` — adapter.create('Task Update') + DeskLinkPicker task picker
-  - **Remaining to close Phase 7**: StagePlanningsView full CRUD, NewTaskView, NewProjectView
+    - `StagePlanningsView` — DocTypeListView shell + DeskLinkPicker project filter + date-range baseFilters
+  - **Remaining to close Phase 7**: StagePlanningDetailView full CRUD, NewTaskView, NewProjectView
   - Reference: `6e188f7`, `5d95fcc`, `062c5e5`, `c50f8c8`, `37d27e9`, `c8b6224`, `845f567`, `cccc79e`, `28fd46b`, `70cfcb6`
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
@@ -398,7 +399,7 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 ## Known Constraints / Future Work
 
 - **NewTaskView / NewProjectView**: Still use store-based task/project creation. Not yet migrated to adapter.
-- **StagePlanningsView / StagePlanningDetailView**: Not yet migrated to adapter (reads from store).
+- **StagePlanningDetailView**: Not yet fully migrated to adapter (reads from store).
 - **WorkPackageDetailView**: Partially migrated (read via adapter, mutations still store-based).
 - **Task Update attachments in NewTaskProgressEntryView**: The `+ New Entry` form doesn't yet support attachments — those are only available in the detail view post-creation.
 - **Entered by filter in TaskProgressEntriesView**: Shows `store.team` members in the dropdown but the backend `owner` field is a Frappe User email/ID. The filter works correctly in local mode; in remote mode it won't match unless the Frappe User IDs happen to match the team member IDs.

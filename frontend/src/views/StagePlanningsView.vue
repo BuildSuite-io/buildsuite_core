@@ -1,113 +1,152 @@
 <script setup>
-// Stage Planning — list view. Desk-styled (CLAUDE.md §12.4). Stages-as-structure
-// per §13.3 item 18 — NO Stage Review aggregation here (deferred to M3+).
-// Reachable via Project Detail > Stage Planning tab, the Site Execution workspace
-// (shortcut wired in a later prompt), or direct URL.
+// Stage Planning list — adapter-backed DocType list shell (matches TasksView pattern).
 
-import { computed, ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskList from '@/components/desk/DeskList.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
-import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
+import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
+const adapter = createDataAdapter(store)
 
-const search = ref('')
 const projectFilter = ref('')
 const fromDate = ref('')
-const toDate   = ref('')
+const toDate = ref('')
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
-function projectName(id) { return store.projectById(id)?.name || id }
+function resourceRows(resource) {
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
+}
 
-// Status is a VISUAL derivation only — purely date-based. No aggregation across
-// labour / GL / procurement (that's Stage Review, deferred to M3+).
-function stageStatus(stage) {
-  if (!stage.plannedStart && !stage.plannedEnd) return 'Not Started'
-  if (stage.plannedStart && TODAY < stage.plannedStart) return 'Not Started'
-  if (stage.plannedEnd   && TODAY > stage.plannedEnd)   return 'Complete'
+const projectsResource = adapter.list('Project', {
+  fields: ['name', 'project_name'],
+  orderBy: 'project_name asc',
+  pageLength: 100,
+  cache: 'buildsuite-stage-project-filters',
+})
+const projectRows = computed(() => resourceRows(projectsResource))
+const projectsMap = computed(() => {
+  const map = {}
+  projectRows.value.forEach((p) => {
+    map[p.name] = p.project_name || p.name
+  })
+  return map
+})
+
+function projectName(id) { return projectsMap.value[id] || id }
+
+// Visual-only schedule status — no Stage Review aggregation.
+function stageStatus(row) {
+  if (!row.planned_start && !row.planned_end) return 'Not Started'
+  if (row.planned_start && TODAY < row.planned_start) return 'Not Started'
+  if (row.planned_end && TODAY > row.planned_end) return 'Complete'
   return 'In Progress'
 }
 function statusClass(s) {
-  if (s === 'Complete')   return 'bg-success-50 text-success-700'
-  if (s === 'In Progress')return 'bg-info-50 text-info-700'
+  if (s === 'Complete') return 'bg-success-50 text-success-700'
+  if (s === 'In Progress') return 'bg-info-50 text-info-700'
   return 'bg-ink-100 text-ink-600'
 }
 
-const items = computed(() => {
-  const term = search.value.trim().toLowerCase()
-  return store.stagePlannings.filter(sp => {
-    if (projectFilter.value && sp.project !== projectFilter.value) return false
-    if (fromDate.value && sp.plannedEnd   && sp.plannedEnd   < fromDate.value) return false
-    if (toDate.value   && sp.plannedStart && sp.plannedStart > toDate.value)   return false
-    if (term) {
-      const hay = `${sp.id} ${sp.stageName} ${projectName(sp.project)} ${sp.description || ''}`.toLowerCase()
-      if (!hay.includes(term)) return false
-    }
-    return true
-  }).slice().sort((a, b) => (a.plannedStart || '~').localeCompare(b.plannedStart || '~'))
-})
+function taskCountDisplay(row) {
+  const children = Array.isArray(row.stage_planning_tasks)
+    ? row.stage_planning_tasks.length
+    : null
+  const planned = Number(row.planned_task_count) || 0
+  if (children !== null) return `${children} / ${planned}`
+  return String(planned)
+}
 
-const columns = [
-  { key: 'id',           label: 'ID' },
-  { key: 'stageName',    label: 'Stage' },
-  { key: 'project',      label: 'Project' },
-  { key: 'plannedStart', label: 'Planned Start' },
-  { key: 'plannedEnd',   label: 'Planned End' },
-  { key: 'taskCount',    label: 'Tasks', align: 'right' },
-  { key: 'status',       label: 'Status' },
-]
+const filterValues = computed(() => ({
+  project: projectFilter.value,
+}))
+
+const dateBaseFilters = computed(() => {
+  const filters = []
+  if (fromDate.value) filters.push(['planned_end', '>=', fromDate.value])
+  if (toDate.value) filters.push(['planned_start', '<=', toDate.value])
+  return filters
+})
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
   { label: 'Stage Planning' },
 ]
 
-const subtitle = computed(() =>
-  `${items.value.length} of ${store.stagePlannings.length} · Stages-as-structure · §13.3 item 18`
-)
-
-function onRowClick(row) { router.push(`/stage-plannings/${row.id}`) }
+function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
 </script>
 
 <template>
-  <DeskPage title="Stage Planning" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+  <DeskPage title="Stage Planning" :breadcrumbs="breadcrumbs">
     <template #actions>
       <RouterLink to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
     </template>
 
-    <DeskList
-      v-model="search"
-      :rows="items"
-      :columns="columns"
-      row-key="id"
+    <DocTypeListView
+      doctype="Stage Planning"
+      :field-order="[
+        'stage_name',
+        'project',
+        'description',
+        'planned_start',
+        'planned_end',
+        'planned_task_count',
+        'stage_planning_tasks',
+      ]"
+      :columns="[
+        { key: 'name', label: 'ID' },
+        { key: 'stage_name', label: 'Stage', fields: ['stage_name', 'description'] },
+        { key: 'project', label: 'Project' },
+        { key: 'planned_start', label: 'Planned Start' },
+        { key: 'planned_end', label: 'Planned End' },
+        { key: 'planned_task_count', label: 'Tasks', align: 'right' },
+        { key: '_status', label: 'Status', fields: ['planned_start', 'planned_end'] },
+      ]"
+      :search-fields="['stage_name', 'name', 'description']"
+      :filter-values="filterValues"
+      :filter-field-map="{ project: 'project' }"
+      :base-filters="dateBaseFilters"
+      cache-key="buildsuite-stage-planning-list-generic"
+      row-key="name"
+      initial-order-by="planned_start asc"
       search-placeholder="Search stages, projects, descriptions…"
       @row-click="onRowClick"
     >
       <template #filter-chips>
-        <!-- Project filter -->
-        <DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-56">
-          <option value="">Project: Any</option>
-          <option v-for="p in store.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </DeskSelect>
+        <DeskLinkPicker
+          v-if="!projectFilter"
+          v-model="projectFilter"
+          class="!w-56"
+          doctype="Project"
+          label-field="project_name"
+          value-field="name"
+          :search-fields="['project_name', 'custom_project_id', 'name']"
+          :page-length="10"
+          placeholder="Project: Any"
+        />
         <DeskFilterChip
           v-else
           label="Project"
           :value="projectName(projectFilter)"
           @remove="projectFilter = ''"
         />
-        <!-- Date range (free-form, both optional). Compact inputs to keep the chip row tight. -->
+
         <label class="text-[11px] text-ink-500 flex items-center gap-1">
           From
           <input
-            type="date"
             v-model="fromDate"
+            type="date"
             class="desk-input !w-36 !text-xs"
           />
         </label>
@@ -117,11 +156,12 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.id}`) }
           :value="fmtDate(fromDate)"
           @remove="fromDate = ''"
         />
+
         <label class="text-[11px] text-ink-500 flex items-center gap-1">
           To
           <input
-            type="date"
             v-model="toDate"
+            type="date"
             class="desk-input !w-36 !text-xs"
           />
         </label>
@@ -133,31 +173,36 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.id}`) }
         />
       </template>
 
-      <template #cell-id="{ row }">
-        <DeskLink :to="`/stage-plannings/${row.id}`" @click.stop class="font-mono text-xs">{{ row.id }}</DeskLink>
+      <template #cell-name="{ row }">
+        <DeskLink :to="`/stage-plannings/${row.name}`" class="font-mono text-xs" @click.stop>
+          {{ row.name }}
+        </DeskLink>
       </template>
-      <template #cell-stageName="{ row }">
-        <div class="text-sm font-medium text-ink-900">{{ row.stageName }}</div>
+      <template #cell-stage_name="{ row }">
+        <div class="text-sm font-medium text-ink-900">{{ row.stage_name || 'Untitled stage' }}</div>
         <div v-if="row.description" class="text-[11px] text-ink-500 truncate max-w-md">{{ row.description }}</div>
       </template>
       <template #cell-project="{ row }">
-        <DeskLink :to="`/projects/${row.project}`" @click.stop class="text-xs">{{ projectName(row.project) }}</DeskLink>
+        <DeskLink
+          v-if="row.project"
+          :to="`/projects/${row.project}`"
+          class="text-xs"
+          @click.stop
+        >{{ projectName(row.project) }}</DeskLink>
+        <span v-else class="text-xs text-ink-500">—</span>
       </template>
-      <template #cell-plannedStart="{ row }">
-        <span class="text-xs text-ink-700">{{ fmtDate(row.plannedStart) || '—' }}</span>
+      <template #cell-planned_start="{ row }">
+        <span class="text-xs text-ink-700">{{ fmtDate(row.planned_start) || '—' }}</span>
       </template>
-      <template #cell-plannedEnd="{ row }">
-        <span class="text-xs text-ink-700">{{ fmtDate(row.plannedEnd) || '—' }}</span>
+      <template #cell-planned_end="{ row }">
+        <span class="text-xs text-ink-700">{{ fmtDate(row.planned_end) || '—' }}</span>
       </template>
-      <template #cell-taskCount="{ row }">
-        <span class="text-xs text-ink-700 tabular-nums">
-          {{ (row.stagePlanningTasks || []).length }} / {{ row.plannedTaskCount || 0 }}
-        </span>
+      <template #cell-planned_task_count="{ row }">
+        <span class="text-xs text-ink-700 tabular-nums">{{ taskCountDisplay(row) }}</span>
       </template>
-      <template #cell-status="{ row }">
+      <template #cell-_status="{ row }">
         <span
-          class="text-[10px] px-1.5 py-0.5 font-medium"
-          style="border-radius: 2px;"
+          class="text-[10px] px-1.5 py-0.5 font-medium rounded-full"
           :class="statusClass(stageStatus(row))"
         >{{ stageStatus(row) }}</span>
       </template>
@@ -168,6 +213,6 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.id}`) }
           <RouterLink to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
         </div>
       </template>
-    </DeskList>
+    </DocTypeListView>
   </DeskPage>
 </template>
