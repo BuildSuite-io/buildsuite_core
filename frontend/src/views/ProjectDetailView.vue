@@ -15,6 +15,7 @@ import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskList from '@/components/desk/DeskList.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { toDateInputValue } from '@/utils/dateInput'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
@@ -329,7 +330,14 @@ const tasks = computed(() => {
 })
 
 const scos = computed(() => store.scosByProject(resolvedProjectId.value))
-const stages = computed(() => store.stagePlanningsByProject(resolvedProjectId.value))
+
+const stageCount = ref(null)
+const stageListRef = ref(null)
+const stageBaseFilters = computed(() => {
+  const ids = workPackageProjectIds.value
+  if (!ids.length) return []
+  return [['project', 'in', ids]]
+})
 
 // Attachment count — fetched eagerly (not behind the tab v-if) so the badge
 // shows on the tab heading without the user needing to open the tab first.
@@ -552,6 +560,7 @@ function seedFromTemplate() {
   const n = tpl.defaultStages.length
   if (!confirm(`Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`)) return
   store.seedStagesFromTemplate(resolvedProjectId.value)
+  stageListRef.value?.reload()
 }
 
 const {
@@ -585,9 +594,9 @@ const {
 // inline here to avoid an extra import for one helper. NO Stage Review aggregation.
 const TODAY_STR = new Date().toISOString().slice(0, 10)
 function stageStatus(s) {
-  if (!s.plannedStart && !s.plannedEnd) return 'Not Started'
-  if (s.plannedStart && TODAY_STR < s.plannedStart) return 'Not Started'
-  if (s.plannedEnd   && TODAY_STR > s.plannedEnd)   return 'Complete'
+  if (!s.planned_start && !s.planned_end) return 'Not Started'
+  if (s.planned_start && TODAY_STR < s.planned_start) return 'Not Started'
+  if (s.planned_end   && TODAY_STR > s.planned_end)   return 'Complete'
   return 'In Progress'
 }
 function stageStatusClass(s) {
@@ -612,7 +621,7 @@ const tabs = computed(() => {
     { id: 'subprojects',    label: 'Subprojects',    count: subs.value.length },
     { id: 'work-packages',  label: 'Work Packages',  count: workPackages.value.length },
     { id: 'tasks',          label: 'Tasks',          count: tasks.value.length },
-    { id: 'stage-planning', label: 'Stage Planning', count: stages.value.length },
+    { id: 'stage-planning', label: 'Stage Planning', count: stageCount.value },
     { id: 'boq',            label: 'BOQ',            count: boqs.value.length },
     { id: 'scos',           label: 'Scope Changes',  count: scos.value.length },
     { id: 'attachments',    label: 'Attachments',    count: attachmentCount.value },
@@ -900,85 +909,93 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         </DeskList>
       </div>
 
-      <!-- Stage Planning — stages-as-structure list. Inside-the-table action
-           button matches the DeskList chrome convention. -->
-      <div v-if="tab === 'stage-planning'" class="pt-4">
-        <div v-if="stages.length" class="bg-white border border-ink-200" style="border-radius: 8px;">
-          <!-- Filter / action bar (matches DeskList) -->
-          <div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-            <div class="text-xs text-ink-500">
-              <span class="text-ink-900 font-medium">{{ stages.length }} {{ stages.length === 1 ? 'stage' : 'stages' }}</span>
-              · ordered by planned start
-            </div>
-            <div class="ml-auto">
-              <RouterLink :to="{ name: 'stage-planning-new', query: { projectId: project.id } }" class="desk-save-btn">+ Add Stage</RouterLink>
-            </div>
-          </div>
-          <div class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-               style="grid-template-columns: minmax(220px, 1.4fr) 110px 110px 90px 110px 70px;">
-            <div class="px-3 py-1.5">Stage</div>
-            <div class="px-3 py-1.5">Planned Start</div>
-            <div class="px-3 py-1.5">Planned End</div>
-            <div class="px-3 py-1.5 text-right">Tasks</div>
-            <div class="px-3 py-1.5">Status</div>
-            <div class="px-3 py-1.5"></div>
-          </div>
-          <div
-            v-for="s in stages"
-            :key="s.id"
-            class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 items-center text-sm cursor-pointer"
-            style="grid-template-columns: minmax(220px, 1.4fr) 110px 110px 90px 110px 70px;"
-            @click="router.push(`/stage-plannings/${s.id}`)"
-          >
+      <!-- Stage Planning — always mounted (v-show) so @count-change fires on load
+           and the tab badge populates before the user switches to this tab. -->
+      <div v-show="tab === 'stage-planning'" class="pt-4">
+        <DocTypeListView
+          ref="stageListRef"
+          doctype="Stage Planning"
+          :field-order="['stage_name', 'description', 'planned_start', 'planned_end', 'planned_task_count']"
+          :columns="[
+            { key: 'stage_name', label: 'Stage' },
+            { key: 'planned_start', label: 'Start' },
+            { key: 'planned_end', label: 'End' },
+            { key: 'planned_task_count', label: 'Tasks' },
+            { key: '_status', label: 'Status' },
+            { key: '_open', label: '' },
+          ]"
+          :base-filters="stageBaseFilters"
+          :search-fields="['stage_name', 'name']"
+          cache-key="buildsuite-stage-planning-project-tab"
+          row-key="name"
+          initial-order-by="planned_start asc"
+          search-placeholder="Search stages…"
+          @row-click="row => router.push('/stage-plannings/' + row.name)"
+          @count-change="stageCount = $event"
+        >
+          <template #actions>
+            <RouterLink
+              :to="{ name: 'stage-planning-new', query: { projectId: project.id } }"
+              class="desk-save-btn"
+            >+ Add Stage</RouterLink>
+          </template>
+
+          <template #cell-stage_name="{ row }">
             <div class="px-3 py-2">
-              <DeskLink :to="`/stage-plannings/${s.id}`" @click.stop class="font-medium">{{ s.stageName }}</DeskLink>
-              <div v-if="s.description" class="text-[11px] text-ink-500 truncate">{{ s.description }}</div>
+              <span class="text-ink-900 font-medium">{{ row.stage_name }}</span>
+              <div v-if="row.description" class="text-[11px] text-ink-500 truncate">{{ row.description }}</div>
             </div>
-            <div class="px-3 py-2 text-xs text-ink-700">{{ fmtDate(s.plannedStart) || '—' }}</div>
-            <div class="px-3 py-2 text-xs text-ink-700">{{ fmtDate(s.plannedEnd) || '—' }}</div>
-            <div class="px-3 py-2 text-right text-xs text-ink-700 tabular-nums">
-              {{ (s.stagePlanningTasks || []).length }} / {{ s.plannedTaskCount || 0 }}
-            </div>
+          </template>
+          <template #cell-planned_start="{ row }">
+            <span class="text-xs text-ink-700">{{ fmtDate(row.planned_start) || '—' }}</span>
+          </template>
+          <template #cell-planned_end="{ row }">
+            <span class="text-xs text-ink-700">{{ fmtDate(row.planned_end) || '—' }}</span>
+          </template>
+          <template #cell-planned_task_count="{ row }">
+            <span class="text-xs text-ink-700 tabular-nums">{{ row.planned_task_count || 0 }}</span>
+          </template>
+          <template #cell-_status="{ row }">
             <div class="px-3 py-2">
               <span
                 class="text-[10px] px-1.5 py-0.5 font-medium"
                 style="border-radius: 2px;"
-                :class="stageStatusClass(stageStatus(s))"
-              >{{ stageStatus(s) }}</span>
+                :class="stageStatusClass(stageStatus(row))"
+              >{{ stageStatus(row) }}</span>
             </div>
+          </template>
+          <template #cell-_open="{ row }">
             <div class="px-3 py-2 text-right">
-              <DeskLink :to="`/stage-plannings/${s.id}`" @click.stop class="text-xs">Open →</DeskLink>
+              <DeskLink :to="`/stage-plannings/${row.name}`" @click.stop class="text-xs">Open →</DeskLink>
             </div>
-          </div>
-        </div>
-        <div v-else class="py-6">
-          <div class="text-sm text-ink-500 italic mb-3">No stages planned yet.</div>
-          <!-- §13.3 item 19 — Project Type template seed button. Only shows when a
-               template exists for the project's type. Useful for projects created
-               before the engine landed, or where the user unchecked "Seed default
-               stages" on the create form and now wants to backfill. -->
-          <div v-if="store.templateForProjectType(project.type)" class="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              class="desk-save-btn"
-              @click="seedFromTemplate"
-            >+ Seed from {{ project.type }} template</button>
-            <RouterLink :to="{ name: 'stage-planning-new', query: { projectId: project.id } }" class="desk-link text-xs">
-              or plan one manually →
-            </RouterLink>
-            <div class="basis-full text-[11px] text-ink-500 mt-1">
-              Will seed {{ store.templateForProjectType(project.type).defaultStages.length }} stages — {{ store.templateForProjectType(project.type).defaultStages.map(s => s.stageName).join(' → ') }}.
+          </template>
+
+          <template #empty>
+            <div class="py-4">
+              <div class="text-sm text-ink-500 italic mb-3">No stages planned yet.</div>
+              <div v-if="store.templateForProjectType(project.type)" class="flex items-center gap-2 flex-wrap">
+                <button type="button" class="desk-save-btn" @click="seedFromTemplate">
+                  + Seed from {{ project.type }} template
+                </button>
+                <RouterLink :to="{ name: 'stage-planning-new', query: { projectId: project.id } }" class="desk-link text-xs">
+                  or plan one manually →
+                </RouterLink>
+                <div class="basis-full text-[11px] text-ink-500 mt-1">
+                  Will seed {{ store.templateForProjectType(project.type).defaultStages.length }} stages —
+                  {{ store.templateForProjectType(project.type).defaultStages.map(s => s.stageName).join(' → ') }}.
+                </div>
+              </div>
+              <div v-else class="flex items-center gap-2 flex-wrap">
+                <RouterLink :to="{ name: 'stage-planning-new', query: { projectId: project.id } }" class="desk-save-btn">
+                  + Plan first stage
+                </RouterLink>
+                <div class="basis-full text-[11px] text-ink-500 mt-1 italic">
+                  No template configured for project type "{{ project.type }}" — plan stages manually.
+                </div>
+              </div>
             </div>
-          </div>
-          <div v-else class="flex items-center gap-2 flex-wrap">
-            <RouterLink :to="{ name: 'stage-planning-new', query: { projectId: project.id } }" class="desk-save-btn">
-              + Plan first stage
-            </RouterLink>
-            <div class="basis-full text-[11px] text-ink-500 mt-1 italic">
-              No template configured for project type "{{ project.type }}" — plan stages manually.
-            </div>
-          </div>
-        </div>
+          </template>
+        </DocTypeListView>
       </div>
 
       <!-- BOQ -->
