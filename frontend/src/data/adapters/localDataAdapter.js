@@ -94,6 +94,28 @@ export function createLocalDataAdapter(store) {
       }))
     }
 
+    if (doctype === 'Stage Planning') {
+      return store.stagePlannings.map((sp) => ({
+        name: sp.id,
+        stage_name: sp.stageName,
+        project: sp.project,
+        planned_start: sp.plannedStart || null,
+        planned_end: sp.plannedEnd || null,
+        planned_task_count: sp.plannedTaskCount || 0,
+        planned_completion_pct: sp.plannedCompletionPct || 0,
+        description: sp.description || '',
+        dependencies: (sp.dependencies || []).map((stageId) => ({ stage: stageId })),
+        stage_planning_tasks: (sp.stagePlanningTasks || []).map((row) => ({
+          name: row.id,
+          task: row.task,
+          planned_start: row.plannedStart || null,
+          planned_end: row.plannedEnd || null,
+          planned_qty: row.plannedQty ?? 100,
+          qty_unit: row.qtyUnit || '%',
+        })),
+      }))
+    }
+
     return []
   }
 

@@ -1,113 +1,394 @@
 <script setup>
-// Stage Planning — detail/edit. Desk-styled (CLAUDE.md §12.4). Three sections:
-// Stage details · Dependencies · Tasks in this stage (child table). NO Stage
-// Review aggregation — see §13.3 item 18 + the marker comment near the bottom
-// of the template for where that surface will attach in M3+.
+// Stage Planning detail — adapter-backed. UI follows the prototype detail
+// layout (KPI strip, details card, StageTaskPicker for tasks, edit modal).
+// Workflow approval / activity log surfaces are omitted until the backend
+// DocType carries those fields.
 
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { showToast } from '@/utils/appToast'
+import { useFormErrors } from '@/composables/useFormErrors'
+import { createDataAdapter } from '@/data/adapters'
 import StatusBadge from '@/components/StatusBadge.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskForm from '@/components/desk/DeskForm.vue'
-import DeskActionBar from '@/components/desk/DeskActionBar.vue'
 import DeskSection from '@/components/desk/DeskSection.vue'
 import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import StageTaskPicker from '@/components/StageTaskPicker.vue'
 import { fmtDate } from '@/utils/format'
+import { toDateInputValue } from '@/utils/dateInput'
+import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const adapter = createDataAdapter(store)
 
-const stage = computed(() => store.stagePlanningById(props.id))
-const project = computed(() => stage.value ? store.projectById(stage.value.project) : null)
-
-const editing = ref(false)
-const form = ref({})
-
-// Deep clone so cancel reverts cleanly without mutating the store record. The
-// child table (stagePlanningTasks) needs the clone too — otherwise inline edits
-// would write through immediately.
-watch(stage, (s) => { if (s) form.value = JSON.parse(JSON.stringify(s)) }, { immediate: true })
-
-function startEdit() {
-  form.value = JSON.parse(JSON.stringify(stage.value))
-  editing.value = true
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
 }
-function cancelEdit() {
-  form.value = JSON.parse(JSON.stringify(stage.value))
-  editing.value = false
+
+function resourceRows(resource) {
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.value)) return raw.value
+  return []
 }
-function saveEdit() {
-  // Strip blank child rows (no task linked AND no qty) — they're scaffolding the
-  // user added but never filled.
-  const cleanRows = (form.value.stagePlanningTasks || []).filter(r => r && (r.task || r.plannedQty || r.plannedStart || r.plannedEnd))
-  // Project is locked once created — never patch it from the form here.
-  store.updateStagePlanning(props.id, {
-    stageName:            form.value.stageName,
-    plannedStart:         form.value.plannedStart,
-    plannedEnd:           form.value.plannedEnd,
-    plannedTaskCount:     form.value.plannedTaskCount,
-    plannedCompletionPct: form.value.plannedCompletionPct,
-    description:          form.value.description,
-    dependencies:         form.value.dependencies || [],
-    stagePlanningTasks:   cleanRows,
+
+function mapChildRowsFromBackend(rows) {
+  return (rows || []).map((r, idx) => ({
+    name: r?.name || '',
+    id: r?.name || `row-${idx}`,
+    task: r?.task || '',
+    plannedStart: r?.planned_start || null,
+    plannedEnd: r?.planned_end || null,
+    plannedQty: Number(r?.planned_qty ?? 100),
+    qtyUnit: r?.qty_unit || '%',
+  }))
+}
+
+function mapStageRow(row) {
+  if (!row) return null
+  return {
+    id: row.name || '',
+    stageName: row.stage_name || '',
+    project: row.project || '',
+    plannedStart: row.planned_start || null,
+    plannedEnd: row.planned_end || null,
+    plannedTaskCount: Number(row.planned_task_count) || 0,
+    plannedCompletionPct: Number(row.planned_completion_pct) || 0,
+    description: row.description || '',
+    dependencies: (row.dependencies || []).map((d) => d.stage).filter(Boolean),
+    stagePlanningTasks: mapChildRowsFromBackend(row.stage_planning_tasks),
+  }
+}
+
+function childRowName(row) {
+  if (row?.name) return row.name
+  const id = String(row?.id || '')
+  if (!id || id.startsWith('SPT-') || id.startsWith('row-')) return ''
+  return id
+}
+
+function mapChildRowsToBackend(rows) {
+  return (rows || [])
+    .filter((r) => r && r.task)
+    .map((r) => {
+      const out = {
+        task: r.task,
+        planned_start: r.plannedStart || null,
+        planned_end: r.plannedEnd || null,
+        planned_qty: Number(r.plannedQty ?? 100),
+        qty_unit: r.qtyUnit || '%',
+      }
+      const name = childRowName(r)
+      if (name) out.name = name
+      return out
+    })
+}
+
+const stageResource = ref(null)
+
+function loadStageResource() {
+  if (!props.id) {
+    stageResource.value = null
+    return
+  }
+  stageResource.value = adapter.read('Stage Planning', props.id, {
+    fields: [
+      'name',
+      'stage_name',
+      'project',
+      'planned_start',
+      'planned_end',
+      'planned_task_count',
+      'planned_completion_pct',
+      'description',
+      'dependencies',
+      'stage_planning_tasks',
+    ],
+    cache: `buildsuite-stage-detail:${props.id}`,
+    transform(rows) {
+      return rows.map(mapStageRow)
+    },
   })
-  editing.value = false
 }
-function onPrimary() { editing.value ? saveEdit() : startEdit() }
 
-// Sibling stages = other stages on the same project, eligible for the
-// dependencies multi-select. Excludes the current stage (no self-dependency).
-const siblingStages = computed(() => {
-  if (!stage.value) return []
-  return store.stagePlannings.filter(sp =>
-    sp.project === stage.value.project && sp.id !== stage.value.id
-  )
+watch(() => props.id, loadStageResource, { immediate: true })
+
+const stage = computed(() => {
+  const backend = firstResourceRow(stageResource.value)
+  if (backend) return backend
+  const local = store.stagePlanningById(props.id)
+  return local || null
 })
 
+const projectResource = ref(null)
+
+function loadProjectResource(projectId) {
+  if (!projectId) {
+    projectResource.value = null
+    return
+  }
+  projectResource.value = adapter.read('Project', projectId, {
+    fields: ['name', 'project_name'],
+    cache: `buildsuite-stage-detail-project:${projectId}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        name: row?.project_name || row?.name || '',
+      }))
+    },
+  })
+}
+
+watch(() => stage.value?.project, loadProjectResource, { immediate: true })
+
+const project = computed(() => {
+  const backend = firstResourceRow(projectResource.value)
+  if (backend) return backend
+  return stage.value ? store.projectById(stage.value.project) : null
+})
+
+const projectStagesResource = ref(null)
+
+function loadProjectStagesResource(projectId) {
+  if (!projectId) {
+    projectStagesResource.value = null
+    return
+  }
+  projectStagesResource.value = adapter.list('Stage Planning', {
+    fields: ['name', 'stage_name', 'project'],
+    filters: [['project', '=', projectId]],
+    pageLength: 200,
+    cache: `buildsuite-stage-detail-siblings:${projectId}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        stageName: row?.stage_name || row?.name || '',
+        project: row?.project || '',
+      }))
+    },
+  })
+}
+
+watch(() => stage.value?.project, loadProjectStagesResource, { immediate: true })
+
+const projectStages = computed(() => resourceRows(projectStagesResource.value))
+
+const stagesById = computed(() => {
+  const map = {}
+  for (const s of projectStages.value) map[s.id] = s
+  if (stage.value) map[stage.value.id] = stage.value
+  return map
+})
+
+const siblingStages = computed(() => {
+  if (!stage.value) return []
+  return projectStages.value.filter((sp) => sp.id !== stage.value.id)
+})
+
+const tasksResource = ref(null)
+
+function loadTasksResource(projectId) {
+  if (!projectId) {
+    tasksResource.value = null
+    return
+  }
+  tasksResource.value = adapter.list('Task', {
+    fields: ['name', 'subject', 'status', 'progress'],
+    filters: [['project', '=', projectId]],
+    pageLength: 500,
+    cache: `buildsuite-stage-detail-tasks:${projectId}`,
+    transform(rows) {
+      return rows.map((row) => ({
+        id: row?.name || '',
+        name: row?.subject || row?.name || '',
+        status: row?.status || 'Open',
+        progress: Number(row?.progress) || 0,
+      }))
+    },
+  })
+}
+
+watch(() => stage.value?.project, loadTasksResource, { immediate: true })
+
+const tasksById = computed(() => {
+  const map = {}
+  for (const t of resourceRows(tasksResource.value)) {
+    map[t.id] = t
+  }
+  for (const t of (stage.value?.project ? store.tasksByProject(stage.value.project) : [])) {
+    if (!map[t.id]) map[t.id] = t
+  }
+  return map
+})
+
+function taskName(id) { return tasksById.value[id]?.name || id }
+function taskStatus(id) { return tasksById.value[id]?.status || '—' }
+
+const editing = ref(false)
+const saving = ref(false)
+const editForm = ref({})
+const showDeleteConfirm = ref(false)
+const pickerOpen = ref(false)
+
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
+  stage_name: 'stageName',
+  planned_start: 'plannedStart',
+  planned_end: 'plannedEnd',
+  project: 'project',
+})
+
+function snapshotStage(s) {
+  if (!s) return {}
+  const data = JSON.parse(JSON.stringify(s))
+  data.plannedStart = toDateInputValue(data.plannedStart)
+  data.plannedEnd = toDateInputValue(data.plannedEnd)
+  return data
+}
+
+watch(stage, (s) => {
+  if (s && !editing.value) editForm.value = snapshotStage(s)
+}, { immediate: true })
+
+function startEdit() {
+  editForm.value = snapshotStage(stage.value)
+  setErrors({})
+  editing.value = true
+}
+
+function cancelEdit() {
+  editForm.value = snapshotStage(stage.value)
+  setErrors({})
+  editing.value = false
+}
+
 function toggleDependency(depId) {
-  const list = form.value.dependencies || []
+  const list = [...(editForm.value.dependencies || [])]
   const i = list.indexOf(depId)
   if (i === -1) list.push(depId)
   else list.splice(i, 1)
-  form.value.dependencies = list
+  editForm.value.dependencies = list
 }
 
-// Child-table operations. In edit mode we mutate the form's local stagePlanningTasks
-// array; saveEdit pushes the whole array via updateStagePlanning. In view mode the
-// "+ Add row" / Remove buttons aren't shown.
-function addChildRow() {
-  if (!Array.isArray(form.value.stagePlanningTasks)) form.value.stagePlanningTasks = []
-  // Cheap unique-ish id for the new row; the store will issue a proper SPT-… id
-  // on save via updateStagePlanning -> ... wait, no — we keep the row's id since
-  // bulk update doesn't re-mint. Mint here.
-  const id = 'SPT-' + Date.now().toString().slice(-6) + '-' + Math.floor(Math.random() * 1000)
-  form.value.stagePlanningTasks.push({
-    id, task: null, plannedStart: '', plannedEnd: '', plannedQty: 0, qtyUnit: '',
-  })
-}
-function removeChildRow(rowId) {
-  form.value.stagePlanningTasks = (form.value.stagePlanningTasks || []).filter(r => r.id !== rowId)
+function validateEdit() {
+  const e = {}
+  if (!editForm.value.stageName?.trim()) e.stageName = 'Stage name is required'
+  if (editForm.value.plannedEnd && editForm.value.plannedStart
+    && editForm.value.plannedEnd < editForm.value.plannedStart) {
+    e.plannedEnd = 'End must be on or after start'
+  }
+  setErrors(e)
+  return Object.keys(e).length === 0
 }
 
-// Project-scoped task list for the child-table Task select. Includes tasks on
-// the project AND any of its subprojects so a parent-project stage can plan
-// against subproject tasks (the store mirrors this via tasksByProject).
-const tasksForProject = computed(() => stage.value ? store.tasksByProject(stage.value.project) : [])
-function taskName(id) { return store.taskById(id)?.name || id }
-function taskStatus(id) { return store.taskById(id)?.status || '—' }
-
-function deleteStage() {
-  if (!confirm(`Delete stage "${stage.value.stageName}"?\n\nDependencies in other stages pointing at this one will be cleaned up automatically.`)) return
-  store.deleteStagePlanning(props.id)
-  if (project.value) router.push(`/projects/${project.value.id}`)
-  else router.push('/stage-plannings')
+async function saveEdit() {
+  if (!validateEdit() || !stage.value) return
+  saving.value = true
+  try {
+    await adapter.update('Stage Planning', stage.value.id, {
+      stage_name: editForm.value.stageName.trim(),
+      planned_start: editForm.value.plannedStart || null,
+      planned_end: editForm.value.plannedEnd || null,
+      description: editForm.value.description || '',
+      dependencies: (editForm.value.dependencies || []).map((dep) => ({ stage: dep })),
+    })
+    await stageResource.value?.reload?.()
+    editing.value = false
+    showToast('Stage updated')
+  } catch (err) {
+    showToast(applyServerErrors(err) ?? 'Failed to update stage', 'error')
+  } finally {
+    saving.value = false
+  }
 }
+
+async function persistChildRows(rows) {
+  if (!stage.value) return
+  const childRows = mapChildRowsToBackend(rows)
+  saving.value = true
+  try {
+    await adapter.update('Stage Planning', stage.value.id, {
+      stage_planning_tasks: childRows,
+      planned_task_count: childRows.length,
+    })
+    await stageResource.value?.reload?.()
+  } catch (err) {
+    showToast(applyServerErrors(err) ?? 'Failed to update stage tasks', 'error')
+    throw err
+  } finally {
+    saving.value = false
+  }
+}
+
+async function onPickerSave(payload) {
+  try {
+    await persistChildRows(payload?.newChildRows || [])
+    showToast('Stage tasks updated')
+  } catch {
+    // toast already shown
+  }
+}
+
+async function onPlannedQtyChange(row, value) {
+  if (!stage.value || !row) return
+  const qty = Math.max(0, Math.min(100, Number(value) || 0))
+  const nextRows = (stage.value.stagePlanningTasks || []).map((r) => (
+    r.id === row.id ? { ...r, plannedQty: qty, qtyUnit: '%' } : r
+  ))
+  try {
+    await persistChildRows(nextRows)
+  } catch {
+    // toast already shown
+  }
+}
+
+function openPicker() { pickerOpen.value = true }
+
+async function confirmDelete() {
+  if (!stage.value) return
+  try {
+    await adapter.remove('Stage Planning', stage.value.id)
+    showDeleteConfirm.value = false
+    if (project.value) router.push(`/projects/${project.value.id}`)
+    else router.push('/stage-plannings')
+  } catch (err) {
+    showToast(applyServerErrors(err) ?? 'Failed to delete stage', 'error')
+  }
+}
+
+const stageDurationDays = computed(() => {
+  const s = stage.value
+  if (!s?.plannedStart || !s?.plannedEnd) return null
+  const days = Math.ceil((new Date(s.plannedEnd) - new Date(s.plannedStart)) / 86400000) + 1
+  return Math.max(0, days)
+})
+
+const stageTaskStats = computed(() => {
+  const rows = stage.value?.stagePlanningTasks || []
+  let completed = 0
+  let inProgress = 0
+  for (const r of rows) {
+    const t = tasksById.value[r.task]
+    if (!t) continue
+    const progress = Number(t.progress) || 0
+    if (progress >= 100) completed++
+    else if (progress > 0) inProgress++
+  }
+  return { total: rows.length, completed, inProgress }
+})
+
+const dependencyCount = computed(() => (stage.value?.dependencies || []).length)
 
 const breadcrumbs = computed(() => {
   const out = [
@@ -126,232 +407,289 @@ const breadcrumbs = computed(() => {
     :subtitle="`${stage.id} · ${project ? project.name : stage.project}`"
     :breadcrumbs="breadcrumbs"
   >
-    <DeskForm>
-      <template #action-bar>
-        <DeskActionBar
-          :save-label="editing ? 'Save' : 'Edit'"
-          :show-cancel="editing"
-          cancel-label="Cancel"
-          @save="onPrimary"
-          @cancel="cancelEdit"
-        >
-          <template #left>
-            <span class="text-[11px] text-ink-500">
-              {{ (stage.stagePlanningTasks || []).length }} of {{ stage.plannedTaskCount || 0 }} planned tasks
-            </span>
-          </template>
-          <template #menu>
-            <button
-              type="button"
-              class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-              style="border-radius: 2px; color: #B91C1C;"
-              @click="deleteStage"
-            >Delete</button>
-          </template>
-        </DeskActionBar>
-      </template>
+    <template #actions>
+      <button type="button" class="desk-save-btn" @click="startEdit">Edit</button>
+      <button
+        type="button"
+        class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
+        style="border-radius: 6px;"
+        @click="showDeleteConfirm = true"
+      >Delete</button>
+    </template>
 
-      <!-- Stage details -->
-      <DeskSection title="Stage details" v-if="!editing">
-        <DeskField label="Stage name">
-          <div class="text-sm text-ink-900 py-1">{{ stage.stageName }}</div>
-        </DeskField>
-        <DeskField label="Project">
-          <div class="text-sm py-1">
+    <!-- KPI strip -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div class="bg-white border border-ink-200 px-4 py-3 dark:bg-[#242424] dark:border-ink-700" style="border-radius: 8px;">
+        <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex items-center gap-1.5">
+          <svg class="w-3 h-3 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('calendar')" />
+          Window
+        </div>
+        <div class="text-sm font-semibold text-ink-900 mt-1.5 dark:text-[#F5F5F5]">{{ fmtDate(stage.plannedStart) || '—' }}</div>
+        <div class="text-[11px] text-ink-500 mt-0.5">to {{ fmtDate(stage.plannedEnd) || '—' }}</div>
+      </div>
+      <div class="bg-white border border-ink-200 px-4 py-3 dark:bg-[#242424] dark:border-ink-700" style="border-radius: 8px;">
+        <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex items-center gap-1.5">
+          <svg class="w-3 h-3 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('chart-line')" />
+          Duration
+        </div>
+        <div class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]">
+          {{ stageDurationDays !== null ? stageDurationDays : '—' }}
+          <span v-if="stageDurationDays !== null" class="text-xs text-ink-500 font-normal">day{{ stageDurationDays === 1 ? '' : 's' }}</span>
+        </div>
+      </div>
+      <div class="bg-white border border-ink-200 px-4 py-3 dark:bg-[#242424] dark:border-ink-700" style="border-radius: 8px;">
+        <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex items-center gap-1.5">
+          <svg class="w-3 h-3 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('clipboard-list')" />
+          Tasks
+        </div>
+        <div class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]">{{ stageTaskStats.total }}</div>
+        <div class="text-[11px] text-ink-500 mt-0.5">
+          <span class="text-success-700 font-medium">{{ stageTaskStats.completed }}</span> done ·
+          <span class="text-info-700 font-medium">{{ stageTaskStats.inProgress }}</span> in progress
+        </div>
+      </div>
+      <div class="bg-white border border-ink-200 px-4 py-3 dark:bg-[#242424] dark:border-ink-700" style="border-radius: 8px;">
+        <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex items-center gap-1.5">
+          <svg class="w-3 h-3 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('refresh-ccw')" />
+          Dependencies
+        </div>
+        <div class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]">{{ dependencyCount }}</div>
+        <div class="text-[11px] text-ink-500 mt-0.5">
+          {{ dependencyCount === 0 ? 'starts independently' : (dependencyCount === 1 ? 'stage must complete first' : 'stages must complete first') }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage details card -->
+    <section class="bg-white border border-ink-200 overflow-hidden mb-5 dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
+      <header class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-brand-950/30 dark:to-[#242424] dark:border-ink-700">
+        <svg class="w-4 h-4 text-brand-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('info')" />
+        <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Stage details</h2>
+      </header>
+      <div class="p-5 space-y-4">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Project</div>
+          <div class="text-sm mt-1">
             <DeskLink v-if="project" :to="`/projects/${project.id}`">{{ project.name }}</DeskLink>
             <span v-else class="text-ink-500">{{ stage.project }}</span>
           </div>
-        </DeskField>
-        <DeskField label="Planned start">
-          <div class="text-sm text-ink-900 py-1">{{ fmtDate(stage.plannedStart) || '—' }}</div>
-        </DeskField>
-        <DeskField label="Planned end">
-          <div class="text-sm text-ink-900 py-1">{{ fmtDate(stage.plannedEnd) || '—' }}</div>
-        </DeskField>
-        <DeskField label="Planned task count">
-          <div class="text-sm text-ink-900 py-1 tabular-nums">{{ stage.plannedTaskCount || 0 }}</div>
-        </DeskField>
-        <DeskField label="Planned completion %">
-          <div class="text-sm text-ink-900 py-1 tabular-nums">{{ stage.plannedCompletionPct || 0 }}%</div>
-        </DeskField>
-        <DeskField label="Description">
-          <div class="text-sm text-ink-700 py-1 whitespace-pre-line">{{ stage.description || '—' }}</div>
-        </DeskField>
-      </DeskSection>
-      <DeskSection title="Stage details" v-else>
-        <DeskField label="Stage name" required>
-          <DeskInput v-model="form.stageName" />
-        </DeskField>
-        <DeskField label="Project" hint="Locked after create — move tasks instead of reparenting a stage.">
-          <DeskInput :model-value="project ? project.name : form.project" disabled />
-        </DeskField>
-        <DeskField label="Planned start">
-          <DeskInput v-model="form.plannedStart" type="date" />
-        </DeskField>
-        <DeskField label="Planned end">
-          <DeskInput v-model="form.plannedEnd" type="date" />
-        </DeskField>
-        <DeskField label="Planned task count" hint="Headline planned count — child rows are the breakdown.">
-          <DeskInput v-model="form.plannedTaskCount" type="number" min="0" />
-        </DeskField>
-        <DeskField label="Planned completion %">
-          <DeskInput v-model="form.plannedCompletionPct" type="number" min="0" max="100" />
-        </DeskField>
-        <DeskField label="Description">
-          <DeskTextarea v-model="form.description" :rows="3" />
-        </DeskField>
-      </DeskSection>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Description</div>
+          <div class="text-sm text-ink-700 mt-1 whitespace-pre-line dark:text-ink-300">{{ stage.description || '—' }}</div>
+        </div>
+      </div>
+    </section>
 
-      <!-- Dependencies -->
-      <DeskSection title="Dependencies">
-        <div class="md:col-span-2">
-          <div v-if="!editing">
-            <div v-if="(stage.dependencies || []).length" class="flex flex-wrap gap-1.5">
-              <DeskLink
-                v-for="depId in stage.dependencies"
-                :key="depId"
-                :to="`/stage-plannings/${depId}`"
-                class="text-[11px] px-2 py-0.5 bg-brand-50 text-brand-700 font-medium hover:no-underline"
-                style="border-radius: 2px;"
-              >{{ store.stagePlanningById(depId)?.stageName || depId }}</DeskLink>
-            </div>
-            <div v-else class="text-xs text-ink-400 italic">No dependencies · this stage can start independently.</div>
+    <!-- Dependencies -->
+    <DeskSection title="Dependencies">
+      <div class="md:col-span-2">
+        <div v-if="(stage.dependencies || []).length" class="flex flex-wrap gap-1.5">
+          <DeskLink
+            v-for="depId in stage.dependencies"
+            :key="depId"
+            :to="`/stage-plannings/${depId}`"
+            class="text-[11px] px-2 py-0.5 bg-brand-50 text-brand-700 font-medium hover:no-underline dark:bg-brand-950/30 dark:text-brand-300"
+            style="border-radius: 9999px;"
+          >{{ stagesById[depId]?.stageName || depId }}</DeskLink>
+        </div>
+        <div v-else class="text-xs text-ink-400 italic">No dependencies · this stage can start independently.</div>
+      </div>
+    </DeskSection>
+
+    <!-- Tasks in this stage -->
+    <section class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Tasks in this stage</div>
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] text-ink-500 tabular-nums">
+            {{ (stage.stagePlanningTasks || []).length }} task{{ (stage.stagePlanningTasks || []).length === 1 ? '' : 's' }}
+          </span>
+          <button
+            type="button"
+            class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
+            style="border-radius: 6px;"
+            :disabled="saving"
+            @click="openPicker"
+          >Add/Remove Tasks</button>
+        </div>
+      </div>
+      <div class="md:col-span-2">
+        <div v-if="(stage.stagePlanningTasks || []).length" class="border border-ink-200 dark:border-ink-700" style="border-radius: 6px;">
+          <div
+            class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium dark:bg-ink-800 dark:border-ink-700"
+            style="grid-template-columns: minmax(220px, 1fr) 110px 110px 110px 110px;"
+          >
+            <div class="px-3 py-1.5">Task</div>
+            <div class="px-3 py-1.5">Planned Start</div>
+            <div class="px-3 py-1.5">Planned End</div>
+            <div class="px-3 py-1.5 text-right">Planned Qty (%)</div>
+            <div class="px-3 py-1.5">Status</div>
           </div>
-          <div v-else>
-            <div v-if="siblingStages.length" class="flex flex-wrap gap-2">
-              <label
-                v-for="sib in siblingStages"
-                :key="sib.id"
-                class="inline-flex items-center gap-1.5 text-xs text-ink-800 cursor-pointer px-2 py-1 border border-ink-200 hover:bg-ink-50"
-                style="border-radius: 2px;"
-              >
-                <input
-                  type="checkbox"
-                  :checked="(form.dependencies || []).includes(sib.id)"
-                  class="accent-brand-600"
-                  @change="toggleDependency(sib.id)"
+          <div
+            v-for="row in stage.stagePlanningTasks"
+            :key="row.id"
+            class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 text-sm text-ink-800 items-center dark:border-ink-800 dark:hover:bg-brand-950/20"
+            style="grid-template-columns: minmax(220px, 1fr) 110px 110px 110px 110px;"
+          >
+            <div class="px-3 py-1.5">
+              <RouterLink
+                v-if="row.task"
+                :to="`/tasks/${row.task}`"
+                class="text-ink-900 font-medium hover:underline dark:text-[#F5F5F5]"
+              >{{ taskName(row.task) }}</RouterLink>
+              <span v-else class="text-ink-400 italic">No task linked</span>
+            </div>
+            <div class="px-3 py-1.5 text-xs text-ink-700 dark:text-ink-300">{{ fmtDate(row.plannedStart) || '—' }}</div>
+            <div class="px-3 py-1.5 text-xs text-ink-700 dark:text-ink-300">{{ fmtDate(row.plannedEnd) || '—' }}</div>
+            <div class="px-2 py-1">
+              <div class="flex items-center gap-1 justify-end">
+                <DeskInput
+                  :model-value="row.plannedQty ?? 100"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  class="!text-xs !text-right !py-1"
+                  :disabled="saving"
+                  @update:model-value="onPlannedQtyChange(row, $event)"
                 />
-                <span class="font-mono text-[10px] text-ink-500">{{ sib.id }}</span>
-                <span>{{ sib.stageName }}</span>
-              </label>
+                <span class="text-[11px] text-ink-500">%</span>
+              </div>
             </div>
-            <div v-else class="text-xs text-ink-400 italic">
-              No other stages on this project yet · add one to create a dependency.
-            </div>
-            <div class="text-[11px] text-ink-500 mt-1.5">
-              Pick the stages that must complete before this one can start.
+            <div class="px-3 py-1.5 whitespace-nowrap">
+              <StatusBadge v-if="row.task" :status="taskStatus(row.task)" size="xs" />
+              <span v-else class="text-[10px] text-ink-400">—</span>
             </div>
           </div>
         </div>
-      </DeskSection>
+        <div v-else class="text-xs text-ink-400 italic">
+          No task rows yet · click "Add/Remove Tasks" above to pick tasks for this stage.
+        </div>
+      </div>
+    </section>
 
-      <!-- Tasks in this stage (child table). Visual standard mirrors the BOQ item
-           rows inside BOQ detail: tight grid header strip + alternating row stripes
-           + brand-50 hover, all edit controls inline. -->
-      <DeskSection title="Tasks in this stage">
-        <div class="md:col-span-2">
-          <div v-if="!editing">
-            <div v-if="(stage.stagePlanningTasks || []).length" class="border border-ink-200" style="border-radius: 2px;">
-              <div class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium" style="grid-template-columns: minmax(220px, 1fr) 110px 110px 90px 60px 90px;">
-                <div class="px-3 py-1.5">Task</div>
-                <div class="px-3 py-1.5">Planned Start</div>
-                <div class="px-3 py-1.5">Planned End</div>
-                <div class="px-3 py-1.5 text-right">Planned Qty</div>
-                <div class="px-3 py-1.5">Unit</div>
-                <div class="px-3 py-1.5">Status</div>
-              </div>
-              <div
-                v-for="row in stage.stagePlanningTasks"
-                :key="row.id"
-                class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 text-sm text-ink-800"
-                style="grid-template-columns: minmax(220px, 1fr) 110px 110px 90px 60px 90px;"
-              >
-                <div class="px-3 py-1.5">
-                  <DeskLink v-if="row.task" :to="`/tasks/${row.task}`">{{ taskName(row.task) }}</DeskLink>
-                  <span v-else class="text-ink-400 italic">No task linked</span>
-                </div>
-                <div class="px-3 py-1.5 text-xs text-ink-700">{{ fmtDate(row.plannedStart) || '—' }}</div>
-                <div class="px-3 py-1.5 text-xs text-ink-700">{{ fmtDate(row.plannedEnd) || '—' }}</div>
-                <div class="px-3 py-1.5 text-right tabular-nums">{{ row.plannedQty || 0 }}</div>
-                <div class="px-3 py-1.5 text-xs text-ink-500">{{ row.qtyUnit || '—' }}</div>
-                <div class="px-3 py-1.5">
-                  <StatusBadge v-if="row.task" :status="taskStatus(row.task)" size="xs" />
-                  <span v-else class="text-[10px] text-ink-400">—</span>
-                </div>
-              </div>
-            </div>
-            <div v-else class="text-xs text-ink-400 italic">
-              No task rows yet · click Edit and "+ Add row" to start planning.
-            </div>
-          </div>
-          <div v-else>
-            <div v-if="(form.stagePlanningTasks || []).length" class="border border-ink-200" style="border-radius: 2px;">
-              <div class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium" style="grid-template-columns: minmax(220px, 1fr) 110px 110px 90px 70px 32px;">
-                <div class="px-2 py-1.5">Task</div>
-                <div class="px-2 py-1.5">Planned Start</div>
-                <div class="px-2 py-1.5">Planned End</div>
-                <div class="px-2 py-1.5 text-right">Planned Qty</div>
-                <div class="px-2 py-1.5">Unit</div>
-                <div></div>
-              </div>
-              <div
-                v-for="row in form.stagePlanningTasks"
-                :key="row.id"
-                class="grid desk-row-stripe border-b border-ink-100 last:border-b-0 items-center"
-                style="grid-template-columns: minmax(220px, 1fr) 110px 110px 90px 70px 32px;"
-              >
-                <div class="px-2 py-1">
-                  <DeskSelect v-model="row.task" class="!text-xs">
-                    <option :value="null">— Select task —</option>
-                    <option v-for="t in tasksForProject" :key="t.id" :value="t.id">{{ t.name }}</option>
-                  </DeskSelect>
-                </div>
-                <div class="px-2 py-1">
-                  <DeskInput v-model="row.plannedStart" type="date" class="!text-xs" />
-                </div>
-                <div class="px-2 py-1">
-                  <DeskInput v-model="row.plannedEnd" type="date" class="!text-xs" />
-                </div>
-                <div class="px-2 py-1">
-                  <DeskInput v-model.number="row.plannedQty" type="number" min="0" step="0.1" class="!text-xs text-right" />
-                </div>
-                <div class="px-2 py-1">
-                  <DeskInput v-model="row.qtyUnit" placeholder="m³" class="!text-xs" />
-                </div>
-                <div class="px-1 py-1 flex justify-center">
-                  <button
-                    type="button"
-                    class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-ink-50"
-                    style="border-radius: 2px; color: #B91C1C;"
-                    @click="removeChildRow(row.id)"
-                    title="Remove row"
-                  >✕</button>
-                </div>
-              </div>
-            </div>
-            <div v-else class="text-[11px] text-ink-500 italic mb-2">
-              No task rows yet · add one to start planning.
+    <!-- Edit modal -->
+    <Teleport to="body">
+      <div
+        v-if="editing"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+        @click.self="cancelEdit"
+      >
+        <div
+          class="bg-white border border-ink-200 w-full max-w-3xl shadow-fp-lg flex flex-col dark:bg-[#242424] dark:border-ink-700"
+          style="border-radius: 12px; max-height: calc(100vh - 3rem);"
+          @click.stop
+        >
+          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px 12px 0 0;">
+            <div class="min-w-0 flex-1">
+              <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Edit stage</h2>
+              <p class="text-[11px] text-ink-500 mt-0.5 truncate">
+                {{ stage.stageName }}<template v-if="project"> · {{ project.name }}</template>
+              </p>
             </div>
             <button
               type="button"
-              class="mt-2 text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-              style="border-radius: 2px;"
-              @click="addChildRow"
-            >+ Add row</button>
-          </div>
-        </div>
-      </DeskSection>
+              class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3 dark:text-ink-400 dark:hover:text-ink-200"
+              aria-label="Close"
+              @click="cancelEdit"
+            >×</button>
+          </header>
 
-      <!-- Stage Review marker — DELIBERATE STUB. Per §13.3 item 18, Stage Review
-           is deferred to M3+ (needs Labour + Procurement + GL data). This is
-           where the rollup scorecard (planned-vs-actual labour, cost, schedule)
-           will attach. Do NOT build it in M1. -->
-      <section class="mt-8 pt-4 border-t border-ink-200">
-        <div class="text-xs text-ink-400 italic">
-          Stage Review — deferred to M3+. The aggregate scorecard (planned-vs-actual labour, cost, schedule) attaches here once Labour, Procurement, and GL data land.
+          <div class="p-5 overflow-y-auto flex-1">
+            <DeskSection title="Stage details">
+              <DeskField label="Stage name" required :error="errors.stageName">
+                <DeskInput v-model="editForm.stageName" @input="clearError('stageName')" />
+              </DeskField>
+              <DeskField label="Project" hint="Locked after create — move tasks instead of reparenting a stage.">
+                <DeskInput :model-value="project ? project.name : editForm.project" disabled />
+              </DeskField>
+              <DeskField label="Planned start">
+                <DeskInput v-model="editForm.plannedStart" type="date" />
+              </DeskField>
+              <DeskField label="Planned end" :error="errors.plannedEnd">
+                <DeskInput v-model="editForm.plannedEnd" type="date" @input="clearError('plannedEnd')" />
+              </DeskField>
+              <DeskField label="Description">
+                <DeskTextarea v-model="editForm.description" :rows="3" />
+              </DeskField>
+            </DeskSection>
+
+            <DeskSection title="Dependencies">
+              <div class="md:col-span-2">
+                <div v-if="siblingStages.length" class="flex flex-wrap gap-2">
+                  <label
+                    v-for="sib in siblingStages"
+                    :key="sib.id"
+                    class="inline-flex items-center gap-1.5 text-xs text-ink-800 cursor-pointer px-2 py-1 border border-ink-200 hover:bg-ink-50 dark:border-ink-700 dark:hover:bg-ink-800"
+                    style="border-radius: 6px;"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="(editForm.dependencies || []).includes(sib.id)"
+                      class="accent-brand-600"
+                      @change="toggleDependency(sib.id)"
+                    />
+                    <span class="font-mono text-[10px] text-ink-500">{{ sib.id }}</span>
+                    <span>{{ sib.stageName }}</span>
+                  </label>
+                </div>
+                <div v-else class="text-xs text-ink-400 italic">
+                  No other stages on this project yet · add one to create a dependency.
+                </div>
+                <div class="text-[11px] text-ink-500 mt-1.5">
+                  Pick the stages that must complete before this one can start.
+                </div>
+              </div>
+            </DeskSection>
+
+            <DeskSection title="Tasks">
+              <div class="md:col-span-2 text-xs text-ink-500">
+                {{ (stage.stagePlanningTasks || []).length }} task{{ (stage.stagePlanningTasks || []).length === 1 ? '' : 's' }} linked
+                · manage via the <span class="font-medium text-ink-700 dark:text-ink-300">Add/Remove Tasks</span> button on the page.
+              </div>
+            </DeskSection>
+          </div>
+
+          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white dark:bg-[#242424] dark:border-ink-700" style="border-radius: 0 0 12px 12px;">
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
+              style="border-radius: 6px;"
+              :disabled="saving"
+              @click="cancelEdit"
+            >Cancel</button>
+            <button
+              type="button"
+              class="desk-save-btn"
+              :disabled="saving"
+              @click="saveEdit"
+            >{{ saving ? 'Saving…' : 'Save' }}</button>
+          </footer>
         </div>
-      </section>
-    </DeskForm>
+      </div>
+    </Teleport>
+
+    <StageTaskPicker
+      v-model:open="pickerOpen"
+      :project-id="stage.project"
+      :stage-name="stage.stageName"
+      :planned-start="stage.plannedStart || ''"
+      :planned-end="stage.plannedEnd || ''"
+      :initial-selected-task-ids="(stage.stagePlanningTasks || []).map((r) => r.task).filter(Boolean)"
+      :existing-task-rows="stage.stagePlanningTasks || []"
+      mode="modal"
+      @save="onPickerSave"
+    />
+
+    <ConfirmDialog
+      v-model:open="showDeleteConfirm"
+      title="Delete stage"
+      :message="`Delete &quot;${stage.stageName}&quot;? Dependencies in other stages pointing at this one will be cleaned up automatically.`"
+      confirm-label="Delete"
+      :destructive="true"
+      @confirm="confirmDelete"
+    />
   </DeskPage>
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">
