@@ -6,10 +6,30 @@ from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
 
 
+def after_install():
+    seed_master_data()
+
+
 def after_migrate():
     print(_("Creating Custom Fields..."))
     create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
     make_property_setters()
+    seed_master_data()
+
+
+def seed_master_data():
+    project_types = [
+        "Commercial", "Residential", "Infrastructure",
+        "Industrial", "Renovation", "Interior", "Other",
+    ]
+    for pt in project_types:
+        if not frappe.db.exists("Project Type", pt):
+            frappe.get_doc({"doctype": "Project Type", "project_type": pt}).insert(ignore_permissions=True)
+
+    task_types = ["Activity", "Milestone", "Inspection"]
+    for tt in task_types:
+        if not frappe.db.exists("Task Type", tt):
+            frappe.get_doc({"doctype": "Task Type", "task_type": tt}).insert(ignore_permissions=True)
 
 
 def before_migrate():
