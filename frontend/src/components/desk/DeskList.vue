@@ -42,6 +42,7 @@ const props = defineProps({
   serverPaginated: { type: Boolean, default: false },
   currentPage: { type: Number, default: 1 },
   totalRows: { type: Number, default: null },
+  compact: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -326,7 +327,7 @@ const showPagination = computed(() => {
             class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
             @click="emit('row-click', row)"
           >
-            <td v-if="bulkSelect" class="w-9 px-3 py-3" @click.stop>
+            <td v-if="bulkSelect" :class="['w-9 px-3', compact ? 'py-2' : 'py-3']" @click.stop>
               <input
                 type="checkbox"
                 :checked="isSelected(row)"
@@ -337,8 +338,7 @@ const showPagination = computed(() => {
             <td
               v-for="col in columns"
               :key="col.key"
-              class="px-3 py-3 text-ink-800"
-              :class="[alignClass(col), col.class || '']"
+              :class="['px-3 text-ink-800', compact ? 'py-2' : 'py-3', alignClass(col), col.class || '']"
             >
               <slot
                 :name="`cell-${col.key}`"

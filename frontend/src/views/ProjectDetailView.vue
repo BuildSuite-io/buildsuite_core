@@ -917,12 +917,12 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           doctype="Stage Planning"
           :field-order="['stage_name', 'description', 'planned_start', 'planned_end', 'planned_task_count']"
           :columns="[
-            { key: 'stage_name', label: 'Stage' },
+            { key: 'stage_name', label: 'Stage', fields: ['stage_name', 'description'] },
             { key: 'planned_start', label: 'Start' },
             { key: 'planned_end', label: 'End' },
             { key: 'planned_task_count', label: 'Tasks' },
-            { key: '_status', label: 'Status' },
-            { key: '_open', label: '' },
+            { key: '_status', label: 'Status', fields: ['planned_start', 'planned_end'] },
+            { key: '_open', label: '', fields: ['name'], align: 'right' },
           ]"
           :base-filters="stageBaseFilters"
           :search-fields="['stage_name', 'name']"
@@ -930,6 +930,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           row-key="name"
           initial-order-by="planned_start asc"
           search-placeholder="Search stages…"
+          :compact="true"
           @row-click="row => router.push('/stage-plannings/' + row.name)"
           @count-change="stageCount = $event"
         >
@@ -941,10 +942,8 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           </template>
 
           <template #cell-stage_name="{ row }">
-            <div class="px-3 py-2">
-              <span class="text-ink-900 font-medium">{{ row.stage_name }}</span>
-              <div v-if="row.description" class="text-[11px] text-ink-500 truncate">{{ row.description }}</div>
-            </div>
+            <span class="text-ink-900 font-medium">{{ row.stage_name }}</span>
+            <div v-if="row.description" class="text-[11px] text-ink-500 truncate mt-0.5">{{ row.description }}</div>
           </template>
           <template #cell-planned_start="{ row }">
             <span class="text-xs text-ink-700">{{ fmtDate(row.planned_start) || '—' }}</span>
@@ -956,18 +955,14 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
             <span class="text-xs text-ink-700 tabular-nums">{{ row.planned_task_count || 0 }}</span>
           </template>
           <template #cell-_status="{ row }">
-            <div class="px-3 py-2">
-              <span
-                class="text-[10px] px-1.5 py-0.5 font-medium"
-                style="border-radius: 2px;"
-                :class="stageStatusClass(stageStatus(row))"
-              >{{ stageStatus(row) }}</span>
-            </div>
+            <span
+              class="text-[10px] px-1.5 py-0.5 font-medium"
+              style="border-radius: 2px;"
+              :class="stageStatusClass(stageStatus(row))"
+            >{{ stageStatus(row) }}</span>
           </template>
           <template #cell-_open="{ row }">
-            <div class="px-3 py-2 text-right">
-              <DeskLink :to="`/stage-plannings/${row.name}`" @click.stop class="text-xs">Open →</DeskLink>
-            </div>
+            <DeskLink :to="`/stage-plannings/${row.name}`" @click.stop class="text-xs">Open →</DeskLink>
           </template>
 
           <template #empty>
