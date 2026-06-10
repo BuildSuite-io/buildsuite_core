@@ -23,6 +23,7 @@ const props = defineProps({
   rowKey: { type: String, default: 'name' },
   searchPlaceholder: { type: String, default: 'Search' },
   emptyMessage: { type: String, default: 'No records found' },
+  compact: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['row-click', 'count-change'])
@@ -495,6 +496,7 @@ function onPageSizeChange(value) {
       :current-page="currentPage"
       :total-rows="estimatedTotalRows"
       :search-placeholder="searchPlaceholder"
+      :compact="compact"
       :sort-field="sortField"
       :sort-direction="sortDirection"
       :sort-options="sortableFields"
