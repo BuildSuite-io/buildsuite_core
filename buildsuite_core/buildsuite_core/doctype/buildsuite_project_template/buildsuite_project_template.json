@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-10 06:57:09.972556",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "template_name",
+  "column_break_ddnt",
+  "project_type",
+  "section_break_teuy",
+  "stage_plans",
+  "project_task"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name"
+  },
+  {
+   "fieldname": "stage_plans",
+   "fieldtype": "Table",
+   "label": "Stage Plans",
+   "options": "Project Stage Plan Template"
+  },
+  {
+   "fieldname": "project_task",
+   "fieldtype": "Table",
+   "label": "Project Task",
+   "options": "Project Template Task"
+  },
+  {
+   "fieldname": "column_break_ddnt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_type",
+   "fieldtype": "Link",
+   "label": "Project Type",
+   "options": "Project Type"
+  },
+  {
+   "fieldname": "section_break_teuy",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-10 07:15:22.257976",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "BuildSuite Project Template",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
