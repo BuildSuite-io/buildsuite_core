@@ -114,7 +114,7 @@ The frontend prototype used different field names than the backend. All three vi
 | `recheckAccess()` | `frontend/src/stores/session.js` | Force-clear access cache and re-evaluate backend authorization | `AccessDeniedView.vue` |
 | `resetSession()` | `frontend/src/stores/session.js` | Clear auth/access state and cached access context | Reserved for logout/session-expiry flows |
 | `createLocalDataAdapter(store)` | `frontend/src/data/adapters/localDataAdapter.js` | Adapter implementation over current Pinia local state for phased migration | `createDataAdapter` |
-| `createRemoteDataAdapter()` | `frontend/src/data/adapters/remoteDataAdapter.js` | Generic remote DocType adapter contract (`list/read/create/update/remove/linkSearch`) over frappe-ui list resources | `createDataAdapter`, filter/link/read slices |
+| `createRemoteDataAdapter()` | `frontend/src/data/adapters/remoteDataAdapter.js` | Generic remote DocType adapter contract (`list/read/create/update/remove/linkSearch`) over frappe-ui list + document resources. `read()` uses `frappe.client.get` so child tables (e.g. Stage Planning tasks/deps) are included. | `createDataAdapter`, filter/link/read slices |
 | `createDataAdapter(store, mode)` | `frontend/src/data/adapters/index.js` | Adapter factory for local/remote mode switching during migration | All migrated views |
 | `useDocTypeList(doctype, options)` | `frontend/src/composables/useDocTypeList.js` | Generic Frappe list-resource wrapper for read-only DocType list calls | `createRemoteDataAdapter`, `DocTypeListView.vue`, `ProjectsView.vue` |
 | `DocTypeListView` | `frontend/src/components/doctype/DocTypeListView.vue` | Reusable meta-driven list shell (`doctype` + ordered `fieldOrder`) with default sort handling and reload-on-resolved-columns | `ProjectsView.vue`, `WorkPackagesView.vue`, `TasksView.vue` |
@@ -152,7 +152,8 @@ The frontend prototype used different field names than the backend. All three vi
     - `TaskProgressEntryDetailView` — adapter.read/update/remove('Task Update') + adapter.list('File') for attachments
     - `NewTaskProgressEntryView` — adapter.create('Task Update') + DeskLinkPicker task picker
     - `StagePlanningsView` — DocTypeListView shell + DeskLinkPicker project filter + date-range baseFilters
-  - **Remaining to close Phase 7**: StagePlanningDetailView full CRUD, NewTaskView, NewProjectView
+    - `StagePlanningDetailView` — adapter read/update/remove + StageTaskPicker modal + edit modal
+  - **Remaining to close Phase 7**: NewTaskView, NewProjectView
   - Reference: `6e188f7`, `5d95fcc`, `062c5e5`, `c50f8c8`, `37d27e9`, `c8b6224`, `845f567`, `cccc79e`, `28fd46b`, `70cfcb6`
 
 - [ ] **Phase 8 — CSRF and Upload Hardening**
@@ -399,7 +400,6 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 ## Known Constraints / Future Work
 
 - **NewTaskView / NewProjectView**: Still use store-based task/project creation. Not yet migrated to adapter.
-- **StagePlanningDetailView**: Not yet fully migrated to adapter (reads from store).
 - **WorkPackageDetailView**: Partially migrated (read via adapter, mutations still store-based).
 - **Task Update attachments in NewTaskProgressEntryView**: The `+ New Entry` form doesn't yet support attachments — those are only available in the detail view post-creation.
 - **Entered by filter in TaskProgressEntriesView**: Shows `store.team` members in the dropdown but the backend `owner` field is a Frappe User email/ID. The filter works correctly in local mode; in remote mode it won't match unless the Frappe User IDs happen to match the team member IDs.

@@ -1,4 +1,5 @@
 import { useDocTypeList } from '@/composables/useDocTypeList'
+import { createDocumentResource } from 'frappe-ui-document-resource'
 import { unref } from 'vue'
 
 /**
@@ -28,16 +29,18 @@ export function createRemoteDataAdapter() {
 
   function read(doctype, name, options = {}) {
     const resolvedName = unref(name)
+    if (!resolvedName) return null
 
-    return list(doctype, {
-      fields: options.fields ?? ['name'],
-      filters: [[options.nameField || 'name', '=', resolvedName]],
-      pageLength: 1,
-      cache: options.cache,
+    // frappe.client.get returns the full document including child tables;
+    // the list API omits Table fields like stage_planning_tasks / dependencies.
+    return createDocumentResource({
+      doctype,
+      name: resolvedName,
       auto: options.auto !== false,
-      transform(rows) {
-        const data = options.transform ? options.transform(rows) : rows
-        return Array.isArray(data) ? (data[0] || null) : data
+      transform(doc) {
+        if (!options.transform) return doc
+        const transformed = options.transform([doc])
+        return Array.isArray(transformed) ? (transformed[0] || null) : transformed
       },
     })
   }

@@ -22,6 +22,7 @@ export default defineConfig(({ command }) => ({
       { find: 'frappe-ui-config', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/utils/config.ts') },
       { find: 'frappe-ui-frappe-request', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/utils/frappeRequest.js') },
       { find: 'frappe-ui-list-resource', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/resources/listResource.js') },
+      { find: 'frappe-ui-document-resource', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/resources/documentResource.js') },
       { find: 'frappe-ui-file-upload-handler', replacement: path.resolve(__dirname, './node_modules/frappe-ui/src/utils/fileUploadHandler.ts') },
       // frappe-ui imports feather-icons as a default export, but modern ESM
       // resolution exposes named exports only. Route bare imports through a shim.
