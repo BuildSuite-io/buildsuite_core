@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:template_name",
  "creation": "2026-06-10 06:57:09.972556",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -16,7 +17,8 @@
   {
    "fieldname": "template_name",
    "fieldtype": "Data",
-   "label": "Template Name"
+   "label": "Template Name",
+   "unique": 1
   },
   {
    "fieldname": "stage_plans",
@@ -37,8 +39,11 @@
   {
    "fieldname": "project_type",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Project Type",
-   "options": "Project Type"
+   "options": "Project Type",
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "section_break_teuy",
@@ -48,10 +53,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-10 07:15:22.257976",
+ "modified": "2026-06-10 13:30:24.083871",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "BuildSuite Project Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

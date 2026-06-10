@@ -93,7 +93,7 @@ website_route_rules = [
 after_migrate = "buildsuite_core.install.after_migrate"
 before_migrate = "buildsuite_core.install.before_migrate"
 # before_install = "buildsuite_core.install.before_install"
-# after_install = "buildsuite_core.install.after_install"
+after_install = "buildsuite_core.install.after_install"
 
 # Uninstallation
 # ------------
@@ -146,10 +146,10 @@ before_migrate = "buildsuite_core.install.before_migrate"
 # Hook on document methods and events
 
 doc_events = {
-	"Project": {
-		"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
-		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
-	},
+	# "Project": {
+	# 	"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
+	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
+	# },
 	"Task": {
 		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
 		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
