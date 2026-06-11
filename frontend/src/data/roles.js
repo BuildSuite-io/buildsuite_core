@@ -331,3 +331,43 @@ export const WORKSPACE_ORDER = {
     'workforce',
   ],
 }
+
+// Map a User.persona Select value (the human label, e.g. "Project Manager") to
+// the persona id used by the role switcher / gating (e.g. "pm"). Returns null
+// when the label isn't a recognised persona.
+export function personaIdFromName(name) {
+  if (!name) return null
+  const match = ROLES.find((r) => r.name === name)
+  return match ? match.id : null
+}
+
+// Frappe BuildSuite role -> persona id. Used as a fallback when the User.persona
+// field is unset (e.g. Administrator). Mirrors the backend permissions/setup map.
+export const ROLE_TO_PERSONA = {
+  'BuildSuite Director': 'director',
+  'BuildSuite PM': 'pm',
+  'BuildSuite Estimator': 'estimator',
+  'BuildSuite QS': 'qs',
+  'BuildSuite Site Engineer': 'site-engineer',
+  'BuildSuite Foreman': 'foreman',
+  'BuildSuite Procurement Officer': 'procurement',
+  'BuildSuite Store Keeper': 'store-keeper',
+  'BuildSuite Accountant': 'accountant',
+  'BuildSuite HR Manager': 'hr-manager',
+  'BuildSuite Administrator': 'bsa',
+  'System Manager': 'admin',
+}
+
+// Derive a persona id from a user's Frappe roles. Prefers a specific BuildSuite
+// persona role over the broad admin roles, so e.g. a PM who also has System
+// Manager still reads as 'pm'.
+export function personaIdFromRoles(roles) {
+  const set = new Set(roles || [])
+  for (const [role, persona] of Object.entries(ROLE_TO_PERSONA)) {
+    if (role === 'System Manager' || role === 'BuildSuite Administrator') continue
+    if (set.has(role)) return persona
+  }
+  if (set.has('BuildSuite Administrator')) return 'bsa'
+  if (set.has('System Manager')) return 'admin'
+  return null
+}
