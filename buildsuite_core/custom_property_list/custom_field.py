@@ -150,5 +150,15 @@ CUSTOM_FIELD = {
             "insert_after": "company",
             "module": "BuildSuite Core"
         }
+    ],
+    "User": [
+        {
+            "fieldname": "persona",
+            "fieldtype": "Select",
+            "label": "Persona",
+            "options": "Director / Owner\nProject Manager\nEstimator\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nAccountant\nSystem Manager (Admin)\nBuildSuite Administrator",
+            "insert_after": "company",
+            "module": "BuildSuite Core"
+        }
     ]
 }
