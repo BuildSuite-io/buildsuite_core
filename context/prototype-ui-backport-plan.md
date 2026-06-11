@@ -102,32 +102,32 @@ Status: ⬜ todo · 🔶 in progress · ✅ done · ⏭️ skipped (with reason)
 |---|---|---|---|
 | 96 | Stage Planning rework: smart task picker + Draft→Approval | ✅ | Mostly pre-integrated. Backend uses **Frappe-native Workflow** (`workflow_state` Link + workflow.json fixture; states Draft/Pending Approval/Approved/Rejected/Cancelled; role-gated transitions). Done already: state-dispatched action buttons, 2-step New Stage wizard, StageTaskPicker, action-button gating. **Ported this session:** StagePlanningsView State column (`workflow_state` StatusBadge) + workflow-state filter (DeskSelect↔chip) + `?status=` deep-link honor. **Reject popup — IMPLEMENTED (follow-up):** added `reject_reason` field on the Stage Planning doctype + whitelisted `reject_stage_planning(name, reason)` (persists reason to DB before `apply_workflow`, since apply_workflow reloads from DB; `validate()` enforces a reason on Rejected). Frontend Reject button opens a required-reason popup; reason shown in a Rejected banner. **Workflow change:** removed the `Rejected → Revise` transition (in `permissions/setup.py _STAGE_TRANSITIONS`, the authoritative source, + the workflow fixture) — Rejected is now terminal. **Still deferred (no backend field):** activity feed (`stage.activity[]`) — would use Frappe's native document timeline. **Superseded (do not port):** `approval_required_role` on Project — production uses Frappe Workflow transition roles instead. **Deferred:** prototype's client-side "Pending approvals first" sort — doesn't map onto server pagination; revisit if needed. |
 | 97 | New Stage wizard: trim step 1 + drop embedded picker footer | ✅ | Already integrated. Verified: NewStagePlanningView step 1 has only Stage name / Project / Planned start / Planned end / Description (planned_task_count + planned_completion_pct are derived at submit, not fields); StageTaskPicker embedded mode has no footer (Cancel/Save selection is modal-only). No code change. |
-| 98 | Tasks-in-stage: inline planned-qty edit + drop Unit col | ⬜ | |
-| 99 | Default planned quantity = 100% | ⬜ | |
-| 100 | Approved stages: Delete is approver-only | ⬜ | |
-| 101 | Stage view: drop planned-count/-completion; neutralize task-name colour | ⬜ | |
+| 98 | Tasks-in-stage: inline planned-qty edit + drop Unit col | ✅ | Already integrated. 5-col table (no Unit), inline planned-qty DeskInput (0–100, `%`), `onPlannedQtyChange`. Minor divergence: input not workflow-state-gated (prototype `canManageTasks`) — backend workflow `allow_edit` enforces instead, per defer-gating direction. |
+| 99 | Default planned quantity = 100% | ✅ | Already integrated. `row.plannedQty ?? 100` (nullish, so explicit 0 survives) in cell + buildPayload + mapStageRow. |
+| 100 | Approved stages: Delete is approver-only | ⏸️ | DEFER to gating pass. Production shows Delete unconditionally; backend `has_stage_planning_permission` blocks non-approver delete on Approved stages, but the UI doesn't hide the button. Per defer-gating direction. |
+| 101 | Stage view: drop planned-count/-completion; neutralize task-name colour | ✅ | Already integrated. planned_task_count/completion are data-only (not rendered as view/edit fields); tasks-in-stage task name uses `text-ink-900`. |
 | 102 | Stage Review dashboard + delay-reason gate | ⬜ | NEW screen |
-| 103 | Stage Planning tab: neutralize stage-title colour | ⬜ | |
-| 104 | Stage Review: planned vs actual progress explicit | ⬜ | |
+| 103 | Stage Planning tab: neutralize stage-title colour | ✅ | Already integrated. Stage title on Project Detail Stage Planning tab uses `text-ink-900`; "Open →" stays a DeskLink. |
+| 104 | Stage Review: planned vs actual progress explicit | ⬜ | Slice B (Stage Review) — net-new, not yet built in prod. |
 | 105 | Stage Review row: single overlaid bar + planned tick | ⬜ | |
 | 106 | Stage Review list: full-width CSS-grid rows | ⬜ | |
 | 107 | Dark-mode fixes on Stage Review | ⬜ | verify vs prod |
 | 108 | Delay reason shape → ERPNext Delay Log | ⬜ | |
 | 109 | Delay reasons → full-width section after Tasks | ⬜ | |
-| 110 | Tasks-in-stage: Status pill two-line wrap | ⬜ | |
-| 111 | Stage Details: KPI strip + carded layout | ⬜ | |
-| 112 | Stage details card: drop redundant Stage-name row | ⬜ | |
-| 113 | Post-Revise Draft: save-first, Submit optional | ⬜ | |
+| 110 | Tasks-in-stage: Status pill two-line wrap | ✅ | Already integrated. Status col 110px + `whitespace-nowrap`. |
+| 111 | Stage Details: KPI strip + carded layout | ✅ | Already integrated. KPI strip (Window/Duration/Tasks/Dependencies) + gradient-header details card. |
+| 112 | Stage details card: drop redundant Stage-name row | ✅ | Already integrated. View card shows only Project + Description. |
+| 113 | Post-Revise Draft: save-first, Submit optional | ⏸️ | DEFER. Prototype-specific (button priority keyed to `approved_at`/`wasEverApproved`). Production drives Revise via Frappe Workflow; the which-button-is-primary refinement is low value. Revisit with the gating/workflow-UX pass. |
 | 114 | window.confirm → ConfirmDialog app-wide | ⬜ | prod has component |
 | 115 | Project tabs: dark-mode contrast | ⬜ | verify vs prod |
-| 116 | Stage Planning tab: PLANNED START two-line header | ⬜ | |
+| 116 | Stage Planning tab: PLANNED START two-line header | ✅ | Superseded. Prod Stage Planning tab uses the generic `DocTypeListView` (header rendering centralized in that component), not the prototype's custom-grid table — the manual column-width fix doesn't apply. |
 | 117 | Project Dashboard tile: dark-mode title contrast | ⬜ | verify vs prod |
 | 118 | Settings hub: icon + tile styling | ⬜ | |
 | 119 | User management: create + edit + persona + email stubs | ⬜ | NEW screen |
 | 120 | Settings: back-link removed; persona-pill gap fix | ⬜ | |
 | 121 | Users list: persona chip unified neutral style | ⬜ | |
-| 122 | +Add / +Upload lifted out of custom-table chrome | ⬜ | |
-| 123 | Task edit modal: Hierarchy (Project RO + WP editable) | ⬜ | |
+| 122 | +Add / +Upload lifted out of custom-table chrome | ✅ | Superseded by `DocTypeListView` — `+ Add` lives in the shared list component's `#actions` slot, not per-tab table chrome. |
+| 123 | Task edit modal: Hierarchy (Project RO + WP editable) | ✅ | Already integrated. Task edit form has Work Package editable via `DeskLinkPicker` (filtered to the task's project); Project shown in Connections panel. Prod uses server-side `DeskLinkPicker` (plumbing upgrade preserved). |
 | 124 | M1 permission matrix wired into store + UI gating | ⬜ | persona/defer |
 | 125 | TPE create unconditional for PM/SiteEng/Foreman | ⬜ | persona/defer |
 | 126 | PM complete permission within their projects | ⬜ | persona/defer |
