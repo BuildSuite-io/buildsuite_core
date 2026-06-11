@@ -106,14 +106,14 @@ Status: ⬜ todo · 🔶 in progress · ✅ done · ⏭️ skipped (with reason)
 | 99 | Default planned quantity = 100% | ✅ | Already integrated. `row.plannedQty ?? 100` (nullish, so explicit 0 survives) in cell + buildPayload + mapStageRow. |
 | 100 | Approved stages: Delete is approver-only | ⏸️ | DEFER to gating pass. Production shows Delete unconditionally; backend `has_stage_planning_permission` blocks non-approver delete on Approved stages, but the UI doesn't hide the button. Per defer-gating direction. |
 | 101 | Stage view: drop planned-count/-completion; neutralize task-name colour | ✅ | Already integrated. planned_task_count/completion are data-only (not rendered as view/edit fields); tasks-in-stage task name uses `text-ink-900`. |
-| 102 | Stage Review dashboard + delay-reason gate | ⬜ | NEW screen |
+| 102 | Stage Review dashboard + delay-reason gate | ✅ | Built. New backend: `Stage Delay Reason` child doctype + `delay_reasons` table on Stage Planning + `add_stage_delay_reason` method. New frontend: `StageReviewView` (route `/stage-plannings/:id/review`), `StageDelayReasonModal`, "Stage Review" button + delay-gate on the detail page. `isStageDelayed` is frontend-computed. See [stage-review-scoping.md](stage-review-scoping.md). |
 | 103 | Stage Planning tab: neutralize stage-title colour | ✅ | Already integrated. Stage title on Project Detail Stage Planning tab uses `text-ink-900`; "Open →" stays a DeskLink. |
-| 104 | Stage Review: planned vs actual progress explicit | ⬜ | Slice B (Stage Review) — net-new, not yet built in prod. |
-| 105 | Stage Review row: single overlaid bar + planned tick | ⬜ | |
-| 106 | Stage Review list: full-width CSS-grid rows | ⬜ | |
-| 107 | Dark-mode fixes on Stage Review | ⬜ | verify vs prod |
-| 108 | Delay reason shape → ERPNext Delay Log | ⬜ | |
-| 109 | Delay reasons → full-width section after Tasks | ⬜ | |
+| 104 | Stage Review: planned vs actual progress explicit | ✅ | Built into StageReviewView (KPI actual/planned + per-task variance). |
+| 105 | Stage Review row: single overlaid bar + planned tick | ✅ | Built (overlaid bar + `stage-progress-tick` marker class added to style.css). |
+| 106 | Stage Review list: full-width CSS-grid rows | ✅ | Built (full-width task-progress section, fixed-column CSS grid). |
+| 107 | Dark-mode fixes on Stage Review | ✅ | Built dark-aware from the start (`dark:` classes throughout + `stage-progress-tick` dark override). |
+| 108 | Delay reason shape → ERPNext Delay Log | ✅ | Backend `Stage Delay Reason` matches the shape (reason / responsible_party / days_delayed / note); modal offers presets + custom. |
+| 109 | Delay reasons → full-width section after Tasks | ✅ | Full-width delay-reasons grid section directly under Task progress. |
 | 110 | Tasks-in-stage: Status pill two-line wrap | ✅ | Already integrated. Status col 110px + `whitespace-nowrap`. |
 | 111 | Stage Details: KPI strip + carded layout | ✅ | Already integrated. KPI strip (Window/Duration/Tasks/Dependencies) + gradient-header details card. |
 | 112 | Stage details card: drop redundant Stage-name row | ✅ | Already integrated. View card shows only Project + Description. |

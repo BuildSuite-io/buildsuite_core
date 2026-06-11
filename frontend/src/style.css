@@ -126,6 +126,12 @@
 }
 
 @layer utilities {
+  /* Stage Review planned-progress tick marker on the overlaid task bars.
+     Needs near-black in light mode and near-white in dark (a pure-tone the
+     stock palette doesn't offer — ink-900 stays dark navy in dark mode). */
+  .stage-progress-tick { background-color: #0F172A; }
+  html.dark .stage-progress-tick { background-color: #F5F5F5; }
+
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
