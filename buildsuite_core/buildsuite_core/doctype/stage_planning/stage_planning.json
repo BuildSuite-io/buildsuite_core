@@ -21,7 +21,9 @@
   "section_break_deps",
   "dependencies",
   "section_break_tasks",
-  "stage_planning_tasks"
+  "stage_planning_tasks",
+  "section_break_delay",
+  "delay_reasons"
  ],
  "fields": [
   {
@@ -94,7 +96,7 @@
    "label": "Description"
   },
   {
-   "depends_on": "eval:doc.workflow_state=='Pending Approval'",
+   "depends_on": "eval:doc.workflow_state=='Rejected'",
    "fieldname": "reject_reason",
    "fieldtype": "Small Text",
    "label": "Rejection Reason",
@@ -122,10 +124,21 @@
    "fieldtype": "Table",
    "label": "Stage Tasks",
    "options": "Stage Planning Task"
+  },
+  {
+   "fieldname": "section_break_delay",
+   "fieldtype": "Section Break",
+   "label": "Delay Log"
+  },
+  {
+   "fieldname": "delay_reasons",
+   "fieldtype": "Table",
+   "label": "Delay Reasons",
+   "options": "Stage Delay Reason"
   }
  ],
  "links": [],
- "modified": "2026-06-11 18:38:14.016523",
+ "modified": "2026-06-11 18:45:49.717937",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Stage Planning",
