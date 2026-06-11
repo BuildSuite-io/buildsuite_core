@@ -51,9 +51,6 @@ const subtitle = computed(() =>
 
 <template>
   <DeskPage title="Users" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
-    <template #actions>
-      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
-    </template>
 
     <!-- Non-admin guard — direct URL access. -->
     <div v-if="!store.isAdmin" class="mb-3 px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700" style="border-radius: 2px;">
