@@ -133,13 +133,21 @@ after_install = "buildsuite_core.install.after_install"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+    "Project": "buildsuite_core.permissions.project.get_project_permission_query",
+    "Task": "buildsuite_core.permissions.task.get_task_permission_query",
+    "Work Package": "buildsuite_core.permissions.work_package.get_work_package_permission_query",
+    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
+    "Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
+}
+
+has_permission = {
+    "Project": "buildsuite_core.permissions.project.has_project_permission",
+    "Task": "buildsuite_core.permissions.task.has_task_permission",
+    "Work Package": "buildsuite_core.permissions.work_package.has_work_package_permission",
+    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
+    "Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
+}
 
 # Document Events
 # ---------------
@@ -156,6 +164,11 @@ doc_events = {
 	"Task": {
 		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
 		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
+	},
+	# Keep each user's BuildSuite role aligned with their persona. validate covers
+	# both create and edit; delete needs no handler (Has Role rows cascade).
+	"User": {
+		"validate": "buildsuite_core.utils.user.sync_persona_roles"
 	}
 }
 # 	"*": {
