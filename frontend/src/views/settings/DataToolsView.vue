@@ -67,9 +67,6 @@ const breadcrumbs = [
 
 <template>
   <DeskPage title="Data Tools" subtitle="Prototype dataset · export · reset · localStorage inspector" :breadcrumbs="breadcrumbs">
-    <template #actions>
-      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900">← Back to Settings</RouterLink>
-    </template>
 
     <div class="max-w-3xl">
 
