@@ -118,14 +118,14 @@ Status: ⬜ todo · 🔶 in progress · ✅ done · ⏭️ skipped (with reason)
 | 111 | Stage Details: KPI strip + carded layout | ✅ | Already integrated. KPI strip (Window/Duration/Tasks/Dependencies) + gradient-header details card. |
 | 112 | Stage details card: drop redundant Stage-name row | ✅ | Already integrated. View card shows only Project + Description. |
 | 113 | Post-Revise Draft: save-first, Submit optional | ⏸️ | DEFER. Prototype-specific (button priority keyed to `approved_at`/`wasEverApproved`). Production drives Revise via Frappe Workflow; the which-button-is-primary refinement is low value. Revisit with the gating/workflow-UX pass. |
-| 114 | window.confirm → ConfirmDialog app-wide | ⬜ | prod has component |
-| 115 | Project tabs: dark-mode contrast | ⬜ | verify vs prod |
+| 114 | window.confirm → ConfirmDialog app-wide | ✅ | Built. New `useConfirm()` composable + global `<ConfirmDialog>` in App.vue; 15 `window.confirm` sites across 8 views converted to `await confirmDialog({...})`. |
+| 115 | Project tabs: dark-mode contrast | ✅ | Fixed — tab strip used inline hex (bypassed dark overrides); now `text-brand-600`/`text-ink-600` classes + `currentColor` border. |
 | 116 | Stage Planning tab: PLANNED START two-line header | ✅ | Superseded. Prod Stage Planning tab uses the generic `DocTypeListView` (header rendering centralized in that component), not the prototype's custom-grid table — the manual column-width fix doesn't apply. |
-| 117 | Project Dashboard tile: dark-mode title contrast | ⬜ | verify vs prod |
-| 118 | Settings hub: icon + tile styling | ⬜ | |
-| 119 | User management: create + edit + persona + email stubs | ⬜ | NEW screen |
-| 120 | Settings: back-link removed; persona-pill gap fix | ⬜ | |
-| 121 | Users list: persona chip unified neutral style | ⬜ | |
+| 117 | Project Dashboard tile: dark-mode title contrast | ✅ | Fixed — `text-brand-900` (invisible in dark) → `text-ink-900` + dark variant. |
+| 118 | Settings hub: icon + tile styling | ✅ | Already integrated — icon-in-chip + `getWorkspaceIconPath`. |
+| 119 | User management: create + edit + persona + email stubs | ⏸️ | NEEDS SCOPING. Net-new + backend-touching: prod UsersView is read-only ("real user CRUD = Frappe auth layer, out of scope"). Porting means real Frappe `User` creation + persona→role-profile assignment + welcome/reset emails. Warrants a scoping pass like Stage Review before building. |
+| 120 | Settings: back-link removed; persona-pill gap fix | ✅ | Back-links removed from Companies/DataTools/Users (breadcrumb covers it). Persona-pill palette part N/A — prod UsersView is plain text, not colored pills. |
+| 121 | Users list: persona chip unified neutral style | ✅ | N/A — prod UsersView role column is already neutral plain text (no colored persona pills to unify; those only exist after the S119 rebuild). |
 | 122 | +Add / +Upload lifted out of custom-table chrome | ✅ | Superseded by `DocTypeListView` — `+ Add` lives in the shared list component's `#actions` slot, not per-tab table chrome. |
 | 123 | Task edit modal: Hierarchy (Project RO + WP editable) | ✅ | Already integrated. Task edit form has Work Package editable via `DeskLinkPicker` (filtered to the task's project); Project shown in Connections panel. Prod uses server-side `DeskLinkPicker` (plumbing upgrade preserved). |
 | 124 | M1 permission matrix wired into store + UI gating | ⬜ | persona/defer |
