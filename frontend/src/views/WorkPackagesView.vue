@@ -11,9 +11,11 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtCompactINR } from '@/utils/format'
 import { createDataAdapter } from '@/data/adapters'
+import { usePermissions } from '@/composables/usePermissions'
 
 const store = useDataStore()
 const router = useRouter()
+const { canCreate } = usePermissions()
 const projectFilter = ref('')
 
 const adapter = createDataAdapter(store)
@@ -77,7 +79,7 @@ function onRowClick(row) { router.push(`/work-packages/${row.name}`) }
 <template>
   <DeskPage title="Work Package" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/work-packages/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink v-if="canCreate('workPackage')" to="/work-packages/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView
