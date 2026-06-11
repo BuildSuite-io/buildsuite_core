@@ -1,9 +1,11 @@
 import frappe
 from frappe import _
 
-ALLOWED_ROLES = {
-	"System Manager",
-}
+from buildsuite_core.permissions.setup import BUILDSUITE_ROLES
+
+# Roles permitted to open the BuildSuite Core app. System Manager is always allowed;
+# the BuildSuite personas are sourced from the permission seed to avoid drift.
+ALLOWED_ROLES = {"System Manager", *BUILDSUITE_ROLES}
 
 
 def has_app_permission() -> bool:

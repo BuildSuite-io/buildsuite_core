@@ -133,13 +133,14 @@ after_install = "buildsuite_core.install.after_install"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+# Task scoping is deferred to a later pass — Project only for now.
+permission_query_conditions = {
+    "Project": "buildsuite_core.permissions.project.get_project_permission_query",
+}
+
+has_permission = {
+    "Project": "buildsuite_core.permissions.project.has_project_permission",
+}
 
 # Document Events
 # ---------------

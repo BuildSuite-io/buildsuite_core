@@ -83,11 +83,27 @@ CUSTOM_FIELD = {
             "insert_after": "custom_stage_planning",
             "module": "BuildSuite Core"
         },
+                {
+            "fieldname": "custom_team",
+            "fieldtype": "Tab Break",
+            "label": "Team",
+            "insert_after": "custom_stage_planning_html",
+            "module": "BuildSuite Core"
+        },
+        {
+            "fieldname": "custom_team_members",
+            "fieldtype": "Table",
+            "options": "Project Team",
+            "label": "Team Members",
+            "default": "0",
+            "insert_after": "custom_team",
+            "module": "BuildSuite Core"
+        },
         {
             "fieldname": "custom_scope_changes",
             "fieldtype": "Tab Break",
             "label": "Scope Changes",
-            "insert_after": "custom_stage_planning_html",
+            "insert_after": "custom_team_members",
             "module": "BuildSuite Core"
         },
         {
@@ -108,6 +124,7 @@ CUSTOM_FIELD = {
             "insert_after": "custom_seed_default_stages",
             "module": "BuildSuite Core"
         }
+
     ],
     "Task": [
         {
@@ -157,7 +174,7 @@ CUSTOM_FIELD = {
             "fieldtype": "Select",
             "label": "Persona",
             "options": "Director / Owner\nProject Manager\nEstimator\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nAccountant\nSystem Manager (Admin)\nBuildSuite Administrator",
-            "insert_after": "company",
+            "insert_after": "username",
             "module": "BuildSuite Core"
         }
     ]
