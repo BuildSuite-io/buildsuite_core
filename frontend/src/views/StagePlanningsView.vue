@@ -12,12 +12,14 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
 const adapter = createDataAdapter(store)
+const { canCreate } = usePermissions()
 
 const projectFilter = ref('')
 // Approval-lifecycle state (Frappe workflow_state). Honors ?status= deep links.
@@ -96,7 +98,7 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
 <template>
   <DeskPage title="Stage Planning" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
+      <RouterLink v-if="canCreate('stagePlanning')" to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
     </template>
 
     <DocTypeListView
@@ -238,7 +240,7 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No stages match these filters ·
-          <RouterLink to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
+          <RouterLink v-if="canCreate('stagePlanning')" to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
         </div>
       </template>
     </DocTypeListView>
