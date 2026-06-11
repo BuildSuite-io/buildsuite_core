@@ -100,7 +100,7 @@ Status: ⬜ todo · 🔶 in progress · ✅ done · ⏭️ skipped (with reason)
 
 | # | Session title (abbrev) | Status | Notes |
 |---|---|---|---|
-| 96 | Stage Planning rework: smart task picker + Draft→Approval | ⬜ | |
+| 96 | Stage Planning rework: smart task picker + Draft→Approval | ✅ | Mostly pre-integrated. Backend uses **Frappe-native Workflow** (`workflow_state` Link + workflow.json fixture; states Draft/Pending Approval/Approved/Rejected/Cancelled; role-gated transitions). Done already: state-dispatched action buttons, 2-step New Stage wizard, StageTaskPicker, action-button gating. **Ported this session:** StagePlanningsView State column (`workflow_state` StatusBadge) + workflow-state filter (DeskSelect↔chip) + `?status=` deep-link honor. **Deferred (no backend field; matches prod line-4 note):** reject-popup w/ `rejection_comment`, activity feed (`stage.activity[]`) — both await backend fields or use Frappe's native workflow-comment/timeline. **Superseded (do not port):** `approval_required_role` on Project — production uses Frappe Workflow transition roles instead. **Deferred:** prototype's client-side "Pending approvals first" sort — doesn't map onto server pagination; revisit if needed. |
 | 97 | New Stage wizard: trim step 1 + drop embedded picker footer | ⬜ | |
 | 98 | Tasks-in-stage: inline planned-qty edit + drop Unit col | ⬜ | |
 | 99 | Default planned quantity = 100% | ⬜ | |
