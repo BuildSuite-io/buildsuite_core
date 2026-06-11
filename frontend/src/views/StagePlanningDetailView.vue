@@ -21,9 +21,9 @@ const WORKFLOW_ACTIONS = {
     { action: 'Approve', roles: ['Projects Manager', 'System Manager'], variant: 'success' },
     { action: 'Reject', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
   ],
-  'Rejected': [
-    { action: 'Revise', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
-  ],
+  // Rejected is terminal — Revise is no longer allowed after a rejection.
+  // A rejected stage can be edited/deleted but not pushed back into the cycle.
+  'Rejected': [],
   'Approved': [
     { action: 'Revise', roles: ['Projects Manager', 'System Manager'], variant: 'warning' },
     { action: 'Cancel', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
@@ -92,6 +92,7 @@ function mapStageRow(row) {
     stageName: row.stage_name || '',
     project: row.project || '',
     workflowState: row.workflow_state || 'Draft',
+    rejectReason: row.reject_reason || '',
     plannedStart: row.planned_start || null,
     plannedEnd: row.planned_end || null,
     plannedTaskCount: Number(row.planned_task_count) || 0,
@@ -273,6 +274,9 @@ const editForm = ref({})
 const showDeleteConfirm = ref(false)
 const pickerOpen = ref(false)
 const workflowActing = ref(null)
+const showRejectModal = ref(false)
+const rejectReason = ref('')
+const rejectError = ref('')
 
 const userRoles = computed(() => session.access?.roles || [])
 
@@ -314,6 +318,49 @@ async function applyWorkflowAction(action) {
     showToast(`${action} applied`)
   } catch (err) {
     showToast(err.message || `Failed to apply ${action}`, 'error')
+  } finally {
+    workflowActing.value = null
+  }
+}
+
+function openRejectModal() {
+  rejectReason.value = ''
+  rejectError.value = ''
+  showRejectModal.value = true
+}
+
+async function confirmReject() {
+  if (!stage.value) return
+  const reason = rejectReason.value.trim()
+  if (!reason) {
+    rejectError.value = 'Please enter a rejection reason.'
+    return
+  }
+  rejectError.value = ''
+  workflowActing.value = 'Reject'
+  try {
+    const body = new URLSearchParams({ name: stage.value.id, reason })
+    const response = await fetch(
+      '/api/method/buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning.reject_stage_planning',
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Frappe-CSRF-Token': window.csrf_token || '',
+        },
+        body: body.toString(),
+      },
+    )
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`)
+    }
+    showRejectModal.value = false
+    await stageResource.value?.reload?.()
+    showToast('Stage rejected')
+  } catch (err) {
+    rejectError.value = err.message || 'Failed to reject stage'
   } finally {
     workflowActing.value = null
   }
@@ -518,7 +565,7 @@ const breadcrumbs = computed(() => {
           class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
           style="border-radius: 6px;"
           :disabled="!!workflowActing"
-          @click="applyWorkflowAction(wf.action)"
+          @click="wf.action === 'Reject' ? openRejectModal() : applyWorkflowAction(wf.action)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
       </template>
 
@@ -538,6 +585,21 @@ const breadcrumbs = computed(() => {
         @click="showDeleteConfirm = true"
       >Delete</button>
     </template>
+
+    <!-- Rejected banner -->
+    <div
+      v-if="stage.workflowState === 'Rejected'"
+      class="mb-5 px-4 py-3 border border-danger-200 bg-danger-50 dark:bg-ink-800 dark:border-danger-700"
+      style="border-radius: 8px;"
+    >
+      <div class="text-[11px] uppercase tracking-wider font-semibold text-danger-700 mb-1">
+        Stage rejected
+      </div>
+      <div v-if="stage.rejectReason" class="text-sm text-ink-800 dark:text-[#D4D4D4] whitespace-pre-line">
+        {{ stage.rejectReason }}
+      </div>
+      <div v-else class="text-sm text-ink-500 italic">No reason recorded.</div>
+    </div>
 
     <!-- KPI strip -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
@@ -803,6 +865,65 @@ const breadcrumbs = computed(() => {
       mode="modal"
       @save="onPickerSave"
     />
+
+    <!-- Reject modal -->
+    <Teleport to="body">
+      <div
+        v-if="showRejectModal"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+        @click.self="showRejectModal = false"
+      >
+        <div
+          class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col dark:bg-[#242424] dark:border-ink-700"
+          style="border-radius: 12px;"
+          @click.stop
+        >
+          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 dark:border-ink-700" style="border-radius: 12px 12px 0 0;">
+            <div class="min-w-0 flex-1">
+              <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Reject stage</h2>
+              <p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ stage.stageName }}</p>
+            </div>
+            <button
+              type="button"
+              class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3 dark:text-ink-400 dark:hover:text-ink-200"
+              aria-label="Close"
+              @click="showRejectModal = false"
+            >×</button>
+          </header>
+
+          <div class="p-5">
+            <DeskField label="Rejection reason" required :error="rejectError">
+              <DeskTextarea
+                v-model="rejectReason"
+                :rows="4"
+                placeholder="Explain why this stage is being rejected…"
+                @input="rejectError = ''"
+              />
+            </DeskField>
+            <p class="text-[11px] text-ink-500 mt-1.5">
+              This reason is recorded on the stage. Rejection is final — the stage cannot be revised afterwards.
+            </p>
+          </div>
+
+          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 dark:border-ink-700" style="border-radius: 0 0 12px 12px;">
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
+              style="border-radius: 6px;"
+              :disabled="workflowActing === 'Reject'"
+              @click="showRejectModal = false"
+            >Cancel</button>
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 bg-danger-600 hover:bg-danger-700 text-white font-medium"
+              style="border-radius: 6px;"
+              :disabled="workflowActing === 'Reject'"
+              @click="confirmReject"
+            >{{ workflowActing === 'Reject' ? 'Rejecting…' : 'Reject stage' }}</button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
 
     <ConfirmDialog
       v-model:open="showDeleteConfirm"

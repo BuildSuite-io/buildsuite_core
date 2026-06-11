@@ -174,7 +174,7 @@ _STAGE_TRANSITIONS = [
     ("Draft", "Submit for Approval", "Pending Approval", ["BuildSuite Site Engineer", "BuildSuite Foreman"], True),
     ("Pending Approval", "Approve", "Approved", _STAGE_FULL_ROLES, False),
     ("Pending Approval", "Reject", "Rejected", _STAGE_FULL_ROLES, False),
-    ("Rejected", "Revise", "Draft", _STAGE_FULL_ROLES, False),
+    # Rejected is terminal — no Revise after a rejection (a new stage must be created).
     ("Approved", "Revise", "Draft", _STAGE_FULL_ROLES, False),
     ("Approved", "Cancel", "Cancelled", _STAGE_FULL_ROLES, False),
 ]
