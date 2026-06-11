@@ -125,6 +125,12 @@ The frontend prototype used different field names than the backend. All three vi
 | `useFormErrors(backendToFormField)` | `frontend/src/composables/useFormErrors.js` | Form error state composable. Returns `{ errors, applyServerErrors(err), setErrors(e), clearError(key), reset() }`. Pass a `{ backendFieldName: formKey }` map once; use `applyServerErrors` in catch blocks and `setErrors` in `validate()`. Replaces `const errors = ref({})` + manual field mapping in every form view. | `NewProjectView`, `NewTaskView`, `NewWorkPackageView`, `WorkPackageDetailView`, `NewTaskProgressEntryView` |
 | `_has_app_permission(log_denial)` | `buildsuite_core/api/permission.py` | Internal permission check with optional logging | `has_app_permission`, `get_access_context` |
 | `get_access_context()` | `buildsuite_core/api/permission.py` | Whitelisted access-status API for frontend route guards | `frontend/src/utils/session.js#getAccessContext` |
+| `setup_project_permissions()` | `buildsuite_core/permissions/setup.py` | Idempotent seed: ensures the 11 BuildSuite roles exist + writes the per-role Project Custom DocPerm matrix (permlevel 0). Source of truth = `PROJECT_ROLE_PERMS` dict | `install.after_migrate`, `install.after_install` |
+| `PROJECT_ROLE_PERMS`, `BUILDSUITE_ROLES`, `PERSONA_TO_ROLE` | `buildsuite_core/permissions/setup.py` | Canonical role→CRUD matrix; tuple of all BuildSuite role names; persona-Select-value→role-name map (mirrors roles.js) | `setup`, `api/permission.py` (`ALLOWED_ROLES`), `utils/user.py` |
+| `get_project_permission_query(user)` | `buildsuite_core/permissions/project.py` | `permission_query_conditions` hook for Project — returns SQL scoping list to teamed projects, or `""` when unscoped | `hooks.permission_query_conditions["Project"]` |
+| `has_project_permission(doc, ptype, user)` | `buildsuite_core/permissions/project.py` | `has_permission` DENY-gate for a single Project — True unless scoped + not a team member | `hooks.has_permission["Project"]` |
+| `_is_scoped(user)` / `_has_any_membership(user)` | `buildsuite_core/permissions/project.py` | Resolve whether a user's Project visibility is team-restricted (bucket logic); membership existence check on `Project Team` | `get_project_permission_query`, `has_project_permission` |
+| `sync_persona_roles(doc, method)` | `buildsuite_core/utils/user.py` | `User` `validate` hook — keeps the user's BuildSuite role aligned with their `persona` field (grants mapped role, strips stale BuildSuite roles; never revokes System Manager) | `hooks.doc_events["User"]["validate"]` |
 
 ---
 
@@ -394,11 +400,74 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | `custom_project_id` | Data | reqd, unique, in_list_view |
 | `is_group` | Check | default 0 |
 | `parent_project` | Link→Project | depends_on: eval:doc.is_group==0 |
+| `custom_team_members` | Table→Project Team | Team membership grid (drives record-level permissions) |
+
+> Custom fields are NOT JSON fixtures — they are created on every `bench migrate` via `after_migrate` → `create_custom_fields(CUSTOM_FIELD)`. Source: `buildsuite_core/custom_property_list/custom_field.py`.
+
+### Project Team DocType (child table)
+
+`istable: 1`, name `Project Team`, used by `Project.custom_team_members`.
+
+| Fieldname | Fieldtype | Notes |
+|---|---|---|
+| `user` | Link→User | The team member |
+| `full_name` | Data | `fetch_from: user.full_name` |
+
+### Custom Field on User (fixture)
+
+| Fieldname | Type | Notes |
+|---|---|---|
+| `persona` | Select | 12 options matching `roles.js` `name` fields (Director / Owner … BuildSuite Administrator). Drives auto role assignment via `sync_persona_roles`. Option strings MUST match `PERSONA_TO_ROLE` keys. |
+
+---
+
+## Backend Permissions Architecture (Project — record-level access)
+
+Team-membership scoping layered on top of Frappe role DocPerms. **Project only** for now (Task scoping deferred). Added 2026-06-11.
+
+### The model (locked decisions)
+- **Base CRUD = role DocPerms.** 11 BuildSuite roles each get a Project Custom DocPerm at permlevel 0 per the spec matrix (Director/PM/BS-Admin full; others read-only with varying report/export/print). Seeded idempotently by `setup_project_permissions()` on every migrate.
+- **Record set = team membership.** Two `hooks.py` entries scope *which* projects a user sees: `permission_query_conditions` (lists/reports) + `has_permission` (single-doc DENY gate). Both key off membership in `Project.custom_team_members` (the `Project Team` child table).
+- **Membership is binary presence** — a user is on a project's team or not. No per-project `team_role`.
+- **Persona → role is automatic.** A `User.validate` hook (`sync_persona_roles`) grants the BuildSuite role mapped from the `persona` Select field.
+
+### Scoping buckets (most-permissive wins: EXEMPT > FLIP > TEAM-ONLY)
+- **EXEMPT (never scoped):** `BuildSuite Director`, `BuildSuite HR Manager`, and the `Administrator` user. HR's read-only is enforced by DocPerm, not scoping.
+- **FLIP (unrestricted-until-teamed):** `BuildSuite PM`, `System Manager`, `BuildSuite Administrator` — see all projects when on **zero** teams; scoped to teamed projects once a member of any team.
+- **TEAM-ONLY (always scoped):** Estimator, QS, Site Engineer, Foreman, Procurement Officer, Store Keeper, Accountant. Zero memberships = zero projects.
+
+### Key Frappe mechanics (verified against framework source)
+- `permission_query_conditions(user)` returns an SQL `WHERE` string (ANDed with others; `""` = no filter). Filters list/report/count.
+- `has_permission(doc, ptype, user)` is a **DENY gate** — returning `True` never grants beyond DocPerm; returning `False` denies. So base rights come from DocPerm; the hook only narrows.
+- Universal admin check is `user == "Administrator"`. **System Manager is NOT a bypass** here (it follows the FLIP rule per spec).
+- DocPerms on an ERPNext doctype (Project) are stored as **Custom DocPerm** rows — they live in the DB, re-applied each migrate; they do NOT travel as code fixtures.
+
+### Files
+| File | Role |
+|---|---|
+| `buildsuite_core/permissions/setup.py` | `PROJECT_ROLE_PERMS` matrix, `BUILDSUITE_ROLES`, `PERSONA_TO_ROLE`, `setup_project_permissions()` |
+| `buildsuite_core/permissions/project.py` | scoping buckets + `get_project_permission_query` / `has_project_permission` |
+| `buildsuite_core/utils/user.py` | `sync_persona_roles` (persona→role on `User.validate`) |
+| `buildsuite_core/api/permission.py` | `ALLOWED_ROLES` = `{System Manager} ∪ BUILDSUITE_ROLES` (app-entry gate) |
+| `buildsuite_core/hooks.py` | wires `permission_query_conditions` + `has_permission` (Project only) and `User.validate` |
+
+### Persona → role sync rules (`sync_persona_roles`)
+- Runs on `validate` (covers create + edit; mutates `doc.roles` in place — atomic, no recursive save). Delete needs no handler (Has Role rows cascade).
+- Grants the persona's mapped role; strips other BuildSuite roles so persona stays the single source of truth.
+- **System Manager is grant-only — never auto-revoked** (so changing persona can't strip platform-admin access). `Administrator`/`Guest` skipped.
+- `persona = "System Manager (Admin)"` → grants native `System Manager` (not a BuildSuite role).
+
+### Verification (done, against live `build.local`)
+- Migrate seeds 11 roles + 11 Project Custom DocPerm rows; matrix matches spec exactly.
+- E2E with real users confirmed: Estimator team-only (read-only, teamed only), PM flip both directions, Director/HR see all (HR write-blocked), Administrator unaffected.
+- Persona sync confirmed: switch swaps role, System Manager kept across persona changes, clearing persona removes BuildSuite role but keeps System Manager.
 
 ---
 
 ## Known Constraints / Future Work
 
+- **Task permission scoping deferred**: `permission_query_conditions`/`has_permission` are wired for **Project only**. The old Task functions (which queried a non-existent table) were removed. Cascade Task/WP/Stage scoping to a later pass.
+- **Persona field is the single source of truth for BuildSuite roles** — manual edits to a user's BuildSuite roles in Desk get overwritten on next save if they don't match the persona. (System Manager is exempt — never auto-revoked.)
 - **NewTaskView / NewProjectView**: Still use store-based task/project creation. Not yet migrated to adapter.
 - **WorkPackageDetailView**: Partially migrated (read via adapter, mutations still store-based).
 - **Task Update attachments in NewTaskProgressEntryView**: The `+ New Entry` form doesn't yet support attachments — those are only available in the detail view post-creation.
@@ -446,3 +515,6 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | 2026-06-08 | Fix: Frappe server error messages containing HTML (`<strong><a href="/desk/...">`) now stripped to plain text in `parseFrappeError` — `stripHtml()` helper applied to both `err.messages` (frappe-ui pre-parsed path) and `parseServerMessages` internal path |
 | 2026-06-08 | Feat: Work Package field added to TaskDetailView edit modal — DeskLinkPicker filtered by task's project, wired into `saveEdit` payload and `useFormErrors` mapping |
 | 2026-06-08 | Fix: TasksView WP column showed `—` for all tasks — `package_name` (non-existent field) was causing backend DataError, silently emptying the WP map; fixed fields to `['name', 'work_package_name']`, cache key bumped to `buildsuite-task-wp-map-v2`, WP sub-line now hidden via `v-if` when task has no WP |
+| 2026-06-11 | Feat: Project Team child doctype + `custom_team_members` table field on Project + `persona` Select on User |
+| 2026-06-11 | Feat: Team-based record-level permissions for Project — `permissions/setup.py` (11 BuildSuite roles + Project Custom DocPerm matrix, idempotent seed on migrate), `permissions/project.py` (EXEMPT/FLIP/TEAM-ONLY scoping via `permission_query_conditions` + `has_permission`). `ALLOWED_ROLES` app gate expanded. Task permission hooks removed (deferred). Admin-only bypass; System Manager follows FLIP. Verified e2e on `build.local`. Commit `b7c24ee` |
+| 2026-06-11 | Feat: Persona→role auto-assignment — `utils/user.py:sync_persona_roles` on `User.validate` grants the BuildSuite role mapped from `persona` (`PERSONA_TO_ROLE`), strips stale BuildSuite roles, keeps System Manager. Fixed persona Select options to match roles.js (added Quantity Surveyor, removed duplicate Accountant). Verified e2e |
