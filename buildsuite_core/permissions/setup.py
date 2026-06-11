@@ -1,8 +1,9 @@
-"""Seed BuildSuite roles and Project DocPerms.
+"""Seed BuildSuite roles and Project/Task DocPerms.
 
-Run idempotently from install.after_migrate / after_install. The CRUD matrix here
-is the single source of truth for the per-persona base permissions on Project;
-team-membership scoping is layered on top in buildsuite_core.permissions.project.
+Run idempotently from install.after_migrate / after_install. The CRUD matrices
+here are the single source of truth for the per-persona base permissions; the
+team-membership scoping (and Task own-scope rules) are layered on top in
+buildsuite_core.permissions.project and buildsuite_core.permissions.task.
 """
 
 import frappe
@@ -21,6 +22,25 @@ PROJECT_ROLE_PERMS = {
     "BuildSuite Site Engineer":       {"read": 1, "report": 1, "print": 1},
     "BuildSuite Store Keeper":        {"read": 1, "report": 1, "print": 1},
     "BuildSuite Foreman":             {"read": 1, "print": 1},
+}
+
+# Per-role base permissions on Task at permlevel 0 (from the Task persona spec).
+# Site Engineer / Foreman get write+create+delete at the DocPerm level; the
+# own-scope restriction (edit/delete only own-created or assigned tasks) is
+# enforced in buildsuite_core.permissions.task.has_task_permission, since a
+# has_permission hook can only DENY, never widen, a DocPerm grant.
+TASK_ROLE_PERMS = {
+    "BuildSuite Director":            {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite PM":                  {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Administrator":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Estimator":           {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite QS":                  {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Site Engineer":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1},
+    "BuildSuite Foreman":             {"read": 1, "write": 1, "create": 1, "delete": 1, "print": 1},
+    "BuildSuite Procurement Officer": {"read": 1, "report": 1, "print": 1},
+    "BuildSuite Store Keeper":        {"read": 1, "report": 1, "print": 1},
+    "BuildSuite Accountant":          {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
 }
 
 # All BuildSuite roles, for the app-level access gate (api.permission).
@@ -58,14 +78,28 @@ def _ensure_role(role_name):
         }).insert(ignore_permissions=True)
 
 
-def setup_project_permissions():
+def _apply_role_perms(doctype, role_perms):
     from frappe.permissions import add_permission, update_permission_property
 
-    for role, perms in PROJECT_ROLE_PERMS.items():
+    for role, perms in role_perms.items():
         _ensure_role(role)
-        add_permission("Project", role, 0)
+        add_permission(doctype, role, 0)
         for ptype in _PTYPES:
             update_permission_property(
-                "Project", role, 0, ptype, perms.get(ptype, 0),
+                doctype, role, 0, ptype, perms.get(ptype, 0),
                 validate=False,
             )
+
+
+def setup_project_permissions():
+    _apply_role_perms("Project", PROJECT_ROLE_PERMS)
+
+
+def setup_task_permissions():
+    _apply_role_perms("Task", TASK_ROLE_PERMS)
+
+
+def setup_record_permissions():
+    """Seed roles + DocPerms for every BuildSuite-scoped doctype."""
+    setup_project_permissions()
+    setup_task_permissions()

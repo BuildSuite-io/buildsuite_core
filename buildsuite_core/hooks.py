@@ -133,13 +133,14 @@ after_install = "buildsuite_core.install.after_install"
 # -----------
 # Permissions evaluated in scripted ways
 
-# Task scoping is deferred to a later pass — Project only for now.
 permission_query_conditions = {
     "Project": "buildsuite_core.permissions.project.get_project_permission_query",
+    "Task": "buildsuite_core.permissions.task.get_task_permission_query",
 }
 
 has_permission = {
     "Project": "buildsuite_core.permissions.project.has_project_permission",
+    "Task": "buildsuite_core.permissions.task.has_task_permission",
 }
 
 # Document Events
