@@ -7,9 +7,37 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useSessionStore } from '@/stores/session'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { createDataAdapter } from '@/data/adapters'
+
+// Mirrors the workflow fixture — drives available actions and edit permission client-side.
+const WORKFLOW_ACTIONS = {
+  'Draft': [
+    { action: 'Submit for Approval', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
+  ],
+  'Pending Approval': [
+    { action: 'Approve', roles: ['Projects Manager', 'System Manager'], variant: 'success' },
+    { action: 'Reject', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+  ],
+  'Rejected': [
+    { action: 'Revise', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
+  ],
+  'Approved': [
+    { action: 'Revise', roles: ['Projects Manager', 'System Manager'], variant: 'warning' },
+    { action: 'Cancel', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+  ],
+}
+
+// Roles allowed to edit the document in each workflow state (matches `allow_edit` in fixture).
+const STATE_EDIT_ROLES = {
+  'Draft': ['Projects User', 'Projects Manager', 'System Manager'],
+  'Pending Approval': ['Projects Manager', 'System Manager'],
+  'Approved': ['System Manager'],
+  'Rejected': ['Projects User', 'Projects Manager', 'System Manager'],
+  'Cancelled': ['System Manager'],
+}
 import StatusBadge from '@/components/StatusBadge.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -26,6 +54,7 @@ import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const session = useSessionStore()
 const adapter = createDataAdapter(store)
 
 function firstResourceRow(resource) {
@@ -62,6 +91,7 @@ function mapStageRow(row) {
     id: row.name || '',
     stageName: row.stage_name || '',
     project: row.project || '',
+    workflowState: row.workflow_state || 'Draft',
     plannedStart: row.planned_start || null,
     plannedEnd: row.planned_end || null,
     plannedTaskCount: Number(row.planned_task_count) || 0,
@@ -108,6 +138,7 @@ function loadStageResource() {
       'name',
       'stage_name',
       'project',
+      'workflow_state',
       'planned_start',
       'planned_end',
       'planned_task_count',
@@ -241,6 +272,52 @@ const saving = ref(false)
 const editForm = ref({})
 const showDeleteConfirm = ref(false)
 const pickerOpen = ref(false)
+const workflowActing = ref(null)
+
+const userRoles = computed(() => session.access?.roles || [])
+
+const availableActions = computed(() => {
+  const state = stage.value?.workflowState || 'Draft'
+  return (WORKFLOW_ACTIONS[state] || []).filter(
+    (a) => a.roles.some((r) => userRoles.value.includes(r)),
+  )
+})
+
+const canEdit = computed(() => {
+  const state = stage.value?.workflowState || 'Draft'
+  const editRoles = STATE_EDIT_ROLES[state] || []
+  return editRoles.some((r) => userRoles.value.includes(r))
+})
+
+async function applyWorkflowAction(action) {
+  if (!stage.value) return
+  workflowActing.value = action
+  try {
+    const body = new URLSearchParams({
+      doc: JSON.stringify({ doctype: 'Stage Planning', name: stage.value.id }),
+      action,
+    })
+    const response = await fetch('/api/method/frappe.model.workflow.apply_workflow', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Frappe-CSRF-Token': window.csrf_token || '',
+      },
+      body: body.toString(),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`)
+    }
+    await stageResource.value?.reload?.()
+    showToast(`${action} applied`)
+  } catch (err) {
+    showToast(err.message || `Failed to apply ${action}`, 'error')
+  } finally {
+    workflowActing.value = null
+  }
+}
 
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
   stage_name: 'stageName',
@@ -262,6 +339,7 @@ watch(stage, (s) => {
 }, { immediate: true })
 
 function startEdit() {
+  if (!canEdit.value) return
   editForm.value = snapshotStage(stage.value)
   setErrors({})
   editing.value = true
@@ -405,10 +483,54 @@ const breadcrumbs = computed(() => {
     v-if="stage"
     :title="stage.stageName"
     :subtitle="`${stage.id} · ${project ? project.name : stage.project}`"
+    :status="stage.workflowState"
     :breadcrumbs="breadcrumbs"
   >
     <template #actions>
-      <button type="button" class="desk-save-btn" @click="startEdit">Edit</button>
+      <!-- Workflow action buttons -->
+      <template v-for="wf in availableActions" :key="wf.action">
+        <button
+          v-if="wf.variant === 'primary'"
+          type="button"
+          class="desk-save-btn"
+          :disabled="!!workflowActing"
+          @click="applyWorkflowAction(wf.action)"
+        >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
+        <button
+          v-else-if="wf.variant === 'success'"
+          type="button"
+          class="text-xs px-2.5 py-1 bg-success-600 hover:bg-success-700 text-white font-medium"
+          style="border-radius: 6px;"
+          :disabled="!!workflowActing"
+          @click="applyWorkflowAction(wf.action)"
+        >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
+        <button
+          v-else-if="wf.variant === 'warning'"
+          type="button"
+          class="text-xs px-2.5 py-1 border border-warning-300 bg-white hover:bg-warning-50 text-warning-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
+          style="border-radius: 6px;"
+          :disabled="!!workflowActing"
+          @click="applyWorkflowAction(wf.action)"
+        >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
+        <button
+          v-else-if="wf.variant === 'danger'"
+          type="button"
+          class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
+          style="border-radius: 6px;"
+          :disabled="!!workflowActing"
+          @click="applyWorkflowAction(wf.action)"
+        >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
+      </template>
+
+      <!-- Edit only shown when the current state permits editing for this user's roles -->
+      <button
+        v-if="canEdit"
+        type="button"
+        class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
+        style="border-radius: 6px;"
+        @click="startEdit"
+      >Edit</button>
+
       <button
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
