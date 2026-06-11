@@ -421,14 +421,15 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 
 ---
 
-## Backend Permissions Architecture (Project — record-level access)
+## Backend Permissions Architecture (record-level access)
 
-Team-membership scoping layered on top of Frappe role DocPerms. **Project only** for now (Task scoping deferred). Added 2026-06-11.
+Team-membership scoping layered on top of Frappe role DocPerms. Covers **Project** and **Task** (Task added 2026-06-11). WP / Stage Planning scoping still to come.
 
 ### The model (locked decisions)
-- **Base CRUD = role DocPerms.** 11 BuildSuite roles each get a Project Custom DocPerm at permlevel 0 per the spec matrix (Director/PM/BS-Admin full; others read-only with varying report/export/print). Seeded idempotently by `setup_project_permissions()` on every migrate.
-- **Record set = team membership.** Two `hooks.py` entries scope *which* projects a user sees: `permission_query_conditions` (lists/reports) + `has_permission` (single-doc DENY gate). Both key off membership in `Project.custom_team_members` (the `Project Team` child table).
+- **Base CRUD = role DocPerms.** 11 BuildSuite roles each get a Custom DocPerm at permlevel 0 on Project AND Task per the spec matrices. Seeded idempotently by `setup_record_permissions()` (→ `setup_project_permissions` + `setup_task_permissions`) on every migrate.
+- **Record set = team membership.** Per-doctype `permission_query_conditions` (lists/reports) + `has_permission` (single-doc DENY gate). Project keys off membership in `Project.custom_team_members` (the `Project Team` child table). **Task inherits Project scoping** — a task is visible iff its parent `project` is teamed.
 - **Membership is binary presence** — a user is on a project's team or not. No per-project `team_role`.
+- **Task own-scope (edit/delete) for two roles.** Site Engineer = own-**created** only; Foreman = own-created **OR assigned**. Creator = Frappe `owner`; assignee = Frappe-native assignment (`_assign`). Enforced in `has_task_permission` (DENY gate) since DocPerm grants them blanket write/create/delete. Full-write roles (Director, PM, BS-Admin, System Manager) bypass the own-scope check.
 - **Persona → role is automatic.** A `User.validate` hook (`sync_persona_roles`) grants the BuildSuite role mapped from the `persona` Select field.
 
 ### Scoping buckets (most-permissive wins: EXEMPT > FLIP > TEAM-ONLY)
@@ -440,16 +441,17 @@ Team-membership scoping layered on top of Frappe role DocPerms. **Project only**
 - `permission_query_conditions(user)` returns an SQL `WHERE` string (ANDed with others; `""` = no filter). Filters list/report/count.
 - `has_permission(doc, ptype, user)` is a **DENY gate** — returning `True` never grants beyond DocPerm; returning `False` denies. So base rights come from DocPerm; the hook only narrows.
 - Universal admin check is `user == "Administrator"`. **System Manager is NOT a bypass** here (it follows the FLIP rule per spec).
-- DocPerms on an ERPNext doctype (Project) are stored as **Custom DocPerm** rows — they live in the DB, re-applied each migrate; they do NOT travel as code fixtures.
+- DocPerms on an ERPNext doctype (Project, Task) are stored as **Custom DocPerm** rows — they live in the DB, re-applied each migrate; they do NOT travel as code fixtures.
 
 ### Files
 | File | Role |
 |---|---|
-| `buildsuite_core/permissions/setup.py` | `PROJECT_ROLE_PERMS` matrix, `BUILDSUITE_ROLES`, `PERSONA_TO_ROLE`, `setup_project_permissions()` |
-| `buildsuite_core/permissions/project.py` | scoping buckets + `get_project_permission_query` / `has_project_permission` |
+| `buildsuite_core/permissions/setup.py` | `PROJECT_ROLE_PERMS` + `TASK_ROLE_PERMS` matrices, `BUILDSUITE_ROLES`, `PERSONA_TO_ROLE`, `setup_record_permissions()` (`_apply_role_perms` generic) |
+| `buildsuite_core/permissions/project.py` | scoping buckets (`_is_scoped`/`_has_any_membership`) + `get_project_permission_query` / `has_project_permission` |
+| `buildsuite_core/permissions/task.py` | reuses `_is_scoped`; `get_task_permission_query` / `has_task_permission` + `_can_modify_task` (SE/Foreman own-scope), `FULL_TASK_WRITE_ROLES` |
 | `buildsuite_core/utils/user.py` | `sync_persona_roles` (persona→role on `User.validate`) |
 | `buildsuite_core/api/permission.py` | `ALLOWED_ROLES` = `{System Manager} ∪ BUILDSUITE_ROLES` (app-entry gate) |
-| `buildsuite_core/hooks.py` | wires `permission_query_conditions` + `has_permission` (Project only) and `User.validate` |
+| `buildsuite_core/hooks.py` | wires `permission_query_conditions` + `has_permission` (Project + Task) and `User.validate` |
 
 ### Persona → role sync rules (`sync_persona_roles`)
 - Runs on `validate` (covers create + edit; mutates `doc.roles` in place — atomic, no recursive save). Delete needs no handler (Has Role rows cascade).
@@ -458,15 +460,18 @@ Team-membership scoping layered on top of Frappe role DocPerms. **Project only**
 - `persona = "System Manager (Admin)"` → grants native `System Manager` (not a BuildSuite role).
 
 ### Verification (done, against live `build.local`)
-- Migrate seeds 11 roles + 11 Project Custom DocPerm rows; matrix matches spec exactly.
-- E2E with real users confirmed: Estimator team-only (read-only, teamed only), PM flip both directions, Director/HR see all (HR write-blocked), Administrator unaffected.
+- Migrate seeds 11 roles + 11 Project **and** 11 Task Custom DocPerm rows; both matrices match spec exactly.
+- Project E2E: Estimator team-only (read-only, teamed only), PM flip both directions, Director/HR see all (HR write-blocked), Administrator unaffected.
+- Task E2E: Estimator sees only teamed tasks (OTHER-project hidden); Site Engineer can write/delete own-created only; Foreman can write assigned-or-created only; PM full within visible projects; Estimator read-only; HR read-all/write-blocked; create allowed only in teamed projects.
+- Confirmed Frappe forces `owner = session.user` on insert — so `owner` is reliably the creator (the frontend's `owner: form.assignee` is silently a no-op, matching the chosen owner=creator / `_assign`=assignee model).
 - Persona sync confirmed: switch swaps role, System Manager kept across persona changes, clearing persona removes BuildSuite role but keeps System Manager.
 
 ---
 
 ## Known Constraints / Future Work
 
-- **Task permission scoping deferred**: `permission_query_conditions`/`has_permission` are wired for **Project only**. The old Task functions (which queried a non-existent table) were removed. Cascade Task/WP/Stage scoping to a later pass.
+- **WP / Stage Planning scoping not yet done**: Project + Task have record-level scoping; Work Package and Stage Planning still rely on default perms. Cascade their scoping (likely via parent project) in a later pass.
+- **Task assignee = Frappe-native `_assign`** (ToDo assignment), NOT a custom field. The frontend's `owner: form.assignee` is a no-op (Frappe overwrites owner with the creator). Foreman's "assigned" rule reads `_assign`; the frontend should be rewired to use Frappe assignment so assignees are actually recorded.
 - **Persona field is the single source of truth for BuildSuite roles** — manual edits to a user's BuildSuite roles in Desk get overwritten on next save if they don't match the persona. (System Manager is exempt — never auto-revoked.)
 - **NewTaskView / NewProjectView**: Still use store-based task/project creation. Not yet migrated to adapter.
 - **WorkPackageDetailView**: Partially migrated (read via adapter, mutations still store-based).
@@ -518,3 +523,4 @@ Team-membership scoping layered on top of Frappe role DocPerms. **Project only**
 | 2026-06-11 | Feat: Project Team child doctype + `custom_team_members` table field on Project + `persona` Select on User |
 | 2026-06-11 | Feat: Team-based record-level permissions for Project — `permissions/setup.py` (11 BuildSuite roles + Project Custom DocPerm matrix, idempotent seed on migrate), `permissions/project.py` (EXEMPT/FLIP/TEAM-ONLY scoping via `permission_query_conditions` + `has_permission`). `ALLOWED_ROLES` app gate expanded. Task permission hooks removed (deferred). Admin-only bypass; System Manager follows FLIP. Verified e2e on `build.local`. Commit `b7c24ee` |
 | 2026-06-11 | Feat: Persona→role auto-assignment — `utils/user.py:sync_persona_roles` on `User.validate` grants the BuildSuite role mapped from `persona` (`PERSONA_TO_ROLE`), strips stale BuildSuite roles, keeps System Manager. Fixed persona Select options to match roles.js (added Quantity Surveyor, removed duplicate Accountant). Verified e2e |
+| 2026-06-11 | Feat: Task record-level permissions — `permissions/task.py` (project-inherited scoping via `get_task_permission_query`/`has_task_permission`) + `TASK_ROLE_PERMS` matrix seeded by `setup_task_permissions` (install now calls `setup_record_permissions`). Site Engineer edit/delete own-created (owner); Foreman own-created OR assigned (`_assign`); full-write roles bypass. Task hooks re-wired in hooks.py. Verified e2e on `build.local` |
