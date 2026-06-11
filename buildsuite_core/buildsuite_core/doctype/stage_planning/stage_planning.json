@@ -17,6 +17,7 @@
   "planned_completion_pct",
   "section_break_desc",
   "description",
+  "reject_reason",
   "section_break_deps",
   "dependencies",
   "section_break_tasks",
@@ -95,6 +96,14 @@
    "fieldname": "description",
    "fieldtype": "Text",
    "label": "Description"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state=='Rejected'",
+   "fieldname": "reject_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "section_break_deps",
