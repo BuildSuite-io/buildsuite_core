@@ -5,13 +5,21 @@
 // persists (and what's NOT persisted — blob URLs, role pref under its own key).
 
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import { RouterLink } from 'vue-router'
 import DeskPage from '@/components/desk/DeskPage.vue'
 
 const store = useDataStore()
+const confirmDialog = useConfirm()
 
-function resetData() {
-  if (!confirm('Reset all data to initial seed values?\n\nAny projects, tasks, SCOs, attachments, and stage plannings you created will be lost. Role and active-company preferences are preserved (they live under separate localStorage keys).')) return
+async function resetData() {
+  const ok = await confirmDialog({
+    title: 'Reset all data',
+    message: 'Reset all data to initial seed values?\n\nAny projects, tasks, SCOs, attachments, and stage plannings you created will be lost. Role and active-company preferences are preserved (they live under separate localStorage keys).',
+    confirmLabel: 'Reset',
+    destructive: true,
+  })
+  if (!ok) return
   store.resetAll()
   location.reload()
 }

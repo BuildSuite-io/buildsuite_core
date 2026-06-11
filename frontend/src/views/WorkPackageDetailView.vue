@@ -6,6 +6,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -26,6 +27,7 @@ import { fmtCompactINR, fmtDate } from '@/utils/format'
 
 const props = defineProps({ id: String })
 const store = useDataStore()
+const confirmDialog = useConfirm()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 
@@ -179,7 +181,7 @@ async function onDelete() {
   const msg = n
     ? `Delete "${wp.value.name}"? This will also delete ${n} task${n === 1 ? '' : 's'} and any progress entries on them.`
     : `Delete "${wp.value.name}"?`
-  if (!confirm(msg)) return
+  if (!(await confirmDialog({ title: 'Delete work package', message: msg, confirmLabel: 'Delete', destructive: true }))) return
   const wpId = wp.value.id
   try {
     await adapter.remove('Work Package', wpId)
