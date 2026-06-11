@@ -2,6 +2,10 @@
 import { onMounted, watch } from 'vue'
 import { useDataStore } from '@/stores'
 import { toasts } from '@/utils/appToast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirmState } from '@/composables/useConfirm'
+
+const { state: confirmState, onConfirm, onCancel } = useConfirmState()
 
 const store = useDataStore()
 onMounted(() => store.hydrate())
@@ -44,6 +48,17 @@ watch(() => store.theme, (t) => applyThemeClass(t), { immediate: true })
       </TransitionGroup>
     </div>
   </Teleport>
+
+  <!-- App-level confirmation dialog driven by useConfirm() -->
+  <ConfirmDialog
+    :open="confirmState.open"
+    :title="confirmState.title"
+    :message="confirmState.message"
+    :confirm-label="confirmState.confirmLabel"
+    :destructive="confirmState.destructive"
+    @confirm="onConfirm"
+    @update:open="(v) => { if (!v) onCancel() }"
+  />
 </template>
 
 <style>

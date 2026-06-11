@@ -158,7 +158,7 @@ const visibleReportTiles = computed(() =>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <div class="text-base font-semibold text-brand-900 group-hover:text-brand-700 transition-colors">Project Dashboard</div>
+              <div class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors dark:text-[#F5F5F5]">Project Dashboard</div>
               <span class="text-[9px] px-1.5 py-0.5 bg-brand-100 text-brand-700 font-medium uppercase tracking-wider" style="border-radius: 2px;">Owner view</span>
             </div>
             <div class="text-xs text-brand-700 mt-1 leading-snug">Portfolio health, top risks, and high-value approvals at a glance.</div>
