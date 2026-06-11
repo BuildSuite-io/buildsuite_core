@@ -4,10 +4,12 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
+from buildsuite_core.permissions.setup import setup_project_permissions
 
 
 def after_install():
     seed_master_data()
+    setup_project_permissions()
 
 
 def after_migrate():
@@ -15,6 +17,7 @@ def after_migrate():
     create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
     make_property_setters()
     seed_master_data()
+    setup_project_permissions()
 
 
 def seed_master_data():
