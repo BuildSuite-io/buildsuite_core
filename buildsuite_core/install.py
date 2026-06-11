@@ -29,10 +29,12 @@ def seed_master_data():
         if not frappe.db.exists("Project Type", pt):
             frappe.get_doc({"doctype": "Project Type", "project_type": pt}).insert(ignore_permissions=True)
 
+    # Task Type uses Prompt autoname (the type name IS the record name) and has no
+    # `task_type` field — set the name directly.
     task_types = ["Activity", "Milestone", "Inspection"]
     for tt in task_types:
         if not frappe.db.exists("Task Type", tt):
-            frappe.get_doc({"doctype": "Task Type", "task_type": tt}).insert(ignore_permissions=True)
+            frappe.get_doc({"doctype": "Task Type", "name": tt}).insert(ignore_permissions=True)
 
 
 def before_migrate():
