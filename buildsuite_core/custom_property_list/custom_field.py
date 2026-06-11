@@ -173,7 +173,9 @@ CUSTOM_FIELD = {
             "fieldname": "persona",
             "fieldtype": "Select",
             "label": "Persona",
-            "options": "Director / Owner\nProject Manager\nEstimator\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nAccountant\nSystem Manager (Admin)\nBuildSuite Administrator",
+            # Option strings must match the keys in PERSONA_TO_ROLE
+            # (buildsuite_core.permissions.setup) and roles.js `name` fields.
+            "options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
             "insert_after": "username",
             "module": "BuildSuite Core"
         }

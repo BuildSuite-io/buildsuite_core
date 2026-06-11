@@ -26,6 +26,25 @@ PROJECT_ROLE_PERMS = {
 # All BuildSuite roles, for the app-level access gate (api.permission).
 BUILDSUITE_ROLES = tuple(PROJECT_ROLE_PERMS.keys())
 
+# User.persona Select value -> the role that persona grants. The persona option
+# strings mirror the `name` fields in frontend/src/data/roles.js so the frontend
+# and backend agree on one vocabulary. "System Manager (Admin)" maps to Frappe's
+# native System Manager role (not a BuildSuite role).
+PERSONA_TO_ROLE = {
+    "Director / Owner":         "BuildSuite Director",
+    "Project Manager":          "BuildSuite PM",
+    "Estimator":                "BuildSuite Estimator",
+    "Quantity Surveyor":        "BuildSuite QS",
+    "Site Engineer":            "BuildSuite Site Engineer",
+    "Foreman / Supervisor":     "BuildSuite Foreman",
+    "Procurement Officer":      "BuildSuite Procurement Officer",
+    "Store Keeper":             "BuildSuite Store Keeper",
+    "Accountant":               "BuildSuite Accountant",
+    "HR Manager":               "BuildSuite HR Manager",
+    "System Manager (Admin)":   "System Manager",
+    "BuildSuite Administrator": "BuildSuite Administrator",
+}
+
 # Every flag we may set on a DocPerm — anything not granted is explicitly cleared.
 _PTYPES = ("read", "write", "create", "delete", "report", "export", "print")
 
