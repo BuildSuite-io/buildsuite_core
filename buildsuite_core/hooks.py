@@ -157,6 +157,11 @@ doc_events = {
 	"Task": {
 		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
 		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
+	},
+	# Keep each user's BuildSuite role aligned with their persona. validate covers
+	# both create and edit; delete needs no handler (Has Role rows cascade).
+	"User": {
+		"validate": "buildsuite_core.utils.user.sync_persona_roles"
 	}
 }
 # 	"*": {
