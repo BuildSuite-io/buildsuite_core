@@ -11,13 +11,18 @@ deleted.
 
 import frappe
 
-from buildsuite_core.permissions.setup import PERSONA_TO_ROLE, BUILDSUITE_ROLES
+from buildsuite_core.permissions.setup import (
+    PERSONA_TO_ROLE,
+    BUILDSUITE_ROLES,
+    WORKFLOW_EDITOR_ROLE,
+)
 
-# Roles fully owned by the persona field — at most one is present at a time and
-# the rest are stripped so persona stays the single source of truth. System
-# Manager is deliberately excluded: a persona can GRANT it, but this hook must
-# never REVOKE it (that role is assigned for platform-admin reasons too).
-_MANAGED_ROLES = set(BUILDSUITE_ROLES)
+# Roles fully owned by the persona field — stripped when they no longer match the
+# persona so it stays the single source of truth. The workflow-editor marker role
+# rides along with any persona (needed for Stage Planning workflow editing).
+# System Manager is deliberately excluded: a persona can GRANT it, but this hook
+# must never REVOKE it (it's assigned for platform-admin reasons too).
+_MANAGED_ROLES = set(BUILDSUITE_ROLES) | {WORKFLOW_EDITOR_ROLE}
 
 
 def sync_persona_roles(doc, method=None):
@@ -26,17 +31,22 @@ def sync_persona_roles(doc, method=None):
 
     desired = PERSONA_TO_ROLE.get((doc.persona or "").strip())
 
-    kept = []
-    have_desired = False
+    # Roles to keep/grant for the current persona.
+    keep = set()
+    if desired:
+        keep.add(desired)
+        keep.add(WORKFLOW_EDITOR_ROLE)
+
+    kept, present = [], set()
     for row in doc.roles:
-        if row.role in _MANAGED_ROLES and row.role != desired:
-            continue  # stale persona role — drop it
-        if row.role == desired:
-            have_desired = True
+        if row.role in _MANAGED_ROLES and row.role not in keep:
+            continue  # stale managed role — drop it
         kept.append(row)
+        present.add(row.role)
     doc.roles = kept
 
-    # Grant the persona's role (BuildSuite role or native System Manager). Guard
-    # on existence so a not-yet-seeded role can't block the user save.
-    if desired and not have_desired and frappe.db.exists("Role", desired):
-        doc.append("roles", {"role": desired})
+    # Grant anything missing (guard on existence so a not-yet-seeded role can't
+    # block the user save).
+    for role in keep - present:
+        if frappe.db.exists("Role", role):
+            doc.append("roles", {"role": role})

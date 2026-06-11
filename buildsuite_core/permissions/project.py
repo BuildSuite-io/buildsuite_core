@@ -30,6 +30,17 @@ def _has_any_membership(user):
     return bool(frappe.db.exists("Project Team", {"user": user, "parenttype": "Project"}))
 
 
+def _is_project_member(user, project):
+    """Shared by Task / Work Package / Task Progress Entry / Stage Planning scoping."""
+    if not project:
+        return False
+    return bool(frappe.db.exists("Project Team", {
+        "parent": project,
+        "parenttype": "Project",
+        "user": user,
+    }))
+
+
 def _is_scoped(user):
     """Whether this user's project visibility should be restricted to team membership."""
     if user == "Administrator":

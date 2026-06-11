@@ -43,6 +43,61 @@ TASK_ROLE_PERMS = {
     "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
 }
 
+# Per-role base permissions on Work Package — read-only for everyone except the
+# full-CRUD roles; scope inherits the parent project. No own-scope rules.
+WORK_PACKAGE_ROLE_PERMS = {
+    "BuildSuite Director":            {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite PM":                  {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Administrator":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Estimator":           {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite QS":                  {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Site Engineer":       {"read": 1, "report": 1, "print": 1},
+    "BuildSuite Foreman":             {"read": 1, "print": 1},
+    "BuildSuite Procurement Officer": {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Store Keeper":        {"read": 1, "report": 1, "print": 1},
+    "BuildSuite Accountant":          {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
+}
+
+# Per-role base permissions on Task Progress Entry. Procurement Officer and Store
+# Keeper are HIDDEN (no DocPerm at all). Site Engineer / Foreman get write+create
+# +delete here; the own-scope (edit own; delete own within 24h) is enforced in
+# buildsuite_core.permissions.task_progress_entry. HR's labour-fields-only field
+# restriction is deferred (read-all at permlevel 0 for now).
+TASK_PROGRESS_ENTRY_ROLE_PERMS = {
+    "BuildSuite Director":            {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite PM":                  {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Administrator":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Estimator":           {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite QS":                  {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Site Engineer":       {"read": 1, "write": 1, "create": 1, "delete": 1, "print": 1},
+    "BuildSuite Foreman":             {"read": 1, "write": 1, "create": 1, "delete": 1, "print": 1},
+    "BuildSuite Accountant":          {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite HR Manager":          {"read": 1, "report": 1, "export": 1},  # print withheld per spec
+}
+
+# Per-role base permissions on Stage Planning (permlevel 0). Procurement / Store
+# Keeper hidden. Site Engineer / Foreman get write+create+delete with own-scope
+# (created-by, Draft/Rejected only) enforced in code. The Submit/Approve/Reject/
+# Revise workflow actions live on the Stage Planning Approval workflow, rewired by
+# setup_stage_planning_workflow(). Print is granted to every readable role.
+STAGE_PLANNING_ROLE_PERMS = {
+    "BuildSuite Director":            {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite PM":                  {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Administrator":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Estimator":           {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite QS":                  {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite Site Engineer":       {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1},
+    "BuildSuite Foreman":             {"read": 1, "write": 1, "create": 1, "delete": 1, "print": 1},
+    "BuildSuite Accountant":          {"read": 1, "report": 1, "export": 1, "print": 1},
+    "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
+}
+
+# No-DocPerm marker role granted to every persona. Used ONLY as the Stage Planning
+# workflow states' `allow_edit` (a mandatory single-role field) so the workflow
+# never blocks editing — the real edit gate is DocPerm + has_*_permission.
+WORKFLOW_EDITOR_ROLE = "BuildSuite Project User"
+
 # All BuildSuite roles, for the app-level access gate (api.permission).
 BUILDSUITE_ROLES = tuple(PROJECT_ROLE_PERMS.keys())
 
@@ -99,7 +154,68 @@ def setup_task_permissions():
     _apply_role_perms("Task", TASK_ROLE_PERMS)
 
 
+def setup_work_package_permissions():
+    _apply_role_perms("Work Package", WORK_PACKAGE_ROLE_PERMS)
+
+
+def setup_task_progress_entry_permissions():
+    _apply_role_perms("Task Progress Entry", TASK_PROGRESS_ENTRY_ROLE_PERMS)
+
+
+def setup_stage_planning_permissions():
+    _apply_role_perms("Stage Planning", STAGE_PLANNING_ROLE_PERMS)
+
+
+# Stage Planning Approval transitions, keyed to BuildSuite roles.
+# (state, action, next_state, [roles], own_only)
+_STAGE_FULL_ROLES = ["BuildSuite Director", "BuildSuite PM", "BuildSuite Administrator", "System Manager"]
+_STAGE_TRANSITIONS = [
+    ("Draft", "Submit for Approval", "Pending Approval", _STAGE_FULL_ROLES, False),
+    ("Draft", "Submit for Approval", "Pending Approval", ["BuildSuite Site Engineer", "BuildSuite Foreman"], True),
+    ("Pending Approval", "Approve", "Approved", _STAGE_FULL_ROLES, False),
+    ("Pending Approval", "Reject", "Rejected", _STAGE_FULL_ROLES, False),
+    ("Rejected", "Revise", "Draft", _STAGE_FULL_ROLES, False),
+    ("Approved", "Revise", "Draft", _STAGE_FULL_ROLES, False),
+    ("Approved", "Cancel", "Cancelled", _STAGE_FULL_ROLES, False),
+]
+
+
+def setup_stage_planning_workflow():
+    """Rewire the Stage Planning Approval workflow to BuildSuite roles.
+
+    States' allow_edit is set to the permissive marker role so the workflow never
+    blocks editing (DocPerm + has_stage_planning_permission is the real gate).
+    Transitions are rebuilt per the persona matrix; Site Engineer / Foreman can
+    only submit their OWN draft stages (workflow condition on doc.owner).
+    """
+    if not frappe.db.exists("Workflow", "Stage Planning Approval"):
+        return
+
+    wf = frappe.get_doc("Workflow", "Stage Planning Approval")
+    for state in wf.states:
+        state.allow_edit = WORKFLOW_EDITOR_ROLE
+
+    wf.set("transitions", [])
+    for state, action, next_state, roles, own_only in _STAGE_TRANSITIONS:
+        condition = "doc.owner == frappe.session.user" if own_only else ""
+        for role in roles:
+            wf.append("transitions", {
+                "state": state,
+                "action": action,
+                "next_state": next_state,
+                "allowed": role,
+                "condition": condition,
+                "allow_self_approval": 1,
+            })
+    wf.save(ignore_permissions=True)
+
+
 def setup_record_permissions():
     """Seed roles + DocPerms for every BuildSuite-scoped doctype."""
     setup_project_permissions()
     setup_task_permissions()
+    setup_work_package_permissions()
+    setup_task_progress_entry_permissions()
+    setup_stage_planning_permissions()
+    _ensure_role(WORKFLOW_EDITOR_ROLE)
+    setup_stage_planning_workflow()
