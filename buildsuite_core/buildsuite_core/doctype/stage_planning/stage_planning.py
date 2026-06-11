@@ -62,3 +62,41 @@ def reject_stage_planning(name, reason):
 		"workflow_state": frappe.db.get_value("Stage Planning", name, "workflow_state"),
 		"reject_reason": reason,
 	}
+
+
+@frappe.whitelist()
+def add_stage_delay_reason(stage, reason, responsible_party=None, days_delayed=None, note=None):
+	"""Append a delay-log row to a Stage Planning.
+
+	Logging a delay is NOT a stage edit — it must work in any workflow state,
+	including Approved (which the workflow locks for editing). So we gate on
+	project access (read permission resolves project membership) and save with
+	ignore_permissions, rather than the stage's write/edit lock. No state change
+	occurs, so the workflow transition validation is not triggered.
+	"""
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A delay reason is required."))
+
+	doc = frappe.get_doc("Stage Planning", stage)
+	if not doc.has_permission("read"):
+		frappe.throw(_("You do not have access to this stage."), frappe.PermissionError)
+
+	try:
+		days = int(days_delayed)
+	except (TypeError, ValueError):
+		days = None
+
+	row = doc.append(
+		"delay_reasons",
+		{
+			"reason": reason,
+			"responsible_party": responsible_party or None,
+			"days_delayed": days,
+			"note": (note or "").strip() or None,
+			"logged_by": frappe.session.user,
+			"logged_on": frappe.utils.now_datetime(),
+		},
+	)
+	doc.save(ignore_permissions=True)
+	return row.as_dict()
