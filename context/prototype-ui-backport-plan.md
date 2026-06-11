@@ -128,13 +128,13 @@ Status: ⬜ todo · 🔶 in progress · ✅ done · ⏭️ skipped (with reason)
 | 121 | Users list: persona chip unified neutral style | ✅ | N/A — prod UsersView role column is already neutral plain text (no colored persona pills to unify; those only exist after the S119 rebuild). |
 | 122 | +Add / +Upload lifted out of custom-table chrome | ✅ | Superseded by `DocTypeListView` — `+ Add` lives in the shared list component's `#actions` slot, not per-tab table chrome. |
 | 123 | Task edit modal: Hierarchy (Project RO + WP editable) | ✅ | Already integrated. Task edit form has Work Package editable via `DeskLinkPicker` (filtered to the task's project); Project shown in Connections panel. Prod uses server-side `DeskLinkPicker` (plumbing upgrade preserved). |
-| 124 | M1 permission matrix wired into store + UI gating | ⬜ | persona/defer |
-| 125 | TPE create unconditional for PM/SiteEng/Foreman | ⬜ | persona/defer |
-| 126 | PM complete permission within their projects | ⬜ | persona/defer |
-| 127 | PM unconditional CRUD on execution surface | ⬜ | persona/defer |
-| 128 | PM unconditional Project edit + delete | ⬜ | persona/defer |
-| 129 | Site Engineer: create + edit-own + submit-own | ⬜ | persona/defer |
-| 130 | Foreman: same create + edit-own + submit-own | ⬜ | persona/defer |
+| 124 | M1 permission matrix wired into UI gating | ✅ | Built as `PERSONA_CAPS` (roles.js) + `usePermissions()` composable, keyed to `store.role`. **Signal upgrade:** the active persona is now auto-set from the **logged-in user** on load (`User.persona` via `get_access_context`; roles fallback for Administrator). Backend stays authoritative. |
+| 125 | TPE create unconditional for PM/SiteEng/Foreman | ✅ | Encoded in PERSONA_CAPS (taskProgressEntry create true for pm/site-engineer/foreman). |
+| 126 | PM complete permission within their projects | ✅ | PM = full caps on the execution surface. |
+| 127 | PM unconditional CRUD on execution surface | ✅ | PM = `_FULL` on project/wp/task/tpe/stage. |
+| 128 | PM unconditional Project edit + delete | ✅ | PM project edit/delete = true. |
+| 129 | Site Engineer: create + edit-own + submit-own | ✅ | `_OWN` on task/tpe/stage (create true; edit/delete shown, backend enforces own-record). |
+| 130 | Foreman: same create + edit-own + submit-own | ✅ | Same `_OWN` treatment as Site Engineer. |
 
 ---
 
