@@ -136,11 +136,17 @@ after_install = "buildsuite_core.install.after_install"
 permission_query_conditions = {
     "Project": "buildsuite_core.permissions.project.get_project_permission_query",
     "Task": "buildsuite_core.permissions.task.get_task_permission_query",
+    "Work Package": "buildsuite_core.permissions.work_package.get_work_package_permission_query",
+    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
+    "Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
 }
 
 has_permission = {
     "Project": "buildsuite_core.permissions.project.has_project_permission",
     "Task": "buildsuite_core.permissions.task.has_task_permission",
+    "Work Package": "buildsuite_core.permissions.work_package.has_work_package_permission",
+    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
+    "Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 }
 
 # Document Events

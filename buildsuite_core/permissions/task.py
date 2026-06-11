@@ -14,7 +14,7 @@ Creator = Frappe's built-in `owner`. Assignee = Frappe-native assignment (`_assi
 
 import frappe
 
-from buildsuite_core.permissions.project import _is_scoped
+from buildsuite_core.permissions.project import _is_scoped, _is_project_member
 
 # Roles with unrestricted write/create/delete within their visible projects —
 # no own-scope restriction applies to them.
@@ -24,16 +24,6 @@ FULL_TASK_WRITE_ROLES = {
     "BuildSuite Administrator",
     "System Manager",
 }
-
-
-def _is_project_member(user, project):
-    if not project:
-        return False
-    return bool(frappe.db.exists("Project Team", {
-        "parent": project,
-        "parenttype": "Project",
-        "user": user,
-    }))
 
 
 def _is_assignee(doc, user):
