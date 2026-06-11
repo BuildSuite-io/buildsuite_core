@@ -8,6 +8,7 @@
  "field_order": [
   "stage_name",
   "project",
+  "workflow_state",
   "column_break_1",
   "planned_start",
   "planned_end",
@@ -22,6 +23,18 @@
   "stage_planning_tasks"
  ],
  "fields": [
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Workflow State",
+   "print_hide": 1,
+   "read_only": 1
+  },
   {
    "fieldname": "stage_name",
    "fieldtype": "Data",

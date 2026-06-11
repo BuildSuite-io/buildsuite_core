@@ -17,6 +17,7 @@ const classes = computed(() => {
     'Ongoing': 'bg-success-50 text-success-700',
     'Delayed': 'bg-danger-50 text-danger-700',
     'Open': 'bg-ink-100 text-ink-600',
+    'Draft': 'bg-ink-100 text-ink-600',
     'Pending Approval': 'bg-warning-50 text-warning-700',
     'Approved': 'bg-success-50 text-success-700',
     'Rejected': 'bg-danger-50 text-danger-700',

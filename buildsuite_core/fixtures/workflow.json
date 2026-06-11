@@ -1,0 +1,116 @@
+[
+    {
+        "doctype": "Workflow",
+        "name": "Stage Planning Approval",
+        "workflow_name": "Stage Planning Approval",
+        "document_type": "Stage Planning",
+        "is_active": 1,
+        "override_status": 0,
+        "send_email_alert": 0,
+        "workflow_state_field": "workflow_state",
+        "states": [
+            {
+                "state": "Draft",
+                "doc_status": "0",
+                "allow_edit": "Projects User",
+                "is_optional_state": 0
+            },
+            {
+                "state": "Pending Approval",
+                "doc_status": "0",
+                "allow_edit": "Projects Manager",
+                "is_optional_state": 0
+            },
+            {
+                "state": "Approved",
+                "doc_status": "0",
+                "allow_edit": "System Manager",
+                "is_optional_state": 0
+            },
+            {
+                "state": "Rejected",
+                "doc_status": "0",
+                "allow_edit": "Projects User",
+                "is_optional_state": 0
+            },
+            {
+                "state": "Cancelled",
+                "doc_status": "0",
+                "allow_edit": "System Manager",
+                "is_optional_state": 1
+            }
+        ],
+        "transitions": [
+            {
+                "state": "Draft",
+                "action": "Submit for Approval",
+                "next_state": "Pending Approval",
+                "allowed": "Projects User",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Draft",
+                "action": "Submit for Approval",
+                "next_state": "Pending Approval",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Pending Approval",
+                "action": "Approve",
+                "next_state": "Approved",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Pending Approval",
+                "action": "Reject",
+                "next_state": "Rejected",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Rejected",
+                "action": "Revise",
+                "next_state": "Draft",
+                "allowed": "Projects User",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Rejected",
+                "action": "Revise",
+                "next_state": "Draft",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Approved",
+                "action": "Revise",
+                "next_state": "Draft",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Approved",
+                "action": "Revise",
+                "next_state": "Draft",
+                "allowed": "System Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Approved",
+                "action": "Cancel",
+                "next_state": "Cancelled",
+                "allowed": "Projects Manager",
+                "allow_self_approval": 1
+            },
+            {
+                "state": "Approved",
+                "action": "Cancel",
+                "next_state": "Cancelled",
+                "allowed": "System Manager",
+                "allow_self_approval": 1
+            }
+        ]
+    }
+]

@@ -1,0 +1,27 @@
+[
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Submit for Approval",
+        "workflow_action_name": "Submit for Approval"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Approve",
+        "workflow_action_name": "Approve"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Reject",
+        "workflow_action_name": "Reject"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Revise",
+        "workflow_action_name": "Revise"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Cancel",
+        "workflow_action_name": "Cancel"
+    }
+]
