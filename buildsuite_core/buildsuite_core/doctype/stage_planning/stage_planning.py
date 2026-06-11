@@ -8,6 +8,29 @@ from frappe.model.workflow import apply_workflow
 
 
 class StagePlanning(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from buildsuite_core.buildsuite_core.doctype.stage_planning_dependency.stage_planning_dependency import StagePlanningDependency
+		from buildsuite_core.buildsuite_core.doctype.stage_planning_task.stage_planning_task import StagePlanningTask
+		from frappe.types import DF
+
+		dependencies: DF.Table[StagePlanningDependency]
+		description: DF.Text | None
+		planned_completion_pct: DF.Percent
+		planned_end: DF.Date | None
+		planned_start: DF.Date | None
+		planned_task_count: DF.Int
+		project: DF.Link
+		reject_reason: DF.SmallText | None
+		stage_name: DF.Data
+		stage_planning_tasks: DF.Table[StagePlanningTask]
+		workflow_state: DF.Link | None
+	# end: auto-generated types
+
 	def validate(self):
 		# A stage can only land in Rejected with a reason on file. The Vue reject
 		# popup and the reject_stage_planning() method below both supply it; this
