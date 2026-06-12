@@ -12,31 +12,47 @@ import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { createDataAdapter } from '@/data/adapters'
 
-// Mirrors the workflow fixture — drives available actions and edit permission client-side.
+// Mirrors the backend Stage Planning Approval workflow (permissions/setup.py
+// _STAGE_TRANSITIONS) — real BuildSuite roles, checked against session.access.roles.
+const STAGE_FULL_ROLES = ['BuildSuite Director', 'BuildSuite PM', 'BuildSuite Administrator', 'System Manager']
+const STAGE_FIELD_ROLES = [...STAGE_FULL_ROLES, 'BuildSuite Site Engineer', 'BuildSuite Foreman']
+
 const WORKFLOW_ACTIONS = {
   'Draft': [
-    { action: 'Submit for Approval', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
+    { action: 'Submit for Approval', roles: STAGE_FIELD_ROLES, variant: 'primary' },
   ],
   'Pending Approval': [
-    { action: 'Approve', roles: ['Projects Manager', 'System Manager'], variant: 'success' },
-    { action: 'Reject', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+    { action: 'Approve', roles: STAGE_FULL_ROLES, variant: 'success' },
+    { action: 'Reject', roles: STAGE_FULL_ROLES, variant: 'danger' },
   ],
   // Rejected is terminal — Revise is no longer allowed after a rejection.
   // A rejected stage can be edited/deleted but not pushed back into the cycle.
   'Rejected': [],
   'Approved': [
-    { action: 'Revise', roles: ['Projects Manager', 'System Manager'], variant: 'warning' },
-    { action: 'Cancel', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+    { action: 'Revise', roles: STAGE_FULL_ROLES, variant: 'warning' },
+    { action: 'Cancel', roles: STAGE_FULL_ROLES, variant: 'danger' },
   ],
 }
 
-// Roles allowed to edit the document in each workflow state (matches `allow_edit` in fixture).
+// Roles allowed to edit the document in each workflow state. Site Engineer /
+// Foreman may edit their OWN Draft/Rejected stages (own-scope enforced server-side);
+// Approved is locked (Revise → Draft first; only System Manager has a direct override).
 const STATE_EDIT_ROLES = {
-  'Draft': ['Projects User', 'Projects Manager', 'System Manager'],
-  'Pending Approval': ['Projects Manager', 'System Manager'],
+  'Draft': STAGE_FIELD_ROLES,
+  'Pending Approval': STAGE_FULL_ROLES,
   'Approved': ['System Manager'],
-  'Rejected': ['Projects User', 'Projects Manager', 'System Manager'],
+  'Rejected': STAGE_FIELD_ROLES,
   'Cancelled': ['System Manager'],
+}
+
+// Delete gating per state. S100: an Approved stage may only be deleted by an
+// approver (full roles), not the creating Site Engineer / Foreman.
+const STATE_DELETE_ROLES = {
+  'Draft': STAGE_FIELD_ROLES,
+  'Pending Approval': STAGE_FULL_ROLES,
+  'Approved': STAGE_FULL_ROLES,
+  'Rejected': STAGE_FIELD_ROLES,
+  'Cancelled': STAGE_FULL_ROLES,
 }
 import StatusBadge from '@/components/StatusBadge.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -311,6 +327,12 @@ const canEdit = computed(() => {
   const state = stage.value?.workflowState || 'Draft'
   const editRoles = STATE_EDIT_ROLES[state] || []
   return editRoles.some((r) => userRoles.value.includes(r))
+})
+
+const canDelete = computed(() => {
+  const state = stage.value?.workflowState || 'Draft'
+  const delRoles = STATE_DELETE_ROLES[state] || []
+  return delRoles.some((r) => userRoles.value.includes(r))
 })
 
 async function applyWorkflowAction(action) {
@@ -631,6 +653,7 @@ const breadcrumbs = computed(() => {
       >Edit</button>
 
       <button
+        v-if="canDelete"
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
         style="border-radius: 6px;"
