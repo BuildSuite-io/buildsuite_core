@@ -12,6 +12,7 @@
 import { computed, ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -28,6 +29,7 @@ import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
 const store = useDataStore()
+const confirmDialog = useConfirm()
 
 const boq = computed(() => store.boqById(props.id))
 const project = computed(() => boq.value ? store.projectById(boq.value.projectId) : null)
@@ -71,15 +73,20 @@ function baseAmount(code) {
 
 // === Workflow actions ===
 function recalculate() { store.recalculateActuals(boq.value.id) }
-function submit() {
-  if (confirm(`Submit BOQ ${boq.value.id} for approval?`)) store.submitBoq(boq.value.id)
+async function submit() {
+  const ok = await confirmDialog({
+    title: 'Submit for approval',
+    message: `Submit BOQ ${boq.value.id} for approval?`,
+    confirmLabel: 'Submit',
+  })
+  if (ok) store.submitBoq(boq.value.id)
 }
-function approve() {
+async function approve() {
   const others = store.boqs.filter(b => b.projectId === boq.value.projectId && b.status === 'Approved' && b.id !== boq.value.id)
   const msg = others.length
     ? `Approve revision ${boq.value.revision}? This will supersede the currently-active revision (${others[0].id}).`
     : `Approve revision ${boq.value.revision}? It will become the live BOQ for this project.`
-  if (confirm(msg)) store.approveBoq(boq.value.id)
+  if (await confirmDialog({ title: 'Approve revision', message: msg, confirmLabel: 'Approve' })) store.approveBoq(boq.value.id)
 }
 function createRevision() {
   const note = window.prompt('Optional: enter SCO id to link this revision to (or leave blank).', '')
@@ -88,11 +95,16 @@ function createRevision() {
   const newBoq = store.createBoqRevisionFrom(boq.value.id, { sourceScoId: sco })
   if (newBoq) router.push(`/boq/${newBoq.id}`)
 }
-function removeBoq() {
-  if (confirm(`Delete BOQ ${boq.value.id} and all its rows? This cannot be undone.`)) {
-    store.deleteBoq(boq.value.id)
-    router.push('/boq')
-  }
+async function removeBoq() {
+  const ok = await confirmDialog({
+    title: 'Delete BOQ',
+    message: `Delete BOQ ${boq.value.id} and all its rows? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    destructive: true,
+  })
+  if (!ok) return
+  store.deleteBoq(boq.value.id)
+  router.push('/boq')
 }
 
 const canSubmit  = computed(() => boq.value?.status === 'Draft')
@@ -127,12 +139,12 @@ function saveGroup() {
   }
   groupModal.value = null
 }
-function deleteGroupConfirm(g) {
+async function deleteGroupConfirm(g) {
   const items = store.boqItemsByGroup(g.id)
   const msg = items.length
     ? `Delete group "${g.code} — ${g.name}" along with ${items.length} item${items.length === 1 ? '' : 's'} and their sub-items? This cannot be undone.`
     : `Delete group "${g.code} — ${g.name}"?`
-  if (confirm(msg)) store.deleteBoqGroup(g.id)
+  if (await confirmDialog({ title: 'Delete group', message: msg, confirmLabel: 'Delete', destructive: true })) store.deleteBoqGroup(g.id)
 }
 
 // ===== Item add/edit/delete =====
@@ -180,12 +192,12 @@ function saveItem() {
   }
   itemModal.value = null
 }
-function deleteItemConfirm(item) {
+async function deleteItemConfirm(item) {
   const subs = store.boqSubItemsByItem(item.id)
   const msg = subs.length
     ? `Delete item "${item.code} — ${item.description}" along with ${subs.length} sub-item${subs.length === 1 ? '' : 's'}? This cannot be undone.`
     : `Delete item "${item.code} — ${item.description}"?`
-  if (confirm(msg)) store.deleteBoqItem(item.id)
+  if (await confirmDialog({ title: 'Delete item', message: msg, confirmLabel: 'Delete', destructive: true })) store.deleteBoqItem(item.id)
 }
 
 // ===== Sub-item add/edit/delete =====
@@ -241,8 +253,8 @@ function saveSubItem() {
   }
   subItemModal.value = null
 }
-function deleteSubItemConfirm(si) {
-  if (confirm(`Delete sub-item "${si.description}"?`)) store.deleteBoqSubItem(si.id)
+async function deleteSubItemConfirm(si) {
+  if (await confirmDialog({ title: 'Delete sub-item', message: `Delete sub-item "${si.description}"?`, confirmLabel: 'Delete', destructive: true })) store.deleteBoqSubItem(si.id)
 }
 
 // Primary action dispatcher — Submit when Draft, Approve when Submitted, hidden when locked.

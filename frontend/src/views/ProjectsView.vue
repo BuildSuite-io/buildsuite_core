@@ -10,8 +10,10 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtCompactINR } from '@/utils/format'
 import { useDocTypeList } from '@/composables/useDocTypeList'
+import { usePermissions } from '@/composables/usePermissions'
 
 const router = useRouter()
+const { canCreate } = usePermissions()
 
 const statusFilter = ref('')
 const typeFilter = ref('')
@@ -56,7 +58,7 @@ function onRowClick(row) {
 <template>
   <DeskPage title="Project" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/projects/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink v-if="canCreate('project')" to="/projects/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView

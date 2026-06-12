@@ -13,6 +13,7 @@ export const useSessionStore = defineStore('session', {
     access: {
       allowed: false,
       roles: [],
+      persona: null,
       reason: 'guest',
     },
     lastCheckedAt: null,
@@ -49,6 +50,7 @@ export const useSessionStore = defineStore('session', {
       this.access = {
         allowed: Boolean(context.allowed),
         roles: Array.isArray(context.roles) ? context.roles : [],
+        persona: context.persona || null,
         reason: context.reason || (context.allowed ? 'ok' : 'missing_role'),
       }
       this.lastCheckedAt = Date.now()

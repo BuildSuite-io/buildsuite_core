@@ -12,31 +12,47 @@ import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { createDataAdapter } from '@/data/adapters'
 
-// Mirrors the workflow fixture — drives available actions and edit permission client-side.
+// Mirrors the backend Stage Planning Approval workflow (permissions/setup.py
+// _STAGE_TRANSITIONS) — real BuildSuite roles, checked against session.access.roles.
+const STAGE_FULL_ROLES = ['BuildSuite Director', 'BuildSuite PM', 'BuildSuite Administrator', 'System Manager']
+const STAGE_FIELD_ROLES = [...STAGE_FULL_ROLES, 'BuildSuite Site Engineer', 'BuildSuite Foreman']
+
 const WORKFLOW_ACTIONS = {
   'Draft': [
-    { action: 'Submit for Approval', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
+    { action: 'Submit for Approval', roles: STAGE_FIELD_ROLES, variant: 'primary' },
   ],
   'Pending Approval': [
-    { action: 'Approve', roles: ['Projects Manager', 'System Manager'], variant: 'success' },
-    { action: 'Reject', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+    { action: 'Approve', roles: STAGE_FULL_ROLES, variant: 'success' },
+    { action: 'Reject', roles: STAGE_FULL_ROLES, variant: 'danger' },
   ],
-  'Rejected': [
-    { action: 'Revise', roles: ['Projects User', 'Projects Manager', 'System Manager'], variant: 'primary' },
-  ],
+  // Rejected is terminal — Revise is no longer allowed after a rejection.
+  // A rejected stage can be edited/deleted but not pushed back into the cycle.
+  'Rejected': [],
   'Approved': [
-    { action: 'Revise', roles: ['Projects Manager', 'System Manager'], variant: 'warning' },
-    { action: 'Cancel', roles: ['Projects Manager', 'System Manager'], variant: 'danger' },
+    { action: 'Revise', roles: STAGE_FULL_ROLES, variant: 'warning' },
+    { action: 'Cancel', roles: STAGE_FULL_ROLES, variant: 'danger' },
   ],
 }
 
-// Roles allowed to edit the document in each workflow state (matches `allow_edit` in fixture).
+// Roles allowed to edit the document in each workflow state. Site Engineer /
+// Foreman may edit their OWN Draft/Rejected stages (own-scope enforced server-side);
+// Approved is locked (Revise → Draft first; only System Manager has a direct override).
 const STATE_EDIT_ROLES = {
-  'Draft': ['Projects User', 'Projects Manager', 'System Manager'],
-  'Pending Approval': ['Projects Manager', 'System Manager'],
+  'Draft': STAGE_FIELD_ROLES,
+  'Pending Approval': STAGE_FULL_ROLES,
   'Approved': ['System Manager'],
-  'Rejected': ['Projects User', 'Projects Manager', 'System Manager'],
+  'Rejected': STAGE_FIELD_ROLES,
   'Cancelled': ['System Manager'],
+}
+
+// Delete gating per state. S100: an Approved stage may only be deleted by an
+// approver (full roles), not the creating Site Engineer / Foreman.
+const STATE_DELETE_ROLES = {
+  'Draft': STAGE_FIELD_ROLES,
+  'Pending Approval': STAGE_FULL_ROLES,
+  'Approved': STAGE_FULL_ROLES,
+  'Rejected': STAGE_FIELD_ROLES,
+  'Cancelled': STAGE_FULL_ROLES,
 }
 import StatusBadge from '@/components/StatusBadge.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -47,6 +63,7 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import StageTaskPicker from '@/components/StageTaskPicker.vue'
+import StageDelayReasonModal from '@/components/StageDelayReasonModal.vue'
 import { fmtDate } from '@/utils/format'
 import { toDateInputValue } from '@/utils/dateInput'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
@@ -56,6 +73,8 @@ const router = useRouter()
 const store = useDataStore()
 const session = useSessionStore()
 const adapter = createDataAdapter(store)
+
+const TODAY_ISO = new Date().toISOString().slice(0, 10)
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -92,6 +111,8 @@ function mapStageRow(row) {
     stageName: row.stage_name || '',
     project: row.project || '',
     workflowState: row.workflow_state || 'Draft',
+    rejectReason: row.reject_reason || '',
+    delayReasonsCount: (row.delay_reasons || []).length,
     plannedStart: row.planned_start || null,
     plannedEnd: row.planned_end || null,
     plannedTaskCount: Number(row.planned_task_count) || 0,
@@ -146,6 +167,7 @@ function loadStageResource() {
       'description',
       'dependencies',
       'stage_planning_tasks',
+      'delay_reasons',
     ],
     cache: `buildsuite-stage-detail:${props.id}`,
     transform(rows) {
@@ -273,6 +295,24 @@ const editForm = ref({})
 const showDeleteConfirm = ref(false)
 const pickerOpen = ref(false)
 const workflowActing = ref(null)
+const showRejectModal = ref(false)
+const rejectReason = ref('')
+const rejectError = ref('')
+const reviewGateOpen = ref(false)
+
+// Stage Review entry. If the stage is running behind and no delay reason is on
+// file yet, require one first (gate); otherwise open the review directly.
+function onStageReview() {
+  if (!stage.value) return
+  if (isStageDelayed.value && (stage.value.delayReasonsCount || 0) === 0) {
+    reviewGateOpen.value = true
+    return
+  }
+  router.push(`/stage-plannings/${stage.value.id}/review`)
+}
+function onGateSaved() {
+  if (stage.value) router.push(`/stage-plannings/${stage.value.id}/review`)
+}
 
 const userRoles = computed(() => session.access?.roles || [])
 
@@ -287,6 +327,12 @@ const canEdit = computed(() => {
   const state = stage.value?.workflowState || 'Draft'
   const editRoles = STATE_EDIT_ROLES[state] || []
   return editRoles.some((r) => userRoles.value.includes(r))
+})
+
+const canDelete = computed(() => {
+  const state = stage.value?.workflowState || 'Draft'
+  const delRoles = STATE_DELETE_ROLES[state] || []
+  return delRoles.some((r) => userRoles.value.includes(r))
 })
 
 async function applyWorkflowAction(action) {
@@ -314,6 +360,49 @@ async function applyWorkflowAction(action) {
     showToast(`${action} applied`)
   } catch (err) {
     showToast(err.message || `Failed to apply ${action}`, 'error')
+  } finally {
+    workflowActing.value = null
+  }
+}
+
+function openRejectModal() {
+  rejectReason.value = ''
+  rejectError.value = ''
+  showRejectModal.value = true
+}
+
+async function confirmReject() {
+  if (!stage.value) return
+  const reason = rejectReason.value.trim()
+  if (!reason) {
+    rejectError.value = 'Please enter a rejection reason.'
+    return
+  }
+  rejectError.value = ''
+  workflowActing.value = 'Reject'
+  try {
+    const body = new URLSearchParams({ name: stage.value.id, reason })
+    const response = await fetch(
+      '/api/method/buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning.reject_stage_planning',
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Frappe-CSRF-Token': window.csrf_token || '',
+        },
+        body: body.toString(),
+      },
+    )
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`)
+    }
+    showRejectModal.value = false
+    await stageResource.value?.reload?.()
+    showToast('Stage rejected')
+  } catch (err) {
+    rejectError.value = err.message || 'Failed to reject stage'
   } finally {
     workflowActing.value = null
   }
@@ -468,6 +557,30 @@ const stageTaskStats = computed(() => {
 
 const dependencyCount = computed(() => (stage.value?.dependencies || []).length)
 
+// Stage Review gate — is this stage running behind? (a) past planned end with
+// unfinished work, or (b) calendar-expected beats actual mean progress by > 15 pts.
+const meanActualProgress = computed(() => {
+  const rows = stage.value?.stagePlanningTasks || []
+  if (!rows.length) return 0
+  const sum = rows.reduce((acc, r) => acc + (Number(tasksById.value[r.task]?.progress) || 0), 0)
+  return Math.round(sum / rows.length)
+})
+const expectedProgressNow = computed(() => {
+  const s = stage.value
+  if (!s?.plannedStart || !s?.plannedEnd) return null
+  const total = (new Date(s.plannedEnd) - new Date(s.plannedStart)) / 86400000
+  if (total <= 0) return 0
+  const elapsed = (new Date(TODAY_ISO) - new Date(s.plannedStart)) / 86400000
+  return Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)))
+})
+const isStageDelayed = computed(() => {
+  const s = stage.value
+  if (!s) return false
+  if (s.plannedEnd && s.plannedEnd < TODAY_ISO && meanActualProgress.value < 100) return true
+  if (expectedProgressNow.value !== null && expectedProgressNow.value > 0 && (expectedProgressNow.value - meanActualProgress.value) > 15) return true
+  return false
+})
+
 const breadcrumbs = computed(() => {
   const out = [
     { label: 'BuildSuite Core', to: '/' },
@@ -487,6 +600,14 @@ const breadcrumbs = computed(() => {
     :breadcrumbs="breadcrumbs"
   >
     <template #actions>
+      <!-- Stage Review — available in every state; gates on a delay reason if behind -->
+      <button
+        type="button"
+        class="text-xs px-2.5 py-1 border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium dark:bg-brand-950/30 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/50"
+        style="border-radius: 6px;"
+        @click="onStageReview"
+      >Stage Review</button>
+
       <!-- Workflow action buttons -->
       <template v-for="wf in availableActions" :key="wf.action">
         <button
@@ -518,7 +639,7 @@ const breadcrumbs = computed(() => {
           class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
           style="border-radius: 6px;"
           :disabled="!!workflowActing"
-          @click="applyWorkflowAction(wf.action)"
+          @click="wf.action === 'Reject' ? openRejectModal() : applyWorkflowAction(wf.action)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
       </template>
 
@@ -532,12 +653,28 @@ const breadcrumbs = computed(() => {
       >Edit</button>
 
       <button
+        v-if="canDelete"
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
         style="border-radius: 6px;"
         @click="showDeleteConfirm = true"
       >Delete</button>
     </template>
+
+    <!-- Rejected banner -->
+    <div
+      v-if="stage.workflowState === 'Rejected'"
+      class="mb-5 px-4 py-3 border border-danger-200 bg-danger-50 dark:bg-ink-800 dark:border-danger-700"
+      style="border-radius: 8px;"
+    >
+      <div class="text-[11px] uppercase tracking-wider font-semibold text-danger-700 mb-1">
+        Stage rejected
+      </div>
+      <div v-if="stage.rejectReason" class="text-sm text-ink-800 dark:text-[#D4D4D4] whitespace-pre-line">
+        {{ stage.rejectReason }}
+      </div>
+      <div v-else class="text-sm text-ink-500 italic">No reason recorded.</div>
+    </div>
 
     <!-- KPI strip -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
@@ -691,6 +828,14 @@ const breadcrumbs = computed(() => {
       </div>
     </section>
 
+    <!-- Activity — placeholder until a backend activity/timeline log is wired -->
+    <section class="mb-6">
+      <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-2">Activity</div>
+      <div class="border border-ink-200 px-5 py-8 text-center text-sm text-ink-400 italic dark:border-ink-700" style="border-radius: 6px;">
+        Stage activity (submitted, approved, rejected, revised, edited) will appear here.
+      </div>
+    </section>
+
     <!-- Edit modal -->
     <Teleport to="body">
       <div
@@ -803,6 +948,74 @@ const breadcrumbs = computed(() => {
       mode="modal"
       @save="onPickerSave"
     />
+
+    <!-- Stage Review delay gate -->
+    <StageDelayReasonModal
+      v-model:open="reviewGateOpen"
+      :stage-id="stage.id"
+      :stage-name="stage.stageName"
+      :is-gate="true"
+      @saved="onGateSaved"
+    />
+
+    <!-- Reject modal -->
+    <Teleport to="body">
+      <div
+        v-if="showRejectModal"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+        @click.self="showRejectModal = false"
+      >
+        <div
+          class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col dark:bg-[#242424] dark:border-ink-700"
+          style="border-radius: 12px;"
+          @click.stop
+        >
+          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 dark:border-ink-700" style="border-radius: 12px 12px 0 0;">
+            <div class="min-w-0 flex-1">
+              <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Reject stage</h2>
+              <p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ stage.stageName }}</p>
+            </div>
+            <button
+              type="button"
+              class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3 dark:text-ink-400 dark:hover:text-ink-200"
+              aria-label="Close"
+              @click="showRejectModal = false"
+            >×</button>
+          </header>
+
+          <div class="p-5">
+            <DeskField label="Rejection reason" required :error="rejectError">
+              <DeskTextarea
+                v-model="rejectReason"
+                :rows="4"
+                placeholder="Explain why this stage is being rejected…"
+                @input="rejectError = ''"
+              />
+            </DeskField>
+            <p class="text-[11px] text-ink-500 mt-1.5">
+              This reason is recorded on the stage. Rejection is final — the stage cannot be revised afterwards.
+            </p>
+          </div>
+
+          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 dark:border-ink-700" style="border-radius: 0 0 12px 12px;">
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
+              style="border-radius: 6px;"
+              :disabled="workflowActing === 'Reject'"
+              @click="showRejectModal = false"
+            >Cancel</button>
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 bg-danger-600 hover:bg-danger-700 text-white font-medium"
+              style="border-radius: 6px;"
+              :disabled="workflowActing === 'Reject'"
+              @click="confirmReject"
+            >{{ workflowActing === 'Reject' ? 'Rejecting…' : 'Reject stage' }}</button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
 
     <ConfirmDialog
       v-model:open="showDeleteConfirm"

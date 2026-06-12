@@ -331,3 +331,75 @@ export const WORKSPACE_ORDER = {
     'workforce',
   ],
 }
+
+// Map a User.persona Select value (the human label, e.g. "Project Manager") to
+// the persona id used by the role switcher / gating (e.g. "pm"). Returns null
+// when the label isn't a recognised persona.
+export function personaIdFromName(name) {
+  if (!name) return null
+  const match = ROLES.find((r) => r.name === name)
+  return match ? match.id : null
+}
+
+// Frappe BuildSuite role -> persona id. Used as a fallback when the User.persona
+// field is unset (e.g. Administrator). Mirrors the backend permissions/setup map.
+export const ROLE_TO_PERSONA = {
+  'BuildSuite Director': 'director',
+  'BuildSuite PM': 'pm',
+  'BuildSuite Estimator': 'estimator',
+  'BuildSuite QS': 'qs',
+  'BuildSuite Site Engineer': 'site-engineer',
+  'BuildSuite Foreman': 'foreman',
+  'BuildSuite Procurement Officer': 'procurement',
+  'BuildSuite Store Keeper': 'store-keeper',
+  'BuildSuite Accountant': 'accountant',
+  'BuildSuite HR Manager': 'hr-manager',
+  'BuildSuite Administrator': 'bsa',
+  'System Manager': 'admin',
+}
+
+// Derive a persona id from a user's Frappe roles. Prefers a specific BuildSuite
+// persona role over the broad admin roles, so e.g. a PM who also has System
+// Manager still reads as 'pm'.
+export function personaIdFromRoles(roles) {
+  const set = new Set(roles || [])
+  for (const [role, persona] of Object.entries(ROLE_TO_PERSONA)) {
+    if (role === 'System Manager' || role === 'BuildSuite Administrator') continue
+    if (set.has(role)) return persona
+  }
+  if (set.has('BuildSuite Administrator')) return 'bsa'
+  if (set.has('System Manager')) return 'admin'
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// UI permission matrix (S124-130). The BACKEND (permissions/*.py) is the real
+// enforcement; this only decides which affordances to SHOW so personas don't
+// click buttons that will fail. Keyed by persona id (= store.role, set from the
+// logged-in user on load).
+//
+// Per doctype: c(reate) / r(ead) / e(dit) / d(elete) — true | false | 'own'.
+// 'own' means the persona can act on their own records; we SHOW the affordance
+// and let the backend enforce the precise own-record rule (avoids hiding a
+// user's legitimate own-record action). Full personas are true; read-only are
+// false. Settings CRUD stays gated on isAdmin/isBSA separately.
+// ---------------------------------------------------------------------------
+const _FULL = { c: true, r: true, e: true, d: true }
+const _READ = { c: false, r: true, e: false, d: false }
+const _NONE = { c: false, r: false, e: false, d: false }
+const _OWN = { c: true, r: true, e: 'own', d: 'own' }
+
+export const PERSONA_CAPS = {
+  director:       { project: _FULL, workPackage: _FULL, task: _FULL, taskProgressEntry: _FULL, stagePlanning: _FULL },
+  pm:             { project: _FULL, workPackage: _FULL, task: _FULL, taskProgressEntry: _FULL, stagePlanning: _FULL },
+  admin:          { project: _FULL, workPackage: _FULL, task: _FULL, taskProgressEntry: _FULL, stagePlanning: _FULL },
+  bsa:            { project: _FULL, workPackage: _FULL, task: _FULL, taskProgressEntry: _FULL, stagePlanning: _FULL },
+  estimator:      { project: _READ, workPackage: _READ, task: _READ, taskProgressEntry: _READ, stagePlanning: _READ },
+  qs:             { project: _READ, workPackage: _READ, task: _READ, taskProgressEntry: _READ, stagePlanning: _READ },
+  accountant:     { project: _READ, workPackage: _READ, task: _READ, taskProgressEntry: _READ, stagePlanning: _READ },
+  procurement:    { project: _READ, workPackage: _READ, task: _READ, taskProgressEntry: _NONE, stagePlanning: _NONE },
+  'store-keeper': { project: _READ, workPackage: _READ, task: _READ, taskProgressEntry: _NONE, stagePlanning: _NONE },
+  'site-engineer':{ project: _READ, workPackage: _READ, task: _OWN,  taskProgressEntry: _OWN,  stagePlanning: _OWN },
+  foreman:        { project: _READ, workPackage: _READ, task: _OWN,  taskProgressEntry: _OWN,  stagePlanning: _OWN },
+  'hr-manager':   { project: _NONE, workPackage: _NONE, task: _NONE, taskProgressEntry: _READ, stagePlanning: _NONE },
+}

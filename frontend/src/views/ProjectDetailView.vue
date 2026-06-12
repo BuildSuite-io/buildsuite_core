@@ -6,6 +6,8 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
+import { usePermissions } from '@/composables/usePermissions'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -40,6 +42,8 @@ import { useProjectDetailListFilters } from '@/views/project-detail/useProjectDe
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const confirmDialog = useConfirm()
+const { canEdit, canDelete, canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
 
 const { errors: editErrors, applyServerErrors: applyEditErrors, setErrors: setEditErrors, clearError: clearEditError } = useFormErrors({
@@ -466,10 +470,16 @@ function confirmAddMember() {
   store.addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
   teamModalOpen.value = false
 }
-function removeTeamMember(userId) {
+async function removeTeamMember(userId) {
   if (!userId || userId === project.value?.pm) return
   const m = store.teamMember(userId)
-  if (!confirm(`Remove ${m?.name || userId} from this project's team?`)) return
+  const ok = await confirmDialog({
+    title: 'Remove team member',
+    message: `Remove ${m?.name || userId} from this project's team?`,
+    confirmLabel: 'Remove',
+    destructive: true,
+  })
+  if (!ok) return
   store.removeProjectTeamMember(resolvedProjectId.value, userId)
 }
 
@@ -554,11 +564,16 @@ function addSubproject() {
   router.push({ path: '/projects/new', query: { parentId: resolvedProjectId.value } })
 }
 
-function seedFromTemplate() {
+async function seedFromTemplate() {
   const tpl = store.templateForProjectType(project.value.type)
   if (!tpl) return
   const n = tpl.defaultStages.length
-  if (!confirm(`Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`)) return
+  const ok = await confirmDialog({
+    title: 'Seed default stages',
+    message: `Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`,
+    confirmLabel: 'Seed stages',
+  })
+  if (!ok) return
   store.seedStagesFromTemplate(resolvedProjectId.value)
   stageListRef.value?.reload()
 }
@@ -686,12 +701,14 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
     <!-- Edit + Delete buttons share the title row (DeskPage #actions slot) -->
     <template #actions>
       <button
+        v-if="canEdit('project')"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
         @click="startEdit"
       >Edit</button>
       <button
+        v-if="canDelete('project')"
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
         style="border-radius: 6px;"
@@ -706,8 +723,9 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           v-for="t in tabs"
           :key="t.id"
           type="button"
-          class="px-3 py-2 text-xs font-medium whitespace-nowrap"
-          :style="tab === t.id ? 'color:#16A34A; border-bottom: 2px solid #16A34A; margin-bottom: -1px;' : 'color: #475569; border-bottom: 2px solid transparent; margin-bottom: -1px;'"
+          class="px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors"
+          :class="tab === t.id ? 'text-brand-600' : 'text-ink-600 hover:text-ink-900'"
+          :style="tab === t.id ? 'border-bottom: 2px solid currentColor; margin-bottom: -1px;' : 'border-bottom: 2px solid transparent; margin-bottom: -1px;'"
           @click="tab = t.id"
         >{{ t.label }}<span v-if="t.count !== null" class="ml-1 text-ink-400 tabular-nums">({{ t.count }})</span></button>
       </div>
@@ -732,7 +750,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           <span class="text-xs text-ink-500">
             <span class="text-ink-900 font-medium">{{ subs.length }} subproject{{ subs.length === 1 ? '' : 's' }}</span>
           </span>
-          <button type="button" class="desk-save-btn ml-auto" @click="addSubproject">+ New Subproject</button>
+          <button v-if="canCreate('project')" type="button" class="desk-save-btn ml-auto" @click="addSubproject">+ New Subproject</button>
         </div>
         <DeskList
           v-model="subSearch"
@@ -781,6 +799,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
             <span class="text-ink-900 font-medium">{{ wpProgress }}%</span>
           </span>
           <RouterLink
+            v-if="canCreate('workPackage')"
             :to="{ name: 'wp-new', query: { projectId: project.id } }"
             class="desk-save-btn ml-auto"
           >+ Add Work Package</RouterLink>
@@ -843,6 +862,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
             · {{ taskStats.completed }} completed · {{ taskStats.inProgress }} in progress · {{ taskStats.open }} open
           </span>
           <RouterLink
+            v-if="canCreate('task')"
             :to="{ name: 'task-new', query: { projectId: project.id } }"
             class="desk-save-btn ml-auto"
           >+ Add Task</RouterLink>
@@ -936,6 +956,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         >
           <template #actions>
             <RouterLink
+              v-if="canCreate('stagePlanning')"
               :to="{ name: 'stage-planning-new', query: { projectId: project.id } }"
               class="desk-save-btn"
             >+ Add Stage</RouterLink>

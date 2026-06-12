@@ -1,6 +1,7 @@
 <script setup>
 import DeskList from '@/components/desk/DeskList.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
+import { usePermissions } from '@/composables/usePermissions'
 
 const props = defineProps({
   project:       { type: Object,  required: true },
@@ -10,6 +11,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['add', 'remove'])
+
+// Managing the project team is a project-edit affordance.
+const { canEdit } = usePermissions()
 </script>
 
 <template>
@@ -25,6 +29,7 @@ const emit = defineEmits(['add', 'remove'])
     >
       <template #actions>
         <button
+          v-if="canEdit('project')"
           type="button"
           class="desk-save-btn"
           :disabled="!hasCandidates"
@@ -48,7 +53,7 @@ const emit = defineEmits(['add', 'remove'])
             style="border-radius: 9999px;"
           >Project Manager</span>
           <button
-            v-else
+            v-else-if="canEdit('project')"
             type="button"
             class="text-xs px-2 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 hover:border-danger-200 text-ink-500 hover:text-danger-700"
             style="border-radius: 6px;"
@@ -60,7 +65,7 @@ const emit = defineEmits(['add', 'remove'])
       <template #empty>
         <div class="text-sm text-ink-500">
           No team members yet.
-          <button v-if="hasCandidates" type="button" class="desk-link" @click="emit('add')">Add the first one →</button>
+          <button v-if="hasCandidates && canEdit('project')" type="button" class="desk-link" @click="emit('add')">Add the first one →</button>
         </div>
       </template>
     </DeskList>
