@@ -7,11 +7,15 @@ import FileUploadHandler from 'frappe-ui-file-upload-handler'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FrappeUserBadge from '@/components/FrappeUserBadge.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import { fmtDate } from '@/utils/format'
 
 const props = defineProps({
   projectId: { type: String, required: true },
 })
+
+// Uploading / deleting project attachments is a project-edit affordance.
+const { canEdit } = usePermissions()
 const emit = defineEmits(['count-change'])
 
 const store = useDataStore()
@@ -161,6 +165,7 @@ function formatFileSize(bytes) {
     >
       <template #actions>
         <button
+          v-if="canEdit('project')"
           type="button"
           class="desk-save-btn"
           :disabled="uploadingCount > 0"
@@ -195,6 +200,7 @@ function formatFileSize(bytes) {
 
       <template #cell-__delete="{ row }">
         <button
+          v-if="canEdit('project')"
           type="button"
           class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 text-danger-700"
           style="border-radius: 4px;"

@@ -11,6 +11,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -25,6 +26,7 @@ import StageTaskPicker from '@/components/StageTaskPicker.vue'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const { canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
 
 const form = reactive({
@@ -181,6 +183,10 @@ const breadcrumbs = [
     title="New Stage"
     :breadcrumbs="breadcrumbs"
   >
+    <div v-if="!canCreate('stagePlanning')" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      You don't have permission to create a stage.
+    </div>
+    <template v-else>
     <!-- Step indicator — bone-simple breadcrumb-style pills. -->
     <div class="px-5 pt-4 pb-2 flex items-center gap-2 text-xs">
       <span
@@ -316,5 +322,6 @@ const breadcrumbs = [
         />
       </div>
     </DeskForm>
+    </template>
   </DeskPage>
 </template>
