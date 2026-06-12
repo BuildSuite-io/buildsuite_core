@@ -25,7 +25,10 @@
 | `context/project-field-mapping.md` | Frappeline → ERPNext field mapping, lists exactly 3 custom fields needed + 1 property setter |
 | `context/buildsuite-core-demo/` | Vue 3 prototype — ground truth for field shapes, UX flows, layout decisions. **Always check this before changing layout/UX** |
 | `context/buildsuite-core-demo/src/data/seed.js` | Work Package + Stage Planning field shapes from demo |
-| `context/implementation-progress.md` | **This file** |
+| `context/implementation-progress.md` | **This file** — the single ongoing continuity doc |
+| ~~`context/prototype-ui-backport-plan.md`~~ | **HISTORICAL** — prototype UI replay (Sessions 96→130). Backport complete; durable facts folded into this file (see "Prototype UI Backport" below). Safe to delete. |
+| ~~`context/stage-review-scoping.md`~~ | **HISTORICAL** — Stage Review scoping; built (see Schema + Backport sections). Safe to delete. |
+| ~~`context/user-management-scoping.md`~~ | **HISTORICAL** — User management scoping; built (see Backport section). Safe to delete. |
 
 ---
 
@@ -393,6 +396,34 @@ Standard Frappe fields also available: `name`, `owner`, `creation`, `modified`.
 | ~~`owner_user`~~ | ~~Link→User~~ | **Do not request this field.** Causes `DataError: Field not permitted in query`. Use the Frappe built-in `owner` field (tracks creator) for read surfaces instead. |
 | `description` | Text | |
 
+### Stage Planning DocType (approval workflow fields)
+
+Approval lifecycle runs on the Frappe-native **Stage Planning Approval** workflow (`workflow_state` Link; states Draft → Pending Approval → Approved / Rejected / Cancelled). Transition roles + own-submit conditions are rewired to BuildSuite roles by `setup_stage_planning_workflow()` (see Backend Permissions Architecture). Notable custom fields:
+
+| Fieldname | Type | Notes |
+|---|---|---|
+| `workflow_state` | Link→Workflow State | Draft default; drives the action bar in `StagePlanningDetailView` |
+| `reject_reason` | Small Text | reqd on Rejected; persisted by `reject_stage_planning(name, reason)` **before** `apply_workflow` (apply_workflow reloads from DB, so an unsaved value is lost). `Rejected → Revise` removed — Rejected is terminal. |
+| `stage_planning_tasks` | Table→Stage Planning Task | child rows: `task`, `planned_start`, `planned_end`, `planned_qty` (default 100), `qty_unit` (`%`) |
+| `delay_reasons` | Table→Stage Delay Reason | append-only Delay Log (below) |
+
+> Superseded vs prototype: `approval_required_role` on Project is **not** used (production drives approver gating via Frappe Workflow transition roles). The prototype's `stage.activity[]` feed is **deferred** (would use Frappe's native document timeline).
+
+### Stage Delay Reason DocType (child, `istable: 1`)
+
+ERPNext-style Delay Log row, embedded on Stage Planning via `delay_reasons`. Appended by the whitelisted `add_stage_delay_reason(stage, reason, responsible_party, days_delayed=None, note=None)` (gated on read/project-membership — logging a delay is NOT a stage edit, so it works on Approved stages without revising; saved with `ignore_permissions`).
+
+| Fieldname | Type | Notes |
+|---|---|---|
+| `reason` | Data | reqd; frontend offers presets + free text (stored as text) |
+| `responsible_party` | Select | Own / Subcontractor / Client / External / Consultant |
+| `days_delayed` | Int | optional (blank = TBD / ongoing) |
+| `note` | Small Text | optional |
+| `logged_by` | Link→User | read-only, stamped on insert |
+| `logged_on` | Datetime | read-only, stamped on insert |
+
+`StageReviewView.vue` (Vue-styled dashboard, route `/stage-plannings/:id/review`) renders KPI strip + Task-progress (overlaid bar + planned tick) + Delay-reasons + Labour-movement. **Materials** section omitted (no BOQ doctypes until M2). `isStageDelayed` is frontend-computed. **Labour movement** sums every Task Update for the stage's tasks (the planned-window filter was dropped — real windows rarely bracket entry dates; see 2026-06-12 log).
+
 ### Custom Fields on Project (fixtures)
 
 | Fieldname | Type | Notes |
@@ -492,6 +523,20 @@ Team-membership scoping layered on top of Frappe role DocPerms. Covers **Project
 
 ---
 
+## Prototype UI Backport (Sessions 96–130) — COMPLETE
+
+Replay of the prototype's UI from prototype-Session 95 → 130 into the production Vue app, preserving the Frappe-API plumbing. All sessions ported (only prototype-S113 deferred — low-value button-priority refinement). The three planning/scoping docs are now historical; durable facts captured here.
+
+**Net-new artifacts built during the backport:**
+- **Stage Planning workflow** — Frappe-native Workflow (not the prototype's hand-rolled state machine). Reject popup + `reject_reason`; Rejected is terminal. See Schema + Backend Permissions sections.
+- **Stage Review** — `StageReviewView.vue` + `StageDelayReasonModal.vue` + `Stage Delay Reason` child doctype + `add_stage_delay_reason`. See Schema Reference.
+- **User management** — real Frappe Users, not the prototype's localStorage team. Backend `buildsuite_core/api/users.py` (whitelisted, admin-gated: list / create / update / send_user_welcome / send_user_password_reset). Persona = the `User.persona` Select; the `sync_persona_roles` hook maps it to a BuildSuite role (frontend only sets persona). Frontend: `NewUserView.vue`, rebuilt `UsersView.vue`, `data/usersApi.js`. Emails are real Frappe sends (sit in Email Queue if no SMTP). Map: `admin`→System Manager, `bsa`→BuildSuite Administrator.
+- **Permission-matrix UI gating** — `PERSONA_CAPS` (roles.js) + `usePermissions()` composable, keyed to `store.role`, which is auto-set from the logged-in `User.persona` on load. Advisory only — **backend is authoritative** (confirmed 2026-06-12: frappe-ui `resource` → `frappe.client.insert` enforces perms; the persona switcher is cosmetic).
+
+**Known deferred follow-up:** the app's people pickers (Task assignee / Project PM) still read the legacy `store.team`; rewiring them to Frappe Users is a separate pass.
+
+---
+
 ## Session Log
 
 | Date | What |
@@ -535,3 +580,8 @@ Team-membership scoping layered on top of Frappe role DocPerms. Covers **Project
 | 2026-06-11 | Feat: Persona→role auto-assignment — `utils/user.py:sync_persona_roles` on `User.validate` grants the BuildSuite role mapped from `persona` (`PERSONA_TO_ROLE`), strips stale BuildSuite roles, keeps System Manager. Fixed persona Select options to match roles.js (added Quantity Surveyor, removed duplicate Accountant). Verified e2e |
 | 2026-06-11 | Feat: Task record-level permissions — `permissions/task.py` (project-inherited scoping via `get_task_permission_query`/`has_task_permission`) + `TASK_ROLE_PERMS` matrix seeded by `setup_task_permissions` (install now calls `setup_record_permissions`). Site Engineer edit/delete own-created (owner); Foreman own-created OR assigned (`_assign`); full-write roles bypass. Task hooks re-wired in hooks.py. Verified e2e on `build.local` |
 | 2026-06-11 | Feat: Work Package + Task Progress Entry + Stage Planning record-level permissions — 3 new `permissions/*.py` modules + matrices in setup.py; all inherit project scoping. WP read-only (no own-scope). TPE: SE/Foreman edit own + delete own within 24h; Procurement/Store hidden; HR read-all. Stage: SE/Foreman create+edit/delete own while Draft/Rejected; Stage Planning Approval workflow rewired to BuildSuite roles (`setup_stage_planning_workflow`, SE/Foreman submit-own condition); new no-DocPerm marker role `BuildSuite Project User` for workflow `allow_edit`, granted via persona sync. All 5 doctypes verified e2e on `build.local` |
+| 2026-06-12 | Backport closeout: prototype UI replay 96→130 complete (see "Prototype UI Backport"). Retired the 3 planning/scoping docs (folded durable facts here). |
+| 2026-06-12 | Fix (Stage Review): restored the **conditional** delay-reason gate to match prototype S102 — `onStageReview` opens the dialog only when the stage is delayed AND has zero delay reasons; otherwise opens the review directly. (Reverted an earlier unconditional gate removal.) |
+| 2026-06-12 | Fix (dark mode): added missing `-950` palette shades (brand/success/warning/danger/info) in `tailwind.config.js` + a global `html.dark .from-success-50` override in `style.css`. The Labour-movement gradient header was the only one on `from-success-50`, which had no dark override (brand/info/warning/ink did) → light wash in dark mode. |
+| 2026-06-12 | Fix (Stage Review Labour movement): layout re-aligned to prototype (2-col Skilled/Unskilled grid, `users-2` icon added to `workspaceIcons.js`, descriptive footer; dropped the Total-man-days row). **Dropped the date-window filter** — labour now sums every Task Update for the stage's tasks (planned windows rarely bracket entry dates, which made it read 0). |
+| 2026-06-12 | Verified: project create from the frontend (frappe-ui `resource` → `frappe.client.insert`) **respects** Frappe permissions — an estimator is correctly denied. The persona switcher is cosmetic; backend is authoritative. (Confirmed with a temporary on-load probe, since removed.) |
