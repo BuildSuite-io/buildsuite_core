@@ -828,6 +828,14 @@ const breadcrumbs = computed(() => {
       </div>
     </section>
 
+    <!-- Activity — placeholder until a backend activity/timeline log is wired -->
+    <section class="mb-6">
+      <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-2">Activity</div>
+      <div class="border border-ink-200 px-5 py-8 text-center text-sm text-ink-400 italic dark:border-ink-700" style="border-radius: 6px;">
+        Stage activity (submitted, approved, rejected, revised, edited) will appear here.
+      </div>
+    </section>
+
     <!-- Edit modal -->
     <Teleport to="body">
       <div
