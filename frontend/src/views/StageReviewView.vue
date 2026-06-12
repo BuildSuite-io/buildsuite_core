@@ -4,9 +4,10 @@
 // stage (+ its task rows and delay log), the linked tasks' live progress, and
 // Task Progress Entries inside the stage window for the labour rollup.
 //
-// Materials (planned vs actual) and the activity feed from the prototype are
-// intentionally omitted: BOQ doctypes don't exist yet (Milestone 2) and there
-// is no backend stage-activity log.
+// Materials (planned vs actual) and the Stage activity feed are present as
+// placeholder cards matching the prototype layout — their data sources aren't
+// wired yet (BOQ doctypes arrive in Milestone 2; there's no backend stage-
+// activity log), so they show a "pending" body until then.
 
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
@@ -442,31 +443,55 @@ function goBack() {
       </div>
     </section>
 
-    <!-- Labour movement -->
-    <section class="bg-white border border-ink-200 overflow-hidden dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
-      <header class="px-5 py-3 bg-gradient-to-r from-success-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-success-950/30 dark:to-[#242424] dark:border-ink-700">
-        <svg class="w-4 h-4 text-success-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('hard-hat')" />
-        <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Labour movement</h2>
-        <span class="text-[11px] text-ink-500 ml-auto">{{ labourTotals.entries }} progress {{ labourTotals.entries === 1 ? 'entry' : 'entries' }} in window</span>
-      </header>
-      <div class="p-5 grid grid-cols-3 gap-4">
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Skilled</div>
-          <div class="text-xl font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.skilled }}</div>
-          <div class="text-[11px] text-ink-500 mt-0.5">man-days</div>
+    <!-- Materials (placeholder) · Labour movement · Stage activity (placeholder) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Materials — planned vs actual. Placeholder until BOQ (Milestone 2) lands. -->
+      <section class="lg:col-span-2 bg-white border border-ink-200 overflow-hidden dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
+        <header class="px-5 py-3 bg-gradient-to-r from-info-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-info-950/30 dark:to-[#242424] dark:border-ink-700">
+          <svg class="w-4 h-4 text-info-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('wallet')" />
+          <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Materials — planned vs actual</h2>
+        </header>
+        <div class="px-5 py-10 text-center text-sm text-ink-400 italic">
+          Material planned-vs-actual cost (from this stage's BOQ lines) will appear here once Estimation / BOQ is available.
         </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Unskilled</div>
-          <div class="text-xl font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.unskilled }}</div>
-          <div class="text-[11px] text-ink-500 mt-0.5">man-days</div>
-        </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Total</div>
-          <div class="text-xl font-semibold text-brand-700 mt-1 tabular-nums">{{ labourTotals.total }}</div>
-          <div class="text-[11px] text-ink-500 mt-0.5">man-days deployed</div>
-        </div>
+      </section>
+
+      <!-- Right column: Labour movement (live) + Stage activity (placeholder) -->
+      <div class="space-y-6">
+        <section class="bg-white border border-ink-200 overflow-hidden dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
+          <header class="px-5 py-3 bg-gradient-to-r from-success-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-success-950/30 dark:to-[#242424] dark:border-ink-700">
+            <svg class="w-4 h-4 text-success-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('hard-hat')" />
+            <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Labour movement</h2>
+          </header>
+          <div class="p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Skilled</div>
+              <div class="text-base font-semibold text-ink-900 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.skilled }}</div>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Unskilled</div>
+              <div class="text-base font-semibold text-ink-900 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.unskilled }}</div>
+            </div>
+            <div class="flex items-center justify-between border-t border-ink-100 pt-2 dark:border-ink-700">
+              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Total man-days</div>
+              <div class="text-base font-semibold text-brand-700 tabular-nums">{{ labourTotals.total }}</div>
+            </div>
+            <div class="text-[11px] text-ink-400">{{ labourTotals.entries }} progress {{ labourTotals.entries === 1 ? 'entry' : 'entries' }} in window</div>
+          </div>
+        </section>
+
+        <!-- Stage activity. Placeholder until a backend activity/timeline log is wired. -->
+        <section class="bg-white border border-ink-200 overflow-hidden dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
+          <header class="px-5 py-3 bg-gradient-to-r from-ink-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-ink-800 dark:to-[#242424] dark:border-ink-700">
+            <svg class="w-4 h-4 text-ink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('message-circle')" />
+            <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Stage activity</h2>
+          </header>
+          <div class="px-5 py-10 text-center text-sm text-ink-400 italic">
+            Stage activity (submissions, approvals, edits) will appear here.
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
 
     <StageDelayReasonModal
       v-model:open="delayModalOpen"
