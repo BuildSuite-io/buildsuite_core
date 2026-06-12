@@ -193,15 +193,13 @@ const isDelayed = computed(() => {
   return false
 })
 
-// Labour from progress entries inside the stage window.
+// Labour from every progress entry filed against this stage's tasks (no date
+// window — planned windows rarely bracket actual entry dates, which made this
+// read 0 in production). progressEntriesResource is already scoped to the
+// stage's task IDs, so summing all fetched rows is correct.
 const labourTotals = computed(() => {
-  const s = stage.value
-  const start = s?.plannedStart || ''
-  const end = s?.plannedEnd || ''
   let skilled = 0, unskilled = 0, entries = 0
   for (const e of resourceRows(progressEntriesResource.value)) {
-    if (start && e.entryDate < start) continue
-    if (end && e.entryDate > end) continue
     skilled += e.skilled
     unskilled += e.unskilled
     entries++
@@ -476,7 +474,7 @@ function goBack() {
             </div>
             <div class="text-[11px] text-ink-500">
               From <span class="font-medium text-ink-700 tabular-nums">{{ labourTotals.entries }}</span>
-              progress entr{{ labourTotals.entries === 1 ? 'y' : 'ies' }} filed inside the stage window.
+              progress entr{{ labourTotals.entries === 1 ? 'y' : 'ies' }} filed against this stage's tasks.
               Counts are deployment-days (cumulative across filed entries) — not concurrent headcount.
             </div>
           </div>
