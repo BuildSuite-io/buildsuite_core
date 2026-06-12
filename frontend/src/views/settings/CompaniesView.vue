@@ -51,7 +51,6 @@ function onRowClick(row) { router.push(`/settings/companies/${row.id}`) }
 <template>
   <DeskPage title="Company" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/settings" class="text-xs text-ink-600 hover:text-ink-900 mr-2">← Back to Settings</RouterLink>
       <RouterLink
         v-if="store.isAdmin"
         to="/settings/companies/new"

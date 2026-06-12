@@ -9,12 +9,14 @@ import DeskList from '@/components/desk/DeskList.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
 const adapter = createDataAdapter(store)
+const { canCreate } = usePermissions()
 
 const search = ref('')
 const taskFilter = ref(route.query.task || '')
@@ -142,7 +144,7 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
 <template>
   <DeskPage title="Task Progress Entry" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/progress-entries/new" class="desk-save-btn">+ New Entry</RouterLink>
+      <RouterLink v-if="canCreate('taskProgressEntry')" to="/progress-entries/new" class="desk-save-btn">+ New Entry</RouterLink>
     </template>
 
     <!-- KPI strip -->
@@ -268,7 +270,7 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No progress entries match these filters ·
-          <RouterLink to="/progress-entries/new" class="desk-link">File a new entry →</RouterLink>
+          <RouterLink v-if="canCreate('taskProgressEntry')" to="/progress-entries/new" class="desk-link">File a new entry →</RouterLink>
         </div>
       </template>
     </DeskList>

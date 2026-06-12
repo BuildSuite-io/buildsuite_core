@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "creation": "2026-06-11 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "reason",
+  "responsible_party",
+  "days_delayed",
+  "note",
+  "logged_by",
+  "logged_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "reason",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reason",
+   "reqd": 1
+  },
+  {
+   "fieldname": "responsible_party",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Responsible Party",
+   "options": "Own\nSubcontractor\nClient\nExternal\nConsultant"
+  },
+  {
+   "fieldname": "days_delayed",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No. of Days Delayed"
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "logged_by",
+   "fieldtype": "Link",
+   "label": "Logged By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "logged_on",
+   "fieldtype": "Datetime",
+   "label": "Logged On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-11 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "Stage Delay Reason",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

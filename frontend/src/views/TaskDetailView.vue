@@ -10,6 +10,7 @@ import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { parseFrappeError } from '@/utils/frappeError'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -29,6 +30,7 @@ const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
+const { canEdit, canDelete, canCreate } = usePermissions()
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -502,26 +504,28 @@ const progressColor = computed(() => {
     <!-- Edit / Delete / quick-status actions share the title row -->
     <template #actions>
       <button
-        v-if="task.status === 'Yet To Start'"
+        v-if="task.status === 'Yet To Start' && canEdit('task')"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
         @click="quickStatus('In Progress')"
       >Start</button>
       <button
-        v-if="task.status !== 'Completed'"
+        v-if="task.status !== 'Completed' && canEdit('task')"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50"
         style="border-radius: 6px; color: #15803D;"
         @click="quickStatus('Completed')"
       >Mark complete</button>
       <button
+        v-if="canEdit('task')"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
         @click="startEdit"
       >Edit</button>
       <button
+        v-if="canDelete('task')"
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
         style="border-radius: 6px;"
@@ -542,6 +546,7 @@ const progressColor = computed(() => {
               <h3 class="text-sm font-semibold text-ink-900">Progress</h3>
             </div>
             <button
+              v-if="canCreate('taskProgressEntry')"
               type="button"
               class="desk-save-btn text-xs"
               @click="fileProgressEntry"
