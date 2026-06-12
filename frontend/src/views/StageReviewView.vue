@@ -460,23 +460,25 @@ function goBack() {
       <div class="space-y-6">
         <section class="bg-white border border-ink-200 overflow-hidden dark:bg-[#242424] dark:border-ink-700" style="border-radius: 12px;">
           <header class="px-5 py-3 bg-gradient-to-r from-success-50 to-white border-b border-ink-100 flex items-center gap-2 dark:from-success-950/30 dark:to-[#242424] dark:border-ink-700">
-            <svg class="w-4 h-4 text-success-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('hard-hat')" />
+            <svg class="w-4 h-4 text-success-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="getWorkspaceIconPath('users-2')" />
             <h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">Labour movement</h2>
           </header>
-          <div class="p-5 space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Skilled</div>
-              <div class="text-base font-semibold text-ink-900 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.skilled }}</div>
+          <div class="p-5">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Skilled</div>
+                <div class="text-xl font-semibold text-ink-900 mt-0.5 tabular-nums">{{ labourTotals.skilled }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Unskilled</div>
+                <div class="text-xl font-semibold text-ink-900 mt-0.5 tabular-nums">{{ labourTotals.unskilled }}</div>
+              </div>
             </div>
-            <div class="flex items-center justify-between">
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Unskilled</div>
-              <div class="text-base font-semibold text-ink-900 tabular-nums dark:text-[#F5F5F5]">{{ labourTotals.unskilled }}</div>
+            <div class="text-[11px] text-ink-500">
+              From <span class="font-medium text-ink-700 tabular-nums">{{ labourTotals.entries }}</span>
+              progress entr{{ labourTotals.entries === 1 ? 'y' : 'ies' }} filed inside the stage window.
+              Counts are deployment-days (cumulative across filed entries) — not concurrent headcount.
             </div>
-            <div class="flex items-center justify-between border-t border-ink-100 pt-2 dark:border-ink-700">
-              <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Total man-days</div>
-              <div class="text-base font-semibold text-brand-700 tabular-nums">{{ labourTotals.total }}</div>
-            </div>
-            <div class="text-[11px] text-ink-400">{{ labourTotals.entries }} progress {{ labourTotals.entries === 1 ? 'entry' : 'entries' }} in window</div>
           </div>
         </section>
 
