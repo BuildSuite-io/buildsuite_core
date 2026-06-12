@@ -202,6 +202,7 @@
   html.dark .from-brand-50   { --tw-gradient-from: rgba(22, 163, 74, 0.14);  --tw-gradient-to: rgba(22, 163, 74, 0); }
   html.dark .from-info-50    { --tw-gradient-from: rgba(59, 130, 246, 0.14); --tw-gradient-to: rgba(59, 130, 246, 0); }
   html.dark .from-warning-50 { --tw-gradient-from: rgba(245, 158, 11, 0.16); --tw-gradient-to: rgba(245, 158, 11, 0); }
+  html.dark .from-success-50 { --tw-gradient-from: rgba(16, 185, 129, 0.14); --tw-gradient-to: rgba(16, 185, 129, 0); }
   html.dark .from-ink-50     { --tw-gradient-from: #1F1F1F; --tw-gradient-to: rgba(31, 31, 31, 0); }
   html.dark .to-white        { --tw-gradient-to: #242424; }
 
