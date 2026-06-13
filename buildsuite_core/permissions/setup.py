@@ -93,13 +93,23 @@ STAGE_PLANNING_ROLE_PERMS = {
     "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
 }
 
-# ERPNext-owned masters that BuildSuite Project + its forms link to: the Projects
-# list filters on Company, and the New Project form's Client field links to
-# Customer. Any role that can READ Project must be able to read these masters, or
-# the list filter / link picker 403s (and the SPA surfaces it as an unhandled
-# rejection). We mirror ONLY the role's non-destructive Project permissions —
-# BuildSuite never grants write/create/delete on these legal/financial masters.
-LINKED_MASTER_DOCTYPES = ("Company", "Customer")
+# Reference doctypes the BuildSuite Project / Task / Stage surfaces link to. Any
+# role that can READ Project must be able to read these, or the list filters /
+# link pickers / template previews 403 (and the SPA surfaces it as an unhandled
+# rejection). The rule: "if you can read a Project, you can read what a Project
+# links to." We mirror ONLY the role's non-destructive Project permissions
+# (read/report/export/print) — BuildSuite never grants write/create/delete on
+# these masters, whether they're ERPNext/HR-owned (Company, Customer, Project
+# Type, Employee, Task Type) or our own reference data (BuildSuite Project
+# Template, read-only for the create-from-template preview/seed).
+LINKED_MASTER_DOCTYPES = (
+    "Company",                     # Projects list multi-company filter
+    "Customer",                    # New Project -> Client picker
+    "Project Type",                # New Project -> Project Type picker
+    "Employee",                    # PM / owner / assignee pickers
+    "Task Type",                   # New Task -> Task Type picker
+    "BuildSuite Project Template", # New Project -> template preview + seed
+)
 _READONLY_PTYPES = ("read", "report", "export", "print")
 
 # No-DocPerm marker role granted to every persona. Used ONLY as the Stage Planning
