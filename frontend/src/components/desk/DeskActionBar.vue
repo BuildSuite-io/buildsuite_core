@@ -26,6 +26,7 @@ defineEmits(['save', 'cancel'])
       <button
         v-if="showCancel"
         type="button"
+        data-test="cancel-btn"
         class="text-xs text-ink-600 hover:text-ink-900 px-2.5 py-1.5 border border-ink-200 hover:bg-ink-50"
         style="border-radius: 6px;"
         @click="$emit('cancel')"
@@ -33,6 +34,7 @@ defineEmits(['save', 'cancel'])
       <button
         v-if="showSave"
         type="button"
+        data-test="save-btn"
         class="desk-save-btn"
         :disabled="!canSave || saving"
         @click="$emit('save')"

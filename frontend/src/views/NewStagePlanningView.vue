@@ -226,11 +226,12 @@ const breadcrumbs = [
       <div class="pb-12">
         <DeskSection title="Stage details" :cols="1">
           <DeskField label="Stage name" required :error="errors.stageName">
-            <DeskInput v-model="form.stageName" placeholder="e.g. Substructure Stage" />
+            <DeskInput v-model="form.stageName" data-test="field-stage-name" placeholder="e.g. Substructure Stage" />
           </DeskField>
           <DeskField label="Project" required :error="errors.project" :hint="lockedProject ? 'Pre-selected — locked.' : ''">
             <DeskLinkPicker
               v-model="form.project"
+              data-test="pick-project"
               doctype="Project"
               label-field="project_name"
               value-field="name"

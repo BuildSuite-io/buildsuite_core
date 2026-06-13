@@ -987,6 +987,7 @@ const breadcrumbs = computed(() => {
             <DeskField label="Rejection reason" required :error="rejectError">
               <DeskTextarea
                 v-model="rejectReason"
+                data-test="reject-reason-input"
                 :rows="4"
                 placeholder="Explain why this stage is being rejected…"
                 @input="rejectError = ''"
@@ -1007,6 +1008,7 @@ const breadcrumbs = computed(() => {
             >Cancel</button>
             <button
               type="button"
+              data-test="reject-submit"
               class="text-xs px-3 py-1.5 bg-danger-600 hover:bg-danger-700 text-white font-medium"
               style="border-radius: 6px;"
               :disabled="workflowActing === 'Reject'"

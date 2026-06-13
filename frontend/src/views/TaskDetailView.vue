@@ -548,6 +548,7 @@ const progressColor = computed(() => {
             <button
               v-if="canCreate('taskProgressEntry')"
               type="button"
+              data-test="file-progress-entry"
               class="desk-save-btn text-xs"
               @click="fileProgressEntry"
             >+ File Progress Entry</button>
