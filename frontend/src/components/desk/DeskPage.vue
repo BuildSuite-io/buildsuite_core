@@ -45,12 +45,12 @@ const statusList = computed(() => {
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 flex-wrap">
-          <h1 class="text-base font-semibold text-ink-900 leading-tight">{{ title }}</h1>
+          <h1 data-test="page-title" class="text-base font-semibold text-ink-900 leading-tight">{{ title }}</h1>
           <StatusBadge v-for="s in statusList" :key="s" :status="s" />
         </div>
         <p v-if="subtitle" class="text-xs text-ink-500 mt-0.5">{{ subtitle }}</p>
       </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
+      <div data-test="page-actions" class="flex items-center gap-2 flex-shrink-0">
         <slot name="actions" />
       </div>
     </div>
