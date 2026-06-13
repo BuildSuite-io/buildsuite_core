@@ -66,6 +66,7 @@ const routes = [
       { path: 'settings/companies/new',        name: 'settings-company-new',    component: () => import('@/views/settings/NewCompanyView.vue') },
       { path: 'settings/companies/:id',        name: 'settings-company-detail', component: () => import('@/views/settings/CompanyDetailView.vue'), props: true },
       { path: 'settings/users',                name: 'settings-users',          component: () => import('@/views/settings/UsersView.vue') },
+      { path: 'settings/users/new',            name: 'settings-user-new',       component: () => import('@/views/settings/NewUserView.vue') },
       { path: 'settings/data',                 name: 'settings-data',           component: () => import('@/views/settings/DataToolsView.vue') },
       { path: 'settings/core',                 name: 'settings-core',                component: () => import('@/views/settings/CoreSettingsView.vue') },
       { path: 'settings/site-execution',       name: 'settings-site-execution',      component: () => import('@/views/settings/SiteExecutionSettingsView.vue') },
