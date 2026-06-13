@@ -38,6 +38,8 @@ def get_context_for_dev():
 
 
 def get_boot():
+	from buildsuite_core.hooks import APP_ROUTE
+
 	csrf_token = getattr(frappe.session, "csrf_token", None)
 	if not csrf_token:
 		try:
@@ -51,7 +53,7 @@ def get_boot():
 		{
 			"frappe_version": frappe.__version__,
 			"session_user": frappe.session.user,
-			"default_route": "/client",
+			"default_route": f"/{APP_ROUTE}",
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
 			"csrf_token": csrf_token,
