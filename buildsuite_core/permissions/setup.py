@@ -93,6 +93,15 @@ STAGE_PLANNING_ROLE_PERMS = {
     "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
 }
 
+# ERPNext-owned masters that BuildSuite Project + its forms link to: the Projects
+# list filters on Company, and the New Project form's Client field links to
+# Customer. Any role that can READ Project must be able to read these masters, or
+# the list filter / link picker 403s (and the SPA surfaces it as an unhandled
+# rejection). We mirror ONLY the role's non-destructive Project permissions —
+# BuildSuite never grants write/create/delete on these legal/financial masters.
+LINKED_MASTER_DOCTYPES = ("Company", "Customer")
+_READONLY_PTYPES = ("read", "report", "export", "print")
+
 # No-DocPerm marker role granted to every persona. Used ONLY as the Stage Planning
 # workflow states' `allow_edit` (a mandatory single-role field) so the workflow
 # never blocks editing — the real edit gate is DocPerm + has_*_permission.
@@ -166,6 +175,33 @@ def setup_stage_planning_permissions():
     _apply_role_perms("Stage Planning", STAGE_PLANNING_ROLE_PERMS)
 
 
+def _readonly_mirror(role_perms):
+    """Reduce a role-perm matrix to its non-destructive ptypes, for read roles.
+
+    Used to derive Company/Customer perms from PROJECT_ROLE_PERMS: a role keeps
+    only its read/report/export/print grants (write/create/delete are dropped),
+    and roles without read on Project are excluded entirely.
+    """
+    return {
+        role: {ptype: perms.get(ptype, 0) for ptype in _READONLY_PTYPES}
+        for role, perms in role_perms.items()
+        if perms.get("read")
+    }
+
+
+def setup_linked_master_permissions():
+    """Grant read-only Company/Customer access to every Project-readable role.
+
+    The Projects list filters on Company and the New Project form links Client to
+    Customer; without read on these masters those calls 403. Mirrors only the
+    non-destructive Project permissions (see LINKED_MASTER_DOCTYPES note).
+    """
+    mirror = _readonly_mirror(PROJECT_ROLE_PERMS)
+    for doctype in LINKED_MASTER_DOCTYPES:
+        if frappe.db.exists("DocType", doctype):
+            _apply_role_perms(doctype, mirror)
+
+
 # Stage Planning Approval transitions, keyed to BuildSuite roles.
 # (state, action, next_state, [roles], own_only)
 _STAGE_FULL_ROLES = ["BuildSuite Director", "BuildSuite PM", "BuildSuite Administrator", "System Manager"]
@@ -217,5 +253,6 @@ def setup_record_permissions():
     setup_work_package_permissions()
     setup_task_progress_entry_permissions()
     setup_stage_planning_permissions()
+    setup_linked_master_permissions()
     _ensure_role(WORKFLOW_EDITOR_ROLE)
     setup_stage_planning_workflow()
