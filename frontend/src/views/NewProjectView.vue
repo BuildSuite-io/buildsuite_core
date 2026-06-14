@@ -140,6 +140,10 @@ function validate() {
   if (!form.name) e.name = 'Project name is required'
   if (!form.code) e.code = 'Project ID is required'
   if (!form.allowSubprojects && !form.parentId) e.parentId = 'Parent Project is required'
+  // Company is mandatory on Project (§14). The field only renders on multi-company
+  // sites; enforce it here so the user gets an inline error instead of a backend
+  // 417 on insert.
+  if (store.isMultiCompany && !form.company) e.company = 'Company is required'
   if (form.endDate && form.startDate && form.endDate < form.startDate) e.endDate = 'End must be after start'
   setErrors(e)
   return Object.keys(e).length === 0
@@ -298,6 +302,7 @@ const breadcrumbs = computed(() => {
           <DeskLinkPicker
             v-model="form.company"
             doctype="Company"
+            data-test="pick-company"
             placeholder="Select company"
             label-field="name"
             value-field="name"

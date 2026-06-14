@@ -53,11 +53,13 @@ Cypress.Commands.add('confirmAccept', () => cy.dt('confirm-accept').click())
 Cypress.Commands.add('confirmCancel', () => cy.dt('confirm-cancel').click())
 
 // Fill a DeskLinkPicker field: click its trigger (data-test = the picker's
-// dataTest prop), type into the portalled search popover, pick the first option.
+// dataTest prop), optionally type a query into the portalled search popover, then
+// pick the first option. Omit `query` to just select the first available option
+// (e.g. picking any valid Company when the test doesn't care which).
 Cypress.Commands.add('fillLink', (dataTest, query) => {
   cy.get(`[data-test="${dataTest}"]`).click()
   cy.get('.desk-link-picker-popover').should('be.visible').within(() => {
-    cy.get('input').first().clear().type(query)
+    if (query) cy.get('input').first().clear().type(query)
   })
   // options render inside the same portalled popover (frappe-ui Autocomplete)
   cy.get('.desk-link-picker-popover')

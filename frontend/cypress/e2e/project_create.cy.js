@@ -17,6 +17,9 @@ describe('Create project from template', () => {
     cy.dt('field-name').type(`Cypress Project ${stamp}`)
     cy.dt('field-code').type(`CYP-${stamp}`)
     cy.fillLink('pick-project-type', 'Commercial')
+    // Company is required on Project (§14) and the field renders on this
+    // multi-company site — pick any valid Company.
+    cy.fillLink('pick-company')
 
     cy.dt('save-btn').click()
 
