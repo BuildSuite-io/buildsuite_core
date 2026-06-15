@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { getLoginUrl } from '@/utils/session'
+import { APP_ROUTE } from '@/utils/appRoute'
 
 const routes = [
   {
@@ -90,7 +91,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/client'),
+  history: createWebHistory(APP_ROUTE),
   routes,
   scrollBehavior() { return { top: 0 } },
 })

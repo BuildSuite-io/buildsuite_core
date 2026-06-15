@@ -140,7 +140,7 @@ const breadcrumbs = [
       <div class="max-w-3xl mx-auto">
       <DeskSection title="Task details" :cols="1">
         <DeskField label="Task name" required :error="errors.name">
-          <DeskInput v-model="form.name" placeholder="e.g. Block A — Level 6 column casting" />
+          <DeskInput v-model="form.name" data-test="field-task-name" placeholder="e.g. Block A — Level 6 column casting" />
         </DeskField>
         <DeskField label="Task Type">
           <DeskLinkPicker
@@ -162,6 +162,7 @@ const breadcrumbs = [
         <DeskField label="Project" required :error="errors.projectId" :hint="lockedProject ? 'Pre-selected — locked.' : ''">
           <DeskLinkPicker
             v-model="form.projectId"
+            data-test="pick-project"
             doctype="Project"
             label-field="project_name"
             value-field="name"
@@ -177,6 +178,7 @@ const breadcrumbs = [
         <DeskField label="Work Package" :hint="lockedWP ? 'Pre-selected — locked.' : 'Optional · direct project tasks leave blank'">
           <DeskLinkPicker
             v-model="form.workPackageId"
+            data-test="pick-wp"
             doctype="Work Package"
             label-field="work_package_name"
             value-field="name"
