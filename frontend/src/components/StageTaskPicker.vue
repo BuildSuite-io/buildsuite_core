@@ -52,7 +52,7 @@ const tasksResource = ref(null)
 watch(() => props.projectId, (newVal) => {
   if (!newVal) { tasksResource.value = null; return }
   tasksResource.value = adapter.list('Task', {
-    fields: ['name', 'subject', 'project', 'work_package', 'status', 'type', 'owner', 'exp_start_date', 'exp_end_date'],
+    fields: ['name', 'subject', 'project', 'work_package', 'task_status', 'type', 'owner', 'exp_start_date', 'exp_end_date'],
     filters: [['project', '=', newVal]],
     pageLength: 500,
     cache: `stage-picker-tasks:${newVal}`,
@@ -62,7 +62,7 @@ watch(() => props.projectId, (newVal) => {
         name: row?.subject || row?.task_name || row?.name || '',
         projectId: row?.project || '',
         workPackageId: row?.work_package || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         task_type: row?.type || row?.task_type || 'Activity',
         assignee: row?.owner || row?.assignee || '',
@@ -487,7 +487,6 @@ defineExpose({
                   <option>In Progress</option>
                   <option>In Delay</option>
                   <option>Completed</option>
-                  <option>Blocked</option>
                 </DeskSelect>
               </div>
             </div>
@@ -720,7 +719,6 @@ defineExpose({
             <option>In Progress</option>
             <option>In Delay</option>
             <option>Completed</option>
-            <option>Blocked</option>
           </DeskSelect>
         </div>
       </div>

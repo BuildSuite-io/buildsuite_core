@@ -63,7 +63,7 @@ function loadTaskResource() {
       'subject',
       'project',
       'work_package',
-      'status',
+      'task_status',
       'priority',
       'progress',
       'owner',
@@ -79,7 +79,7 @@ function loadTaskResource() {
         name: row?.subject || row?.name || '',
         projectId: row?.project || '',
         workPackageId: row?.work_package || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         progress: Number(row?.progress) || 0,
         assignee: row?.owner || '',
@@ -213,7 +213,7 @@ const {
 } = useFormErrors({
   subject:         'name',
   work_package:    'workPackageId',
-  status:          'status',
+  task_status:     'status',
   priority:        'priority',
   type:            'task_type',
   owner:           'assignee',
@@ -411,7 +411,7 @@ async function saveEdit() {
     await adapter.update('Task', props.id, {
       subject: form.value.name,
       work_package: form.value.workPackageId || null,
-      status: form.value.status,
+      task_status: form.value.status,
       priority: form.value.priority,
       type: form.value.task_type,
       owner: form.value.assignee,
@@ -433,7 +433,7 @@ function cancelEdit() {
 }
 
 async function quickStatus(status) {
-  const patch = { status }
+  const patch = { task_status: status }
   if (status === 'Completed') patch.progress = 100
   if (status === 'Yet To Start') patch.progress = 0
 
@@ -715,7 +715,6 @@ const progressColor = computed(() => {
                   <option>In Progress</option>
                   <option>In Delay</option>
                   <option>Completed</option>
-                  <option>Blocked</option>
                 </DeskSelect>
               </DeskField>
               <DeskField label="Priority" :error="editErrors.priority">

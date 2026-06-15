@@ -95,7 +95,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         'subject',
         'project',
         'work_package',
-        'status',
+        'task_status',
         'priority',
         'type',
         'owner',
@@ -106,7 +106,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       :columns="[
         { key: 'subject', label: 'Task' },
         { key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
-        { key: 'status', label: 'Status', preset: 'status' },
+        { key: 'task_status', label: 'Status', preset: 'status' },
         { key: 'priority', label: 'Priority', preset: 'status' },
         { key: 'type', label: 'Task Type', preset: 'status' },
         { key: 'owner', label: 'Assignee' },
@@ -116,7 +116,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       :search-fields="['subject', 'name']"
       :filter-values="filterValues"
       :filter-field-map="{
-        status: 'status',
+        status: 'task_status',
         priority: 'priority',
         project: 'project',
         assignee: 'owner',
@@ -131,10 +131,10 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         <!-- Status: select when empty, chip when set -->
         <DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
           <option value="">Status: Any</option>
-          <option>Open</option>
+          <option>Yet To Start</option>
           <option>In Progress</option>
+          <option>In Delay</option>
           <option>Completed</option>
-          <option>Cancelled</option>
         </DeskSelect>
         <DeskFilterChip
           v-else
