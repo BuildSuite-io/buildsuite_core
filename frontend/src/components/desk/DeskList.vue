@@ -246,7 +246,7 @@ const showPagination = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white border border-ink-200" style="border-radius: 8px;">
+  <div data-test="desk-list" class="bg-white border border-ink-200" style="border-radius: 8px;">
     <!-- Filter bar — flat white background, pill inputs, soft small buttons -->
     <div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
       <!-- Search with leading magnifier icon -->
@@ -261,6 +261,7 @@ const showPagination = computed(() => {
         </svg>
         <input
           type="text"
+          data-test="list-search"
           :value="modelValue"
           :placeholder="searchPlaceholder"
           class="desk-input"
@@ -324,6 +325,8 @@ const showPagination = computed(() => {
           <tr
             v-for="row in pagedRows"
             :key="keyFor(row)"
+            :data-test="`row-${keyFor(row)}`"
+            data-test-row
             class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
             @click="emit('row-click', row)"
           >
@@ -369,6 +372,7 @@ const showPagination = computed(() => {
       <div class="flex items-center gap-2">
         <span class="text-ink-500">Rows per page</span>
         <select
+          data-test="pager-size"
           :value="pageSizeValue"
           class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
           style="border-radius: 6px; padding: 4px 8px;"
@@ -386,6 +390,7 @@ const showPagination = computed(() => {
       <div class="ml-auto flex items-center gap-1">
         <button
           type="button"
+          data-test="pager-prev"
           class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
           style="border-radius: 6px; padding: 4px 10px;"
           :disabled="pageValue <= 1"
@@ -397,6 +402,7 @@ const showPagination = computed(() => {
         </span>
         <button
           type="button"
+          data-test="pager-next"
           class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
           style="border-radius: 6px; padding: 4px 10px;"
           :disabled="pageValue >= totalPages"

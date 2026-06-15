@@ -140,6 +140,10 @@ function validate() {
   if (!form.name) e.name = 'Project name is required'
   if (!form.code) e.code = 'Project ID is required'
   if (!form.allowSubprojects && !form.parentId) e.parentId = 'Parent Project is required'
+  // Company is mandatory on Project (§14). The field only renders on multi-company
+  // sites; enforce it here so the user gets an inline error instead of a backend
+  // 417 on insert.
+  if (store.isMultiCompany && !form.company) e.company = 'Company is required'
   if (form.endDate && form.startDate && form.endDate < form.startDate) e.endDate = 'End must be after start'
   setErrors(e)
   return Object.keys(e).length === 0
@@ -215,10 +219,10 @@ const breadcrumbs = computed(() => {
       <div class="max-w-3xl mx-auto">
       <DeskSection title="Basic information">
         <DeskField label="Project name" required :error="errors.name">
-          <DeskInput v-model="form.name" placeholder="e.g. Bangalore Tech Park Phase 2" />
+          <DeskInput v-model="form.name" data-test="field-name" placeholder="e.g. Bangalore Tech Park Phase 2" />
         </DeskField>
         <DeskField label="Project ID" required :error="errors.code" hint="Short unique identifier — used as a code in lists and URLs.">
-          <DeskInput v-model="form.code" placeholder="e.g. BTP-P2" />
+          <DeskInput v-model="form.code" data-test="field-code" placeholder="e.g. BTP-P2" />
         </DeskField>
         <!-- Session 40: Client is now a Link field onto the Customer master
              (ERPNext-native Customer DocType). The stored value is the
@@ -227,6 +231,7 @@ const breadcrumbs = computed(() => {
         <DeskField label="Client" :error="errors.client">
           <DeskLinkPicker
             v-model="form.client"
+            data-test="pick-customer"
             doctype="Customer"
             placeholder="Select customer"
             label-field="customer_name"
@@ -241,6 +246,7 @@ const breadcrumbs = computed(() => {
         <DeskField label="Project type" :error="errors.type">
           <DeskLinkPicker
             v-model="form.type"
+            data-test="pick-project-type"
             doctype="Project Type"
             placeholder="Select project type"
             label-field="name"
@@ -296,6 +302,7 @@ const breadcrumbs = computed(() => {
           <DeskLinkPicker
             v-model="form.company"
             doctype="Company"
+            data-test="pick-company"
             placeholder="Select company"
             label-field="name"
             value-field="name"
