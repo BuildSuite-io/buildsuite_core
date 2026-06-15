@@ -29,12 +29,12 @@ describe('Stage Planning approval workflow', () => {
     cy.loginAs('pm')                 // PM can submit + approve (self-approval allowed)
     createDraftStage(Date.now())
 
+    // Submit + Approve apply the workflow directly on click (no confirm dialog) —
+    // the new state badge is the gate.
     cy.dt('page-actions').contains('Submit for Approval').click()
-    cy.confirmAccept()
     cy.contains('Pending Approval').should('be.visible')
 
     cy.dt('page-actions').contains('Approve').click()
-    cy.confirmAccept()
     cy.contains('Approved').should('be.visible')
   })
 
@@ -43,9 +43,9 @@ describe('Stage Planning approval workflow', () => {
     createDraftStage(Date.now() + 1)
 
     cy.dt('page-actions').contains('Submit for Approval').click()
-    cy.confirmAccept()
     cy.contains('Pending Approval').should('be.visible')
 
+    // Reject opens a reason modal (not a confirm dialog).
     cy.dt('page-actions').contains('Reject').click()
     cy.dt('reject-reason-input').type('Cypress: scope unclear, returning for rework')
     cy.dt('reject-submit').click()
