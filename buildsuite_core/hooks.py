@@ -165,7 +165,9 @@ doc_events = {
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	# },
 	"Project": {
-		"after_insert": "buildsuite_core.utils.project.seed_from_template_on_insert"
+		"after_insert": "buildsuite_core.utils.project.seed_from_template_on_insert",
+        "validate": "buildsuite_core.utils.project.create_warehouse_for_project",
+		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	},
 	"Task": {
 		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
