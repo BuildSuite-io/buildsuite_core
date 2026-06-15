@@ -585,3 +585,12 @@ Replay of the prototype's UI from prototype-Session 95 → 130 into the producti
 | 2026-06-12 | Fix (dark mode): added missing `-950` palette shades (brand/success/warning/danger/info) in `tailwind.config.js` + a global `html.dark .from-success-50` override in `style.css`. The Labour-movement gradient header was the only one on `from-success-50`, which had no dark override (brand/info/warning/ink did) → light wash in dark mode. |
 | 2026-06-12 | Fix (Stage Review Labour movement): layout re-aligned to prototype (2-col Skilled/Unskilled grid, `users-2` icon added to `workspaceIcons.js`, descriptive footer; dropped the Total-man-days row). **Dropped the date-window filter** — labour now sums every Task Update for the stage's tasks (planned windows rarely bracket entry dates, which made it read 0). |
 | 2026-06-12 | Verified: project create from the frontend (frappe-ui `resource` → `frappe.client.insert`) **respects** Frappe permissions — an estimator is correctly denied. The persona switcher is cosmetic; backend is authoritative. (Confirmed with a temporary on-load probe, since removed.) |
+
+#todo
+
+One thing worth flagging for later (not blocking)
+I noticed the production frontend store still runs the prototype's company model — store.companies is seeded from a @/data/companies fixture (3 fake "Acme" companies), and isMultiCompany/activeCompany derive from that, not from the backend Company doctype. Meanwhile the actual picker and Project.company use the real backend companies (NG Build...). They're two disconnected sources:
+
+isMultiCompany is true purely because the fixture has 3 entries — so the Company field always shows, even though the real site's company count could differ.
+The "default to active company" comment can't be honored, because activeCompany is a fixture id (ACME-COM) that isn't a valid backend Company.
+That's a real piece of tech debt in the prototype→backend transition, but it's out of scope for getting the suite green and would change app behavior — so I left it. Worth a dedicated pass later to make the company model backend-driven (count companies from the Company doctype, default the form to Frappe's default company). Want me to note that somewhere, or take it on as a separate task?
