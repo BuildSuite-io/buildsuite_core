@@ -186,6 +186,12 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
+scheduler_events = {
+    "daily": [
+        "buildsuite_core.utils.task.update_delayed_tasks"
+    ]
+}
+
 # scheduler_events = {
 # 	"all": [
 # 		"buildsuite_core.tasks.all"
@@ -341,4 +347,8 @@ fixtures = [
 doctype_js = {
     "Project": "public/js/project.js",
     "Task": "public/js/task.js"
+}
+
+doctype_list_js = {
+    "Task": "public/js/task_list.js"
 }

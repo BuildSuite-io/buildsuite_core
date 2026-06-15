@@ -156,7 +156,17 @@ CUSTOM_FIELD = {
             "insert_after": "description",
             "module": "BuildSuite Core",
             "read_only": 1
-        }
+        },
+        {
+            "fieldname": "task_status",
+            "fieldtype": "Select",
+            "insert_after": "status",
+            "label": "Task Status",
+            "in_list_view": 0,
+            "in_standard_filter": 1,
+            "default": "Yet To Start",
+            "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted",
+        },
     ],
     "Warehouse": [
         {
