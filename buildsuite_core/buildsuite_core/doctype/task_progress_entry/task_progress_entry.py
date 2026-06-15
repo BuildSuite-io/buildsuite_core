@@ -30,7 +30,7 @@ class TaskProgressEntry(Document):
 
 	def before_save(self):
 		task = frappe.get_doc("Task", self.task)
-
+		project = frappe.get_doc("Project", task.project)
 		if self.is_new():
 			duplicate = False
 
@@ -66,6 +66,15 @@ class TaskProgressEntry(Document):
 
 		if task.progress > 100:
 			frappe.throw(_("Cumulative progress cannot exceed 100%"))
+		
+		if task.progress == 100:
+			task.status = "Completed"
+			task.task_status = "Completed"
+			project.status = "Completed"
 
+		else:
+			task.task_status = "In Progress"
+			project.status = "Working"
+			project.save(ignore_permissions=True)
 		task.save(ignore_permissions=True)
 	pass
