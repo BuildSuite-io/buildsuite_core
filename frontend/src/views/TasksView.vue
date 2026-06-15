@@ -6,6 +6,7 @@ import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
+import { usePermissions } from '@/composables/usePermissions'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -17,6 +18,7 @@ import { fmtDate } from '@/utils/format'
 const store = useDataStore()
 const router = useRouter()
 const adapter = createDataAdapter(store)
+const { canCreate } = usePermissions()
 
 const statusFilter = ref('')
 const priorityFilter = ref('')
@@ -84,7 +86,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
   <DeskPage title="Task" :breadcrumbs="breadcrumbs">
     <template #actions>
       <RouterLink to="/activity-types" class="desk-link text-xs mr-3">View Activity Types →</RouterLink>
-      <RouterLink to="/tasks/new" class="desk-save-btn">+ New</RouterLink>
+      <RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn">+ New</RouterLink>
     </template>
 
     <DocTypeListView
@@ -230,7 +232,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No tasks match these filters ·
-          <RouterLink to="/tasks/new" class="desk-link">Create a task →</RouterLink>
+          <RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-link">Create a task →</RouterLink>
         </div>
       </template>
     </DocTypeListView>

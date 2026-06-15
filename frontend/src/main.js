@@ -7,8 +7,9 @@ import router from './router'
 import './style.css'
 import { applyBootToWindow, syncSessionFromCookie } from './utils/session'
 import { useSessionStore } from './stores/session'
+import { DEV_BOOT_METHOD } from './utils/appRoute'
 
-const DEV_BOOT_URL = '/api/method/buildsuite_core.www.client.get_context_for_dev'
+const DEV_BOOT_URL = `/api/method/${DEV_BOOT_METHOD}`
 
 async function hydrateDevBoot() {
 	if (!import.meta.env.DEV) return

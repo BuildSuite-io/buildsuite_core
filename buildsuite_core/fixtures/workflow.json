@@ -70,20 +70,6 @@
                 "allow_self_approval": 1
             },
             {
-                "state": "Rejected",
-                "action": "Revise",
-                "next_state": "Draft",
-                "allowed": "Projects User",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Rejected",
-                "action": "Revise",
-                "next_state": "Draft",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
                 "state": "Approved",
                 "action": "Revise",
                 "next_state": "Draft",

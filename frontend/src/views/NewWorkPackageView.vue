@@ -9,6 +9,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -23,6 +24,7 @@ import { createDataAdapter } from '@/data/adapters'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const { canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
 
 const form = reactive({
@@ -101,7 +103,10 @@ const subtitle = computed(() =>
 
 <template>
   <DeskPage title="New Work Package" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
-    <DeskForm>
+    <div v-if="!canCreate('workPackage')" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      You don't have permission to create a work package.
+    </div>
+    <DeskForm v-else>
       <template #action-bar>
         <DeskActionBar
           :save-label="saving ? 'Creating…' : 'Create work package'"

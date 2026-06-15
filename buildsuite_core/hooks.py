@@ -5,6 +5,12 @@ app_description = "A construction operating system built on Frappe"
 app_email = "app@buildsuite.io"
 app_license = "mit"
 
+# Single source of truth for the frontend website route (the SPA is served at
+# /<APP_ROUTE> via the www/<APP_ROUTE>.{py,html} page). The `bench change-app-route`
+# command rewrites this token, renames the www page, and updates the frontend
+# (frontend/src/utils/appRoute.js) to match. Keep all three in sync.
+APP_ROUTE = "core"
+
 # Apps
 # ------------------
 
@@ -16,14 +22,14 @@ add_to_apps_screen = [
 		"name": "buildsuite_core",
 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
 		"title": "Buildsuite Core",
-		"route": "/client",
+		"route": f"/{APP_ROUTE}",
         "has_permission": "buildsuite_core.api.permission.has_app_permission",
 	}
 ]
 
 website_route_rules = [
-    {"from_route": "/client/<path:app_path>", "to_route": "client"},
-    {"from_route": "/client", "to_route": "client"},
+    {"from_route": f"/{APP_ROUTE}/<path:app_path>", "to_route": APP_ROUTE},
+    {"from_route": f"/{APP_ROUTE}", "to_route": APP_ROUTE},
 ]
 
 # Includes in <head>

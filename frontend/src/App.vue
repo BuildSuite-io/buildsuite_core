@@ -1,10 +1,26 @@
 <script setup>
 import { onMounted, watch } from 'vue'
 import { useDataStore } from '@/stores'
+import { useSessionStore } from '@/stores/session'
+import { personaIdFromName, personaIdFromRoles } from '@/data/roles'
 import { toasts } from '@/utils/appToast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirmState } from '@/composables/useConfirm'
+
+const { state: confirmState, onConfirm, onCancel } = useConfirmState()
 
 const store = useDataStore()
-onMounted(() => store.hydrate())
+const session = useSessionStore()
+
+onMounted(() => {
+  store.hydrate()
+  // Set the active persona from the logged-in user (real persona wins over any
+  // persisted switcher choice). The switcher remains usable for previewing other
+  // personas within the session; the backend is the authoritative gate.
+  const personaId = personaIdFromName(session.access?.persona)
+    || personaIdFromRoles(session.access?.roles)
+  if (personaId) store.setRole(personaId)
+})
 
 // Apply the `dark` class on <html> based on store.theme. Watch immediate so
 // the class lands on first paint after hydrate; subsequent flips persist via
@@ -44,6 +60,17 @@ watch(() => store.theme, (t) => applyThemeClass(t), { immediate: true })
       </TransitionGroup>
     </div>
   </Teleport>
+
+  <!-- App-level confirmation dialog driven by useConfirm() -->
+  <ConfirmDialog
+    :open="confirmState.open"
+    :title="confirmState.title"
+    :message="confirmState.message"
+    :confirm-label="confirmState.confirmLabel"
+    :destructive="confirmState.destructive"
+    @confirm="onConfirm"
+    @update:open="(v) => { if (!v) onCancel() }"
+  />
 </template>
 
 <style>

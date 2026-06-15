@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "STG-.YYYY.-.###",
- "creation": "2026-05-29 00:00:00.000000",
+ "creation": "2026-06-11 18:33:19.588377",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -17,10 +17,13 @@
   "planned_completion_pct",
   "section_break_desc",
   "description",
+  "reject_reason",
   "section_break_deps",
   "dependencies",
   "section_break_tasks",
-  "stage_planning_tasks"
+  "stage_planning_tasks",
+  "section_break_delay",
+  "delay_reasons"
  ],
  "fields": [
   {
@@ -40,8 +43,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Stage Name",
-   "reqd": 1,
-   "quick_entry": 1
+   "reqd": 1
   },
   {
    "fieldname": "project",
@@ -50,8 +52,7 @@
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1,
-   "quick_entry": 1
+   "reqd": 1
   },
   {
    "fieldname": "column_break_1",
@@ -60,14 +61,12 @@
   {
    "fieldname": "planned_start",
    "fieldtype": "Date",
-   "label": "Planned Start",
-   "quick_entry": 1
+   "label": "Planned Start"
   },
   {
    "fieldname": "planned_end",
    "fieldtype": "Date",
-   "label": "Planned End",
-   "quick_entry": 1
+   "label": "Planned End"
   },
   {
    "fieldname": "section_break_metrics",
@@ -97,6 +96,14 @@
    "label": "Description"
   },
   {
+   "depends_on": "eval:doc.workflow_state=='Rejected'",
+   "fieldname": "reject_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_deps",
    "fieldtype": "Section Break",
    "label": "Dependencies"
@@ -117,14 +124,25 @@
    "fieldtype": "Table",
    "label": "Stage Tasks",
    "options": "Stage Planning Task"
+  },
+  {
+   "fieldname": "section_break_delay",
+   "fieldtype": "Section Break",
+   "label": "Delay Log"
+  },
+  {
+   "fieldname": "delay_reasons",
+   "fieldtype": "Table",
+   "label": "Delay Reasons",
+   "options": "Stage Delay Reason"
   }
  ],
  "links": [],
- "modified": "2026-05-29 00:00:00.000000",
+ "modified": "2026-06-11 18:45:49.717937",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Stage Planning",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -141,7 +159,6 @@
   },
   {
    "create": 1,
-   "delete": 0,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -152,9 +169,10 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1,
- "quick_entry": 1
+ "track_changes": 1
 }

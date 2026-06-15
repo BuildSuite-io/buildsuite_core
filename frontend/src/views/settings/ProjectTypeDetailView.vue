@@ -9,6 +9,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import { PROJECT_TYPE_TEMPLATES } from '@/data/projectTypeTemplates'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -22,6 +23,7 @@ const props = defineProps({ id: { type: String, required: true } })
 
 const router = useRouter()
 const store = useDataStore()
+const confirmDialog = useConfirm()
 
 const record = computed(() => store.projectTypeById(props.id))
 
@@ -53,16 +55,14 @@ function saveEdit() {
 }
 function onPrimary() { editing.value ? saveEdit() : startEdit() }
 
-function onDelete() {
+async function onDelete() {
   if (!record.value) return
   const count = store.projects.filter(p => p.type === record.value.name).length
-  if (count > 0) {
-    const ok = confirm(`${count} project${count === 1 ? '' : 's'} reference "${record.value.name}". Deleting this record will leave them without configured settings (they still work — the name resolver falls back to site defaults). Continue?`)
-    if (!ok) return
-  } else {
-    const ok = confirm(`Delete Project Type "${record.value.name}"? This is reversible — re-add via + New.`)
-    if (!ok) return
-  }
+  const message = count > 0
+    ? `${count} project${count === 1 ? '' : 's'} reference "${record.value.name}". Deleting this record will leave them without configured settings (they still work — the name resolver falls back to site defaults). Continue?`
+    : `Delete Project Type "${record.value.name}"? This is reversible — re-add via + New.`
+  const ok = await confirmDialog({ title: 'Delete Project Type', message, confirmLabel: 'Delete', destructive: true })
+  if (!ok) return
   store.deleteProjectType(record.value.id)
   router.push('/settings/project-types')
 }

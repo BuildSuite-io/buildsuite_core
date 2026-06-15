@@ -8,6 +8,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -20,6 +21,7 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const confirmDialog = useConfirm()
 
 const COLOR_OPTIONS = [
   { value: 'bg-brand-600',   label: 'Green'    },
@@ -60,7 +62,7 @@ function saveEdit() {
 }
 function onPrimary() { editing.value ? saveEdit() : startEdit() }
 
-function deleteCompany() {
+async function deleteCompany() {
   if (!store.isAdmin) return
   if (linkedProjects.value.length) {
     // Reference guard — Frappe LinkExistsError pattern. List the offending
@@ -70,7 +72,7 @@ function deleteCompany() {
     alert(`Cannot delete "${company.value.name}".\n\n${linkedProjects.value.length} project(s) reference this company:\n\n${sample}${more}\n\nReassign or delete those projects first.`)
     return
   }
-  if (!confirm(`Delete company "${company.value.name}"?\n\nThis is permanent. No project references this company so the delete is safe.`)) return
+  if (!(await confirmDialog({ title: 'Delete company', message: `Delete company "${company.value.name}"?\n\nThis is permanent. No project references this company so the delete is safe.`, confirmLabel: 'Delete', destructive: true }))) return
   const result = store.deleteCompany(props.id)
   if (result.ok) {
     router.push('/settings/companies')

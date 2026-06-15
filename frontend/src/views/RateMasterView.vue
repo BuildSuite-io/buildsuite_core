@@ -5,6 +5,7 @@
 
 import { computed, ref } from 'vue'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskList from '@/components/desk/DeskList.vue'
@@ -44,11 +45,17 @@ function save() {
   else store.updateRate(editing.value.id, form.value)
   editing.value = null
 }
-function remove(r) {
-  if (confirm(`Delete rate ${r.code}? This will also delete its history entries.`)) {
-    store.deleteRate(r.id)
-    if (drawer.value?.id === r.id) drawer.value = null
-  }
+const confirmDialog = useConfirm()
+async function remove(r) {
+  const ok = await confirmDialog({
+    title: 'Delete rate',
+    message: `Delete rate ${r.code}? This will also delete its history entries.`,
+    confirmLabel: 'Delete',
+    destructive: true,
+  })
+  if (!ok) return
+  store.deleteRate(r.id)
+  if (drawer.value?.id === r.id) drawer.value = null
 }
 
 const rows = computed(() => {

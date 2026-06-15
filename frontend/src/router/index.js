@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { getLoginUrl } from '@/utils/session'
+import { APP_ROUTE } from '@/utils/appRoute'
 
 const routes = [
   {
@@ -25,6 +26,7 @@ const routes = [
       { path: 'stage-plannings',               name: 'stage-plannings',       component: () => import('@/views/StagePlanningsView.vue') },
       { path: 'stage-plannings/new',           name: 'stage-planning-new',    component: () => import('@/views/NewStagePlanningView.vue') },
       { path: 'stage-plannings/:id',           name: 'stage-planning-detail', component: () => import('@/views/StagePlanningDetailView.vue'), props: true },
+      { path: 'stage-plannings/:id/review',    name: 'stage-planning-review', component: () => import('@/views/StageReviewView.vue'), props: true },
       { path: 'progress-entries',              name: 'progress-entries',     component: () => import('@/views/TaskProgressEntriesView.vue') },
       { path: 'progress-entries/new',          name: 'progress-entry-new',   component: () => import('@/views/NewTaskProgressEntryView.vue') },
       { path: 'progress-entries/:id',          name: 'progress-entry-detail',component: () => import('@/views/TaskProgressEntryDetailView.vue'), props: true },
@@ -89,7 +91,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/client'),
+  history: createWebHistory(APP_ROUTE),
   routes,
   scrollBehavior() { return { top: 0 } },
 })
