@@ -64,6 +64,7 @@ const items = computed(() => {
   )
 })
 
+const fieldOrder = ['full_name', 'persona', 'email', 'enabled', 'name']
 const columns = [
   { key: 'full_name', label: 'Name' },
   { key: 'email', label: 'Email' },
