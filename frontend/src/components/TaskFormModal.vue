@@ -55,7 +55,7 @@ const form = reactive({
   activityType: null,
   name: '',
   description: '',
-  status: 'Open',
+  status: 'Yet To Start',
   priority: 'Medium',
   assignee: '',
   startDate: '',
@@ -71,7 +71,7 @@ watch(() => props.open, (isOpen) => {
   form.activityType   = null
   form.name           = ''
   form.description    = ''
-  form.status         = 'Open'
+  form.status         = 'Yet To Start'
   form.priority       = 'Medium'
   form.assignee       = ''
   form.startDate      = new Date().toISOString().slice(0, 10)
@@ -127,7 +127,7 @@ async function save() {
       activity_type: form.activityType,
       subject: form.name,
       description: form.description,
-      status: form.status,
+      task_status: form.status,
       priority: form.priority,
       owner: form.assignee,
       exp_start_date: form.startDate,
@@ -230,10 +230,10 @@ async function save() {
             </DeskField>
             <DeskField label="Status">
               <DeskSelect v-model="form.status">
-                <option>Open</option>
+                <option>Yet To Start</option>
                 <option>In Progress</option>
+                <option>In Delay</option>
                 <option>Completed</option>
-                <option>Cancelled</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Priority">

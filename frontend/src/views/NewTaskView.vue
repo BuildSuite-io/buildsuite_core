@@ -32,7 +32,7 @@ const form = reactive({
   taskType: '',
   name: '',
   description: '',
-  status: 'Open',
+  status: 'Yet To Start',
   priority: 'Medium',
   assignee: '',
   startDate: new Date().toISOString().slice(0, 10),
@@ -76,7 +76,7 @@ async function save() {
       work_package: form.workPackageId || null,
       type: form.taskType || null,
       description: form.description,
-      status: form.status,
+      task_status: form.status,
       priority: form.priority,
       exp_start_date: form.startDate,
       exp_end_date: form.endDate,
@@ -219,13 +219,10 @@ const breadcrumbs = [
         </DeskField>
         <DeskField label="Status">
           <DeskSelect v-model="form.status">
-            <option>Open</option>
-            <option>Working</option>
-            <option>Pending Review</option>
-            <option>Overdue</option>
-            <option>Template</option>
+            <option>Yet To Start</option>
+            <option>In Progress</option>
+            <option>In Delay</option>
             <option>Completed</option>
-            <option>Cancelled</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Priority">
