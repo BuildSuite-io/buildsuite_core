@@ -165,7 +165,7 @@ CUSTOM_FIELD = {
             "in_list_view": 0,
             "in_standard_filter": 1,
             "default": "Yet To Start",
-            "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted",
+            "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
         },
     ],
     "Warehouse": [

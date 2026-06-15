@@ -487,6 +487,7 @@ defineExpose({
                   <option>In Progress</option>
                   <option>In Delay</option>
                   <option>Completed</option>
+                  <option>Blocked</option>
                 </DeskSelect>
               </div>
             </div>
@@ -719,6 +720,7 @@ defineExpose({
             <option>In Progress</option>
             <option>In Delay</option>
             <option>Completed</option>
+            <option>Blocked</option>
           </DeskSelect>
         </div>
       </div>
