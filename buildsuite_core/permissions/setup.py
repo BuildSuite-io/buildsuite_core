@@ -93,6 +93,25 @@ STAGE_PLANNING_ROLE_PERMS = {
     "BuildSuite HR Manager":          {"read": 1, "report": 1, "print": 1},
 }
 
+# Reference doctypes the BuildSuite Project / Task / Stage surfaces link to. Any
+# role that can READ Project must be able to read these, or the list filters /
+# link pickers / template previews 403 (and the SPA surfaces it as an unhandled
+# rejection). The rule: "if you can read a Project, you can read what a Project
+# links to." We mirror ONLY the role's non-destructive Project permissions
+# (read/report/export/print) — BuildSuite never grants write/create/delete on
+# these masters, whether they're ERPNext/HR-owned (Company, Customer, Project
+# Type, Employee, Task Type) or our own reference data (BuildSuite Project
+# Template, read-only for the create-from-template preview/seed).
+LINKED_MASTER_DOCTYPES = (
+    "Company",                     # Projects list multi-company filter
+    "Customer",                    # New Project -> Client picker
+    "Project Type",                # New Project -> Project Type picker
+    "Employee",                    # PM / owner / assignee pickers
+    "Task Type",                   # New Task -> Task Type picker
+    "BuildSuite Project Template", # New Project -> template preview + seed
+)
+_READONLY_PTYPES = ("read", "report", "export", "print")
+
 # No-DocPerm marker role granted to every persona. Used ONLY as the Stage Planning
 # workflow states' `allow_edit` (a mandatory single-role field) so the workflow
 # never blocks editing — the real edit gate is DocPerm + has_*_permission.
@@ -166,6 +185,33 @@ def setup_stage_planning_permissions():
     _apply_role_perms("Stage Planning", STAGE_PLANNING_ROLE_PERMS)
 
 
+def _readonly_mirror(role_perms):
+    """Reduce a role-perm matrix to its non-destructive ptypes, for read roles.
+
+    Used to derive Company/Customer perms from PROJECT_ROLE_PERMS: a role keeps
+    only its read/report/export/print grants (write/create/delete are dropped),
+    and roles without read on Project are excluded entirely.
+    """
+    return {
+        role: {ptype: perms.get(ptype, 0) for ptype in _READONLY_PTYPES}
+        for role, perms in role_perms.items()
+        if perms.get("read")
+    }
+
+
+def setup_linked_master_permissions():
+    """Grant read-only Company/Customer access to every Project-readable role.
+
+    The Projects list filters on Company and the New Project form links Client to
+    Customer; without read on these masters those calls 403. Mirrors only the
+    non-destructive Project permissions (see LINKED_MASTER_DOCTYPES note).
+    """
+    mirror = _readonly_mirror(PROJECT_ROLE_PERMS)
+    for doctype in LINKED_MASTER_DOCTYPES:
+        if frappe.db.exists("DocType", doctype):
+            _apply_role_perms(doctype, mirror)
+
+
 # Stage Planning Approval transitions, keyed to BuildSuite roles.
 # (state, action, next_state, [roles], own_only)
 _STAGE_FULL_ROLES = ["BuildSuite Director", "BuildSuite PM", "BuildSuite Administrator", "System Manager"]
@@ -174,7 +220,7 @@ _STAGE_TRANSITIONS = [
     ("Draft", "Submit for Approval", "Pending Approval", ["BuildSuite Site Engineer", "BuildSuite Foreman"], True),
     ("Pending Approval", "Approve", "Approved", _STAGE_FULL_ROLES, False),
     ("Pending Approval", "Reject", "Rejected", _STAGE_FULL_ROLES, False),
-    ("Rejected", "Revise", "Draft", _STAGE_FULL_ROLES, False),
+    # Rejected is terminal — no Revise after a rejection (a new stage must be created).
     ("Approved", "Revise", "Draft", _STAGE_FULL_ROLES, False),
     ("Approved", "Cancel", "Cancelled", _STAGE_FULL_ROLES, False),
 ]
@@ -217,5 +263,6 @@ def setup_record_permissions():
     setup_work_package_permissions()
     setup_task_progress_entry_permissions()
     setup_stage_planning_permissions()
+    setup_linked_master_permissions()
     _ensure_role(WORKFLOW_EDITOR_ROLE)
     setup_stage_planning_workflow()

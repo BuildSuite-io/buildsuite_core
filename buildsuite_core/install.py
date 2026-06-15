@@ -36,6 +36,11 @@ def seed_master_data():
         if not frappe.db.exists("Task Type", tt):
             frappe.get_doc({"doctype": "Task Type", "name": tt}).insert(ignore_permissions=True)
 
+    # Project Templates (Commercial / Residential / Infrastructure) — depend on the
+    # Project Types seeded above. Idempotent (Stage-Plan-Template-exists guard).
+    from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.seed_templates import seed_all
+    seed_all()
+
 
 def before_migrate():
     delete_custom_fields(CUSTOM_FIELD)

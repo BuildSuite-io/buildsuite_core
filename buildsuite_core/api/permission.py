@@ -41,9 +41,14 @@ def get_access_context():
 	allowed = _has_app_permission(log_denial=False)
 	reason = "ok" if allowed else "missing_role"
 
+	# Persona (User.persona Select) is the single source of truth for the user's
+	# BuildSuite role; the frontend uses it to set the active persona on load.
+	persona = frappe.db.get_value("User", user, "persona") if user != "Guest" else None
+
 	return frappe._dict({
 		"allowed": allowed,
 		"user": user,
 		"roles": roles,
+		"persona": persona,
 		"reason": reason,
 	})

@@ -33,6 +33,7 @@ function confirm() { emit('confirm') }
       @click.self="close"
     >
       <div
+        data-test="confirm-dialog"
         class="bg-white border border-ink-200 w-full max-w-md shadow-fp-lg flex flex-col"
         style="border-radius: 12px;"
         @click.stop
@@ -64,6 +65,7 @@ function confirm() { emit('confirm') }
         >
           <button
             type="button"
+            data-test="confirm-cancel"
             class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 disabled:opacity-50"
             style="border-radius: 6px;"
             :disabled="loading"
@@ -71,6 +73,7 @@ function confirm() { emit('confirm') }
           >Cancel</button>
           <button
             type="button"
+            data-test="confirm-accept"
             class="text-xs px-3 py-1.5 border text-white disabled:opacity-50 flex items-center gap-1.5"
             style="border-radius: 6px;"
             :class="destructive

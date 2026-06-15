@@ -2,21 +2,28 @@
 // Stage Planning list — adapter-backed DocType list shell (matches TasksView pattern).
 
 import { ref, computed } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
+const route = useRoute()
 const adapter = createDataAdapter(store)
+const { canCreate } = usePermissions()
 
 const projectFilter = ref('')
+// Approval-lifecycle state (Frappe workflow_state). Honors ?status= deep links.
+const workflowStateFilter = ref(route.query.status || '')
 const fromDate = ref('')
 const toDate = ref('')
 
@@ -70,6 +77,7 @@ function taskCountDisplay(row) {
 
 const filterValues = computed(() => ({
   project: projectFilter.value,
+  workflowState: workflowStateFilter.value,
 }))
 
 const dateBaseFilters = computed(() => {
@@ -90,7 +98,7 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
 <template>
   <DeskPage title="Stage Planning" :breadcrumbs="breadcrumbs">
     <template #actions>
-      <RouterLink to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
+      <RouterLink v-if="canCreate('stagePlanning')" to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
     </template>
 
     <DocTypeListView
@@ -102,6 +110,7 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
         'planned_start',
         'planned_end',
         'planned_task_count',
+        'workflow_state',
         'stage_planning_tasks',
       ]"
       :columns="[
@@ -111,11 +120,12 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
         { key: 'planned_start', label: 'Planned Start' },
         { key: 'planned_end', label: 'Planned End' },
         { key: 'planned_task_count', label: 'Tasks', align: 'right' },
+        { key: 'workflow_state', label: 'State' },
         { key: '_status', label: 'Status', fields: ['planned_start', 'planned_end'] },
       ]"
       :search-fields="['stage_name', 'name', 'description']"
       :filter-values="filterValues"
-      :filter-field-map="{ project: 'project' }"
+      :filter-field-map="{ project: 'project', workflowState: 'workflow_state' }"
       :base-filters="dateBaseFilters"
       cache-key="buildsuite-stage-planning-list-generic"
       row-key="name"
@@ -140,6 +150,22 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
           label="Project"
           :value="projectName(projectFilter)"
           @remove="projectFilter = ''"
+        />
+
+        <!-- Approval state (workflow_state): select when empty, chip when set -->
+        <DeskSelect v-if="!workflowStateFilter" v-model="workflowStateFilter" class="!w-44">
+          <option value="">State: Any</option>
+          <option>Draft</option>
+          <option>Pending Approval</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+          <option>Cancelled</option>
+        </DeskSelect>
+        <DeskFilterChip
+          v-else
+          label="State"
+          :value="workflowStateFilter"
+          @remove="workflowStateFilter = ''"
         />
 
         <label class="text-[11px] text-ink-500 flex items-center gap-1">
@@ -200,6 +226,10 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
       <template #cell-planned_task_count="{ row }">
         <span class="text-xs text-ink-700 tabular-nums">{{ taskCountDisplay(row) }}</span>
       </template>
+      <template #cell-workflow_state="{ row }">
+        <StatusBadge v-if="row.workflow_state" :status="row.workflow_state" size="xs" />
+        <span v-else class="text-xs text-ink-400">—</span>
+      </template>
       <template #cell-_status="{ row }">
         <span
           class="text-[10px] px-1.5 py-0.5 font-medium rounded-full"
@@ -210,7 +240,7 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
       <template #empty>
         <div class="text-sm text-ink-500">
           No stages match these filters ·
-          <RouterLink to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
+          <RouterLink v-if="canCreate('stagePlanning')" to="/stage-plannings/new" class="desk-link">Plan a stage →</RouterLink>
         </div>
       </template>
     </DocTypeListView>

@@ -6,8 +6,10 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
@@ -26,6 +28,8 @@ import { fmtCompactINR, fmtDate } from '@/utils/format'
 
 const props = defineProps({ id: String })
 const store = useDataStore()
+const confirmDialog = useConfirm()
+const { canEdit, canDelete, canCreate } = usePermissions()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 
@@ -179,7 +183,7 @@ async function onDelete() {
   const msg = n
     ? `Delete "${wp.value.name}"? This will also delete ${n} task${n === 1 ? '' : 's'} and any progress entries on them.`
     : `Delete "${wp.value.name}"?`
-  if (!confirm(msg)) return
+  if (!(await confirmDialog({ title: 'Delete work package', message: msg, confirmLabel: 'Delete', destructive: true }))) return
   const wpId = wp.value.id
   try {
     await adapter.remove('Work Package', wpId)
@@ -249,8 +253,10 @@ function progressBarColor(w) {
     <DeskForm>
       <template #action-bar>
         <DeskActionBar
+          v-if="canEdit('workPackage') || canDelete('workPackage')"
           :save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
           :show-cancel="editing"
+          :show-save="canEdit('workPackage')"
           :saving="saving"
           cancel-label="Cancel"
           @save="onPrimary"
@@ -258,6 +264,7 @@ function progressBarColor(w) {
         >
           <template #menu>
             <button
+              v-if="canDelete('workPackage')"
               type="button"
               class="text-xs px-2.5 py-1 border border-danger-200 text-danger-700 hover:bg-danger-50"
               style="border-radius: 6px;"
@@ -345,7 +352,7 @@ function progressBarColor(w) {
           @row-click="onTaskRowClick"
         >
           <template #actions>
-            <button type="button" class="desk-save-btn" @click="taskModalOpen = true">+ Add Task</button>
+            <button v-if="canCreate('task')" type="button" class="desk-save-btn" @click="taskModalOpen = true">+ Add Task</button>
           </template>
 
           <template #cell-name="{ row }">

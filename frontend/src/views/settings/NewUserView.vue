@@ -1,14 +1,14 @@
 <script setup>
-// New User — admin-only. Creates a Frappe User; the validate hook maps the
-// chosen persona (a Select storing the role name) to the matching Frappe Role.
+// New User — create a real Frappe User with a BuildSuite persona. The persona
+// drives the BuildSuite role via the server-side sync hook. Optional welcome /
+// password-reset emails use Frappe's native flows.
 
-import { reactive, ref, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { ROLES } from '@/data/roles'
+import { createBuildsuiteUser, sendUserWelcome, sendUserPasswordReset } from '@/data/usersApi'
 import { showToast } from '@/utils/appToast'
-import { useFormErrors } from '@/composables/useFormErrors'
-import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
-import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -19,25 +19,19 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 
 const router = useRouter()
 const store = useDataStore()
-const adapter = createDataAdapter(store)
 
 const form = reactive({
-  name: '',
+  fullName: '',
   email: '',
   persona: '',
   enabled: true,
   sendWelcome: true,
+  sendReset: false,
 })
-
-const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
-  email: 'email',
-  first_name: 'name',
-})
+const errors = ref({})
 const saving = ref(false)
 
-// Persona options sourced from the backend User.persona Select field.
-const { selectOptions } = useDoctypeMeta('User')
-const personas = computed(() => selectOptions('persona'))
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
@@ -48,14 +42,11 @@ const breadcrumbs = [
 
 function validate() {
   const e = {}
-  if (!form.name.trim()) e.name = 'Full name is required.'
-  if (!form.email.trim()) {
-    e.email = 'Email is required — it is the login id and where the welcome email is sent.'
-  } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) {
-    e.email = 'Enter a valid email address.'
-  }
+  if (!form.fullName.trim()) e.fullName = 'Full name is required.'
+  if (!form.email.trim()) e.email = 'Email is required.'
+  else if (!EMAIL_RE.test(form.email.trim())) e.email = 'Enter a valid email address.'
   if (!form.persona) e.persona = 'Pick a persona.'
-  setErrors(e)
+  errors.value = e
   return Object.keys(e).length === 0
 }
 
@@ -63,79 +54,82 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    await adapter.create('User', {
-      email: form.email,
-      first_name: form.name,
-      enabled: form.enabled ? 1 : 0,
+    const user = await createBuildsuiteUser({
+      full_name: form.fullName.trim(),
+      email: form.email.trim().toLowerCase(),
       persona: form.persona,
-      send_welcome_email: form.sendWelcome ? 1 : 0,
+      enabled: form.enabled ? 1 : 0,
+      send_welcome: form.sendWelcome ? 1 : 0,
     })
-    showToast('User created')
-    router.push('/settings/users')
-  } catch (err) {
-    const summary = applyServerErrors(err)
-    // Duplicate email (User is keyed by email) — surface it on the Email field.
-    const isDuplicate = err?.exc_type === 'DuplicateEntryError' || /already exists|duplicate entry/i.test(summary || '')
-    if (isDuplicate) {
-      setErrors({ ...errors.value, email: 'A user with this email already exists.' })
+    // Optional separate password-reset link (welcome was handled on create).
+    if (form.sendReset) {
+      try { await sendUserPasswordReset(user.name) } catch { /* email queue handles it */ }
     }
-    showToast(isDuplicate ? 'A user with this email already exists.' : (summary ?? 'Failed to create user'), 'error')
-  } finally {
+    showToast(`User ${user.full_name} created`)
+    router.push({ path: '/settings/users', query: { created: user.name } })
+  } catch (err) {
+    errors.value = { email: err.message || 'Could not create the user.' }
     saving.value = false
   }
 }
-
-function cancel() { router.back() }
 </script>
 
 <template>
   <DeskPage title="New User" :breadcrumbs="breadcrumbs">
-    <DeskForm>
+    <div v-if="!store.isAdmin" class="mb-3 px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      Creating users is restricted to administrators.
+    </div>
+
+    <DeskForm v-else>
       <template #action-bar>
-        <DeskActionBar :save-label="saving ? 'Creating…' : 'Create user'" :saving="saving" @save="save"
-          @cancel="cancel" />
+        <DeskActionBar
+          :saving="saving"
+          save-label="Create user"
+          saving-label="Creating…"
+          @save="save"
+          @cancel="router.push('/settings/users')"
+        />
       </template>
 
-      <div class="max-w-3xl mx-auto">
-        <DeskSection title="Account">
-          <DeskField label="Full name" required :error="errors.name">
-            <DeskInput v-model="form.name" placeholder="e.g. Rajesh K." />
-          </DeskField>
-          <DeskField label="Email" required :error="errors.email"
-            hint="Used as the login id and where the welcome email is sent.">
-            <DeskInput v-model="form.email" type="email" placeholder="rajesh@buildsuite.io" />
-          </DeskField>
-          <DeskField label="Account status" hint="Disabled users keep their record but cannot log in.">
-            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" v-model="form.enabled" class="accent-brand-600" />
-              <span class="text-sm text-ink-700">Enabled — user can log in immediately</span>
-            </label>
-          </DeskField>
-        </DeskSection>
+      <DeskSection title="Account">
+        <DeskField label="Full name" required :error="errors.fullName">
+          <DeskInput v-model="form.fullName" placeholder="e.g. Asha Menon" @input="errors.fullName = ''" />
+        </DeskField>
+        <DeskField label="Email" required :error="errors.email" hint="Becomes the login id. The welcome email goes here.">
+          <DeskInput v-model="form.email" type="email" placeholder="name@company.com" @input="errors.email = ''" />
+        </DeskField>
+        <DeskField label="Account status">
+          <label class="inline-flex items-center gap-2 text-sm text-ink-700 dark:text-ink-200">
+            <input v-model="form.enabled" type="checkbox" class="accent-brand-600" />
+            Enabled
+          </label>
+        </DeskField>
+      </DeskSection>
 
-        <DeskSection title="Persona">
-          <DeskField label="Persona" required :error="errors.persona"
-            hint="Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work.">
-            <DeskSelect v-model="form.persona" @change="clearError('persona')">
-              <option value="" disabled>Select persona</option>
-              <option v-for="p in personas" :key="p" :value="p">{{ p }}</option>
-            </DeskSelect>
-          </DeskField>
-        </DeskSection>
+      <DeskSection title="Persona">
+        <DeskField label="Persona" required :error="errors.persona" hint="Drives the user's BuildSuite role and access.">
+          <DeskSelect v-model="form.persona" @change="errors.persona = ''">
+            <option value="">— Select persona —</option>
+            <option v-for="r in ROLES" :key="r.id" :value="r.name">{{ r.name }}</option>
+          </DeskSelect>
+        </DeskField>
+      </DeskSection>
 
-        <DeskSection title="Onboarding">
-          <div class="md:col-span-2 space-y-3">
-            <label class="flex items-start gap-2 cursor-pointer select-none">
-              <input type="checkbox" v-model="form.sendWelcome" class="accent-brand-600 mt-0.5" />
-              <div>
-                <div class="text-sm text-ink-900">Send welcome email</div>
-                <div class="text-[11px] text-ink-500">Emails the user a link to set their password and get started.
-                </div>
-              </div>
-            </label>
+      <DeskSection title="Onboarding">
+        <DeskField label="Emails">
+          <label class="flex items-center gap-2 text-sm text-ink-700 dark:text-ink-200">
+            <input v-model="form.sendWelcome" type="checkbox" class="accent-brand-600" />
+            Send welcome email (account setup link)
+          </label>
+          <label class="flex items-center gap-2 text-sm text-ink-700 mt-2 dark:text-ink-200">
+            <input v-model="form.sendReset" type="checkbox" class="accent-brand-600" />
+            Also send a password-reset link
+          </label>
+          <div class="text-[11px] text-ink-500 mt-1.5">
+            Emails use the site's mail settings. If mail isn't configured they wait in the Email Queue.
           </div>
-        </DeskSection>
-      </div>
+        </DeskField>
+      </DeskSection>
     </DeskForm>
   </DeskPage>
 </template>

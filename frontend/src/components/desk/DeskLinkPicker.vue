@@ -20,6 +20,7 @@ const props = defineProps({
   placement: { type: String, default: 'bottom-start' },
   size:      { type: String, default: 'sm' },
   error:     { type: String, default: '' },
+  dataTest:  { type: String, default: '' },   // stable test hook on the trigger button
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -280,6 +281,7 @@ function onQueryUpdate(value) {
       <template #target="{ togglePopover, isOpen }">
         <button
           type="button"
+          :data-test="dataTest || undefined"
           class="flex h-7 w-full items-center justify-between gap-2 border bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
           style="border-radius: 6px;"
           :class="{

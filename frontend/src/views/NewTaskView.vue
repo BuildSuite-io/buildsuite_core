@@ -8,6 +8,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -22,6 +23,7 @@ import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
+const { canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
 
 const form = reactive({
@@ -121,7 +123,10 @@ const breadcrumbs = [
     subtitle="Create a task and assign it to a project or work package"
     :breadcrumbs="breadcrumbs"
   >
-    <DeskForm>
+    <div v-if="!canCreate('task')" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      You don't have permission to create a task.
+    </div>
+    <DeskForm v-else>
       <template #action-bar>
         <DeskActionBar
           save-label="Create task"
@@ -135,7 +140,7 @@ const breadcrumbs = [
       <div class="max-w-3xl mx-auto">
       <DeskSection title="Task details" :cols="1">
         <DeskField label="Task name" required :error="errors.name">
-          <DeskInput v-model="form.name" placeholder="e.g. Block A — Level 6 column casting" />
+          <DeskInput v-model="form.name" data-test="field-task-name" placeholder="e.g. Block A — Level 6 column casting" />
         </DeskField>
         <DeskField label="Task Type">
           <DeskLinkPicker
@@ -157,6 +162,7 @@ const breadcrumbs = [
         <DeskField label="Project" required :error="errors.projectId" :hint="lockedProject ? 'Pre-selected — locked.' : ''">
           <DeskLinkPicker
             v-model="form.projectId"
+            data-test="pick-project"
             doctype="Project"
             label-field="project_name"
             value-field="name"
@@ -172,6 +178,7 @@ const breadcrumbs = [
         <DeskField label="Work Package" :hint="lockedWP ? 'Pre-selected — locked.' : 'Optional · direct project tasks leave blank'">
           <DeskLinkPicker
             v-model="form.workPackageId"
+            data-test="pick-wp"
             doctype="Work Package"
             label-field="work_package_name"
             value-field="name"

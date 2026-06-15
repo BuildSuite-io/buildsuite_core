@@ -9,6 +9,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useConfirm } from '@/composables/useConfirm'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -22,6 +23,7 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
+const confirmDialog = useConfirm()
 
 const CATEGORIES = ['Structural', 'Finishing', 'MEP', 'Earthwork', 'Other']
 const PROJECT_TYPES = ['Commercial', 'Residential', 'Infrastructure', 'Industrial', 'Renovation']
@@ -80,8 +82,14 @@ function onSkilledChange() {
   form.value.defaultUnskilledRatio = Number((1 - safe).toFixed(2))
 }
 
-function deleteActivityType() {
-  if (!confirm(`Delete Activity Type "${activityType.value.name}"?\n\nTasks that reference it will keep the link as a dangling reference (treated as no-link by the UI).`)) return
+async function deleteActivityType() {
+  const ok = await confirmDialog({
+    title: 'Delete Activity Type',
+    message: `Delete Activity Type "${activityType.value.name}"?\n\nTasks that reference it will keep the link as a dangling reference (treated as no-link by the UI).`,
+    confirmLabel: 'Delete',
+    destructive: true,
+  })
+  if (!ok) return
   store.deleteActivityType(props.id)
   router.push('/activity-types')
 }
