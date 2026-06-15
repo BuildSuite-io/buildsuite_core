@@ -266,3 +266,43 @@ def update_delayed_tasks():
         task_doc.save(ignore_permissions=True)
 
     frappe.db.commit()
+
+
+# Native ERPNext status -> BuildSuite task_status (reverse of the sync in
+# update_task_status). Used to backfill rows that predate the task_status field.
+_STATUS_TO_TASK_STATUS = {
+    "Completed": "Completed",
+    "Working": "In Progress",
+    "Overdue": "In Delay",
+    "Open": "Yet To Start",
+    "Pending Review": "In Progress",
+    "Cancelled": "Yet To Start",
+    "Template": "Yet To Start",
+}
+
+
+def backfill_task_status():
+    """Populate task_status on Tasks where it's empty (idempotent).
+
+    Tasks created before the task_status custom field existed have it blank, so
+    the frontend (which now reads task_status) renders no status badge. Derive the
+    value from progress first (100% -> Completed), then fall back to the native
+    ERPNext status. Only touches rows with an empty task_status, so it's safe to
+    re-run — it's wired into after_migrate so deployments self-heal.
+
+    Returns the number of rows updated.
+    """
+    rows = frappe.get_all("Task", fields=["name", "status", "progress", "task_status"])
+    updated = 0
+    for row in rows:
+        if row.task_status:
+            continue
+        if flt(row.progress) >= 100:
+            new_status = "Completed"
+        else:
+            new_status = _STATUS_TO_TASK_STATUS.get(row.status, "Yet To Start")
+        frappe.db.set_value("Task", row.name, "task_status", new_status, update_modified=False)
+        updated += 1
+    if updated:
+        frappe.db.commit()
+    return updated
