@@ -135,6 +135,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
           <option>In Progress</option>
           <option>In Delay</option>
           <option>Completed</option>
+          <option>Blocked</option>
         </DeskSelect>
         <DeskFilterChip
           v-else

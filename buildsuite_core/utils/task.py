@@ -163,8 +163,9 @@ def update_task_status(doc, method=None):
 def update_task_status_insert(doc, method=None):
     current_date = getdate(today())
 
-    # Set task status to In Delay automatically
-    if doc.task_status != "Completed":
+    # Set task status to In Delay automatically. Blocked is an explicit manual
+    # status — never auto-flip it to In Delay.
+    if doc.task_status not in ["Completed", "Blocked"]:
         if doc.exp_end_date and getdate(doc.exp_end_date) < current_date:
             doc.task_status = "In Delay"
 
@@ -238,7 +239,7 @@ def update_delayed_tasks():
         "Task",
         filters={
             "exp_end_date": ("<", current_date),
-            "task_status": ("not in", ["Completed","In Delay"]),
+            "task_status": ("not in", ["Completed", "In Delay", "Blocked"]),
         },
         fields=["name"],
     )
@@ -254,7 +255,7 @@ def update_delayed_tasks():
         "Task",
         filters={
             "exp_start_date": ("<", current_date),
-            "task_status": ("not in", ["Completed", "In Progress","In Delay"]),
+            "task_status": ("not in", ["Completed", "In Progress", "In Delay", "Blocked"]),
         },
         fields=["name"],
     )

@@ -223,6 +223,7 @@ const breadcrumbs = [
             <option>In Progress</option>
             <option>In Delay</option>
             <option>Completed</option>
+            <option>Blocked</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Priority">
