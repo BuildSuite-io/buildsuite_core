@@ -3,11 +3,11 @@
 // drives the BuildSuite role via the server-side sync hook. Optional welcome /
 // password-reset emails use Frappe's native flows.
 
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
-import { ROLES } from '@/data/roles'
-import { createBuildsuiteUser, sendUserWelcome, sendUserPasswordReset } from '@/data/usersApi'
+import { createBuildsuiteUser, sendUserPasswordReset, outgoingEmailConfigured } from '@/data/usersApi'
+import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
 import { showToast } from '@/utils/appToast'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -29,7 +29,19 @@ const form = reactive({
   sendReset: false,
 })
 const errors = ref({})
+const formError = ref('')
 const saving = ref(false)
+const mailConfigured = ref(null)
+
+onMounted(() => {
+  outgoingEmailConfigured()
+    .then((ok) => { mailConfigured.value = !!ok })
+    .catch(() => { mailConfigured.value = null })
+})
+
+
+const { selectOptions } = useDoctypeMeta('User')
+const personaOptions = computed(() => selectOptions('persona'))
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -52,6 +64,7 @@ function validate() {
 
 async function save() {
   if (!validate()) return
+  formError.value = ''
   saving.value = true
   try {
     const user = await createBuildsuiteUser({
@@ -68,7 +81,7 @@ async function save() {
     showToast(`User ${user.full_name} created`)
     router.push({ path: '/settings/users', query: { created: user.name } })
   } catch (err) {
-    errors.value = { email: err.message || 'Could not create the user.' }
+    formError.value = err.message || 'Could not create the user.'
     saving.value = false
   }
 }
@@ -91,45 +104,56 @@ async function save() {
         />
       </template>
 
-      <DeskSection title="Account">
-        <DeskField label="Full name" required :error="errors.fullName">
-          <DeskInput v-model="form.fullName" placeholder="e.g. Asha Menon" @input="errors.fullName = ''" />
-        </DeskField>
-        <DeskField label="Email" required :error="errors.email" hint="Becomes the login id. The welcome email goes here.">
-          <DeskInput v-model="form.email" type="email" placeholder="name@company.com" @input="errors.email = ''" />
-        </DeskField>
-        <DeskField label="Account status">
-          <label class="inline-flex items-center gap-2 text-sm text-ink-700 dark:text-ink-200">
-            <input v-model="form.enabled" type="checkbox" class="accent-brand-600" />
-            Enabled
-          </label>
-        </DeskField>
-      </DeskSection>
+      <div class="max-w-3xl mx-auto">
+        <div v-if="formError" class="mb-4 px-3 py-2 bg-danger-50 border border-danger-100 text-xs text-danger-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+          {{ formError }}
+        </div>
+        <DeskSection title="Account">
+          <DeskField label="Full name" required :error="errors.fullName">
+            <DeskInput v-model="form.fullName" placeholder="e.g. Asha Menon" @input="errors.fullName = ''; formError = ''" />
+          </DeskField>
+          <DeskField label="Email" required :error="errors.email" hint="Used as the login id + destination for the welcome and password-reset emails.">
+            <DeskInput v-model="form.email" type="email" placeholder="name@company.com" @input="errors.email = ''; formError = ''" />
+          </DeskField>
+          <DeskField label="Account status" hint="Disabled users keep their record but cannot log in.">
+            <label class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-ink-700 dark:text-ink-200">
+              <input v-model="form.enabled" type="checkbox" class="accent-brand-600" />
+              Enabled — user can log in immediately
+            </label>
+          </DeskField>
+        </DeskSection>
 
-      <DeskSection title="Persona">
-        <DeskField label="Persona" required :error="errors.persona" hint="Drives the user's BuildSuite role and access.">
-          <DeskSelect v-model="form.persona" @change="errors.persona = ''">
-            <option value="">— Select persona —</option>
-            <option v-for="r in ROLES" :key="r.id" :value="r.name">{{ r.name }}</option>
-          </DeskSelect>
-        </DeskField>
-      </DeskSection>
+        <DeskSection title="Persona">
+          <DeskField label="Persona" required :error="errors.persona" hint="Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work.">
+            <DeskSelect v-model="form.persona" @change="errors.persona = ''; formError = ''">
+              <option value="">— Select persona —</option>
+              <option v-for="opt in personaOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </DeskSelect>
+          </DeskField>
+        </DeskSection>
 
-      <DeskSection title="Onboarding">
-        <DeskField label="Emails">
-          <label class="flex items-center gap-2 text-sm text-ink-700 dark:text-ink-200">
-            <input v-model="form.sendWelcome" type="checkbox" class="accent-brand-600" />
-            Send welcome email (account setup link)
-          </label>
-          <label class="flex items-center gap-2 text-sm text-ink-700 mt-2 dark:text-ink-200">
-            <input v-model="form.sendReset" type="checkbox" class="accent-brand-600" />
-            Also send a password-reset link
-          </label>
-          <div class="text-[11px] text-ink-500 mt-1.5">
-            Emails use the site's mail settings. If mail isn't configured they wait in the Email Queue.
-          </div>
-        </DeskField>
-      </DeskSection>
+        <DeskSection title="Onboarding">
+          <DeskField label="Emails">
+            <div v-if="mailConfigured === false" class="mb-2 px-3 py-2 bg-warning-50 border border-warning-100 text-[11px] text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+              Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.
+            </div>
+            <label class="flex items-start gap-2 cursor-pointer select-none">
+              <input v-model="form.sendWelcome" type="checkbox" class="accent-brand-600 mt-0.5" />
+              <div>
+                <div class="text-sm text-ink-900 dark:text-[#F5F5F5]">Send welcome email</div>
+                <div class="text-[11px] text-ink-500">Brief intro to BuildSuite Core, link to set up their profile.</div>
+              </div>
+            </label>
+            <label class="flex items-start gap-2 cursor-pointer select-none mt-3">
+              <input v-model="form.sendReset" type="checkbox" class="accent-brand-600 mt-0.5" />
+              <div>
+                <div class="text-sm text-ink-900 dark:text-[#F5F5F5]">Send password reset link</div>
+                <div class="text-[11px] text-ink-500">Lets the user set their own password instead of you assigning one.</div>
+              </div>
+            </label>
+          </DeskField>
+        </DeskSection>
+      </div>
     </DeskForm>
   </DeskPage>
 </template>
