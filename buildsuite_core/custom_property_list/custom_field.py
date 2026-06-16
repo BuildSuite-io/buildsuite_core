@@ -128,8 +128,6 @@ CUSTOM_FIELD = {
     ],
     "Task": [
         {
-            # fieldname kept as "work_package" (not "custom_work_package") to match
-            # the vue frontend and existing data — frontend calls task.work_package
             "fieldname": "work_package",
             "fieldtype": "Link",
             "label": "Work Package",
@@ -167,11 +165,17 @@ CUSTOM_FIELD = {
             "default": "Yet To Start",
             "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
         },
+        {
+            "fieldname": "task_type",
+            "fieldtype": "Select",
+            "insert_after": "type",
+            "label": "Task Type",
+            "in_list_view": 0,
+            "in_standard_filter": 1,
+            "default": "Activity",
+            "options": "Activity\nMilestone\nInspection",
+        },
     ],
-    # Enrich the native ERPNext Task dependency child table (Task.depends_on ->
-    # "Task Depends On", whose `task` field is the PREDECESSOR) with the schedule
-    # metadata the engine needs. Successors are inferred (reverse query), never
-    # stored. See context/scheduler-gantt-plan.md (Slice 1.1).
     "Task Depends On": [
         {
             "fieldname": "dependency_type",
@@ -208,8 +212,6 @@ CUSTOM_FIELD = {
             "fieldname": "persona",
             "fieldtype": "Select",
             "label": "Persona",
-            # Option strings must match the keys in PERSONA_TO_ROLE
-            # (buildsuite_core.permissions.setup) and roles.js `name` fields.
             "options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
             "insert_after": "username",
             "module": "BuildSuite Core"

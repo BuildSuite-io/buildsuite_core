@@ -168,7 +168,7 @@ doc_events = {
 		"after_insert": "buildsuite_core.utils.project.seed_from_template_on_insert"
 	},
 	"Task": {
-		"validate": "buildsuite_core.api.schedule.validate_task_dependencies",
+		"validate": ["buildsuite_core.api.schedule.validate_task_dependencies", "buildsuite_core.api.schedule.normalize_milestone_task"],
 		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
 		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
 	},

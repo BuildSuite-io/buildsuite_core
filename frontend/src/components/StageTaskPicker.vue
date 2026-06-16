@@ -52,7 +52,7 @@ const tasksResource = ref(null)
 watch(() => props.projectId, (newVal) => {
   if (!newVal) { tasksResource.value = null; return }
   tasksResource.value = adapter.list('Task', {
-    fields: ['name', 'subject', 'project', 'work_package', 'task_status', 'type', 'owner', 'exp_start_date', 'exp_end_date'],
+    fields: ['name', 'subject', 'project', 'work_package', 'task_status', 'task_type', 'owner', 'exp_start_date', 'exp_end_date'],
     filters: [['project', '=', newVal]],
     pageLength: 500,
     cache: `stage-picker-tasks:${newVal}`,
@@ -64,7 +64,7 @@ watch(() => props.projectId, (newVal) => {
         workPackageId: row?.work_package || '',
         status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
-        task_type: row?.type || row?.task_type || 'Activity',
+        task_type: row?.task_type || 'Activity',
         assignee: row?.owner || row?.assignee || '',
         startDate: row?.exp_start_date || row?.start_date || null,
         endDate: row?.exp_end_date || row?.end_date || null,

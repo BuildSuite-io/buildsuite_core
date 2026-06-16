@@ -306,3 +306,26 @@ def backfill_task_status():
     if updated:
         frappe.db.commit()
     return updated
+
+
+# Activity / Milestone / Inspection per proposal §M2. The custom task_status-style
+# Select drives BuildSuite workflow + Gantt rendering, independent of ERPNext's
+# native `type` (Link -> Task Type) and `is_milestone` (Check).
+_TASK_TYPE_VALUES = {"Activity", "Milestone", "Inspection"}
+
+
+def backfill_task_type():
+    """Populate task_type on Tasks where it's empty (idempotent). Reuse the legacy
+    native `type` value when it already holds Activity/Milestone/Inspection;
+    otherwise default to Activity."""
+    rows = frappe.get_all("Task", fields=["name", "type", "task_type"])
+    updated = 0
+    for row in rows:
+        if row.task_type:
+            continue
+        new_type = row.type if row.type in _TASK_TYPE_VALUES else "Activity"
+        frappe.db.set_value("Task", row.name, "task_type", new_type, update_modified=False)
+        updated += 1
+    if updated:
+        frappe.db.commit()
+    return updated
