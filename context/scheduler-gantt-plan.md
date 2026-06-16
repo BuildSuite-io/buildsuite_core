@@ -82,17 +82,14 @@ Status legend: ☐ not started · ◐ in progress · ☑ done
 
 ### Track 1 — Dependencies (foundation)
 
-**◐ Slice 1.1 — Backend: dependency fields + read API**
-- ☑ **Bit 1** — add `dependency_type` (FS/SS/FF) + `lag_days` custom fields to the
-  native `Task Depends On` child table via `custom_field.py` (idempotent on
-  migrate). `task` is the predecessor; successors inferred by reverse query.
-- ☐ **Bit 2** — whitelisted `get_project_schedule(project)` → tasks (id, subject,
-  task_type, dates, progress, work_package) + each task's predecessor edges
-  (predecessor/type/lag); inferred successors derivable from the edge set. Plus a
-  **cycle-guard** validation (reject A→B→…→A on Task save).
-- **Files:** `custom_property_list/custom_field.py` (done), new
-  `buildsuite_core/api/schedule.py`, `hooks.py` (Task validate for cycle guard).
-- **Accept:** `get_project_schedule` returns edges; a cyclic edge is rejected.
+**☑ Slice 1.1 — Backend: dependency fields + read API** (DONE)
+- ☑ **Bit 1** — `dependency_type` (FS/SS/FF) + `lag_days` custom fields on the
+  native `Task Depends On` child table (`custom_field.py`, idempotent). `task` is
+  the predecessor; successors inferred by reverse query.
+- ☑ **Bit 2** — whitelisted `get_project_schedule(project)` in
+  `buildsuite_core/api/schedule.py` (tasks + predecessor edges; successors
+  inferred client-side) + `validate_task_dependencies` cycle guard wired to Task
+  `validate` in `hooks.py`.
 - **Ref:** `944d301` store dep slice for field shape.
 
 **☐ Slice 1.2 — Frontend: Dependencies section on TaskDetailView**
