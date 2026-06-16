@@ -5,7 +5,7 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
 from buildsuite_core.permissions.setup import setup_record_permissions
-from buildsuite_core.utils.task import backfill_task_status
+from buildsuite_core.utils.task import backfill_task_status, backfill_task_type
 
 
 def after_install():
@@ -17,8 +17,9 @@ def after_migrate():
     print(_("Creating Custom Fields..."))
     create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
     make_property_setters()
-    # Backfill task_status on Tasks that predate the field (idempotent).
+    # Backfill task_status + task_type on Tasks that predate the fields (idempotent).
     backfill_task_status()
+    backfill_task_type()
     seed_master_data()
     setup_record_permissions()
 

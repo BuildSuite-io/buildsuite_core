@@ -97,7 +97,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         'work_package',
         'task_status',
         'priority',
-        'type',
+        'task_type',
         'owner',
         'exp_end_date',
         'progress',
@@ -108,7 +108,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         { key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
         { key: 'task_status', label: 'Status', preset: 'status' },
         { key: 'priority', label: 'Priority', preset: 'status' },
-        { key: 'type', label: 'Task Type', preset: 'status' },
+        { key: 'task_type', label: 'Task Type', preset: 'status' },
         { key: 'owner', label: 'Assignee' },
         { key: 'exp_end_date', label: 'Due' },
         { key: 'progress', label: 'Progress', preset: 'progress' },
@@ -120,7 +120,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         priority: 'priority',
         project: 'project',
         assignee: 'owner',
-        taskType: 'type',
+        taskType: 'task_type',
       }"
       cache-key="buildsuite-task-list-generic"
       row-key="name"
@@ -212,8 +212,8 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #cell-priority="{ row }">
         <StatusBadge :status="row.priority || 'Medium'" size="xs" />
       </template>
-      <template #cell-type="{ row }">
-        <StatusBadge :status="row.type || 'Activity'" size="xs" />
+      <template #cell-task_type="{ row }">
+        <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
       <template #cell-owner="{ row }">
         <UserAvatar :user-id="row.owner || ''" size="xs" />

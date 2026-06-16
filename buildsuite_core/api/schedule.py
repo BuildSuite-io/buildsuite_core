@@ -125,6 +125,19 @@ def remove_task_predecessor(task, predecessor):
     return get_task_dependencies(task)
 
 
+# --- milestone normalization --------------------------------------------------
+
+def normalize_milestone_task(doc, method=None):
+    """A Milestone is a point in time (zero-duration) — collapse its dates to a
+    single day so the engine + Gantt render it as a diamond, not a bar."""
+    if getattr(doc, "task_type", None) != "Milestone":
+        return
+    if doc.exp_start_date:
+        doc.exp_end_date = doc.exp_start_date
+    elif doc.exp_end_date:
+        doc.exp_start_date = doc.exp_end_date
+
+
 # --- cycle guard --------------------------------------------------------------
 
 def validate_task_dependencies(doc, method=None):

@@ -29,7 +29,7 @@ const adapter = createDataAdapter(store)
 const form = reactive({
   projectId: route.query.projectId || '',
   workPackageId: route.query.workPackageId || '',
-  taskType: '',
+  taskType: 'Activity',
   name: '',
   description: '',
   status: 'Yet To Start',
@@ -74,7 +74,7 @@ async function save() {
       subject: form.name,
       project: form.projectId,
       work_package: form.workPackageId || null,
-      type: form.taskType || null,
+      task_type: form.taskType || 'Activity',
       description: form.description,
       task_status: form.status,
       priority: form.priority,
@@ -142,16 +142,12 @@ const breadcrumbs = [
         <DeskField label="Task name" required :error="errors.name">
           <DeskInput v-model="form.name" data-test="field-task-name" placeholder="e.g. Block A — Level 6 column casting" />
         </DeskField>
-        <DeskField label="Task Type">
-          <DeskLinkPicker
-            v-model="form.taskType"
-            doctype="Task Type"
-            label-field="name"
-            value-field="name"
-            :search-fields="['name']"
-            :page-length="20"
-            placeholder="— Select task type —"
-          />
+        <DeskField label="Task Type" hint="Drives workflow + Gantt rendering. Milestone = zero-duration.">
+          <DeskSelect v-model="form.taskType">
+            <option>Activity</option>
+            <option>Milestone</option>
+            <option>Inspection</option>
+          </DeskSelect>
         </DeskField>
         <DeskField label="Description">
           <DeskTextarea v-model="form.description" :rows="3" placeholder="Details about the task, location, scope…" />

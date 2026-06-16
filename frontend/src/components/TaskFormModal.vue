@@ -123,8 +123,7 @@ async function save() {
     const task = await adapter.create('Task', {
       project: form.projectId,
       work_package: form.workPackageId,
-      type: form.task_type,
-      activity_type: form.activityType,
+      task_type: form.task_type,
       subject: form.name,
       description: form.description,
       task_status: form.status,

@@ -84,7 +84,7 @@ function loadTasksResource() {
     return
   }
   tasksResource.value = adapter.list('Task', {
-    fields: ['name', 'subject', 'project', 'status', 'priority', 'type', 'owner', 'exp_start_date', 'exp_end_date', 'progress'],
+    fields: ['name', 'subject', 'project', 'status', 'priority', 'task_type', 'owner', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['work_package', '=', wp.value.id]],
     orderBy: 'modified desc',
     pageLength: 300,
@@ -96,7 +96,7 @@ function loadTasksResource() {
         projectId: row.project || '',
         status: row.status || 'Open',
         priority: row.priority || 'Medium',
-        task_type: row.type || row.task_type || 'Activity',
+        task_type: row.task_type || 'Activity',
         assignee: row.owner || '',
         startDate: row.exp_start_date || null,
         endDate: row.exp_end_date || null,
