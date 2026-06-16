@@ -605,7 +605,10 @@ const subtitle = computed(() => entry.value
           </div>
           <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Entered by</div>
-            <UserAvatar :user-id="entry.enteredBy" :show-name="true" />
+            <div class="inline-flex items-center gap-2">
+              <UserAvatar :user-id="entry.enteredBy" />
+              <span class="text-sm text-ink-700">{{ entry.enteredBy || '—' }}</span>
+            </div>
           </div>
           <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
             <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Total labour</div>

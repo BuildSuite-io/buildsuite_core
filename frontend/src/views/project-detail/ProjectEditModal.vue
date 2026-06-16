@@ -152,11 +152,10 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
             </DeskField>
             <DeskField label="Status">
               <DeskSelect v-model="editForm.status">
-                <option>Open</option>
-                <option>Working</option>
-                <option>On Hold</option>
+                <option>New</option>
+                <option>Ongoing</option>
+                <option>Delayed</option>
                 <option>Completed</option>
-                <option>Cancelled</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Priority">
