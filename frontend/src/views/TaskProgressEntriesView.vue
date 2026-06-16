@@ -264,7 +264,11 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
         <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
       <template #cell-enteredBy="{ row }">
-        <UserAvatar :user-id="row.enteredBy" size="xs" />
+        <div v-if="row.enteredBy" class="inline-flex items-center gap-2">
+          <UserAvatar :user-id="row.enteredBy" size="xs" />
+          <span class="text-xs text-ink-700">{{ row.enteredBy }}</span>
+        </div>
+        <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
 
       <template #empty>

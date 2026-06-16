@@ -26,18 +26,43 @@ const store = useDataStore()
 const { canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
 
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
+  if (Array.isArray(raw)) return raw[0] || null
+  if (Array.isArray(raw?.value)) return raw.value[0] || null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
+
 // §14 — pre-fill company on the form. For a subproject route (?parentId=), the
 // company is inherited from the parent and the field is locked. For a top-level
 // project, the field defaults to the active company and the user can change it
 // when multi-company. Single-company sites never see the field.
-const initialParent = route.query.parentId ? store.projectById(route.query.parentId) : null
-const initialCompany = initialParent?.company || ''
+//
+// The local Pinia store is empty in remote mode, so resolve the parent from the
+// backend; a watcher below copies its company onto the form once it loads.
+const parentId = route.query.parentId || null
+const parentResource = parentId
+  ? adapter.read('Project', parentId, {
+      nameField: 'name',
+      fields: ['name', 'project_name', 'company'],
+      cache: `buildsuite-new-project-parent:${parentId}`,
+      transform: (rows) => rows.map((r) => ({
+        id: r?.name,
+        name: r?.project_name || r?.name || '',
+        company: r?.company || '',
+      })),
+    })
+  : null
+const fetchedParent = computed(() => firstResourceRow(parentResource))
+const initialCompany = (parentId ? store.projectById(parentId)?.company : '') || ''
 
 const form = reactive({
   code: '',
   name: '',
   client: '',
-  status: 'Open',
+  status: 'New',
   priority: 'Medium',
   type: '',
   company: initialCompany,
@@ -70,21 +95,23 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 })
 const saving = ref(false)
 
-const parentProject = computed(() => form.parentId ? store.projectById(form.parentId) : null)
-
-watch(
-  () => form.allowSubprojects,
-  (allow) => {
-    if (allow) {
-      form.parentId = null
-      return
-    }
-
-    // Child projects inherit the parent timeline/breakdown.
-    form.seedDefaultStages = false
-    form.seedDefaultTasks = false
-  },
+const parentProject = computed(() =>
+  fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null)
 )
+
+// Inherit the parent's company onto the form once it resolves from the backend.
+// The field is locked for subprojects, so this is the value that gets submitted.
+watch(
+  () => fetchedParent.value?.company,
+  (company) => {
+    if (company) form.company = company
+  },
+  { immediate: true }
+)
+
+// The "Allow subprojects" toggle only controls is_group on a top-level project —
+// it no longer touches parentId (subprojects come solely from the ?parentId=
+// route) nor template seeding (the user controls that via the preview checkbox).
 
 // Template preview — fetches the matching BuildSuite Project Template for the
 // selected Project Type. Since Stage Plan Template is autonamed by stage_name,
@@ -139,7 +166,6 @@ function validate() {
   const e = {}
   if (!form.name) e.name = 'Project name is required'
   if (!form.code) e.code = 'Project ID is required'
-  if (!form.allowSubprojects && !form.parentId) e.parentId = 'Parent Project is required'
   // Company is mandatory on Project (§14). The field only renders on multi-company
   // sites; enforce it here so the user gets an inline error instead of a backend
   // 417 on insert.
@@ -156,9 +182,12 @@ async function save() {
     const res = await adapter.create('Project', {
       project_name: form.name,
       custom_project_id: form.code,
-      parent_project: form.allowSubprojects ? null : form.parentId,
-      is_group: form.allowSubprojects ? 1 : 0,
-      status: form.status,
+      // parent_project only ever comes from the ?parentId= route (the "+ Add
+      // Subproject" entry on a parent). A subproject is always a leaf (is_group=0);
+      // a top-level project is a group iff "Allow subprojects" is on.
+      parent_project: form.parentId || null,
+      is_group: form.parentId ? 0 : (form.allowSubprojects ? 1 : 0),
+      project_status: form.status,
       priority: form.priority,
       company: form.company,
       expected_start_date: form.startDate,
@@ -334,24 +363,6 @@ const breadcrumbs = computed(() => {
             <span class="text-sm text-ink-700">Allow subprojects under this project</span>
           </label>
         </DeskField>
-        <DeskField
-          v-if="!form.allowSubprojects"
-          label="Parent Project"
-          :error="errors.parentId"
-          hint="Pick the group project this project should roll up under."
-        >
-          <DeskLinkPicker
-            v-model="form.parentId"
-            doctype="Project"
-            placeholder="Select parent project"
-            label-field="project_name"
-            value-field="name"
-            :search-fields="['project_name', 'custom_project_id', 'name']"
-            :filters="[['is_group', '=', 1]]"
-            order-by="modified desc"
-            :page-length="20"
-          />
-        </DeskField>
       </DeskSection>
 
       <DeskSection title="Schedule &amp; cost">
@@ -388,11 +399,10 @@ const breadcrumbs = computed(() => {
         </DeskField>
         <DeskField label="Initial status">
           <DeskSelect v-model="form.status">
-            <option>Open</option>
-            <option>Working</option>
+            <option>New</option>
+            <option>Ongoing</option>
+            <option>Delayed</option>
             <option>Completed</option>
-            <option>On Hold</option>
-            <option>Cancelled</option>
           </DeskSelect>
         </DeskField>
       </DeskSection>

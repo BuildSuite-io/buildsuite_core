@@ -68,7 +68,7 @@ function onRowClick(row) {
         'project_name',
         'customer',
         'project_type',
-        'status',
+        'project_status',
         'estimated_costing',
         'percent_complete',
         'expected_start_date',
@@ -82,10 +82,9 @@ function onRowClick(row) {
         { key: 'customer', label: 'Client' },
         { key: 'project_type', label: 'Project Type' },
         {
-          key: 'status',
+          key: 'project_status',
           label: 'Status',
           preset: 'status',
-          statusClassMap: { Open: 'bg-success-50 text-success-700' },
         },
         { key: 'estimated_costing', label: 'Budget' },
         { key: 'percent_complete', label: 'Progress', preset: 'progress' },
@@ -96,7 +95,7 @@ function onRowClick(row) {
       :search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
       :base-filters="[['is_group', '=', 1]]"
       :filter-values="filterValues"
-      :filter-field-map="{ status: 'status', type: 'project_type', company: 'company' }"
+      :filter-field-map="{ status: 'project_status', type: 'project_type', company: 'company' }"
       cache-key="buildsuite-project-list-generic"
       row-key="name"
       search-placeholder="Search by name, code, client…"
@@ -105,11 +104,10 @@ function onRowClick(row) {
       <template #filter-chips>
         <DeskSelect v-model="statusFilter" class="!w-32">
           <option value="">Status: Any</option>
-          <option>Open</option>
-          <option>Working</option>
+          <option>New</option>
+          <option>Ongoing</option>
+          <option>Delayed</option>
           <option>Completed</option>
-          <option>On Hold</option>
-          <option>Cancelled</option>
         </DeskSelect>
 
         <DeskSelect v-model="typeFilter" class="!w-40">
