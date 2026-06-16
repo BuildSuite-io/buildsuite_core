@@ -92,13 +92,17 @@ Status legend: ☐ not started · ◐ in progress · ☑ done
   `validate` in `hooks.py`.
 - **Ref:** `944d301` store dep slice for field shape.
 
-**☐ Slice 1.2 — Frontend: Dependencies section on TaskDetailView**
-- Read-only list of predecessors (subject + type + lag) and inferred successors;
-  add/remove a predecessor (Task link picker + type + lag inputs). Writes
-  `custom_predecessors` via the adapter.
-- **Files:** `frontend/src/views/TaskDetailView.vue`, maybe a small
-  `DependencyEditor.vue`. **Accept:** add/remove predecessor persists; successors
-  list updates. **Context:** one view. **Ref:** `aa6fcda`.
+**◐ Slice 1.2 — Dependencies section on TaskDetailView**
+- ☑ **1.2a (backend)** — `get_task_dependencies` / `add_task_predecessor` /
+  `remove_task_predecessor` in `api/schedule.py`. Predecessors + inferred
+  successors (subject/type/lag); mutations save the Task (cycle guard runs) and
+  return the fresh graph.
+- ☐ **1.2b (frontend)** — "Dependencies" section on TaskDetailView: predecessors
+  list (subject + type + lag, remove) + add control (Task picker + type + lag) +
+  read-only inferred successors. Calls the 1.2a methods, refreshes from response.
+- **Files:** `frontend/src/views/TaskDetailView.vue` (+ maybe a small component).
+- **Accept:** add/remove predecessor persists; successors update; cycle blocked.
+- **Ref:** `aa6fcda`.
 
 **☐ Slice 1.3 — Frontend: predecessor picker on NewTaskView (optional)**
 - Allow setting predecessors at create time. **Files:** `NewTaskView.vue`.
