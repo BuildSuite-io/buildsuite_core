@@ -29,12 +29,13 @@ Porting the prototype's Task Dependencies + schedule engine + interactive Gantt
 
 ## Data contract (target backend shape)
 
-New child doctype **`BuildSuite Task Dependency`** (istable=1), rows live on Task
-via a custom Table field `custom_predecessors`:
+**Reuse ERPNext's native `Task.depends_on`** child table (child doctype `Task
+Depends On`, whose `task` field IS the predecessor) — strictly less surface area
+than a new doctype, and a free Desk UI. Add two custom fields to it:
 
 | field | type | notes |
 |---|---|---|
-| `predecessor` | Link → Task | required; the task that must come first |
+| `task` | Link → Task | (native) the predecessor — must come first |
 | `dependency_type` | Select | `FS` (default) / `SS` / `FF` |
 | `lag_days` | Int | default 0; negative = lead / allowed overlap |
 
@@ -81,19 +82,17 @@ Status legend: ☐ not started · ◐ in progress · ☑ done
 
 ### Track 1 — Dependencies (foundation)
 
-**☐ Slice 1.1 — Backend: dependency child table + read API**
-- Create `BuildSuite Task Dependency` child doctype (predecessor / dependency_type
-  / lag_days). Add custom Table field `custom_predecessors` to Task (via
-  `custom_field.py` so it's idempotent on migrate).
-- Whitelisted `get_project_schedule(project)` → tasks (id, subject, task_type,
-  dates, progress, work_package, stage) + each task's predecessor edges. Inferred
-  successors can be derived client-side from the edge set.
-- Permissions: dependency read follows Task read (extend the linked-master rule if
-  needed). Add a cycle-guard validation on the child table.
-- **Files:** `custom_property_list/custom_field.py`, new doctype JSON, a new
-  `buildsuite_core/api/schedule.py`, `permissions/setup.py` (if needed).
-- **Accept:** create a dep via API; `get_project_schedule` returns edges; cycle
-  rejected. **Context:** backend-only, small.
+**◐ Slice 1.1 — Backend: dependency fields + read API**
+- ☑ **Bit 1** — add `dependency_type` (FS/SS/FF) + `lag_days` custom fields to the
+  native `Task Depends On` child table via `custom_field.py` (idempotent on
+  migrate). `task` is the predecessor; successors inferred by reverse query.
+- ☐ **Bit 2** — whitelisted `get_project_schedule(project)` → tasks (id, subject,
+  task_type, dates, progress, work_package) + each task's predecessor edges
+  (predecessor/type/lag); inferred successors derivable from the edge set. Plus a
+  **cycle-guard** validation (reject A→B→…→A on Task save).
+- **Files:** `custom_property_list/custom_field.py` (done), new
+  `buildsuite_core/api/schedule.py`, `hooks.py` (Task validate for cycle guard).
+- **Accept:** `get_project_schedule` returns edges; a cyclic edge is rejected.
 - **Ref:** `944d301` store dep slice for field shape.
 
 **☐ Slice 1.2 — Frontend: Dependencies section on TaskDetailView**
