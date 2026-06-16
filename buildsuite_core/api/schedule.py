@@ -56,6 +56,75 @@ def get_project_schedule(project):
     return {"project": project, "tasks": tasks}
 
 
+# --- single-task dependency CRUD (for the Task Detail "Dependencies" section) --
+
+@frappe.whitelist()
+def get_task_dependencies(task):
+    """Predecessors (this task's depends_on) + inferred successors (tasks whose
+    depends_on includes this task), each with subject + dependency_type + lag."""
+    if not task:
+        frappe.throw(_("task is required"))
+
+    predecessors = frappe.get_all(
+        "Task Depends On",
+        filters={"parent": task, "parenttype": "Task"},
+        fields=["task", "dependency_type", "lag_days"],
+    )
+    successors = frappe.get_all(
+        "Task Depends On",
+        filters={"task": task, "parenttype": "Task"},
+        fields=["parent as task", "dependency_type", "lag_days"],
+    )
+
+    ids = list({r.task for r in predecessors} | {r.task for r in successors})
+    subjects = {}
+    if ids:
+        for row in frappe.get_all("Task", filters={"name": ["in", ids]}, fields=["name", "subject"]):
+            subjects[row.name] = row.subject
+    for r in predecessors + successors:
+        r["subject"] = subjects.get(r.task, r.task)
+        r["dependency_type"] = r.dependency_type or "FS"
+        r["lag_days"] = r.lag_days or 0
+
+    return {"predecessors": predecessors, "successors": successors}
+
+
+@frappe.whitelist()
+def add_task_predecessor(task, predecessor, dependency_type="FS", lag_days=0):
+    """Add (or update) a predecessor edge on `task`. Saves the Task, so the
+    cycle guard runs and a circular edge is rejected. Returns the fresh graph."""
+    if not task or not predecessor:
+        frappe.throw(_("task and predecessor are required"))
+    if task == predecessor:
+        frappe.throw(_("A task cannot depend on itself."))
+
+    doc = frappe.get_doc("Task", task)
+    for row in doc.depends_on:
+        if row.task == predecessor:
+            row.dependency_type = dependency_type or "FS"
+            row.lag_days = int(lag_days or 0)
+            break
+    else:
+        doc.append("depends_on", {
+            "task": predecessor,
+            "dependency_type": dependency_type or "FS",
+            "lag_days": int(lag_days or 0),
+        })
+    doc.save()
+    return get_task_dependencies(task)
+
+
+@frappe.whitelist()
+def remove_task_predecessor(task, predecessor):
+    """Remove a predecessor edge from `task`. Returns the fresh graph."""
+    if not task or not predecessor:
+        frappe.throw(_("task and predecessor are required"))
+    doc = frappe.get_doc("Task", task)
+    doc.set("depends_on", [r for r in doc.depends_on if r.task != predecessor])
+    doc.save()
+    return get_task_dependencies(task)
+
+
 # --- cycle guard --------------------------------------------------------------
 
 def validate_task_dependencies(doc, method=None):
