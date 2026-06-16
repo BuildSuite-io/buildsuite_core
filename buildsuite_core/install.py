@@ -6,6 +6,7 @@ from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
 from buildsuite_core.permissions.setup import setup_record_permissions
 from buildsuite_core.utils.task import backfill_task_status, backfill_task_type
+from buildsuite_core.utils.project import backfill_project_status
 
 
 def after_install():
@@ -20,6 +21,7 @@ def after_migrate():
     # Backfill task_status + task_type on Tasks that predate the fields (idempotent).
     backfill_task_status()
     backfill_task_type()
+    backfill_project_status()
     seed_master_data()
     setup_record_permissions()
 

@@ -11,6 +11,17 @@ CUSTOM_FIELD = {
             "module": "BuildSuite Core"
         },
         {
+            "fieldname": "project_status",
+            "fieldtype": "Select",
+            "label": "Project Status",
+            "insert_after": "status",
+            "default": "New",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "options": "New\nOngoing\nDelayed\nCompleted",
+            "module": "BuildSuite Core"
+        },
+        {
             "fieldname": "is_group",
             "fieldtype": "Check",
             "label": "Is Group",
@@ -23,7 +34,7 @@ CUSTOM_FIELD = {
             "fieldtype": "Link",
             "label": "Parent Project",
             "options": "Project",
-            "depends_on": "eval:doc.is_group==0",
+            "depends_on": "eval:doc.parent_project",
             "insert_after": "is_group",
             "module": "BuildSuite Core"
         },

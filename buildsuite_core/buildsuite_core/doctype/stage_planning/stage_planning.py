@@ -32,6 +32,20 @@ class StagePlanning(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		# Editing a Rejected stage sends it back to Draft and clears the rejection
+		# reason (SAW-006). We detect "edit" as: the doc already exists, was Rejected
+		# before this save, and the state wasn't just changed by a workflow action.
+		if not self.is_new():
+			before = self.get_doc_before_save()
+			if (
+				before
+				and before.workflow_state == "Rejected"
+				and self.workflow_state == "Rejected"
+			):
+				self.workflow_state = "Draft"
+				self.reject_reason = None
+				return
+
 		# A stage can only land in Rejected with a reason on file. The Vue reject
 		# popup and the reject_stage_planning() method below both supply it; this
 		# guards any other path (e.g. a direct Desk workflow action).
