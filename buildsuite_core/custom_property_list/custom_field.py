@@ -168,6 +168,31 @@ CUSTOM_FIELD = {
             "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
         },
     ],
+    # Enrich the native ERPNext Task dependency child table (Task.depends_on ->
+    # "Task Depends On", whose `task` field is the PREDECESSOR) with the schedule
+    # metadata the engine needs. Successors are inferred (reverse query), never
+    # stored. See context/scheduler-gantt-plan.md (Slice 1.1).
+    "Task Depends On": [
+        {
+            "fieldname": "dependency_type",
+            "fieldtype": "Select",
+            "insert_after": "task",
+            "label": "Dependency Type",
+            "options": "FS\nSS\nFF",
+            "default": "FS",
+            "in_list_view": 1,
+            "description": "FS = Finish-to-Start, SS = Start-to-Start, FF = Finish-to-Finish",
+        },
+        {
+            "fieldname": "lag_days",
+            "fieldtype": "Int",
+            "insert_after": "dependency_type",
+            "label": "Lag (days)",
+            "default": "0",
+            "in_list_view": 1,
+            "description": "Days after the predecessor's constraint date. Negative = lead (allowed overlap).",
+        },
+    ],
     "Warehouse": [
         {
             "fieldname": "project",
