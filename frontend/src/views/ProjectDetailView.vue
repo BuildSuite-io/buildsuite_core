@@ -512,7 +512,7 @@ async function saveEdit() {
       expected_end_date: editForm.value.endDate,
       customer: editForm.value.client,
       project_type: editForm.value.type,
-      company: editForm.value.company,
+      // company is locked/inferred server-side (§14) — not editable from the form.
       estimated_costing: Number(editForm.value.budget),
       owner: editForm.value.pm,
       notes: editForm.value.description,
