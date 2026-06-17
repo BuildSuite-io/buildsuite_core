@@ -64,6 +64,14 @@ def create_buildsuite_user(full_name, email, persona, enabled=1, send_welcome=1)
 	doc.enabled = 1 if cint(enabled) else 0
 	doc.user_type = "System User"
 	doc.persona = persona  # the validate hook assigns the matching BuildSuite role
+	# Company isn't shown in the Vue user form — inherit the creator's company so
+	# the persona's mandatory-company rule is satisfied. Fall back to the site
+	# default (e.g. when the creator is Administrator with no company set).
+	doc.company = (
+		frappe.db.get_value("User", frappe.session.user, "company")
+		or frappe.defaults.get_global_default("company")
+		or frappe.db.get_single_value("Global Defaults", "default_company")
+	)
 	doc.send_welcome_email = 1 if cint(send_welcome) else 0
 	doc.flags.ignore_permissions = True
 	doc.insert()
