@@ -91,6 +91,44 @@ class TestUATFixes(UnitTestCase):
 		child.insert(ignore_permissions=True)
 		self.assertEqual(child.company, self.company)
 
+	def test_project_infers_company_from_creating_user(self):
+		# PRJ-012/013: company isn't sent by the form; it's inferred from the
+		# creating user's company.
+		frappe.db.set_value("User", frappe.session.user, "company", self.company)
+		p = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": f"UAT infer {self._n}",
+			"custom_project_id": f"UAT-INF-{self._n}",
+		})
+		p.insert(ignore_permissions=True)
+		self.assertEqual(p.company, self.company)
+
+	def test_user_persona_requires_company(self):
+		# Frappe auto-fills company from the global default on new_doc, so to
+		# exercise the guard we explicitly clear it before insert.
+		u = frappe.new_doc("User")
+		u.email = f"uat-{self._n}@example.com"
+		u.first_name = "UAT"
+		u.user_type = "System User"
+		u.send_welcome_email = 0
+		u.persona = "Project Manager"
+		u.company = ""
+		with self.assertRaises(frappe.ValidationError):
+			u.insert(ignore_permissions=True)
+
+	def test_user_persona_with_company_ok(self):
+		u = frappe.get_doc({
+			"doctype": "User",
+			"email": f"uat-ok-{self._n}@example.com",
+			"first_name": "UAT",
+			"user_type": "System User",
+			"send_welcome_email": 0,
+			"persona": "Project Manager",
+			"company": self.company,
+		})
+		u.insert(ignore_permissions=True)
+		self.assertEqual(u.company, self.company)
+
 	def test_company_locked_after_create(self):
 		# PRJ-013: company can't be changed on edit; revert is silent.
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")

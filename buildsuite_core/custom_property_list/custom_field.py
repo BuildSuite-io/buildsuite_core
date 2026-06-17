@@ -226,6 +226,18 @@ CUSTOM_FIELD = {
             "options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
             "insert_after": "username",
             "module": "BuildSuite Core"
+        },
+        {
+            # The user's company is the source of truth for project company
+            # inference (new projects inherit the creator's company). Made
+            # mandatory in utils.user when a persona is assigned (server-side only;
+            # the Vue user form never shows it — the API stamps the creator's company).
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "label": "Company",
+            "options": "Company",
+            "insert_after": "persona",
+            "module": "BuildSuite Core"
         }
     ]
 }
