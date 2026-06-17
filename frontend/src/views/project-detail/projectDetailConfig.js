@@ -49,7 +49,7 @@ export const SCO_COLS = [
 
 export const TEAM_COLS = [
   { key: 'member', label: 'Member' },
-  { key: 'role', label: 'Role' },
+  { key: 'role', label: 'User' },
   { key: 'flag', label: '' },
 ]
 
