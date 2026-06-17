@@ -95,9 +95,9 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         'subject',
         'project',
         'work_package',
-        'status',
+        'task_status',
         'priority',
-        'type',
+        'task_type',
         'owner',
         'exp_end_date',
         'progress',
@@ -106,9 +106,9 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       :columns="[
         { key: 'subject', label: 'Task' },
         { key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
-        { key: 'status', label: 'Status', preset: 'status' },
+        { key: 'task_status', label: 'Status', preset: 'status' },
         { key: 'priority', label: 'Priority', preset: 'status' },
-        { key: 'type', label: 'Task Type', preset: 'status' },
+        { key: 'task_type', label: 'Task Type', preset: 'status' },
         { key: 'owner', label: 'Assignee' },
         { key: 'exp_end_date', label: 'Due' },
         { key: 'progress', label: 'Progress', preset: 'progress' },
@@ -116,11 +116,11 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       :search-fields="['subject', 'name']"
       :filter-values="filterValues"
       :filter-field-map="{
-        status: 'status',
+        status: 'task_status',
         priority: 'priority',
         project: 'project',
         assignee: 'owner',
-        taskType: 'type',
+        taskType: 'task_type',
       }"
       cache-key="buildsuite-task-list-generic"
       row-key="name"
@@ -131,10 +131,11 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         <!-- Status: select when empty, chip when set -->
         <DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
           <option value="">Status: Any</option>
-          <option>Open</option>
+          <option>Yet To Start</option>
           <option>In Progress</option>
+          <option>In Delay</option>
           <option>Completed</option>
-          <option>Cancelled</option>
+          <option>Blocked</option>
         </DeskSelect>
         <DeskFilterChip
           v-else
@@ -211,8 +212,8 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #cell-priority="{ row }">
         <StatusBadge :status="row.priority || 'Medium'" size="xs" />
       </template>
-      <template #cell-type="{ row }">
-        <StatusBadge :status="row.type || 'Activity'" size="xs" />
+      <template #cell-task_type="{ row }">
+        <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
       <template #cell-owner="{ row }">
         <UserAvatar :user-id="row.owner || ''" size="xs" />

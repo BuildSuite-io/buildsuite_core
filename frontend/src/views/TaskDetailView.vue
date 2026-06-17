@@ -23,6 +23,7 @@ import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { getTaskDependencies, addTaskPredecessor, removeTaskPredecessor } from '@/utils/scheduleApi'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
@@ -63,13 +64,13 @@ function loadTaskResource() {
       'subject',
       'project',
       'work_package',
-      'status',
+      'task_status',
       'priority',
       'progress',
       'owner',
       'exp_start_date',
       'exp_end_date',
-      'type',
+      'task_type',
       'description',
     ],
     cache: `buildsuite-task-detail:${props.id}`,
@@ -79,13 +80,13 @@ function loadTaskResource() {
         name: row?.subject || row?.name || '',
         projectId: row?.project || '',
         workPackageId: row?.work_package || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         progress: Number(row?.progress) || 0,
         assignee: row?.owner || '',
         startDate: row?.exp_start_date || null,
         endDate: row?.exp_end_date || null,
-        task_type: row?.type || 'Activity',
+        task_type: row?.task_type || 'Activity',
         description: row?.description || '',
       }))
     },
@@ -99,6 +100,91 @@ const task = computed(() => {
   if (backendTask) return backendTask
   return store.taskById(props.id) || null
 })
+
+// ===== Dependencies — Connections-style cards (prototype S135). Predecessors are
+// stored on Task.depends_on; successors are inferred (reverse query). + Add opens
+// the modal in pred / succ direction; per-row edit (type + lag) / delete. =====
+const deps = ref({ predecessors: [], successors: [] })
+
+async function loadDeps() {
+  if (!props.id) { deps.value = { predecessors: [], successors: [] }; return }
+  try {
+    deps.value = await getTaskDependencies(props.id)
+  } catch (err) {
+    showToast(err.message || 'Failed to load dependencies', 'error')
+  }
+}
+watch(() => props.id, loadDeps, { immediate: true })
+
+const canEditDeps = computed(() => canEdit('task'))
+
+function lagLabel(d) {
+  const n = Number(d) || 0
+  return n === 0 ? '' : (n > 0 ? `+${n}d` : `${n}d`)
+}
+function depTypeTitle(t) {
+  return t === 'FS' ? 'Finish to Start' : t === 'SS' ? 'Start to Start' : 'Finish to Finish'
+}
+
+// Add/edit modal. role: 'pred' (other task is the predecessor of this one) or
+// 'succ' (other task is the successor — i.e. this task is ITS predecessor).
+const depModalOpen = ref(false)
+const depSaving = ref(false)
+const depForm = reactive({ mode: 'add-pred', role: 'pred', otherTaskId: '', otherSubject: '', dependency_type: 'FS', lag: 0, error: '' })
+
+function openAddPredecessor() {
+  Object.assign(depForm, { mode: 'add-pred', role: 'pred', otherTaskId: '', otherSubject: '', dependency_type: 'FS', lag: 0, error: '' })
+  depModalOpen.value = true
+}
+function openAddSuccessor() {
+  Object.assign(depForm, { mode: 'add-succ', role: 'succ', otherTaskId: '', otherSubject: '', dependency_type: 'FS', lag: 0, error: '' })
+  depModalOpen.value = true
+}
+function openEditDep(dep, role) {
+  Object.assign(depForm, {
+    mode: 'edit', role,
+    otherTaskId: dep.task, otherSubject: dep.subject || dep.task,
+    dependency_type: dep.dependency_type || 'FS', lag: Number(dep.lag_days) || 0, error: '',
+  })
+  depModalOpen.value = true
+}
+async function saveDep() {
+  depForm.error = ''
+  if (!depForm.otherTaskId) { depForm.error = 'Pick a task.'; return }
+  depSaving.value = true
+  try {
+    // pred: this depends on other -> edge other -> this  => add_task_predecessor(this, other)
+    // succ: other depends on this  -> edge this -> other  => add_task_predecessor(other, this)
+    if (depForm.role === 'pred') {
+      await addTaskPredecessor(props.id, depForm.otherTaskId, depForm.dependency_type, Number(depForm.lag) || 0)
+    } else {
+      await addTaskPredecessor(depForm.otherTaskId, props.id, depForm.dependency_type, Number(depForm.lag) || 0)
+    }
+    await loadDeps()
+    depModalOpen.value = false
+    showToast('Dependency saved')
+  } catch (err) {
+    depForm.error = err.message || 'Failed to save dependency'
+  } finally {
+    depSaving.value = false
+  }
+}
+async function deleteDep(dep, role) {
+  try {
+    if (role === 'pred') await removeTaskPredecessor(props.id, dep.task)
+    else await removeTaskPredecessor(dep.task, props.id)
+    await loadDeps()
+    showToast('Dependency removed')
+  } catch (err) {
+    showToast(err.message || 'Failed to remove dependency', 'error')
+  }
+}
+
+const depPickerFilters = computed(() =>
+  task.value?.projectId
+    ? [['project', '=', task.value.projectId], ['name', '!=', props.id]]
+    : [['name', '!=', props.id]]
+)
 
 const projectResource = ref(null)
 
@@ -213,9 +299,9 @@ const {
 } = useFormErrors({
   subject:         'name',
   work_package:    'workPackageId',
-  status:          'status',
+  task_status:     'status',
   priority:        'priority',
-  type:            'task_type',
+  task_type:       'task_type',
   owner:           'assignee',
   exp_start_date:  'startDate',
   exp_end_date:    'endDate',
@@ -411,9 +497,9 @@ async function saveEdit() {
     await adapter.update('Task', props.id, {
       subject: form.value.name,
       work_package: form.value.workPackageId || null,
-      status: form.value.status,
+      task_status: form.value.status,
       priority: form.value.priority,
-      type: form.value.task_type,
+      task_type: form.value.task_type,
       owner: form.value.assignee,
       exp_start_date: form.value.startDate,
       exp_end_date: form.value.endDate,
@@ -433,7 +519,7 @@ function cancelEdit() {
 }
 
 async function quickStatus(status) {
-  const patch = { status }
+  const patch = { task_status: status }
   if (status === 'Completed') patch.progress = 100
   if (status === 'Yet To Start') patch.progress = 0
 
@@ -614,6 +700,54 @@ const progressColor = computed(() => {
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Timeline</div>
           <div class="text-sm text-ink-700">{{ fmtDate(task.startDate) }} → {{ fmtDate(task.endDate) }}</div>
+        </div>
+
+        <!-- Dependencies — predecessors (stored) + successors (inferred). Per the prototype. -->
+        <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Dependencies</div>
+            <RouterLink to="/schedule" class="text-[10px] text-brand-700 hover:underline">Open Gantt →</RouterLink>
+          </div>
+
+          <!-- Predecessors -->
+          <div class="mb-2">
+            <div class="flex items-center justify-between text-[10px] text-ink-500 mb-1">
+              <span>Predecessors ({{ deps.predecessors.length }})</span>
+              <button v-if="canEditDeps" @click="openAddPredecessor" class="text-brand-700 hover:underline" title="Add a task this one depends on">+ Add</button>
+            </div>
+            <ul v-if="deps.predecessors.length" class="space-y-1">
+              <li v-for="dep in deps.predecessors" :key="dep.task" class="group flex items-center gap-1.5 text-xs">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded-full flex-shrink-0" :title="depTypeTitle(dep.dependency_type)">{{ dep.dependency_type }}</span>
+                <RouterLink :to="`/tasks/${dep.task}`" class="flex-1 min-w-0 truncate text-ink-900 hover:text-brand-700">{{ dep.subject }}</RouterLink>
+                <span v-if="lagLabel(dep.lag_days)" class="text-[10px] text-ink-500 tabular-nums flex-shrink-0">{{ lagLabel(dep.lag_days) }}</span>
+                <div v-if="canEditDeps" class="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0">
+                  <button @click="openEditDep(dep, 'pred')" class="px-1 py-0.5 text-ink-500 hover:text-ink-900" title="Edit">✎</button>
+                  <button @click="deleteDep(dep, 'pred')" class="px-1 py-0.5 text-danger-700 hover:bg-danger-50 rounded" title="Delete">🗑</button>
+                </div>
+              </li>
+            </ul>
+            <div v-else class="text-[11px] text-ink-400 italic">None</div>
+          </div>
+
+          <!-- Successors (inferred) -->
+          <div>
+            <div class="flex items-center justify-between text-[10px] text-ink-500 mb-1">
+              <span>Successors ({{ deps.successors.length }})</span>
+              <button v-if="canEditDeps" @click="openAddSuccessor" class="text-brand-700 hover:underline" title="Add a task that depends on this one">+ Add</button>
+            </div>
+            <ul v-if="deps.successors.length" class="space-y-1">
+              <li v-for="dep in deps.successors" :key="dep.task" class="group flex items-center gap-1.5 text-xs">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded-full flex-shrink-0" :title="depTypeTitle(dep.dependency_type)">{{ dep.dependency_type }}</span>
+                <RouterLink :to="`/tasks/${dep.task}`" class="flex-1 min-w-0 truncate text-ink-900 hover:text-brand-700">{{ dep.subject }}</RouterLink>
+                <span v-if="lagLabel(dep.lag_days)" class="text-[10px] text-ink-500 tabular-nums flex-shrink-0">{{ lagLabel(dep.lag_days) }}</span>
+                <div v-if="canEditDeps" class="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0">
+                  <button @click="openEditDep(dep, 'succ')" class="px-1 py-0.5 text-ink-500 hover:text-ink-900" title="Edit">✎</button>
+                  <button @click="deleteDep(dep, 'succ')" class="px-1 py-0.5 text-danger-700 hover:bg-danger-50 rounded" title="Delete">🗑</button>
+                </div>
+              </li>
+            </ul>
+            <div v-else class="text-[11px] text-ink-400 italic">None</div>
+          </div>
         </div>
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="flex items-center justify-between mb-1.5">
@@ -923,6 +1057,56 @@ const progressColor = computed(() => {
       :loading="deleteLoading"
       @confirm="confirmDelete"
     />
+
+    <!-- Add / edit dependency modal -->
+    <Teleport to="body">
+      <div
+        v-if="depModalOpen"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+        @click.self="depModalOpen = false"
+      >
+        <div class="bg-white border border-ink-200 w-full max-w-md shadow-fp-lg" style="border-radius: 12px;" @click.stop>
+          <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-ink-900">
+              {{ depForm.mode === 'edit' ? 'Edit dependency' : depForm.mode === 'add-pred' ? 'Add predecessor' : 'Add successor' }}
+            </h2>
+            <button type="button" class="text-ink-500 hover:text-ink-900 text-lg leading-none" aria-label="Close" @click="depModalOpen = false">×</button>
+          </header>
+          <div class="p-5 space-y-3">
+            <DeskField :label="depForm.role === 'pred' ? 'Predecessor task' : 'Successor task'" :hint="depForm.role === 'pred' ? 'Must finish/start before this task.' : 'Waits on this task.'">
+              <div v-if="depForm.mode === 'edit'" class="text-sm text-ink-900 py-1">{{ depForm.otherSubject }}</div>
+              <DeskLinkPicker
+                v-else
+                v-model="depForm.otherTaskId"
+                doctype="Task"
+                label-field="subject"
+                value-field="name"
+                :search-fields="['subject', 'name']"
+                :filters="depPickerFilters"
+                placeholder="Pick a task"
+              />
+            </DeskField>
+            <div class="grid grid-cols-2 gap-3">
+              <DeskField label="Type" hint="FS / SS / FF">
+                <DeskSelect v-model="depForm.dependency_type">
+                  <option>FS</option>
+                  <option>SS</option>
+                  <option>FF</option>
+                </DeskSelect>
+              </DeskField>
+              <DeskField label="Lag (days)" hint="− = lead / overlap">
+                <DeskInput v-model="depForm.lag" type="number" />
+              </DeskField>
+            </div>
+            <p v-if="depForm.error" class="text-xs text-danger-700">{{ depForm.error }}</p>
+          </div>
+          <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+            <button type="button" class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700" style="border-radius: 6px;" @click="depModalOpen = false">Cancel</button>
+            <button type="button" class="desk-save-btn" :disabled="depSaving" @click="saveDep">{{ depSaving ? 'Saving…' : 'Save' }}</button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
   </DeskPage>
 
   <div v-else class="px-6 py-20 text-center text-sm text-ink-400">Task not found</div>
