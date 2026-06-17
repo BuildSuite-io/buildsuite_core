@@ -7,6 +7,7 @@ from buildsuite_core.custom_property_list.property_field import get_property_set
 from buildsuite_core.permissions.setup import setup_record_permissions
 from buildsuite_core.utils.task import backfill_task_status, backfill_task_type
 from buildsuite_core.utils.project import backfill_project_status
+from buildsuite_core.utils.user import backfill_user_company
 
 
 def after_install():
@@ -22,6 +23,7 @@ def after_migrate():
     backfill_task_status()
     backfill_task_type()
     backfill_project_status()
+    backfill_user_company()
     seed_master_data()
     setup_record_permissions()
 

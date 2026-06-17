@@ -38,8 +38,11 @@ def set_company_on_insert(doc, method=None):
             return
 
     if not doc.get("company"):
+        # Inferred from the creating user's company (the Vue form no longer asks
+        # for it), falling back to the site default.
         doc.company = (
-            frappe.defaults.get_user_default("Company")
+            frappe.db.get_value("User", frappe.session.user, "company")
+            or frappe.defaults.get_user_default("Company")
             or frappe.db.get_single_value("Global Defaults", "default_company")
         )
 
