@@ -19,6 +19,7 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { addProjectTeamMember, removeProjectTeamMember } from '@/data/projectTeamApi'
 import { toDateInputValue } from '@/utils/dateInput'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
@@ -85,6 +86,7 @@ function loadProjectResource() {
       'customer',
       'project_type',
       'status',
+      'project_status',
       'priority',
       'estimated_costing',
       'percent_complete',
@@ -105,7 +107,7 @@ function loadProjectResource() {
         code: row?.custom_project_id || '',
         name: row?.project_name || row?.name || '',
         client: row?.customer || '',
-        status: row?.status || '',
+        status: row?.project_status || row?.status || 'New',
         priority: row?.priority || 'Medium',
         type: row?.project_type || '',
         company: row?.company || '',
@@ -119,6 +121,12 @@ function loadProjectResource() {
         isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
         parentId: row?.parent_project || null,
         createdAt: row?.creation || null,
+        // custom_team_members (Project Team child rows) ride along on the
+        // frappe.client.get document even though they're not in `fields`.
+        teamMembers: (row?.custom_team_members || []).map((r) => ({
+          user: r.user,
+          fullName: r.full_name || r.user,
+        })),
       }))
     },
   })
@@ -153,7 +161,7 @@ function loadSubprojectsResource() {
     'name',
     'custom_project_id',
     'project_name',
-    'status',
+    'project_status',
     'estimated_costing',
     'percent_complete',
     'owner',
@@ -174,7 +182,7 @@ function loadSubprojectsResource() {
         id: row?.name || row?.id,
         code: row?.custom_project_id || '',
         name: row?.project_name || row?.name || '',
-        status: row?.status || '',
+        status: row?.project_status || row?.status || 'New',
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
         pm: row?.owner || '',
@@ -448,31 +456,65 @@ watch(() => props.id, () => {
   editing.value = false
 })
 
-// Project team — PM always first, then user-added members.
-const projectTeam = computed(() => store.projectTeamMembers(resolvedProjectId.value))
+// Project team — read from the project's custom_team_members child table
+// (mapped in the read transform), persisted via the backend API.
+const TEAM_COLORS = ['bg-brand-600', 'bg-info-600', 'bg-violet-600', 'bg-amber-600', 'bg-rose-600', 'bg-emerald-600']
+function initialsOf(name) {
+  return String(name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'
+}
+function colorOf(id) {
+  let h = 0
+  for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return TEAM_COLORS[h % TEAM_COLORS.length]
+}
+const projectTeam = computed(() =>
+  (project.value?.teamMembers || []).map(m => ({
+    id: m.user,
+    name: m.fullName || m.user,
+    role: m.user,            // shown as the "User" column (email/login id)
+    initials: initialsOf(m.fullName || m.user),
+    color: colorOf(m.user),
+  }))
+)
+
+// Users already on the team (+ the PM) — excluded from the add picker.
+const excludeTeamUsers = computed(() => {
+  const ids = projectTeam.value.map(m => m.id)
+  if (project.value?.pm) ids.push(project.value.pm)
+  return Array.from(new Set(ids))
+})
 
 // Add-team-member modal state.
 const teamModalOpen = ref(false)
 const teamPickUserId = ref('')
-const availableTeamCandidates = computed(() => {
-  const memberIds = new Set(projectTeam.value.map(m => m.id))
-  return store.team.filter(m => !memberIds.has(m.id))
-})
+const teamSaving = ref(false)
+const teamError = ref('')
 function openTeamModal() {
-  teamPickUserId.value = availableTeamCandidates.value[0]?.id || ''
+  teamPickUserId.value = ''
+  teamError.value = ''
   teamModalOpen.value = true
 }
 function closeTeamModal() {
   teamModalOpen.value = false
 }
-function confirmAddMember() {
+async function confirmAddMember() {
   if (!teamPickUserId.value) return
-  store.addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
-  teamModalOpen.value = false
+  teamSaving.value = true
+  teamError.value = ''
+  try {
+    await addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
+    teamModalOpen.value = false
+    projectResource.value?.reload?.()
+    showToast('Team member added')
+  } catch (err) {
+    teamError.value = err?.message || 'Failed to add team member'
+  } finally {
+    teamSaving.value = false
+  }
 }
 async function removeTeamMember(userId) {
-  if (!userId || userId === project.value?.pm) return
-  const m = store.teamMember(userId)
+  if (!userId) return
+  const m = projectTeam.value.find(x => x.id === userId)
   const ok = await confirmDialog({
     title: 'Remove team member',
     message: `Remove ${m?.name || userId} from this project's team?`,
@@ -480,7 +522,13 @@ async function removeTeamMember(userId) {
     destructive: true,
   })
   if (!ok) return
-  store.removeProjectTeamMember(resolvedProjectId.value, userId)
+  try {
+    await removeProjectTeamMember(resolvedProjectId.value, userId)
+    projectResource.value?.reload?.()
+    showToast('Team member removed')
+  } catch (err) {
+    showToast(err?.message || 'Failed to remove team member', 'error')
+  }
 }
 
 function buildProjectEditForm(source) {
@@ -504,14 +552,14 @@ async function saveEdit() {
       project_name: editForm.value.name,
       custom_project_id: editForm.value.code,
       is_group: editForm.value.isGroup ? 1 : 0,
-      status: editForm.value.status,
+      project_status: editForm.value.status,
       priority: editForm.value.priority,
       percent_complete: editForm.value.progress,
       expected_start_date: editForm.value.startDate,
       expected_end_date: editForm.value.endDate,
       customer: editForm.value.client,
       project_type: editForm.value.type,
-      company: editForm.value.company,
+      // company is locked/inferred server-side (§14) — not editable from the form.
       estimated_costing: Number(editForm.value.budget),
       owner: editForm.value.pm,
       notes: editForm.value.description,
@@ -1116,7 +1164,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         :project="project"
         :team="projectTeam"
         :team-cols="teamCols"
-        :has-candidates="availableTeamCandidates.length > 0"
+        :has-candidates="true"
         @add="openTeamModal"
         @remove="removeTeamMember"
       />
@@ -1164,9 +1212,11 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
     <ProjectTeamMemberModal
       :open="teamModalOpen"
       :project-name="project?.name || ''"
-      :available-team-candidates="availableTeamCandidates"
-      :team-pick-user-id="teamPickUserId"
-      @update:team-pick-user-id="(value) => (teamPickUserId = value)"
+      :exclude-users="excludeTeamUsers"
+      :model-value="teamPickUserId"
+      :saving="teamSaving"
+      :error="teamError"
+      @update:model-value="(value) => (teamPickUserId = value)"
       @close="closeTeamModal"
       @confirm="confirmAddMember"
     />

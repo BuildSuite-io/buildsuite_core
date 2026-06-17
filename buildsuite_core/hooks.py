@@ -165,14 +165,30 @@ doc_events = {
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	# },
 	"Project": {
-		"after_insert": "buildsuite_core.utils.project.seed_from_template_on_insert",
-        "validate": "buildsuite_core.utils.project.create_warehouse_for_project",
-		"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
+		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
+		"validate": [
+			"buildsuite_core.utils.project.sync_project_status",
+			"buildsuite_core.utils.project.enforce_company_rules",
+		],
+		# create_warehouse_for_project must run after_insert, not on validate: it
+		# creates a Warehouse linked to this project, which doesn't exist in the DB
+		# until after insert (validate-time creation throws a link error).
+		"after_insert": [
+			"buildsuite_core.utils.project.seed_from_template_on_insert",
+			"buildsuite_core.utils.project.create_warehouse_for_project",
+		],
+		# cascade runs first (it blocks on accounting/stock links); warehouse
+		# cleanup follows only if the delete proceeds.
+		"on_trash": [
+			"buildsuite_core.utils.project.cascade_delete_project",
+			"buildsuite_core.utils.project.delete_warehouse_for_project",
+		]
 	},
 	"Task": {
-		"validate": ["buildsuite_core.api.schedule.validate_task_dependencies", "buildsuite_core.api.schedule.normalize_milestone_task"],
-		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
-		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
+		"before_insert": "buildsuite_core.utils.task.update_task_status_insert",
+		"validate": ["buildsuite_core.api.schedule.validate_task_dependencies", "buildsuite_core.api.schedule.normalize_milestone_task", "buildsuite_core.utils.task.update_task_status"],
+		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.update_project_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
+		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.update_project_progress", "buildsuite_core.utils.task.cascade_delete_task", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
 	},
 	# Keep each user's BuildSuite role aligned with their persona. validate covers
 	# both create and edit; delete needs no handler (Has Role rows cascade).

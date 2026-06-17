@@ -77,6 +77,28 @@ def sync_stage_tasks_on_update(doc, method=None):
             parent_doc.save(ignore_permissions=True)
 
 
+def cascade_delete_task(doc, method=None):
+    """Cascade delete a Task's children (TSK-013).
+
+    Removes Task Progress Entries and file attachments tied to the task. The
+    embedded task_progress_details child rows are removed with the task itself.
+    TPE on_trash recomputes progress, but since the task is being deleted that's a
+    harmless no-op.
+    """
+    # Signal so TPE on_trash skips the (now pointless) parent-task progress recompute.
+    frappe.flags.buildsuite_deleting_task = doc.name
+    try:
+        for tpe in frappe.get_all("Task Progress Entry", filters={"task": doc.name}, pluck="name"):
+            frappe.delete_doc("Task Progress Entry", tpe, ignore_permissions=True, force=True)
+    finally:
+        frappe.flags.buildsuite_deleting_task = None
+
+    for f in frappe.get_all(
+        "File", filters={"attached_to_doctype": "Task", "attached_to_name": doc.name}, pluck="name"
+    ):
+        frappe.delete_doc("File", f, ignore_permissions=True, force=True)
+
+
 def sync_stage_tasks_on_delete(doc, method=None):
     """
     Triggered right before an ERPNext Task is deleted.
@@ -196,34 +218,64 @@ def update_task_status_insert(doc, method=None):
 from frappe.utils import flt
 
 
-@frappe.whitelist()
-def update_project_progress(doc, method=None):
-    if not doc.project:
-        return
+def _subtree_task_count(project):
+    """Total tasks in a project's whole subtree (itself + all descendants).
 
-    # Get all task progress values for the project
-    tasks = frappe.get_all(
-        "Task",
-        filters={"project": doc.project},
-        fields=["progress"]
+    This is the weight a subproject contributes to its parent's progress rollup.
+    """
+    count = frappe.db.count("Task", {"project": project})
+    for sub in frappe.get_all("Project", filters={"parent_project": project}, pluck="name"):
+        count += _subtree_task_count(sub)
+    return count
+
+
+def _recompute_project_progress(project):
+    """Weighted progress for one project = its direct tasks (weight 1 each) blended
+    with each subproject's stored progress weighted by that subproject's task count.
+
+    Written via db.set_value with percent_complete_method=Manual so erpnext's own
+    auto-calc (which short-circuits on Manual) doesn't override the rollup.
+    """
+    direct = frappe.get_all("Task", filters={"project": project}, fields=["progress"])
+    weighted = sum(flt(t.progress) for t in direct)
+    weight = len(direct)
+
+    for sub in frappe.get_all(
+        "Project", filters={"parent_project": project}, fields=["name", "percent_complete"]
+    ):
+        sub_weight = _subtree_task_count(sub.name)
+        if sub_weight:
+            weighted += flt(sub.percent_complete) * sub_weight
+            weight += sub_weight
+
+    percent_complete = (weighted / weight) if weight else 0
+    frappe.db.set_value(
+        "Project",
+        project,
+        {"percent_complete": percent_complete, "percent_complete_method": "Manual"},
+        update_modified=False,
     )
 
-    task_count = len(tasks)
 
-    if task_count == 0:
-        percent_complete = 0
-    else:
-        total_progress = sum(flt(task.progress) for task in tasks)
-        percent_complete = total_progress / task_count
+def update_project_progress(doc, method=None):
+    """Roll task progress up to the project AND every ancestor project.
 
-    # Update the project
-    proj = frappe.get_doc("Project", doc.project)
+    A parent project's progress blends its own direct tasks with each subproject's
+    progress, weighted by the subproject's task count. Walking up the parent chain
+    bottom-up means each ancestor reads its children's freshly-recomputed values.
+    """
+    if not doc.project:
+        return
+    # During a project cascade-delete, rows are being torn down — skip the churn.
+    if frappe.flags.get("buildsuite_cascading"):
+        return
 
-    # Avoid triggering unnecessary validations/hooks
-    proj.percent_complete = percent_complete
-    proj.percent_complete_method = "Manual"
-    proj.save(ignore_permissions=True)
-    proj.reload()
+    project = doc.project
+    seen = set()
+    while project and project not in seen:
+        seen.add(project)
+        _recompute_project_progress(project)
+        project = frappe.db.get_value("Project", project, "parent_project")
 
 
 import frappe

@@ -10,6 +10,7 @@ deleted.
 """
 
 import frappe
+from frappe import _
 
 from buildsuite_core.permissions.setup import (
     PERSONA_TO_ROLE,
@@ -28,6 +29,12 @@ _MANAGED_ROLES = set(BUILDSUITE_ROLES) | {WORKFLOW_EDITOR_ROLE}
 def sync_persona_roles(doc, method=None):
     if doc.name in ("Administrator", "Guest"):
         return
+
+    # A persona'd user must carry a company — it's the source of truth for project
+    # company inference. Server-side only: the Vue user form never shows company;
+    # the create API stamps the creator's company onto the new user.
+    if (doc.persona or "").strip() and not doc.get("company"):
+        frappe.throw(_("Company is required for a user with a persona."))
 
     desired = PERSONA_TO_ROLE.get((doc.persona or "").strip())
 
@@ -50,3 +57,34 @@ def sync_persona_roles(doc, method=None):
     for role in keep - present:
         if frappe.db.exists("Role", role):
             doc.append("roles", {"role": role})
+
+
+def backfill_user_company(doc=None, method=None):
+    """Stamp the default company onto persona'd users missing one (idempotent).
+
+    Existing persona users predate the company field; without this, the validate
+    rule above would block their next save. Wired into after_migrate so the field
+    self-heals on deploy. Returns the number of rows updated.
+    """
+    default_company = (
+        frappe.defaults.get_global_default("company")
+        or frappe.db.get_single_value("Global Defaults", "default_company")
+        or frappe.db.get_value("Company", {}, "name")
+    )
+    if not default_company:
+        return 0
+
+    rows = frappe.get_all(
+        "User",
+        filters={"persona": ("is", "set"), "company": ("in", ("", None))},
+        pluck="name",
+    )
+    updated = 0
+    for name in rows:
+        if name in ("Administrator", "Guest"):
+            continue
+        frappe.db.set_value("User", name, "company", default_company, update_modified=False)
+        updated += 1
+    if updated:
+        frappe.db.commit()
+    return updated
