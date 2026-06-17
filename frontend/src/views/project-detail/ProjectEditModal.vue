@@ -77,25 +77,8 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
                 @change="emit('clear-error', 'type')"
               />
             </DeskField>
-            <DeskField
-              v-if="isMultiCompany"
-              label="Company"
-              :error="errors.company"
-              :hint="errors.company ? '' : 'Legal entity this project belongs to.'"
-            >
-              <DeskLinkPicker
-                v-model="editForm.company"
-                doctype="Company"
-                placeholder="Select company"
-                label-field="name"
-                value-field="name"
-                :search-fields="['name', 'abbr']"
-                order-by="modified desc"
-                :page-length="20"
-                :error="errors.company"
-                @change="emit('clear-error', 'company')"
-              />
-            </DeskField>
+            <!-- Company is inferred and locked server-side (§14) — not editable
+                 here. It remains visible read-only on the Overview tab. -->
             <DeskField label="Location">
               <DeskInput v-model="editForm.location" />
             </DeskField>
