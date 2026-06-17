@@ -128,8 +128,6 @@ CUSTOM_FIELD = {
     ],
     "Task": [
         {
-            # fieldname kept as "work_package" (not "custom_work_package") to match
-            # the vue frontend and existing data — frontend calls task.work_package
             "fieldname": "work_package",
             "fieldtype": "Link",
             "label": "Work Package",
@@ -165,7 +163,38 @@ CUSTOM_FIELD = {
             "in_list_view": 0,
             "in_standard_filter": 1,
             "default": "Yet To Start",
-            "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted",
+            "options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
+        },
+        {
+            "fieldname": "task_type",
+            "fieldtype": "Select",
+            "insert_after": "type",
+            "label": "Task Type",
+            "in_list_view": 0,
+            "in_standard_filter": 1,
+            "default": "Activity",
+            "options": "Activity\nMilestone\nInspection",
+        },
+    ],
+    "Task Depends On": [
+        {
+            "fieldname": "dependency_type",
+            "fieldtype": "Select",
+            "insert_after": "task",
+            "label": "Dependency Type",
+            "options": "FS\nSS\nFF",
+            "default": "FS",
+            "in_list_view": 1,
+            "description": "FS = Finish-to-Start, SS = Start-to-Start, FF = Finish-to-Finish",
+        },
+        {
+            "fieldname": "lag_days",
+            "fieldtype": "Int",
+            "insert_after": "dependency_type",
+            "label": "Lag (days)",
+            "default": "0",
+            "in_list_view": 1,
+            "description": "Days after the predecessor's constraint date. Negative = lead (allowed overlap).",
         },
     ],
     "Warehouse": [
@@ -183,8 +212,6 @@ CUSTOM_FIELD = {
             "fieldname": "persona",
             "fieldtype": "Select",
             "label": "Persona",
-            # Option strings must match the keys in PERSONA_TO_ROLE
-            # (buildsuite_core.permissions.setup) and roles.js `name` fields.
             "options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
             "insert_after": "username",
             "module": "BuildSuite Core"

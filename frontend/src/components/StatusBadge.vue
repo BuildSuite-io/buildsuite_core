@@ -9,8 +9,12 @@ const props = defineProps({
 const classes = computed(() => {
   const map = {
     'Active': 'bg-success-50 text-success-700',
+    // Task status (custom task_status field): Yet To Start / In Progress / In Delay / Completed / Blocked
+    'Yet To Start': 'bg-ink-100 text-ink-600',
     'In Progress': 'bg-info-50 text-info-700',
+    'In Delay': 'bg-danger-50 text-danger-700',
     'Completed': 'bg-brand-50 text-brand-700',
+    'Blocked': 'bg-warning-50 text-warning-700',
     'On Hold': 'bg-warning-50 text-warning-700',
     'Planned': 'bg-ink-100 text-ink-600',
     'New': 'bg-ink-100 text-ink-600',
