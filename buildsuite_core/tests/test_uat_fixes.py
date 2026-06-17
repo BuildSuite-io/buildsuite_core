@@ -243,6 +243,24 @@ class TestUATFixes(UnitTestCase):
 		tpe = self._file_tpe(t.name, 30, blocker=1, blocker_detail="Rain stopped the pour")
 		self.assertTrue(tpe.name)
 
+	# --- Project team add/remove (custom_team_members) ------------------
+	def test_project_team_add_and_remove(self):
+		from buildsuite_core.api.project_team import (
+			add_project_team_member,
+			remove_project_team_member,
+		)
+		p = self._make_project(company=self.company)
+
+		team = add_project_team_member(p.name, "Administrator")
+		self.assertTrue(any(m["user"] == "Administrator" for m in team))
+
+		# Idempotent — adding again doesn't duplicate.
+		team = add_project_team_member(p.name, "Administrator")
+		self.assertEqual(len([m for m in team if m["user"] == "Administrator"]), 1)
+
+		team = remove_project_team_member(p.name, "Administrator")
+		self.assertFalse(any(m["user"] == "Administrator" for m in team))
+
 	# --- I: guarded cascade delete (PRJ-014, TSK-013) -------------------
 	def test_cascade_delete_removes_descendants(self):
 		p = self._make_project(company=self.company)
