@@ -1,27 +1,26 @@
 <script setup>
 import DeskField from '@/components/desk/DeskField.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import { computed } from 'vue'
 
-defineProps({
-  open: {
-    type: Boolean,
-    default: false,
-  },
-  projectName: {
-    type: String,
-    default: '',
-  },
-  availableTeamCandidates: {
-    type: Array,
-    default: () => [],
-  },
-  teamPickUserId: {
-    type: String,
-    default: '',
-  },
+const props = defineProps({
+  open: { type: Boolean, default: false },
+  projectName: { type: String, default: '' },
+  // User ids already on the team (+ the PM) — excluded from the picker.
+  excludeUsers: { type: Array, default: () => [] },
+  modelValue: { type: String, default: '' },
+  saving: { type: Boolean, default: false },
+  error: { type: String, default: '' },
 })
 
-const emit = defineEmits(['close', 'confirm', 'update:teamPickUserId'])
+const emit = defineEmits(['close', 'confirm', 'update:modelValue'])
+
+// Exclude users already on the team; enabled users only.
+const pickerFilters = computed(() => {
+  const f = [['enabled', '=', 1]]
+  if (props.excludeUsers.length) f.push(['name', 'not in', props.excludeUsers])
+  return f
+})
 </script>
 
 <template>
@@ -49,19 +48,21 @@ const emit = defineEmits(['close', 'confirm', 'update:teamPickUserId'])
           >x</button>
         </header>
         <div class="p-5">
-          <div v-if="availableTeamCandidates.length">
-            <DeskField label="User" hint="Pick from users not already on this project.">
-              <DeskSelect
-                :model-value="teamPickUserId"
-                @update:model-value="(value) => emit('update:teamPickUserId', value)"
-              >
-                <option v-for="m in availableTeamCandidates" :key="m.id" :value="m.id">{{ m.name }} - {{ m.role }}</option>
-              </DeskSelect>
-            </DeskField>
-          </div>
-          <div v-else class="text-sm text-ink-500 italic">
-            Every user is already on this project.
-          </div>
+          <DeskField label="User" :error="error" hint="Pick a user to add to this project's team.">
+            <DeskLinkPicker
+              :model-value="modelValue"
+              doctype="User"
+              placeholder="Search users…"
+              label-field="full_name"
+              value-field="name"
+              :search-fields="['full_name', 'name', 'email']"
+              :filters="pickerFilters"
+              order-by="full_name asc"
+              :page-length="20"
+              :error="error"
+              @update:model-value="(value) => emit('update:modelValue', value)"
+            />
+          </DeskField>
         </div>
         <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white" style="border-radius: 0 0 12px 12px;">
           <button
@@ -73,9 +74,9 @@ const emit = defineEmits(['close', 'confirm', 'update:teamPickUserId'])
           <button
             type="button"
             class="desk-save-btn"
-            :disabled="!teamPickUserId"
+            :disabled="!modelValue || saving"
             @click="emit('confirm')"
-          >Add member</button>
+          >{{ saving ? 'Adding…' : 'Add member' }}</button>
         </footer>
       </div>
     </div>
