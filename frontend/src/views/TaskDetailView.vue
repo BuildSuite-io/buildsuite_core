@@ -24,6 +24,7 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { getTaskDependencies, addTaskPredecessor, removeTaskPredecessor } from '@/utils/scheduleApi'
+import { setTaskAssignee } from '@/data/taskAssignmentApi'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
@@ -32,6 +33,15 @@ const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
 const { canEdit, canDelete, canCreate, canEditRecord, canDeleteRecord } = usePermissions()
+
+// Assignee is Frappe-native assignment (`_assign`, a JSON list of users). The
+// UI is single-assignee, so we surface the first entry.
+function parseAssignee(raw) {
+  try {
+    const list = JSON.parse(raw || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -83,7 +93,7 @@ function loadTaskResource() {
         status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         progress: Number(row?.progress) || 0,
-        assignee: row?.owner || '',
+        assignee: parseAssignee(row?._assign),
         owner: row?.owner || '',
         startDate: row?.exp_start_date || null,
         endDate: row?.exp_end_date || null,
@@ -505,11 +515,14 @@ async function saveEdit() {
       task_status: form.value.status,
       priority: form.value.priority,
       task_type: form.value.task_type,
-      owner: form.value.assignee,
       exp_start_date: form.value.startDate,
       exp_end_date: form.value.endDate,
       description: form.value.description,
     })
+    // Assignee is Frappe-native `_assign` — reassign only when it changed.
+    if ((form.value.assignee || '') !== (task.value?.assignee || '')) {
+      await setTaskAssignee(props.id, form.value.assignee)
+    }
     editing.value = false
     taskResource.value?.reload?.()
     showToast('Task updated')
@@ -844,9 +857,18 @@ const progressColor = computed(() => {
 
             <DeskSection title="Assignment & status">
               <DeskField label="Assignee" :error="editErrors.assignee">
-                <DeskSelect v-model="form.assignee" @change="clearEditError('assignee')">
-                  <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-                </DeskSelect>
+                <DeskLinkPicker
+                  v-model="form.assignee"
+                  doctype="User"
+                  placeholder="Select assignee"
+                  label-field="full_name"
+                  value-field="name"
+                  :search-fields="['full_name', 'name', 'email']"
+                  :filters="[['enabled', '=', 1]]"
+                  order-by="full_name asc"
+                  :page-length="20"
+                  @change="clearEditError('assignee')"
+                />
               </DeskField>
               <DeskField label="Status" :error="editErrors.status">
                 <DeskSelect v-model="form.status" @change="clearEditError('status')">

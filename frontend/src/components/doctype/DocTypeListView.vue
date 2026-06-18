@@ -81,6 +81,7 @@ async function loadMeta() {
 const systemFields = [
   { fieldname: 'name', label: 'ID', fieldtype: 'Data' },
   { fieldname: 'owner', label: 'Owner', fieldtype: 'Link' },
+  { fieldname: '_assign', label: 'Assigned To', fieldtype: 'Text' },
   { fieldname: 'modified', label: 'Updated', fieldtype: 'Datetime' },
   { fieldname: 'creation', label: 'Created', fieldtype: 'Datetime' },
 ]
@@ -163,9 +164,15 @@ const serverFilters = computed(() => {
   const filters = [...props.baseFilters]
   for (const [key, value] of Object.entries(props.filterValues || {})) {
     if (!value) continue
-    const fieldname = props.filterFieldMap?.[key]
-    if (!fieldname) continue
-    filters.push([fieldname, '=', value])
+    const spec = props.filterFieldMap?.[key]
+    if (!spec) continue
+    // A spec is either a fieldname string (equality) or { field, op, like } —
+    // the latter lets a filter target e.g. `_assign` with a `like %value%`.
+    if (typeof spec === 'string') {
+      filters.push([spec, '=', value])
+    } else if (spec.field) {
+      filters.push([spec.field, spec.op || '=', spec.like ? `%${value}%` : value])
+    }
   }
   return filters
 })
