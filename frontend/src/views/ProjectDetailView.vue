@@ -295,6 +295,14 @@ const taskProjectIds = computed(() => {
   const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
   return Array.from(new Set(ids))
 })
+// Assignee is Frappe-native `_assign` (JSON list); UI is single-assignee.
+function parseAssignee(raw) {
+  try {
+    const list = JSON.parse(raw || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
+
 const tasksResource = ref(null)
 const taskFilterKey = computed(() => taskProjectIds.value.join('|'))
 
@@ -309,10 +317,10 @@ function loadTasksResource() {
     'subject',
     'project',
     'task_type',
-    'status',
+    'task_status',
     'priority',
     'progress',
-    'owner',
+    '_assign',
     'exp_start_date',
     'exp_end_date',
   ]
@@ -332,10 +340,10 @@ function loadTasksResource() {
         id: row?.name || row?.id,
         name: row?.subject || row?.task_name || row?.name || '',
         projectId: row?.project || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         task_type: row?.task_type || 'Activity',
-        assignee: row?.owner || row?.assignee || '',
+        assignee: parseAssignee(row?._assign),
         startDate: row?.exp_start_date || row?.start_date || null,
         endDate: row?.exp_end_date || row?.end_date || null,
         progress: Number(row?.progress) || 0,
