@@ -333,6 +333,10 @@ async function removeRate() {
               <DeskInput v-model.number="form.currentRate" type="number" @input="formError = ''" />
             </DeskField>
           </div>
+          <DeskField label="Source"
+            hint="Manual edits stamp 'Manual'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.">
+            <DeskInput :model-value="'Manual'" disabled />
+          </DeskField>
         </div>
         <div class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2">
           <button type="button" :disabled="saving" @click="cancel"
