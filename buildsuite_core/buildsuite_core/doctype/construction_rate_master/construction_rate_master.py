@@ -41,6 +41,9 @@ class ConstructionRateMaster(Document):
 			return
 
 		if self.has_value_changed("current_rate"):
+			before = self.get_doc_before_save()
+			if before:
+				self.previous_rate = before.current_rate
 			self.effective_date = today
 			self._close_open_row(today)
 			self._append_rate_row("Manual revision", today)

@@ -13,6 +13,7 @@
   "uom",
   "column_break_iosw",
   "current_rate",
+  "previous_rate",
   "effective_date",
   "disabled",
   "section_break_sdyq",
@@ -61,6 +62,13 @@
    "label": "Current Rate",
    "non_negative": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "previous_rate",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Previous Rate",
+   "read_only": 1
   },
   {
    "default": "Today",

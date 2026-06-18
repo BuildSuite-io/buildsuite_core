@@ -39,10 +39,7 @@ const routes = [
       { path: 'site-execution',                name: 'site-execution',  component: () => import('@/views/workspaces/SiteExecutionWorkspace.vue') },
       { path: 'project-dashboard',             name: 'project-dashboard', component: () => import('@/views/workspaces/ProjectDashboardView.vue') },
       { path: 'reports/:slug',                 name: 'report-stub',       component: () => import('@/views/workspaces/ReportStubView.vue'), props: true },
-      { path: 'estimation',                    name: 'estimation',      component: () => import('@/views/PlaceholderView.vue'), props: { title:'Estimation', icon:'📐', desc:'Bills of quantities, rate master, revision compare and tendering.', links: [
-        { label:'BOQ',         to:'/boq',         icon:'📊', desc:'Bills of quantities · revisions' },
-        { label:'Rate Master', to:'/rate-master', icon:'₹',  desc:'Construction rate price book' },
-      ] } },
+      { path: 'estimation',                    name: 'estimation',      component: () => import('@/views/workspaces/EstimationWorkspace.vue') },
       { path: 'procurement',                   name: 'procurement',     component: () => import('@/views/PlaceholderView.vue'), props: { title:'Procurement', icon:'🛒', desc:'Material requests, supplier follow-up and goods receipt.' } },
       { path: 'subcontract',                   name: 'subcontract',     component: () => import('@/views/PlaceholderView.vue'), props: { title:'Subcontract', icon:'🤝', desc:'Vendors, work orders, measurement books, RA bills and retention.' } },
       { path: 'workforce',                     name: 'workforce',       component: () => import('@/views/PlaceholderView.vue'), props: { title:'Workforce', icon:'👷', desc:'Crew assignment, overtime and wages-to-contractor.' } },
