@@ -69,6 +69,7 @@ const form = reactive({
   code: '',
   name: '',
   client: '',
+  company: '',
   status: 'New',
   priority: 'Medium',
   type: '',
@@ -93,12 +94,34 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
   project_name:        'name',
   custom_project_id:   'code',
   customer:            'client',
+  company:             'company',
   project_type:        'type',
   expected_end_date:   'endDate',
   expected_start_date: 'startDate',
   project_manager:     'pm',
 })
 const saving = ref(false)
+
+// §14 — Company is chosen once, on create. Default to the site's default company
+// (Global Defaults). Subprojects inherit the parent's company, so the field is
+// hidden for them and the value isn't sent. Company is locked after create.
+async function loadDefaultCompany() {
+  if (route.query.parentId) return // subproject — inherits parent's company
+  try {
+    const res = await fetch(
+      '/api/method/frappe.client.get_value?' + new URLSearchParams({
+        doctype: 'Global Defaults',
+        fieldname: 'default_company',
+      }),
+      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
+    )
+    const data = await res.json()
+    form.company = data?.message?.default_company || ''
+  } catch (err) {
+    console.warn('[NewProjectView] Failed to load default company', err)
+  }
+}
+loadDefaultCompany()
 
 const parentProject = computed(() =>
   fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null)
@@ -180,7 +203,9 @@ async function save() {
       is_group: form.parentId ? 0 : (form.allowSubprojects ? 1 : 0),
       project_status: form.status,
       priority: form.priority,
-      // company is inferred server-side (creator's company / parent), never sent.
+      // Company is chosen on the form for top-level projects; subprojects omit it
+      // and inherit the parent's company server-side (enforce_company_rules).
+      company: form.parentId ? null : (form.company || null),
       expected_start_date: form.startDate,
       expected_end_date: form.endDate,
       customer: form.client,
@@ -321,8 +346,28 @@ const breadcrumbs = computed(() => {
             No template configured for <span class="font-medium text-ink-700">{{ form.type }}</span>. You'll plan stages manually after create.
           </div>
         </DeskField>
-        <!-- §14 — Company is inferred server-side (creator's company / parent),
-             never collected here. It's shown read-only on the Project detail view. -->
+        <!-- §14 — Company is chosen once on create (defaults to the site's default
+             company). Hidden for subprojects, which inherit the parent's company.
+             Locked after create (enforced server-side). -->
+        <DeskField
+          v-if="!route.query.parentId"
+          label="Company"
+          :error="errors.company"
+          :hint="errors.company ? '' : 'Defaults to your default company. This is locked after the project is created.'"
+        >
+          <DeskLinkPicker
+            v-model="form.company"
+            doctype="Company"
+            placeholder="Select company"
+            label-field="company_name"
+            value-field="name"
+            :search-fields="['company_name', 'abbr', 'name']"
+            order-by="company_name asc"
+            :page-length="20"
+            :error="errors.company"
+            @change="clearError('company')"
+          />
+        </DeskField>
         <DeskField label="Location">
           <DeskInput v-model="form.location" placeholder="Site address" />
         </DeskField>
