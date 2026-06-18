@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useSessionStore } from '@/stores/session'
+import { useUserNames } from '@/composables/useUserNames'
 import LogoIcon from '@/components/LogoIcon.vue'
 import RoleSwitcher from '@/components/RoleSwitcher.vue'
 import CompanySwitcher from '@/components/CompanySwitcher.vue'
@@ -11,6 +13,8 @@ import { getDeskUrl, logout, getSessionUser } from '@/utils/session'
 
 const route = useRoute()
 const store = useDataStore()
+const session = useSessionStore()
+const { userName } = useUserNames()
 const searchOpen = ref(false)
 // Mobile sidebar drawer state. The sidebar is always visible on lg+ and
 // collapses to a slide-in drawer below that breakpoint.
@@ -33,10 +37,24 @@ function onLogout() {
   logout()
 }
 
-// Footer profile label — prefer the store user, fall back to the session user
-// id (store.user may be unpopulated in the prod transition).
-const profileName = computed(() => store.user?.name || getSessionUser() || 'User')
-const profileRole = computed(() => store.currentRole?.shortName || store.role || '')
+// Footer profile — the REAL signed-in user (session store), not the prototype
+// demo user. Name + avatar resolve from the backend User directory; the role is
+// the user's BuildSuite persona (falling back to a real role label).
+const profileUser = computed(() => {
+  const u = session.user
+  return u && u !== 'Guest' ? u : getSessionUser()
+})
+const profileName = computed(() => userName(profileUser.value) || profileUser.value || 'User')
+const profileRole = computed(() => {
+  const persona = session.access?.persona
+  if (persona) return persona
+  const roles = session.access?.roles || []
+  const bs = roles.find((r) => r.startsWith('BuildSuite '))
+  if (bs) return bs.replace('BuildSuite ', '')
+  if (roles.includes('System Manager')) return 'System Manager'
+  if (profileUser.value === 'Administrator') return 'Administrator'
+  return ''
+})
 
 // Per-workspace UI metadata (label, route path, icon, group). The visibility matrix
 // and per-role ordering live in src/data/roles.js (CLAUDE.md §12.2, §12.3) — this
@@ -248,7 +266,7 @@ const navGroups = computed(() => {
           title="Profile"
           @click="closeSidebar"
         >
-          <UserAvatar v-if="store.user?.id" :user-id="store.user.id" size="sm" />
+          <UserAvatar :user-id="profileUser" size="sm" />
           <div class="flex-1 min-w-0 text-left">
             <div class="truncate font-medium text-ink-900">{{ profileName }}</div>
             <div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>

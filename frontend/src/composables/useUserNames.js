@@ -23,16 +23,24 @@ export function useUserNames() {
   if (!_resource) {
     const adapter = createDataAdapter(useDataStore())
     _resource = adapter.list('User', {
-      fields: ['name', 'full_name'],
+      fields: ['name', 'full_name', 'user_image'],
       filters: [['enabled', '=', 1]],
       pageLength: 0, // every enabled user — the map must resolve any assignee
       cache: 'buildsuite-user-directory',
     })
   }
 
+  const directory = computed(() => {
+    const map = {}
+    rows(_resource).forEach((u) => {
+      map[u.name] = { fullName: u.full_name || u.name, image: u.user_image || '' }
+    })
+    return map
+  })
+
   const userNamesMap = computed(() => {
     const map = {}
-    rows(_resource).forEach((u) => { map[u.name] = u.full_name || u.name })
+    Object.entries(directory.value).forEach(([id, u]) => { map[id] = u.fullName })
     return map
   })
 
@@ -40,8 +48,14 @@ export function useUserNames() {
   // placeholder until the directory resolves.
   function userName(id) {
     if (!id) return ''
-    return userNamesMap.value[id] || id
+    return directory.value[id]?.fullName || id
   }
 
-  return { userName, userNamesMap }
+  // The user's saved profile image (User.user_image), or '' if none/unresolved.
+  function userImage(id) {
+    if (!id) return ''
+    return directory.value[id]?.image || ''
+  }
+
+  return { userName, userImage, userNamesMap }
 }
