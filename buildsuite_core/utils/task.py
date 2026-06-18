@@ -6,7 +6,36 @@ def _wp_progress_from_tasks(tasks):
     if not tasks:
         return 0
     avg = sum(flt(t.get("progress", 0)) for t in tasks) / len(tasks)
-    return min(avg, 100)
+    return min(round(avg), 100)
+
+
+def _derive_wp_status(current, tasks):
+    """Auto-advance Work Package status from its tasks' progress, while leaving
+    manual states intact:
+      - 'On Hold' is a manual pause — never auto-changed.
+      - all tasks at 100%  -> 'Completed'.
+      - any task in progress, while still 'Planned'/blank -> 'In Progress'.
+      - otherwise unchanged (manual 'In Progress'/'Completed' is respected).
+    Manual edits via the WP form still set any value; this only nudges forward.
+    """
+    if current == "On Hold":
+        return current
+    if tasks and all(flt(t.get("progress", 0)) >= 100 for t in tasks):
+        return "Completed"
+    if any(flt(t.get("progress", 0)) > 0 for t in tasks):
+        if current in (None, "", "Planned"):
+            return "In Progress"
+    return current
+
+
+def _sync_work_package(wp, tasks):
+    progress = _wp_progress_from_tasks(tasks)
+    current = frappe.db.get_value("Work Package", wp, "status")
+    values = {"progress": progress}
+    new_status = _derive_wp_status(current, tasks)
+    if new_status != current:
+        values["status"] = new_status
+    frappe.db.set_value("Work Package", wp, values)
 
 
 def update_work_package_progress(doc, method=None):
@@ -18,9 +47,7 @@ def update_work_package_progress(doc, method=None):
         filters={"work_package": doc.work_package},
         fields=["progress"],
     )
-    frappe.db.set_value(
-        "Work Package", doc.work_package, "progress", _wp_progress_from_tasks(tasks)
-    )
+    _sync_work_package(doc.work_package, tasks)
 
 
 def recalculate_work_package_on_task_trash(doc, method=None):
@@ -33,9 +60,7 @@ def recalculate_work_package_on_task_trash(doc, method=None):
         filters={"work_package": doc.work_package, "name": ("!=", doc.name)},
         fields=["progress"],
     )
-    frappe.db.set_value(
-        "Work Package", doc.work_package, "progress", _wp_progress_from_tasks(tasks)
-    )
+    _sync_work_package(doc.work_package, tasks)
 
 def sync_stage_tasks_on_update(doc, method=None):
     """
@@ -248,7 +273,7 @@ def _recompute_project_progress(project):
             weighted += flt(sub.percent_complete) * sub_weight
             weight += sub_weight
 
-    percent_complete = (weighted / weight) if weight else 0
+    percent_complete = round(weighted / weight) if weight else 0
     frappe.db.set_value(
         "Project",
         project,

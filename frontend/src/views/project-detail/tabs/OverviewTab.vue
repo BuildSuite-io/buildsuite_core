@@ -8,6 +8,7 @@ import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({
   project:          { type: Object,   required: true },
+  pmName:           { type: String,   default: '' },
   activeBoq:        { type: Object,   default: null },
   projectReports:   { type: Array,    default: () => [] },
   delayedDays:      { type: Number,   default: 0 },
@@ -160,11 +161,14 @@ function deviationColor(pct) {
             <h3 class="text-sm font-semibold text-ink-900">Project Manager</h3>
           </header>
           <div class="p-4 flex items-center gap-3">
-            <UserAvatar :user-id="project.pm" size="md" />
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold text-ink-900 truncate">{{ store.teamMember(project.pm)?.name || '—' }}</div>
-              <div class="text-[11px] text-ink-500 truncate">{{ store.teamMember(project.pm)?.role || '' }}</div>
-            </div>
+            <template v-if="project.pm">
+              <UserAvatar :user-id="project.pm" size="md" />
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-ink-900 truncate">{{ pmName || store.teamMember(project.pm)?.name || project.pm }}</div>
+                <div class="text-[11px] text-ink-500 truncate">{{ project.pm }}</div>
+              </div>
+            </template>
+            <div v-else class="text-sm text-ink-500">No project manager assigned.</div>
           </div>
         </section>
 

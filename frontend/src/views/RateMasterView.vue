@@ -226,7 +226,7 @@ function onRowClick(row) { drawer.value = row }
     <!-- Edit / add modal — Desk-styled inputs -->
     <div
       v-if="editing"
-      class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
       @click="cancel"
     >
       <div

@@ -177,6 +177,15 @@ class TestUATFixes(UnitTestCase):
 		p.reload()
 		self.assertEqual(p.percent_complete, 75)
 
+	def test_project_progress_rounded_to_whole_number(self):
+		# 3 tasks at 33/33/34 average to 33.33… — the rollup must store a whole number.
+		p = self._make_project(company=self.company)
+		for pct in (33, 33, 34):
+			self._file_tpe(self._make_task(p.name).name, pct)
+		p.reload()
+		self.assertEqual(p.percent_complete, round(p.percent_complete))
+		self.assertEqual(p.percent_complete, 33)
+
 	def test_parent_progress_weighted_by_subproject_task_count(self):
 		# Parent progress blends its direct tasks (weight 1 each) with each
 		# subproject's progress weighted by the subproject's task count.
@@ -243,6 +252,68 @@ class TestUATFixes(UnitTestCase):
 		tpe = self._file_tpe(t.name, 30, blocker=1, blocker_detail="Rain stopped the pour")
 		self.assertTrue(tpe.name)
 
+	# --- TPE progress is monotonic — can't go below current ----------------
+	def test_tpe_rejects_below_current_progress(self):
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self._file_tpe(t.name, 50)
+		before = frappe.db.count("Task Progress Entry", {"task": t.name})
+
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 40)  # below current 50% → rejected
+
+		# Rejected entry must NOT have been logged.
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), before)
+		t.reload()
+		self.assertEqual(t.progress, 50)
+
+	def test_tpe_equal_and_increase_allowed(self):
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self._file_tpe(t.name, 50)
+		self._file_tpe(t.name, 50)   # equal — allowed
+		self._file_tpe(t.name, 70)   # increase — allowed
+		t.reload()
+		self.assertEqual(t.progress, 70)
+
+	# --- Work Package status auto-advances from task progress --------------
+	def test_wp_status_autoadvances(self):
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "UAT WP", "code": f"WP-{self._n}", "status": "Planned",
+		}).insert(ignore_permissions=True)
+		t1 = frappe.get_doc({
+			"doctype": "Task", "subject": "WP task 1", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+		t2 = frappe.get_doc({
+			"doctype": "Task", "subject": "WP task 2", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+
+		# Any task progress → Planned advances to In Progress.
+		self._file_tpe(t1.name, 40)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "In Progress")
+
+		# All tasks at 100 → Completed.
+		self._file_tpe(t1.name, 100)
+		self._file_tpe(t2.name, 100)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "Completed")
+
+	def test_wp_status_on_hold_is_respected(self):
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "UAT WP hold", "code": f"WPH-{self._n}", "status": "On Hold",
+		}).insert(ignore_permissions=True)
+		t = frappe.get_doc({
+			"doctype": "Task", "subject": "held task", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+		self._file_tpe(t.name, 40)  # progress filed, but WP is manually On Hold
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "On Hold")
+
 	# --- Project team add/remove (custom_team_members) ------------------
 	def test_project_team_add_and_remove(self):
 		from buildsuite_core.api.project_team import (
@@ -277,3 +348,70 @@ class TestUATFixes(UnitTestCase):
 		self.assertFalse(frappe.db.exists("Task", t.name))
 		self.assertFalse(frappe.db.exists("Task Progress Entry", tpe.name))
 		self.assertFalse(frappe.db.exists("Work Package", wp.name))
+
+	# --- Task assignee = single-assignee _assign -------------------------
+	def test_task_assignee_is_single_via_assign(self):
+		"""Assignee maps to Frappe-native _assign with single-assignee semantics:
+		reassigning drops the previous user; clearing empties it."""
+		from buildsuite_core.api.task_assignment import set_task_assignee, get_task_assignee
+
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		users = frappe.get_all(
+			"User", filters={"enabled": 1, "user_type": "System User"},
+			pluck="name", limit=2,
+		)
+		u1, u2 = users[0], users[1]
+
+		set_task_assignee(t.name, u1)
+		self.assertEqual(get_task_assignee(t.name), u1)
+
+		# Reassigning leaves exactly one open assignment, pointing at the new user.
+		set_task_assignee(t.name, u2)
+		self.assertEqual(get_task_assignee(t.name), u2)
+		open_todos = frappe.get_all(
+			"ToDo",
+			filters={"reference_type": "Task", "reference_name": t.name, "status": ("!=", "Cancelled")},
+			pluck="allocated_to",
+		)
+		self.assertEqual(open_todos, [u2])
+
+		set_task_assignee(t.name, None)
+		self.assertIsNone(get_task_assignee(t.name))
+
+	# --- Site Engineer submits own Stage Planning for approval -----------
+	def test_site_engineer_submits_own_stage_planning(self):
+		"""A Site Engineer must be able to apply the Submit transition to their
+		own Draft stage. apply_workflow sets workflow_state to the next state
+		before saving, so the own-scope write gate must check the PERSISTED
+		state, not the in-memory one — otherwise the submit self-locks."""
+		from frappe.model.workflow import apply_workflow
+
+		se = f"se-{self._n}@example.com"
+		frappe.get_doc({
+			"doctype": "User", "email": se, "first_name": "SE",
+			"send_welcome_email": 0, "user_type": "System User",
+			"persona": "Site Engineer", "company": self.company,
+		}).insert(ignore_permissions=True)
+
+		p = frappe.get_doc({
+			"doctype": "Project", "project_name": f"WF {self._n}",
+			"custom_project_id": f"WF-{self._n}", "project_status": "Ongoing",
+			"company": self.company, "custom_team_members": [{"user": se}],
+		}).insert(ignore_permissions=True)
+
+		frappe.set_user(se)
+		try:
+			st = frappe.get_doc({
+				"doctype": "Stage Planning", "stage_name": f"WF {self._n}",
+				"project": p.name, "workflow_state": "Draft",
+			}).insert()
+			apply_workflow(st, "Submit for Approval")
+			st.reload()
+			self.assertEqual(st.workflow_state, "Pending Approval")
+
+			# Once submitted, the SE can no longer edit their own (now locked) stage.
+			st.stage_name = "should not save"
+			self.assertRaises(frappe.PermissionError, st.save)
+		finally:
+			frappe.set_user("Administrator")

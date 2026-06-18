@@ -28,7 +28,6 @@ import ProjectTeamMemberModal from '@/views/project-detail/ProjectTeamMemberModa
 import OverviewTab from '@/views/project-detail/tabs/OverviewTab.vue'
 import AttachmentsTab from '@/views/project-detail/tabs/AttachmentsTab.vue'
 import TeamTab from '@/views/project-detail/tabs/TeamTab.vue'
-import ActivityTab from '@/views/project-detail/tabs/ActivityTab.vue'
 import {
   BOQ_COLS,
   PROJECT_REPORTS,
@@ -55,7 +54,7 @@ const { errors: editErrors, applyServerErrors: applyEditErrors, setErrors: setEd
   project_type:        'type',
   expected_end_date:   'endDate',
   expected_start_date: 'startDate',
-  owner:               'pm',
+  project_manager:     'pm',
 })
 
 function firstResourceRow(resource) {
@@ -93,6 +92,7 @@ function loadProjectResource() {
       'expected_start_date',
       'expected_end_date',
       'owner',
+      'project_manager',
       'company',
       'is_group',
       'notes',
@@ -115,7 +115,7 @@ function loadProjectResource() {
         endDate: row?.expected_end_date || null,
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         location: row?.location || '',
         description: row?.notes || row?.description || '',
         isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
@@ -146,6 +146,24 @@ const project = computed(() => {
     || null
   )
 })
+
+// Resolve the Project Manager's full name (project.pm is a User id/email).
+const pmUserResource = ref(null)
+watch(() => project.value?.pm, (pm) => {
+  if (!pm) { pmUserResource.value = null; return }
+  pmUserResource.value = adapter.list('User', {
+    fields: ['name', 'full_name'],
+    filters: [['name', '=', pm]],
+    pageLength: 1,
+    cache: `buildsuite-pm-user:${pm}`,
+    transform: (rows) => rows.map((r) => ({ name: r?.name, fullName: r?.full_name || r?.name })),
+  })
+}, { immediate: true })
+const pmName = computed(() => {
+  const rows = pmUserResource.value?.data
+  const row = Array.isArray(rows) ? rows[0] : null
+  return row?.fullName || project.value?.pm || ''
+})
 const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
 const subprojectsResource = ref(null)
@@ -165,6 +183,7 @@ function loadSubprojectsResource() {
     'estimated_costing',
     'percent_complete',
     'owner',
+    'project_manager',
     'parent_project',
   ]
   const subprojectFilters = {
@@ -185,7 +204,7 @@ function loadSubprojectsResource() {
         status: row?.project_status || row?.status || 'New',
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         parentId: row?.parent_project || resolvedProjectId.value,
       }))
     },
@@ -276,6 +295,14 @@ const taskProjectIds = computed(() => {
   const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
   return Array.from(new Set(ids))
 })
+// Assignee is Frappe-native `_assign` (JSON list); UI is single-assignee.
+function parseAssignee(raw) {
+  try {
+    const list = JSON.parse(raw || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
+
 const tasksResource = ref(null)
 const taskFilterKey = computed(() => taskProjectIds.value.join('|'))
 
@@ -290,10 +317,10 @@ function loadTasksResource() {
     'subject',
     'project',
     'task_type',
-    'status',
+    'task_status',
     'priority',
     'progress',
-    'owner',
+    '_assign',
     'exp_start_date',
     'exp_end_date',
   ]
@@ -313,10 +340,10 @@ function loadTasksResource() {
         id: row?.name || row?.id,
         name: row?.subject || row?.task_name || row?.name || '',
         projectId: row?.project || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
         task_type: row?.task_type || 'Activity',
-        assignee: row?.owner || row?.assignee || '',
+        assignee: parseAssignee(row?._assign),
         startDate: row?.exp_start_date || row?.start_date || null,
         endDate: row?.exp_end_date || row?.end_date || null,
         progress: Number(row?.progress) || 0,
@@ -561,7 +588,7 @@ async function saveEdit() {
       project_type: editForm.value.type,
       // company is locked/inferred server-side (§14) — not editable from the form.
       estimated_costing: Number(editForm.value.budget),
-      owner: editForm.value.pm,
+      project_manager: editForm.value.pm || null,
       notes: editForm.value.description,
     })
     editing.value = false
@@ -689,7 +716,6 @@ const tabs = computed(() => {
     { id: 'scos',           label: 'Scope Changes',  count: scos.value.length },
     { id: 'attachments',    label: 'Attachments',    count: attachmentCount.value },
     { id: 'team',           label: 'Team',           count: projectTeam.value.length },
-    { id: 'activity',       label: 'Activity',       count: null },
   ]
   return subprojectsEnabled.value ? all : all.filter(t => t.id !== 'subprojects')
 })
@@ -784,6 +810,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       <OverviewTab
         v-if="tab === 'overview'"
         :project="project"
+        :pm-name="pmName"
         :active-boq="activeBoq"
         :project-reports="projectReports"
         :delayed-days="delayedDays"
@@ -892,9 +919,6 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           </template>
           <template #cell-timeline="{ row }">
             <span class="text-xs text-ink-500 whitespace-nowrap">{{ fmtDate(row.startDate) }} → {{ fmtDate(row.endDate) }}</span>
-          </template>
-          <template #cell-owner="{ row }">
-            <UserAvatar :user-id="row.owner" size="xs" />
           </template>
           <template #empty>
             <div class="text-sm text-ink-500">No work packages yet.</div>
@@ -1167,11 +1191,6 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         :has-candidates="true"
         @add="openTeamModal"
         @remove="removeTeamMember"
-      />
-
-      <ActivityTab
-        v-if="tab === 'activity'"
-        :project="project"
       />
 
       <!-- Comments / Attachments / Assignment — stub footer per CLAUDE.md §12.4 Desk convention -->
