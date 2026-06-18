@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { createDataAdapter } from '@/data/adapters'
+import { usePermissions } from '@/composables/usePermissions'
 import { showToast } from '@/utils/appToast'
 import { parseFrappeError } from '@/utils/frappeError'
 import { toDateInputValue } from '@/utils/dateInput'
@@ -58,6 +59,7 @@ function loadEntryResource() {
         blockerFlag:     !!Number(row?.blocker),
         blockerNote:     row?.blocker_detail || '',
         enteredBy:       row?.owner || '',
+        owner:           row?.owner || '',
         createdAt:       row?.creation || null,
       }))
     },
@@ -83,9 +85,15 @@ const entry = computed(() => {
     blockerFlag:     !!(local.blockerFlag ?? local.blocker_flag),
     blockerNote:     local.blockerNote || local.blocker_note || '',
     enteredBy:       local.enteredBy || local.owner || '',
+    owner:           local.owner || local.enteredBy || '',
     createdAt:       local.createdAt || null,
   }
 })
+
+// Permission gates (matrix-driven; own-scope resolves against the entry's owner).
+const { canEditRecord, canDeleteRecord } = usePermissions()
+const canEditEntry = computed(() => canEditRecord('taskProgressEntry', entry.value))
+const canDeleteEntry = computed(() => canDeleteRecord('taskProgressEntry', entry.value))
 
 // ── Related records ──────────────────────────────────────────────────────────
 
@@ -403,6 +411,7 @@ const subtitle = computed(() => entry.value
       <template #action-bar>
         <DeskActionBar
           :save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
+          :show-save="canEditEntry"
           :show-cancel="editing"
           cancel-label="Cancel"
           @save="onPrimary"
@@ -418,6 +427,7 @@ const subtitle = computed(() => entry.value
           </template>
           <template #menu>
             <button
+              v-if="canDeleteEntry"
               type="button"
               class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
               style="border-radius: 2px; color: #B91C1C;"

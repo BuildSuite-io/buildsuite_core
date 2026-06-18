@@ -19,12 +19,23 @@ import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import CustomerCreateModal from '@/components/CustomerCreateModal.vue'
 
 const router = useRouter()
 const route = useRoute()
 const store = useDataStore()
 const { canCreate } = usePermissions()
 const adapter = createDataAdapter(store)
+
+// Inline customer create from the Client picker. customerPickerKey is bumped on
+// create so the DeskLinkPicker re-instantiates and can resolve the new value.
+const customerModalOpen = ref(false)
+const customerPickerKey = ref(0)
+function onCustomerCreated(name) {
+  form.client = name
+  clearError('client')
+  customerPickerKey.value++
+}
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -85,7 +96,7 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
   project_type:        'type',
   expected_end_date:   'endDate',
   expected_start_date: 'startDate',
-  owner:               'pm',
+  project_manager:     'pm',
 })
 const saving = ref(false)
 
@@ -175,7 +186,7 @@ async function save() {
       customer: form.client,
       project_type: form.type,
       estimated_costing: Number(form.budget),
-      owner: form.pm,
+      project_manager: form.pm || null,
       notes: form.description,
       custom_seed_default_stages: form.seedDefaultStages ? 1 : 0,
       custom_seed_default_tasks: form.seedDefaultTasks ? 1 : 0,
@@ -237,20 +248,31 @@ const breadcrumbs = computed(() => {
              (ERPNext-native Customer DocType). The stored value is the
              customer's `name` so existing project records (whose client was
              plain text) still resolve. -->
-        <DeskField label="Client" :error="errors.client">
-          <DeskLinkPicker
-            v-model="form.client"
-            data-test="pick-customer"
-            doctype="Customer"
-            placeholder="Select customer"
-            label-field="customer_name"
-            value-field="name"
-            :search-fields="['customer_name', 'name']"
-            order-by="modified desc"
-            :page-length="20"
-            :error="errors.client"
-            @change="clearError('client')"
-          />
+        <DeskField label="Client" :error="errors.client" :hint="errors.client ? '' : 'Pick a customer, or create one inline.'">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 min-w-0">
+              <DeskLinkPicker
+                :key="customerPickerKey"
+                v-model="form.client"
+                data-test="pick-customer"
+                doctype="Customer"
+                placeholder="Select customer"
+                label-field="customer_name"
+                value-field="name"
+                :search-fields="['customer_name', 'name']"
+                order-by="modified desc"
+                :page-length="20"
+                :error="errors.client"
+                @change="clearError('client')"
+              />
+            </div>
+            <button
+              type="button"
+              class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 whitespace-nowrap"
+              style="border-radius: 6px;"
+              @click="customerModalOpen = true"
+            >+ New</button>
+          </div>
         </DeskField>
         <DeskField label="Project type" :error="errors.type">
           <DeskLinkPicker
@@ -343,16 +365,19 @@ const breadcrumbs = computed(() => {
       </DeskSection>
 
       <DeskSection title="Team &amp; status">
-        <DeskField label="Project Manager">
+        <DeskField label="Project Manager" :error="errors.pm">
           <DeskLinkPicker
             v-model="form.pm"
-            doctype="Employee"
+            doctype="User"
             placeholder="Select project manager"
-            label-field="employee_name"
+            label-field="full_name"
             value-field="name"
-            :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
-            order-by="modified desc"
+            :search-fields="['full_name', 'name', 'email']"
+            :filters="[['enabled', '=', 1]]"
+            order-by="full_name asc"
             :page-length="20"
+            :error="errors.pm"
+            @change="clearError('pm')"
           />
         </DeskField>
         <DeskField label="Initial status">
@@ -372,5 +397,11 @@ const breadcrumbs = computed(() => {
            query during init and the subproject path still works. -->
       </div>
     </DeskForm>
+
+    <CustomerCreateModal
+      :open="customerModalOpen"
+      @close="customerModalOpen = false"
+      @created="onCustomerCreated"
+    />
   </DeskPage>
 </template>
