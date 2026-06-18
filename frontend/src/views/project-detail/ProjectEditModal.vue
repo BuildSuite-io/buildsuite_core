@@ -4,9 +4,11 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import { ref } from 'vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import CustomerCreateModal from '@/components/CustomerCreateModal.vue'
 
-defineProps({
+const props = defineProps({
   open:          { type: Boolean, default: false },
   project:       { type: Object,  default: null },
   editForm:      { type: Object,  required: true },
@@ -17,13 +19,21 @@ defineProps({
 })
 
 const emit = defineEmits(['close', 'save', 'clear-error'])
+
+const customerModalOpen = ref(false)
+const customerPickerKey = ref(0)
+function onCustomerCreated(name) {
+  props.editForm.client = name
+  emit('clear-error', 'client')
+  customerPickerKey.value++
+}
 </script>
 
 <template>
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
+      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
       @click.self="emit('close')"
     >
       <div
@@ -50,18 +60,29 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
               <DeskInput v-model="editForm.name" @input="emit('clear-error', 'name')" />
             </DeskField>
             <DeskField label="Client" :error="errors.client">
-              <DeskLinkPicker
-                v-model="editForm.client"
-                doctype="Customer"
-                placeholder="Select customer"
-                label-field="customer_name"
-                value-field="name"
-                :search-fields="['customer_name', 'name']"
-                order-by="modified desc"
-                :page-length="20"
-                :error="errors.client"
-                @change="emit('clear-error', 'client')"
-              />
+              <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                  <DeskLinkPicker
+                    :key="customerPickerKey"
+                    v-model="editForm.client"
+                    doctype="Customer"
+                    placeholder="Select customer"
+                    label-field="customer_name"
+                    value-field="name"
+                    :search-fields="['customer_name', 'name']"
+                    order-by="modified desc"
+                    :page-length="20"
+                    :error="errors.client"
+                    @change="emit('clear-error', 'client')"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 whitespace-nowrap"
+                  style="border-radius: 6px;"
+                  @click="customerModalOpen = true"
+                >+ New</button>
+              </div>
             </DeskField>
             <DeskField label="Type" :error="errors.type">
               <DeskLinkPicker
@@ -77,25 +98,8 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
                 @change="emit('clear-error', 'type')"
               />
             </DeskField>
-            <DeskField
-              v-if="isMultiCompany"
-              label="Company"
-              :error="errors.company"
-              :hint="errors.company ? '' : 'Legal entity this project belongs to.'"
-            >
-              <DeskLinkPicker
-                v-model="editForm.company"
-                doctype="Company"
-                placeholder="Select company"
-                label-field="name"
-                value-field="name"
-                :search-fields="['name', 'abbr']"
-                order-by="modified desc"
-                :page-length="20"
-                :error="errors.company"
-                @change="emit('clear-error', 'company')"
-              />
-            </DeskField>
+            <!-- Company is inferred and locked server-side (§14) — not editable
+                 here. It remains visible read-only on the Overview tab. -->
             <DeskField label="Location">
               <DeskInput v-model="editForm.location" />
             </DeskField>
@@ -138,25 +142,27 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
           </DeskSection>
 
           <DeskSection title="Team & status">
-            <DeskField label="Project Manager">
+            <DeskField label="Project Manager" :error="errors.pm">
               <DeskLinkPicker
                 v-model="editForm.pm"
-                doctype="Employee"
+                doctype="User"
                 placeholder="Select project manager"
-                label-field="employee_name"
+                label-field="full_name"
                 value-field="name"
-                :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
-                order-by="modified desc"
+                :search-fields="['full_name', 'name', 'email']"
+                :filters="[['enabled', '=', 1]]"
+                order-by="full_name asc"
                 :page-length="20"
+                :error="errors.pm"
+                @change="emit('clear-error', 'pm')"
               />
             </DeskField>
             <DeskField label="Status">
               <DeskSelect v-model="editForm.status">
-                <option>Open</option>
-                <option>Working</option>
-                <option>On Hold</option>
+                <option>New</option>
+                <option>Ongoing</option>
+                <option>Delayed</option>
                 <option>Completed</option>
-                <option>Cancelled</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Priority">
@@ -184,5 +190,11 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
         </footer>
       </div>
     </div>
+
+    <CustomerCreateModal
+      :open="customerModalOpen"
+      @close="customerModalOpen = false"
+      @created="onCustomerCreated"
+    />
   </Teleport>
 </template>

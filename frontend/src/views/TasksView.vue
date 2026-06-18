@@ -11,14 +11,17 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
+import { useUserNames } from '@/composables/useUserNames'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 const { canCreate } = usePermissions()
+const { userName } = useUserNames()
 
 const statusFilter = ref('')
 const priorityFilter = ref('')
@@ -64,7 +67,15 @@ const wpsMap = computed(() => {
 
 function projectName(id) { return projectsMap.value[id] || id }
 function wpName(id) { return wpsMap.value[id] || id }
-function memberName(id) { return store.teamMember(id)?.name || id }
+
+// Assignee is Frappe-native `_assign` (a JSON list of users); the UI is
+// single-assignee, so surface the first entry.
+function assignedUser(row) {
+  try {
+    const list = JSON.parse(row?._assign || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
 
 const filterValues = computed(() => ({
   status: statusFilter.value,
@@ -95,10 +106,10 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         'subject',
         'project',
         'work_package',
-        'status',
+        'task_status',
         'priority',
-        'type',
-        'owner',
+        'task_type',
+        '_assign',
         'exp_end_date',
         'progress',
         'modified',
@@ -106,21 +117,21 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       :columns="[
         { key: 'subject', label: 'Task' },
         { key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
-        { key: 'status', label: 'Status', preset: 'status' },
+        { key: 'task_status', label: 'Status', preset: 'status' },
         { key: 'priority', label: 'Priority', preset: 'status' },
-        { key: 'type', label: 'Task Type', preset: 'status' },
-        { key: 'owner', label: 'Assignee' },
+        { key: 'task_type', label: 'Task Type', preset: 'status' },
+        { key: 'assignee', label: 'Assignee', fields: ['_assign'] },
         { key: 'exp_end_date', label: 'Due' },
         { key: 'progress', label: 'Progress', preset: 'progress' },
       ]"
       :search-fields="['subject', 'name']"
       :filter-values="filterValues"
       :filter-field-map="{
-        status: 'status',
+        status: 'task_status',
         priority: 'priority',
         project: 'project',
-        assignee: 'owner',
-        taskType: 'type',
+        assignee: { field: '_assign', op: 'like', like: true },
+        taskType: 'task_type',
       }"
       cache-key="buildsuite-task-list-generic"
       row-key="name"
@@ -131,10 +142,11 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         <!-- Status: select when empty, chip when set -->
         <DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
           <option value="">Status: Any</option>
-          <option>Open</option>
+          <option>Yet To Start</option>
           <option>In Progress</option>
+          <option>In Delay</option>
           <option>Completed</option>
-          <option>Cancelled</option>
+          <option>Blocked</option>
         </DeskSelect>
         <DeskFilterChip
           v-else
@@ -169,15 +181,24 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
           @remove="projectFilter = ''"
         />
 
-        <!-- Assignee -->
-        <DeskSelect v-if="!assigneeFilter" v-model="assigneeFilter" class="!w-44">
-          <option value="">Assignee: Any</option>
-          <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }}</option>
-        </DeskSelect>
+        <!-- Assignee — picks a real User so it matches the backend `owner` field. -->
+        <DeskLinkPicker
+          v-if="!assigneeFilter"
+          v-model="assigneeFilter"
+          class="!w-44"
+          doctype="User"
+          label-field="full_name"
+          value-field="name"
+          :search-fields="['full_name', 'name', 'email']"
+          :filters="[['enabled', '=', 1]]"
+          order-by="full_name asc"
+          :page-length="20"
+          placeholder="Assignee: Any"
+        />
         <DeskFilterChip
           v-else
           label="Assignee"
-          :value="memberName(assigneeFilter)"
+          :value="userName(assigneeFilter)"
           @remove="assigneeFilter = ''"
         />
 
@@ -211,11 +232,12 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #cell-priority="{ row }">
         <StatusBadge :status="row.priority || 'Medium'" size="xs" />
       </template>
-      <template #cell-type="{ row }">
-        <StatusBadge :status="row.type || 'Activity'" size="xs" />
+      <template #cell-task_type="{ row }">
+        <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
-      <template #cell-owner="{ row }">
-        <UserAvatar :user-id="row.owner || ''" size="xs" />
+      <template #cell-assignee="{ row }">
+        <UserAvatar v-if="assignedUser(row)" :user-id="assignedUser(row)" :show-name="true" size="xs" />
+        <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
       <template #cell-exp_end_date="{ row }">
         <span class="text-xs text-ink-500">{{ fmtDate(row.exp_end_date) }}</span>

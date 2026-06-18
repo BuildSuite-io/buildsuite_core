@@ -14,7 +14,6 @@ export const WP_COLS = [
   { key: 'budget', label: 'Budget', align: 'right' },
   { key: 'progress', label: 'Progress', align: 'right' },
   { key: 'timeline', label: 'Timeline' },
-  { key: 'owner', label: 'Owner' },
 ]
 
 export const TASK_COLS = [
@@ -49,7 +48,7 @@ export const SCO_COLS = [
 
 export const TEAM_COLS = [
   { key: 'member', label: 'Member' },
-  { key: 'role', label: 'Role' },
+  { key: 'role', label: 'User' },
   { key: 'flag', label: '' },
 ]
 

@@ -2,19 +2,59 @@
 import { computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { useSessionStore } from '@/stores/session'
+import { useUserNames } from '@/composables/useUserNames'
 import LogoIcon from '@/components/LogoIcon.vue'
 import RoleSwitcher from '@/components/RoleSwitcher.vue'
 import CompanySwitcher from '@/components/CompanySwitcher.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
+import { getDeskUrl, logout, getSessionUser } from '@/utils/session'
 
 const route = useRoute()
 const store = useDataStore()
+const session = useSessionStore()
+const { userName } = useUserNames()
 const searchOpen = ref(false)
 // Mobile sidebar drawer state. The sidebar is always visible on lg+ and
 // collapses to a slide-in drawer below that breakpoint.
 const sidebarOpen = ref(false)
 function closeSidebar() { sidebarOpen.value = false }
 function toggleTheme() { store.toggleTheme() }
+
+// App-branding dropdown (mirrors prototype S149). The BuildSuite header is a
+// trigger that opens a menu with "Go to Desktop" (the real ERPNext desk) and
+// "Logout" (real Frappe logout → login). Backdrop click dismisses.
+const appMenuOpen = ref(false)
+function toggleAppMenu() { appMenuOpen.value = !appMenuOpen.value }
+function closeAppMenu() { appMenuOpen.value = false }
+function goToDesktop() {
+  closeAppMenu()
+  window.location.href = getDeskUrl()
+}
+function onLogout() {
+  closeAppMenu()
+  logout()
+}
+
+// Footer profile — the REAL signed-in user (session store), not the prototype
+// demo user. Name + avatar resolve from the backend User directory; the role is
+// the user's BuildSuite persona (falling back to a real role label).
+const profileUser = computed(() => {
+  const u = session.user
+  return u && u !== 'Guest' ? u : getSessionUser()
+})
+const profileName = computed(() => userName(profileUser.value) || profileUser.value || 'User')
+const profileRole = computed(() => {
+  const persona = session.access?.persona
+  if (persona) return persona
+  const roles = session.access?.roles || []
+  const bs = roles.find((r) => r.startsWith('BuildSuite '))
+  if (bs) return bs.replace('BuildSuite ', '')
+  if (roles.includes('System Manager')) return 'System Manager'
+  if (profileUser.value === 'Administrator') return 'Administrator'
+  return ''
+})
 
 // Per-workspace UI metadata (label, route path, icon, group). The visibility matrix
 // and per-role ordering live in src/data/roles.js (CLAUDE.md §12.2, §12.3) — this
@@ -112,12 +152,53 @@ const navGroups = computed(() => {
       class="w-60 bg-white border-r border-ink-200 flex flex-col flex-shrink-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 fixed inset-y-0 left-0 z-50 transform transition-transform duration-200"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
-      <div class="h-14 px-3 border-b border-ink-200 flex items-center gap-2">
-        <RouterLink to="/" class="flex items-center gap-2 group" title="Back to workspaces">
-          <LogoIcon :size="26" />
-          <span class="font-semibold text-ink-900 text-sm">BuildSuite</span>
-        </RouterLink>
-        <span class="ml-auto text-[10px] font-medium px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded">Core</span>
+      <!-- App-branding dropdown (prototype S149): Go to Desktop / Logout.
+           The "Core" badge moved into the dropdown sub-line. -->
+      <div class="h-14 border-b border-ink-200 relative">
+        <button
+          type="button"
+          class="w-full h-full flex items-center justify-between text-left hover:bg-ink-50 pl-3 pr-2"
+          :class="appMenuOpen ? 'bg-ink-50' : ''"
+          title="BuildSuite"
+          @click="toggleAppMenu"
+        >
+          <span class="flex items-center gap-2">
+            <LogoIcon :size="26" />
+            <span class="font-semibold text-ink-900 text-sm">BuildSuite</span>
+          </span>
+          <svg
+            class="w-4 h-4 text-ink-400 transition-transform"
+            :class="appMenuOpen ? 'rotate-180' : ''"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+
+        <div v-if="appMenuOpen" class="fixed inset-0 z-[55]" @click="closeAppMenu"></div>
+        <div
+          v-if="appMenuOpen"
+          class="absolute left-2 right-2 top-full mt-1 z-[56] bg-white border border-ink-200 rounded-md shadow-fp-lg py-1"
+        >
+          <div class="px-3 py-2 border-b border-ink-100">
+            <div class="text-xs font-semibold text-ink-900">BuildSuite</div>
+            <div class="text-[10px] text-brand-700 mt-0.5">Core edition</div>
+          </div>
+          <button
+            type="button"
+            class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+            @click="goToDesktop"
+          >
+            <svg class="w-3.5 h-3.5 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM13 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM13 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z"/></svg>
+            <span>Go to Desktop</span>
+          </button>
+          <button
+            type="button"
+            class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+            @click="onLogout"
+          >
+            <svg class="w-3.5 h-3.5 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       <div class="px-3 py-2">
@@ -176,21 +257,21 @@ const navGroups = computed(() => {
 
       </nav>
 
-      <div class="border-t border-ink-200 p-3">
-        <RouterLink to="/settings" class="flex items-center gap-2 px-2 py-1 text-xs text-ink-500 hover:text-ink-900">
-          <svg
-            class="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            v-html="getWorkspaceIconPath('settings')"
-          />
-          Settings
-        </RouterLink>
+      <!-- Profile entry (prototype S149) — replaces the footer Settings link.
+           Settings is still reachable from the topbar gear. No flow wired yet. -->
+      <div class="border-t border-ink-200 p-2">
+        <button
+          type="button"
+          class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-ink-700 hover:bg-ink-50 rounded"
+          title="Profile"
+          @click="closeSidebar"
+        >
+          <UserAvatar :user-id="profileUser" size="sm" />
+          <div class="flex-1 min-w-0 text-left">
+            <div class="truncate font-medium text-ink-900">{{ profileName }}</div>
+            <div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>
+          </div>
+        </button>
       </div>
     </aside>
 
