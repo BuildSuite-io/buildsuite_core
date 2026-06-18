@@ -33,7 +33,7 @@ function onCustomerCreated(name) {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
+      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
       @click.self="emit('close')"
     >
       <div

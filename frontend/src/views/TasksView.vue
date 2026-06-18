@@ -11,6 +11,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtDate } from '@/utils/format'
@@ -170,11 +171,20 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
           @remove="projectFilter = ''"
         />
 
-        <!-- Assignee -->
-        <DeskSelect v-if="!assigneeFilter" v-model="assigneeFilter" class="!w-44">
-          <option value="">Assignee: Any</option>
-          <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }}</option>
-        </DeskSelect>
+        <!-- Assignee — picks a real User so it matches the backend `owner` field. -->
+        <DeskLinkPicker
+          v-if="!assigneeFilter"
+          v-model="assigneeFilter"
+          class="!w-44"
+          doctype="User"
+          label-field="full_name"
+          value-field="name"
+          :search-fields="['full_name', 'name', 'email']"
+          :filters="[['enabled', '=', 1]]"
+          order-by="full_name asc"
+          :page-length="20"
+          placeholder="Assignee: Any"
+        />
         <DeskFilterChip
           v-else
           label="Assignee"

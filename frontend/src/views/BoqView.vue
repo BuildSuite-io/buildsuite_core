@@ -212,7 +212,7 @@ const subtitle = computed(() => `${rows.value.length} of ${store.boqs.length} ·
     <!-- New BOQ modal — kept as a modal pattern (modal ≠ Desk form); inputs restyled to Desk primitives -->
     <div
       v-if="showNew"
-      class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
       @click="showNew = false"
     >
       <div

@@ -34,6 +34,7 @@ const SEVEN_DAYS_AGO = daysAgo(6)
 const entriesResource = adapter.list('Task Progress Entry', {
   fields: ['name', 'task', 'entry_date', 'cumulative_progress', 'skilled', 'unskilled', 'weather', 'blocker', 'blocker_detail', 'narrative', 'owner', 'modified', 'creation'],
   orderBy: 'entry_date desc',
+  pageLength: 0,  // fetch all — DeskList paginates client-side; the filters need the full set
   transform(rows) {
     return rows.map(row => ({
       id:            row?.name || '',
@@ -63,6 +64,7 @@ const allEntries = computed(() => toArray(entriesResource.data))
 const tasksResource = adapter.list('Task', {
   fields: ['name', 'subject', 'status'],
   orderBy: 'modified desc',
+  pageLength: 0,  // need every task so the name->subject map resolves all entries
   transform(rows) {
     return rows.map(row => ({
       id:   row?.name || '',

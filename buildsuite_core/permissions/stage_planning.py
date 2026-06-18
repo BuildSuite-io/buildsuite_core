@@ -57,7 +57,13 @@ def has_stage_planning_permission(doc, ptype="read", user=None):
         if roles & FULL_WRITE_ROLES:
             return True
         if roles & OWN_SCOPE_ROLES and doc.owner == user:
-            return doc.get("workflow_state") in _EDITABLE_STATES
+            # Gate on the PERSISTED state, not the in-memory value. A workflow
+            # transition (e.g. Submit for Approval) sets workflow_state to the
+            # NEXT state before saving — checking the in-memory value would lock
+            # the own-creator out of submitting their own Draft stage. The current
+            # saved state is what determines whether they may still act on it.
+            current = frappe.db.get_value("Stage Planning", doc.name, "workflow_state")
+            return (current or doc.get("workflow_state")) in _EDITABLE_STATES
         return False
 
     return True
