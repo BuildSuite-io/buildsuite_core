@@ -243,6 +243,68 @@ class TestUATFixes(UnitTestCase):
 		tpe = self._file_tpe(t.name, 30, blocker=1, blocker_detail="Rain stopped the pour")
 		self.assertTrue(tpe.name)
 
+	# --- TPE progress is monotonic — can't go below current ----------------
+	def test_tpe_rejects_below_current_progress(self):
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self._file_tpe(t.name, 50)
+		before = frappe.db.count("Task Progress Entry", {"task": t.name})
+
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 40)  # below current 50% → rejected
+
+		# Rejected entry must NOT have been logged.
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), before)
+		t.reload()
+		self.assertEqual(t.progress, 50)
+
+	def test_tpe_equal_and_increase_allowed(self):
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self._file_tpe(t.name, 50)
+		self._file_tpe(t.name, 50)   # equal — allowed
+		self._file_tpe(t.name, 70)   # increase — allowed
+		t.reload()
+		self.assertEqual(t.progress, 70)
+
+	# --- Work Package status auto-advances from task progress --------------
+	def test_wp_status_autoadvances(self):
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "UAT WP", "code": f"WP-{self._n}", "status": "Planned",
+		}).insert(ignore_permissions=True)
+		t1 = frappe.get_doc({
+			"doctype": "Task", "subject": "WP task 1", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+		t2 = frappe.get_doc({
+			"doctype": "Task", "subject": "WP task 2", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+
+		# Any task progress → Planned advances to In Progress.
+		self._file_tpe(t1.name, 40)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "In Progress")
+
+		# All tasks at 100 → Completed.
+		self._file_tpe(t1.name, 100)
+		self._file_tpe(t2.name, 100)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "Completed")
+
+	def test_wp_status_on_hold_is_respected(self):
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "UAT WP hold", "code": f"WPH-{self._n}", "status": "On Hold",
+		}).insert(ignore_permissions=True)
+		t = frappe.get_doc({
+			"doctype": "Task", "subject": "held task", "project": p.name,
+			"work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+		self._file_tpe(t.name, 40)  # progress filed, but WP is manually On Hold
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "On Hold")
+
 	# --- Project team add/remove (custom_team_members) ------------------
 	def test_project_team_add_and_remove(self):
 		from buildsuite_core.api.project_team import (

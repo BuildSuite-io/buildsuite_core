@@ -89,6 +89,39 @@ class TaskProgressEntry(Document):
 		if self.blocker and not (self.blocker_detail or "").strip():
 			frappe.throw(_("A blocker note is required when the blocker flag is set."))
 
+		self._validate_monotonic_progress()
+
+	def _validate_monotonic_progress(self):
+		# Progress is cumulative and monotonic — an entry can't be below the task's
+		# current cumulative progress, and can't exceed 100. Reject (throw) so the
+		# entry is never persisted, rather than logging a no-op row. The floor is the
+		# max cumulative of the OTHER entries on this task (excludes self, so editing
+		# an entry is compared against its siblings).
+		value = flt(self.cumulative_progress or 0)
+		if value < 0:
+			frappe.throw(_("Progress cannot be negative."))
+		if value > 100:
+			frappe.throw(_("Cumulative progress cannot exceed 100%."))
+
+		floor = max(
+			(
+				flt(x)
+				for x in frappe.get_all(
+					"Task Progress Entry",
+					filters={"task": self.task, "name": ("!=", self.name)},
+					pluck="cumulative_progress",
+				)
+			),
+			default=0,
+		)
+		if value + 0.001 < floor:
+			frappe.throw(
+				_("Cumulative progress can't go below the task's current progress ({0}%). "
+				  "Progress entries are cumulative — the value can only stay the same or increase.").format(
+					floor if floor % 1 else int(floor)
+				)
+			)
+
 	def before_save(self):
 		task = frappe.get_doc("Task", self.task)
 		if self.is_new():

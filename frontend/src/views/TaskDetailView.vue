@@ -404,8 +404,12 @@ function cancelProgressEntry() {
 function validateProgressEntry() {
   const e = {}
   const pct = Number(progressForm.progressPct)
+  const floor = Number(task.value?.progress) || 0
   if (Number.isNaN(pct) || pct < 0 || pct > 100) {
     e.progressPct = 'Progress must be between 0 and 100'
+  } else if (pct < floor) {
+    // Progress is cumulative + monotonic — can't go below the current value.
+    e.progressPct = `Progress can't go below the current ${floor}%. Entries are cumulative.`
   }
   if (progressForm.blockerFlag && !progressForm.blockerNote.trim()) {
     e.blockerNote = 'Describe the blocker'
@@ -913,8 +917,8 @@ const progressColor = computed(() => {
           <!-- Modal body — the only scrolling region -->
           <div class="p-5 overflow-y-auto flex-1">
             <DeskSection title="Progress" :cols="2">
-              <DeskField label="Cumulative progress (%)" required hint="The NEW cumulative % after this entry — not a delta. 0–100." :error="progressErrors.progressPct">
-                <DeskInput v-model="progressForm.progressPct" type="number" min="0" max="100" step="1" @input="clearProgressError('progressPct')" />
+              <DeskField label="Cumulative progress (%)" required :hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${task.progress || 0}%.`" :error="progressErrors.progressPct">
+                <DeskInput v-model="progressForm.progressPct" type="number" :min="task.progress || 0" max="100" step="1" @input="clearProgressError('progressPct')" />
               </DeskField>
               <DeskField label="Entry date" :error="progressErrors.entryDate">
                 <DeskInput v-model="progressForm.entryDate" type="date" @change="clearProgressError('entryDate')" />
