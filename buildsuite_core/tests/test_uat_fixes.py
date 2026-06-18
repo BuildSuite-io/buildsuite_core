@@ -339,3 +339,40 @@ class TestUATFixes(UnitTestCase):
 		self.assertFalse(frappe.db.exists("Task", t.name))
 		self.assertFalse(frappe.db.exists("Task Progress Entry", tpe.name))
 		self.assertFalse(frappe.db.exists("Work Package", wp.name))
+
+	# --- Site Engineer submits own Stage Planning for approval -----------
+	def test_site_engineer_submits_own_stage_planning(self):
+		"""A Site Engineer must be able to apply the Submit transition to their
+		own Draft stage. apply_workflow sets workflow_state to the next state
+		before saving, so the own-scope write gate must check the PERSISTED
+		state, not the in-memory one — otherwise the submit self-locks."""
+		from frappe.model.workflow import apply_workflow
+
+		se = f"se-{self._n}@example.com"
+		frappe.get_doc({
+			"doctype": "User", "email": se, "first_name": "SE",
+			"send_welcome_email": 0, "user_type": "System User",
+			"persona": "Site Engineer", "company": self.company,
+		}).insert(ignore_permissions=True)
+
+		p = frappe.get_doc({
+			"doctype": "Project", "project_name": f"WF {self._n}",
+			"custom_project_id": f"WF-{self._n}", "project_status": "Ongoing",
+			"company": self.company, "custom_team_members": [{"user": se}],
+		}).insert(ignore_permissions=True)
+
+		frappe.set_user(se)
+		try:
+			st = frappe.get_doc({
+				"doctype": "Stage Planning", "stage_name": f"WF {self._n}",
+				"project": p.name, "workflow_state": "Draft",
+			}).insert()
+			apply_workflow(st, "Submit for Approval")
+			st.reload()
+			self.assertEqual(st.workflow_state, "Pending Approval")
+
+			# Once submitted, the SE can no longer edit their own (now locked) stage.
+			st.stage_name = "should not save"
+			self.assertRaises(frappe.PermissionError, st.save)
+		finally:
+			frappe.set_user("Administrator")
