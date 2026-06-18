@@ -24,7 +24,7 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { getTaskDependencies, addTaskPredecessor, removeTaskPredecessor } from '@/utils/scheduleApi'
-import { setTaskAssignee } from '@/data/taskAssignmentApi'
+import { setTaskAssignee, getTaskAssignee } from '@/data/taskAssignmentApi'
 import FileUploadHandler from 'frappe-ui-file-upload-handler'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
@@ -127,6 +127,17 @@ async function loadDeps() {
   }
 }
 watch(() => props.id, loadDeps, { immediate: true })
+
+// Assignee lives in Frappe's native `_assign`, which frappe.client.get (the
+// detail read path) does NOT return — so fetch it separately and keep it in
+// sync. This is the source of truth for the read display and the edit form.
+const currentAssignee = ref('')
+async function loadAssignee() {
+  if (!props.id) { currentAssignee.value = ''; return }
+  try { currentAssignee.value = (await getTaskAssignee(props.id)) || '' }
+  catch { currentAssignee.value = '' }
+}
+watch(() => props.id, loadAssignee, { immediate: true })
 
 const canEditDeps = computed(() => canEditRecord('task', task.value))
 
@@ -501,12 +512,16 @@ function buildEditForm(source) {
 
   return {
     ...source,
+    assignee: currentAssignee.value,  // `_assign` isn't on the doc read; use the fetched value
     startDate: toDateInputValue(source.startDate),
     endDate: toDateInputValue(source.endDate),
   }
 }
 
-watch(task, (t) => { if (t && !editing.value) form.value = buildEditForm(t) }, { immediate: true })
+// Rebuild the form when the task loads OR the (async) assignee resolves.
+watch([task, currentAssignee], () => {
+  if (task.value && !editing.value) form.value = buildEditForm(task.value)
+}, { immediate: true })
 
 function startEdit() {
   if (!task.value) return
@@ -527,8 +542,9 @@ async function saveEdit() {
       description: form.value.description,
     })
     // Assignee is Frappe-native `_assign` — reassign only when it changed.
-    if ((form.value.assignee || '') !== (task.value?.assignee || '')) {
+    if ((form.value.assignee || '') !== (currentAssignee.value || '')) {
       await setTaskAssignee(props.id, form.value.assignee)
+      await loadAssignee()
     }
     editing.value = false
     taskResource.value?.reload?.()
@@ -720,7 +736,8 @@ const progressColor = computed(() => {
         </div>
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Assignee</div>
-          <UserAvatar :user-id="task.assignee" :show-name="true" />
+          <UserAvatar v-if="currentAssignee" :user-id="currentAssignee" :show-name="true" />
+          <span v-else class="text-sm text-ink-400">Unassigned</span>
         </div>
         <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px;">
           <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">Timeline</div>
