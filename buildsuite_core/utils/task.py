@@ -6,7 +6,7 @@ def _wp_progress_from_tasks(tasks):
     if not tasks:
         return 0
     avg = sum(flt(t.get("progress", 0)) for t in tasks) / len(tasks)
-    return min(avg, 100)
+    return min(round(avg), 100)
 
 
 def _derive_wp_status(current, tasks):
@@ -273,7 +273,7 @@ def _recompute_project_progress(project):
             weighted += flt(sub.percent_complete) * sub_weight
             weight += sub_weight
 
-    percent_complete = (weighted / weight) if weight else 0
+    percent_complete = round(weighted / weight) if weight else 0
     frappe.db.set_value(
         "Project",
         project,

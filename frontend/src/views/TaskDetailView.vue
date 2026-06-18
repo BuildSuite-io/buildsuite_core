@@ -25,6 +25,7 @@ import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
 import { getTaskDependencies, addTaskPredecessor, removeTaskPredecessor } from '@/utils/scheduleApi'
 import { setTaskAssignee } from '@/data/taskAssignmentApi'
+import FileUploadHandler from 'frappe-ui-file-upload-handler'
 import { fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
@@ -366,7 +367,8 @@ function onProgressFilesPicked(ev) {
       fileName,
       mime: f.type || 'application/octet-stream',
       size: f.size,
-      url: URL.createObjectURL(f),
+      url: URL.createObjectURL(f),  // local preview only
+      file: f,                      // the real File — uploaded via Frappe on save
     })
   }
   // Reset the input so picking the same file twice in a row still fires.
@@ -443,16 +445,21 @@ async function saveProgressEntry() {
       blocker_detail: progressForm.blockerNote,
     })
 
-    // Persist any pending attachments against the new entry.
+    // Upload any pending attachments against the new entry via Frappe's
+    // native File pipeline (creates File docs attached_to the TPE). A failed
+    // upload is reported per-file but doesn't unwind the already-filed entry.
     for (const f of pendingAttachments.value) {
-      await adapter.create('Attachment', {
-        parent_doctype: 'Task Progress Entry',
-        parent_name: entry.name,
-        file_name: f.fileName,
-        file_url: f.url,
-        file_size: f.size,
-        owner: progressForm.enteredBy,
-      })
+      if (!f.file) continue
+      try {
+        await new FileUploadHandler().upload(f.file, {
+          doctype: 'Task Progress Entry',
+          docname: entry.name,
+          private: true,
+        })
+      } catch (uploadErr) {
+        showToast(`Filed entry, but failed to attach ${f.fileName}`, 'error')
+        console.error('attachment upload failed:', uploadErr)
+      }
     }
     // Clear local ref WITHOUT revoking blob URLs
     pendingAttachments.value = []

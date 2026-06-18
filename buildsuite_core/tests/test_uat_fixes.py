@@ -177,6 +177,15 @@ class TestUATFixes(UnitTestCase):
 		p.reload()
 		self.assertEqual(p.percent_complete, 75)
 
+	def test_project_progress_rounded_to_whole_number(self):
+		# 3 tasks at 33/33/34 average to 33.33… — the rollup must store a whole number.
+		p = self._make_project(company=self.company)
+		for pct in (33, 33, 34):
+			self._file_tpe(self._make_task(p.name).name, pct)
+		p.reload()
+		self.assertEqual(p.percent_complete, round(p.percent_complete))
+		self.assertEqual(p.percent_complete, 33)
+
 	def test_parent_progress_weighted_by_subproject_task_count(self):
 		# Parent progress blends its direct tasks (weight 1 each) with each
 		# subproject's progress weighted by the subproject's task count.

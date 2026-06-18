@@ -42,8 +42,15 @@ def set_task_assignee(task, assignee=None):
 		return assignee
 
 	# Single assignee — remove every prior assignment before adding the new one.
-	_assign_clear("Task", task)
-	if assignee:
-		_assign_add({"doctype": "Task", "name": task, "assign_to": [assignee]})
+	# Mute messages so assign_to's benign "Shared with the following Users…"
+	# msgprint (emitted over realtime) doesn't surface in the UI as an error.
+	mute = frappe.flags.mute_messages
+	frappe.flags.mute_messages = True
+	try:
+		_assign_clear("Task", task)
+		if assignee:
+			_assign_add({"doctype": "Task", "name": task, "assign_to": [assignee]})
+	finally:
+		frappe.flags.mute_messages = mute
 
 	return assignee
