@@ -28,7 +28,6 @@ import ProjectTeamMemberModal from '@/views/project-detail/ProjectTeamMemberModa
 import OverviewTab from '@/views/project-detail/tabs/OverviewTab.vue'
 import AttachmentsTab from '@/views/project-detail/tabs/AttachmentsTab.vue'
 import TeamTab from '@/views/project-detail/tabs/TeamTab.vue'
-import ActivityTab from '@/views/project-detail/tabs/ActivityTab.vue'
 import {
   BOQ_COLS,
   PROJECT_REPORTS,
@@ -689,7 +688,6 @@ const tabs = computed(() => {
     { id: 'scos',           label: 'Scope Changes',  count: scos.value.length },
     { id: 'attachments',    label: 'Attachments',    count: attachmentCount.value },
     { id: 'team',           label: 'Team',           count: projectTeam.value.length },
-    { id: 'activity',       label: 'Activity',       count: null },
   ]
   return subprojectsEnabled.value ? all : all.filter(t => t.id !== 'subprojects')
 })
@@ -1167,11 +1165,6 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         :has-candidates="true"
         @add="openTeamModal"
         @remove="removeTeamMember"
-      />
-
-      <ActivityTab
-        v-if="tab === 'activity'"
-        :project="project"
       />
 
       <!-- Comments / Attachments / Assignment — stub footer per CLAUDE.md §12.4 Desk convention -->
