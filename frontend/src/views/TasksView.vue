@@ -14,12 +14,14 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
+import { useUserNames } from '@/composables/useUserNames'
 import { fmtDate } from '@/utils/format'
 
 const store = useDataStore()
 const router = useRouter()
 const adapter = createDataAdapter(store)
 const { canCreate } = usePermissions()
+const { userName } = useUserNames()
 
 const statusFilter = ref('')
 const priorityFilter = ref('')
@@ -65,7 +67,6 @@ const wpsMap = computed(() => {
 
 function projectName(id) { return projectsMap.value[id] || id }
 function wpName(id) { return wpsMap.value[id] || id }
-function memberName(id) { return store.teamMember(id)?.name || id }
 
 // Assignee is Frappe-native `_assign` (a JSON list of users); the UI is
 // single-assignee, so surface the first entry.
@@ -197,7 +198,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         <DeskFilterChip
           v-else
           label="Assignee"
-          :value="memberName(assigneeFilter)"
+          :value="userName(assigneeFilter)"
           @remove="assigneeFilter = ''"
         />
 
@@ -235,7 +236,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
       <template #cell-assignee="{ row }">
-        <UserAvatar v-if="assignedUser(row)" :user-id="assignedUser(row)" size="xs" />
+        <UserAvatar v-if="assignedUser(row)" :user-id="assignedUser(row)" :show-name="true" size="xs" />
         <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
       <template #cell-exp_end_date="{ row }">
