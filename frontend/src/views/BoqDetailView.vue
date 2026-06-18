@@ -614,7 +614,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
       <!-- ========== Group modal (add + edit) ========== -->
       <div
         v-if="groupModal"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-4"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
         @click="groupModal = null"
       >
         <div
@@ -652,7 +652,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
       <!-- ========== Item modal (add + edit) ========== -->
       <div
         v-if="itemModal"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-4"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
         @click="itemModal = null"
       >
         <div
@@ -712,7 +712,7 @@ const treeGridStyle = 'grid-template-columns: 28px 80px 1fr 80px 90px 100px 110p
       <!-- ========== Sub-item modal (add + edit) ========== -->
       <div
         v-if="subItemModal"
-        class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-4"
+        class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
         @click="subItemModal = null"
       >
         <div

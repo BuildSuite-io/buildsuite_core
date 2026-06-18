@@ -13,22 +13,9 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
-# Persona labels = the options on the User.persona Select field (and the role
-# names in the frontend roles.js). Source of truth for role mapping is the hook.
-PERSONA_OPTIONS = [
-	"Director / Owner",
-	"Project Manager",
-	"Estimator",
-	"Quantity Surveyor",
-	"Site Engineer",
-	"Foreman / Supervisor",
-	"Procurement Officer",
-	"Store Keeper",
-	"Accountant",
-	"HR Manager",
-	"System Manager (Admin)",
-	"BuildSuite Administrator",
-]
+from buildsuite_core.permissions.setup import PERSONA_TO_ROLE
+
+PERSONA_OPTIONS = list(PERSONA_TO_ROLE)
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
 SYSTEM_ACCOUNTS = ["Administrator", "Guest"]
 
@@ -50,7 +37,7 @@ def list_buildsuite_users():
 	return frappe.get_all(
 		"User",
 		filters={"persona": ["in", PERSONA_OPTIONS], "name": ["not in", SYSTEM_ACCOUNTS]},
-		fields=["name", "full_name", "email", "enabled", "persona", "last_login"],
+		fields=["name", "full_name", "email", "enabled", "persona"],
 		order_by="full_name asc",
 	)
 
@@ -77,6 +64,14 @@ def create_buildsuite_user(full_name, email, persona, enabled=1, send_welcome=1)
 	doc.enabled = 1 if cint(enabled) else 0
 	doc.user_type = "System User"
 	doc.persona = persona  # the validate hook assigns the matching BuildSuite role
+	# Company isn't shown in the Vue user form — inherit the creator's company so
+	# the persona's mandatory-company rule is satisfied. Fall back to the site
+	# default (e.g. when the creator is Administrator with no company set).
+	doc.company = (
+		frappe.db.get_value("User", frappe.session.user, "company")
+		or frappe.defaults.get_global_default("company")
+		or frappe.db.get_single_value("Global Defaults", "default_company")
+	)
 	doc.send_welcome_email = 1 if cint(send_welcome) else 0
 	doc.flags.ignore_permissions = True
 	doc.insert()
@@ -130,3 +125,22 @@ def send_user_password_reset(email):
 	# Administrator accounts.
 	reset_password(email)
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def delete_buildsuite_user(email):
+	_require_admin()
+	if email in SYSTEM_ACCOUNTS:
+		frappe.throw(_("This account can't be deleted."))
+	if email == frappe.session.user:
+		frappe.throw(_("You can't delete your own account."))
+	if not frappe.db.exists("User", email):
+		frappe.throw(_("User not found."))
+	frappe.delete_doc("User", email)
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def outgoing_email_configured():
+	_require_admin()
+	return bool(frappe.db.exists("Email Account", {"default_outgoing": 1, "awaiting_password": 0}))

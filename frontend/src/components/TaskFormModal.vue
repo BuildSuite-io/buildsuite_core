@@ -13,7 +13,9 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { setTaskAssignee } from '@/data/taskAssignmentApi'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -55,7 +57,7 @@ const form = reactive({
   activityType: null,
   name: '',
   description: '',
-  status: 'Open',
+  status: 'Yet To Start',
   priority: 'Medium',
   assignee: '',
   startDate: '',
@@ -71,7 +73,7 @@ watch(() => props.open, (isOpen) => {
   form.activityType   = null
   form.name           = ''
   form.description    = ''
-  form.status         = 'Open'
+  form.status         = 'Yet To Start'
   form.priority       = 'Medium'
   form.assignee       = ''
   form.startDate      = new Date().toISOString().slice(0, 10)
@@ -123,16 +125,18 @@ async function save() {
     const task = await adapter.create('Task', {
       project: form.projectId,
       work_package: form.workPackageId,
-      type: form.task_type,
-      activity_type: form.activityType,
+      task_type: form.task_type,
       subject: form.name,
       description: form.description,
-      status: form.status,
+      task_status: form.status,
       priority: form.priority,
-      owner: form.assignee,
       exp_start_date: form.startDate,
       exp_end_date: form.endDate,
     })
+    // Assignee is Frappe-native `_assign`, set after insert (single-assignee).
+    if (form.assignee && task?.name) {
+      try { await setTaskAssignee(task.name, form.assignee) } catch { /* non-fatal */ }
+    }
     emit('created', task)
     close()
   } catch (err) {
@@ -148,7 +152,7 @@ async function save() {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 bg-ink-900/40 z-40 flex items-center justify-center p-6"
+      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
       @click.self="close"
     >
       <div
@@ -224,16 +228,25 @@ async function save() {
 
           <DeskSection title="Assignment & status">
             <DeskField label="Assignee">
-              <DeskSelect v-model="form.assignee">
-                <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-              </DeskSelect>
+              <DeskLinkPicker
+                v-model="form.assignee"
+                doctype="User"
+                placeholder="Select assignee"
+                label-field="full_name"
+                value-field="name"
+                :search-fields="['full_name', 'name', 'email']"
+                :filters="[['enabled', '=', 1]]"
+                order-by="full_name asc"
+                :page-length="20"
+              />
             </DeskField>
             <DeskField label="Status">
               <DeskSelect v-model="form.status">
-                <option>Open</option>
+                <option>Yet To Start</option>
                 <option>In Progress</option>
+                <option>In Delay</option>
                 <option>Completed</option>
-                <option>Cancelled</option>
+                <option>Blocked</option>
               </DeskSelect>
             </DeskField>
             <DeskField label="Priority">

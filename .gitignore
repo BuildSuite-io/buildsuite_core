@@ -56,8 +56,8 @@ jspm_packages/
 
 # BuildSuite
 
-context/buildsuite-core-demo
-context/semgrep-rules
+# Local working/continuity docs — not tracked on shared branches.
+context/
 
 # Generated frontend build output (from frontend/vite build)
 buildsuite_core/public/frontend/**

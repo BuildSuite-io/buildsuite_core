@@ -19,6 +19,7 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { addProjectTeamMember, removeProjectTeamMember } from '@/data/projectTeamApi'
 import { toDateInputValue } from '@/utils/dateInput'
 import { fmtINR, fmtCompactINR, fmtDate } from '@/utils/format'
 import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
@@ -27,7 +28,6 @@ import ProjectTeamMemberModal from '@/views/project-detail/ProjectTeamMemberModa
 import OverviewTab from '@/views/project-detail/tabs/OverviewTab.vue'
 import AttachmentsTab from '@/views/project-detail/tabs/AttachmentsTab.vue'
 import TeamTab from '@/views/project-detail/tabs/TeamTab.vue'
-import ActivityTab from '@/views/project-detail/tabs/ActivityTab.vue'
 import {
   BOQ_COLS,
   PROJECT_REPORTS,
@@ -54,7 +54,7 @@ const { errors: editErrors, applyServerErrors: applyEditErrors, setErrors: setEd
   project_type:        'type',
   expected_end_date:   'endDate',
   expected_start_date: 'startDate',
-  owner:               'pm',
+  project_manager:     'pm',
 })
 
 function firstResourceRow(resource) {
@@ -85,12 +85,14 @@ function loadProjectResource() {
       'customer',
       'project_type',
       'status',
+      'project_status',
       'priority',
       'estimated_costing',
       'percent_complete',
       'expected_start_date',
       'expected_end_date',
       'owner',
+      'project_manager',
       'company',
       'is_group',
       'notes',
@@ -105,7 +107,7 @@ function loadProjectResource() {
         code: row?.custom_project_id || '',
         name: row?.project_name || row?.name || '',
         client: row?.customer || '',
-        status: row?.status || '',
+        status: row?.project_status || row?.status || 'New',
         priority: row?.priority || 'Medium',
         type: row?.project_type || '',
         company: row?.company || '',
@@ -113,12 +115,18 @@ function loadProjectResource() {
         endDate: row?.expected_end_date || null,
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         location: row?.location || '',
         description: row?.notes || row?.description || '',
         isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
         parentId: row?.parent_project || null,
         createdAt: row?.creation || null,
+        // custom_team_members (Project Team child rows) ride along on the
+        // frappe.client.get document even though they're not in `fields`.
+        teamMembers: (row?.custom_team_members || []).map((r) => ({
+          user: r.user,
+          fullName: r.full_name || r.user,
+        })),
       }))
     },
   })
@@ -138,6 +146,24 @@ const project = computed(() => {
     || null
   )
 })
+
+// Resolve the Project Manager's full name (project.pm is a User id/email).
+const pmUserResource = ref(null)
+watch(() => project.value?.pm, (pm) => {
+  if (!pm) { pmUserResource.value = null; return }
+  pmUserResource.value = adapter.list('User', {
+    fields: ['name', 'full_name'],
+    filters: [['name', '=', pm]],
+    pageLength: 1,
+    cache: `buildsuite-pm-user:${pm}`,
+    transform: (rows) => rows.map((r) => ({ name: r?.name, fullName: r?.full_name || r?.name })),
+  })
+}, { immediate: true })
+const pmName = computed(() => {
+  const rows = pmUserResource.value?.data
+  const row = Array.isArray(rows) ? rows[0] : null
+  return row?.fullName || project.value?.pm || ''
+})
 const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
 const subprojectsResource = ref(null)
@@ -153,10 +179,11 @@ function loadSubprojectsResource() {
     'name',
     'custom_project_id',
     'project_name',
-    'status',
+    'project_status',
     'estimated_costing',
     'percent_complete',
     'owner',
+    'project_manager',
     'parent_project',
   ]
   const subprojectFilters = {
@@ -174,10 +201,10 @@ function loadSubprojectsResource() {
         id: row?.name || row?.id,
         code: row?.custom_project_id || '',
         name: row?.project_name || row?.name || '',
-        status: row?.status || '',
+        status: row?.project_status || row?.status || 'New',
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         parentId: row?.parent_project || resolvedProjectId.value,
       }))
     },
@@ -268,6 +295,14 @@ const taskProjectIds = computed(() => {
   const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean)
   return Array.from(new Set(ids))
 })
+// Assignee is Frappe-native `_assign` (JSON list); UI is single-assignee.
+function parseAssignee(raw) {
+  try {
+    const list = JSON.parse(raw || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
+
 const tasksResource = ref(null)
 const taskFilterKey = computed(() => taskProjectIds.value.join('|'))
 
@@ -281,11 +316,11 @@ function loadTasksResource() {
     'name',
     'subject',
     'project',
-    'type',
-    'status',
+    'task_type',
+    'task_status',
     'priority',
     'progress',
-    'owner',
+    '_assign',
     'exp_start_date',
     'exp_end_date',
   ]
@@ -305,10 +340,10 @@ function loadTasksResource() {
         id: row?.name || row?.id,
         name: row?.subject || row?.task_name || row?.name || '',
         projectId: row?.project || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         priority: row?.priority || 'Medium',
-        task_type: row?.type || row?.task_type || 'Activity',
-        assignee: row?.owner || row?.assignee || '',
+        task_type: row?.task_type || 'Activity',
+        assignee: parseAssignee(row?._assign),
         startDate: row?.exp_start_date || row?.start_date || null,
         endDate: row?.exp_end_date || row?.end_date || null,
         progress: Number(row?.progress) || 0,
@@ -448,31 +483,65 @@ watch(() => props.id, () => {
   editing.value = false
 })
 
-// Project team — PM always first, then user-added members.
-const projectTeam = computed(() => store.projectTeamMembers(resolvedProjectId.value))
+// Project team — read from the project's custom_team_members child table
+// (mapped in the read transform), persisted via the backend API.
+const TEAM_COLORS = ['bg-brand-600', 'bg-info-600', 'bg-violet-600', 'bg-amber-600', 'bg-rose-600', 'bg-emerald-600']
+function initialsOf(name) {
+  return String(name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'
+}
+function colorOf(id) {
+  let h = 0
+  for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return TEAM_COLORS[h % TEAM_COLORS.length]
+}
+const projectTeam = computed(() =>
+  (project.value?.teamMembers || []).map(m => ({
+    id: m.user,
+    name: m.fullName || m.user,
+    role: m.user,            // shown as the "User" column (email/login id)
+    initials: initialsOf(m.fullName || m.user),
+    color: colorOf(m.user),
+  }))
+)
+
+// Users already on the team (+ the PM) — excluded from the add picker.
+const excludeTeamUsers = computed(() => {
+  const ids = projectTeam.value.map(m => m.id)
+  if (project.value?.pm) ids.push(project.value.pm)
+  return Array.from(new Set(ids))
+})
 
 // Add-team-member modal state.
 const teamModalOpen = ref(false)
 const teamPickUserId = ref('')
-const availableTeamCandidates = computed(() => {
-  const memberIds = new Set(projectTeam.value.map(m => m.id))
-  return store.team.filter(m => !memberIds.has(m.id))
-})
+const teamSaving = ref(false)
+const teamError = ref('')
 function openTeamModal() {
-  teamPickUserId.value = availableTeamCandidates.value[0]?.id || ''
+  teamPickUserId.value = ''
+  teamError.value = ''
   teamModalOpen.value = true
 }
 function closeTeamModal() {
   teamModalOpen.value = false
 }
-function confirmAddMember() {
+async function confirmAddMember() {
   if (!teamPickUserId.value) return
-  store.addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
-  teamModalOpen.value = false
+  teamSaving.value = true
+  teamError.value = ''
+  try {
+    await addProjectTeamMember(resolvedProjectId.value, teamPickUserId.value)
+    teamModalOpen.value = false
+    projectResource.value?.reload?.()
+    showToast('Team member added')
+  } catch (err) {
+    teamError.value = err?.message || 'Failed to add team member'
+  } finally {
+    teamSaving.value = false
+  }
 }
 async function removeTeamMember(userId) {
-  if (!userId || userId === project.value?.pm) return
-  const m = store.teamMember(userId)
+  if (!userId) return
+  const m = projectTeam.value.find(x => x.id === userId)
   const ok = await confirmDialog({
     title: 'Remove team member',
     message: `Remove ${m?.name || userId} from this project's team?`,
@@ -480,7 +549,13 @@ async function removeTeamMember(userId) {
     destructive: true,
   })
   if (!ok) return
-  store.removeProjectTeamMember(resolvedProjectId.value, userId)
+  try {
+    await removeProjectTeamMember(resolvedProjectId.value, userId)
+    projectResource.value?.reload?.()
+    showToast('Team member removed')
+  } catch (err) {
+    showToast(err?.message || 'Failed to remove team member', 'error')
+  }
 }
 
 function buildProjectEditForm(source) {
@@ -504,16 +579,16 @@ async function saveEdit() {
       project_name: editForm.value.name,
       custom_project_id: editForm.value.code,
       is_group: editForm.value.isGroup ? 1 : 0,
-      status: editForm.value.status,
+      project_status: editForm.value.status,
       priority: editForm.value.priority,
       percent_complete: editForm.value.progress,
       expected_start_date: editForm.value.startDate,
       expected_end_date: editForm.value.endDate,
       customer: editForm.value.client,
       project_type: editForm.value.type,
-      company: editForm.value.company,
+      // company is locked/inferred server-side (§14) — not editable from the form.
       estimated_costing: Number(editForm.value.budget),
-      owner: editForm.value.pm,
+      project_manager: editForm.value.pm || null,
       notes: editForm.value.description,
     })
     editing.value = false
@@ -641,7 +716,6 @@ const tabs = computed(() => {
     { id: 'scos',           label: 'Scope Changes',  count: scos.value.length },
     { id: 'attachments',    label: 'Attachments',    count: attachmentCount.value },
     { id: 'team',           label: 'Team',           count: projectTeam.value.length },
-    { id: 'activity',       label: 'Activity',       count: null },
   ]
   return subprojectsEnabled.value ? all : all.filter(t => t.id !== 'subprojects')
 })
@@ -736,6 +810,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       <OverviewTab
         v-if="tab === 'overview'"
         :project="project"
+        :pm-name="pmName"
         :active-boq="activeBoq"
         :project-reports="projectReports"
         :delayed-days="delayedDays"
@@ -844,9 +919,6 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           </template>
           <template #cell-timeline="{ row }">
             <span class="text-xs text-ink-500 whitespace-nowrap">{{ fmtDate(row.startDate) }} → {{ fmtDate(row.endDate) }}</span>
-          </template>
-          <template #cell-owner="{ row }">
-            <UserAvatar :user-id="row.owner" size="xs" />
           </template>
           <template #empty>
             <div class="text-sm text-ink-500">No work packages yet.</div>
@@ -1116,14 +1188,9 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
         :project="project"
         :team="projectTeam"
         :team-cols="teamCols"
-        :has-candidates="availableTeamCandidates.length > 0"
+        :has-candidates="true"
         @add="openTeamModal"
         @remove="removeTeamMember"
-      />
-
-      <ActivityTab
-        v-if="tab === 'activity'"
-        :project="project"
       />
 
       <!-- Comments / Attachments / Assignment — stub footer per CLAUDE.md §12.4 Desk convention -->
@@ -1164,9 +1231,11 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
     <ProjectTeamMemberModal
       :open="teamModalOpen"
       :project-name="project?.name || ''"
-      :available-team-candidates="availableTeamCandidates"
-      :team-pick-user-id="teamPickUserId"
-      @update:team-pick-user-id="(value) => (teamPickUserId = value)"
+      :exclude-users="excludeTeamUsers"
+      :model-value="teamPickUserId"
+      :saving="teamSaving"
+      :error="teamError"
+      @update:model-value="(value) => (teamPickUserId = value)"
       @close="closeTeamModal"
       @confirm="confirmAddMember"
     />

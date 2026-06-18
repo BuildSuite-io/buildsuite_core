@@ -29,10 +29,10 @@ const adapter = createDataAdapter(store)
 const form = reactive({
   projectId: route.query.projectId || '',
   workPackageId: route.query.workPackageId || '',
-  taskType: '',
+  taskType: 'Activity',
   name: '',
   description: '',
-  status: 'Open',
+  status: 'Yet To Start',
   priority: 'Medium',
   assignee: '',
   startDate: new Date().toISOString().slice(0, 10),
@@ -74,9 +74,9 @@ async function save() {
       subject: form.name,
       project: form.projectId,
       work_package: form.workPackageId || null,
-      type: form.taskType || null,
+      task_type: form.taskType || 'Activity',
       description: form.description,
-      status: form.status,
+      task_status: form.status,
       priority: form.priority,
       exp_start_date: form.startDate,
       exp_end_date: form.endDate,
@@ -142,16 +142,12 @@ const breadcrumbs = [
         <DeskField label="Task name" required :error="errors.name">
           <DeskInput v-model="form.name" data-test="field-task-name" placeholder="e.g. Block A — Level 6 column casting" />
         </DeskField>
-        <DeskField label="Task Type">
-          <DeskLinkPicker
-            v-model="form.taskType"
-            doctype="Task Type"
-            label-field="name"
-            value-field="name"
-            :search-fields="['name']"
-            :page-length="20"
-            placeholder="— Select task type —"
-          />
+        <DeskField label="Task Type" hint="Drives workflow + Gantt rendering. Milestone = zero-duration.">
+          <DeskSelect v-model="form.taskType">
+            <option>Activity</option>
+            <option>Milestone</option>
+            <option>Inspection</option>
+          </DeskSelect>
         </DeskField>
         <DeskField label="Description">
           <DeskTextarea v-model="form.description" :rows="3" placeholder="Details about the task, location, scope…" />
@@ -219,13 +215,11 @@ const breadcrumbs = [
         </DeskField>
         <DeskField label="Status">
           <DeskSelect v-model="form.status">
-            <option>Open</option>
-            <option>Working</option>
-            <option>Pending Review</option>
-            <option>Overdue</option>
-            <option>Template</option>
+            <option>Yet To Start</option>
+            <option>In Progress</option>
+            <option>In Delay</option>
             <option>Completed</option>
-            <option>Cancelled</option>
+            <option>Blocked</option>
           </DeskSelect>
         </DeskField>
         <DeskField label="Priority">
