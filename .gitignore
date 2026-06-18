@@ -56,8 +56,7 @@ jspm_packages/
 
 # BuildSuite
 
-# Local working docs — not tracked (matches develop's de4fac2). Files stay on
-# disk for AI/session continuity; they just aren't versioned.
+# Local working/continuity docs — not tracked on shared branches.
 context/
 
 # Generated frontend build output (from frontend/vite build)
