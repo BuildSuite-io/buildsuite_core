@@ -22,6 +22,19 @@ CUSTOM_FIELD = {
             "module": "BuildSuite Core"
         },
         {
+            # The assigned Project Manager (a real User). Distinct from `owner`,
+            # which Frappe forces to the creating user on insert — so PM
+            # assignment must live on its own field. Drives the PM section in the
+            # Vue project views.
+            "fieldname": "project_manager",
+            "fieldtype": "Link",
+            "label": "Project Manager",
+            "options": "User",
+            "insert_after": "project_status",
+            "in_standard_filter": 1,
+            "module": "BuildSuite Core"
+        },
+        {
             "fieldname": "is_group",
             "fieldtype": "Check",
             "label": "Is Group",

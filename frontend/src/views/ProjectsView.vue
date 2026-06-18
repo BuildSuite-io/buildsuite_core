@@ -6,7 +6,6 @@ import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
-import UserAvatar from '@/components/UserAvatar.vue'
 import DocTypeListView from '@/components/doctype/DocTypeListView.vue'
 import { fmtCompactINR } from '@/utils/format'
 import { useDocTypeList } from '@/composables/useDocTypeList'
@@ -73,7 +72,6 @@ function onRowClick(row) {
         'percent_complete',
         'expected_start_date',
         'expected_end_date',
-        'owner',
         'company',
       ]"
       :columns="[
@@ -89,7 +87,6 @@ function onRowClick(row) {
         { key: 'estimated_costing', label: 'Budget' },
         { key: 'percent_complete', label: 'Progress', preset: 'progress' },
         { key: 'timeline', label: 'Timeline', preset: 'timeline', fields: ['expected_start_date', 'expected_end_date'] },
-        { key: 'owner', label: 'Owner' },
         { key: 'company', label: 'Company' },
       ]"
       :search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
@@ -144,10 +141,6 @@ function onRowClick(row) {
 
       <template #cell-estimated_costing="{ row }">
         <span class="tabular-nums">{{ fmtCompactINR(row.estimated_costing || 0) }}</span>
-      </template>
-
-      <template #cell-owner="{ row }">
-        <UserAvatar :user-id="row.owner" size="xs" />
       </template>
 
       <template #empty>

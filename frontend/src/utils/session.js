@@ -53,6 +53,28 @@ export function getLoginUrl(path) {
   return `${getFrappeHost()}/login?redirect-to=${encodeURIComponent(redirectPath)}`
 }
 
+// URL of the real Frappe/ERPNext desk. Same-origin in prod (`/app`); the dev
+// frappe host in dev so the vite server doesn't try to serve `/app` itself.
+export function getDeskUrl() {
+  return `${getFrappeHost()}/app`
+}
+
+// Log out of Frappe, then land on the login page. Best-effort POST to the
+// logout endpoint (clears the session cookie) followed by a full-page redirect
+// regardless of the response — we always want to leave the authenticated SPA.
+export async function logout() {
+  try {
+    await fetch(`${getFrappeHost()}/api/method/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' },
+    })
+  } catch (e) {
+    /* ignore — redirect anyway */
+  }
+  window.location.href = `${getFrappeHost()}/login`
+}
+
 export function applyBootToWindow(boot) {
   if (!boot || typeof boot !== 'object') return
 
