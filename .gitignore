@@ -56,8 +56,9 @@ jspm_packages/
 
 # BuildSuite
 
-context/buildsuite-core-demo
-context/semgrep-rules
+# Local working docs — not tracked (matches develop's de4fac2). Files stay on
+# disk for AI/session continuity; they just aren't versioned.
+context/
 
 # Generated frontend build output (from frontend/vite build)
 buildsuite_core/public/frontend/**
