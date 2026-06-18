@@ -13,7 +13,9 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import { createDataAdapter } from '@/data/adapters'
+import { setTaskAssignee } from '@/data/taskAssignmentApi'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -128,10 +130,13 @@ async function save() {
       description: form.description,
       task_status: form.status,
       priority: form.priority,
-      owner: form.assignee,
       exp_start_date: form.startDate,
       exp_end_date: form.endDate,
     })
+    // Assignee is Frappe-native `_assign`, set after insert (single-assignee).
+    if (form.assignee && task?.name) {
+      try { await setTaskAssignee(task.name, form.assignee) } catch { /* non-fatal */ }
+    }
     emit('created', task)
     close()
   } catch (err) {
@@ -223,9 +228,17 @@ async function save() {
 
           <DeskSection title="Assignment & status">
             <DeskField label="Assignee">
-              <DeskSelect v-model="form.assignee">
-                <option v-for="m in store.team" :key="m.id" :value="m.id">{{ m.name }} — {{ m.role }}</option>
-              </DeskSelect>
+              <DeskLinkPicker
+                v-model="form.assignee"
+                doctype="User"
+                placeholder="Select assignee"
+                label-field="full_name"
+                value-field="name"
+                :search-fields="['full_name', 'name', 'email']"
+                :filters="[['enabled', '=', 1]]"
+                order-by="full_name asc"
+                :page-length="20"
+              />
             </DeskField>
             <DeskField label="Status">
               <DeskSelect v-model="form.status">

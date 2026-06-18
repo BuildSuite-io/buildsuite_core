@@ -67,6 +67,15 @@ function projectName(id) { return projectsMap.value[id] || id }
 function wpName(id) { return wpsMap.value[id] || id }
 function memberName(id) { return store.teamMember(id)?.name || id }
 
+// Assignee is Frappe-native `_assign` (a JSON list of users); the UI is
+// single-assignee, so surface the first entry.
+function assignedUser(row) {
+  try {
+    const list = JSON.parse(row?._assign || '[]')
+    return Array.isArray(list) && list.length ? list[0] : ''
+  } catch { return '' }
+}
+
 const filterValues = computed(() => ({
   status: statusFilter.value,
   priority: priorityFilter.value,
@@ -99,7 +108,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         'task_status',
         'priority',
         'task_type',
-        'owner',
+        '_assign',
         'exp_end_date',
         'progress',
         'modified',
@@ -110,7 +119,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         { key: 'task_status', label: 'Status', preset: 'status' },
         { key: 'priority', label: 'Priority', preset: 'status' },
         { key: 'task_type', label: 'Task Type', preset: 'status' },
-        { key: 'owner', label: 'Assignee' },
+        { key: 'assignee', label: 'Assignee', fields: ['_assign'] },
         { key: 'exp_end_date', label: 'Due' },
         { key: 'progress', label: 'Progress', preset: 'progress' },
       ]"
@@ -120,7 +129,7 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
         status: 'task_status',
         priority: 'priority',
         project: 'project',
-        assignee: 'owner',
+        assignee: { field: '_assign', op: 'like', like: true },
         taskType: 'task_type',
       }"
       cache-key="buildsuite-task-list-generic"
@@ -225,8 +234,9 @@ function onRowClick(row) { router.push(`/tasks/${row.name}`) }
       <template #cell-task_type="{ row }">
         <StatusBadge :status="row.task_type || 'Activity'" size="xs" />
       </template>
-      <template #cell-owner="{ row }">
-        <UserAvatar :user-id="row.owner || ''" size="xs" />
+      <template #cell-assignee="{ row }">
+        <UserAvatar v-if="assignedUser(row)" :user-id="assignedUser(row)" size="xs" />
+        <span v-else class="text-[10px] text-ink-300">—</span>
       </template>
       <template #cell-exp_end_date="{ row }">
         <span class="text-xs text-ink-500">{{ fmtDate(row.exp_end_date) }}</span>
