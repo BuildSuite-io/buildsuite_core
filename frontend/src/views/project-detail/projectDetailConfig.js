@@ -14,7 +14,6 @@ export const WP_COLS = [
   { key: 'budget', label: 'Budget', align: 'right' },
   { key: 'progress', label: 'Progress', align: 'right' },
   { key: 'timeline', label: 'Timeline' },
-  { key: 'owner', label: 'Owner' },
 ]
 
 export const TASK_COLS = [

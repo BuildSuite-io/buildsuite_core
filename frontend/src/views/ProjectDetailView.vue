@@ -912,9 +912,6 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           <template #cell-timeline="{ row }">
             <span class="text-xs text-ink-500 whitespace-nowrap">{{ fmtDate(row.startDate) }} → {{ fmtDate(row.endDate) }}</span>
           </template>
-          <template #cell-owner="{ row }">
-            <UserAvatar :user-id="row.owner" size="xs" />
-          </template>
           <template #empty>
             <div class="text-sm text-ink-500">No work packages yet.</div>
           </template>
