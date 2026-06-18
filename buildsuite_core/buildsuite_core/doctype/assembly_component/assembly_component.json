@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-18 22:41:04.823589",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "resource",
+  "resource_name",
+  "coefficient",
+  "uom",
+  "rate",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "resource",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Resource",
+   "options": "Construction Rate Master",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "resource.rate_name",
+   "fieldname": "resource_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Resource Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coefficient",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Coefficient",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "resource.uom",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "resource.current_rate",
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-18 22:45:20.103880",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "Assembly Component",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
