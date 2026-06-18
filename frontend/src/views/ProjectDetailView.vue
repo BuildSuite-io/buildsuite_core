@@ -146,6 +146,24 @@ const project = computed(() => {
     || null
   )
 })
+
+// Resolve the Project Manager's full name (project.pm is a User id/email).
+const pmUserResource = ref(null)
+watch(() => project.value?.pm, (pm) => {
+  if (!pm) { pmUserResource.value = null; return }
+  pmUserResource.value = adapter.list('User', {
+    fields: ['name', 'full_name'],
+    filters: [['name', '=', pm]],
+    pageLength: 1,
+    cache: `buildsuite-pm-user:${pm}`,
+    transform: (rows) => rows.map((r) => ({ name: r?.name, fullName: r?.full_name || r?.name })),
+  })
+}, { immediate: true })
+const pmName = computed(() => {
+  const rows = pmUserResource.value?.data
+  const row = Array.isArray(rows) ? rows[0] : null
+  return row?.fullName || project.value?.pm || ''
+})
 const resolvedProjectId = computed(() => project.value?.id || props.id)
 const parent = computed(() => project.value?.parentId ? store.projectById(project.value.parentId) : null)
 const subprojectsResource = ref(null)
@@ -784,6 +802,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       <OverviewTab
         v-if="tab === 'overview'"
         :project="project"
+        :pm-name="pmName"
         :active-boq="activeBoq"
         :project-reports="projectReports"
         :delayed-days="delayedDays"

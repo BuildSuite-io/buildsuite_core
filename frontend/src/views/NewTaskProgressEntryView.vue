@@ -81,8 +81,11 @@ function validate() {
   const e = {}
   if (!form.taskId) e.taskId = 'Task is required'
   const pct = Number(form.progressPct)
+  const floor = Number(selectedTask.value?.progress) || 0
   if (Number.isNaN(pct) || pct < 0 || pct > 100) {
     e.progressPct = 'Progress must be between 0 and 100'
+  } else if (pct < floor) {
+    e.progressPct = `Progress can't go below the current ${floor}%. Entries are cumulative.`
   }
   if (form.blockerFlag && !form.blockerNote.trim()) {
     e.blockerNote = 'Describe the blocker'
@@ -171,8 +174,8 @@ const breadcrumbs = [
         </DeskSection>
 
         <DeskSection title="Progress" :cols="2">
-          <DeskField label="Cumulative progress (%)" required hint="The NEW cumulative % after this entry — not a delta. 0–100." :error="errors.progressPct">
-            <DeskInput v-model="form.progressPct" type="number" min="0" max="100" step="1" />
+          <DeskField label="Cumulative progress (%)" required :hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${selectedTask?.progress || 0}%.`" :error="errors.progressPct">
+            <DeskInput v-model="form.progressPct" type="number" :min="selectedTask?.progress || 0" max="100" step="1" />
           </DeskField>
           <div class="md:col-span-2">
             <DeskField label="Narrative" hint="What was completed today? Any context worth recording?">
