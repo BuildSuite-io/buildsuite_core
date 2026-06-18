@@ -54,7 +54,7 @@ const { errors: editErrors, applyServerErrors: applyEditErrors, setErrors: setEd
   project_type:        'type',
   expected_end_date:   'endDate',
   expected_start_date: 'startDate',
-  owner:               'pm',
+  project_manager:     'pm',
 })
 
 function firstResourceRow(resource) {
@@ -92,6 +92,7 @@ function loadProjectResource() {
       'expected_start_date',
       'expected_end_date',
       'owner',
+      'project_manager',
       'company',
       'is_group',
       'notes',
@@ -114,7 +115,7 @@ function loadProjectResource() {
         endDate: row?.expected_end_date || null,
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         location: row?.location || '',
         description: row?.notes || row?.description || '',
         isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
@@ -164,6 +165,7 @@ function loadSubprojectsResource() {
     'estimated_costing',
     'percent_complete',
     'owner',
+    'project_manager',
     'parent_project',
   ]
   const subprojectFilters = {
@@ -184,7 +186,7 @@ function loadSubprojectsResource() {
         status: row?.project_status || row?.status || 'New',
         budget: Number(row?.estimated_costing) || 0,
         progress: Number(row?.percent_complete) || 0,
-        pm: row?.owner || '',
+        pm: row?.project_manager || '',
         parentId: row?.parent_project || resolvedProjectId.value,
       }))
     },
@@ -560,7 +562,7 @@ async function saveEdit() {
       project_type: editForm.value.type,
       // company is locked/inferred server-side (§14) — not editable from the form.
       estimated_costing: Number(editForm.value.budget),
-      owner: editForm.value.pm,
+      project_manager: editForm.value.pm || null,
       notes: editForm.value.description,
     })
     editing.value = false

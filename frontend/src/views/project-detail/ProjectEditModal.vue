@@ -4,9 +4,11 @@ import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
+import { ref } from 'vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import CustomerCreateModal from '@/components/CustomerCreateModal.vue'
 
-defineProps({
+const props = defineProps({
   open:          { type: Boolean, default: false },
   project:       { type: Object,  default: null },
   editForm:      { type: Object,  required: true },
@@ -17,6 +19,14 @@ defineProps({
 })
 
 const emit = defineEmits(['close', 'save', 'clear-error'])
+
+const customerModalOpen = ref(false)
+const customerPickerKey = ref(0)
+function onCustomerCreated(name) {
+  props.editForm.client = name
+  emit('clear-error', 'client')
+  customerPickerKey.value++
+}
 </script>
 
 <template>
@@ -50,18 +60,29 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
               <DeskInput v-model="editForm.name" @input="emit('clear-error', 'name')" />
             </DeskField>
             <DeskField label="Client" :error="errors.client">
-              <DeskLinkPicker
-                v-model="editForm.client"
-                doctype="Customer"
-                placeholder="Select customer"
-                label-field="customer_name"
-                value-field="name"
-                :search-fields="['customer_name', 'name']"
-                order-by="modified desc"
-                :page-length="20"
-                :error="errors.client"
-                @change="emit('clear-error', 'client')"
-              />
+              <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                  <DeskLinkPicker
+                    :key="customerPickerKey"
+                    v-model="editForm.client"
+                    doctype="Customer"
+                    placeholder="Select customer"
+                    label-field="customer_name"
+                    value-field="name"
+                    :search-fields="['customer_name', 'name']"
+                    order-by="modified desc"
+                    :page-length="20"
+                    :error="errors.client"
+                    @change="emit('clear-error', 'client')"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 whitespace-nowrap"
+                  style="border-radius: 6px;"
+                  @click="customerModalOpen = true"
+                >+ New</button>
+              </div>
             </DeskField>
             <DeskField label="Type" :error="errors.type">
               <DeskLinkPicker
@@ -121,16 +142,19 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
           </DeskSection>
 
           <DeskSection title="Team & status">
-            <DeskField label="Project Manager">
+            <DeskField label="Project Manager" :error="errors.pm">
               <DeskLinkPicker
                 v-model="editForm.pm"
-                doctype="Employee"
+                doctype="User"
                 placeholder="Select project manager"
-                label-field="employee_name"
+                label-field="full_name"
                 value-field="name"
-                :search-fields="['employee_name', 'name', 'company_email', 'user_id']"
-                order-by="modified desc"
+                :search-fields="['full_name', 'name', 'email']"
+                :filters="[['enabled', '=', 1]]"
+                order-by="full_name asc"
                 :page-length="20"
+                :error="errors.pm"
+                @change="emit('clear-error', 'pm')"
               />
             </DeskField>
             <DeskField label="Status">
@@ -166,5 +190,11 @@ const emit = defineEmits(['close', 'save', 'clear-error'])
         </footer>
       </div>
     </div>
+
+    <CustomerCreateModal
+      :open="customerModalOpen"
+      @close="customerModalOpen = false"
+      @created="onCustomerCreated"
+    />
   </Teleport>
 </template>

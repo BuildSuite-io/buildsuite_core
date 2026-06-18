@@ -31,7 +31,7 @@ const props = defineProps({ id: String })
 const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
-const { canEdit, canDelete, canCreate } = usePermissions()
+const { canEdit, canDelete, canCreate, canEditRecord, canDeleteRecord } = usePermissions()
 
 function firstResourceRow(resource) {
   if (resource?.doc) return resource.doc
@@ -84,6 +84,7 @@ function loadTaskResource() {
         priority: row?.priority || 'Medium',
         progress: Number(row?.progress) || 0,
         assignee: row?.owner || '',
+        owner: row?.owner || '',
         startDate: row?.exp_start_date || null,
         endDate: row?.exp_end_date || null,
         task_type: row?.task_type || 'Activity',
@@ -116,7 +117,7 @@ async function loadDeps() {
 }
 watch(() => props.id, loadDeps, { immediate: true })
 
-const canEditDeps = computed(() => canEdit('task'))
+const canEditDeps = computed(() => canEditRecord('task', task.value))
 
 function lagLabel(d) {
   const n = Number(d) || 0
@@ -590,28 +591,28 @@ const progressColor = computed(() => {
     <!-- Edit / Delete / quick-status actions share the title row -->
     <template #actions>
       <button
-        v-if="task.status === 'Yet To Start' && canEdit('task')"
+        v-if="task.status === 'Yet To Start' && canEditRecord('task', task)"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
         @click="quickStatus('In Progress')"
       >Start</button>
       <button
-        v-if="task.status !== 'Completed' && canEdit('task')"
+        v-if="task.status !== 'Completed' && canEditRecord('task', task)"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50"
         style="border-radius: 6px; color: #15803D;"
         @click="quickStatus('Completed')"
       >Mark complete</button>
       <button
-        v-if="canEdit('task')"
+        v-if="canEditRecord('task', task)"
         type="button"
         class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
         style="border-radius: 6px;"
         @click="startEdit"
       >Edit</button>
       <button
-        v-if="canDelete('task')"
+        v-if="canDeleteRecord('task', task)"
         type="button"
         class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
         style="border-radius: 6px;"
