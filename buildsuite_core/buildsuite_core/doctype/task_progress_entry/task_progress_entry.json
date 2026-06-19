@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "TPE-.{YYYY}.#####",
  "creation": "2026-06-04 18:18:21.036362",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -114,10 +115,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-04 18:29:00.685803",
+ "modified": "2026-06-19 06:32:33.461896",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Task Progress Entry",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
