@@ -44,17 +44,25 @@ def create_erpnext_project_from_template(template):
 
     return project.name
 
-def create_stage_plan(project_name, stage_plan_doc):
+def create_stage_plan(project_name, stage_plan_doc, with_tasks=True):
     stage_plan = frappe.new_doc('Stage Planning')
     stage_plan.project = project_name
     stage_plan.stage_name = stage_plan_doc.stage_name
     stage_plan.insert(ignore_permissions=True)
 
-    for task_row in stage_plan_doc.tasks:
-        task_name = create_task(project_name, task_row)
-        stage_plan.append('stage_planning_tasks', {'task': task_name})
-
-    stage_plan.save(ignore_permissions=True)
+    # with_tasks=False creates an empty stage (the "Stage Planning only" seed
+    # mode). When True, each template task becomes a live Task linked into the
+    # stage's child table with a default planned qty of 100% — matching what the
+    # frontend stage-create form sets (StageTaskPicker defaults plannedQty: 100).
+    if with_tasks:
+        for task_row in stage_plan_doc.tasks:
+            task_name = create_task(project_name, task_row)
+            stage_plan.append('stage_planning_tasks', {
+                'task': task_name,
+                'planned_qty': 100,
+                'qty_unit': '%',
+            })
+        stage_plan.save(ignore_permissions=True)
 
 def create_task(project_name, task_row):
     # task_row.task links to a template Task — copy its properties into a new live Task

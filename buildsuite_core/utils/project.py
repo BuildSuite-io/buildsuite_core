@@ -182,18 +182,26 @@ def seed_from_template_on_insert(doc, method=None):
         create_task,
     )
 
-    if doc.custom_seed_default_stages:
+    seed_stages = bool(doc.custom_seed_default_stages)
+    seed_tasks = bool(doc.custom_seed_default_tasks)
+
+    # Three seed modes:
+    #   Stages + Tasks -> stages created WITH their nested tasks, plus project-level tasks.
+    #   Stages only    -> empty stages (no tasks created at all).
+    #   Tasks only     -> no stages; every template task (project-level AND the ones
+    #                     nested in stage plans) created as a plain project task.
+    if seed_stages:
         for row in template.stage_plans:
             try:
                 stage_plan_doc = frappe.get_doc('Stage Plan Template', row.stage_plan)
-                create_stage_plan(doc.name, stage_plan_doc)
+                create_stage_plan(doc.name, stage_plan_doc, with_tasks=seed_tasks)
             except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
                     f'BuildSuite: seed stage plan "{row.stage_plan}" for project "{doc.name}"'
                 )
 
-    if doc.custom_seed_default_tasks:
+    if seed_tasks:
         for row in template.project_task:
             try:
                 create_task(doc.name, row)
@@ -202,6 +210,53 @@ def seed_from_template_on_insert(doc, method=None):
                     frappe.get_traceback(),
                     f'BuildSuite: seed task "{row.task}" for project "{doc.name}"'
                 )
+        # Tasks-only: the tasks that would otherwise be nested under stage plans
+        # are still wanted — create them as project-level tasks (no stage).
+        if not seed_stages:
+            for row in template.stage_plans:
+                try:
+                    stage_plan_doc = frappe.get_doc('Stage Plan Template', row.stage_plan)
+                    for task_row in stage_plan_doc.tasks:
+                        create_task(doc.name, task_row)
+                except Exception:
+                    frappe.log_error(
+                        frappe.get_traceback(),
+                        f'BuildSuite: seed nested tasks from stage plan "{row.stage_plan}" for project "{doc.name}"'
+                    )
+
+
+@frappe.whitelist()
+def get_project_template_summary(project_type):
+    """Preview summary of the template for a Project Type (used by the create form).
+
+    Returns the stage names and the TOTAL task count — the flat project-level
+    `project_task` rows PLUS every task nested inside the template's stage plans.
+    The task count is what the "Import default tasks" option will seed.
+    """
+    if not project_type:
+        return {'exists': False}
+
+    template_name = frappe.db.get_value(
+        'BuildSuite Project Template', {'project_type': project_type}, 'name'
+    )
+    if not template_name:
+        return {'exists': False}
+
+    template = frappe.get_doc('BuildSuite Project Template', template_name)
+
+    stage_names = []
+    nested_task_count = 0
+    for row in template.stage_plans:
+        stage_plan_doc = frappe.get_doc('Stage Plan Template', row.stage_plan)
+        stage_names.append(stage_plan_doc.stage_name)
+        nested_task_count += len(stage_plan_doc.tasks or [])
+
+    return {
+        'exists': True,
+        'stage_names': stage_names,
+        'stage_count': len(stage_names),
+        'task_count': len(template.project_task or []) + nested_task_count,
+    }
 
 
 @frappe.whitelist()
