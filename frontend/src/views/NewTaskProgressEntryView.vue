@@ -35,7 +35,7 @@ const form = reactive({
   blockerFlag:     false,
   blockerNote:     '',
 })
-const { errors, applyServerErrors, setErrors } = useFormErrors({
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
   task:                'taskId',
   entry_date:          'entryDate',
   cumulative_progress: 'progressPct',
@@ -49,6 +49,7 @@ const taskResource = ref(null)
 function loadTaskResource(taskId) {
   if (!taskId) { taskResource.value = null; return }
   taskResource.value = adapter.read('Task', taskId, {
+    nameField: 'name',
     fields: ['name', 'subject', 'status', 'progress'],
     transform(rows) {
       return rows.map(row => ({
@@ -63,29 +64,72 @@ function loadTaskResource(taskId) {
 
 watch(() => form.taskId, loadTaskResource, { immediate: true })
 
-const selectedTask = computed(() => {
-  const raw = taskResource.value?.data
+// Extract the first row from whatever shape the adapter returns — a list
+// resource (`.data` array / `{ value: [...] }`) or a document resource (`.doc`).
+// Mirrors TaskDetailView's firstResourceRow so progress resolves reliably.
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
   if (Array.isArray(raw)) return raw[0] || null
   if (Array.isArray(raw?.value)) return raw.value[0] || null
-  return null
-})
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
 
-// Pre-fill progress when a task is first selected
-watch(selectedTask, (t) => {
-  if (t && form.progressPct === 0) {
-    form.progressPct = t.progress || 0
+const selectedTask = computed(() => {
+  const row = firstResourceRow(taskResource.value)
+  if (!row) return null
+  // Normalise here (not via the adapter transform, which only runs for the
+  // list-shaped `.data` path — a `.doc` resource bypasses it).
+  return {
+    id:       row.id || row.name || '',
+    name:     row.subject || row.name || '',
+    status:   row.status || '',
+    progress: Number(row.progress) || 0,
   }
 })
+
+// The task's current cumulative progress is the monotonic floor — a new entry
+// can never go below it.
+const progressFloor = computed(() => Number(selectedTask.value?.progress) || 0)
+
+// Default the entry to the task's current cumulative progress whenever the
+// selected task resolves or changes. Mirrors TaskDetailView's openProgress().
+watch(() => selectedTask.value?.id, () => {
+  form.progressPct = progressFloor.value
+})
+
+// Live validation — surface the monotonic error the moment the value drops
+// below the floor (or out of range), instead of waiting for submit.
+watch(() => [form.progressPct, progressFloor.value], () => {
+  const raw = form.progressPct
+  if (raw === '' || raw === null) { clearError('progressPct'); return }
+  const pct = Number(raw)
+  if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+    errors.value = { ...errors.value, progressPct: 'Progress must be between 0 and 100' }
+  } else if (pct < progressFloor.value) {
+    errors.value = { ...errors.value, progressPct: `Progress can't go below the current ${progressFloor.value}%. Entries are cumulative.` }
+  } else {
+    clearError('progressPct')
+  }
+})
+
+// Clamp to the floor on blur/commit so the field can't be left below the task's
+// current progress (paste / typing can bypass the input's min attribute).
+function clampProgress() {
+  let pct = Number(form.progressPct)
+  if (Number.isNaN(pct)) pct = progressFloor.value
+  form.progressPct = Math.min(100, Math.max(progressFloor.value, pct))
+}
 
 function validate() {
   const e = {}
   if (!form.taskId) e.taskId = 'Task is required'
   const pct = Number(form.progressPct)
-  const floor = Number(selectedTask.value?.progress) || 0
   if (Number.isNaN(pct) || pct < 0 || pct > 100) {
     e.progressPct = 'Progress must be between 0 and 100'
-  } else if (pct < floor) {
-    e.progressPct = `Progress can't go below the current ${floor}%. Entries are cumulative.`
+  } else if (pct < progressFloor.value) {
+    e.progressPct = `Progress can't go below the current ${progressFloor.value}%. Entries are cumulative.`
   }
   if (form.blockerFlag && !form.blockerNote.trim()) {
     e.blockerNote = 'Describe the blocker'
@@ -174,8 +218,8 @@ const breadcrumbs = [
         </DeskSection>
 
         <DeskSection title="Progress" :cols="2">
-          <DeskField label="Cumulative progress (%)" required :hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${selectedTask?.progress || 0}%.`" :error="errors.progressPct">
-            <DeskInput v-model="form.progressPct" type="number" :min="selectedTask?.progress || 0" max="100" step="1" />
+          <DeskField label="Cumulative progress (%)" required :hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${progressFloor}%.`" :error="errors.progressPct">
+            <DeskInput v-model="form.progressPct" type="number" :min="progressFloor" max="100" step="1" @change="clampProgress" @blur="clampProgress" />
           </DeskField>
           <div class="md:col-span-2">
             <DeskField label="Narrative" hint="What was completed today? Any context worth recording?">

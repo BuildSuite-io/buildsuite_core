@@ -118,7 +118,7 @@ const visibleReportTiles = computed(() =>
 </script>
 
 <template>
-  <div class="bg-gradient-to-br from-ink-50 to-white min-h-full">
+  <div class="bg-white min-h-full">
     <div class="max-w-6xl mx-auto px-6 py-8">
 
       <!-- Title strip — workspace name as the heading; date eyebrow only -->
