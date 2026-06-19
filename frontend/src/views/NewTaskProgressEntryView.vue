@@ -49,6 +49,7 @@ const taskResource = ref(null)
 function loadTaskResource(taskId) {
   if (!taskId) { taskResource.value = null; return }
   taskResource.value = adapter.read('Task', taskId, {
+    nameField: 'name',
     fields: ['name', 'subject', 'status', 'progress'],
     transform(rows) {
       return rows.map(row => ({
@@ -63,11 +64,29 @@ function loadTaskResource(taskId) {
 
 watch(() => form.taskId, loadTaskResource, { immediate: true })
 
-const selectedTask = computed(() => {
-  const raw = taskResource.value?.data
+// Extract the first row from whatever shape the adapter returns — a list
+// resource (`.data` array / `{ value: [...] }`) or a document resource (`.doc`).
+// Mirrors TaskDetailView's firstResourceRow so progress resolves reliably.
+function firstResourceRow(resource) {
+  if (resource?.doc) return resource.doc
+  const raw = resource?.data
   if (Array.isArray(raw)) return raw[0] || null
   if (Array.isArray(raw?.value)) return raw.value[0] || null
-  return null
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw.value || null
+  return raw || null
+}
+
+const selectedTask = computed(() => {
+  const row = firstResourceRow(taskResource.value)
+  if (!row) return null
+  // Normalise here (not via the adapter transform, which only runs for the
+  // list-shaped `.data` path — a `.doc` resource bypasses it).
+  return {
+    id:       row.id || row.name || '',
+    name:     row.subject || row.name || '',
+    status:   row.status || '',
+    progress: Number(row.progress) || 0,
+  }
 })
 
 // The task's current cumulative progress is the monotonic floor — a new entry
