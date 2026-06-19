@@ -14,6 +14,7 @@
   "assembly_name",
   "category",
   "disabled",
+  "component_count",
   "section_break_rdmp",
   "components",
   "notes"
@@ -53,6 +54,13 @@
    "read_only": 1
   },
   {
+   "fieldname": "component_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Component Count",
+   "read_only": 1
+  },
+  {
    "default": "0",
    "fieldname": "disabled",
    "fieldtype": "Check",
@@ -82,7 +90,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-18 22:49:22.390923",
+ "modified": "2026-06-19 07:30:45.490201",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Assembly",
