@@ -11,6 +11,9 @@ from buildsuite_core.utils.user import backfill_user_company
 
 
 def after_install():
+    print(_("Creating Custom Fields..."))
+    create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
+    make_property_setters()
     seed_master_data()
     setup_record_permissions()
 
