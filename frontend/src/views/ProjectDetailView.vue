@@ -1194,6 +1194,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
       />
 
       <!-- Comments / Attachments / Assignment — stub footer per CLAUDE.md §12.4 Desk convention -->
+      <!-- Hidden for now (Session 44+ request) — restore by un-commenting.
       <section class="mt-8 pt-4 border-t border-ink-200">
         <div class="flex items-center gap-6 text-xs text-ink-500 flex-wrap">
           <div class="flex items-center gap-1.5">
@@ -1213,6 +1214,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           </div>
         </div>
       </section>
+      -->
     </div>
 
     <ProjectEditModal
