@@ -135,44 +135,29 @@ const parentProject = computed(() =>
 // selected Project Type. Since Stage Plan Template is autonamed by stage_name,
 // each stage_plans row's `stage_plan` field value IS the stage name.
 const templateLoading = ref(false)
-const bsTemplate = ref(null)
+// Summary from the backend: { exists, stage_names, stage_count, task_count }.
+// task_count is the TOTAL — project-level tasks PLUS tasks nested in every
+// stage plan — which is exactly what "Import default tasks" seeds.
+const templateSummary = ref(null)
 
-const templateStageNames = computed(() =>
-  (bsTemplate.value?.stage_plans || []).map(row => row.stage_plan)
-)
-const templateTaskCount = computed(() =>
-  (bsTemplate.value?.project_task || []).length
-)
+const templateStageNames = computed(() => templateSummary.value?.stage_names || [])
+const templateTaskCount = computed(() => templateSummary.value?.task_count || 0)
 
 async function loadTemplateForType(projectType) {
-  bsTemplate.value = null
+  templateSummary.value = null
   if (!projectType) return
   templateLoading.value = true
   try {
-    const listRes = await fetch(
-      '/api/method/frappe.client.get_list?' + new URLSearchParams({
-        doctype: 'BuildSuite Project Template',
-        fields: JSON.stringify(['name']),
-        filters: JSON.stringify([['project_type', '=', projectType]]),
-        limit_page_length: 1,
-      }),
+    const res = await fetch(
+      '/api/method/buildsuite_core.utils.project.get_project_template_summary?' +
+        new URLSearchParams({ project_type: projectType }),
       { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
     )
-    const listData = await listRes.json()
-    const rows = listData?.message || []
-    if (!rows.length) return
-
-    const docRes = await fetch(
-      '/api/method/frappe.client.get?' + new URLSearchParams({
-        doctype: 'BuildSuite Project Template',
-        name: rows[0].name,
-      }),
-      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
-    )
-    const docData = await docRes.json()
-    bsTemplate.value = docData?.message || null
+    const data = await res.json()
+    const summary = data?.message || null
+    templateSummary.value = summary && summary.exists ? summary : null
   } catch (err) {
-    console.warn('[NewProjectView] Failed to load template for type', projectType, err)
+    console.warn('[NewProjectView] Failed to load template summary for type', projectType, err)
   } finally {
     templateLoading.value = false
   }
@@ -318,7 +303,7 @@ const breadcrumbs = computed(() => {
           <div v-if="templateLoading" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-500 italic" style="border-radius: 6px;">
             Loading template…
           </div>
-          <div v-else-if="bsTemplate" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 space-y-1.5" style="border-radius: 6px;">
+          <div v-else-if="templateSummary" class="mt-1.5 px-2 py-1.5 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 space-y-1.5" style="border-radius: 6px;">
             <div class="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 Template seeds <span class="font-medium text-ink-900">{{ templateStageNames.length }} default stages</span>:
