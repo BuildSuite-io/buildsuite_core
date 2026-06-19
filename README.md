@@ -1,6 +1,12 @@
-### Buildsuite Core
+<div align="center">
+
+![BuildSuite Core](docs/images/bs-core-readme-banner.png)
+
+# BuildSuite Core
 
 A construction operating system built on Frappe
+
+</div>
 
 ### Installation
 
