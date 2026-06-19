@@ -17,7 +17,8 @@ class Assembly(Document):
 
 		assembly_code: DF.Data
 		assembly_name: DF.Data
-		category: DF.Literal["Concrete", "Masonry", "Reinforcement", "Finishing", "General"]
+		category: DF.Literal["", "Concrete", "Masonry", "Reinforcement", "Finishing", "General"]
+		component_count: DF.Int
 		components: DF.Table[AssemblyComponent]
 		disabled: DF.Check
 		notes: DF.SmallText | None
@@ -32,3 +33,4 @@ class Assembly(Document):
 			c.amount = (c.coefficient or 0) * c.rate
 			total += c.amount
 		self.rate_per_unit = total
+		self.component_count = len(self.components)

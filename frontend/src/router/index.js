@@ -35,6 +35,7 @@ const routes = [
       { path: 'boq',                           name: 'boq',           component: () => import('@/views/BoqView.vue') },
       { path: 'boq/:id',                       name: 'boq-detail',    component: () => import('@/views/BoqDetailView.vue'), props: true },
       { path: 'rate-master',                   name: 'rate-master',   component: () => import('@/views/RateMasterView.vue') },
+      { path: 'assembly',                      name: 'assembly',      component: () => import('@/views/AssembliesView.vue') },
 
       { path: 'site-execution',                name: 'site-execution',  component: () => import('@/views/workspaces/SiteExecutionWorkspace.vue') },
       { path: 'project-dashboard',             name: 'project-dashboard', component: () => import('@/views/workspaces/ProjectDashboardView.vue') },
