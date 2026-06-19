@@ -70,11 +70,12 @@ const selectedTask = computed(() => {
   return null
 })
 
-// Pre-fill progress when a task is first selected
-watch(selectedTask, (t) => {
-  if (t && form.progressPct === 0) {
-    form.progressPct = t.progress || 0
-  }
+// Default the entry to the task's current cumulative progress whenever the
+// selected task resolves or changes. Progress is monotonic — the user can raise
+// this value but validate() rejects anything below the task's current progress.
+// Mirrors TaskDetailView's openProgress() behaviour.
+watch(() => selectedTask.value?.id, () => {
+  form.progressPct = selectedTask.value?.progress ?? 0
 })
 
 function validate() {
