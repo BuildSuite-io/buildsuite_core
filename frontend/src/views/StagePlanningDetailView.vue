@@ -258,15 +258,18 @@ function loadTasksResource(projectId) {
     return
   }
   tasksResource.value = adapter.list('Task', {
-    fields: ['name', 'subject', 'status', 'progress'],
+    // Use the BuildSuite custom `task_status` (Yet To Start / In Progress /
+    // In Delay / Completed / Blocked) — the ideal status the rest of the app
+    // shows — not the native ERPNext `status` (Open / Working / …).
+    fields: ['name', 'subject', 'task_status', 'progress'],
     filters: [['project', '=', projectId]],
     pageLength: 500,
-    cache: `buildsuite-stage-detail-tasks:${projectId}`,
+    cache: `buildsuite-stage-detail-tasks-v2:${projectId}`,
     transform(rows) {
       return rows.map((row) => ({
         id: row?.name || '',
         name: row?.subject || row?.name || '',
-        status: row?.status || 'Open',
+        status: row?.task_status || 'Yet To Start',
         progress: Number(row?.progress) || 0,
       }))
     },
