@@ -342,6 +342,7 @@ const breadcrumbs = computed(() => {
         >
           <DeskLinkPicker
             v-model="form.company"
+            data-test="pick-company"
             doctype="Company"
             placeholder="Select company"
             label-field="company_name"
