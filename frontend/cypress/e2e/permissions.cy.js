@@ -19,4 +19,29 @@ describe('Permission gating follows persona', () => {
     cy.visitApp('/projects')
     cy.dt('page-actions').contains('New').should('be.visible')
   })
+
+  // PRM-005 — Settings is restricted to System Manager + BuildSuite Administrator.
+  it('estimator hitting Settings sees the restricted notice', () => {
+    cy.loginAs('estimator')
+    cy.visitApp('/settings')
+    cy.contains('Settings is restricted to administrators.').should('be.visible')
+  })
+
+  it('admin sees the Settings hub (not restricted)', () => {
+    cy.loginAs('admin')
+    cy.visitApp('/settings')
+    cy.contains('Settings is restricted to administrators.').should('not.exist')
+  })
+
+  // PRM-014 — Procurement Officer has no Stage Planning / Task Progress Entry
+  // access; the lists render a restricted notice instead of the data.
+  it('procurement is blocked from the Stage Planning + TPE lists', () => {
+    cy.loginAs('procurement')
+
+    cy.visitApp('/stage-plannings')
+    cy.contains("You don't have access to Stage Planning.").should('be.visible')
+
+    cy.visitApp('/progress-entries')
+    cy.contains("You don't have access to Task Progress Entries.").should('be.visible')
+  })
 })
