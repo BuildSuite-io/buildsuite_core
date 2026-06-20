@@ -2,9 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
-from frappe import _
 
 
 def revert_task_on_tpe_delete(tpe):
@@ -61,7 +61,6 @@ def revert_task_on_tpe_delete(tpe):
 	task.save(ignore_permissions=True)
 
 
-
 class TaskProgressEntry(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -116,10 +115,10 @@ class TaskProgressEntry(Document):
 		)
 		if value + 0.001 < floor:
 			frappe.throw(
-				_("Cumulative progress can't go below the task's current progress ({0}%). "
-				  "Progress entries are cumulative — the value can only stay the same or increase.").format(
-					floor if floor % 1 else int(floor)
-				)
+				_(
+					"Cumulative progress can't go below the task's current progress ({0}%). "
+					"Progress entries are cumulative — the value can only stay the same or increase."
+				).format(floor if floor % 1 else int(floor))
 			)
 
 	def before_save(self):
@@ -131,10 +130,7 @@ class TaskProgressEntry(Document):
 				if (
 					row.date == self.entry_date
 					and row.user == self.owner
-					and abs(
-						flt(row.cumulative_progress or 0)
-						- flt(self.cumulative_progress or 0)
-					) < 0.001
+					and abs(flt(row.cumulative_progress or 0) - flt(self.cumulative_progress or 0)) < 0.001
 				):
 					duplicate = True
 					break
@@ -150,10 +146,7 @@ class TaskProgressEntry(Document):
 				)
 
 		task.progress = max(
-			(
-				flt(row.cumulative_progress or 0)
-				for row in task.get("task_progress_details") or []
-			),
+			(flt(row.cumulative_progress or 0) for row in task.get("task_progress_details") or []),
 			default=0,
 		)
 

@@ -6,7 +6,6 @@ from frappe.tests import IntegrationTestCase
 
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
-
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
 # Use these module variables to add/remove to/from that list
@@ -44,15 +43,17 @@ class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
 		after_insert template hook fires. Skips when no template is seeded."""
 		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
 			self.skipTest("No Commercial template seeded on this site")
-		return frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"SEED {self._n}",
-			"custom_project_id": f"SEED-{self._n}",
-			"company": self.company,
-			"project_type": "Commercial",
-			"custom_seed_default_stages": 1 if stages else 0,
-			"custom_seed_default_tasks": 1 if tasks else 0,
-		}).insert(ignore_permissions=True)
+		return frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"SEED {self._n}",
+				"custom_project_id": f"SEED-{self._n}",
+				"company": self.company,
+				"project_type": "Commercial",
+				"custom_seed_default_stages": 1 if stages else 0,
+				"custom_seed_default_tasks": 1 if tasks else 0,
+			}
+		).insert(ignore_permissions=True)
 
 	def test_seed_mode_stages_and_tasks(self):
 		# Both on → stages created WITH nested tasks, plus project-level tasks.

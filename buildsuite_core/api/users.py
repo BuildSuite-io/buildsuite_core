@@ -43,7 +43,7 @@ def list_buildsuite_users():
 
 
 @frappe.whitelist()
-def create_buildsuite_user(full_name, email, persona, enabled=1, send_welcome=1):
+def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: int = 1, send_welcome: int = 1):
 	_require_admin()
 	full_name = (full_name or "").strip()
 	email = (email or "").strip().lower()
@@ -85,7 +85,9 @@ def create_buildsuite_user(full_name, email, persona, enabled=1, send_welcome=1)
 
 
 @frappe.whitelist()
-def update_buildsuite_user(email, full_name=None, persona=None, enabled=None):
+def update_buildsuite_user(
+	email: str, full_name: str | None = None, persona: str | None = None, enabled: int | None = None
+):
 	_require_admin()
 	if not frappe.db.exists("User", email):
 		frappe.throw(_("User not found."))
@@ -110,14 +112,14 @@ def update_buildsuite_user(email, full_name=None, persona=None, enabled=None):
 
 
 @frappe.whitelist()
-def send_user_welcome(email):
+def send_user_welcome(email: str):
 	_require_admin()
 	frappe.get_doc("User", email).send_welcome_mail_to_user()
 	return {"ok": True}
 
 
 @frappe.whitelist()
-def send_user_password_reset(email):
+def send_user_password_reset(email: str):
 	_require_admin()
 	from frappe.core.doctype.user.user import reset_password
 
@@ -128,7 +130,7 @@ def send_user_password_reset(email):
 
 
 @frappe.whitelist()
-def delete_buildsuite_user(email):
+def delete_buildsuite_user(email: str):
 	_require_admin()
 	if email in SYSTEM_ACCOUNTS:
 		frappe.throw(_("This account can't be deleted."))

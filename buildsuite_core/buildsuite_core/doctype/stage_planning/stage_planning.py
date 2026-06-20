@@ -14,9 +14,14 @@ class StagePlanning(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.stage_planning_dependency.stage_planning_dependency import StagePlanningDependency
-		from buildsuite_core.buildsuite_core.doctype.stage_planning_task.stage_planning_task import StagePlanningTask
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.stage_planning_dependency.stage_planning_dependency import (
+			StagePlanningDependency,
+		)
+		from buildsuite_core.buildsuite_core.doctype.stage_planning_task.stage_planning_task import (
+			StagePlanningTask,
+		)
 
 		dependencies: DF.Table[StagePlanningDependency]
 		description: DF.Text | None
@@ -45,10 +50,12 @@ class StagePlanning(Document):
 				and self.workflow_state == "Approved"
 				and self._stage_tasks_changed(before)
 			):
-				frappe.throw(_(
-					"An approved stage is locked. Revise it back to Draft to "
-					"change tasks or planned quantities."
-				))
+				frappe.throw(
+					_(
+						"An approved stage is locked. Revise it back to Draft to "
+						"change tasks or planned quantities."
+					)
+				)
 
 		# A stage can only land in Rejected with a reason on file. The Vue reject
 		# popup and the reject_stage_planning() method below both supply it; this
@@ -59,11 +66,10 @@ class StagePlanning(Document):
 	def _stage_tasks_changed(self, before):
 		"""Whether stage_planning_tasks differ from the persisted version — rows
 		added/removed, or any task / planned_qty / qty_unit changed."""
+
 		def snap(doc):
-			return [
-				(r.task, r.planned_qty, r.qty_unit)
-				for r in (doc.stage_planning_tasks or [])
-			]
+			return [(r.task, r.planned_qty, r.qty_unit) for r in (doc.stage_planning_tasks or [])]
+
 		return snap(self) != snap(before)
 
 	def on_update(self):
@@ -112,7 +118,7 @@ def _activity_type_from_content(content):
 
 
 @frappe.whitelist()
-def reject_stage_planning(name, reason):
+def reject_stage_planning(name: str, reason: str):
 	"""Reject a Stage Planning with a mandatory reason.
 
 	Stamps reject_reason and applies the "Reject" workflow transition in one
@@ -137,7 +143,13 @@ def reject_stage_planning(name, reason):
 
 
 @frappe.whitelist()
-def add_stage_delay_reason(stage, reason, responsible_party=None, days_delayed=None, note=None):
+def add_stage_delay_reason(
+	stage: str,
+	reason: str,
+	responsible_party: str | None = None,
+	days_delayed: str | None = None,
+	note: str | None = None,
+):
 	"""Append a delay-log row to a Stage Planning.
 
 	Logging a delay is NOT a stage edit — it must work in any workflow state,
@@ -175,7 +187,7 @@ def add_stage_delay_reason(stage, reason, responsible_party=None, days_delayed=N
 
 
 @frappe.whitelist()
-def revise_stage_planning(name):
+def revise_stage_planning(name: str):
 	"""SAW-006 — clone a Rejected stage into a fresh Draft.
 
 	The original Rejected stage is left untouched as an audit record. The clone
@@ -197,7 +209,7 @@ def revise_stage_planning(name):
 
 
 @frappe.whitelist()
-def get_stage_activity(name):
+def get_stage_activity(name: str):
 	"""SAW-013 — normalized activity feed: creation + workflow timeline comments,
 	oldest first. Shape matches the frontend Activity panel."""
 	doc = frappe.get_doc("Stage Planning", name)
@@ -207,13 +219,15 @@ def get_stage_activity(name):
 	def user_name(user):
 		return frappe.db.get_value("User", user, "full_name") or user
 
-	entries = [{
-		"type": "created",
-		"by": doc.owner,
-		"by_name": user_name(doc.owner),
-		"at": str(doc.creation),
-		"text": _("Created"),
-	}]
+	entries = [
+		{
+			"type": "created",
+			"by": doc.owner,
+			"by_name": user_name(doc.owner),
+			"at": str(doc.creation),
+			"text": _("Created"),
+		}
+	]
 
 	comments = frappe.get_all(
 		"Comment",
@@ -227,13 +241,15 @@ def get_stage_activity(name):
 	)
 	for c in comments:
 		text = frappe.utils.strip_html(c.content or "").strip()
-		entries.append({
-			"type": _activity_type_from_content(text),
-			"by": c.owner,
-			"by_name": user_name(c.owner),
-			"at": str(c.creation),
-			"text": text,
-		})
+		entries.append(
+			{
+				"type": _activity_type_from_content(text),
+				"by": c.owner,
+				"by_name": user_name(c.owner),
+				"at": str(c.creation),
+				"text": text,
+			}
+		)
 
 	entries.sort(key=lambda e: e["at"])
 	return entries

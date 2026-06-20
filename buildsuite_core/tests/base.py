@@ -23,35 +23,41 @@ class BuildSuiteTestCase(UnitTestCase):
 
 	# --- record builders -------------------------------------------------
 	def _make_project(self, status="Ongoing", parent=None, company=None):
-		doc = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT {self._n}",
-			"custom_project_id": f"UAT-{self._n}",
-			"project_status": status,
-			"parent_project": parent,
-			"company": company,
-		})
+		doc = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT {self._n}",
+				"custom_project_id": f"UAT-{self._n}",
+				"project_status": status,
+				"parent_project": parent,
+				"company": company,
+			}
+		)
 		doc.insert(ignore_permissions=True)
 		return doc
 
 	def _make_task(self, project, task_status="Yet To Start"):
-		doc = frappe.get_doc({
-			"doctype": "Task",
-			"subject": f"UAT Task {frappe.generate_hash(length=4)}",
-			"project": project,
-			"task_status": task_status,
-		})
+		doc = frappe.get_doc(
+			{
+				"doctype": "Task",
+				"subject": f"UAT Task {frappe.generate_hash(length=4)}",
+				"project": project,
+				"task_status": task_status,
+			}
+		)
 		doc.insert(ignore_permissions=True)
 		return doc
 
 	def _file_tpe(self, task, pct, blocker=0, blocker_detail=None):
-		doc = frappe.get_doc({
-			"doctype": "Task Progress Entry",
-			"task": task,
-			"entry_date": today(),
-			"cumulative_progress": pct,
-			"blocker": blocker,
-			"blocker_detail": blocker_detail,
-		})
+		doc = frappe.get_doc(
+			{
+				"doctype": "Task Progress Entry",
+				"task": task,
+				"entry_date": today(),
+				"cumulative_progress": pct,
+				"blocker": blocker,
+				"blocker_detail": blocker_detail,
+			}
+		)
 		doc.insert(ignore_permissions=True)
 		return doc
