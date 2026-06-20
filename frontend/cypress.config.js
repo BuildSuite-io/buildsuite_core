@@ -30,7 +30,7 @@ export default defineConfig({
 
   pageLoadTimeout: 30000,
   retries: { runMode: 2, openMode: 0 },
-  video: false,
+  video: true,
   viewportWidth: 1280,
   viewportHeight: 800,
 
