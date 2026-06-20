@@ -162,6 +162,11 @@ function onTileClick(tile) {
 
 <template>
   <DeskPage title="Settings" subtitle="Organisation, system, data and diagnostics" :breadcrumbs="breadcrumbs">
+    <!-- PRM-005 — Settings is restricted to System Manager + BuildSuite Administrator. -->
+    <div v-if="!isAdmin" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      Settings is restricted to administrators.
+    </div>
+    <template v-else>
     <!-- Signed-in chip — shows which role/company is active -->
     <div class="flex items-center gap-3 mb-5 p-3 border border-ink-200 bg-ink-50" style="border-radius: 6px;">
       <UserAvatar :user-id="store.user?.id" size="sm" />
@@ -213,5 +218,6 @@ function onTileClick(tile) {
         </div>
       </div>
     </div>
+    </template>
   </DeskPage>
 </template>

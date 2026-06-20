@@ -308,6 +308,7 @@ const navGroups = computed(() => {
           <!-- Settings (Session 32) — Frappe-standard topbar placement (gear icon
                near the user / role chip). Active state when on a /app/settings/* route. -->
           <RouterLink
+            v-if="store.isAdmin"
             to="/settings"
             class="p-1.5 rounded-md"
             :class="route.path.startsWith('/settings') ? 'text-brand-700 bg-brand-50' : 'text-ink-400 hover:text-ink-700'"
