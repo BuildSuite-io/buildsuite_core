@@ -10,7 +10,6 @@ import { useDataStore } from '@/stores'
 import { useSessionStore } from '@/stores/session'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
-import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
 
 // Mirrors the backend Stage Planning Approval workflow (permissions/setup.py
@@ -79,11 +78,6 @@ const route = useRoute()
 const store = useDataStore()
 const session = useSessionStore()
 const adapter = createDataAdapter(store)
-const { canRead } = usePermissions()
-
-// PRM-014 — roles without read access (e.g. Procurement Officer) get a
-// restricted-access notice instead of the stage detail.
-const canViewStage = computed(() => canRead('stagePlanning'))
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10)
 
@@ -697,15 +691,8 @@ const breadcrumbs = computed(() => {
 </script>
 
 <template>
-  <!-- PRM-014 — roles without Stage Planning access get a restricted notice. -->
-  <div v-if="!canViewStage" class="px-6 py-20 text-center">
-    <div class="inline-block px-4 py-3 bg-warning-50 border border-warning-100 text-sm text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 8px;">
-      You don't have access to Stage Planning.
-    </div>
-  </div>
-
   <DeskPage
-    v-else-if="stage"
+    v-if="stage"
     :title="stage.stageName"
     :subtitle="`${stage.id} · ${project ? project.name : stage.project}`"
     :status="stage.workflowState"
