@@ -103,9 +103,9 @@ class TestUATFixes(UnitTestCase):
 		p.insert(ignore_permissions=True)
 		self.assertEqual(p.company, self.company)
 
-	def test_user_persona_requires_company(self):
-		# Frappe auto-fills company from the global default on new_doc, so to
-		# exercise the guard we explicitly clear it before insert.
+	def test_user_persona_company_optional(self):
+		# Company is optional for persona'd users (the earlier mandatory-company
+		# rule was dropped). A persona'd user with no company must still save.
 		u = frappe.new_doc("User")
 		u.email = f"uat-{self._n}@example.com"
 		u.first_name = "UAT"
@@ -113,8 +113,8 @@ class TestUATFixes(UnitTestCase):
 		u.send_welcome_email = 0
 		u.persona = "Project Manager"
 		u.company = ""
-		with self.assertRaises(frappe.ValidationError):
-			u.insert(ignore_permissions=True)
+		u.insert(ignore_permissions=True)  # must not raise
+		self.assertEqual(u.persona, "Project Manager")
 
 	def test_user_persona_with_company_ok(self):
 		u = frappe.get_doc({
@@ -415,3 +415,115 @@ class TestUATFixes(UnitTestCase):
 			self.assertRaises(frappe.PermissionError, st.save)
 		finally:
 			frappe.set_user("Administrator")
+
+	# --- Stage approval UAT (SAW-006 / SAW-011 / SAW-013) ----------------
+	def _make_stage(self, project, task=None, state="Draft"):
+		rows = [{"task": task, "planned_qty": 80, "qty_unit": "%"}] if task else []
+		return frappe.get_doc({
+			"doctype": "Stage Planning",
+			"stage_name": f"ST {frappe.generate_hash(length=4)}",
+			"project": project,
+			"workflow_state": state,
+			"stage_planning_tasks": rows,
+		}).insert(ignore_permissions=True)
+
+	def _approve(self, st):
+		from frappe.model.workflow import apply_workflow
+		apply_workflow(st, "Submit for Approval")
+		apply_workflow(st, "Approve")
+		st.reload()
+
+	def test_revise_clones_rejected_stage(self):
+		"""SAW-006 — revising a Rejected stage clones it into a fresh Draft and
+		leaves the original Rejected stage untouched (audit record)."""
+		from frappe.model.workflow import apply_workflow
+		from buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning import (
+			reject_stage_planning, revise_stage_planning,
+		)
+		p = self._make_project()
+		t = self._make_task(p.name)
+		st = self._make_stage(p.name, task=t.name)
+		apply_workflow(st, "Submit for Approval")
+		reject_stage_planning(st.name, "Scope unclear")
+		st.reload()
+		self.assertEqual(st.workflow_state, "Rejected")
+
+		res = revise_stage_planning(st.name)
+		clone = frappe.get_doc("Stage Planning", res["name"])
+		self.assertNotEqual(clone.name, st.name)
+		self.assertEqual(clone.workflow_state, "Draft")
+		self.assertFalse(clone.reject_reason)
+		self.assertEqual(len(clone.stage_planning_tasks), 1)
+		self.assertEqual(clone.stage_planning_tasks[0].task, t.name)
+		# Original stays Rejected.
+		st.reload()
+		self.assertEqual(st.workflow_state, "Rejected")
+
+	def test_approved_stage_task_edit_throws(self):
+		"""SAW-011 — an Approved stage's task list / planned qty is locked."""
+		p = self._make_project()
+		t = self._make_task(p.name)
+		st = self._make_stage(p.name, task=t.name)
+		self._approve(st)
+		st.stage_planning_tasks[0].planned_qty = 50
+		self.assertRaises(frappe.ValidationError, lambda: st.save(ignore_permissions=True))
+
+	def test_approved_to_draft_allows_task_change(self):
+		"""SAW-011 — Revise (Approved -> Draft) reopens editing."""
+		from frappe.model.workflow import apply_workflow
+		p = self._make_project()
+		t = self._make_task(p.name)
+		st = self._make_stage(p.name, task=t.name)
+		self._approve(st)
+		apply_workflow(st, "Revise")
+		st.reload()
+		self.assertEqual(st.workflow_state, "Draft")
+		st.stage_planning_tasks[0].planned_qty = 50
+		st.save(ignore_permissions=True)  # must not raise
+		st.reload()
+		self.assertEqual(st.stage_planning_tasks[0].planned_qty, 50)
+
+	def test_stage_transition_logs_activity(self):
+		"""SAW-013 — each workflow transition is recorded on the timeline."""
+		from frappe.model.workflow import apply_workflow
+		from buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning import (
+			get_stage_activity,
+		)
+		p = self._make_project()
+		st = self._make_stage(p.name)
+		apply_workflow(st, "Submit for Approval")
+		types = [a["type"] for a in get_stage_activity(st.name)]
+		self.assertIn("created", types)
+		self.assertIn("submitted", types)
+
+	# --- PRM-002: PM auto-added to team ---------------------------------
+	def test_project_manager_auto_added_to_team(self):
+		pm = f"pm-{self._n}@example.com"
+		frappe.get_doc({
+			"doctype": "User", "email": pm, "first_name": "PM",
+			"send_welcome_email": 0, "user_type": "System User",
+			"persona": "Project Manager", "company": self.company,
+		}).insert(ignore_permissions=True)
+		p = frappe.get_doc({
+			"doctype": "Project", "project_name": f"PMTEAM {self._n}",
+			"custom_project_id": f"PMTEAM-{self._n}", "project_status": "Ongoing",
+			"company": self.company, "project_manager": pm,
+		}).insert(ignore_permissions=True)
+		self.assertTrue(frappe.db.exists("Project Team", {
+			"parent": p.name, "parentfield": "custom_team_members", "user": pm,
+		}))
+
+	# --- PTT-005: seed stages onto an existing project ------------------
+	def test_seed_stages_from_template(self):
+		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
+			self.skipTest("No Commercial template seeded on this site")
+		from buildsuite_core.utils.project import seed_stages_from_template
+		p = self._make_project()
+		frappe.db.set_value("Project", p.name, "project_type", "Commercial")
+		res = seed_stages_from_template(p.name)
+		self.assertGreater(res["seeded"], 0)
+		stages = frappe.get_all("Stage Planning", filters={"project": p.name}, pluck="name")
+		self.assertTrue(stages)
+		for s in stages:
+			for r in frappe.get_doc("Stage Planning", s).stage_planning_tasks:
+				self.assertEqual(r.planned_qty, 100)
