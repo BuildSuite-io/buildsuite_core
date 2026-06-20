@@ -19,7 +19,7 @@ const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
 const adapter = createDataAdapter(store)
-const { canCreate } = usePermissions()
+const { canCreate, canRead } = usePermissions()
 
 const projectFilter = ref('')
 // Approval-lifecycle state (Frappe workflow_state). Honors ?status= deep links.
@@ -101,7 +101,13 @@ function onRowClick(row) { router.push(`/stage-plannings/${row.name}`) }
       <RouterLink v-if="canCreate('stagePlanning')" to="/stage-plannings/new" class="desk-save-btn">+ New Stage</RouterLink>
     </template>
 
+    <!-- PRM-014 — roles without Stage Planning access get a restricted notice. -->
+    <div v-if="!canRead('stagePlanning')" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      You don't have access to Stage Planning.
+    </div>
+
     <DocTypeListView
+      v-else
       doctype="Stage Planning"
       :field-order="[
         'stage_name',

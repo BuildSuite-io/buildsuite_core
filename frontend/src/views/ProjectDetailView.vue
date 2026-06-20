@@ -639,18 +639,59 @@ function addSubproject() {
   router.push({ path: '/projects/new', query: { parentId: resolvedProjectId.value } })
 }
 
+// PTT-005 — re-seed stages from the backend BuildSuite Project Template. The
+// summary (stage names + count) and the seed action both go through the backend
+// so an existing project gets real Stage Planning records (the old store-fixture
+// path was a silent no-op in production).
+const templateSummary = ref(null)
+async function loadTemplateSummary(type) {
+  templateSummary.value = null
+  if (!type) return
+  try {
+    const res = await fetch(
+      '/api/method/buildsuite_core.utils.project.get_project_template_summary?' +
+        new URLSearchParams({ project_type: type }),
+      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } },
+    )
+    const data = await res.json()
+    const s = data?.message || null
+    templateSummary.value = s && s.exists ? s : null
+  } catch {
+    templateSummary.value = null
+  }
+}
+watch(() => project.value?.type, loadTemplateSummary, { immediate: true })
+
 async function seedFromTemplate() {
-  const tpl = store.templateForProjectType(project.value.type)
-  if (!tpl) return
-  const n = tpl.defaultStages.length
+  if (!templateSummary.value) return
+  const n = templateSummary.value.stage_count
   const ok = await confirmDialog({
     title: 'Seed default stages',
-    message: `Seed ${n} default stages from the ${project.value.type} template?\n\nThis will create ${n} stages on top of any existing ones — it does not replace or merge.`,
+    message: `Seed ${n} default stages from the ${project.value.type} template?\n\nThis creates ${n} stages on top of any existing ones — it does not replace or merge.`,
     confirmLabel: 'Seed stages',
   })
   if (!ok) return
-  store.seedStagesFromTemplate(resolvedProjectId.value)
-  stageListRef.value?.reload()
+  try {
+    const body = new URLSearchParams({ project: resolvedProjectId.value })
+    const res = await fetch(
+      '/api/method/buildsuite_core.utils.project.seed_stages_from_template',
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Frappe-CSRF-Token': window.csrf_token || '',
+        },
+        body: body.toString(),
+      },
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.exception || data?.exc_type || `HTTP ${res.status}`)
+    showToast(`Seeded ${data?.message?.seeded ?? n} stages`)
+    stageListRef.value?.reload()
+  } catch (err) {
+    showToast(err.message || 'Failed to seed stages', 'error')
+  }
 }
 
 const {
@@ -1061,7 +1102,7 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
           <template #empty>
             <div class="py-4">
               <div class="text-sm text-ink-500 italic mb-3">No stages planned yet.</div>
-              <div v-if="store.templateForProjectType(project.type)" class="flex items-center gap-2 flex-wrap">
+              <div v-if="templateSummary" class="flex items-center gap-2 flex-wrap">
                 <button type="button" class="desk-save-btn" @click="seedFromTemplate">
                   + Seed from {{ project.type }} template
                 </button>
@@ -1069,8 +1110,8 @@ function onBoqRowClick(row) { router.push(`/boq/${row.id}`) }
                   or plan one manually →
                 </RouterLink>
                 <div class="basis-full text-[11px] text-ink-500 mt-1">
-                  Will seed {{ store.templateForProjectType(project.type).defaultStages.length }} stages —
-                  {{ store.templateForProjectType(project.type).defaultStages.map(s => s.stageName).join(' → ') }}.
+                  Will seed {{ templateSummary.stage_count }} stages —
+                  {{ templateSummary.stage_names.join(' → ') }}.
                 </div>
               </div>
               <div v-else class="flex items-center gap-2 flex-wrap">

@@ -91,8 +91,10 @@ const entry = computed(() => {
 })
 
 // Permission gates (matrix-driven; own-scope resolves against the entry's owner).
-const { canEditRecord, canDeleteRecord } = usePermissions()
+const { canEditRecord, canDeleteRecord, canRead } = usePermissions()
 const canEditEntry = computed(() => canEditRecord('taskProgressEntry', entry.value))
+// PRM-014 — roles without read access get a restricted notice.
+const canViewEntry = computed(() => canRead('taskProgressEntry'))
 const canDeleteEntry = computed(() => canDeleteRecord('taskProgressEntry', entry.value))
 
 // ── Related records ──────────────────────────────────────────────────────────
@@ -400,8 +402,15 @@ const subtitle = computed(() => entry.value
 </script>
 
 <template>
+  <!-- PRM-014 — roles without Task Progress Entry access get a restricted notice. -->
+  <div v-if="!canViewEntry" class="px-6 py-20 text-center">
+    <div class="inline-block px-4 py-3 bg-warning-50 border border-warning-100 text-sm text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 8px;">
+      You don't have access to Task Progress Entries.
+    </div>
+  </div>
+
   <DeskPage
-    v-if="entry"
+    v-else-if="entry"
     :title="task ? task.name : entry.id"
     :subtitle="subtitle"
     :breadcrumbs="breadcrumbs"
