@@ -1,5 +1,5 @@
 app_name = "buildsuite_core"
-app_title = "Buildsuite Core"
+app_title = "BuildSuite Core"
 app_publisher = "Infraholic Innovations Pvt. Ltd"
 app_description = "A construction operating system built on Frappe"
 app_email = "app@buildsuite.io"
@@ -21,7 +21,7 @@ APP_ROUTE = "core"
 # 	{
 # 		"name": "buildsuite_core",
 # 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
-# 		"title": "Buildsuite Core",
+# 		"title": "BuildSuite Core",
 # 		"route": f"/{APP_ROUTE}",
 #         "has_permission": "buildsuite_core.api.permission.has_app_permission",
 # 	}
