@@ -938,6 +938,7 @@ const progressColor = computed(() => {
     <Teleport to="body">
       <div
         v-if="filingProgress"
+        data-test="tpe-modal"
         class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
         @click.self="cancelProgressEntry"
       >
@@ -964,7 +965,7 @@ const progressColor = computed(() => {
           <div class="p-5 overflow-y-auto flex-1">
             <DeskSection title="Progress" :cols="2">
               <DeskField label="Cumulative progress (%)" required :hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${task.progress || 0}%.`" :error="progressErrors.progressPct">
-                <DeskInput v-model="progressForm.progressPct" type="number" :min="task.progress || 0" max="100" step="1" @input="clearProgressError('progressPct')" />
+                <DeskInput v-model="progressForm.progressPct" data-test="field-progress" type="number" :min="task.progress || 0" max="100" step="1" @input="clearProgressError('progressPct')" />
               </DeskField>
               <DeskField label="Entry date" :error="progressErrors.entryDate">
                 <DeskInput v-model="progressForm.entryDate" type="date" @change="clearProgressError('entryDate')" />
@@ -1090,6 +1091,7 @@ const progressColor = computed(() => {
             >Cancel</button>
             <button
               type="button"
+              data-test="save-btn"
               class="desk-save-btn"
               :disabled="savingProgress"
               @click="saveProgressEntry"

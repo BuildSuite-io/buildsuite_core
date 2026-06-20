@@ -102,21 +102,19 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 })
 const saving = ref(false)
 
-// §14 — Company is chosen once, on create. Default to the site's default company
-// (Global Defaults). Subprojects inherit the parent's company, so the field is
-// hidden for them and the value isn't sent. Company is locked after create.
+// §14 — Company is chosen once, on create. Default to the site's default company.
+// Subprojects inherit the parent's company, so the field is hidden for them and
+// the value isn't sent. Company is locked after create. Uses a BuildSuite helper
+// rather than get_value on the Global Defaults Single (which 403s for non-admins).
 async function loadDefaultCompany() {
   if (route.query.parentId) return // subproject — inherits parent's company
   try {
     const res = await fetch(
-      '/api/method/frappe.client.get_value?' + new URLSearchParams({
-        doctype: 'Global Defaults',
-        fieldname: 'default_company',
-      }),
+      '/api/method/buildsuite_core.api.company.get_default_company',
       { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } }
     )
     const data = await res.json()
-    form.company = data?.message?.default_company || ''
+    form.company = data?.message || ''
   } catch (err) {
     console.warn('[NewProjectView] Failed to load default company', err)
   }
@@ -342,6 +340,7 @@ const breadcrumbs = computed(() => {
         >
           <DeskLinkPicker
             v-model="form.company"
+            data-test="pick-company"
             doctype="Company"
             placeholder="Select company"
             label-field="company_name"
