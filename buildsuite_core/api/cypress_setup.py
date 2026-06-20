@@ -19,6 +19,7 @@ CYPRESS_USERS = {
     "admin": ("cypress-admin@buildsuite.test", "Cypress Admin", "BuildSuite Administrator"),
     "pm": ("cypress-pm@buildsuite.test", "Cypress PM", "Project Manager"),
     "estimator": ("cypress-estimator@buildsuite.test", "Cypress Estimator", "Estimator"),
+    "procurement": ("cypress-procurement@buildsuite.test", "Cypress Procurement", "Procurement Officer"),
 }
 
 

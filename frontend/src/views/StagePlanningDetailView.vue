@@ -930,7 +930,7 @@ const breadcrumbs = computed(() => {
     </section>
 
     <!-- Activity — workflow transition timeline (actor + timestamp) -->
-    <section class="mb-6 border border-ink-200 dark:border-ink-700" style="border-radius: 6px;">
+    <section data-test="stage-activity" class="mb-6 border border-ink-200 dark:border-ink-700" style="border-radius: 6px;">
       <header class="px-4 py-2.5 border-b border-ink-200 bg-ink-50 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px 6px 0 0;">
         <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Activity</div>
       </header>
