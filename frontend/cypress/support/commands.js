@@ -11,6 +11,7 @@ const PERSONA_USERS = {
   admin: 'cypress-admin@buildsuite.test',
   pm: 'cypress-pm@buildsuite.test',
   estimator: 'cypress-estimator@buildsuite.test',
+  procurement: 'cypress-procurement@buildsuite.test',
 }
 
 // --- auth --------------------------------------------------------------------
