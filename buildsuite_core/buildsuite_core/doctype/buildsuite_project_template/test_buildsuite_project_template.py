@@ -37,3 +37,44 @@ class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
 		for s in stages:
 			for r in frappe.get_doc("Stage Planning", s).stage_planning_tasks:
 				self.assertEqual(r.planned_qty, 100)
+
+	# --- the three seed-on-create modes (PTT-001) --------------------------
+	def _seeded_project(self, stages, tasks):
+		"""Create a Commercial project with the given seed flags so the
+		after_insert template hook fires. Skips when no template is seeded."""
+		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
+			self.skipTest("No Commercial template seeded on this site")
+		return frappe.get_doc({
+			"doctype": "Project",
+			"project_name": f"SEED {self._n}",
+			"custom_project_id": f"SEED-{self._n}",
+			"company": self.company,
+			"project_type": "Commercial",
+			"custom_seed_default_stages": 1 if stages else 0,
+			"custom_seed_default_tasks": 1 if tasks else 0,
+		}).insert(ignore_permissions=True)
+
+	def test_seed_mode_stages_and_tasks(self):
+		# Both on → stages created WITH nested tasks, plus project-level tasks.
+		p = self._seeded_project(stages=True, tasks=True)
+		stages = frappe.get_all("Stage Planning", {"project": p.name}, pluck="name")
+		self.assertTrue(stages)
+		self.assertTrue(frappe.db.count("Task", {"project": p.name}))
+		nested = any(frappe.get_doc("Stage Planning", s).stage_planning_tasks for s in stages)
+		self.assertTrue(nested, "stages should carry nested tasks in this mode")
+
+	def test_seed_mode_stages_only(self):
+		# Stages on, tasks off → empty stages, NO tasks created.
+		p = self._seeded_project(stages=True, tasks=False)
+		stages = frappe.get_all("Stage Planning", {"project": p.name}, pluck="name")
+		self.assertTrue(stages)
+		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)
+		for s in stages:
+			self.assertEqual(len(frappe.get_doc("Stage Planning", s).stage_planning_tasks), 0)
+
+	def test_seed_mode_tasks_only(self):
+		# Tasks on, stages off → no stages; every template task (project-level and
+		# the ones nested in stage plans) lands as a plain project task.
+		p = self._seeded_project(stages=False, tasks=True)
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
+		self.assertTrue(frappe.db.count("Task", {"project": p.name}))

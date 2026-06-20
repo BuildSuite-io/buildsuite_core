@@ -149,3 +149,37 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self._file_tpe(t.name, -10)
 		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), 0)
+
+	def test_tpe_rolls_up_through_wp_subproject_and_parent(self):
+		# A single TPE drives the whole chain: task -> Work Package -> (sub)project
+		# -> parent project. (Stage Planning shows the task's live status; there is
+		# no separate stored stage progress — the stage sync only propagates dates.)
+		parent = self._make_project(company=self.company)
+		parent.is_group = 1
+		parent.save(ignore_permissions=True)
+
+		sub = frappe.get_doc({
+			"doctype": "Project", "project_name": f"ROLL sub {self._n}",
+			"custom_project_id": f"ROLL-SUB-{self._n}",
+			"parent_project": parent.name, "is_group": 0,
+		}).insert(ignore_permissions=True)
+
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": sub.name,
+			"work_package_name": f"ROLL WP {self._n}", "code": f"ROLL-WP-{self._n}",
+			"status": "Planned",
+		}).insert(ignore_permissions=True)
+
+		t = frappe.get_doc({
+			"doctype": "Task", "subject": f"ROLL task {self._n}",
+			"project": sub.name, "work_package": wp.name, "task_status": "Yet To Start",
+		}).insert(ignore_permissions=True)
+
+		self._file_tpe(t.name, 100)
+
+		t.reload()
+		self.assertEqual(t.progress, 100)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "progress"), 100)
+		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "Completed")
+		self.assertEqual(frappe.db.get_value("Project", sub.name, "percent_complete"), 100)
+		self.assertEqual(frappe.db.get_value("Project", parent.name, "percent_complete"), 100)
