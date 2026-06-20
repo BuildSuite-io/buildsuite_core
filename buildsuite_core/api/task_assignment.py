@@ -28,12 +28,12 @@ def _current_assignee(task):
 
 
 @frappe.whitelist()
-def get_task_assignee(task):
+def get_task_assignee(task: str):
 	return _current_assignee(task)
 
 
 @frappe.whitelist()
-def set_task_assignee(task, assignee=None):
+def set_task_assignee(task: str, assignee: str | None = None):
 	"""Single-assignee model on top of `_assign`: drop whatever was assigned
 	before, then assign the given user (if any). Returns the resulting assignee."""
 	frappe.get_doc("Task", task).check_permission("write")

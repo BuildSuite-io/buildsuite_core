@@ -151,7 +151,7 @@ def sync_stage_tasks_on_delete(doc, method=None):
 
 
 @frappe.whitelist()
-def set_multiple_status(names, status):
+def set_multiple_status(names: str, status: str):
 	names = json.loads(names)
 	for name in names:
 		task = frappe.get_doc("Task", name)
@@ -334,7 +334,8 @@ def update_delayed_tasks():
 		task_doc.task_status = "In Delay"
 		task_doc.save(ignore_permissions=True)
 
-	frappe.db.commit()
+	# Scheduled job; persists the delay-status batch.
+	frappe.db.commit()  # nosemgrep
 
 
 # Native ERPNext status -> BuildSuite task_status (reverse of the sync in
@@ -373,7 +374,9 @@ def backfill_task_status():
 		frappe.db.set_value("Task", row.name, "task_status", new_status, update_modified=False)
 		updated += 1
 	if updated:
-		frappe.db.commit()
+		# Batch backfill run via `bench execute`/patch, which does not auto-commit;
+		# the explicit commit persists the updates.
+		frappe.db.commit()  # nosemgrep
 	return updated
 
 
@@ -396,5 +399,7 @@ def backfill_task_type():
 		frappe.db.set_value("Task", row.name, "task_type", new_type, update_modified=False)
 		updated += 1
 	if updated:
-		frappe.db.commit()
+		# Batch backfill run via `bench execute`/patch, which does not auto-commit;
+		# the explicit commit persists the updates.
+		frappe.db.commit()  # nosemgrep
 	return updated

@@ -96,4 +96,4 @@ def dummy_project_from_template():
 	template = frappe.get_doc("BuildSuite Project Template", "Demo")
 
 	project_name = create_erpnext_project_from_template(template.as_dict())
-	print(f"Project created: {project_name}")
+	frappe.logger().info(f"Project created: {project_name}")

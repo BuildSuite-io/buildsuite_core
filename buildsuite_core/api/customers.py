@@ -13,7 +13,7 @@ _CUSTOMER_TYPES = ("Company", "Individual", "Partnership")
 
 
 @frappe.whitelist()
-def create_customer(customer_name, customer_type="Company"):
+def create_customer(customer_name: str, customer_type: str = "Company"):
 	customer_name = (customer_name or "").strip()
 	if not customer_name:
 		frappe.throw(_("Customer name is required."))

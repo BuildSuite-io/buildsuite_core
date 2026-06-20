@@ -11,7 +11,7 @@ from frappe import _
 
 
 @frappe.whitelist()
-def get_project_schedule(project):
+def get_project_schedule(project: str):
 	"""Return the schedule graph for a project: every task with its scheduling
 	fields and its PREDECESSOR edges. Successors are inferred client-side by
 	reversing the edge set. Respects Task read permission (uses get_list).
@@ -68,7 +68,7 @@ def get_project_schedule(project):
 
 
 @frappe.whitelist()
-def get_task_dependencies(task):
+def get_task_dependencies(task: str):
 	"""Predecessors (this task's depends_on) + inferred successors (tasks whose
 	depends_on includes this task), each with subject + dependency_type + lag."""
 	if not task:
@@ -99,7 +99,7 @@ def get_task_dependencies(task):
 
 
 @frappe.whitelist()
-def add_task_predecessor(task, predecessor, dependency_type="FS", lag_days=0):
+def add_task_predecessor(task: str, predecessor: str, dependency_type: str = "FS", lag_days: int = 0):
 	"""Add (or update) a predecessor edge on `task`. Saves the Task, so the
 	cycle guard runs and a circular edge is rejected. Returns the fresh graph."""
 	if not task or not predecessor:
@@ -127,7 +127,7 @@ def add_task_predecessor(task, predecessor, dependency_type="FS", lag_days=0):
 
 
 @frappe.whitelist()
-def remove_task_predecessor(task, predecessor):
+def remove_task_predecessor(task: str, predecessor: str):
 	"""Remove a predecessor edge from `task`. Returns the fresh graph."""
 	if not task or not predecessor:
 		frappe.throw(_("task and predecessor are required"))

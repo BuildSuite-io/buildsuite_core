@@ -118,7 +118,7 @@ def _activity_type_from_content(content):
 
 
 @frappe.whitelist()
-def reject_stage_planning(name, reason):
+def reject_stage_planning(name: str, reason: str):
 	"""Reject a Stage Planning with a mandatory reason.
 
 	Stamps reject_reason and applies the "Reject" workflow transition in one
@@ -143,7 +143,13 @@ def reject_stage_planning(name, reason):
 
 
 @frappe.whitelist()
-def add_stage_delay_reason(stage, reason, responsible_party=None, days_delayed=None, note=None):
+def add_stage_delay_reason(
+	stage: str,
+	reason: str,
+	responsible_party: str | None = None,
+	days_delayed: str | None = None,
+	note: str | None = None,
+):
 	"""Append a delay-log row to a Stage Planning.
 
 	Logging a delay is NOT a stage edit — it must work in any workflow state,
@@ -181,7 +187,7 @@ def add_stage_delay_reason(stage, reason, responsible_party=None, days_delayed=N
 
 
 @frappe.whitelist()
-def revise_stage_planning(name):
+def revise_stage_planning(name: str):
 	"""SAW-006 — clone a Rejected stage into a fresh Draft.
 
 	The original Rejected stage is left untouched as an audit record. The clone
@@ -203,7 +209,7 @@ def revise_stage_planning(name):
 
 
 @frappe.whitelist()
-def get_stage_activity(name):
+def get_stage_activity(name: str):
 	"""SAW-013 — normalized activity feed: creation + workflow timeline comments,
 	oldest first. Shape matches the frontend Activity panel."""
 	doc = frappe.get_doc("Stage Planning", name)

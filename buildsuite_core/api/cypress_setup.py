@@ -24,14 +24,14 @@ CYPRESS_USERS = {
 
 
 @frappe.whitelist()
-def ensure_cypress_users(password="Cypress-Suite-2026!"):
+def ensure_cypress_users(password: str = "Cypress-Suite-2026!"):
 	"""Idempotently create/refresh the Cypress persona test users. Returns a summary list.
 
 	Password policy is bypassed for these throwaway test accounts so a simple,
 	config-shared password works.
 	"""
 	if not (frappe.conf.developer_mode or frappe.flags.in_test):
-		frappe.throw("ensure_cypress_users is only available in developer / test mode")
+		frappe.throw(frappe._("ensure_cypress_users is only available in developer / test mode"))
 
 	summary = []
 	for persona_id, (email, full_name, persona) in CYPRESS_USERS.items():
@@ -60,5 +60,7 @@ def ensure_cypress_users(password="Cypress-Suite-2026!"):
 		doc.save(ignore_permissions=True) if action == "updated" else doc.insert(ignore_permissions=True)
 		summary.append(f"{action} {persona_id}: {email} (persona={persona})")
 
-	frappe.db.commit()
+	# Dev-only helper run via `bench execute`, which does not auto-commit; the
+	# explicit commit persists the provisioned users.
+	frappe.db.commit()  # nosemgrep
 	return summary

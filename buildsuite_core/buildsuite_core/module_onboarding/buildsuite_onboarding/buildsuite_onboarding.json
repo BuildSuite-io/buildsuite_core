@@ -1,7 +1,7 @@
 {
  "allow_roles": [
   {
-   "role": "All"
+   "role": "System Manager"
   }
  ],
  "creation": "2026-05-28 13:48:03.859433",
