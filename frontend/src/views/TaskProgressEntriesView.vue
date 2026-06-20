@@ -16,7 +16,7 @@ const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
 const adapter = createDataAdapter(store)
-const { canCreate } = usePermissions()
+const { canCreate, canRead } = usePermissions()
 
 const search = ref('')
 const taskFilter = ref(route.query.task || '')
@@ -149,8 +149,13 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
       <RouterLink v-if="canCreate('taskProgressEntry')" to="/progress-entries/new" class="desk-save-btn">+ New Entry</RouterLink>
     </template>
 
+    <!-- PRM-014 — roles without Task Progress Entry access get a restricted notice. -->
+    <div v-if="!canRead('taskProgressEntry')" class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px;">
+      You don't have access to Task Progress Entries.
+    </div>
+
     <!-- KPI strip -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+    <div v-if="canRead('taskProgressEntry')" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
       <div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px;">
         <div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Total entries</div>
         <div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.total }}</div>
@@ -170,6 +175,7 @@ function onRowClick(row) { router.push(`/progress-entries/${row.id}`) }
     </div>
 
     <DeskList
+      v-if="canRead('taskProgressEntry')"
       v-model="search"
       :rows="items"
       :columns="columns"
