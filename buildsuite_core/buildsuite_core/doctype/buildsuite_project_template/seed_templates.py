@@ -219,5 +219,5 @@ def seed_template(type_name):
 def seed_all():
 	"""Seed every template defined in TEMPLATES."""
 	created = [seed_template(name) for name in TEMPLATES]
-	print("Seeded BuildSuite Project Templates:", created)
+	frappe.logger().info(f"Seeded BuildSuite Project Templates: {created}")
 	return created

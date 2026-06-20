@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.model.document import Document
 
 # BuildSuite project_status -> native ERPNext Project status (Open/Completed/Cancelled).
 # New/Ongoing/Delayed all map to the active "Open"; only Completed closes the project.
@@ -158,7 +159,9 @@ def backfill_project_status(doc=None, method=None):
 		frappe.db.set_value("Project", row.name, "project_status", new_status, update_modified=False)
 		updated += 1
 	if updated:
-		frappe.db.commit()
+		# Batch backfill run via `bench execute`/patch, which does not auto-commit;
+		# the explicit commit persists the status updates.
+		frappe.db.commit()  # nosemgrep
 	return updated
 
 
@@ -224,7 +227,7 @@ def seed_from_template_on_insert(doc, method=None):
 
 
 @frappe.whitelist()
-def get_project_template_summary(project_type):
+def get_project_template_summary(project_type: str):
 	"""Preview summary of the template for a Project Type (used by the create form).
 
 	Returns the stage names and the TOTAL task count — the flat project-level
@@ -256,7 +259,7 @@ def get_project_template_summary(project_type):
 
 
 @frappe.whitelist()
-def seed_stages_from_template(project):
+def seed_stages_from_template(project: str):
 	"""PTT-005 — append stages from the matching BuildSuite Project Template onto
 	an EXISTING project. Mirrors the create-time seed (seed_from_template_on_insert)
 	and reuses create_stage_plan, so each seeded stage carries its template tasks
@@ -325,7 +328,7 @@ def _ensure_team_member(project_name, user):
 
 
 @frappe.whitelist()
-def create_warehouse_for_project(doc, method=None):
+def create_warehouse_for_project(doc: Document, method: str | None = None):
 	# Create Projects Group Warehouse
 	if not frappe.db.exists("Warehouse", {"warehouse_name": "Projects", "company": doc.company}):
 		warehouse = frappe.new_doc("Warehouse")
@@ -369,7 +372,7 @@ def create_warehouse_for_project(doc, method=None):
 
 
 @frappe.whitelist()
-def delete_warehouse_for_project(doc, method=None):
+def delete_warehouse_for_project(doc: Document, method: str | None = None):
 	project_warehouse = f"{doc.project_name} Store"
 
 	warehouse_name = frappe.db.get_value(

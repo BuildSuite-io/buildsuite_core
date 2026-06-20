@@ -16,14 +16,14 @@ def _team(doc):
 
 
 @frappe.whitelist()
-def get_project_team(project):
+def get_project_team(project: str):
 	doc = frappe.get_doc("Project", project)
 	doc.check_permission("read")
 	return _team(doc)
 
 
 @frappe.whitelist()
-def add_project_team_member(project, user):
+def add_project_team_member(project: str, user: str):
 	doc = frappe.get_doc("Project", project)
 	doc.check_permission("write")
 
@@ -39,7 +39,7 @@ def add_project_team_member(project, user):
 
 
 @frappe.whitelist()
-def remove_project_team_member(project, user):
+def remove_project_team_member(project: str, user: str):
 	doc = frappe.get_doc("Project", project)
 	doc.check_permission("write")
 

@@ -90,7 +90,9 @@ def rename_app_route(new_route):
 
 
 def _read(path):
-	with open(path, encoding="utf-8") as fh:
+	# Internal route-rename CLI utility; `path` is always an app-owned file
+	# (hooks.py / www pages), never web input. nosemgrep: frappe-security-file-traversal
+	with open(path, encoding="utf-8") as fh:  # nosemgrep
 		return fh.read()
 
 
@@ -99,7 +101,8 @@ def _sub_in_file(path, pattern, new_value):
 	new_text, n = pattern.subn(lambda m: f"{m.group(1)}{new_value}{m.group(3)}", text)
 	if not n:
 		raise RuntimeError(f"Could not find the route token to rewrite in {path}")
-	with open(path, "w", encoding="utf-8") as fh:
+	# Same app-owned path as _read above (internal CLI, never web input).
+	with open(path, "w", encoding="utf-8") as fh:  # nosemgrep
 		fh.write(new_text)
 
 
