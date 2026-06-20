@@ -5,11 +5,12 @@
 // DocType carries those fields.
 
 import { ref, computed, watch } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { useSessionStore } from '@/stores/session'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
 
 // Mirrors the backend Stage Planning Approval workflow (permissions/setup.py
@@ -25,9 +26,11 @@ const WORKFLOW_ACTIONS = {
     { action: 'Approve', roles: STAGE_FULL_ROLES, variant: 'success' },
     { action: 'Reject', roles: STAGE_FULL_ROLES, variant: 'danger' },
   ],
-  // Rejected is terminal — Revise is no longer allowed after a rejection.
-  // A rejected stage can be edited/deleted but not pushed back into the cycle.
-  'Rejected': [],
+  // Rejected is an audit record (SAW-006): editing it isn't allowed; instead
+  // "Revise" CLONES it into a fresh Draft and opens the clone in edit mode.
+  'Rejected': [
+    { action: 'Revise', roles: STAGE_FIELD_ROLES, variant: 'warning', clone: true },
+  ],
   'Approved': [
     { action: 'Revise', roles: STAGE_FULL_ROLES, variant: 'warning' },
     { action: 'Cancel', roles: STAGE_FULL_ROLES, variant: 'danger' },
@@ -40,9 +43,11 @@ const WORKFLOW_ACTIONS = {
 const STATE_EDIT_ROLES = {
   'Draft': STAGE_FIELD_ROLES,
   'Pending Approval': STAGE_FULL_ROLES,
-  'Approved': ['System Manager'],
-  'Rejected': STAGE_FIELD_ROLES,
-  'Cancelled': ['System Manager'],
+  // SAW-011 — an Approved stage is fully locked (Revise → Draft to change it).
+  'Approved': [],
+  // SAW-006 — a Rejected stage is read-only; "Revise" clones it instead.
+  'Rejected': [],
+  'Cancelled': [],
 }
 
 // Delete gating per state. S100: an Approved stage may only be deleted by an
@@ -70,9 +75,15 @@ import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
 
 const props = defineProps({ id: String })
 const router = useRouter()
+const route = useRoute()
 const store = useDataStore()
 const session = useSessionStore()
 const adapter = createDataAdapter(store)
+const { canRead } = usePermissions()
+
+// PRM-014 — roles without read access (e.g. Procurement Officer) get a
+// restricted-access notice instead of the stage detail.
+const canViewStage = computed(() => canRead('stagePlanning'))
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10)
 
@@ -338,6 +349,19 @@ const canDelete = computed(() => {
   return delRoles.some((r) => userRoles.value.includes(r))
 })
 
+// SAW-011 — once Approved, the task list + planned quantities are locked for
+// everyone (the Add/Remove control and the inline qty inputs go read-only).
+const tasksLocked = computed(() => stage.value?.workflowState === 'Approved')
+
+// Route a workflow button to the right handler: Reject opens the reason modal,
+// a `clone` action (Revise on a Rejected stage) clones into a fresh Draft, and
+// everything else applies the Frappe workflow transition.
+function runAction(wf) {
+  if (wf.action === 'Reject') return openRejectModal()
+  if (wf.clone) return reviseRejectedStage()
+  return applyWorkflowAction(wf.action)
+}
+
 async function applyWorkflowAction(action) {
   if (!stage.value) return
   workflowActing.value = action
@@ -360,11 +384,80 @@ async function applyWorkflowAction(action) {
       throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`)
     }
     await stageResource.value?.reload?.()
+    await fetchActivity()
     showToast(`${action} applied`)
   } catch (err) {
     showToast(err.message || `Failed to apply ${action}`, 'error')
   } finally {
     workflowActing.value = null
+  }
+}
+
+// SAW-006 — clone a Rejected stage into a fresh Draft (the original stays as an
+// audit record) and open the clone in edit mode.
+async function reviseRejectedStage() {
+  if (!stage.value) return
+  workflowActing.value = 'Revise'
+  try {
+    const body = new URLSearchParams({ name: stage.value.id })
+    const response = await fetch(
+      '/api/method/buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning.revise_stage_planning',
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Frappe-CSRF-Token': window.csrf_token || '',
+        },
+        body: body.toString(),
+      },
+    )
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`)
+    }
+    const newName = data?.message?.name
+    showToast('Stage revised — editing the new draft')
+    if (newName) router.push({ path: `/stage-plannings/${newName}`, query: { edit: '1' } })
+  } catch (err) {
+    showToast(err.message || 'Failed to revise stage', 'error')
+  } finally {
+    workflowActing.value = null
+  }
+}
+
+// SAW-013 — activity log. Fetched from the backend timeline (creation + workflow
+// transition comments) and rendered in the Activity panel.
+const ACTIVITY_GLYPHS = {
+  created: { glyph: '✓', cls: 'text-ink-500' },
+  submitted: { glyph: '⌛', cls: 'text-info-700' },
+  approved: { glyph: '✓', cls: 'text-success-700' },
+  rejected: { glyph: '✕', cls: 'text-danger-700' },
+  revised: { glyph: '↺', cls: 'text-warning-700' },
+  cancelled: { glyph: '⊘', cls: 'text-ink-500' },
+  info: { glyph: '•', cls: 'text-ink-500' },
+}
+function activityGlyph(type) { return ACTIVITY_GLYPHS[type]?.glyph || '•' }
+function activityGlyphCls(type) { return ACTIVITY_GLYPHS[type]?.cls || 'text-ink-500' }
+function activityWhen(at) {
+  if (!at) return ''
+  const d = new Date(String(at).replace(' ', 'T'))
+  return isNaN(d) ? at : d.toLocaleString()
+}
+
+const activityEntries = ref([])
+async function fetchActivity() {
+  if (!stage.value) { activityEntries.value = []; return }
+  try {
+    const res = await fetch(
+      '/api/method/buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning.get_stage_activity?' +
+        new URLSearchParams({ name: stage.value.id }),
+      { credentials: 'include', headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' } },
+    )
+    const data = await res.json().catch(() => ({}))
+    activityEntries.value = Array.isArray(data?.message) ? data.message : []
+  } catch {
+    activityEntries.value = []
   }
 }
 
@@ -403,6 +496,7 @@ async function confirmReject() {
     }
     showRejectModal.value = false
     await stageResource.value?.reload?.()
+    await fetchActivity()
     showToast('Stage rejected')
   } catch (err) {
     rejectError.value = err.message || 'Failed to reject stage'
@@ -428,6 +522,14 @@ function snapshotStage(s) {
 
 watch(stage, (s) => {
   if (s && !editing.value) editForm.value = snapshotStage(s)
+}, { immediate: true })
+
+// Load the activity feed when the stage resolves / changes; auto-enter edit mode
+// when arrived via ?edit=1 (the revise-clone flow lands here).
+watch(() => stage.value?.id, (id) => {
+  if (!id) return
+  fetchActivity()
+  if (route.query.edit && canEdit.value && !editing.value) startEdit()
 }, { immediate: true })
 
 function startEdit() {
@@ -595,8 +697,15 @@ const breadcrumbs = computed(() => {
 </script>
 
 <template>
+  <!-- PRM-014 — roles without Stage Planning access get a restricted notice. -->
+  <div v-if="!canViewStage" class="px-6 py-20 text-center">
+    <div class="inline-block px-4 py-3 bg-warning-50 border border-warning-100 text-sm text-warning-700 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 8px;">
+      You don't have access to Stage Planning.
+    </div>
+  </div>
+
   <DeskPage
-    v-if="stage"
+    v-else-if="stage"
     :title="stage.stageName"
     :subtitle="`${stage.id} · ${project ? project.name : stage.project}`"
     :status="stage.workflowState"
@@ -618,7 +727,7 @@ const breadcrumbs = computed(() => {
           type="button"
           class="desk-save-btn"
           :disabled="!!workflowActing"
-          @click="applyWorkflowAction(wf.action)"
+          @click="runAction(wf)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
         <button
           v-else-if="wf.variant === 'success'"
@@ -626,7 +735,7 @@ const breadcrumbs = computed(() => {
           class="text-xs px-2.5 py-1 bg-success-600 hover:bg-success-700 text-white font-medium"
           style="border-radius: 6px;"
           :disabled="!!workflowActing"
-          @click="applyWorkflowAction(wf.action)"
+          @click="runAction(wf)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
         <button
           v-else-if="wf.variant === 'warning'"
@@ -634,7 +743,7 @@ const breadcrumbs = computed(() => {
           class="text-xs px-2.5 py-1 border border-warning-300 bg-white hover:bg-warning-50 text-warning-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
           style="border-radius: 6px;"
           :disabled="!!workflowActing"
-          @click="applyWorkflowAction(wf.action)"
+          @click="runAction(wf)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
         <button
           v-else-if="wf.variant === 'danger'"
@@ -642,7 +751,7 @@ const breadcrumbs = computed(() => {
           class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 dark:bg-ink-800 dark:border-ink-700 dark:hover:bg-ink-700"
           style="border-radius: 6px;"
           :disabled="!!workflowActing"
-          @click="wf.action === 'Reject' ? openRejectModal() : applyWorkflowAction(wf.action)"
+          @click="runAction(wf)"
         >{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}</button>
       </template>
 
@@ -767,7 +876,9 @@ const breadcrumbs = computed(() => {
           <span class="text-[11px] text-ink-500 tabular-nums">
             {{ (stage.stagePlanningTasks || []).length }} task{{ (stage.stagePlanningTasks || []).length === 1 ? '' : 's' }}
           </span>
+          <span v-if="tasksLocked" class="text-[11px] text-ink-400 italic">Locked — stage is approved</span>
           <button
+            v-else
             type="button"
             class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
             style="border-radius: 6px;"
@@ -813,7 +924,7 @@ const breadcrumbs = computed(() => {
                   max="100"
                   step="1"
                   class="!text-xs !text-right !py-1"
-                  :disabled="saving"
+                  :disabled="saving || tasksLocked"
                   @update:model-value="onPlannedQtyChange(row, $event)"
                 />
                 <span class="text-[11px] text-ink-500">%</span>
@@ -831,12 +942,30 @@ const breadcrumbs = computed(() => {
       </div>
     </section>
 
-    <!-- Activity — placeholder until a backend activity/timeline log is wired -->
-    <section class="mb-6">
-      <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-2">Activity</div>
-      <div class="border border-ink-200 px-5 py-8 text-center text-sm text-ink-400 italic dark:border-ink-700" style="border-radius: 6px;">
-        Stage activity (submitted, approved, rejected, revised, edited) will appear here.
+    <!-- Activity — workflow transition timeline (actor + timestamp) -->
+    <section class="mb-6 border border-ink-200 dark:border-ink-700" style="border-radius: 6px;">
+      <header class="px-4 py-2.5 border-b border-ink-200 bg-ink-50 dark:bg-ink-800 dark:border-ink-700" style="border-radius: 6px 6px 0 0;">
+        <div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Activity</div>
+      </header>
+      <div v-if="activityEntries.length" class="divide-y divide-ink-100 dark:divide-ink-800">
+        <div
+          v-for="(entry, i) in activityEntries"
+          :key="i"
+          class="px-4 py-2.5 flex items-start gap-3"
+        >
+          <span
+            :class="activityGlyphCls(entry.type)"
+            class="inline-flex items-center justify-center w-5 h-5 text-sm flex-shrink-0 leading-none"
+          >{{ activityGlyph(entry.type) }}</span>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-ink-800 dark:text-[#D4D4D4]">{{ entry.text || entry.type }}</div>
+            <div class="text-[11px] text-ink-500 mt-0.5">
+              by {{ entry.by_name || entry.by }} · {{ activityWhen(entry.at) }}
+            </div>
+          </div>
+        </div>
       </div>
+      <div v-else class="px-4 py-3 text-xs text-ink-400 italic">No activity yet.</div>
     </section>
 
     <!-- Edit modal -->
