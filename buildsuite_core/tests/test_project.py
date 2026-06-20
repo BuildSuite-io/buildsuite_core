@@ -104,7 +104,30 @@ class TestProject(BuildSuiteTestCase):
 		parent.reload()
 		self.assertEqual(parent.percent_complete, 90)
 
-	# --- guarded cascade delete (PRJ-014, TSK-013) ----------------------
+	# --- required + unique fields (PRJ-003, PRJ-018) --------------------
+	def test_duplicate_project_id_rejected(self):
+		# PRJ-003: custom_project_id is unique — a second project reusing it fails.
+		self._make_project(company=self.company)  # custom_project_id = UAT-<n>
+		dup = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": f"UAT dup {self._n}",
+			"custom_project_id": f"UAT-{self._n}",  # same id
+			"company": self.company,
+		})
+		with self.assertRaises(frappe.exceptions.ValidationError):
+			dup.insert(ignore_permissions=True)
+
+	def test_project_requires_name(self):
+		# PRJ-018: project_name is mandatory.
+		p = frappe.get_doc({
+			"doctype": "Project",
+			"custom_project_id": f"UAT-NONAME-{self._n}",
+			"company": self.company,
+		})
+		with self.assertRaises(frappe.MandatoryError):
+			p.insert(ignore_permissions=True)
+
+	# --- guarded cascade delete (PRJ-014, STG-011) ----------------------
 	def test_cascade_delete_removes_descendants(self):
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
@@ -113,6 +136,10 @@ class TestProject(BuildSuiteTestCase):
 			"doctype": "Work Package", "project": p.name,
 			"work_package_name": "UAT WP", "code": f"WP-{self._n}",
 		}).insert(ignore_permissions=True)
+		stage = frappe.get_doc({
+			"doctype": "Stage Planning", "stage_name": f"CASC {self._n}",
+			"project": p.name, "workflow_state": "Draft",
+		}).insert(ignore_permissions=True)
 
 		frappe.delete_doc("Project", p.name, ignore_permissions=True)
 
@@ -120,6 +147,7 @@ class TestProject(BuildSuiteTestCase):
 		self.assertFalse(frappe.db.exists("Task", t.name))
 		self.assertFalse(frappe.db.exists("Task Progress Entry", tpe.name))
 		self.assertFalse(frappe.db.exists("Work Package", wp.name))
+		self.assertFalse(frappe.db.exists("Stage Planning", stage.name))
 
 	# --- team membership (custom_team_members) --------------------------
 	def test_project_team_add_and_remove(self):

@@ -130,3 +130,73 @@ class TestStagePlanning(BuildSuiteTestCase):
 		types = [a["type"] for a in get_stage_activity(st.name)]
 		self.assertIn("created", types)
 		self.assertIn("submitted", types)
+
+	def test_new_stage_starts_in_draft(self):
+		# SAW-001 / STG-001
+		p = self._make_project()
+		st = frappe.get_doc({
+			"doctype": "Stage Planning", "stage_name": f"D {self._n}",
+			"project": p.name,
+		}).insert(ignore_permissions=True)
+		self.assertEqual(st.workflow_state, "Draft")
+
+	def test_reject_requires_comment(self):
+		# SAW-004
+		p = self._make_project()
+		st = self._make_stage(p.name)
+		apply_workflow(st, "Submit for Approval")
+		with self.assertRaises(frappe.ValidationError):
+			reject_stage_planning(st.name, "")
+
+	def test_reject_sets_state_and_reason(self):
+		# SAW-005
+		p = self._make_project()
+		st = self._make_stage(p.name)
+		apply_workflow(st, "Submit for Approval")
+		reject_stage_planning(st.name, "Out of scope")
+		st.reload()
+		self.assertEqual(st.workflow_state, "Rejected")
+		self.assertEqual(st.reject_reason, "Out of scope")
+
+	def test_site_engineer_cannot_approve(self):
+		# SAW-010 — Approve/Reject are not available to a Site Engineer.
+		from frappe.model.workflow import get_transitions
+
+		se = f"se2-{self._n}@example.com"
+		frappe.get_doc({
+			"doctype": "User", "email": se, "first_name": "SE",
+			"send_welcome_email": 0, "user_type": "System User",
+			"persona": "Site Engineer", "company": self.company,
+		}).insert(ignore_permissions=True)
+		p = frappe.get_doc({
+			"doctype": "Project", "project_name": f"SE {self._n}",
+			"custom_project_id": f"SE-{self._n}", "project_status": "Ongoing",
+			"company": self.company, "custom_team_members": [{"user": se}],
+		}).insert(ignore_permissions=True)
+
+		frappe.set_user(se)
+		try:
+			st = frappe.get_doc({
+				"doctype": "Stage Planning", "stage_name": f"SE {self._n}",
+				"project": p.name, "workflow_state": "Draft",
+			}).insert()
+			apply_workflow(st, "Submit for Approval")
+			st.reload()
+			actions = [t.action for t in get_transitions(st)]
+			self.assertNotIn("Approve", actions)
+			self.assertNotIn("Reject", actions)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_template_instantiation_on_create(self):
+		# HOK-003 — creating a project with the seed flag instantiates stages.
+		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
+			self.skipTest("No Commercial template seeded on this site")
+		p = frappe.get_doc({
+			"doctype": "Project", "project_name": f"SEED {self._n}",
+			"custom_project_id": f"SEED-{self._n}", "project_status": "Ongoing",
+			"company": self.company, "project_type": "Commercial",
+			"custom_seed_default_stages": 1,
+		}).insert(ignore_permissions=True)
+		stages = frappe.get_all("Stage Planning", filters={"project": p.name})
+		self.assertTrue(stages)
