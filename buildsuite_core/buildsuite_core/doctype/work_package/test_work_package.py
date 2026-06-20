@@ -58,3 +58,37 @@ class TestWorkPackage(BuildSuiteTestCase):
 		}).insert(ignore_permissions=True)
 		self._file_tpe(t.name, 40)  # progress filed, but WP is manually On Hold
 		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "On Hold")
+
+	def test_wp_requires_project(self):
+		# WP-002
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "work_package_name": "no project",
+			"code": f"WPNP-{self._n}",
+		})
+		with self.assertRaises(frappe.MandatoryError):
+			wp.insert(ignore_permissions=True)
+
+	def test_empty_wp_deletes(self):
+		# A work package with no tasks deletes cleanly.
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "empty", "code": f"WPE-{self._n}",
+		}).insert(ignore_permissions=True)
+		frappe.delete_doc("Work Package", wp.name, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("Work Package", wp.name))
+
+	def test_wp_with_tasks_is_link_protected(self):
+		# WP-005 (current behavior): a WP linked by a task can't be deleted while
+		# the task still references it (Frappe link integrity).
+		p = self._make_project(company=self.company)
+		wp = frappe.get_doc({
+			"doctype": "Work Package", "project": p.name,
+			"work_package_name": "linked", "code": f"WPL-{self._n}",
+		}).insert(ignore_permissions=True)
+		frappe.get_doc({
+			"doctype": "Task", "subject": "linked task", "project": p.name,
+			"work_package": wp.name,
+		}).insert(ignore_permissions=True)
+		with self.assertRaises(frappe.LinkExistsError):
+			frappe.delete_doc("Work Package", wp.name, ignore_permissions=True)
