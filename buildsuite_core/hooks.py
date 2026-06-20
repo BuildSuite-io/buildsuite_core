@@ -176,7 +176,11 @@ doc_events = {
 		"after_insert": [
 			"buildsuite_core.utils.project.seed_from_template_on_insert",
 			"buildsuite_core.utils.project.create_warehouse_for_project",
+			"buildsuite_core.utils.project.ensure_project_team_membership",
 		],
+		# PRM-002 — keep team membership in sync when project_manager is
+		# (re)assigned; visibility is team-membership based.
+		"on_update": "buildsuite_core.utils.project.ensure_project_team_membership",
 		# cascade runs first (it blocks on accounting/stock links); warehouse
 		# cleanup follows only if the delete proceeds.
 		"on_trash": [

@@ -260,6 +260,70 @@ def get_project_template_summary(project_type):
 
 
 @frappe.whitelist()
+def seed_stages_from_template(project):
+    """PTT-005 — append stages from the matching BuildSuite Project Template onto
+    an EXISTING project. Mirrors the create-time seed (seed_from_template_on_insert)
+    and reuses create_stage_plan, so each seeded stage carries its template tasks
+    at 100% planned qty. Returns the number of stages created.
+    """
+    doc = frappe.get_doc('Project', project)
+    doc.check_permission('write')
+
+    if not doc.project_type:
+        frappe.throw(_("This project has no Project Type, so there is no template to seed from."))
+
+    template_name = frappe.db.get_value(
+        'BuildSuite Project Template', {'project_type': doc.project_type}, 'name'
+    )
+    if not template_name:
+        frappe.throw(_("No template is configured for project type {0}.").format(doc.project_type))
+
+    template = frappe.get_doc('BuildSuite Project Template', template_name)
+    from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.buildsuite_project_template import (
+        create_stage_plan,
+    )
+
+    count = 0
+    for row in template.stage_plans:
+        stage_plan_doc = frappe.get_doc('Stage Plan Template', row.stage_plan)
+        create_stage_plan(doc.name, stage_plan_doc, with_tasks=True)
+        count += 1
+    return {'seeded': count}
+
+
+def ensure_project_team_membership(doc, method=None):
+    """PRM-002 — project visibility is team-membership based. Ensure the project's
+    creator and its assigned project_manager are team members, so the project is
+    visible to them under the team-scoped permission model. Idempotent; inserts the
+    child rows directly to avoid re-triggering the parent's on_update.
+    """
+    _ensure_team_member(doc.name, doc.owner)
+    _ensure_team_member(doc.name, getattr(doc, 'project_manager', None))
+
+
+def _ensure_team_member(project_name, user):
+    if not user or user == 'Administrator':
+        return
+    if not frappe.db.exists('User', user):
+        return
+    if frappe.db.exists('Project Team', {
+        'parenttype': 'Project',
+        'parentfield': 'custom_team_members',
+        'parent': project_name,
+        'user': user,
+    }):
+        return
+    frappe.get_doc({
+        'doctype': 'Project Team',
+        'parenttype': 'Project',
+        'parentfield': 'custom_team_members',
+        'parent': project_name,
+        'user': user,
+        'full_name': frappe.db.get_value('User', user, 'full_name'),
+    }).insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
 def create_warehouse_for_project(doc, method=None):
     # Create Projects Group Warehouse
     if not frappe.db.exists(
