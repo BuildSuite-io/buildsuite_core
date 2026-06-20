@@ -21,12 +21,14 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(p.status, "Completed")
 
 	def test_project_status_defaults_to_new(self):
-		p = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT {self._n}",
-			"custom_project_id": f"UAT-{self._n}",
-			"company": self.company,
-		})
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT {self._n}",
+				"custom_project_id": f"UAT-{self._n}",
+				"company": self.company,
+			}
+		)
 		p.insert(ignore_permissions=True)
 		self.assertEqual(p.project_status, "New")
 		self.assertEqual(p.status, "Open")
@@ -34,23 +36,27 @@ class TestProject(BuildSuiteTestCase):
 	# --- company inherit + lock (PRJ-005, PRJ-012, PRJ-013) -------------
 	def test_subproject_inherits_company(self):
 		parent = self._make_project(company=self.company)
-		child = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT sub {self._n}",
-			"custom_project_id": f"UAT-SUB-{self._n}",
-			"parent_project": parent.name,
-			"is_group": 0,
-		})
+		child = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT sub {self._n}",
+				"custom_project_id": f"UAT-SUB-{self._n}",
+				"parent_project": parent.name,
+				"is_group": 0,
+			}
+		)
 		child.insert(ignore_permissions=True)
 		self.assertEqual(child.company, self.company)
 
 	def test_project_infers_company_from_creating_user(self):
 		frappe.db.set_value("User", frappe.session.user, "company", self.company)
-		p = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT infer {self._n}",
-			"custom_project_id": f"UAT-INF-{self._n}",
-		})
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT infer {self._n}",
+				"custom_project_id": f"UAT-INF-{self._n}",
+			}
+		)
 		p.insert(ignore_permissions=True)
 		self.assertEqual(p.company, self.company)
 
@@ -88,13 +94,15 @@ class TestProject(BuildSuiteTestCase):
 		pt = self._make_task(parent.name)
 		self._file_tpe(pt.name, 60)
 
-		sub = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT sub {self._n}",
-			"custom_project_id": f"UAT-SUB-{self._n}",
-			"parent_project": parent.name,
-			"is_group": 0,
-		}).insert(ignore_permissions=True)
+		sub = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT sub {self._n}",
+				"custom_project_id": f"UAT-SUB-{self._n}",
+				"parent_project": parent.name,
+				"is_group": 0,
+			}
+		).insert(ignore_permissions=True)
 		for _ in range(3):
 			self._file_tpe(self._make_task(sub.name).name, 100)
 
@@ -108,22 +116,26 @@ class TestProject(BuildSuiteTestCase):
 	def test_duplicate_project_id_rejected(self):
 		# PRJ-003: custom_project_id is unique — a second project reusing it fails.
 		self._make_project(company=self.company)  # custom_project_id = UAT-<n>
-		dup = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": f"UAT dup {self._n}",
-			"custom_project_id": f"UAT-{self._n}",  # same id
-			"company": self.company,
-		})
+		dup = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT dup {self._n}",
+				"custom_project_id": f"UAT-{self._n}",  # same id
+				"company": self.company,
+			}
+		)
 		with self.assertRaises(frappe.exceptions.ValidationError):
 			dup.insert(ignore_permissions=True)
 
 	def test_project_requires_name(self):
 		# PRJ-018: project_name is mandatory.
-		p = frappe.get_doc({
-			"doctype": "Project",
-			"custom_project_id": f"UAT-NONAME-{self._n}",
-			"company": self.company,
-		})
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"custom_project_id": f"UAT-NONAME-{self._n}",
+				"company": self.company,
+			}
+		)
 		with self.assertRaises(frappe.MandatoryError):
 			p.insert(ignore_permissions=True)
 
@@ -132,14 +144,22 @@ class TestProject(BuildSuiteTestCase):
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
 		tpe = self._file_tpe(t.name, 20)
-		wp = frappe.get_doc({
-			"doctype": "Work Package", "project": p.name,
-			"work_package_name": "UAT WP", "code": f"WP-{self._n}",
-		}).insert(ignore_permissions=True)
-		stage = frappe.get_doc({
-			"doctype": "Stage Planning", "stage_name": f"CASC {self._n}",
-			"project": p.name, "workflow_state": "Draft",
-		}).insert(ignore_permissions=True)
+		wp = frappe.get_doc(
+			{
+				"doctype": "Work Package",
+				"project": p.name,
+				"work_package_name": "UAT WP",
+				"code": f"WP-{self._n}",
+			}
+		).insert(ignore_permissions=True)
+		stage = frappe.get_doc(
+			{
+				"doctype": "Stage Planning",
+				"stage_name": f"CASC {self._n}",
+				"project": p.name,
+				"workflow_state": "Draft",
+			}
+		).insert(ignore_permissions=True)
 
 		frappe.delete_doc("Project", p.name, ignore_permissions=True)
 
@@ -155,6 +175,7 @@ class TestProject(BuildSuiteTestCase):
 			add_project_team_member,
 			remove_project_team_member,
 		)
+
 		p = self._make_project(company=self.company)
 
 		team = add_project_team_member(p.name, "Administrator")
@@ -171,16 +192,34 @@ class TestProject(BuildSuiteTestCase):
 		# PRM-002 — the assigned project_manager is auto-added to the team so the
 		# team-scoped visibility model surfaces the project for them.
 		pm = f"pm-{self._n}@example.com"
-		frappe.get_doc({
-			"doctype": "User", "email": pm, "first_name": "PM",
-			"send_welcome_email": 0, "user_type": "System User",
-			"persona": "Project Manager", "company": self.company,
-		}).insert(ignore_permissions=True)
-		p = frappe.get_doc({
-			"doctype": "Project", "project_name": f"PMTEAM {self._n}",
-			"custom_project_id": f"PMTEAM-{self._n}", "project_status": "Ongoing",
-			"company": self.company, "project_manager": pm,
-		}).insert(ignore_permissions=True)
-		self.assertTrue(frappe.db.exists("Project Team", {
-			"parent": p.name, "parentfield": "custom_team_members", "user": pm,
-		}))
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": pm,
+				"first_name": "PM",
+				"send_welcome_email": 0,
+				"user_type": "System User",
+				"persona": "Project Manager",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"PMTEAM {self._n}",
+				"custom_project_id": f"PMTEAM-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"project_manager": pm,
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(
+			frappe.db.exists(
+				"Project Team",
+				{
+					"parent": p.name,
+					"parentfield": "custom_team_members",
+					"user": pm,
+				},
+			)
+		)

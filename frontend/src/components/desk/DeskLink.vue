@@ -6,17 +6,17 @@
 // (see CLAUDE.md §12.4). For nav-style links inside the DeskShell sidebar use a
 // plain RouterLink with .desk-nav-link instead.
 
-import { RouterLink } from 'vue-router'
+import { RouterLink } from "vue-router";
 
 defineProps({
-  to: { type: [String, Object], default: null },     // Vue Router target
-  href: { type: String, default: '' },               // external URL
-  target: { type: String, default: '' },             // for href: _blank etc.
-})
+	to: { type: [String, Object], default: null }, // Vue Router target
+	href: { type: String, default: "" }, // external URL
+	target: { type: String, default: "" }, // for href: _blank etc.
+});
 </script>
 
 <template>
-  <RouterLink v-if="to" :to="to" class="desk-link"><slot /></RouterLink>
-  <a v-else-if="href" :href="href" :target="target" class="desk-link"><slot /></a>
-  <span v-else class="desk-link"><slot /></span>
+	<RouterLink v-if="to" :to="to" class="desk-link"><slot /></RouterLink>
+	<a v-else-if="href" :href="href" :target="target" class="desk-link"><slot /></a>
+	<span v-else class="desk-link"><slot /></span>
 </template>

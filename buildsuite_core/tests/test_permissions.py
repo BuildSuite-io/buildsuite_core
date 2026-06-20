@@ -13,19 +13,30 @@ from buildsuite_core.tests.base import BuildSuiteTestCase
 class TestPermissions(BuildSuiteTestCase):
 	def _make_persona_user(self, persona, prefix):
 		email = f"{prefix}-{self._n}@example.com"
-		frappe.get_doc({
-			"doctype": "User", "email": email, "first_name": prefix.upper(),
-			"send_welcome_email": 0, "user_type": "System User",
-			"persona": persona, "company": self.company,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": prefix.upper(),
+				"send_welcome_email": 0,
+				"user_type": "System User",
+				"persona": persona,
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
 		return email
 
 	def _project_with_member(self, user):
-		return frappe.get_doc({
-			"doctype": "Project", "project_name": f"PERM {self._n}",
-			"custom_project_id": f"PERM-{self._n}", "project_status": "Ongoing",
-			"company": self.company, "custom_team_members": [{"user": user}],
-		}).insert(ignore_permissions=True)
+		return frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"PERM {self._n}",
+				"custom_project_id": f"PERM-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"custom_team_members": [{"user": user}],
+			}
+		).insert(ignore_permissions=True)
 
 	def test_site_engineer_edits_own_task_only(self):
 		# PRM-008 — a Site Engineer can edit/delete tasks they created, not others'.
@@ -36,10 +47,14 @@ class TestPermissions(BuildSuiteTestCase):
 
 		frappe.set_user(se)
 		try:
-			own = frappe.get_doc({
-				"doctype": "Task", "subject": f"own {self._n}",
-				"project": p.name, "task_status": "Yet To Start",
-			}).insert()
+			own = frappe.get_doc(
+				{
+					"doctype": "Task",
+					"subject": f"own {self._n}",
+					"project": p.name,
+					"task_status": "Yet To Start",
+				}
+			).insert()
 			own.subject = "own edited"
 			own.save()  # must not raise — SE owns it
 
@@ -54,10 +69,14 @@ class TestPermissions(BuildSuiteTestCase):
 		fm = self._make_persona_user("Foreman / Supervisor", "fm")
 		frappe.set_user(fm)
 		try:
-			doc = frappe.get_doc({
-				"doctype": "Project", "project_name": f"FM {self._n}",
-				"custom_project_id": f"FM-{self._n}", "company": self.company,
-			})
+			doc = frappe.get_doc(
+				{
+					"doctype": "Project",
+					"project_name": f"FM {self._n}",
+					"custom_project_id": f"FM-{self._n}",
+					"company": self.company,
+				}
+			)
 			self.assertRaises(frappe.PermissionError, doc.insert)
 		finally:
 			frappe.set_user("Administrator")
@@ -67,18 +86,29 @@ class TestPermissions(BuildSuiteTestCase):
 		d = self._make_persona_user("Director / Owner", "dir")
 		frappe.set_user(d)
 		try:
-			p = frappe.get_doc({
-				"doctype": "Project", "project_name": f"DIR {self._n}",
-				"custom_project_id": f"DIR-{self._n}", "company": self.company,
-			}).insert()
-			t = frappe.get_doc({
-				"doctype": "Task", "subject": f"DIR {self._n}",
-				"project": p.name, "task_status": "Yet To Start",
-			}).insert()
-			st = frappe.get_doc({
-				"doctype": "Stage Planning", "stage_name": f"DIR {self._n}",
-				"project": p.name,
-			}).insert()
+			p = frappe.get_doc(
+				{
+					"doctype": "Project",
+					"project_name": f"DIR {self._n}",
+					"custom_project_id": f"DIR-{self._n}",
+					"company": self.company,
+				}
+			).insert()
+			t = frappe.get_doc(
+				{
+					"doctype": "Task",
+					"subject": f"DIR {self._n}",
+					"project": p.name,
+					"task_status": "Yet To Start",
+				}
+			).insert()
+			st = frappe.get_doc(
+				{
+					"doctype": "Stage Planning",
+					"stage_name": f"DIR {self._n}",
+					"project": p.name,
+				}
+			).insert()
 			self.assertTrue(p.name and t.name and st.name)
 		finally:
 			frappe.set_user("Administrator")
@@ -89,10 +119,14 @@ class TestPermissions(BuildSuiteTestCase):
 
 		pm = self._make_persona_user("Project Manager", "pmapp")
 		p = self._make_project(company=self.company)
-		st = frappe.get_doc({
-			"doctype": "Stage Planning", "stage_name": f"APP {self._n}",
-			"project": p.name, "workflow_state": "Draft",
-		}).insert(ignore_permissions=True)
+		st = frappe.get_doc(
+			{
+				"doctype": "Stage Planning",
+				"stage_name": f"APP {self._n}",
+				"project": p.name,
+				"workflow_state": "Draft",
+			}
+		).insert(ignore_permissions=True)
 		apply_workflow(st, "Submit for Approval")  # as Administrator → Pending
 
 		frappe.set_user(pm)
@@ -113,10 +147,14 @@ class TestPermissions(BuildSuiteTestCase):
 		t = self._make_task(p.name)
 		frappe.set_user(se)
 		try:
-			tpe = frappe.get_doc({
-				"doctype": "Task Progress Entry", "task": t.name,
-				"entry_date": today(), "cumulative_progress": 30,
-			}).insert()
+			tpe = frappe.get_doc(
+				{
+					"doctype": "Task Progress Entry",
+					"task": t.name,
+					"entry_date": today(),
+					"cumulative_progress": 30,
+				}
+			).insert()
 			self.assertTrue(tpe.name)
 		finally:
 			frappe.set_user("Administrator")
@@ -130,10 +168,14 @@ class TestPermissions(BuildSuiteTestCase):
 		p = self._project_with_member(se)
 		frappe.set_user(se)
 		try:
-			st = frappe.get_doc({
-				"doctype": "Stage Planning", "stage_name": f"DEL {self._n}",
-				"project": p.name, "workflow_state": "Draft",
-			}).insert()
+			st = frappe.get_doc(
+				{
+					"doctype": "Stage Planning",
+					"stage_name": f"DEL {self._n}",
+					"project": p.name,
+					"workflow_state": "Draft",
+				}
+			).insert()
 			apply_workflow(st, "Submit for Approval")
 		finally:
 			frappe.set_user("Administrator")

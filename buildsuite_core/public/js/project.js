@@ -49,13 +49,16 @@ function make_table(columns, rows, empty_msg) {
 		return `<p class="text-muted" style="padding:10px 0;font-size:12px;">${empty_msg}</p>`;
 	}
 	const ths = columns
-		.map((c) => `<th class="text-muted" style="font-size:11px;font-weight:600;padding:6px 8px;">${c.label}</th>`)
+		.map(
+			(c) =>
+				`<th class="text-muted" style="font-size:11px;font-weight:600;padding:6px 8px;">${c.label}</th>`
+		)
 		.join("");
 	const trs = rows
 		.map((row) => {
 			const tds = columns
 				.map((c) => {
-					const val = c.render ? c.render(row) : (row[c.key] || "—");
+					const val = c.render ? c.render(row) : row[c.key] || "—";
 					return `<td style="padding:6px 8px;vertical-align:middle;font-size:12px;">${val}</td>`;
 				})
 				.join("");
@@ -126,7 +129,14 @@ function render_subprojects(frm) {
 	frappe.db
 		.get_list("Project", {
 			filters: { parent_project: frm.doc.name },
-			fields: ["name", "project_name", "custom_project_id", "status", "percent_complete", "expected_end_date"],
+			fields: [
+				"name",
+				"project_name",
+				"custom_project_id",
+				"status",
+				"percent_complete",
+				"expected_end_date",
+			],
 			limit: 50,
 		})
 		.then((rows) => {
@@ -181,8 +191,7 @@ function render_work_packages(frm) {
 			const columns = [
 				{
 					label: "Code",
-					render: (r) =>
-						`<a href="/app/work-package/${r.name}">${r.code || r.name}</a>`,
+					render: (r) => `<a href="/app/work-package/${r.name}">${r.code || r.name}</a>`,
 				},
 				{ label: "Work Package", key: "work_package_name" },
 				{ label: "Status", render: (r) => status_indicator(r.status) },
@@ -226,25 +235,37 @@ function render_tasks(frm) {
 		frappe.db
 			.get_list("Task", {
 				filters: task_filters,
-				fields: ["name", "subject", "project", "status", "priority", "exp_end_date", "progress"],
+				fields: [
+					"name",
+					"subject",
+					"project",
+					"status",
+					"priority",
+					"exp_end_date",
+					"progress",
+				],
 				limit: 100,
 			})
 			.then((rows) => {
-			const columns = [
-				{
-					label: "Task",
-					render: (r) =>
-						`<a href="/app/task/${r.name}">${r.subject || r.name}</a>`,
-				},
-				...(frm.doc.is_group
-					? [{ label: "Project", render: (r) => project_labels[r.project] || r.project || "-" }]
-					: []),
-				{ label: "Status", render: (r) => status_indicator(r.status) },
-				{ label: "Priority", render: (r) => status_indicator(r.priority) },
-				{ label: "Progress", render: (r) => progress_bar(r.progress) },
-				{ label: "Due Date", key: "exp_end_date" },
-			];
-			const html = `
+				const columns = [
+					{
+						label: "Task",
+						render: (r) => `<a href="/app/task/${r.name}">${r.subject || r.name}</a>`,
+					},
+					...(frm.doc.is_group
+						? [
+								{
+									label: "Project",
+									render: (r) => project_labels[r.project] || r.project || "-",
+								},
+						  ]
+						: []),
+					{ label: "Status", render: (r) => status_indicator(r.status) },
+					{ label: "Priority", render: (r) => status_indicator(r.priority) },
+					{ label: "Progress", render: (r) => progress_bar(r.progress) },
+					{ label: "Due Date", key: "exp_end_date" },
+				];
+				const html = `
 				<div class="d-flex align-items-center justify-content-between" style="margin-bottom:10px;">
 					<span class="text-muted" style="font-size:12px;">${rows.length} task(s)</span>
 					<button class="btn btn-primary btn-sm bs-add-btn">
@@ -252,19 +273,19 @@ function render_tasks(frm) {
 					</button>
 				</div>
 				${make_table(columns, rows, "No tasks linked to this project.")}`;
-			set_html_and_bind(frm, "custom_tasks_html", html, ($w) => {
-				$w.find(".bs-add-btn").on("click", () => {
-					const new_doc = make_new_doc_with_defaults("Task", {
-						project: frm.doc.name,
+				set_html_and_bind(frm, "custom_tasks_html", html, ($w) => {
+					$w.find(".bs-add-btn").on("click", () => {
+						const new_doc = make_new_doc_with_defaults("Task", {
+							project: frm.doc.name,
+						});
+						frappe.ui.form.make_quick_entry(
+							"Task",
+							() => render_tasks(frm),
+							null,
+							new_doc
+						);
 					});
-					frappe.ui.form.make_quick_entry(
-						"Task",
-						() => render_tasks(frm),
-						null,
-						new_doc
-					);
 				});
-			});
 			});
 	});
 }
@@ -282,25 +303,41 @@ function render_stage_plannings(frm) {
 		frappe.db
 			.get_list("Stage Planning", {
 				filters: stage_filters,
-				fields: ["name", "stage_name", "project", "planned_start", "planned_end", "planned_task_count", "planned_completion_pct"],
+				fields: [
+					"name",
+					"stage_name",
+					"project",
+					"planned_start",
+					"planned_end",
+					"planned_task_count",
+					"planned_completion_pct",
+				],
 				limit: 100,
 			})
 			.then((rows) => {
-			const columns = [
-				{
-					label: "Stage",
-					render: (r) =>
-						`<a href="/app/stage-planning/${r.name}">${r.stage_name}</a>`,
-				},
-				...(frm.doc.is_group
-					? [{ label: "Project", render: (r) => project_labels[r.project] || r.project || "-" }]
-					: []),
-				{ label: "Planned Start", key: "planned_start" },
-				{ label: "Planned End", key: "planned_end" },
-				{ label: "Tasks", key: "planned_task_count" },
-				{ label: "Planned Completion", render: (r) => progress_bar(r.planned_completion_pct) },
-			];
-			const html = `
+				const columns = [
+					{
+						label: "Stage",
+						render: (r) =>
+							`<a href="/app/stage-planning/${r.name}">${r.stage_name}</a>`,
+					},
+					...(frm.doc.is_group
+						? [
+								{
+									label: "Project",
+									render: (r) => project_labels[r.project] || r.project || "-",
+								},
+						  ]
+						: []),
+					{ label: "Planned Start", key: "planned_start" },
+					{ label: "Planned End", key: "planned_end" },
+					{ label: "Tasks", key: "planned_task_count" },
+					{
+						label: "Planned Completion",
+						render: (r) => progress_bar(r.planned_completion_pct),
+					},
+				];
+				const html = `
 				<div class="d-flex align-items-center justify-content-between" style="margin-bottom:10px;">
 					<span class="text-muted" style="font-size:12px;">${rows.length} stage(s)</span>
 					<button class="btn btn-primary btn-sm bs-add-btn">
@@ -308,19 +345,19 @@ function render_stage_plannings(frm) {
 					</button>
 				</div>
 				${make_table(columns, rows, "No stage plans linked to this project.")}`;
-			set_html_and_bind(frm, "custom_stage_planning_html", html, ($w) => {
-				$w.find(".bs-add-btn").on("click", () => {
-					const new_doc = make_new_doc_with_defaults("Stage Planning", {
-						project: frm.doc.name,
+				set_html_and_bind(frm, "custom_stage_planning_html", html, ($w) => {
+					$w.find(".bs-add-btn").on("click", () => {
+						const new_doc = make_new_doc_with_defaults("Stage Planning", {
+							project: frm.doc.name,
+						});
+						frappe.ui.form.make_quick_entry(
+							"Stage Planning",
+							() => render_stage_plannings(frm),
+							null,
+							new_doc
+						);
 					});
-					frappe.ui.form.make_quick_entry(
-						"Stage Planning",
-						() => render_stage_plannings(frm),
-						null,
-						new_doc
-					);
 				});
-			});
 			});
 	});
 }

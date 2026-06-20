@@ -45,10 +45,12 @@ def get_access_context():
 	# BuildSuite role; the frontend uses it to set the active persona on load.
 	persona = frappe.db.get_value("User", user, "persona") if user != "Guest" else None
 
-	return frappe._dict({
-		"allowed": allowed,
-		"user": user,
-		"roles": roles,
-		"persona": persona,
-		"reason": reason,
-	})
+	return frappe._dict(
+		{
+			"allowed": allowed,
+			"user": user,
+			"roles": roles,
+			"persona": persona,
+			"reason": reason,
+		}
+	)

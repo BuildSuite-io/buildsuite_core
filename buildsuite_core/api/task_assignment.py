@@ -10,7 +10,8 @@ assigning the new user — there is never more than one.
 """
 
 import frappe
-from frappe.desk.form.assign_to import add as _assign_add, clear as _assign_clear
+from frappe.desk.form.assign_to import add as _assign_add
+from frappe.desk.form.assign_to import clear as _assign_clear
 
 
 def _current_assignee(task):

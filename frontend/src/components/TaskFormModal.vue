@@ -4,276 +4,354 @@
 // `created` with the new record so the parent can react (refresh list,
 // route, etc). Pure presentational — no routing.
 
-import { reactive, ref, computed, watch } from 'vue'
-import { useDataStore } from '@/stores'
-import { showToast } from '@/utils/appToast'
-import { useFormErrors } from '@/composables/useFormErrors'
-import DeskSection from '@/components/desk/DeskSection.vue'
-import DeskField from '@/components/desk/DeskField.vue'
-import DeskInput from '@/components/desk/DeskInput.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
-import DeskTextarea from '@/components/desk/DeskTextarea.vue'
-import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
-import { createDataAdapter } from '@/data/adapters'
-import { setTaskAssignee } from '@/data/taskAssignmentApi'
+import { reactive, ref, computed, watch } from "vue";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { useFormErrors } from "@/composables/useFormErrors";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { createDataAdapter } from "@/data/adapters";
+import { setTaskAssignee } from "@/data/taskAssignmentApi";
 
 const props = defineProps({
-  open: { type: Boolean, default: false },
-  projectId: { type: String, default: '' },
-  workPackageId: { type: String, default: '' },
-})
-const emit = defineEmits(['update:open', 'created'])
+	open: { type: Boolean, default: false },
+	projectId: { type: String, default: "" },
+	workPackageId: { type: String, default: "" },
+});
+const emit = defineEmits(["update:open", "created"]);
 
-const store = useDataStore()
-const adapter = createDataAdapter(store)
-const saving = ref(false)
+const store = useDataStore();
+const adapter = createDataAdapter(store);
+const saving = ref(false);
 
-const {
-  errors,
-  applyServerErrors,
-  setErrors,
-  clearError,
-} = useFormErrors({
-  subject:       'name',
-  project:       'projectId',
-  exp_end_date:  'endDate',
-})
+const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
+	subject: "name",
+	project: "projectId",
+	exp_end_date: "endDate",
+});
 
-const projectsResource = adapter.list('Project', {
-  fields: ['name', 'project_name', 'project_type'],
-  orderBy: 'modified desc',
-  pageLength: 200,
-})
-const wpsResource = adapter.list('Work Package', {
-  fields: ['name', 'work_package_name', 'project'],
-  orderBy: 'modified desc',
-  pageLength: 500,
-})
+const projectsResource = adapter.list("Project", {
+	fields: ["name", "project_name", "project_type"],
+	orderBy: "modified desc",
+	pageLength: 200,
+});
+const wpsResource = adapter.list("Work Package", {
+	fields: ["name", "work_package_name", "project"],
+	orderBy: "modified desc",
+	pageLength: 500,
+});
 
 const form = reactive({
-  projectId: '',
-  workPackageId: null,
-  task_type: 'Activity',
-  activityType: null,
-  name: '',
-  description: '',
-  status: 'Yet To Start',
-  priority: 'Medium',
-  assignee: '',
-  startDate: '',
-  endDate: '',
-})
+	projectId: "",
+	workPackageId: null,
+	task_type: "Activity",
+	activityType: null,
+	name: "",
+	description: "",
+	status: "Yet To Start",
+	priority: "Medium",
+	assignee: "",
+	startDate: "",
+	endDate: "",
+});
 
 // Reset the form whenever the modal opens. Pre-fill from props.
-watch(() => props.open, (isOpen) => {
-  if (!isOpen) return
-  form.projectId      = props.projectId || (projectsResource.data[0]?.name || '')
-  form.workPackageId  = props.workPackageId || null
-  form.task_type      = 'Activity'
-  form.activityType   = null
-  form.name           = ''
-  form.description    = ''
-  form.status         = 'Yet To Start'
-  form.priority       = 'Medium'
-  form.assignee       = ''
-  form.startDate      = new Date().toISOString().slice(0, 10)
-  form.endDate        = ''
-  setErrors({})
-})
+watch(
+	() => props.open,
+	(isOpen) => {
+		if (!isOpen) return;
+		form.projectId = props.projectId || projectsResource.data[0]?.name || "";
+		form.workPackageId = props.workPackageId || null;
+		form.task_type = "Activity";
+		form.activityType = null;
+		form.name = "";
+		form.description = "";
+		form.status = "Yet To Start";
+		form.priority = "Medium";
+		form.assignee = "";
+		form.startDate = new Date().toISOString().slice(0, 10);
+		form.endDate = "";
+		setErrors({});
+	}
+);
 
-const selectedProject = computed(() => projectsResource.data.find(p => p.name === form.projectId))
-const selectedWP = computed(() => wpsResource.data.find(wp => wp.name === form.workPackageId))
-const availableWPs = computed(() => wpsResource.data.filter(wp => wp.project === form.projectId))
+const selectedProject = computed(() =>
+	projectsResource.data.find((p) => p.name === form.projectId)
+);
+const selectedWP = computed(() => wpsResource.data.find((wp) => wp.name === form.workPackageId));
+const availableWPs = computed(() =>
+	wpsResource.data.filter((wp) => wp.project === form.projectId)
+);
 const availableActivityTypes = computed(() => {
-  const pt = selectedProject.value?.project_type
-  return pt ? store.activityTypesForProjectType(pt) : store.activityTypes
-})
+	const pt = selectedProject.value?.project_type;
+	return pt ? store.activityTypesForProjectType(pt) : store.activityTypes;
+});
 
 // Project is locked when the parent supplied it. WP is locked when both
 // project + WP are supplied (work-package-scoped entry). When the parent
 // supplies only the project (Tasks tab on Project Detail), WP is still
 // editable.
-const projectLocked = computed(() => !!props.projectId)
-const wpLocked = computed(() => !!props.workPackageId)
+const projectLocked = computed(() => !!props.projectId);
+const wpLocked = computed(() => !!props.workPackageId);
 
-watch(() => form.projectId, () => {
-  if (!wpLocked.value && form.workPackageId && !availableWPs.value.find(wp => wp.name === form.workPackageId)) {
-    form.workPackageId = null
-  }
-  if (form.activityType && !availableActivityTypes.value.find(at => at.id === form.activityType)) {
-    form.activityType = null
-  }
-})
+watch(
+	() => form.projectId,
+	() => {
+		if (
+			!wpLocked.value &&
+			form.workPackageId &&
+			!availableWPs.value.find((wp) => wp.name === form.workPackageId)
+		) {
+			form.workPackageId = null;
+		}
+		if (
+			form.activityType &&
+			!availableActivityTypes.value.find((at) => at.id === form.activityType)
+		) {
+			form.activityType = null;
+		}
+	}
+);
 
-function close() { emit('update:open', false) }
+function close() {
+	emit("update:open", false);
+}
 
 function validate() {
-  const e = {}
-  if (!form.name.trim()) e.name = 'Task name is required'
-  if (!form.projectId)   e.projectId = 'Project is required'
-  if (form.endDate && form.startDate && form.endDate < form.startDate) {
-    e.endDate = 'End must be after start'
-  }
-  setErrors(e)
-  return Object.keys(e).length === 0
+	const e = {};
+	if (!form.name.trim()) e.name = "Task name is required";
+	if (!form.projectId) e.projectId = "Project is required";
+	if (form.endDate && form.startDate && form.endDate < form.startDate) {
+		e.endDate = "End must be after start";
+	}
+	setErrors(e);
+	return Object.keys(e).length === 0;
 }
 
 async function save() {
-  if (!validate()) return
-  saving.value = true
-  try {
-    const task = await adapter.create('Task', {
-      project: form.projectId,
-      work_package: form.workPackageId,
-      task_type: form.task_type,
-      subject: form.name,
-      description: form.description,
-      task_status: form.status,
-      priority: form.priority,
-      exp_start_date: form.startDate,
-      exp_end_date: form.endDate,
-    })
-    // Assignee is Frappe-native `_assign`, set after insert (single-assignee).
-    if (form.assignee && task?.name) {
-      try { await setTaskAssignee(task.name, form.assignee) } catch { /* non-fatal */ }
-    }
-    emit('created', task)
-    close()
-  } catch (err) {
-    const summary = applyServerErrors(err)
-    showToast(summary ?? 'Failed to create task', 'error')
-  } finally {
-    saving.value = false
-  }
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		const task = await adapter.create("Task", {
+			project: form.projectId,
+			work_package: form.workPackageId,
+			task_type: form.task_type,
+			subject: form.name,
+			description: form.description,
+			task_status: form.status,
+			priority: form.priority,
+			exp_start_date: form.startDate,
+			exp_end_date: form.endDate,
+		});
+		// Assignee is Frappe-native `_assign`, set after insert (single-assignee).
+		if (form.assignee && task?.name) {
+			try {
+				await setTaskAssignee(task.name, form.assignee);
+			} catch {
+				/* non-fatal */
+			}
+		}
+		emit("created", task);
+		close();
+	} catch (err) {
+		const summary = applyServerErrors(err);
+		showToast(summary ?? "Failed to create task", "error");
+	} finally {
+		saving.value = false;
+	}
 }
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
-      @click.self="close"
-    >
-      <div
-        class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
-        style="border-radius: 12px; max-height: calc(100vh - 3rem);"
-        @click.stop
-      >
-        <header class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white" style="border-radius: 12px 12px 0 0;">
-          <div class="min-w-0 flex-1">
-            <h2 class="text-sm font-semibold text-ink-900">New task</h2>
-            <p v-if="selectedProject" class="text-[11px] text-ink-500 mt-0.5 truncate">
-              {{ selectedProject.project_name }}<template v-if="selectedWP"> · {{ selectedWP.work_package_name }}</template>
-            </p>
-          </div>
-          <button
-            type="button"
-            class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
-            aria-label="Close"
-            @click="close"
-          >×</button>
-        </header>
+	<Teleport to="body">
+		<div
+			v-if="open"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+			@click.self="close"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
+				style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+				@click.stop
+			>
+				<header
+					class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white"
+					style="border-radius: 12px 12px 0 0"
+				>
+					<div class="min-w-0 flex-1">
+						<h2 class="text-sm font-semibold text-ink-900">New task</h2>
+						<p v-if="selectedProject" class="text-[11px] text-ink-500 mt-0.5 truncate">
+							{{ selectedProject.project_name
+							}}<template v-if="selectedWP">
+								· {{ selectedWP.work_package_name }}</template
+							>
+						</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+						aria-label="Close"
+						@click="close"
+					>
+						×
+					</button>
+				</header>
 
-        <div class="p-5 overflow-y-auto flex-1">
-          <DeskSection title="Task details">
-            <DeskField label="Task name" required :error="errors.name">
-              <DeskInput v-model="form.name" placeholder="e.g. Level 5 column casting" @input="clearError('name')" />
-            </DeskField>
-            <DeskField
-              label="Task Type"
-              required
-              hint="Activity = standard work with progress entries; Milestone = checkpoint; Inspection = pass/fail gate."
-            >
-              <DeskSelect v-model="form.task_type">
-                <option value="Activity">Activity</option>
-                <option value="Milestone">Milestone</option>
-                <option value="Inspection">Inspection</option>
-              </DeskSelect>
-            </DeskField>
-            <DeskField label="Description">
-              <DeskTextarea v-model="form.description" :rows="3" placeholder="Optional context for this task" />
-            </DeskField>
-          </DeskSection>
+				<div class="p-5 overflow-y-auto flex-1">
+					<DeskSection title="Task details">
+						<DeskField label="Task name" required :error="errors.name">
+							<DeskInput
+								v-model="form.name"
+								placeholder="e.g. Level 5 column casting"
+								@input="clearError('name')"
+							/>
+						</DeskField>
+						<DeskField
+							label="Task Type"
+							required
+							hint="Activity = standard work with progress entries; Milestone = checkpoint; Inspection = pass/fail gate."
+						>
+							<DeskSelect v-model="form.task_type">
+								<option value="Activity">Activity</option>
+								<option value="Milestone">Milestone</option>
+								<option value="Inspection">Inspection</option>
+							</DeskSelect>
+						</DeskField>
+						<DeskField label="Description">
+							<DeskTextarea
+								v-model="form.description"
+								:rows="3"
+								placeholder="Optional context for this task"
+							/>
+						</DeskField>
+					</DeskSection>
 
-          <DeskSection title="Hierarchy">
-            <DeskField label="Project" required :error="errors.projectId" :hint="projectLocked ? 'Pre-selected from where you came in — locked.' : ''">
-              <DeskSelect v-model="form.projectId" :disabled="projectLocked" @change="clearError('projectId')">
-                <option value="">— Select project —</option>
-                <option v-for="p in projectsResource.data" :key="p.name" :value="p.name">{{ p.project_name }}</option>
-              </DeskSelect>
-            </DeskField>
-            <DeskField label="Work Package" :hint="wpLocked ? 'Pre-selected — locked.' : 'Optional — leave blank to attach directly to the project.'">
-              <DeskSelect v-model="form.workPackageId" :disabled="wpLocked">
-                <option :value="null">— None —</option>
-                <option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">{{ wp.work_package_name }}</option>
-              </DeskSelect>
-            </DeskField>
-            <DeskField label="Activity Type" hint="Optional — provides default labour mix and productivity baseline.">
-              <DeskSelect v-model="form.activityType">
-                <option :value="null">— None —</option>
-                <option v-for="at in availableActivityTypes" :key="at.id" :value="at.id">{{ at.name }}<template v-if="at.category"> · {{ at.category }}</template></option>
-              </DeskSelect>
-            </DeskField>
-          </DeskSection>
+					<DeskSection title="Hierarchy">
+						<DeskField
+							label="Project"
+							required
+							:error="errors.projectId"
+							:hint="
+								projectLocked
+									? 'Pre-selected from where you came in — locked.'
+									: ''
+							"
+						>
+							<DeskSelect
+								v-model="form.projectId"
+								:disabled="projectLocked"
+								@change="clearError('projectId')"
+							>
+								<option value="">— Select project —</option>
+								<option
+									v-for="p in projectsResource.data"
+									:key="p.name"
+									:value="p.name"
+								>
+									{{ p.project_name }}
+								</option>
+							</DeskSelect>
+						</DeskField>
+						<DeskField
+							label="Work Package"
+							:hint="
+								wpLocked
+									? 'Pre-selected — locked.'
+									: 'Optional — leave blank to attach directly to the project.'
+							"
+						>
+							<DeskSelect v-model="form.workPackageId" :disabled="wpLocked">
+								<option :value="null">— None —</option>
+								<option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">
+									{{ wp.work_package_name }}
+								</option>
+							</DeskSelect>
+						</DeskField>
+						<DeskField
+							label="Activity Type"
+							hint="Optional — provides default labour mix and productivity baseline."
+						>
+							<DeskSelect v-model="form.activityType">
+								<option :value="null">— None —</option>
+								<option
+									v-for="at in availableActivityTypes"
+									:key="at.id"
+									:value="at.id"
+								>
+									{{ at.name
+									}}<template v-if="at.category"> · {{ at.category }}</template>
+								</option>
+							</DeskSelect>
+						</DeskField>
+					</DeskSection>
 
-          <DeskSection title="Schedule">
-            <DeskField label="Start date">
-              <DeskInput v-model="form.startDate" type="date" />
-            </DeskField>
-            <DeskField label="End date" :error="errors.endDate">
-              <DeskInput v-model="form.endDate" type="date" @change="clearError('endDate')" />
-            </DeskField>
-          </DeskSection>
+					<DeskSection title="Schedule">
+						<DeskField label="Start date">
+							<DeskInput v-model="form.startDate" type="date" />
+						</DeskField>
+						<DeskField label="End date" :error="errors.endDate">
+							<DeskInput
+								v-model="form.endDate"
+								type="date"
+								@change="clearError('endDate')"
+							/>
+						</DeskField>
+					</DeskSection>
 
-          <DeskSection title="Assignment & status">
-            <DeskField label="Assignee">
-              <DeskLinkPicker
-                v-model="form.assignee"
-                doctype="User"
-                placeholder="Select assignee"
-                label-field="full_name"
-                value-field="name"
-                :search-fields="['full_name', 'name', 'email']"
-                :filters="[['enabled', '=', 1]]"
-                order-by="full_name asc"
-                :page-length="20"
-              />
-            </DeskField>
-            <DeskField label="Status">
-              <DeskSelect v-model="form.status">
-                <option>Yet To Start</option>
-                <option>In Progress</option>
-                <option>In Delay</option>
-                <option>Completed</option>
-                <option>Blocked</option>
-              </DeskSelect>
-            </DeskField>
-            <DeskField label="Priority">
-              <DeskSelect v-model="form.priority">
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </DeskSelect>
-            </DeskField>
-          </DeskSection>
-        </div>
+					<DeskSection title="Assignment & status">
+						<DeskField label="Assignee">
+							<DeskLinkPicker
+								v-model="form.assignee"
+								doctype="User"
+								placeholder="Select assignee"
+								label-field="full_name"
+								value-field="name"
+								:search-fields="['full_name', 'name', 'email']"
+								:filters="[['enabled', '=', 1]]"
+								order-by="full_name asc"
+								:page-length="20"
+							/>
+						</DeskField>
+						<DeskField label="Status">
+							<DeskSelect v-model="form.status">
+								<option>Yet To Start</option>
+								<option>In Progress</option>
+								<option>In Delay</option>
+								<option>Completed</option>
+								<option>Blocked</option>
+							</DeskSelect>
+						</DeskField>
+						<DeskField label="Priority">
+							<DeskSelect v-model="form.priority">
+								<option>Low</option>
+								<option>Medium</option>
+								<option>High</option>
+							</DeskSelect>
+						</DeskField>
+					</DeskSection>
+				</div>
 
-        <footer class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white" style="border-radius: 0 0 12px 12px;">
-          <button
-            type="button"
-            class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-            style="border-radius: 6px;"
-            @click="close"
-          >Cancel</button>
-          <button
-            type="button"
-            class="desk-save-btn"
-            :disabled="saving"
-            @click="save"
-          >{{ saving ? 'Creating…' : 'Create task' }}</button>
-        </footer>
-      </div>
-    </div>
-  </Teleport>
+				<footer
+					class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white"
+					style="border-radius: 0 0 12px 12px"
+				>
+					<button
+						type="button"
+						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+						style="border-radius: 6px"
+						@click="close"
+					>
+						Cancel
+					</button>
+					<button type="button" class="desk-save-btn" :disabled="saving" @click="save">
+						{{ saving ? "Creating…" : "Create task" }}
+					</button>
+				</footer>
+			</div>
+		</div>
+	</Teleport>
 </template>
