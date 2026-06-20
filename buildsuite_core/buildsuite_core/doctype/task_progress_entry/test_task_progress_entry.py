@@ -139,3 +139,13 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		self._file_tpe(t.name, 70)   # increase — allowed
 		t.reload()
 		self.assertEqual(t.progress, 70)
+
+	def test_progress_out_of_range_rejected(self):
+		# TPE-003: a value above 100 or below 0 is rejected (never persisted).
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 150)
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, -10)
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), 0)

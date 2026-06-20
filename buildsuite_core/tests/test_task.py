@@ -64,6 +64,12 @@ class TestTask(BuildSuiteTestCase):
 		self.assertFalse(frappe.db.exists("Task", t.name))
 		self.assertFalse(frappe.db.exists("Task Progress Entry", tpe.name))
 
+	def test_owner_stamped_on_create(self):
+		# TSK-012: the creating user is recorded as the task owner.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self.assertEqual(t.owner, frappe.session.user)
+
 	def test_task_assignee_is_single_via_assign(self):
 		"""Assignee maps to Frappe-native _assign with single-assignee semantics:
 		reassigning drops the previous user; clearing empties it."""
