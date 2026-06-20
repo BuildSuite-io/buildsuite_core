@@ -34,14 +34,12 @@ def create_customer(customer_name, customer_type="Company"):
 	# ERPNext makes customer_group + territory mandatory — fall back to the
 	# site defaults / first non-group value so the inline create doesn't 417.
 	if doc.meta.has_field("customer_group") and not doc.customer_group:
-		doc.customer_group = (
-			frappe.db.get_default("customer_group")
-			or frappe.db.get_value("Customer Group", {"is_group": 0}, "name")
+		doc.customer_group = frappe.db.get_default("customer_group") or frappe.db.get_value(
+			"Customer Group", {"is_group": 0}, "name"
 		)
 	if doc.meta.has_field("territory") and not doc.territory:
-		doc.territory = (
-			frappe.db.get_default("territory")
-			or frappe.db.get_value("Territory", {"is_group": 0}, "name")
+		doc.territory = frappe.db.get_default("territory") or frappe.db.get_value(
+			"Territory", {"is_group": 0}, "name"
 		)
 
 	doc.insert(ignore_permissions=True)

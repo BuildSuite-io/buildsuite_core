@@ -10,11 +10,14 @@ from buildsuite_core.tests.base import BuildSuiteTestCase
 
 class TestTask(BuildSuiteTestCase):
 	def _make_wp(self, project, code_suffix=""):
-		return frappe.get_doc({
-			"doctype": "Work Package", "project": project,
-			"work_package_name": f"WP {self._n}{code_suffix}",
-			"code": f"WP-{self._n}{code_suffix}",
-		}).insert(ignore_permissions=True)
+		return frappe.get_doc(
+			{
+				"doctype": "Work Package",
+				"project": project,
+				"work_package_name": f"WP {self._n}{code_suffix}",
+				"code": f"WP-{self._n}{code_suffix}",
+			}
+		).insert(ignore_permissions=True)
 
 	def test_task_status_syncs_to_native(self):
 		# TSK-006 / TSK-007
@@ -46,10 +49,14 @@ class TestTask(BuildSuiteTestCase):
 		p = self._make_project(company=self.company)
 		wp_a = self._make_wp(p.name, "A")
 		wp_b = self._make_wp(p.name, "B")
-		t = frappe.get_doc({
-			"doctype": "Task", "subject": f"UAT {self._n}",
-			"project": p.name, "work_package": wp_a.name,
-		}).insert(ignore_permissions=True)
+		t = frappe.get_doc(
+			{
+				"doctype": "Task",
+				"subject": f"UAT {self._n}",
+				"project": p.name,
+				"work_package": wp_a.name,
+			}
+		).insert(ignore_permissions=True)
 		t.work_package = wp_b.name
 		t.save(ignore_permissions=True)
 		t.reload()
@@ -73,13 +80,15 @@ class TestTask(BuildSuiteTestCase):
 	def test_task_assignee_is_single_via_assign(self):
 		"""Assignee maps to Frappe-native _assign with single-assignee semantics:
 		reassigning drops the previous user; clearing empties it."""
-		from buildsuite_core.api.task_assignment import set_task_assignee, get_task_assignee
+		from buildsuite_core.api.task_assignment import get_task_assignee, set_task_assignee
 
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
 		users = frappe.get_all(
-			"User", filters={"enabled": 1, "user_type": "System User"},
-			pluck="name", limit=2,
+			"User",
+			filters={"enabled": 1, "user_type": "System User"},
+			pluck="name",
+			limit=2,
 		)
 		if len(users) < 2:
 			self.skipTest("needs at least two enabled System Users")

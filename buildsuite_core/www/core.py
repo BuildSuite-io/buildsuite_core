@@ -71,11 +71,7 @@ def get_boot():
 
 
 def get_frontend_assets():
-	manifest_path = Path(
-		frappe.get_app_path(
-			"buildsuite_core", "public", "frontend", "manifest.json"
-		)
-	)
+	manifest_path = Path(frappe.get_app_path("buildsuite_core", "public", "frontend", "manifest.json"))
 	if not manifest_path.exists():
 		return None
 

@@ -12,8 +12,11 @@ class StagePlanTemplate(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.stage_plan_task_template.stage_plan_task_template import StagePlanTaskTemplate
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.stage_plan_task_template.stage_plan_task_template import (
+			StagePlanTaskTemplate,
+		)
 
 		stage_name: DF.Data
 		tasks: DF.Table[StagePlanTaskTemplate]
