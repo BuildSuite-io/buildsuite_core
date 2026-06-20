@@ -18,32 +18,32 @@ import { defineConfig } from "cypress";
 // path than Frappe's own serving — point Cypress at the Frappe port instead.
 // Specs use cy.visitApp('/projects') so they track `bench change-app-route`.
 export default defineConfig({
-  // cy.login() with no args logs in as the provisioned cypress-admin persona user
-  // (full BuildSuite Administrator access) — so the suite never needs the real
-  // Administrator password. Provision via buildsuite_core.api.cypress_setup.
-  adminPassword: process.env.CYPRESS_ADMIN_PWD || "Cypress-Suite-2026!",
+	// cy.login() with no args logs in as the provisioned cypress-admin persona user
+	// (full BuildSuite Administrator access) — so the suite never needs the real
+	// Administrator password. Provision via buildsuite_core.api.cypress_setup.
+	adminPassword: process.env.CYPRESS_ADMIN_PWD || "Cypress-Suite-2026!",
 
-  testUser: process.env.CYPRESS_ADMIN_USER || "cypress-admin@buildsuite.test",
+	testUser: process.env.CYPRESS_ADMIN_USER || "cypress-admin@buildsuite.test",
 
-  // Frappe is slow
-  defaultCommandTimeout: 20000,
+	// Frappe is slow
+	defaultCommandTimeout: 20000,
 
-  pageLoadTimeout: 30000,
-  retries: { runMode: 2, openMode: 0 },
-  video: true,
-  viewportWidth: 1280,
-  viewportHeight: 800,
+	pageLoadTimeout: 30000,
+	retries: { runMode: 2, openMode: 0 },
+	video: true,
+	viewportWidth: 1280,
+	viewportHeight: 800,
 
-  e2e: {
-    baseUrl: process.env.CYPRESS_BASE_URL || "http://localhost:8001",
-    specPattern: "cypress/e2e/**/*.cy.js",
-    supportFile: "cypress/support/e2e.js",
-  },
+	e2e: {
+		baseUrl: process.env.CYPRESS_BASE_URL || "http://localhost:8001",
+		specPattern: "cypress/e2e/**/*.cy.js",
+		supportFile: "cypress/support/e2e.js",
+	},
 
-  component: {
-    devServer: {
-      framework: "vue",
-      bundler: "vite",
-    },
-  },
+	component: {
+		devServer: {
+			framework: "vue",
+			bundler: "vite",
+		},
+	},
 });

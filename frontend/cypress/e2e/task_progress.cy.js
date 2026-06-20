@@ -6,22 +6,24 @@
 // task's current progress, so the entry is valid regardless of which task is
 // first in the list, and it drives the task to Completed (a clear success signal).
 
-describe('Task progress entry updates the task', () => {
-  it('filing 100% completes the task', () => {
-    cy.login()
-    cy.visitApp('/tasks')
-    cy.dt('desk-list').find('[data-test-row]').first().click()
-    cy.location('pathname').should('match', /\/tasks\/.+/)
+describe("Task progress entry updates the task", () => {
+	it("filing 100% completes the task", () => {
+		cy.login();
+		cy.visitApp("/tasks");
+		cy.dt("desk-list").find("[data-test-row]").first().click();
+		cy.location("pathname").should("match", /\/tasks\/.+/);
 
-    cy.dt('file-progress-entry').click()
-    cy.dt('tpe-modal').should('be.visible').within(() => {
-      cy.dt('field-progress').clear().type('100')
-    })
-    cy.dt('save-btn').click()
+		cy.dt("file-progress-entry").click();
+		cy.dt("tpe-modal")
+			.should("be.visible")
+			.within(() => {
+				cy.dt("field-progress").clear().type("100");
+			});
+		cy.dt("save-btn").click();
 
-    // A successful save closes the modal; the server hook then drives the task to
-    // 100% / Completed.
-    cy.dt('tpe-modal').should('not.exist')
-    cy.contains('Completed').should('be.visible')
-  })
-})
+		// A successful save closes the modal; the server hook then drives the task to
+		// 100% / Completed.
+		cy.dt("tpe-modal").should("not.exist");
+		cy.contains("Completed").should("be.visible");
+	});
+});

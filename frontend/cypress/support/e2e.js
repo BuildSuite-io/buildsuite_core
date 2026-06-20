@@ -1,7 +1,7 @@
 // Loaded automatically before every spec. Registers custom commands + plugins.
-import './commands'
-import 'cypress-file-upload'
-import 'cypress-real-events/support'
+import "./commands";
+import "cypress-file-upload";
+import "cypress-real-events/support";
 
 // NOTE: deliberately NO global uncaught:exception handler. The suite stays strict
 // — an unhandled rejection from the app (e.g. a doctype get_list 403 because a

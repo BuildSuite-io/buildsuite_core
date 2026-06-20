@@ -2,16 +2,15 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.model.workflow import apply_workflow
+from frappe.tests import IntegrationTestCase
 
-from buildsuite_core.tests.base import BuildSuiteTestCase
 from buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning import (
+	get_stage_activity,
 	reject_stage_planning,
 	revise_stage_planning,
-	get_stage_activity,
 )
-
+from buildsuite_core.tests.base import BuildSuiteTestCase
 
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
@@ -31,13 +30,15 @@ class TestStagePlanning(BuildSuiteTestCase):
 
 	def _make_stage(self, project, task=None, state="Draft"):
 		rows = [{"task": task, "planned_qty": 80, "qty_unit": "%"}] if task else []
-		return frappe.get_doc({
-			"doctype": "Stage Planning",
-			"stage_name": f"ST {frappe.generate_hash(length=4)}",
-			"project": project,
-			"workflow_state": state,
-			"stage_planning_tasks": rows,
-		}).insert(ignore_permissions=True)
+		return frappe.get_doc(
+			{
+				"doctype": "Stage Planning",
+				"stage_name": f"ST {frappe.generate_hash(length=4)}",
+				"project": project,
+				"workflow_state": state,
+				"stage_planning_tasks": rows,
+			}
+		).insert(ignore_permissions=True)
 
 	def _approve(self, st):
 		apply_workflow(st, "Submit for Approval")
@@ -49,24 +50,39 @@ class TestStagePlanning(BuildSuiteTestCase):
 		own-scope write gate checks the PERSISTED state, not the in-memory one,
 		so submit (which sets the next state before saving) doesn't self-lock."""
 		se = f"se-{self._n}@example.com"
-		frappe.get_doc({
-			"doctype": "User", "email": se, "first_name": "SE",
-			"send_welcome_email": 0, "user_type": "System User",
-			"persona": "Site Engineer", "company": self.company,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": se,
+				"first_name": "SE",
+				"send_welcome_email": 0,
+				"user_type": "System User",
+				"persona": "Site Engineer",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
 
-		p = frappe.get_doc({
-			"doctype": "Project", "project_name": f"WF {self._n}",
-			"custom_project_id": f"WF-{self._n}", "project_status": "Ongoing",
-			"company": self.company, "custom_team_members": [{"user": se}],
-		}).insert(ignore_permissions=True)
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"WF {self._n}",
+				"custom_project_id": f"WF-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"custom_team_members": [{"user": se}],
+			}
+		).insert(ignore_permissions=True)
 
 		frappe.set_user(se)
 		try:
-			st = frappe.get_doc({
-				"doctype": "Stage Planning", "stage_name": f"WF {self._n}",
-				"project": p.name, "workflow_state": "Draft",
-			}).insert()
+			st = frappe.get_doc(
+				{
+					"doctype": "Stage Planning",
+					"stage_name": f"WF {self._n}",
+					"project": p.name,
+					"workflow_state": "Draft",
+				}
+			).insert()
 			apply_workflow(st, "Submit for Approval")
 			st.reload()
 			self.assertEqual(st.workflow_state, "Pending Approval")
@@ -134,10 +150,13 @@ class TestStagePlanning(BuildSuiteTestCase):
 	def test_new_stage_starts_in_draft(self):
 		# SAW-001 / STG-001
 		p = self._make_project()
-		st = frappe.get_doc({
-			"doctype": "Stage Planning", "stage_name": f"D {self._n}",
-			"project": p.name,
-		}).insert(ignore_permissions=True)
+		st = frappe.get_doc(
+			{
+				"doctype": "Stage Planning",
+				"stage_name": f"D {self._n}",
+				"project": p.name,
+			}
+		).insert(ignore_permissions=True)
 		self.assertEqual(st.workflow_state, "Draft")
 
 	def test_reject_requires_comment(self):
@@ -163,23 +182,38 @@ class TestStagePlanning(BuildSuiteTestCase):
 		from frappe.model.workflow import get_transitions
 
 		se = f"se2-{self._n}@example.com"
-		frappe.get_doc({
-			"doctype": "User", "email": se, "first_name": "SE",
-			"send_welcome_email": 0, "user_type": "System User",
-			"persona": "Site Engineer", "company": self.company,
-		}).insert(ignore_permissions=True)
-		p = frappe.get_doc({
-			"doctype": "Project", "project_name": f"SE {self._n}",
-			"custom_project_id": f"SE-{self._n}", "project_status": "Ongoing",
-			"company": self.company, "custom_team_members": [{"user": se}],
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": se,
+				"first_name": "SE",
+				"send_welcome_email": 0,
+				"user_type": "System User",
+				"persona": "Site Engineer",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"SE {self._n}",
+				"custom_project_id": f"SE-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"custom_team_members": [{"user": se}],
+			}
+		).insert(ignore_permissions=True)
 
 		frappe.set_user(se)
 		try:
-			st = frappe.get_doc({
-				"doctype": "Stage Planning", "stage_name": f"SE {self._n}",
-				"project": p.name, "workflow_state": "Draft",
-			}).insert()
+			st = frappe.get_doc(
+				{
+					"doctype": "Stage Planning",
+					"stage_name": f"SE {self._n}",
+					"project": p.name,
+					"workflow_state": "Draft",
+				}
+			).insert()
 			apply_workflow(st, "Submit for Approval")
 			st.reload()
 			actions = [t.action for t in get_transitions(st)]
@@ -192,11 +226,16 @@ class TestStagePlanning(BuildSuiteTestCase):
 		# HOK-003 — creating a project with the seed flag instantiates stages.
 		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
 			self.skipTest("No Commercial template seeded on this site")
-		p = frappe.get_doc({
-			"doctype": "Project", "project_name": f"SEED {self._n}",
-			"custom_project_id": f"SEED-{self._n}", "project_status": "Ongoing",
-			"company": self.company, "project_type": "Commercial",
-			"custom_seed_default_stages": 1,
-		}).insert(ignore_permissions=True)
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"SEED {self._n}",
+				"custom_project_id": f"SEED-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"project_type": "Commercial",
+				"custom_seed_default_stages": 1,
+			}
+		).insert(ignore_permissions=True)
 		stages = frappe.get_all("Stage Planning", filters={"project": p.name})
 		self.assertTrue(stages)

@@ -6,7 +6,6 @@ from frappe.tests import IntegrationTestCase
 
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
-
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
 # Use these module variables to add/remove to/from that list
@@ -52,11 +51,17 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		# TPE-012
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
-		tpe = frappe.get_doc({
-			"doctype": "Task Progress Entry", "task": t.name,
-			"entry_date": frappe.utils.today(),
-			"cumulative_progress": 20, "skilled": 5, "unskilled": 8, "weather": "Rainy",
-		}).insert(ignore_permissions=True)
+		tpe = frappe.get_doc(
+			{
+				"doctype": "Task Progress Entry",
+				"task": t.name,
+				"entry_date": frappe.utils.today(),
+				"cumulative_progress": 20,
+				"skilled": 5,
+				"unskilled": 8,
+				"weather": "Rainy",
+			}
+		).insert(ignore_permissions=True)
 		tpe.reload()
 		self.assertEqual(tpe.skilled, 5)
 		self.assertEqual(tpe.unskilled, 8)
@@ -135,8 +140,8 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
 		self._file_tpe(t.name, 50)
-		self._file_tpe(t.name, 50)   # equal — allowed
-		self._file_tpe(t.name, 70)   # increase — allowed
+		self._file_tpe(t.name, 50)  # equal — allowed
+		self._file_tpe(t.name, 70)  # increase — allowed
 		t.reload()
 		self.assertEqual(t.progress, 70)
 
@@ -158,22 +163,35 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		parent.is_group = 1
 		parent.save(ignore_permissions=True)
 
-		sub = frappe.get_doc({
-			"doctype": "Project", "project_name": f"ROLL sub {self._n}",
-			"custom_project_id": f"ROLL-SUB-{self._n}",
-			"parent_project": parent.name, "is_group": 0,
-		}).insert(ignore_permissions=True)
+		sub = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"ROLL sub {self._n}",
+				"custom_project_id": f"ROLL-SUB-{self._n}",
+				"parent_project": parent.name,
+				"is_group": 0,
+			}
+		).insert(ignore_permissions=True)
 
-		wp = frappe.get_doc({
-			"doctype": "Work Package", "project": sub.name,
-			"work_package_name": f"ROLL WP {self._n}", "code": f"ROLL-WP-{self._n}",
-			"status": "Planned",
-		}).insert(ignore_permissions=True)
+		wp = frappe.get_doc(
+			{
+				"doctype": "Work Package",
+				"project": sub.name,
+				"work_package_name": f"ROLL WP {self._n}",
+				"code": f"ROLL-WP-{self._n}",
+				"status": "Planned",
+			}
+		).insert(ignore_permissions=True)
 
-		t = frappe.get_doc({
-			"doctype": "Task", "subject": f"ROLL task {self._n}",
-			"project": sub.name, "work_package": wp.name, "task_status": "Yet To Start",
-		}).insert(ignore_permissions=True)
+		t = frappe.get_doc(
+			{
+				"doctype": "Task",
+				"subject": f"ROLL task {self._n}",
+				"project": sub.name,
+				"work_package": wp.name,
+				"task_status": "Yet To Start",
+			}
+		).insert(ignore_permissions=True)
 
 		self._file_tpe(t.name, 100)
 
