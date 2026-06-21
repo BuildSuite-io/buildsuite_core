@@ -34,6 +34,7 @@ const metaError = ref(null);
 const metaLoading = ref(false);
 const currentPage = ref(1);
 const currentPageSize = ref(props.pageSize);
+const totalCount = ref(null);
 
 const sortField = ref("");
 const sortDirection = ref("desc");
@@ -303,10 +304,46 @@ async function fetchCurrentPage(resetPage = false) {
 	return resource.fetch();
 }
 
+// Real total count of matching records (respects filters + search + permissions),
+// so the pager shows "1-10 of 47" instead of a lookahead estimate. Falls back to
+// the estimate (totalCount stays null) if the count call fails.
+async function fetchCount() {
+	if (!props.paginated) return;
+	if ((import.meta.env.VITE_DATA_MODE || "remote") === "local") {
+		totalCount.value = resource.data?.length ?? 0;
+		return;
+	}
+	try {
+		const body = new URLSearchParams();
+		body.set("doctype", props.doctype);
+		body.set("filters", JSON.stringify(serverFilters.value));
+		if (serverOrFilters.value.length) {
+			body.set("or_filters", JSON.stringify(serverOrFilters.value));
+		}
+		const res = await fetch("/api/method/frappe.desk.reportview.get_count", {
+			method: "POST",
+			credentials: "include",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Accept: "application/json",
+				"X-Frappe-CSRF-Token": window.csrf_token || "",
+			},
+			body: body.toString(),
+		});
+		if (!res.ok) throw new Error(`get_count failed with status ${res.status}`);
+		const payload = await res.json();
+		totalCount.value = Number(payload?.message) || 0;
+	} catch (err) {
+		totalCount.value = null; // fall back to the lookahead estimate
+		console.warn("[buildsuite] Failed to fetch list count", err);
+	}
+}
+
 watch(
 	() => JSON.stringify(serverFilters.value),
 	() => {
 		fetchCurrentPage(true);
+		fetchCount();
 	}
 );
 
@@ -314,6 +351,7 @@ watch(
 	() => JSON.stringify(serverOrFilters.value),
 	() => {
 		fetchCurrentPage(true);
+		fetchCount();
 	}
 );
 
@@ -335,6 +373,7 @@ watch(
 	() => {
 		loadMeta();
 		fetchCurrentPage(true);
+		fetchCount();
 	}
 );
 
@@ -351,6 +390,7 @@ watch(
 
 loadMeta();
 fetchCurrentPage(true);
+fetchCount();
 
 function getColumnValue(row, column) {
 	if (!column) return null;
@@ -474,12 +514,21 @@ const estimatedTotalRows = computed(() => {
 	return backendRangeEnd.value;
 });
 
+// Prefer the real count; fall back to the lookahead estimate while it's loading
+// or if the count call failed, so the pager keeps working.
+const effectiveTotalRows = computed(() =>
+	totalCount.value != null ? totalCount.value : estimatedTotalRows.value
+);
+
 const listCountText = computed(() => {
 	if (!props.paginated) {
 		return `${filteredRows.value.length} of ${resource.data?.length ?? 0}`;
 	}
 
 	if (!filteredRows.value.length) return "0 records";
+	if (totalCount.value != null) {
+		return `${backendRangeStart.value}-${backendRangeEnd.value} of ${totalCount.value} records`;
+	}
 	return `${backendRangeStart.value}-${backendRangeEnd.value} records`;
 });
 
@@ -515,7 +564,7 @@ function onPageSizeChange(value) {
 			:page-size-options="pageSizeOptions"
 			:server-paginated="paginated"
 			:current-page="currentPage"
-			:total-rows="estimatedTotalRows"
+			:total-rows="effectiveTotalRows"
 			:search-placeholder="searchPlaceholder"
 			:compact="compact"
 			:sort-field="sortField"
