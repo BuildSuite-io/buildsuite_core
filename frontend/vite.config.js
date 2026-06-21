@@ -1,7 +1,24 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
 import frappeui from "frappe-ui/vite";
+
+// Resolve the local Frappe backend for the dev-server proxy — from VITE_FRAPPE_HOST
+// or the bench's site config — so no host/port is hardcoded in the repo. The proxy
+// is dev-only; production assets are served by Frappe at the same origin.
+function frappeBackend() {
+	if (process.env.VITE_FRAPPE_HOST) return process.env.VITE_FRAPPE_HOST;
+	try {
+		const cfg = JSON.parse(
+			readFileSync(path.resolve(__dirname, "../../../sites/common_site_config.json"), "utf8")
+		);
+		if (cfg.webserver_port) return `http://localhost:${cfg.webserver_port}`;
+	} catch {
+		/* not inside a bench (e.g. a CI asset build) — fall back to the Frappe default port */
+	}
+	return "http://localhost:8000";
+}
 
 export default defineConfig(({ command }) => ({
 	base: command === "build" ? "/assets/buildsuite_core/frontend/" : "/",
@@ -82,8 +99,10 @@ export default defineConfig(({ command }) => ({
 		port: 5173,
 		open: true,
 		proxy: {
-			"/api": {
-				target: process.env.VITE_FRAPPE_HOST || "http://localhost:8001",
+			// Forward the Frappe-owned paths to the backend so the SPA can use
+			// relative URLs in dev exactly like it does in production (same origin).
+			"^/(api|app|assets|files|private|login)(/|$)": {
+				target: frappeBackend(),
 				changeOrigin: true,
 				secure: false,
 			},
