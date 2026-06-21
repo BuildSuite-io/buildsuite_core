@@ -10,7 +10,8 @@
   "coefficient",
   "uom",
   "rate",
-  "amount"
+  "amount",
+  "remarks"
  ],
  "fields": [
   {
@@ -60,13 +61,18 @@
    "in_list_view": 1,
    "label": "Amount",
    "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Data",
+   "label": "Remarks"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-18 22:45:20.103880",
+ "modified": "2026-06-21 11:54:54.393568",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "Assembly Component",
