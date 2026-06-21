@@ -1,5 +1,8 @@
 import { APP_ROUTE } from "./appRoute";
 
+/* global __FRAPPE_DEV_HOST__ -- injected by Vite `define` (vite.config.js): the
+   dev-only Frappe backend URL read from the bench config; "" in prod builds. */
+
 const DEFAULT_ROUTE = APP_ROUTE;
 const ACCESS_API_URL = "/api/method/buildsuite_core.api.permission.get_access_context";
 const DEFAULT_ACCESS_CONTEXT_MAX_AGE_MS = 30_000;
@@ -35,12 +38,13 @@ export function getRouteBase() {
 	return window.default_route || DEFAULT_ROUTE;
 }
 
-// Real Frappe host. In production the SPA is served by Frappe (same origin), so
-// every URL is relative; the dev Vite proxy (vite.config.js) forwards the Frappe
-// paths to the backend, so relative URLs work in dev too. Set VITE_FRAPPE_HOST
-// only to point a dev build at a non-proxied remote backend.
+// Real Frappe host. In production the SPA is served by Frappe (same origin) so
+// every URL is relative (""). In dev the SPA runs on the Vite server while Frappe
+// is on another port, so login/logout/desk redirects need the absolute backend
+// URL — injected from the bench config at dev-server start (vite.config.js
+// `define`), never hardcoded, and empty in production builds.
 export function getFrappeHost() {
-	return import.meta.env.VITE_FRAPPE_HOST || "";
+	return import.meta.env.VITE_FRAPPE_HOST || __FRAPPE_DEV_HOST__ || "";
 }
 
 export function getLoginUrl(path) {

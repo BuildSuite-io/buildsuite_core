@@ -22,6 +22,12 @@ function frappeBackend() {
 
 export default defineConfig(({ command }) => ({
 	base: command === "build" ? "/assets/buildsuite_core/frontend/" : "/",
+	// __FRAPPE_DEV_HOST__ — the dev-only Frappe backend URL (from the bench config),
+	// used by getFrappeHost() for cross-origin login/logout/desk redirects in dev.
+	// Empty in production builds, so no host is baked into the shipped bundle.
+	define: {
+		__FRAPPE_DEV_HOST__: JSON.stringify(command === "serve" ? frappeBackend() : ""),
+	},
 	plugins: [
 		// lucideIcons resolves ~icons/lucide/* used inside frappe-ui components.
 		// frappeProxy / jinjaBootData / buildConfig are disabled — BuildSuite manages them separately.
@@ -99,9 +105,9 @@ export default defineConfig(({ command }) => ({
 		port: 5173,
 		open: true,
 		proxy: {
-			// Forward the Frappe-owned paths to the backend so the SPA can use
-			// relative URLs in dev exactly like it does in production (same origin).
-			"^/(api|app|assets|files|private|login)(/|$)": {
+			// The SPA's /api calls in dev are proxied to the Frappe backend; login,
+			// logout and desk redirects go cross-origin via getFrappeHost() instead.
+			"/api": {
 				target: frappeBackend(),
 				changeOrigin: true,
 				secure: false,
