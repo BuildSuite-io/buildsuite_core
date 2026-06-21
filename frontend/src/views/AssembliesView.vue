@@ -1,6 +1,7 @@
 <script setup>
 
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDocTypeList } from '@/composables/useDocTypeList'
 import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
 import { fmtINR } from '@/utils/format'
@@ -10,8 +11,13 @@ import DeskLink from '@/components/desk/DeskLink.vue'
 import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 
+const router = useRouter()
 const { selectOptions } = useDoctypeMeta('Assembly')
 const categoryOptions = computed(() => selectOptions('category'))
+
+function onRowClick(row) {
+  router.push(`/assembly/${row.id}`)
+}
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
@@ -66,11 +72,10 @@ const columns = [
     <template #actions>
       <DeskLink to="/rate-master" class="text-xs">View Rate Master →</DeskLink>
       <RouterLink to="/assembly/new" class="desk-save-btn">+ New</RouterLink>
-
     </template>
 
     <DeskList v-model="search" :rows="rows" :columns="columns" row-key="id"
-      search-placeholder="Search by code or name…">
+      search-placeholder="Search by code or name…" @row-click="onRowClick">
       <template #filter-chips>
         <DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
           <option value="">Category: Any</option>
@@ -80,7 +85,7 @@ const columns = [
       </template>
 
       <template #cell-code="{ row }">
-        <span class="font-mono text-xs text-ink-800">{{ row.code }}</span>
+        <DeskLink :to="`/assembly/${row.id}`" class="font-mono text-xs" @click.stop>{{ row.code }}</DeskLink>
       </template>
       <template #cell-name="{ row }">
         <span class="text-ink-900 font-medium">{{ row.name }}</span>

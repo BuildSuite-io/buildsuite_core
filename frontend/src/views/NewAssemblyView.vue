@@ -87,7 +87,7 @@ const breadcrumbs = [
         <DeskField label="Name" required :error="errors.assemblyName">
           <DeskInput v-model="form.assemblyName" />
         </DeskField>
-        <DeskField label="Unit (per)" required hint="The per-unit basis (e.g. Cubic Meter)." :error="errors.uom">
+        <DeskField label="Unit (per)" required hint="The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;." :error="errors.uom">
           <DeskLinkPicker v-model="form.uom" doctype="UOM" label-field="name" value-field="name"
             placeholder="— Select unit —" />
         </DeskField>

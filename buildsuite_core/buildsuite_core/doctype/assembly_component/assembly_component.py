@@ -20,6 +20,7 @@ class AssemblyComponent(Document):
 		parentfield: DF.Data
 		parenttype: DF.Data
 		rate: DF.Currency
+		remarks: DF.Data | None
 		resource: DF.Link
 		resource_name: DF.Data | None
 		uom: DF.Link | None
