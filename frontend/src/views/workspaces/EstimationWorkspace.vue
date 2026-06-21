@@ -1,6 +1,6 @@
 <script setup>
 // Estimation workspace — date + title, BOQ shortcut, and a "Setup" group.
-// Setup has only Rate Master for now (Assembly + Estimate Templates come later).
+// Setup has Rate Master + Assembly for now (Estimate Templates come later).
 
 import { computed } from 'vue'
 import WorkspaceShortcut from '@/components/WorkspaceShortcut.vue'
@@ -14,6 +14,7 @@ const ESTIMATES = [
 ]
 const SETUP = [
   { to: '/rate-master', icon: 'tag', label: 'Rate Master', description: 'Price book for materials, labour, and equipment.' },
+  { to: '/assembly', icon: 'layout-grid', label: 'Assembly', description: 'Rate-analysis recipes built from rate-master resources.' },
 ]
 </script>
 
