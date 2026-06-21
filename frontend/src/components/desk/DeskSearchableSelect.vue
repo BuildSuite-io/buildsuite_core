@@ -23,7 +23,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
-  modelValue: { type: [String, Number, null], default: null },
+  modelValue: { type: [String, Number], default: null },
   options: { type: Array, default: () => [] },
   placeholder: { type: String, default: '— Select —' },
   disabled: { type: Boolean, default: false },
