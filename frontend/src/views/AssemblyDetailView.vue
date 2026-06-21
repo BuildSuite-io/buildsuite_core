@@ -130,6 +130,7 @@ const newRow = reactive({ resource: '', coefficient: 1, remarks: '' })
 // Rate-master options for the picker — grouped by category, rate as a hint.
 const rateMastersRes = useDocTypeList('Construction Rate Master', {
   fields: ['name', 'rate_name', 'category', 'current_rate', 'uom'],
+  filters: [['disabled', '=', 0]],
   orderBy: 'category asc',
   pageLength: 0,
   cache: 'buildsuite-rate-master-options',
