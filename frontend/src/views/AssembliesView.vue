@@ -65,6 +65,8 @@ const columns = [
   <DeskPage title="Assembly" :breadcrumbs="breadcrumbs">
     <template #actions>
       <DeskLink to="/rate-master" class="text-xs">View Rate Master →</DeskLink>
+      <RouterLink to="/assembly/new" class="desk-save-btn">+ New</RouterLink>
+
     </template>
 
     <DeskList v-model="search" :rows="rows" :columns="columns" row-key="id"
