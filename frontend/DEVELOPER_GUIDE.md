@@ -1,14 +1,15 @@
 # Frontend Developer Guide
 
 The BuildSuite Core frontend is a **Vue 3 + frappe-ui** SPA served by Frappe at
-`/client` and built into `buildsuite_core/public/frontend/`. It talks to the live
-Frappe/ERPNext backend through a thin **data-adapter seam** and renders DocType
-data with a reusable list/form stack.
+`/core` (the app route — single-sourced from [`src/utils/appRoute.js`](src/utils/appRoute.js))
+and built into `../buildsuite_core/public/frontend/`. It talks to the live Frappe/ERPNext
+backend through a thin **data-adapter seam** and renders DocType data with a reusable
+list/form stack.
 
-> For backend field mappings, the permission model, and project history, see
-> [`../context/implementation-progress.md`](../context/implementation-progress.md) — the
-> canonical continuity doc. This guide is the **frontend pattern reference**: how to
-> build a feature with the established building blocks.
+> This guide is the **frontend pattern reference** — how to build a feature with the
+> established building blocks. For app-wide setup, the local dev gate (`make check`),
+> and contribution rules see the repo-root `README.md`; for the backend permission
+> model see `buildsuite_core/permissions/`.
 
 ---
 
@@ -16,7 +17,7 @@ data with a reusable list/form stack.
 
 | Concern | Mechanism |
 |---|---|
-| Entry / routing | Vue Router base `/client` (see §9). Never hand-write the `/client` prefix. |
+| Entry / routing | Vue Router base `/core` (see §9). Never hand-write the `/core` prefix. |
 | Data access | `createDataAdapter(store)` → `adapter.list/read/create/update/remove/linkSearch` (§1) |
 | Data mode | `VITE_DATA_MODE` = `remote` (default, real Frappe) or `local` (seed/localStorage) |
 | Lists | `DocTypeListView` (DocType-aware) over `DeskList` (presentational) (§3–§4) |
@@ -333,14 +334,14 @@ Use the XHR `FileUploadHandler` class, **not** frappe-ui's `FileUploader` compon
 ```js
 import FileUploadHandler from 'frappe-ui-file-upload-handler'   // vite alias
 const handler = new FileUploadHandler()
-await handler.upload(file, { doctype: 'Task Update', docname: id, private: true })
+await handler.upload(file, { doctype: 'Task Progress Entry', docname: id, private: true })
 ```
 
 List attachments from the Frappe `File` doctype, delete with `adapter.remove('File', name)`:
 
 ```js
 adapter.list('File', {
-  filters: [['attached_to_doctype', '=', 'Task Update'], ['attached_to_name', '=', id]],
+  filters: [['attached_to_doctype', '=', 'Task Progress Entry'], ['attached_to_name', '=', id]],
   fields: ['name', 'file_name', 'file_url', 'file_size', 'is_private', 'creation', 'owner'],
   orderBy: 'creation desc',
 })
@@ -350,10 +351,13 @@ adapter.list('File', {
 
 ## 9. Routing
 
-- Router base is `createWebHistory('/client')`. Route definitions use **bare paths**
+- Router base is `createWebHistory(APP_ROUTE)` = `/core`, single-sourced from
+  [`src/utils/appRoute.js`](src/utils/appRoute.js). Route definitions use **bare paths**
   (`path: 'projects'`), and `<RouterLink>` / `router.push()` use paths **without** the
-  `/client` prefix — the router adds/strips it automatically.
-- The legacy `/app/` prefix is gone. Never let an `/app/…` link into production.
+  `/core` prefix — the router adds/strips it automatically. Use `appUrl(path)` only for
+  `window.location` / external redirects.
+- `bench change-app-route <new>` rewrites the route on both sides (this token + the
+  backend hook + the `www` page) — never hand-write the prefix.
 - A route guard protects all routes except `name: 'forbidden'`; access is resolved via
   `session.js` / `stores/session.js` against the backend.
 
@@ -384,17 +388,19 @@ handled by global overrides in `src/style.css`, so plain palette classes usually
 
 ```bash
 cd frontend
-npm run dev      # http://localhost:5173, proxies /api/* to the Frappe dev server
-npm run build    # → buildsuite_core/public/frontend/  (the only automated gate — keep it green)
+yarn dev      # http://localhost:5173 — /api proxied to the local Frappe backend
+yarn build    # → ../buildsuite_core/public/frontend/  (served by Frappe at /core)
+yarn test     # Cypress e2e (real backend); yarn test:open for the GUI runner
 ```
 
-- Test against the site at `http://build.local/client` after `bench start`.
-- Built assets are **not committed** — they're produced by `npm run build` / `bench build`
-  at deploy time.
-- Env: `VITE_FRAPPE_HOST` (dev proxy target), `VITE_DATA_MODE` (`remote` default / `local`).
-- Vite gotchas live in `vite.config.js` (the `frappe-ui` excludes, `debug` include, the
-  `frappe-ui-file-upload-handler` / `feather-icons` aliases) — see
-  [`../context/implementation-progress.md`](../context/implementation-progress.md) "Vite Config Notes".
+- After a manual build run `bench --site <site> clear-cache`, then open the app at
+  `http://<site>/core` (with `bench start` running).
+- Built assets are **not committed** — `bench build` / `yarn build` produces them.
+- Env: `VITE_FRAPPE_HOST` overrides the dev proxy target (otherwise it's read from the
+  bench's `sites/common_site_config.json`); `VITE_DATA_MODE` = `remote` (default) / `local`.
+- Vite specifics — the `frappe-ui` excludes, `debug` include, the
+  `frappe-ui-file-upload-handler` / `feather-icons` aliases, and the dev-host `define` —
+  live in `vite.config.js`.
 
 ---
 

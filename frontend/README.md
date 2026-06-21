@@ -59,5 +59,11 @@ src/
 cypress/         real-backend e2e specs
 ```
 
-See the repo root `README.md` for the full app, the local dev gate (`make check`),
+## Architecture & patterns
+
+See [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) — the data-adapter seam, the Desk
+primitives (`DeskPage` / `DeskList` / `DeskForm` …), `usePermissions`, forms &
+server errors, routing, file uploads, and dark mode, each with copy-paste examples.
+
+See the repo-root `README.md` for the full app, the local dev gate (`make check`),
 and contribution guidelines.

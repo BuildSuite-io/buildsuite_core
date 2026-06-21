@@ -102,6 +102,14 @@ This is a Frappe **v16** app. You need a bench with this app installed plus a te
 site (the examples below use `bs.local`). Runtimes are pinned by Frappe v16:
 **Python 3.14** and **Node ≥ 24**.
 
+### Frontend
+
+The Vue 3 SPA lives in [`frontend/`](frontend/) and is served by Frappe at `/core`.
+See [`frontend/README.md`](frontend/README.md) for dev / build / test, and
+[`frontend/DEVELOPER_GUIDE.md`](frontend/DEVELOPER_GUIDE.md) for the frontend
+architecture and feature-building patterns (data adapter, Desk primitives,
+permissions, routing).
+
 ### Local dev gate
 
 All checks that CI runs are mirrored by a `Makefile` so you can run them before
