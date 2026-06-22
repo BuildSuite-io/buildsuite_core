@@ -6,17 +6,17 @@
 // of visual truth for BuildSuite throughout the prototype.
 
 defineProps({
-  size: { type: [String, Number], default: 28 },
-})
+	size: { type: [String, Number], default: 28 },
+});
 </script>
 
 <template>
-  <img
-    src="/buildsuite-logo.png"
-    alt="BuildSuite"
-    :width="size"
-    :height="size"
-    :style="`width:${size}px;height:${size}px;`"
-    class="block"
-  />
+	<img
+		src="/buildsuite-logo.png"
+		alt="BuildSuite"
+		:width="size"
+		:height="size"
+		:style="`width:${size}px;height:${size}px;`"
+		class="block"
+	/>
 </template>

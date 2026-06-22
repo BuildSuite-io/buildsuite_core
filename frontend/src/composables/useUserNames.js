@@ -6,56 +6,58 @@
 // cache key + the module-level singleton), so mounting many avatars triggers a
 // single User list fetch.
 
-import { computed } from 'vue'
-import { useDataStore } from '@/stores'
-import { createDataAdapter } from '@/data/adapters'
+import { computed } from "vue";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
 
-let _resource = null
+let _resource = null;
 
 function rows(resource) {
-  const raw = resource?.data
-  if (Array.isArray(raw)) return raw
-  if (Array.isArray(raw?.value)) return raw.value
-  return []
+	const raw = resource?.data;
+	if (Array.isArray(raw)) return raw;
+	if (Array.isArray(raw?.value)) return raw.value;
+	return [];
 }
 
 export function useUserNames() {
-  if (!_resource) {
-    const adapter = createDataAdapter(useDataStore())
-    _resource = adapter.list('User', {
-      fields: ['name', 'full_name', 'user_image'],
-      filters: [['enabled', '=', 1]],
-      pageLength: 0, // every enabled user — the map must resolve any assignee
-      cache: 'buildsuite-user-directory',
-    })
-  }
+	if (!_resource) {
+		const adapter = createDataAdapter(useDataStore());
+		_resource = adapter.list("User", {
+			fields: ["name", "full_name", "user_image"],
+			filters: [["enabled", "=", 1]],
+			pageLength: 0, // every enabled user — the map must resolve any assignee
+			cache: "buildsuite-user-directory",
+		});
+	}
 
-  const directory = computed(() => {
-    const map = {}
-    rows(_resource).forEach((u) => {
-      map[u.name] = { fullName: u.full_name || u.name, image: u.user_image || '' }
-    })
-    return map
-  })
+	const directory = computed(() => {
+		const map = {};
+		rows(_resource).forEach((u) => {
+			map[u.name] = { fullName: u.full_name || u.name, image: u.user_image || "" };
+		});
+		return map;
+	});
 
-  const userNamesMap = computed(() => {
-    const map = {}
-    Object.entries(directory.value).forEach(([id, u]) => { map[id] = u.fullName })
-    return map
-  })
+	const userNamesMap = computed(() => {
+		const map = {};
+		Object.entries(directory.value).forEach(([id, u]) => {
+			map[id] = u.fullName;
+		});
+		return map;
+	});
 
-  // Returns the full_name when known, else the id itself (email) as a sensible
-  // placeholder until the directory resolves.
-  function userName(id) {
-    if (!id) return ''
-    return directory.value[id]?.fullName || id
-  }
+	// Returns the full_name when known, else the id itself (email) as a sensible
+	// placeholder until the directory resolves.
+	function userName(id) {
+		if (!id) return "";
+		return directory.value[id]?.fullName || id;
+	}
 
-  // The user's saved profile image (User.user_image), or '' if none/unresolved.
-  function userImage(id) {
-    if (!id) return ''
-    return directory.value[id]?.image || ''
-  }
+	// The user's saved profile image (User.user_image), or '' if none/unresolved.
+	function userImage(id) {
+		if (!id) return "";
+		return directory.value[id]?.image || "";
+	}
 
-  return { userName, userImage, userNamesMap }
+	return { userName, userImage, userNamesMap };
 }
