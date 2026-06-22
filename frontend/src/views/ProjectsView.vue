@@ -94,7 +94,7 @@ function onRowClick(row) {
 				{ key: 'company', label: 'Company' },
 			]"
 			:search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
-			:base-filters="[['is_group', '=', 1]]"
+			:base-filters="[['parent_project', 'is', 'not set']]"
 			:filter-values="filterValues"
 			:filter-field-map="{
 				status: 'project_status',
