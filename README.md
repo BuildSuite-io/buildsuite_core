@@ -153,7 +153,7 @@ needs the frontend **built** (`yarn build`) so Frappe serves the current bundle.
 ### Commit conventions
 
 Single-sentence, semantic commit messages (`fix:`, `test:`, `chore:`, `docs:`),
-split per area of change. No co-author trailers.
+split per area of change.
 
 ## CI
 

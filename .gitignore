@@ -68,3 +68,4 @@ frontend/components.d.ts
 
 # Locally-cloned semgrep rules (make semgrep)
 .frappe-semgrep-rules/
+buildsuite_core/public/node_modules
