@@ -38,7 +38,6 @@ function exportData() {
 		projects: store.projects,
 		workPackages: store.workPackages,
 		tasks: store.tasks,
-		activityTypes: store.activityTypes,
 		taskProgressEntries: store.taskProgressEntries,
 		stagePlannings: store.stagePlannings,
 		attachments: store.attachments,
