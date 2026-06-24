@@ -145,3 +145,23 @@ export function parseFrappeError(err) {
 		fieldErrors: {},
 	};
 }
+
+/**
+ * True when a Frappe error is a permission denial (HTTP 403 / PermissionError) — so a
+ * detail view can show the branded "no access" screen instead of a "not found" state.
+ */
+export function isPermissionDenied(err) {
+	if (!err) return false;
+	const excType = String(err.exc_type ?? err.exception ?? "");
+	if (excType.includes("PermissionError")) return true;
+	const status = err.httpStatus ?? err.statusCode ?? err.status;
+	if (status === 403) return true;
+	const haystack = [
+		err.message,
+		err.exception,
+		...(Array.isArray(err.messages) ? err.messages : []),
+	]
+		.filter(Boolean)
+		.join(" ");
+	return /not permitted|no permission|insufficient permission|permissionerror/i.test(haystack);
+}
