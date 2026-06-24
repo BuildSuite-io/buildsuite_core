@@ -503,11 +503,13 @@ function validateProgressEntry() {
 	const e = {};
 	const pct = Number(progressForm.progressPct);
 	const floor = Number(task.value?.progress) || 0;
-	if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+	if (Number.isNaN(pct) || pct > 100) {
 		e.progressPct = "Progress must be between 0 and 100";
-	} else if (pct < floor) {
-		// Progress is cumulative + monotonic — can't go below the current value.
-		e.progressPct = `Progress can't go below the current ${floor}%. Entries are cumulative.`;
+	} else if (pct <= 0) {
+		e.progressPct = "A progress entry can't be 0% — record the progress actually made.";
+	} else if (pct <= floor) {
+		// Progress is cumulative + strictly increasing — it must exceed the current value.
+		e.progressPct = `Progress must increase — enter a value above the current ${floor}%. Entries are cumulative.`;
 	}
 	if (progressForm.blockerFlag && !progressForm.blockerNote.trim()) {
 		e.blockerNote = "Describe the blocker";
