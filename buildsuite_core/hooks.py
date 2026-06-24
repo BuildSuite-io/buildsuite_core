@@ -199,6 +199,7 @@ doc_events = {
 			"buildsuite_core.utils.task.update_work_package_progress",
 			"buildsuite_core.utils.task.update_project_progress",
 			"buildsuite_core.utils.task.sync_stage_tasks_on_update",
+			"buildsuite_core.utils.task.update_stage_aggregates_on_task",
 		],
 		"on_trash": [
 			"buildsuite_core.utils.task.recalculate_work_package_on_task_trash",

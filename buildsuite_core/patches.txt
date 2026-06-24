@@ -6,3 +6,4 @@
 # Patches added in this section will be executed after doctypes are migrated
 buildsuite_core.patches.recase_buildsuite_module
 buildsuite_core.patches.remove_app_desktop_icon
+buildsuite_core.patches.backfill_stage_aggregates

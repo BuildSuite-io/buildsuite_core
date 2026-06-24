@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
+from frappe.utils import flt
 
 
 class StagePlanning(Document):
@@ -63,6 +64,11 @@ class StagePlanning(Document):
 		if self.workflow_state == "Rejected" and not (self.reject_reason or "").strip():
 			frappe.throw(_("A rejection reason is required to reject this stage."))
 
+		# Server-maintained aggregates for the list: real nested-task count + mean
+		# task progress (the list derives status from mean_progress, not dates).
+		task_names = [r.task for r in (self.stage_planning_tasks or []) if r.task]
+		self.task_count, self.mean_progress = _stage_aggregates(task_names)
+
 	def _stage_tasks_changed(self, before):
 		"""Whether stage_planning_tasks differ from the persisted version — rows
 		added/removed, or any task / planned_qty / qty_unit changed."""
@@ -85,6 +91,32 @@ class StagePlanning(Document):
 		label = _stage_transition_label(old, new, self.reject_reason)
 		if label:
 			self.add_comment("Workflow", label)
+
+
+def _stage_aggregates(task_names):
+	"""(task_count, mean_progress) for member task names. Mean is the simple average
+	of member task progress; (0, 0) when the stage has no tasks."""
+	count = len(task_names)
+	if not count:
+		return 0, 0
+	rows = frappe.get_all("Task", filters={"name": ["in", task_names]}, fields=["progress"])
+	mean = sum(flt(r.progress) for r in rows) / len(rows) if rows else 0
+	return count, round(mean)
+
+
+def recompute_stage_aggregates(stage):
+	"""Set task_count + mean_progress on a Stage Planning from its current child rows
+	and member task progress, via db.set_value (no save) — safe to call from a Task
+	hook when a member task's progress changes."""
+	task_names = frappe.get_all(
+		"Stage Planning Task",
+		filters={"parent": stage, "parenttype": "Stage Planning"},
+		pluck="task",
+	)
+	count, mean = _stage_aggregates([t for t in task_names if t])
+	frappe.db.set_value(
+		"Stage Planning", stage, {"task_count": count, "mean_progress": mean}, update_modified=False
+	)
 
 
 def _stage_transition_label(old, new, reason=None):
