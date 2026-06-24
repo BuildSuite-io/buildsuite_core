@@ -153,9 +153,8 @@ function onCustomerCreated(name) {
 						<DeskField label="Budget" hint="In INR">
 							<DeskInput v-model="editForm.budget" type="number" />
 						</DeskField>
-						<DeskField label="Progress" hint="0-100">
-							<DeskInput v-model="editForm.progress" type="number" />
-						</DeskField>
+						<!-- Progress is the weighted rollup of task progress (server-derived) —
+							 not manually editable, so status and progress stay decoupled. -->
 					</DeskSection>
 
 					<DeskSection title="Team & status">

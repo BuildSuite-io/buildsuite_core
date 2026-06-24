@@ -4,6 +4,8 @@
 // pre-rebuild version. Only markup and styling change.
 
 import { ref, computed, watch, nextTick } from "vue";
+import AccessDenied from "@/components/AccessDenied.vue";
+import { isPermissionDenied } from "@/utils/frappeError";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
@@ -72,6 +74,7 @@ function firstResourceRow(resource) {
 }
 
 const projectResource = ref(null);
+const accessDenied = computed(() => isPermissionDenied(projectResource.value?.error));
 
 // Route param is a Frappe record name first; seed-data aliases are only a
 // fallback for local prototype sessions that still carry older records.
@@ -99,6 +102,7 @@ function loadProjectResource() {
 			"owner",
 			"project_manager",
 			"company",
+			"location",
 			"is_group",
 			"notes",
 			"creation",
@@ -644,11 +648,14 @@ async function saveEdit() {
 			is_group: editForm.value.isGroup ? 1 : 0,
 			project_status: editForm.value.status,
 			priority: editForm.value.priority,
-			percent_complete: editForm.value.progress,
+			// percent_complete is NOT written here — project progress is always the
+			// weighted rollup of task progress (server-derived); the form must never
+			// overwrite it (status and progress are decoupled).
 			expected_start_date: editForm.value.startDate,
 			expected_end_date: editForm.value.endDate,
 			customer: editForm.value.client,
 			project_type: editForm.value.type,
+			location: editForm.value.location || null,
 			// company is locked/inferred server-side (§14) — not editable from the form.
 			estimated_costing: Number(editForm.value.budget),
 			project_manager: editForm.value.pm || null,
@@ -1523,6 +1530,13 @@ function onBoqRowClick(row) {
 			@confirm="confirmDelete"
 		/>
 	</DeskPage>
+
+	<AccessDenied
+		v-else-if="accessDenied"
+		title="You don't have access to this project"
+		back-to="/projects"
+		back-label="Back to Projects"
+	/>
 
 	<div v-else class="px-6 py-20 text-center">
 		<div class="text-ink-400 mb-3">Project not found</div>
