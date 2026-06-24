@@ -94,8 +94,9 @@ class TaskProgressEntry(Document):
 		# Progress is cumulative and monotonic — an entry can't be below the task's
 		# current cumulative progress, and can't exceed 100. Reject (throw) so the
 		# entry is never persisted, rather than logging a no-op row. The floor is the
-		# max cumulative of the OTHER entries on this task (excludes self, so editing
-		# an entry is compared against its siblings).
+		# highest cumulative already recorded on the task — INCLUDING this entry's own
+		# stored value (the query reads the pre-save DB value), so an existing entry
+		# can never be edited DOWN. Decrementing is not a supported flow.
 		value = flt(self.cumulative_progress or 0)
 		if value < 0:
 			frappe.throw(_("Progress cannot be negative."))
@@ -107,7 +108,7 @@ class TaskProgressEntry(Document):
 				flt(x)
 				for x in frappe.get_all(
 					"Task Progress Entry",
-					filters={"task": self.task, "name": ("!=", self.name)},
+					filters={"task": self.task},
 					pluck="cumulative_progress",
 				)
 			),
@@ -124,26 +125,26 @@ class TaskProgressEntry(Document):
 	def before_save(self):
 		task = frappe.get_doc("Task", self.task)
 		if self.is_new():
-			duplicate = False
-
+			# Block a no-op duplicate (same day, user, progress) instead of silently
+			# creating an orphan entry that logs but never moves the progress bar.
 			for row in task.get("task_progress_details") or []:
 				if (
 					row.date == self.entry_date
 					and row.user == self.owner
 					and abs(flt(row.cumulative_progress or 0) - flt(self.cumulative_progress or 0)) < 0.001
 				):
-					duplicate = True
-					break
+					frappe.throw(
+						_("No changes made — an identical progress entry already exists for this task.")
+					)
 
-			if not duplicate:
-				task.append(
-					"task_progress_details",
-					{
-						"date": self.entry_date,
-						"cumulative_progress": self.cumulative_progress,
-						"user": self.owner,
-					},
-				)
+			task.append(
+				"task_progress_details",
+				{
+					"date": self.entry_date,
+					"cumulative_progress": self.cumulative_progress,
+					"user": self.owner,
+				},
+			)
 
 		task.progress = max(
 			(flt(row.cumulative_progress or 0) for row in task.get("task_progress_details") or []),
