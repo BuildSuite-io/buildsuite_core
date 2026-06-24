@@ -5,7 +5,8 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
-import { parseFrappeError } from "@/utils/frappeError";
+import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
+import AccessDenied from "@/components/AccessDenied.vue";
 import { toDateInputValue } from "@/utils/dateInput";
 import UserAvatar from "@/components/UserAvatar.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -39,6 +40,7 @@ function firstResourceRow(resource) {
 // ── Entry ────────────────────────────────────────────────────────────────────
 
 const entryResource = ref(null);
+const accessDenied = computed(() => isPermissionDenied(entryResource.value?.error));
 
 function loadEntryResource() {
 	if (!props.id) {
@@ -250,6 +252,33 @@ function startEdit() {
 }
 
 async function saveEdit() {
+	const o = buildEntryForm(entry.value);
+	const f = form.value;
+	// No-op guard — if nothing changed, don't hit the server or create a log.
+	const unchanged =
+		o.entryDate === f.entryDate &&
+		Number(o.progressPct) === Number(f.progressPct) &&
+		(o.narrative || "") === (f.narrative || "") &&
+		Number(o.skilledLabour) === Number(f.skilledLabour) &&
+		Number(o.unskilledLabour) === Number(f.unskilledLabour) &&
+		(o.weather || "") === (f.weather || "") &&
+		!!o.blockerFlag === !!f.blockerFlag &&
+		(o.blockerNote || "") === (f.blockerNote || "");
+	if (unchanged) {
+		showToast("No changes made");
+		editing.value = false;
+		return;
+	}
+	// Monotonic — progress entries are cumulative; this entry can't be edited below
+	// its recorded value (decrementing is not supported; the backend also rejects it).
+	const floor = Number(o.progressPct) || 0;
+	if (Number(f.progressPct) < floor) {
+		showToast(
+			`Progress can't go below the recorded ${floor}%. Entries are cumulative.`,
+			"error"
+		);
+		return;
+	}
 	saving.value = true;
 	try {
 		await adapter.update("Task Progress Entry", props.id, {
@@ -867,6 +896,13 @@ const subtitle = computed(() =>
 			@confirm="confirmFileDelete"
 		/>
 	</DeskPage>
+
+	<AccessDenied
+		v-else-if="accessDenied"
+		title="You don't have access to this progress entry"
+		back-to="/progress-entries"
+		back-label="Back to Progress Entries"
+	/>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Progress entry not found.</div>
 </template>
