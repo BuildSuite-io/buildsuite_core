@@ -15,6 +15,9 @@ export const APP_ROUTE_NAME = "core";
 // Leading-slash form, e.g. '/client' — used as the router base and route prefix.
 export const APP_ROUTE = `/${APP_ROUTE_NAME}`;
 
+// Brand suffix for the browser/document title (e.g. "Projects · BuildSuite Core").
+export const APP_TITLE = "BuildSuite Core";
+
 // The whitelisted dev-boot method lives in www/<route>.py, so its dotted path
 // tracks the route name (e.g. buildsuite_core.www.client.get_context_for_dev).
 export const DEV_BOOT_METHOD = `buildsuite_core.www.${APP_ROUTE_NAME}.get_context_for_dev`;

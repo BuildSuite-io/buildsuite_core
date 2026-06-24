@@ -9,6 +9,7 @@ import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
+import { useTaskTypes } from "@/composables/useTaskTypes";
 import { createDataAdapter } from "@/data/adapters";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -24,6 +25,7 @@ const router = useRouter();
 const route = useRoute();
 const store = useDataStore();
 const { canCreate } = usePermissions();
+const { taskTypes } = useTaskTypes();
 const adapter = createDataAdapter(store);
 
 const form = reactive({
@@ -78,7 +80,7 @@ async function save() {
 			subject: form.name,
 			project: form.projectId,
 			work_package: form.workPackageId || null,
-			task_type: form.taskType || "Activity",
+			type: form.taskType || "Activity",
 			description: form.description,
 			task_status: form.status,
 			priority: form.priority,
@@ -157,9 +159,7 @@ const breadcrumbs = [
 						hint="Drives workflow + Gantt rendering. Milestone = zero-duration."
 					>
 						<DeskSelect v-model="form.taskType">
-							<option>Activity</option>
-							<option>Milestone</option>
-							<option>Inspection</option>
+							<option v-for="tt in taskTypes" :key="tt" :value="tt">{{ tt }}</option>
 						</DeskSelect>
 					</DeskField>
 					<DeskField label="Description">

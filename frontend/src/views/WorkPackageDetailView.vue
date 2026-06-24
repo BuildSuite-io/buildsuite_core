@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 // Work Package Detail — Desk-styled. View + edit + delete. View mode shows
 // the summary strip and a tasks list. Edit mode swaps the detail fields to
 // inputs and a save bar appears at the top.
@@ -93,7 +94,7 @@ function loadTasksResource() {
 			"project",
 			"status",
 			"priority",
-			"task_type",
+			"type as task_type",
 			"owner",
 			"exp_start_date",
 			"exp_end_date",
@@ -275,6 +276,8 @@ function progressBarColor(w) {
 	if (v > 5) return "bg-warning-500";
 	return "bg-success-500";
 }
+
+usePageTitle(() => wp.value?.name);
 </script>
 
 <template>

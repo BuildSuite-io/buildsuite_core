@@ -60,6 +60,9 @@ export function createLocalDataAdapter(store) {
 				owner: task.assignee || "",
 				exp_start_date: task.startDate || null,
 				exp_end_date: task.endDate || null,
+				// Scheduling type lives on native `type`; expose `task_type` too as the
+				// transform-view alias (parity with the remote get_list aliasing).
+				type: task.task_type || "Activity",
 				task_type: task.task_type || "Activity",
 				description: task.description || "",
 			}));
@@ -306,7 +309,7 @@ export function createLocalDataAdapter(store) {
 			const data = {
 				projectId: values.project,
 				workPackageId: values.work_package,
-				task_type: values.task_type || "Activity",
+				task_type: values.type || values.task_type || "Activity",
 				name: values.subject,
 				description: values.description,
 				status: values.status,
@@ -391,7 +394,8 @@ export function createLocalDataAdapter(store) {
 			if (values.subject !== undefined) patch.name = values.subject;
 			if (values.status !== undefined) patch.status = values.status;
 			if (values.priority !== undefined) patch.priority = values.priority;
-			if (values.task_type !== undefined) patch.task_type = values.task_type;
+			if (values.type !== undefined) patch.task_type = values.type;
+			else if (values.task_type !== undefined) patch.task_type = values.task_type;
 			if (values.owner !== undefined) patch.assignee = values.owner;
 			if (values.exp_start_date !== undefined) patch.startDate = values.exp_start_date;
 			if (values.exp_end_date !== undefined) patch.endDate = values.exp_end_date;
