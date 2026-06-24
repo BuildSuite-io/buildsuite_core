@@ -57,7 +57,7 @@ const form = reactive({
 	status: "Yet To Start",
 	priority: "Medium",
 	assignee: "",
-	startDate: "",
+	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 });
 
@@ -74,7 +74,7 @@ watch(
 		form.status = "Yet To Start";
 		form.priority = "Medium";
 		form.assignee = "";
-		form.startDate = "";
+		form.startDate = new Date().toISOString().slice(0, 10);
 		form.endDate = "";
 		setErrors({});
 	}
