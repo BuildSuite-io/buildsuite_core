@@ -19,9 +19,9 @@ function serverMessage(payload, status) {
 	return payload?.exception || `Request failed (${status})`;
 }
 
-async function request(method, { params, body } = {}) {
+async function request(method, { params, body, base = BASE } = {}) {
 	const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-	const res = await fetch(BASE + method + qs, {
+	const res = await fetch(base + method + qs, {
 		method: body ? "POST" : "GET",
 		credentials: "include",
 		headers: {
