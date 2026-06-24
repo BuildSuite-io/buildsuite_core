@@ -23,6 +23,18 @@ def sync_project_status(doc, method=None):
 		doc.project_status = "New"
 	doc.status = _PROJECT_STATUS_TO_NATIVE.get(doc.project_status, "Open")
 
+	# Progress is ALWAYS the weighted task rollup — fully decoupled from status.
+	# erpnext's update_percent_complete (runs earlier in validate) otherwise (a) forces
+	# percent to 100 when a project leaves the "Completed" status, and (b) re-derives
+	# status from percent. Pin the method to Manual to silence its auto-calc, and on an
+	# existing project recompute percent from our rollup here (after erpnext's pass) so
+	# a status change never overwrites progress and 100% happens only when tasks do.
+	doc.percent_complete_method = "Manual"
+	if not doc.is_new():
+		from buildsuite_core.utils.task import compute_project_progress
+
+		doc.percent_complete = compute_project_progress(doc.name)
+
 
 def set_company_on_insert(doc, method=None):
 	"""Default/inherit company before insert (PRJ-005, PRJ-012).

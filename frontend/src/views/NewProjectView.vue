@@ -195,6 +195,7 @@ async function save() {
 			is_group: form.parentId ? 0 : form.allowSubprojects ? 1 : 0,
 			project_status: form.status,
 			priority: form.priority,
+			location: form.location || null,
 			// Company is chosen on the form for top-level projects; subprojects omit it
 			// and inherit the parent's company server-side (enforce_company_rules).
 			company: form.parentId ? null : form.company || null,

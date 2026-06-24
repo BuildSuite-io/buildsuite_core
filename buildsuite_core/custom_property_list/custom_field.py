@@ -22,6 +22,13 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 		{
+			"fieldname": "location",
+			"fieldtype": "Data",
+			"label": "Location",
+			"insert_after": "project_status",
+			"module": "BuildSuite Core",
+		},
+		{
 			# The assigned Project Manager (a real User). Distinct from `owner`,
 			# which Frappe forces to the creating user on insert — so PM
 			# assignment must live on its own field. Drives the PM section in the
