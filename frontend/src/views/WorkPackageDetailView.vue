@@ -4,6 +4,8 @@
 // inputs and a save bar appears at the top.
 
 import { ref, computed, watch } from "vue";
+import AccessDenied from "@/components/AccessDenied.vue";
+import { isPermissionDenied } from "@/utils/frappeError";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
@@ -43,6 +45,7 @@ function firstResourceRow(resource) {
 }
 
 const workPackageResource = ref(null);
+const accessDenied = computed(() => isPermissionDenied(workPackageResource.value?.error));
 
 function loadWorkPackageResource() {
 	if (!props.id) {
@@ -481,6 +484,13 @@ function progressBarColor(w) {
 			@created="tasksResource?.reload?.()"
 		/>
 	</DeskPage>
+
+	<AccessDenied
+		v-else-if="accessDenied"
+		title="You don't have access to this work package"
+		back-to="/work-packages"
+		back-label="Back to Work Packages"
+	/>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Work package not found</div>
 </template>

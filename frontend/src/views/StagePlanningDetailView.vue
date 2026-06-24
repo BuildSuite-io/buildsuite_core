@@ -5,6 +5,8 @@
 // DocType carries those fields.
 
 import { ref, computed, watch } from "vue";
+import AccessDenied from "@/components/AccessDenied.vue";
+import { isPermissionDenied } from "@/utils/frappeError";
 import { useRouter, useRoute, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
@@ -154,6 +156,7 @@ function mapChildRowsToBackend(rows) {
 }
 
 const stageResource = ref(null);
+const accessDenied = computed(() => isPermissionDenied(stageResource.value?.error));
 
 function loadStageResource() {
 	if (!props.id) {
@@ -1402,6 +1405,13 @@ const breadcrumbs = computed(() => {
 			@confirm="confirmDelete"
 		/>
 	</DeskPage>
+
+	<AccessDenied
+		v-else-if="accessDenied"
+		title="You don't have access to this stage"
+		back-to="/stage-plannings"
+		back-label="Back to Stage Planning"
+	/>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
 		Stage not found ·
