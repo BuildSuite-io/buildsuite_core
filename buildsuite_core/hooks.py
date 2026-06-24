@@ -169,6 +169,7 @@ doc_events = {
 		"validate": [
 			"buildsuite_core.utils.project.sync_project_status",
 			"buildsuite_core.utils.project.enforce_company_rules",
+			"buildsuite_core.utils.date_bounds.validate_project_dates",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
@@ -193,6 +194,7 @@ doc_events = {
 		"validate": [
 			"buildsuite_core.api.schedule.validate_task_dependencies",
 			"buildsuite_core.api.schedule.normalize_milestone_task",
+			"buildsuite_core.utils.date_bounds.validate_task_dates",
 			"buildsuite_core.utils.task.update_task_status",
 		],
 		"on_update": [
@@ -208,6 +210,10 @@ doc_events = {
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
 	},
+	# Hierarchy date-boundary checks — a child's schedule must sit within its
+	# parent project (and end >= start on the record itself).
+	"Work Package": {"validate": "buildsuite_core.utils.date_bounds.validate_work_package_dates"},
+	"Stage Planning": {"validate": "buildsuite_core.utils.date_bounds.validate_stage_planning_dates"},
 	# Keep each user's BuildSuite role aligned with their persona. validate covers
 	# both create and edit; delete needs no handler (Has Role rows cascade).
 	"User": {"validate": "buildsuite_core.utils.user.sync_persona_roles"},
