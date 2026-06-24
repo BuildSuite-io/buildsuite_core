@@ -29,6 +29,9 @@ const PAGE_TITLES = {
 	boq: "Bill of Quantities",
 	"boq-detail": "BOQ",
 	"rate-master": "Rate Master",
+	assembly: "Assemblies",
+	"assembly-new": "New Assembly",
+	"assembly-detail": "Assembly",
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",
@@ -175,6 +178,22 @@ const routes = [
 				name: "rate-master",
 				component: () => import("@/views/RateMasterView.vue"),
 			},
+			{
+				path: "assembly",
+				name: "assembly",
+				component: () => import("@/views/AssembliesView.vue"),
+			},
+			{
+				path: "assembly/new",
+				name: "assembly-new",
+				component: () => import("@/views/NewAssemblyView.vue"),
+			},
+			{
+				path: "assembly/:id",
+				name: "assembly-detail",
+				component: () => import("@/views/AssemblyDetailView.vue"),
+				props: true,
+			},
 
 			{
 				path: "site-execution",
@@ -195,26 +214,7 @@ const routes = [
 			{
 				path: "estimation",
 				name: "estimation",
-				component: () => import("@/views/PlaceholderView.vue"),
-				props: {
-					title: "Estimation",
-					icon: "📐",
-					desc: "Bills of quantities, rate master, revision compare and tendering.",
-					links: [
-						{
-							label: "BOQ",
-							to: "/boq",
-							icon: "📊",
-							desc: "Bills of quantities · revisions",
-						},
-						{
-							label: "Rate Master",
-							to: "/rate-master",
-							icon: "₹",
-							desc: "Construction rate price book",
-						},
-					],
-				},
+				component: () => import("@/views/workspaces/EstimationWorkspace.vue"),
 			},
 			{
 				path: "procurement",
