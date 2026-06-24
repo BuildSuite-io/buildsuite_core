@@ -7,7 +7,7 @@ import { usePageTitle } from "@/composables/usePageTitle";
 import { ref, computed, watch, nextTick } from "vue";
 import AccessDenied from "@/components/AccessDenied.vue";
 import { isPermissionDenied } from "@/utils/frappeError";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter, useRoute, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
@@ -46,6 +46,7 @@ import { useProjectDetailListFilters } from "@/views/project-detail/useProjectDe
 
 const props = defineProps({ id: String });
 const router = useRouter();
+const route = useRoute();
 const store = useDataStore();
 const confirmDialog = useConfirm();
 const { canEdit, canDelete, canCreate } = usePermissions();
@@ -853,6 +854,18 @@ const tabs = computed(() => {
 	return subprojectsEnabled.value ? all : all.filter((t) => t.id !== "subprojects");
 });
 
+// Reflect the active tab in the URL hash (#tasks, #team, …) so tab changes are
+// browser-history entries: Back returns to the previous tab, and a hashed URL
+// deep-links straight to that tab. Overview is the bare URL (no hash).
+function selectTab(id) {
+	router.push({ hash: id === "overview" ? "" : "#" + id });
+}
+function applyHashTab() {
+	const id = (route.hash || "").replace(/^#/, "");
+	tab.value = tabs.value.some((t) => t.id === id) ? id : "overview";
+}
+watch(() => route.hash, applyHashTab, { immediate: true });
+
 const breadcrumbs = computed(() => {
 	const out = [
 		{ label: "BuildSuite Core", to: "/" },
@@ -953,7 +966,7 @@ usePageTitle(() => project.value?.name);
 							? 'border-bottom: 2px solid currentColor; margin-bottom: -1px;'
 							: 'border-bottom: 2px solid transparent; margin-bottom: -1px;'
 					"
-					@click="tab = t.id"
+					@click="selectTab(t.id)"
 				>
 					{{ t.label
 					}}<span v-if="t.count !== null" class="ml-1 text-ink-400 tabular-nums"

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import TaskFormModal from "@/components/TaskFormModal.vue";
 import { useDataStore } from "@/stores";
@@ -12,9 +12,11 @@ import { dateBoundsError } from "@/utils/dateBounds";
 const store = useDataStore();
 const adapter = createDataAdapter(store);
 const { canCreate, canEditRecord } = usePermissions();
+const route = useRoute();
+const router = useRouter();
 
 // === State ============================================================
-const selectedProject = ref("");
+const selectedProject = ref(route.query.project || "");
 const viewMode = ref("week"); // day | week | month | quarter (zoom)
 const groupBy = ref("none"); // none | stage | wp
 const collapsedGroups = ref(new Set());
@@ -143,6 +145,19 @@ async function loadSchedule() {
 		nextTick(jumpToToday);
 	}
 }
+// Keep the selected project in the URL (?project=) so the schedule is bookmarkable
+// and the browser back button restores the last project after visiting a task.
+watch(selectedProject, (val) => {
+	if ((route.query.project || "") !== (val || "")) {
+		router.push({ query: { ...route.query, project: val || undefined } });
+	}
+});
+watch(
+	() => route.query.project,
+	(val) => {
+		if ((val || "") !== (selectedProject.value || "")) selectedProject.value = val || "";
+	}
+);
 watch(selectedProject, loadSchedule, { immediate: true });
 
 // === Permissions ======================================================
