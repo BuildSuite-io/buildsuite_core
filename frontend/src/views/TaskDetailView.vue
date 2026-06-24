@@ -8,7 +8,8 @@ import { ref, reactive, computed, watch, nextTick } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
-import { parseFrappeError } from "@/utils/frappeError";
+import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
+import AccessDenied from "@/components/AccessDenied.vue";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -67,6 +68,7 @@ function resourceRows(resource) {
 }
 
 const taskResource = ref(null);
+const accessDenied = computed(() => isPermissionDenied(taskResource.value?.error));
 
 function loadTaskResource() {
 	if (!props.id) {
@@ -1596,6 +1598,13 @@ const progressColor = computed(() => {
 			</div>
 		</Teleport>
 	</DeskPage>
+
+	<AccessDenied
+		v-else-if="accessDenied"
+		title="You don't have access to this task"
+		back-to="/tasks"
+		back-label="Back to Tasks"
+	/>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Task not found</div>
 </template>
