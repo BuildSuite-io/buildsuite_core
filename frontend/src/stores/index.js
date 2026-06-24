@@ -89,7 +89,6 @@ function saveToStorage(state) {
 			projects: state.projects,
 			workPackages: state.workPackages,
 			tasks: state.tasks,
-			activityTypes: state.activityTypes,
 			taskProgressEntries: state.taskProgressEntries,
 			stagePlannings: state.stagePlannings,
 			attachments: state.attachments,
@@ -155,7 +154,6 @@ export const useDataStore = defineStore("data", {
 		projects: [],
 		workPackages: [],
 		tasks: [],
-		activityTypes: [],
 		taskProgressEntries: [],
 		stagePlannings: [],
 		attachments: [],
@@ -200,26 +198,6 @@ export const useDataStore = defineStore("data", {
 		tasksByWorkPackage: (s) => (wpId) => s.tasks.filter((t) => t.workPackageId === wpId),
 		taskById: (s) => (id) => s.tasks.find((t) => t.id === id),
 		workPackageById: (s) => (id) => s.workPackages.find((wp) => wp.id === id),
-
-		// ===== Activity Type (master, §13.3 item 16) =====
-		// Renamed in Session 31 from "Task Type" to align with proposal §M2 — the
-		// proposal reserves task_type as a Select on Task (Activity / Milestone /
-		// Inspection). The master here is the construction-activity template
-		// (RCC Column Casting / Brick Masonry / etc.) — was misnamed.
-		//
-		// Not project-scoped — masters live independent of projects, so deleteProject
-		// does NOT cascade these. CRUD is on the Activity Type management screen only.
-		activityTypeById: (s) => (id) => s.activityTypes.find((at) => at.id === id),
-		activityTypesByCategory: (s) => (category) =>
-			s.activityTypes.filter((at) => at.category === category),
-		// Filter for the Project Type → Activity Type mapping. An activity type with
-		// no applicableProjectTypes (or an empty list) is considered universal.
-		activityTypesForProjectType: (s) => (projectType) =>
-			s.activityTypes.filter((at) => {
-				const apt = at.applicableProjectTypes;
-				if (!apt || !apt.length) return true;
-				return apt.includes(projectType);
-			}),
 
 		// ===== Project Type template engine (§13.3 item 19) =====
 		// Returns the JSON template fixture for a project type, or null if no
@@ -496,19 +474,8 @@ export const useDataStore = defineStore("data", {
 				this.tasks = stored.tasks;
 				this.scos = stored.scos;
 				// Backwards-compatible hydration: if older localStorage exists without BOQ keys
-				// (or, since M2 prep, without the taskProgressEntries / activityTypes keys),
-				// fall back to seed for those slices so the new screens have data to render.
-				//
-				// §M2 rename migration (Session 31): pre-rename payloads stored the slice as
-				// `taskTypes`. If we find that key, lift it into `activityTypes` so the user
-				// keeps any local edits to their master records. Tasks themselves keep their
-				// old `taskType` Link values during this migration (the field is just renamed
-				// to `activityType` via the seed; if a stored task has `taskType` we copy
-				// it onto `activityType` below before the persist).
-				this.activityTypes =
-					stored.activityTypes ??
-					stored.taskTypes ??
-					JSON.parse(JSON.stringify(seedData.activityTypes));
+				// (or, since M2 prep, without the taskProgressEntries key), fall back to seed
+				// for those slices so the new screens have data to render.
 				this.taskProgressEntries =
 					stored.taskProgressEntries ??
 					JSON.parse(JSON.stringify(seedData.taskProgressEntries));
@@ -571,16 +538,9 @@ export const useDataStore = defineStore("data", {
 						}
 					}
 				}
-				// §M2 task field migration: stored tasks may still have `taskType` (old
-				// field name) instead of `activityType`. Mirror the value over and stamp
-				// a default `task_type` of 'Activity' on any task that lacks it.
+				// Stamp a default `task_type` of 'Activity' on any stored task that lacks it.
 				let taskMigrationDirty = false;
 				for (const t of this.tasks) {
-					if (t.taskType !== undefined && t.activityType === undefined) {
-						t.activityType = t.taskType;
-						delete t.taskType;
-						taskMigrationDirty = true;
-					}
 					if (!t.task_type) {
 						t.task_type = "Activity";
 						taskMigrationDirty = true;
@@ -590,7 +550,6 @@ export const useDataStore = defineStore("data", {
 					!stored.rateMaster ||
 					!stored.boqs ||
 					!stored.taskProgressEntries ||
-					!stored.activityTypes ||
 					!stored.stagePlannings ||
 					!stored.attachments ||
 					!stored.companies ||
@@ -611,7 +570,6 @@ export const useDataStore = defineStore("data", {
 				this.projects = JSON.parse(JSON.stringify(seedData.projects));
 				this.workPackages = JSON.parse(JSON.stringify(seedData.workPackages));
 				this.tasks = JSON.parse(JSON.stringify(seedData.tasks));
-				this.activityTypes = JSON.parse(JSON.stringify(seedData.activityTypes));
 				this.taskProgressEntries = JSON.parse(
 					JSON.stringify(seedData.taskProgressEntries)
 				);
@@ -1128,8 +1086,6 @@ export const useDataStore = defineStore("data", {
 		//   - Activity: standard progress entry flow (current behavior)
 		//   - Milestone: checkpoint, no qty progress (status-only, future M2 work)
 		//   - Inspection: pass/fail gate (future M2 — inspection workflow)
-		// activityType is separate — optional Link to Activity Type master providing
-		// labour mix + productivity defaults.
 		addTask(data) {
 			const id = uid("TSK");
 			// §14.2 — Company auto-derived from parent project.
@@ -1146,7 +1102,6 @@ export const useDataStore = defineStore("data", {
 				workPackageId: data.workPackageId || null,
 				company: parentProject?.company || this.activeCompany,
 				task_type,
-				activityType: data.activityType || null,
 				name: data.name,
 				description: data.description || "",
 				status: data.status || "Open",
@@ -1193,78 +1148,6 @@ export const useDataStore = defineStore("data", {
 					return false;
 				return true;
 			});
-			this._persist();
-		},
-
-		// ===== Activity Type (master, §13.3 item 16) =====
-		// Masters are NOT cascaded by deleteProject — they're org-wide setup records,
-		// independent of any project. When an Activity Type is deleted, tasks that
-		// linked to it keep their `activityType` field as a dangling reference
-		// (treated as null by the UI via store.activityTypeById returning undefined).
-		// Same model production Frappe uses for Link fields without on_delete: 'Cascade'.
-		addActivityType(data) {
-			const id = uid("AT");
-			const skilled = Number(data.defaultSkilledRatio);
-			const safeSkilled = Number.isFinite(skilled) ? Math.min(1, Math.max(0, skilled)) : 0.5;
-			const type = {
-				id,
-				name: data.name || "Untitled Activity Type",
-				category: data.category || "Other",
-				description: data.description || "",
-				defaultChecklist: Array.isArray(data.defaultChecklist)
-					? data.defaultChecklist.filter((c) => c && c.item)
-					: [],
-				defaultSkilledRatio: safeSkilled,
-				defaultUnskilledRatio: 1 - safeSkilled,
-				expectedProductivityPerManDay: Number(data.expectedProductivityPerManDay) || 0,
-				productivityUnit: data.productivityUnit || "",
-				applicableProjectTypes: Array.isArray(data.applicableProjectTypes)
-					? data.applicableProjectTypes.slice()
-					: [],
-			};
-			this.activityTypes.unshift(type);
-			this._persist();
-			return type;
-		},
-		updateActivityType(id, patch) {
-			const idx = this.activityTypes.findIndex((at) => at.id === id);
-			if (idx === -1) return null;
-			const merged = { ...this.activityTypes[idx], ...patch };
-			// Keep skilled/unskilled ratios coherent: if skilled is patched, recompute
-			// unskilled from it (and vice versa). They must sum to 1.
-			if (patch.defaultSkilledRatio !== undefined) {
-				const v = Number(patch.defaultSkilledRatio);
-				const safe = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
-				merged.defaultSkilledRatio = safe;
-				merged.defaultUnskilledRatio = 1 - safe;
-			} else if (patch.defaultUnskilledRatio !== undefined) {
-				const v = Number(patch.defaultUnskilledRatio);
-				const safe = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
-				merged.defaultUnskilledRatio = safe;
-				merged.defaultSkilledRatio = 1 - safe;
-			}
-			if (patch.expectedProductivityPerManDay !== undefined) {
-				merged.expectedProductivityPerManDay =
-					Number(patch.expectedProductivityPerManDay) || 0;
-			}
-			if (patch.defaultChecklist !== undefined) {
-				merged.defaultChecklist = Array.isArray(patch.defaultChecklist)
-					? patch.defaultChecklist.filter((c) => c && c.item)
-					: [];
-			}
-			if (patch.applicableProjectTypes !== undefined) {
-				merged.applicableProjectTypes = Array.isArray(patch.applicableProjectTypes)
-					? patch.applicableProjectTypes.slice()
-					: [];
-			}
-			this.activityTypes[idx] = merged;
-			this._persist();
-			return merged;
-		},
-		deleteActivityType(id) {
-			this.activityTypes = this.activityTypes.filter((at) => at.id !== id);
-			// Do NOT cascade-null tasks' activityType field — dangling Link references
-			// are the Frappe-native behavior. UI treats unresolved IDs as no link.
 			this._persist();
 		},
 

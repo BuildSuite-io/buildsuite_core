@@ -60,22 +60,6 @@ const routes = [
 				props: true,
 			},
 			{
-				path: "activity-types",
-				name: "activity-types",
-				component: () => import("@/views/ActivityTypesView.vue"),
-			},
-			{
-				path: "activity-types/new",
-				name: "activity-type-new",
-				component: () => import("@/views/NewActivityTypeView.vue"),
-			},
-			{
-				path: "activity-types/:id",
-				name: "activity-type-detail",
-				component: () => import("@/views/ActivityTypeDetailView.vue"),
-				props: true,
-			},
-			{
 				path: "stage-plannings",
 				name: "stage-plannings",
 				component: () => import("@/views/StagePlanningsView.vue"),

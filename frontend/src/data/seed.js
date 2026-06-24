@@ -411,8 +411,6 @@ export const seedData = {
 		// as the last tasks of Block A and Block B's seed sets — no explicit handover
 		// tasks existed, so fell back to "last task per project" per the prompt).
 		// 'Inspection' marks QC gates (TSK-1013 + TSK-1014 added below).
-		// activityType is the optional Link to the Activity Type master (RCC Column
-		// Casting / Brick Masonry / etc.) — provides default labour mix + productivity.
 		//
 		// Block A - Superstructure WP
 		{
@@ -420,7 +418,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-A",
 			workPackageId: "WP-003",
 			task_type: "Activity",
-			activityType: "AT-001",
 			name: "Block A — Level 5 column casting (Grid 1-4)",
 			status: "Completed",
 			priority: "High",
@@ -437,7 +434,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-A",
 			workPackageId: "WP-003",
 			task_type: "Activity",
-			activityType: "AT-001",
 			name: "Block A — Level 5 column casting (Grid 5-8)",
 			status: "Completed",
 			priority: "High",
@@ -470,7 +466,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-A",
 			workPackageId: "WP-003",
 			task_type: "Activity",
-			activityType: "AT-002",
 			name: "Block A — Level 5 slab casting",
 			status: "In Progress",
 			priority: "High",
@@ -503,7 +498,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-A",
 			workPackageId: "WP-003",
 			task_type: "Activity",
-			activityType: "AT-001",
 			name: "Block A — Level 6 column casting (Grid 1-4)",
 			status: "Open",
 			priority: "High",
@@ -520,7 +514,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-A",
 			workPackageId: "WP-004",
 			task_type: "Activity",
-			activityType: "AT-003",
 			name: "Block A — Level 3 partition walls (East wing)",
 			status: "In Progress",
 			priority: "Medium",
@@ -591,7 +584,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-B",
 			workPackageId: "WP-008",
 			task_type: "Activity",
-			activityType: "AT-002",
 			name: "Block B — Level 3 slab casting",
 			status: "Completed",
 			priority: "High",
@@ -608,7 +600,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-B",
 			workPackageId: "WP-008",
 			task_type: "Activity",
-			activityType: "AT-001",
 			name: "Block B — Level 4 column casting",
 			status: "In Progress",
 			priority: "High",
@@ -625,7 +616,6 @@ export const seedData = {
 			projectId: "PROJ-2026-001-B",
 			workPackageId: "WP-009",
 			task_type: "Milestone",
-			activityType: "AT-003",
 			name: "Block B — Level 1 partition walls",
 			status: "In Progress",
 			priority: "Medium",
@@ -663,7 +653,6 @@ export const seedData = {
 			projectId: "PROJ-2026-002",
 			workPackageId: "WP-010",
 			task_type: "Activity",
-			activityType: "AT-008",
 			name: "CHN — Site grading & retaining wall layout",
 			status: "Completed",
 			priority: "High",
@@ -690,155 +679,6 @@ export const seedData = {
 			estimatedHours: 320,
 			actualHours: 176,
 			description: "Tower 1 raft foundation steel work.",
-		},
-	],
-
-	// ===== Activity Type (master, CLAUDE.md §13.3 item 16) =====
-	// RENAMED in Session 31 from "Task Type" to align with proposal §M2 — proposal
-	// reserves task_type as a Select field on Task (Activity / Milestone / Inspection).
-	// The master here is now Activity Type: construction activity templates with
-	// default checklist, labour mix (skilled/unskilled ratio), and expected
-	// productivity. Tasks link to an Activity Type via `activityType` (optional).
-	// `applicableProjectTypes` is the Project Type → Activity Type mapping that
-	// enables template-based task creation. ID prefix changed TT- → AT-.
-	activityTypes: [
-		{
-			id: "AT-001",
-			name: "RCC Column Casting",
-			category: "Structural",
-			description:
-				"Casting reinforced concrete columns. Typically uses M25-M40 grade concrete.",
-			defaultChecklist: [
-				{ item: "Formwork inspection complete" },
-				{ item: "Reinforcement check by QS" },
-				{ item: "Concrete grade verified" },
-				{ item: "Curing plan in place" },
-			],
-			defaultSkilledRatio: 0.3,
-			defaultUnskilledRatio: 0.7,
-			expectedProductivityPerManDay: 0.8,
-			productivityUnit: "m³",
-			applicableProjectTypes: ["Commercial", "Residential", "Infrastructure", "Industrial"],
-		},
-		{
-			id: "AT-002",
-			name: "RCC Slab Casting",
-			category: "Structural",
-			description: "Casting reinforced concrete slabs. Continuous pour discipline required.",
-			defaultChecklist: [
-				{ item: "Formwork and propping checked" },
-				{ item: "Reinforcement BBS verified" },
-				{ item: "MEP sleeves and inserts placed" },
-				{ item: "Concrete grade verified" },
-				{ item: "Vibration and curing plan ready" },
-			],
-			defaultSkilledRatio: 0.25,
-			defaultUnskilledRatio: 0.75,
-			expectedProductivityPerManDay: 2.5,
-			productivityUnit: "m³",
-			applicableProjectTypes: ["Commercial", "Residential", "Infrastructure", "Industrial"],
-		},
-		{
-			id: "AT-003",
-			name: "Brick Masonry — 230mm",
-			category: "Finishing",
-			description: "230mm thick brick partition walls — burnt clay brick + cement mortar.",
-			defaultChecklist: [
-				{ item: "Wall layout marked on slab" },
-				{ item: "First course aligned and plumbed" },
-				{ item: "Mortar mix ratio verified" },
-				{ item: "Brick soaking done" },
-			],
-			defaultSkilledRatio: 0.5,
-			defaultUnskilledRatio: 0.5,
-			expectedProductivityPerManDay: 4.0,
-			productivityUnit: "m²",
-			applicableProjectTypes: ["Commercial", "Residential"],
-		},
-		{
-			id: "AT-004",
-			name: "Plastering — Internal",
-			category: "Finishing",
-			description: "Cement plaster — internal walls and ceilings, 12-15mm thick.",
-			defaultChecklist: [
-				{ item: "Surface preparation done" },
-				{ item: "Substrate dampened" },
-				{ item: "Mortar mix ratio verified" },
-				{ item: "Curing plan in place" },
-			],
-			defaultSkilledRatio: 0.5,
-			defaultUnskilledRatio: 0.5,
-			expectedProductivityPerManDay: 10.0,
-			productivityUnit: "m²",
-			applicableProjectTypes: ["Commercial", "Residential"],
-		},
-		{
-			id: "AT-005",
-			name: "Floor Tiling",
-			category: "Finishing",
-			description: "Vitrified / ceramic floor tile laying with adhesive or mortar bed.",
-			defaultChecklist: [
-				{ item: "Base level and slope verified" },
-				{ item: "Tile layout marked" },
-				{ item: "Adhesive grade verified" },
-				{ item: "Grouting plan in place" },
-			],
-			defaultSkilledRatio: 0.7,
-			defaultUnskilledRatio: 0.3,
-			expectedProductivityPerManDay: 6.0,
-			productivityUnit: "m²",
-			applicableProjectTypes: ["Commercial", "Residential"],
-		},
-		{
-			id: "AT-006",
-			name: "Electrical Conduit Laying",
-			category: "MEP",
-			description: "Concealed PVC/MS conduit laying in walls and slabs prior to plaster.",
-			defaultChecklist: [
-				{ item: "Conduit route marked per drawing" },
-				{ item: "Drilling locations approved" },
-				{ item: "Conduit grade verified" },
-				{ item: "Pull wires inserted" },
-			],
-			defaultSkilledRatio: 0.8,
-			defaultUnskilledRatio: 0.2,
-			expectedProductivityPerManDay: 12.0,
-			productivityUnit: "m",
-			applicableProjectTypes: ["Commercial", "Residential", "Industrial"],
-		},
-		{
-			id: "AT-007",
-			name: "Plumbing Rough-in",
-			category: "MEP",
-			description: "Rough-in of water supply and drainage piping before wall closure.",
-			defaultChecklist: [
-				{ item: "Plumbing layout marked per drawing" },
-				{ item: "Pipe grade and ratings verified" },
-				{ item: "Slopes verified" },
-				{ item: "Pressure test scheduled" },
-			],
-			defaultSkilledRatio: 0.7,
-			defaultUnskilledRatio: 0.3,
-			expectedProductivityPerManDay: 8.0,
-			productivityUnit: "m",
-			applicableProjectTypes: ["Commercial", "Residential", "Industrial"],
-		},
-		{
-			id: "AT-008",
-			name: "Excavation in Ordinary Soil",
-			category: "Earthwork",
-			description: "Excavation in ordinary soil up to 1.5m depth, including disposal.",
-			defaultChecklist: [
-				{ item: "Service clearance certificate received" },
-				{ item: "Excavation depth marked" },
-				{ item: "Shoring plan in place" },
-				{ item: "Dewatering plan ready" },
-			],
-			defaultSkilledRatio: 0.1,
-			defaultUnskilledRatio: 0.9,
-			expectedProductivityPerManDay: 3.5,
-			productivityUnit: "m³",
-			applicableProjectTypes: ["Infrastructure", "Commercial", "Residential", "Industrial"],
 		},
 	],
 

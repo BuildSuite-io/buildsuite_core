@@ -61,7 +61,6 @@ export function createLocalDataAdapter(store) {
 				exp_start_date: task.startDate || null,
 				exp_end_date: task.endDate || null,
 				task_type: task.task_type || "Activity",
-				activity_type: task.activityType || null,
 				description: task.description || "",
 			}));
 		}
@@ -308,7 +307,6 @@ export function createLocalDataAdapter(store) {
 				projectId: values.project,
 				workPackageId: values.work_package,
 				task_type: values.task_type || "Activity",
-				activityType: values.activity_type,
 				name: values.subject,
 				description: values.description,
 				status: values.status,

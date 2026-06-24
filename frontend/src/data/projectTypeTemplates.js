@@ -33,10 +33,6 @@
 //     estimated_hours        — integer
 //     sort_order             — integer within its WP
 //
-//   defaultActivityTypes[]   — Activity Type IDs (AT-...) that are suggested
-//                              for this project type. (Renamed in Session 31
-//                              from defaultTaskTypes.)
-//
 //   defaultFieldVisibility   — PLACEHOLDER. The Project-form-field schema map
 //                              per type is M2 work; this is the data shape
 //                              that the M2 wiring will read.
@@ -219,16 +215,6 @@ export const PROJECT_TYPE_TEMPLATES = {
 				sort_order: 2,
 			},
 		],
-		defaultActivityTypes: [
-			"AT-008",
-			"AT-001",
-			"AT-002",
-			"AT-006",
-			"AT-007",
-			"AT-003",
-			"AT-004",
-			"AT-005",
-		],
 		defaultFieldVisibility: {
 			plot_area_sqft: true,
 			floors_above_ground: true,
@@ -408,16 +394,6 @@ export const PROJECT_TYPE_TEMPLATES = {
 				sort_order: 2,
 			},
 		],
-		defaultActivityTypes: [
-			"AT-008",
-			"AT-001",
-			"AT-002",
-			"AT-003",
-			"AT-004",
-			"AT-005",
-			"AT-006",
-			"AT-007",
-		],
 		defaultFieldVisibility: {
 			plot_area_sqft: true,
 			floors_above_ground: true,
@@ -561,7 +537,6 @@ export const PROJECT_TYPE_TEMPLATES = {
 				sort_order: 2,
 			},
 		],
-		defaultActivityTypes: ["AT-008", "AT-001", "AT-002", "AT-006"],
 		defaultFieldVisibility: {
 			plot_area_sqft: false,
 			floors_above_ground: false,

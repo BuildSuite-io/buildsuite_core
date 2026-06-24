@@ -49,7 +49,6 @@ const form = reactive({
 	projectId: "",
 	workPackageId: null,
 	task_type: "Activity",
-	activityType: null,
 	name: "",
 	description: "",
 	status: "Yet To Start",
@@ -67,7 +66,6 @@ watch(
 		form.projectId = props.projectId || projectsResource.data[0]?.name || "";
 		form.workPackageId = props.workPackageId || null;
 		form.task_type = "Activity";
-		form.activityType = null;
 		form.name = "";
 		form.description = "";
 		form.status = "Yet To Start";
@@ -86,11 +84,6 @@ const selectedWP = computed(() => wpsResource.data.find((wp) => wp.name === form
 const availableWPs = computed(() =>
 	wpsResource.data.filter((wp) => wp.project === form.projectId)
 );
-const availableActivityTypes = computed(() => {
-	const pt = selectedProject.value?.project_type;
-	return pt ? store.activityTypesForProjectType(pt) : store.activityTypes;
-});
-
 // Project is locked when the parent supplied it. WP is locked when both
 // project + WP are supplied (work-package-scoped entry). When the parent
 // supplies only the project (Tasks tab on Project Detail), WP is still
@@ -107,12 +100,6 @@ watch(
 			!availableWPs.value.find((wp) => wp.name === form.workPackageId)
 		) {
 			form.workPackageId = null;
-		}
-		if (
-			form.activityType &&
-			!availableActivityTypes.value.find((at) => at.id === form.activityType)
-		) {
-			form.activityType = null;
 		}
 	}
 );
@@ -268,22 +255,6 @@ async function save() {
 								<option :value="null">— None —</option>
 								<option v-for="wp in availableWPs" :key="wp.name" :value="wp.name">
 									{{ wp.work_package_name }}
-								</option>
-							</DeskSelect>
-						</DeskField>
-						<DeskField
-							label="Activity Type"
-							hint="Optional — provides default labour mix and productivity baseline."
-						>
-							<DeskSelect v-model="form.activityType">
-								<option :value="null">— None —</option>
-								<option
-									v-for="at in availableActivityTypes"
-									:key="at.id"
-									:value="at.id"
-								>
-									{{ at.name
-									}}<template v-if="at.category"> · {{ at.category }}</template>
 								</option>
 							</DeskSelect>
 						</DeskField>

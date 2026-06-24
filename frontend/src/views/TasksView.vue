@@ -101,9 +101,6 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Task" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/activity-types" class="desk-link text-xs mr-3"
-				>View Activity Types →</RouterLink
-			>
 			<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn"
 				>+ New</RouterLink
 			>
