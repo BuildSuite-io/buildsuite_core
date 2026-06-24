@@ -36,7 +36,7 @@ const form = reactive({
 	description: "",
 	status: "Planned",
 	budget: "",
-	startDate: "",
+	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 });
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({

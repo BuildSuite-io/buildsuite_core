@@ -34,7 +34,7 @@ const adapter = createDataAdapter(store);
 const form = reactive({
 	stageName: "",
 	project: route.query.projectId || "",
-	plannedStart: "",
+	plannedStart: new Date().toISOString().slice(0, 10),
 	plannedEnd: "",
 	description: "",
 	dependencies: [],
