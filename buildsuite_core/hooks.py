@@ -202,6 +202,8 @@ doc_events = {
 			"buildsuite_core.utils.task.update_project_progress",
 			"buildsuite_core.utils.task.sync_stage_tasks_on_update",
 			"buildsuite_core.utils.task.update_stage_aggregates_on_task",
+			# Re-flag downstream schedule conflicts when a task's dates/deps change.
+			"buildsuite_core.api.schedule_engine.recompute_conflicts_on_update",
 		],
 		"on_trash": [
 			"buildsuite_core.utils.task.recalculate_work_package_on_task_trash",
