@@ -83,6 +83,9 @@ def create_task(project_name, task_row):
 	task.exp_start_date = template_task.exp_start_date
 	task.exp_end_date = template_task.exp_end_date
 	task.expected_time = template_task.expected_time
+	# Template-seeded tasks default to Medium priority (ERPNext's native default is
+	# "Low"); the template Task's own priority isn't a meaningful planning signal.
+	task.priority = "Medium"
 	task.is_template = 0
 	task.insert(ignore_permissions=True)
 	return task.name

@@ -35,7 +35,7 @@ const form = reactive({
 	status: "Yet To Start",
 	priority: "Medium",
 	assignee: "",
-	startDate: new Date().toISOString().slice(0, 10),
+	startDate: "",
 	endDate: "",
 	estimatedHours: 0,
 });

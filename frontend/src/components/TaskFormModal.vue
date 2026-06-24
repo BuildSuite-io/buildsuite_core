@@ -73,7 +73,7 @@ watch(
 		form.status = "Yet To Start";
 		form.priority = "Medium";
 		form.assignee = "";
-		form.startDate = new Date().toISOString().slice(0, 10);
+		form.startDate = "";
 		form.endDate = "";
 		setErrors({});
 	}
