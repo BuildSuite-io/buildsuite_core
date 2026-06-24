@@ -8,6 +8,7 @@ import { reactive, ref, computed, watch } from "vue";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { useTaskTypes } from "@/composables/useTaskTypes";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -28,6 +29,7 @@ const store = useDataStore();
 const adapter = createDataAdapter(store);
 const saving = ref(false);
 
+const { taskTypes } = useTaskTypes();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	subject: "name",
 	project: "projectId",
@@ -126,7 +128,7 @@ async function save() {
 		const task = await adapter.create("Task", {
 			project: form.projectId,
 			work_package: form.workPackageId,
-			task_type: form.task_type,
+			type: form.task_type,
 			subject: form.name,
 			description: form.description,
 			task_status: form.status,
@@ -203,9 +205,9 @@ async function save() {
 							hint="Activity = standard work with progress entries; Milestone = checkpoint; Inspection = pass/fail gate."
 						>
 							<DeskSelect v-model="form.task_type">
-								<option value="Activity">Activity</option>
-								<option value="Milestone">Milestone</option>
-								<option value="Inspection">Inspection</option>
+								<option v-for="tt in taskTypes" :key="tt" :value="tt">
+									{{ tt }}
+								</option>
 							</DeskSelect>
 						</DeskField>
 						<DeskField label="Description">

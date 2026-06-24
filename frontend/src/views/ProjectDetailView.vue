@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 // Project Detail — Desk-styled (CLAUDE.md §12.4 destination: Desk in production).
 // All computed properties, actions, and store calls are preserved exactly from the
 // pre-rebuild version. Only markup and styling change.
@@ -350,7 +351,7 @@ function loadTasksResource() {
 		"name",
 		"subject",
 		"project",
-		"task_type",
+		"type as task_type",
 		"task_status",
 		"priority",
 		"progress",
@@ -883,6 +884,8 @@ function onTaskRowClick(row) {
 function onBoqRowClick(row) {
 	router.push(`/boq/${row.id}`);
 }
+
+usePageTitle(() => project.value?.name);
 </script>
 
 <template>

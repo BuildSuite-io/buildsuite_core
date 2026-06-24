@@ -63,7 +63,7 @@ watch(
 				"project",
 				"work_package",
 				"task_status",
-				"task_type",
+				"type as task_type",
 				"owner",
 				"exp_start_date",
 				"exp_end_date",

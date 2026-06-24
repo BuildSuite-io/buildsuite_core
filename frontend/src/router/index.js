@@ -1,7 +1,67 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { getLoginUrl } from "@/utils/session";
-import { APP_ROUTE } from "@/utils/appRoute";
+import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
+
+// Per-route browser title (route name -> human label). Detail pages get a generic
+// label here; the view overrides it with the record name via usePageTitle.
+const PAGE_TITLES = {
+	"app-home": "Home",
+	dashboard: "Dashboard",
+	projects: "Projects",
+	"project-new": "New Project",
+	"project-detail": "Project",
+	"work-packages": "Work Packages",
+	"wp-new": "New Work Package",
+	"wp-detail": "Work Package",
+	tasks: "Tasks",
+	"task-new": "New Task",
+	"task-detail": "Task",
+	"stage-plannings": "Stage Planning",
+	"stage-planning-new": "New Stage",
+	"stage-planning-detail": "Stage Planning",
+	"stage-planning-review": "Stage Review",
+	"progress-entries": "Task Progress Entries",
+	"progress-entry-new": "New Progress Entry",
+	"progress-entry-detail": "Task Progress Entry",
+	schedule: "Schedule",
+	sco: "Scope Change Orders",
+	boq: "Bill of Quantities",
+	"boq-detail": "BOQ",
+	"rate-master": "Rate Master",
+	"site-execution": "Site Execution",
+	"project-dashboard": "Project Dashboard",
+	"report-stub": "Report",
+	estimation: "Estimation",
+	procurement: "Procurement",
+	subcontract: "Subcontract",
+	workforce: "Workforce",
+	"scope-change": "Scope Change",
+	"project-finance": "Project Finance",
+	accounting: "Accounting",
+	buying: "Buying",
+	stock: "Stock",
+	assets: "Assets",
+	hr: "HR",
+	subcontractor: "Subcontractor",
+	labour: "Labour",
+	financials: "Financials",
+	reports: "Reports",
+	settings: "Settings",
+	"settings-companies": "Companies",
+	"settings-company-new": "New Company",
+	"settings-company-detail": "Company",
+	"settings-users": "Users",
+	"settings-user-new": "New User",
+	"settings-data": "Data Tools",
+	"settings-core": "Core Settings",
+	"settings-site-execution": "Site Execution Settings",
+	"settings-workspace-structure": "Workspace Structure",
+	"settings-project-types": "Project Types",
+	"settings-project-type-new": "New Project Type",
+	"settings-project-type-detail": "Project Type",
+	forbidden: "Access Denied",
+};
 
 const routes = [
 	{
@@ -412,6 +472,13 @@ router.beforeEach(async (to) => {
 	}
 
 	return true;
+});
+
+// Set a distinct browser title per route. A view may further refine it (e.g. to a
+// record name) via usePageTitle once its data loads.
+router.afterEach((to) => {
+	const label = PAGE_TITLES[to.name];
+	document.title = label ? `${label} · ${APP_TITLE}` : APP_TITLE;
 });
 
 export default router;

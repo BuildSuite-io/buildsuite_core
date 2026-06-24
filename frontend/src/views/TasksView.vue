@@ -114,7 +114,7 @@ function onRowClick(row) {
 				'work_package',
 				'task_status',
 				'priority',
-				'task_type',
+				'type',
 				'_assign',
 				'exp_end_date',
 				'progress',
@@ -125,7 +125,7 @@ function onRowClick(row) {
 				{ key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
 				{ key: 'task_status', label: 'Status', preset: 'status' },
 				{ key: 'priority', label: 'Priority', preset: 'status' },
-				{ key: 'task_type', label: 'Task Type', preset: 'status' },
+				{ key: 'type', label: 'Task Type', preset: 'status' },
 				{ key: 'assignee', label: 'Assignee', fields: ['_assign'] },
 				{ key: 'exp_end_date', label: 'Due' },
 				{ key: 'progress', label: 'Progress', preset: 'progress' },
@@ -137,7 +137,7 @@ function onRowClick(row) {
 				priority: 'priority',
 				project: 'project',
 				assignee: { field: '_assign', op: 'like', like: true },
-				taskType: 'task_type',
+				taskType: 'type',
 			}"
 			cache-key="buildsuite-task-list-generic"
 			row-key="name"
@@ -244,8 +244,8 @@ function onRowClick(row) {
 			<template #cell-priority="{ row }">
 				<StatusBadge :status="row.priority || 'Medium'" size="xs" />
 			</template>
-			<template #cell-task_type="{ row }">
-				<StatusBadge :status="row.task_type || 'Activity'" size="xs" />
+			<template #cell-type="{ row }">
+				<StatusBadge :status="row.type || 'Activity'" size="xs" />
 			</template>
 			<template #cell-assignee="{ row }">
 				<UserAvatar

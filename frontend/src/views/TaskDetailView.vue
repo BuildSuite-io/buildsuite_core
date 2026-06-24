@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 // Task Detail. Edit + Delete + quick-status actions live on the title row
 // (DeskPage #actions slot). Editing opens a modal so the inline content
 // stays readable. Progress block is pinned to the top so the headline number
@@ -12,6 +13,7 @@ import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
 import AccessDenied from "@/components/AccessDenied.vue";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
+import { useTaskTypes } from "@/composables/useTaskTypes";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -39,6 +41,7 @@ const router = useRouter();
 const store = useDataStore();
 const adapter = createDataAdapter(store);
 const { canEdit, canDelete, canCreate, canEditRecord, canDeleteRecord } = usePermissions();
+const { taskTypes } = useTaskTypes();
 
 // Assignee is Frappe-native assignment (`_assign`, a JSON list of users). The
 // UI is single-assignee, so we surface the first entry.
@@ -89,7 +92,7 @@ function loadTaskResource() {
 			"owner",
 			"exp_start_date",
 			"exp_end_date",
-			"task_type",
+			"type",
 			"description",
 		],
 		cache: `buildsuite-task-detail:${props.id}`,
@@ -106,7 +109,7 @@ function loadTaskResource() {
 				owner: row?.owner || "",
 				startDate: row?.exp_start_date || null,
 				endDate: row?.exp_end_date || null,
-				task_type: row?.task_type || "Activity",
+				task_type: row?.type || "Activity",
 				description: row?.description || "",
 			}));
 		},
@@ -385,7 +388,7 @@ const {
 	work_package: "workPackageId",
 	task_status: "status",
 	priority: "priority",
-	task_type: "task_type",
+	type: "task_type",
 	owner: "assignee",
 	exp_start_date: "startDate",
 	exp_end_date: "endDate",
@@ -607,7 +610,7 @@ async function saveEdit() {
 			work_package: form.value.workPackageId || null,
 			task_status: form.value.status,
 			priority: form.value.priority,
-			task_type: form.value.task_type,
+			type: form.value.task_type,
 			exp_start_date: form.value.startDate,
 			exp_end_date: form.value.endDate,
 			description: form.value.description,
@@ -690,6 +693,8 @@ const progressColor = computed(() => {
 	if (task.value.progress > 0) return "bg-brand-500";
 	return "bg-ink-300";
 });
+
+usePageTitle(() => task.value?.name);
 </script>
 
 <template>
@@ -1108,9 +1113,9 @@ const progressColor = computed(() => {
 									v-model="form.task_type"
 									@change="clearEditError('task_type')"
 								>
-									<option value="Activity">Activity</option>
-									<option value="Milestone">Milestone</option>
-									<option value="Inspection">Inspection</option>
+									<option v-for="tt in taskTypes" :key="tt" :value="tt">
+										{{ tt }}
+									</option>
 								</DeskSelect>
 							</DeskField>
 							<DeskField

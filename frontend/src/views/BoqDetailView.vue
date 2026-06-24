@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 // BOQ Detail — Desk-styled (CLAUDE.md §12.4) with one deliberate exception:
 // the "Compare to R<n>" toggle and the inline Δ delta chips on item rows are
 // LEFT AS-IS (brand-green styling) because they are the seed of the standalone
@@ -367,6 +368,8 @@ const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.re
 // Grid template for the tree (chevron / code / description / qty / rate / planned / actual / variance / task)
 const treeGridStyle =
 	"grid-template-columns: 28px 80px 1fr 80px 90px 100px 110px 110px 110px 80px;";
+
+usePageTitle(() => boq.value?.title);
 </script>
 
 <template>

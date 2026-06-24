@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 // Stage Planning detail — adapter-backed. UI follows the prototype detail
 // layout (KPI strip, details card, StageTaskPicker for tasks, edit modal).
 // Workflow approval / activity log surfaces are omitted until the backend
@@ -722,6 +723,8 @@ const breadcrumbs = computed(() => {
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
 	return out;
 });
+
+usePageTitle(() => stage.value?.stageName);
 </script>
 
 <template>

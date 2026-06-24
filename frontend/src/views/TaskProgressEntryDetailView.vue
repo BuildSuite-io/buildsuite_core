@@ -1,4 +1,5 @@
 <script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
 import { ref, computed, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
@@ -469,6 +470,8 @@ const titleStatuses = computed(() => {
 const subtitle = computed(() =>
 	entry.value ? `${entry.value.id} · ${fmtDate(entry.value.entryDate)}` : ""
 );
+
+usePageTitle(() => task.value?.name || entry.value?.id);
 </script>
 
 <template>
