@@ -7,6 +7,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
 import { getProjectSchedule } from "@/utils/scheduleApi";
+import { dateBoundsError } from "@/utils/dateBounds";
 
 const store = useDataStore();
 const adapter = createDataAdapter(store);
@@ -607,6 +608,18 @@ async function onScheduleInput(task, field, evt) {
 	const isMs = task.task_type === "Milestone";
 	const newStart = isMs ? null : field === "startDate" ? newDate : task.startDate;
 	const newEnd = field === "endDate" ? newDate : task.endDate;
+	const boundsErr = dateBoundsError({
+		start: newStart,
+		end: newEnd,
+		parentStart: projectMeta.value?.startDate,
+		parentEnd: projectMeta.value?.endDate,
+		parentLabel: "project",
+	});
+	if (boundsErr) {
+		flashError(boundsErr);
+		await loadSchedule(); // revert the edited input
+		return;
+	}
 	try {
 		await adapter.update("Task", task.id, {
 			exp_start_date: newStart || null,

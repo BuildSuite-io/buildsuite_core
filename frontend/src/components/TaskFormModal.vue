@@ -7,6 +7,7 @@
 import { reactive, ref, computed, watch } from "vue";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useTaskTypes } from "@/composables/useTaskTypes";
 import DeskSection from "@/components/desk/DeskSection.vue";
@@ -37,7 +38,7 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 });
 
 const projectsResource = adapter.list("Project", {
-	fields: ["name", "project_name", "project_type"],
+	fields: ["name", "project_name", "project_type", "expected_start_date", "expected_end_date"],
 	orderBy: "modified desc",
 	pageLength: 200,
 });
@@ -114,8 +115,18 @@ function validate() {
 	const e = {};
 	if (!form.name.trim()) e.name = "Task name is required";
 	if (!form.projectId) e.projectId = "Project is required";
-	if (form.endDate && form.startDate && form.endDate < form.startDate) {
-		e.endDate = "End must be after start";
+	const endErr = endBeforeStartError(form.startDate, form.endDate);
+	if (endErr) e.endDate = endErr;
+	const boundsErr = outOfParentBoundsError(
+		form.startDate,
+		form.endDate,
+		selectedProject.value?.expected_start_date,
+		selectedProject.value?.expected_end_date,
+		"project"
+	);
+	if (boundsErr) {
+		if (boundsErr.startsWith("Start")) e.startDate = boundsErr;
+		else e.endDate = boundsErr;
 	}
 	setErrors(e);
 	return Object.keys(e).length === 0;
@@ -263,8 +274,12 @@ async function save() {
 					</DeskSection>
 
 					<DeskSection title="Schedule">
-						<DeskField label="Start date">
-							<DeskInput v-model="form.startDate" type="date" />
+						<DeskField label="Start date" :error="errors.startDate">
+							<DeskInput
+								v-model="form.startDate"
+								type="date"
+								@change="clearError('startDate')"
+							/>
 						</DeskField>
 						<DeskField label="End date" :error="errors.endDate">
 							<DeskInput

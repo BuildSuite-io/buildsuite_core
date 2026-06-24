@@ -14,6 +14,8 @@ import { useSessionStore } from "@/stores/session";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { createDataAdapter } from "@/data/adapters";
+import { outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 
 // Mirrors the backend Stage Planning Approval workflow (permissions/setup.py
 // _STAGE_TRANSITIONS) — real BuildSuite roles, checked against session.access.roles.
@@ -587,6 +589,21 @@ function validateEdit() {
 
 async function saveEdit() {
 	if (!validateEdit() || !stage.value) return;
+	const b = await fetchProjectBounds(stage.value.project);
+	const boundsErr = outOfParentBoundsError(
+		editForm.value.plannedStart,
+		editForm.value.plannedEnd,
+		b.start,
+		b.end,
+		"project"
+	);
+	if (boundsErr) {
+		setErrors(
+			boundsErr.startsWith("Start") ? { plannedStart: boundsErr } : { plannedEnd: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	saving.value = true;
 	try {
 		await adapter.update("Stage Planning", stage.value.id, {

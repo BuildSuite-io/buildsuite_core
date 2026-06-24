@@ -27,6 +27,8 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import TaskFormModal from "@/components/TaskFormModal.vue";
 import { createDataAdapter } from "@/data/adapters";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 
 const props = defineProps({ id: String });
@@ -169,14 +171,28 @@ function cancelEdit() {
 function validate() {
 	const e = {};
 	if (!form.value.name) e.name = "Work package name is required";
-	if (form.value.endDate && form.value.startDate && form.value.endDate < form.value.startDate) {
-		e.endDate = "End must be after start";
-	}
+	const endErr = endBeforeStartError(form.value.startDate, form.value.endDate);
+	if (endErr) e.endDate = endErr;
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
 async function saveEdit() {
 	if (!validate()) return;
+	const b = await fetchProjectBounds(form.value.projectId);
+	const boundsErr = outOfParentBoundsError(
+		form.value.startDate,
+		form.value.endDate,
+		b.start,
+		b.end,
+		"project"
+	);
+	if (boundsErr) {
+		setErrors(
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	saving.value = true;
 	try {
 		await adapter.update("Work Package", wp.value.id, {

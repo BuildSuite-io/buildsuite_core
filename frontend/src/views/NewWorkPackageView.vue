@@ -20,6 +20,8 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { createDataAdapter } from "@/data/adapters";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 
 const router = useRouter();
 const route = useRoute();
@@ -52,15 +54,29 @@ function validate() {
 	const e = {};
 	if (!form.name.trim()) e.name = "Work package name is required";
 	if (!form.projectId) e.projectId = "Project is required";
-	if (form.endDate && form.startDate && form.endDate < form.startDate) {
-		e.endDate = "End must be after start";
-	}
+	const endErr = endBeforeStartError(form.startDate, form.endDate);
+	if (endErr) e.endDate = endErr;
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
 
 async function save() {
 	if (!validate()) return;
+	const b = await fetchProjectBounds(form.projectId);
+	const boundsErr = outOfParentBoundsError(
+		form.startDate,
+		form.endDate,
+		b.start,
+		b.end,
+		"project"
+	);
+	if (boundsErr) {
+		setErrors(
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	saving.value = true;
 	try {
 		const res = await adapter.create("Work Package", {
