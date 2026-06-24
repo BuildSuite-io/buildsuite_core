@@ -136,14 +136,35 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		t.reload()
 		self.assertEqual(t.progress, 50)
 
-	def test_tpe_equal_and_increase_allowed(self):
+	def test_tpe_equal_rejected_and_increase_allowed(self):
+		# Strict-increase: re-filing the current value (a no-op duplicate) is rejected;
+		# only a higher value is accepted and persisted.
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
 		self._file_tpe(t.name, 50)
-		self._file_tpe(t.name, 50)  # equal — allowed
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 50)  # equal — rejected (no progress made)
 		self._file_tpe(t.name, 70)  # increase — allowed
 		t.reload()
 		self.assertEqual(t.progress, 70)
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), 2)
+
+	def test_tpe_zero_rejected(self):
+		# A progress entry of 0% records no progress and must never persist.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 0)
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), 0)
+
+	def test_tpe_noop_edit_rejected(self):
+		# Opening an entry and saving with nothing changed is blocked (no duplicate).
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		tpe = self._file_tpe(t.name, 40)
+		tpe.reload()
+		with self.assertRaises(frappe.ValidationError):
+			tpe.save(ignore_permissions=True)
 
 	def test_progress_out_of_range_rejected(self):
 		# TPE-003: a value above 100 or below 0 is rejected (never persisted).
