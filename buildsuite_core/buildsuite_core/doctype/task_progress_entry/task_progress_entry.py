@@ -88,55 +88,75 @@ class TaskProgressEntry(Document):
 		if self.blocker and not (self.blocker_detail or "").strip():
 			frappe.throw(_("A blocker note is required when the blocker flag is set."))
 
+		self._reject_noop_edit()
 		self._validate_monotonic_progress()
 
-	def _validate_monotonic_progress(self):
-		# Progress is cumulative and monotonic — an entry can't be below the task's
-		# current cumulative progress, and can't exceed 100. Reject (throw) so the
-		# entry is never persisted, rather than logging a no-op row. The floor is the
-		# highest cumulative already recorded on the task — INCLUDING this entry's own
-		# stored value (the query reads the pre-save DB value), so an existing entry
-		# can never be edited DOWN. Decrementing is not a supported flow.
-		value = flt(self.cumulative_progress or 0)
-		if value < 0:
-			frappe.throw(_("Progress cannot be negative."))
-		if value > 100:
-			frappe.throw(_("Cumulative progress cannot exceed 100%."))
+	# Fields a user can change on a progress entry; if none differ from the stored
+	# row, the save is a no-op and must be blocked (not logged as a duplicate).
+	_TRACKED_FIELDS = (
+		"cumulative_progress",
+		"entry_date",
+		"narrative",
+		"weather",
+		"skilled",
+		"unskilled",
+		"blocker",
+		"blocker_detail",
+	)
 
+	def _reject_noop_edit(self):
+		# Editing an entry and saving without changing anything must NOT persist. New
+		# entries are covered by the strict-increase rule below.
+		if self.is_new():
+			return
+		before = self.get_doc_before_save()
+		if not before:
+			return
+		if all(self.get(f) == before.get(f) for f in self._TRACKED_FIELDS):
+			frappe.throw(_("No changes made — there's nothing to save."))
+
+	def _validate_monotonic_progress(self):
+		# Progress is cumulative and strictly monotonic: every entry must record MORE
+		# progress than the task already has. So an entry can't be 0%, can't repeat the
+		# current value (a no-op duplicate), can't go backwards, and can't exceed 100%.
+		# Reject (throw) so nothing is persisted, rather than logging a dead row.
+		value = flt(self.cumulative_progress or 0)
+		if value > 100:
+			frappe.throw(_("Cumulative progress can't exceed 100%."))
+		if value <= 0:
+			frappe.throw(_("A progress entry can't be 0% — record the progress actually made."))
+
+		# Floor = highest cumulative already recorded on the task by any OTHER entry
+		# (exclude this row when editing; a brand-new row excludes nothing).
+		filters = {"task": self.task}
+		if not self.is_new():
+			filters["name"] = ("!=", self.name)
 		floor = max(
 			(
 				flt(x)
-				for x in frappe.get_all(
-					"Task Progress Entry",
-					filters={"task": self.task},
-					pluck="cumulative_progress",
-				)
+				for x in frappe.get_all("Task Progress Entry", filters=filters, pluck="cumulative_progress")
 			),
 			default=0,
 		)
-		if value + 0.001 < floor:
+		label = floor if floor % 1 else int(floor)
+		if abs(value - floor) < 0.001:
 			frappe.throw(
 				_(
-					"Cumulative progress can't go below the task's current progress ({0}%). "
-					"Progress entries are cumulative — the value can only stay the same or increase."
-				).format(floor if floor % 1 else int(floor))
+					"No changes made — {0}% is already the task's current progress. "
+					"A progress entry has to increase it."
+				).format(label)
+			)
+		if value < floor:
+			frappe.throw(
+				_(
+					"Progress can't go backwards — {0}% is below the task's current progress ({1}%). "
+					"Progress entries are cumulative and can only increase."
+				).format(value if value % 1 else int(value), label)
 			)
 
 	def before_save(self):
 		task = frappe.get_doc("Task", self.task)
 		if self.is_new():
-			# Block a no-op duplicate (same day, user, progress) instead of silently
-			# creating an orphan entry that logs but never moves the progress bar.
-			for row in task.get("task_progress_details") or []:
-				if (
-					row.date == self.entry_date
-					and row.user == self.owner
-					and abs(flt(row.cumulative_progress or 0) - flt(self.cumulative_progress or 0)) < 0.001
-				):
-					frappe.throw(
-						_("No changes made — an identical progress entry already exists for this task.")
-					)
-
 			task.append(
 				"task_progress_details",
 				{
