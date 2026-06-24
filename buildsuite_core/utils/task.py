@@ -175,6 +175,16 @@ def update_task_status(doc, method=None):
 	):
 		doc.task_status = "In Progress"
 
+	# Reverse sync: a manual status change drives progress so every completion path
+	# matches the "Mark complete" button (which also patches progress). Completed ->
+	# 100, Yet To Start -> 0; only on an actual status change so a recomputed progress
+	# from a Task Progress Entry is never clobbered on unrelated saves.
+	status_changed = (not old_doc) or old_doc.task_status != doc.task_status
+	if status_changed and doc.task_status == "Completed":
+		doc.progress = 100
+	elif status_changed and doc.task_status == "Yet To Start":
+		doc.progress = 0
+
 	# Set task status to In Delay automatically
 	# if doc.task_status != "Completed":
 	#     if doc.exp_end_date and getdate(doc.exp_end_date) < current_date:
@@ -221,6 +231,11 @@ def update_task_status_insert(doc, method=None):
 		):
 			doc.task_status = "In Delay"
 
+	# A task created directly as Completed carries 100% progress (parity with the
+	# reverse-sync on edit and the "Mark complete" button).
+	if doc.task_status == "Completed":
+		doc.progress = 100
+
 	# Sync ERPNext status field
 	if doc.progress == 100:
 		doc.status = "Completed"
@@ -250,13 +265,11 @@ def _subtree_task_count(project):
 	return count
 
 
-def _recompute_project_progress(project):
+def compute_project_progress(project):
 	"""Weighted progress for one project = its direct tasks (weight 1 each) blended
 	with each subproject's stored progress weighted by that subproject's task count.
-
-	Written via db.set_value with percent_complete_method=Manual so erpnext's own
-	auto-calc (which short-circuits on Manual) doesn't override the rollup.
-	"""
+	Pure read — returns the percent without writing (used by the Project validate
+	hook to keep progress decoupled from status)."""
 	direct = frappe.get_all("Task", filters={"project": project}, fields=["progress"])
 	weighted = sum(flt(t.progress) for t in direct)
 	weight = len(direct)
@@ -269,11 +282,16 @@ def _recompute_project_progress(project):
 			weighted += flt(sub.percent_complete) * sub_weight
 			weight += sub_weight
 
-	percent_complete = round(weighted / weight) if weight else 0
+	return round(weighted / weight) if weight else 0
+
+
+def _recompute_project_progress(project):
+	"""Persist the weighted rollup. Written with percent_complete_method=Manual so
+	erpnext's own auto-calc (which short-circuits on Manual) doesn't override it."""
 	frappe.db.set_value(
 		"Project",
 		project,
-		{"percent_complete": percent_complete, "percent_complete_method": "Manual"},
+		{"percent_complete": compute_project_progress(project), "percent_complete_method": "Manual"},
 		update_modified=False,
 	)
 
@@ -297,6 +315,25 @@ def update_project_progress(doc, method=None):
 		seen.add(project)
 		_recompute_project_progress(project)
 		project = frappe.db.get_value("Project", project, "parent_project")
+
+
+def update_stage_aggregates_on_task(doc, method=None):
+	"""Refresh task_count + mean_progress on every Stage Planning that nests this task,
+	so the stage list's count and progress-derived status stay current when a member
+	task's progress changes."""
+	if frappe.flags.get("buildsuite_cascading"):
+		return
+	from buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning import (
+		recompute_stage_aggregates,
+	)
+
+	stages = frappe.get_all(
+		"Stage Planning Task",
+		filters={"task": doc.name, "parenttype": "Stage Planning"},
+		pluck="parent",
+	)
+	for stage in set(stages):
+		recompute_stage_aggregates(stage)
 
 
 def update_delayed_tasks():
