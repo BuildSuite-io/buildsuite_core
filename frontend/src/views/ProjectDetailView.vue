@@ -13,6 +13,8 @@ import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -642,6 +644,25 @@ function startEdit() {
 	editing.value = true;
 }
 async function saveEdit() {
+	const endErr = endBeforeStartError(editForm.value.startDate, editForm.value.endDate);
+	let boundsErr = endErr;
+	if (!boundsErr && project.value?.parentId) {
+		const b = await fetchProjectBounds(project.value.parentId);
+		boundsErr = outOfParentBoundsError(
+			editForm.value.startDate,
+			editForm.value.endDate,
+			b.start,
+			b.end,
+			"parent project"
+		);
+	}
+	if (boundsErr) {
+		setEditErrors(
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	try {
 		await adapter.update("Project", resolvedProjectId.value, {
 			project_name: editForm.value.name,

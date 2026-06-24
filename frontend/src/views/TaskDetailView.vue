@@ -1,5 +1,7 @@
 <script setup>
 import { usePageTitle } from "@/composables/usePageTitle";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 // Task Detail. Edit + Delete + quick-status actions live on the title row
 // (DeskPage #actions slot). Editing opens a modal so the inline content
 // stays readable. Progress block is pinned to the top so the headline number
@@ -604,6 +606,24 @@ function startEdit() {
 	editing.value = true;
 }
 async function saveEdit() {
+	const endErr = endBeforeStartError(form.value.startDate, form.value.endDate);
+	const b = await fetchProjectBounds(task.value?.projectId);
+	const boundsErr =
+		endErr ||
+		outOfParentBoundsError(
+			form.value.startDate,
+			form.value.endDate,
+			b.start,
+			b.end,
+			"project"
+		);
+	if (boundsErr) {
+		setEditErrors(
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	try {
 		await adapter.update("Task", props.id, {
 			subject: form.value.name,

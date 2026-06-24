@@ -13,6 +13,8 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -104,6 +106,8 @@ function validate() {
 	const e = {};
 	if (!form.stageName.trim()) e.stageName = "Stage name is required";
 	if (!form.project) e.project = "Project is required";
+	const endErr = endBeforeStartError(form.plannedStart, form.plannedEnd);
+	if (endErr) e.plannedEnd = endErr;
 	if (form.plannedEnd && form.plannedStart && form.plannedEnd < form.plannedStart) {
 		e.plannedEnd = "End must be on or after start";
 	}
@@ -111,8 +115,23 @@ function validate() {
 	return Object.keys(e).length === 0;
 }
 
-function goToStep2() {
+async function goToStep2() {
 	if (!validate()) return;
+	const b = await fetchProjectBounds(form.project);
+	const boundsErr = outOfParentBoundsError(
+		form.plannedStart,
+		form.plannedEnd,
+		b.start,
+		b.end,
+		"project"
+	);
+	if (boundsErr) {
+		setErrors(
+			boundsErr.startsWith("Start") ? { plannedStart: boundsErr } : { plannedEnd: boundsErr }
+		);
+		showToast(boundsErr, "error");
+		return;
+	}
 	step.value = 2;
 }
 

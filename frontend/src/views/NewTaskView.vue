@@ -11,6 +11,8 @@ import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { useTaskTypes } from "@/composables/useTaskTypes";
 import { createDataAdapter } from "@/data/adapters";
+import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
+import { fetchProjectBounds } from "@/utils/projectBounds";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -66,14 +68,28 @@ function validate() {
 	const e = {};
 	if (!form.name) e.name = "Task name is required";
 	if (!form.projectId) e.projectId = "Project is required";
-	if (form.endDate && form.startDate && form.endDate < form.startDate)
-		e.endDate = "End must be after start";
+	const endErr = endBeforeStartError(form.startDate, form.endDate);
+	if (endErr) e.endDate = endErr;
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
 
 async function save() {
 	if (!validate()) return;
+	const b = await fetchProjectBounds(form.projectId);
+	const boundsErr = outOfParentBoundsError(
+		form.startDate,
+		form.endDate,
+		b.start,
+		b.end,
+		"project"
+	);
+	if (boundsErr) {
+		setErrors(
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+		);
+		return;
+	}
 	saving.value = true;
 	try {
 		const res = await adapter.create("Task", {
@@ -225,7 +241,7 @@ const breadcrumbs = [
 				</DeskSection>
 
 				<DeskSection title="Schedule" :cols="3">
-					<DeskField label="Start date">
+					<DeskField label="Start date" :error="errors.startDate">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
 					<DeskField label="Due date" :error="errors.endDate">
