@@ -196,14 +196,27 @@ CUSTOM_FIELD = {
 			"options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
 		},
 		{
-			"fieldname": "task_type",
-			"fieldtype": "Select",
-			"insert_after": "type",
-			"label": "Task Type",
+			# Scheduling type now lives on the native `type` Link (-> Task Type master),
+			# so admins can add types from the backend. The custom Select is removed; the
+			# migration patch copies task_type -> type before this field's column is dropped.
+			"fieldname": "schedule_conflict",
+			"fieldtype": "Check",
+			"insert_after": "exp_end_date",
+			"label": "Schedule Conflict",
 			"in_list_view": 0,
 			"in_standard_filter": 1,
-			"default": "Activity",
-			"options": "Activity\nMilestone\nInspection",
+			"default": "0",
+			"read_only": 1,
+			"description": "Set by the scheduling engine when this task's dates violate a predecessor constraint.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "conflict_reason",
+			"fieldtype": "Small Text",
+			"insert_after": "schedule_conflict",
+			"label": "Conflict Reason",
+			"read_only": 1,
+			"module": "BuildSuite Core",
 		},
 	],
 	"Task Depends On": [

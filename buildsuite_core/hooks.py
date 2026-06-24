@@ -211,6 +211,9 @@ doc_events = {
 	# Keep each user's BuildSuite role aligned with their persona. validate covers
 	# both create and edit; delete needs no handler (Has Role rows cascade).
 	"User": {"validate": "buildsuite_core.utils.user.sync_persona_roles"},
+	# Guard the core scheduling Task Types (Activity/Milestone/Inspection) from
+	# deletion; admin-added types stay freely deletable.
+	"Task Type": {"on_trash": "buildsuite_core.utils.task_type.protect_core_task_types"},
 }
 # 	"*": {
 # 		"on_update": "method",

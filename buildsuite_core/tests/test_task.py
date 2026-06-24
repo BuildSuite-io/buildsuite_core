@@ -39,10 +39,10 @@ class TestTask(BuildSuiteTestCase):
 	# (ERPNext Task.project is optional) — covered by the Cypress suite.
 
 	def test_task_type_defaults_to_activity(self):
-		# TSK-004
+		# TSK-004 — scheduling type lives on the native `type` Link (-> Task Type).
 		p = self._make_project(company=self.company)
 		t = self._make_task(p.name)
-		self.assertEqual(t.task_type, "Activity")
+		self.assertEqual(t.type, "Activity")
 
 	def test_task_reassign_work_package(self):
 		# TSK-010
