@@ -6,8 +6,13 @@ import TaskFormModal from "@/components/TaskFormModal.vue";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
-import { getProjectSchedule } from "@/utils/scheduleApi";
+import {
+	getProjectSchedule,
+	addTaskPredecessor,
+	removeTaskPredecessor,
+} from "@/utils/scheduleApi";
 import { dateBoundsError } from "@/utils/dateBounds";
+import { computeAllConflicts, hasCycle } from "@/composables/useScheduleEngine";
 
 const store = useDataStore();
 const adapter = createDataAdapter(store);
@@ -31,6 +36,8 @@ const errorMsg = ref("");
 let errorTimer = null;
 
 const newTaskOpen = ref(false);
+const draggedDep = ref(null);
+const popoverDep = ref(null);
 
 const timelineRef = ref(null);
 const containerRef = ref(null);
@@ -133,6 +140,7 @@ async function loadSchedule() {
 			startDate: day(res?.project_start),
 			endDate: day(res?.project_end),
 		};
+		recomputeLocalConflicts();
 	} catch (err) {
 		flashError(err?.message || "Failed to load the schedule.");
 		allTasks.value = [];
@@ -670,8 +678,147 @@ function flashError(msg) {
 function onTaskCreated() {
 	loadSchedule();
 }
+// === Conflict engine (client mirror; server stores the authoritative flags) ===
+function engineInputs() {
+	const byId = {};
+	for (const t of allTasks.value) {
+		byId[t.id] = {
+			name: t.id,
+			type: t.task_type,
+			start: t.startDate || null,
+			end: t.endDate || null,
+			status: t.status,
+		};
+	}
+	const edges = allDeps.value.map((d) => ({
+		predecessor: d.predecessor,
+		successor: d.successor,
+		type: d.dependency_type,
+		lag: d.lag,
+	}));
+	return { byId, edges };
+}
+function recomputeLocalConflicts() {
+	const { byId, edges } = engineInputs();
+	const c = computeAllConflicts(byId, edges);
+	for (const t of allTasks.value) {
+		const r = c[t.id];
+		t.schedule_conflict = !!r?.conflict;
+		t.conflict_reason = r?.reason || "";
+	}
+	allTasks.value = [...allTasks.value];
+}
+
+// === Dependency creation drag (drag the handle from one bar onto another) ===
+function onArrowHandleMouseDown(task, e) {
+	if (!canEditTask(task) || e.button !== 0) return;
+	e.preventDefault();
+	e.stopPropagation();
+	draggedDep.value = {
+		fromTaskId: task.id,
+		mouseX: e.clientX,
+		mouseY: e.clientY,
+		hoverTargetId: null,
+	};
+	window.addEventListener("mousemove", onDepDragMove);
+	window.addEventListener("mouseup", onDepDragUp);
+}
+function hitTestTaskAt(clientX, clientY) {
+	let node = document.elementFromPoint(clientX, clientY);
+	while (node && !node.dataset?.barTaskId) node = node.parentElement;
+	if (node?.dataset?.barTaskId) return node.dataset.barTaskId;
+	const rect = timelineRef.value?.getBoundingClientRect();
+	if (!rect) return null;
+	const innerY = clientY - rect.top - HEADER_HEIGHT;
+	if (innerY < 0) return null;
+	const row = layoutRows.value[Math.floor(innerY / ROW_HEIGHT)];
+	return row && row.kind === "task" ? row.task.id : null;
+}
+function onDepDragMove(e) {
+	if (!draggedDep.value) return;
+	draggedDep.value.mouseX = e.clientX;
+	draggedDep.value.mouseY = e.clientY;
+	draggedDep.value.hoverTargetId = hitTestTaskAt(e.clientX, e.clientY);
+}
+async function onDepDragUp(e) {
+	window.removeEventListener("mousemove", onDepDragMove);
+	window.removeEventListener("mouseup", onDepDragUp);
+	const drag = draggedDep.value;
+	draggedDep.value = null;
+	if (!drag) return;
+	const targetId = hitTestTaskAt(e.clientX, e.clientY) || drag.hoverTargetId;
+	if (!targetId || targetId === drag.fromTaskId) return;
+	const { edges } = engineInputs();
+	if (hasCycle(drag.fromTaskId, targetId, edges)) {
+		flashError("Creating this dependency would close a cycle.");
+		return;
+	}
+	try {
+		await addTaskPredecessor(targetId, drag.fromTaskId, "FS", 0);
+	} catch (err) {
+		flashError(err?.message || "Could not create dependency.");
+		return;
+	}
+	await loadSchedule();
+}
+const depGhost = computed(() => {
+	if (!draggedDep.value) return null;
+	const fromBar = barById.value.get(draggedDep.value.fromTaskId);
+	if (!fromBar) return null;
+	const rect = timelineRef.value?.getBoundingClientRect();
+	const scrollLeft = timelineRef.value?.scrollLeft || 0;
+	const innerX = rect ? draggedDep.value.mouseX - rect.left + scrollLeft : 0;
+	const innerY = rect ? draggedDep.value.mouseY - rect.top - HEADER_HEIGHT : 0;
+	return {
+		x1: fromBar.x + fromBar.width,
+		y1: fromBar.y + BAR_HEIGHT / 2,
+		x2: innerX,
+		y2: innerY,
+	};
+});
+
+// === Dependency popover (click an arrow to edit type / lag / delete) ===
+const POPOVER_W = 256;
+const POPOVER_H = 280;
+function onArrowClick(arrow, e) {
+	e.stopPropagation();
+	let x = Math.min(e.clientX, window.innerWidth - POPOVER_W - 12);
+	let y = e.clientY + 12;
+	if (y + POPOVER_H > window.innerHeight - 12) y = Math.max(12, e.clientY - POPOVER_H - 12);
+	popoverDep.value = { dep: { ...arrow.dep }, x, y };
+}
+async function applyPopover() {
+	if (!popoverDep.value) return;
+	const d = popoverDep.value.dep;
+	popoverDep.value = null;
+	try {
+		await addTaskPredecessor(
+			d.successor,
+			d.predecessor,
+			d.dependency_type,
+			Number(d.lag) || 0
+		);
+	} catch (err) {
+		flashError(err?.message || "Could not update dependency.");
+	}
+	await loadSchedule();
+}
+async function deleteFromPopover() {
+	if (!popoverDep.value) return;
+	const d = popoverDep.value.dep;
+	popoverDep.value = null;
+	try {
+		await removeTaskPredecessor(d.successor, d.predecessor);
+	} catch (err) {
+		flashError(err?.message || "Could not delete dependency.");
+	}
+	await loadSchedule();
+}
+
 onBeforeUnmount(() => {
 	if (errorTimer) clearTimeout(errorTimer);
+	window.removeEventListener("mousemove", onDepDragMove);
+	window.removeEventListener("mouseup", onDepDragUp);
 });
 </script>
 
@@ -1174,6 +1321,14 @@ onBeforeUnmount(() => {
 									<path
 										:d="arrow.path"
 										fill="none"
+										stroke="transparent"
+										stroke-width="14"
+										class="pointer-events-auto cursor-pointer hit-fat"
+										@click="onArrowClick(arrow, $event)"
+									/>
+									<path
+										:d="arrow.path"
+										fill="none"
 										:stroke="arrow.isViolated ? '#DC2626' : '#737373'"
 										stroke-width="1.5"
 										:marker-end="
@@ -1247,6 +1402,13 @@ onBeforeUnmount(() => {
 									title="Overdue"
 									>⏱</span
 								>
+								<div
+									v-if="canEditTask(b.task)"
+									data-link-arrow="true"
+									class="absolute -right-4 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-brand-700 cursor-crosshair opacity-50 group-hover:opacity-100 z-20 shadow transition-opacity"
+									title="Drag to another task to create a Finish-to-Start dependency"
+									@mousedown.stop="onArrowHandleMouseDown(b.task, $event)"
+								></div>
 							</div>
 
 							<!-- Milestone diamonds -->
@@ -1315,7 +1477,37 @@ onBeforeUnmount(() => {
 										>⏱</span
 									></span
 								>
+								<div
+									v-if="canEditTask(b.task)"
+									data-link-arrow="true"
+									class="absolute w-4 h-4 rounded-full bg-white border-2 border-brand-700 cursor-crosshair opacity-50 group-hover:opacity-100 z-20 shadow transition-opacity"
+									:style="{
+										left: DIAMOND_W - 2 + 'px',
+										top: (ROW_HEIGHT - 16) / 2 + 'px',
+										pointerEvents: 'auto',
+									}"
+									title="Drag to another task to create a Finish-to-Start dependency"
+									@mousedown.stop="onArrowHandleMouseDown(b.task, $event)"
+								></div>
 							</div>
+
+							<!-- Ghost dependency arrow (drag-to-create preview) -->
+							<svg
+								v-if="depGhost"
+								class="absolute top-0 left-0 pointer-events-none z-30"
+								:width="timelineWidth"
+								:height="timelineHeight"
+							>
+								<line
+									:x1="depGhost.x1"
+									:y1="depGhost.y1"
+									:x2="depGhost.x2"
+									:y2="depGhost.y2"
+									stroke="#16A34A"
+									stroke-width="2"
+									stroke-dasharray="4 4"
+								/>
+							</svg>
 
 							<!-- Today marker -->
 							<div
@@ -1370,6 +1562,73 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 		</div>
+
+		<!-- Dependency popover (edit type / lag / delete) -->
+		<Teleport to="body">
+			<div
+				v-if="popoverDep"
+				class="fixed bg-white border border-ink-200 rounded-lg shadow-fp-lg p-3 z-[65] w-64"
+				:style="{ left: popoverDep.x + 'px', top: popoverDep.y + 'px' }"
+				@click.stop
+			>
+				<div class="text-[11px] uppercase tracking-wider text-ink-500 mb-2 font-medium">
+					Dependency
+				</div>
+				<div class="text-xs text-ink-700 mb-2 font-mono">
+					{{ popoverDep.dep.predecessor }} → {{ popoverDep.dep.successor }}
+				</div>
+				<div class="flex items-center gap-2 mb-2">
+					<label class="text-[11px] text-ink-500 w-12">Type</label>
+					<select
+						v-model="popoverDep.dep.dependency_type"
+						:disabled="!canEditAny"
+						class="text-xs px-2 py-1 border border-ink-200 rounded bg-white flex-1"
+					>
+						<option value="FS">FS — Finish to Start</option>
+						<option value="SS">SS — Start to Start</option>
+						<option value="FF">FF — Finish to Finish</option>
+					</select>
+				</div>
+				<div class="flex items-center gap-2 mb-3">
+					<label class="text-[11px] text-ink-500 w-12">Lag</label>
+					<input
+						type="number"
+						v-model.number="popoverDep.dep.lag"
+						:disabled="!canEditAny"
+						class="text-xs px-2 py-1 border border-ink-200 rounded bg-white flex-1"
+					/>
+					<span class="text-[11px] text-ink-500">days</span>
+				</div>
+				<p class="text-[10px] text-ink-400 mb-3 italic">
+					Negative lag = lead (overlap allowed).
+				</p>
+				<div class="flex items-center justify-between gap-2">
+					<button
+						v-if="canEditAny"
+						class="text-xs px-2 py-1 text-danger-700 hover:bg-danger-50 rounded"
+						@click="deleteFromPopover"
+					>
+						Delete
+					</button>
+					<div class="ml-auto flex items-center gap-2">
+						<button
+							class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50"
+							@click="popoverDep = null"
+						>
+							Close
+						</button>
+						<button
+							v-if="canEditAny"
+							class="text-xs px-2.5 py-1 bg-ink-900 text-white rounded hover:bg-ink-800"
+							@click="applyPopover"
+						>
+							Save
+						</button>
+					</div>
+				</div>
+			</div>
+			<div v-if="popoverDep" class="fixed inset-0 z-[64]" @click="popoverDep = null"></div>
+		</Teleport>
 
 		<!-- Legend -->
 		<div
@@ -1475,6 +1734,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
+.hit-fat:hover + path[stroke] {
+	stroke: #15803d !important;
+}
 .schedule-date-input {
 	font-size: 10px;
 	line-height: 1.2;
