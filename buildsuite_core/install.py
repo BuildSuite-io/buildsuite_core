@@ -7,7 +7,7 @@ from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
 from buildsuite_core.permissions.setup import setup_record_permissions
 from buildsuite_core.utils.project import backfill_project_status
-from buildsuite_core.utils.task import backfill_task_status, backfill_task_type
+from buildsuite_core.utils.task import backfill_native_task_type, backfill_task_status
 
 
 def after_install():
@@ -22,12 +22,27 @@ def after_migrate():
 	print(_("Creating Custom Fields..."))
 	create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
 	make_property_setters()
-	# Backfill task_status + task_type on Tasks that predate the fields (idempotent).
+	# Backfill task_status + the native `type` on Tasks that predate the fields (idempotent).
 	backfill_task_status()
-	backfill_task_type()
+	backfill_native_task_type()
 	backfill_project_status()
+	# Safety net for the task_type -> native `type` migration: after_migrate runs last,
+	# so it reliably removes the retired custom column/record even when the patch's drop
+	# (post_model_sync) races with doctype sync on the one-time transition migrate. The
+	# native `type` is already populated by backfill_native_task_type() above, so this is
+	# safe; it is a no-op on every subsequent migrate.
+	drop_legacy_task_type_field()
 	seed_master_data()
 	setup_record_permissions()
+
+
+def drop_legacy_task_type_field():
+	"""Idempotently remove the retired custom `task_type` Select (column + record).
+	Scheduling type now lives on the native `type` Link. No-op once removed."""
+	if frappe.db.has_column("Task", "task_type"):
+		frappe.db.sql_ddl("alter table `tabTask` drop column `task_type`")
+	frappe.db.delete("Custom Field", {"dt": "Task", "fieldname": "task_type"})
+	frappe.clear_cache(doctype="Task")
 
 
 def seed_master_data():

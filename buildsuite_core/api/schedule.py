@@ -32,6 +32,9 @@ def get_project_schedule(project: str):
 			"progress",
 			"work_package",
 			"project",
+			"owner",
+			"schedule_conflict",
+			"conflict_reason",
 		],
 		order_by="exp_start_date asc, creation asc",
 		limit_page_length=0,
@@ -61,7 +64,48 @@ def get_project_schedule(project: str):
 					}
 				)
 
-	return {"project": project, "tasks": tasks}
+	# Grouping metadata for the Gantt's By-WP / By-Stage axes.
+	work_packages = frappe.get_all(
+		"Work Package",
+		filters={"project": project},
+		fields=["name", "work_package_name"],
+		order_by="creation asc",
+	)
+	stages = frappe.get_all(
+		"Stage Planning",
+		filters={"project": project},
+		fields=["name", "stage_name", "planned_start", "planned_end"],
+		order_by="planned_start asc, creation asc",
+	)
+	if stages:
+		members = frappe.get_all(
+			"Stage Planning Task",
+			filters={"parent": ["in", [s.name for s in stages]], "parenttype": "Stage Planning"},
+			fields=["parent", "task"],
+		)
+		by_stage = {}
+		for m in members:
+			by_stage.setdefault(m.parent, []).append(m.task)
+		for s in stages:
+			s["tasks"] = by_stage.get(s.name, [])
+
+	# Project name + boundary dates for the Gantt's project start/end band.
+	proj = (
+		frappe.db.get_value(
+			"Project", project, ["project_name", "expected_start_date", "expected_end_date"], as_dict=True
+		)
+		or {}
+	)
+
+	return {
+		"project": project,
+		"project_name": proj.get("project_name") or project,
+		"project_start": proj.get("expected_start_date"),
+		"project_end": proj.get("expected_end_date"),
+		"tasks": tasks,
+		"work_packages": work_packages,
+		"stages": stages,
+	}
 
 
 # --- single-task dependency CRUD (for the Task Detail "Dependencies" section) --
@@ -142,8 +186,10 @@ def remove_task_predecessor(task: str, predecessor: str):
 
 def normalize_milestone_task(doc, method=None):
 	"""A Milestone is a point in time (zero-duration) — collapse its dates to a
-	single day so the engine + Gantt render it as a diamond, not a bar."""
-	if getattr(doc, "task_type", None) != "Milestone":
+	single day so the engine + Gantt render it as a diamond, not a bar.
+
+	Scheduling type now lives on the native `type` Link (-> Task Type master)."""
+	if getattr(doc, "type", None) != "Milestone":
 		return
 	if doc.exp_start_date:
 		doc.exp_end_date = doc.exp_start_date

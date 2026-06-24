@@ -423,17 +423,19 @@ def backfill_task_status():
 _TASK_TYPE_VALUES = {"Activity", "Milestone", "Inspection"}
 
 
-def backfill_task_type():
-	"""Populate task_type on Tasks where it's empty (idempotent). Reuse the legacy
-	native `type` value when it already holds Activity/Milestone/Inspection;
-	otherwise default to Activity."""
-	rows = frappe.get_all("Task", fields=["name", "type", "task_type"])
+def backfill_native_task_type():
+	"""Ensure every Task has a native `type` (-> Task Type master). Reuse the legacy
+	custom `task_type` value when present and recognized, else default to "Activity".
+	Idempotent and safe both before and after the legacy column is dropped."""
+	has_legacy = frappe.db.has_column("Task", "task_type")
+	fields = ["name", "type"] + (["task_type"] if has_legacy else [])
 	updated = 0
-	for row in rows:
-		if row.task_type:
+	for row in frappe.get_all("Task", fields=fields):
+		if row.type:
 			continue
-		new_type = row.type if row.type in _TASK_TYPE_VALUES else "Activity"
-		frappe.db.set_value("Task", row.name, "task_type", new_type, update_modified=False)
+		legacy = row.get("task_type") if has_legacy else None
+		new_type = legacy if legacy in _TASK_TYPE_VALUES else "Activity"
+		frappe.db.set_value("Task", row.name, "type", new_type, update_modified=False)
 		updated += 1
 	if updated:
 		# Batch backfill run via `bench execute`/patch, which does not auto-commit;
