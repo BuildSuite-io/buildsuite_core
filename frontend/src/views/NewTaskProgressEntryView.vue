@@ -116,12 +116,17 @@ watch(
 			return;
 		}
 		const pct = Number(raw);
-		if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+		if (Number.isNaN(pct) || pct > 100) {
 			errors.value = { ...errors.value, progressPct: "Progress must be between 0 and 100" };
-		} else if (pct < progressFloor.value) {
+		} else if (pct <= 0) {
 			errors.value = {
 				...errors.value,
-				progressPct: `Progress can't go below the current ${progressFloor.value}%. Entries are cumulative.`,
+				progressPct: "A progress entry can't be 0% — record the progress actually made.",
+			};
+		} else if (pct <= progressFloor.value) {
+			errors.value = {
+				...errors.value,
+				progressPct: `Progress must increase — enter a value above the current ${progressFloor.value}%. Entries are cumulative.`,
 			};
 		} else {
 			clearError("progressPct");
@@ -141,10 +146,12 @@ function validate() {
 	const e = {};
 	if (!form.taskId) e.taskId = "Task is required";
 	const pct = Number(form.progressPct);
-	if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+	if (Number.isNaN(pct) || pct > 100) {
 		e.progressPct = "Progress must be between 0 and 100";
-	} else if (pct < progressFloor.value) {
-		e.progressPct = `Progress can't go below the current ${progressFloor.value}%. Entries are cumulative.`;
+	} else if (pct <= 0) {
+		e.progressPct = "A progress entry can't be 0% — record the progress actually made.";
+	} else if (pct <= progressFloor.value) {
+		e.progressPct = `Progress must increase — enter a value above the current ${progressFloor.value}%. Entries are cumulative.`;
 	}
 	if (form.blockerFlag && !form.blockerNote.trim()) {
 		e.blockerNote = "Describe the blocker";
