@@ -276,7 +276,10 @@ function loadTasksResource(projectId) {
 		fields: ["name", "subject", "task_status", "progress"],
 		filters: [["project", "=", projectId]],
 		pageLength: 500,
-		cache: `buildsuite-stage-detail-tasks-v2:${projectId}`,
+		// No cache key: the stage task list must reflect each task's CURRENT status
+		// and progress. A cached resource would serve stale values after a task's
+		// progress changes elsewhere (e.g. a Progress Entry), so we fetch fresh on
+		// every visit and reload below.
 		transform(rows) {
 			return rows.map((row) => ({
 				id: row?.name || "",
@@ -286,6 +289,8 @@ function loadTasksResource(projectId) {
 			}));
 		},
 	});
+	// Guarantee a fresh fetch even if a same-key resource was cached earlier.
+	tasksResource.value.reload?.();
 }
 
 watch(() => stage.value?.project, loadTasksResource, { immediate: true });
