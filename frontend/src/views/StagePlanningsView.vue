@@ -55,26 +55,24 @@ function projectName(id) {
 	return projectsMap.value[id] || id;
 }
 
-// Visual-only schedule status — no Stage Review aggregation.
+// Status is derived from the server-maintained mean task progress (not dates):
+// 0 -> Not Started, 0 < p < 100 -> In Progress, 100 -> Completed.
 function stageStatus(row) {
-	if (!row.planned_start && !row.planned_end) return "Not Started";
-	if (row.planned_start && TODAY < row.planned_start) return "Not Started";
-	if (row.planned_end && TODAY > row.planned_end) return "Complete";
+	const p = Number(row.mean_progress) || 0;
+	if (p <= 0) return "Not Started";
+	if (p >= 100) return "Completed";
 	return "In Progress";
 }
 function statusClass(s) {
-	if (s === "Complete") return "bg-success-50 text-success-700";
+	if (s === "Completed") return "bg-success-50 text-success-700";
 	if (s === "In Progress") return "bg-info-50 text-info-700";
 	return "bg-ink-100 text-ink-600";
 }
 
+// Real nested-task count, server-maintained (task_count) — Frappe's list API can't
+// return the child table, so the count is materialised on the record.
 function taskCountDisplay(row) {
-	const children = Array.isArray(row.stage_planning_tasks)
-		? row.stage_planning_tasks.length
-		: null;
-	const planned = Number(row.planned_task_count) || 0;
-	if (children !== null) return `${children} / ${planned}`;
-	return String(planned);
+	return String(Number(row.task_count) || 0);
 }
 
 const filterValues = computed(() => ({
@@ -125,9 +123,9 @@ function onRowClick(row) {
 				'description',
 				'planned_start',
 				'planned_end',
-				'planned_task_count',
+				'task_count',
+				'mean_progress',
 				'workflow_state',
-				'stage_planning_tasks',
 			]"
 			:columns="[
 				{ key: 'name', label: 'ID' },
@@ -135,9 +133,9 @@ function onRowClick(row) {
 				{ key: 'project', label: 'Project' },
 				{ key: 'planned_start', label: 'Planned Start' },
 				{ key: 'planned_end', label: 'Planned End' },
-				{ key: 'planned_task_count', label: 'Tasks', align: 'right' },
+				{ key: 'task_count', label: 'Tasks', align: 'right' },
 				{ key: 'workflow_state', label: 'State' },
-				{ key: '_status', label: 'Status', fields: ['planned_start', 'planned_end'] },
+				{ key: '_status', label: 'Status', fields: ['mean_progress'] },
 			]"
 			:search-fields="['stage_name', 'name', 'description']"
 			:filter-values="filterValues"
@@ -244,7 +242,7 @@ function onRowClick(row) {
 			<template #cell-planned_end="{ row }">
 				<span class="text-xs text-ink-700">{{ fmtDate(row.planned_end) || "—" }}</span>
 			</template>
-			<template #cell-planned_task_count="{ row }">
+			<template #cell-task_count="{ row }">
 				<span class="text-xs text-ink-700 tabular-nums">{{ taskCountDisplay(row) }}</span>
 			</template>
 			<template #cell-workflow_state="{ row }">
