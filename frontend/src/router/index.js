@@ -38,6 +38,9 @@ const routes = [
       { path: 'assembly',                      name: 'assembly',      component: () => import('@/views/AssembliesView.vue') },
       { path: 'assembly/new',                  name: 'assembly-new', component: () => import('@/views/NewAssemblyView.vue') },
       { path: 'assembly/:id',                  name: 'assembly-detail', component: () => import('@/views/AssemblyDetailView.vue'), props: true },
+      { path: 'estimate-template',             name: 'estimate-template',        component: () => import('@/views/EstimateTemplatesView.vue') },
+      { path: 'estimate-template/new',         name: 'estimate-template-new',    component: () => import('@/views/NewEstimateTemplateView.vue') },
+      { path: 'estimate-template/:id',         name: 'estimate-template-detail', component: () => import('@/views/EstimateTemplateDetailView.vue'), props: true },
 
       { path: 'site-execution',                name: 'site-execution',  component: () => import('@/views/workspaces/SiteExecutionWorkspace.vue') },
       { path: 'project-dashboard',             name: 'project-dashboard', component: () => import('@/views/workspaces/ProjectDashboardView.vue') },
