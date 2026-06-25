@@ -194,6 +194,22 @@ const routes = [
 				component: () => import("@/views/AssemblyDetailView.vue"),
 				props: true,
 			},
+			{
+				path: "estimate-template",
+				name: "estimate-template",
+				component: () => import("@/views/EstimateTemplatesView.vue"),
+			},
+			{
+				path: "estimate-template/new",
+				name: "estimate-template-new",
+				component: () => import("@/views/NewEstimateTemplateView.vue"),
+			},
+			{
+				path: "estimate-template/:id",
+				name: "estimate-template-detail",
+				component: () => import("@/views/EstimateTemplateDetailView.vue"),
+				props: true,
+			},
 
 			{
 				path: "site-execution",
