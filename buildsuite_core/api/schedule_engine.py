@@ -351,9 +351,7 @@ def recompute_conflicts_on_update(doc, method=None):
 	recompute_schedule_conflicts(doc.name)
 
 
-# NOTE: Batch 3 (drag-reschedule + cascade) re-adds `@frappe.whitelist()` here to
-# expose this as an endpoint. In Batch 2 the cascade engine ships and is unit-tested
-# but is intentionally NOT reachable — no API endpoint and no UI triggers it.
+@frappe.whitelist()
 def reschedule_downstream(task, new_start=None, new_end=None, dry_run=1):
 	"""Preview (dry_run=1) or commit (dry_run=0) a duration-preserving downstream
 	cascade after moving `task` to new_start/new_end. Returns {"moves": [...]}.
