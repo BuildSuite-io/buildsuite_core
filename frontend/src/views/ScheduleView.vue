@@ -672,7 +672,7 @@ async function onScheduleInput(task, field, evt) {
 	});
 	if (boundsErr) {
 		flashError(boundsErr);
-		await loadSchedule(); // revert the edited input
+		allTasks.value = [...allTasks.value]; // re-render to reset the rejected input
 		return;
 	}
 	await commitDates(task, newStart, newEnd, {
@@ -782,20 +782,23 @@ async function commitDates(task, newStart, newEnd, before) {
 			exp_end_date: newEnd || null,
 		});
 	} catch (err) {
+		// Revert the optimistic change to this one task; no full reload.
+		task.startDate = before?.startDate ?? task.startDate;
+		task.endDate = before?.endDate ?? task.endDate;
+		recomputeLocalConflicts();
 		flashError(err?.message || "Could not reschedule.");
-		await loadSchedule();
 		return;
 	}
+	// A single-task move is already reflected locally (the client conflict engine
+	// mirrors the server) — no reload. Only a downstream cascade reloads, and only
+	// after the user confirms it.
 	if (moves && moves.length > 0) {
 		previewState.value = {
 			rootTaskId: task.id,
 			rootAfter: { startDate: newStart, endDate: newEnd },
 			moves,
 		};
-	} else {
-		await loadSchedule();
 	}
-	void before;
 }
 
 // === Cascade modal ====================================================
@@ -919,13 +922,24 @@ async function onDepDragUp(e) {
 		flashError("Creating this dependency would close a cycle.");
 		return;
 	}
+	// Optimistic: draw the edge + reflag conflicts immediately, persist in background.
+	const edge = {
+		id: `${targetId}<-${drag.fromTaskId}`,
+		predecessor: drag.fromTaskId,
+		successor: targetId,
+		dependency_type: "FS",
+		lag: 0,
+	};
+	if (allDeps.value.some((d) => d.id === edge.id)) return;
+	allDeps.value = [...allDeps.value, edge];
+	recomputeLocalConflicts();
 	try {
 		await addTaskPredecessor(targetId, drag.fromTaskId, "FS", 0);
 	} catch (err) {
+		allDeps.value = allDeps.value.filter((d) => d.id !== edge.id);
+		recomputeLocalConflicts();
 		flashError(err?.message || "Could not create dependency.");
-		return;
 	}
-	await loadSchedule();
 }
 const depGhost = computed(() => {
 	if (!draggedDep.value) return null;
@@ -957,6 +971,17 @@ async function applyPopover() {
 	if (!popoverDep.value) return;
 	const d = popoverDep.value.dep;
 	popoverDep.value = null;
+	const idx = allDeps.value.findIndex((x) => x.id === d.id);
+	const prev = idx >= 0 ? { ...allDeps.value[idx] } : null;
+	if (idx >= 0) {
+		allDeps.value[idx] = {
+			...allDeps.value[idx],
+			dependency_type: d.dependency_type,
+			lag: Number(d.lag) || 0,
+		};
+		allDeps.value = [...allDeps.value];
+		recomputeLocalConflicts();
+	}
 	try {
 		await addTaskPredecessor(
 			d.successor,
@@ -965,20 +990,28 @@ async function applyPopover() {
 			Number(d.lag) || 0
 		);
 	} catch (err) {
+		if (prev && idx >= 0) {
+			allDeps.value[idx] = prev;
+			allDeps.value = [...allDeps.value];
+			recomputeLocalConflicts();
+		}
 		flashError(err?.message || "Could not update dependency.");
 	}
-	await loadSchedule();
 }
 async function deleteFromPopover() {
 	if (!popoverDep.value) return;
 	const d = popoverDep.value.dep;
 	popoverDep.value = null;
+	const prev = allDeps.value;
+	allDeps.value = allDeps.value.filter((x) => x.id !== d.id);
+	recomputeLocalConflicts();
 	try {
 		await removeTaskPredecessor(d.successor, d.predecessor);
 	} catch (err) {
+		allDeps.value = prev;
+		recomputeLocalConflicts();
 		flashError(err?.message || "Could not delete dependency.");
 	}
-	await loadSchedule();
 }
 
 onBeforeUnmount(() => {
@@ -2051,19 +2084,38 @@ onBeforeUnmount(() => {
 .hit-fat:hover + path[stroke] {
 	stroke: #15803d !important;
 }
+/* Inline date inputs in the left-pane row. Transparent track + color: inherit so
+   the row's theme text shows through, and color-scheme flips on html.dark so the
+   native date-picker chrome (text, dropdown) adapts to the active theme — otherwise
+   the input renders as a white box in dark mode. Unscoped so html.dark works. */
 .schedule-date-input {
 	font-size: 10px;
-	line-height: 1.2;
-	padding: 1px 3px;
-	border: 1px solid #e5e5e5;
-	border-radius: 3px;
-	background: #fff;
-	color: #404040;
-	max-width: 108px;
+	height: 18px;
+	padding: 0 4px;
+	border: 1px solid #e2e8f0;
+	border-radius: 4px;
+	background-color: transparent;
+	color: inherit;
+	color-scheme: light;
+	width: 95px;
+	flex-shrink: 0;
+}
+.schedule-date-input:focus {
+	outline: none;
+	border-color: #16a34a;
+	box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
 }
 .schedule-date-input:disabled {
-	background: #fafafa;
-	color: #a3a3a3;
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+html.dark .schedule-date-input {
+	border-color: #333333;
+	color-scheme: dark;
+}
+html.dark .schedule-date-input:focus {
+	border-color: #4ade80;
+	box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.25);
 }
 /* S175 — In Delay track: the same amber wash in both light and dark mode
    (peach over white, muted amber over the dark canvas). The saturated
