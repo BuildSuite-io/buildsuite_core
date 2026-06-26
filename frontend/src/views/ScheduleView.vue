@@ -13,6 +13,7 @@ import {
 	rescheduleDownstream,
 } from "@/utils/scheduleApi";
 import { dateBoundsError } from "@/utils/dateBounds";
+import { parseFrappeError } from "@/utils/frappeError";
 import { computeAllConflicts, hasCycle, computeCascade } from "@/composables/useScheduleEngine";
 
 const store = useDataStore();
@@ -160,7 +161,7 @@ async function loadSchedule() {
 		};
 		recomputeLocalConflicts();
 	} catch (err) {
-		flashError(err?.message || "Failed to load the schedule.");
+		flashError(parseFrappeError(err).summary || "Failed to load the schedule.");
 		allTasks.value = [];
 		allDeps.value = [];
 		wpData.value = [];
@@ -786,7 +787,7 @@ async function commitDates(task, newStart, newEnd, before) {
 		task.startDate = before?.startDate ?? task.startDate;
 		task.endDate = before?.endDate ?? task.endDate;
 		recomputeLocalConflicts();
-		flashError(err?.message || "Could not reschedule.");
+		flashError(parseFrappeError(err).summary || "Could not reschedule.");
 		return;
 	}
 	// A single-task move is already reflected locally (the client conflict engine
@@ -814,7 +815,7 @@ async function confirmCascade() {
 			0
 		);
 	} catch (err) {
-		flashError(err?.message || "Cascade failed.");
+		flashError(parseFrappeError(err).summary || "Cascade failed.");
 	}
 	await loadSchedule();
 }
@@ -938,7 +939,7 @@ async function onDepDragUp(e) {
 	} catch (err) {
 		allDeps.value = allDeps.value.filter((d) => d.id !== edge.id);
 		recomputeLocalConflicts();
-		flashError(err?.message || "Could not create dependency.");
+		flashError(parseFrappeError(err).summary || "Could not create dependency.");
 	}
 }
 const depGhost = computed(() => {
@@ -995,7 +996,7 @@ async function applyPopover() {
 			allDeps.value = [...allDeps.value];
 			recomputeLocalConflicts();
 		}
-		flashError(err?.message || "Could not update dependency.");
+		flashError(parseFrappeError(err).summary || "Could not update dependency.");
 	}
 }
 async function deleteFromPopover() {
@@ -1010,7 +1011,7 @@ async function deleteFromPopover() {
 	} catch (err) {
 		allDeps.value = prev;
 		recomputeLocalConflicts();
-		flashError(err?.message || "Could not delete dependency.");
+		flashError(parseFrappeError(err).summary || "Could not delete dependency.");
 	}
 }
 
