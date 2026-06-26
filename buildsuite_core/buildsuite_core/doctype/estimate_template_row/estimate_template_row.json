@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-06-23 18:57:44.084234",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "group_name",
+  "line_type",
+  "assembly",
+  "resource",
+  "description",
+  "placeholder_qty",
+  "uom",
+  "rate",
+  "amount",
+  "cost_head"
+ ],
+ "fields": [
+  {
+   "fieldname": "group_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Group Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "line_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Line Type",
+   "options": "Assembly\nResource",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.line_type=='Assembly'",
+   "fieldname": "assembly",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assembly",
+   "mandatory_depends_on": "eval:doc.line_type=='Assembly'",
+   "options": "Assembly"
+  },
+  {
+   "depends_on": "eval:doc.line_type=='Resource'",
+   "fieldname": "resource",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Resource",
+   "mandatory_depends_on": "eval:doc.line_type=='Resource'",
+   "options": "Construction Rate Master"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description"
+  },
+  {
+   "default": "0",
+   "fieldname": "placeholder_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Placeholder Qty"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_head",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Cost Head",
+   "options": "Material\nLabour\nEquipment\nSubcontract\nOverhead"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-24 23:18:01.764508",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "Estimate Template Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

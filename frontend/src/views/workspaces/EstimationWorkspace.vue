@@ -15,6 +15,7 @@ const ESTIMATES = [
 const SETUP = [
   { to: '/rate-master', icon: 'tag', label: 'Rate Master', description: 'Price book for materials, labour, and equipment.' },
   { to: '/assembly', icon: 'layout-grid', label: 'Assembly', description: 'Rate-analysis recipes built from rate-master resources.' },
+  { to: '/estimate-template', icon: 'file-text', label: 'Estimate Template', description: 'Reusable BOQ skeletons of assemblies and resources.' },
 ]
 </script>
 
