@@ -1,0 +1,206 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "BOQ-.#####",
+ "creation": "2026-06-26 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "company",
+  "title",
+  "revision",
+  "base_revision",
+  "column_break_head",
+  "status",
+  "source_sco",
+  "prepared_by",
+  "prepared_date",
+  "approved_by",
+  "approved_date",
+  "section_break_rates",
+  "margin_rate",
+  "tax_rate",
+  "column_break_amounts",
+  "planned_amount",
+  "margin_amount",
+  "tax_amount",
+  "total",
+  "section_break_wp",
+  "wp_summaries"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "revision",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Revision",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_revision",
+   "fieldtype": "Link",
+   "label": "Based On Revision",
+   "options": "BOQ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_head",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nApproved\nSuperseded",
+   "read_only": 1
+  },
+  {
+   "description": "Optional reference to the Scope Change Order that triggered this revision.",
+   "fieldname": "source_sco",
+   "fieldtype": "Data",
+   "label": "Source SCO"
+  },
+  {
+   "fieldname": "prepared_by",
+   "fieldtype": "Link",
+   "label": "Prepared By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prepared_date",
+   "fieldtype": "Date",
+   "label": "Prepared Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_date",
+   "fieldtype": "Date",
+   "label": "Approved Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_rates",
+   "fieldtype": "Section Break",
+   "label": "Margin & Tax"
+  },
+  {
+   "default": "10",
+   "fieldname": "margin_rate",
+   "fieldtype": "Percent",
+   "label": "Margin Rate"
+  },
+  {
+   "default": "18",
+   "fieldname": "tax_rate",
+   "fieldtype": "Percent",
+   "label": "Tax Rate"
+  },
+  {
+   "fieldname": "column_break_amounts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Planned Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "margin_amount",
+   "fieldtype": "Currency",
+   "label": "Margin Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "Tax Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_wp",
+   "fieldtype": "Section Break",
+   "label": "Work Package Summary"
+  },
+  {
+   "fieldname": "wp_summaries",
+   "fieldtype": "Table",
+   "label": "WP Summaries",
+   "options": "BOQ WP Summary",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "BOQ",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}
