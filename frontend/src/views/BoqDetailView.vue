@@ -1,19 +1,20 @@
 <script setup>
 import { usePageTitle } from "@/composables/usePageTitle";
-// BOQ Detail — Desk-styled (CLAUDE.md §12.4) with one deliberate exception:
-// the "Compare to R<n>" toggle and the inline Δ delta chips on item rows are
-// LEFT AS-IS (brand-green styling) because they are the seed of the standalone
-// Vue-styled "Revision Compare" page in §12.4's 9-page Vue allowlist (Phase 5).
-// Everything else — page chrome, action bar, KPI strip, 3-level tree, planned/
-// actual bars, sub-item rate analysis — is rebuilt in Desk style.
-//
-// All store calls, computed properties, and workflow actions (submit / approve /
-// recalc / createRevision / delete / compareMode toggle) are preserved verbatim.
+// BOQ Detail — backend-backed (data adapter + boqApi). The Desk template is kept
+// verbatim; only the data layer changed: the local store became adapter reads of
+// BOQ + its Group/Item/Sub-Item children (transformed back to the prototype's
+// camelCase shape), CRUD became adapter.create/update/remove, and the workflow /
+// revision / explode / clone / import / recalc actions call the whitelisted boqApi.
 
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useConfirm } from "@/composables/useConfirm";
+import { showToast } from "@/utils/appToast";
+import { parseFrappeError } from "@/utils/frappeError";
+import * as boqApi from "@/utils/boqApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -24,32 +25,182 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
-const store = useDataStore();
+const adapter = createDataAdapter(useDataStore());
 const confirmDialog = useConfirm();
 
-const boq = computed(() => store.boqById(props.id));
-const project = computed(() => (boq.value ? store.projectById(boq.value.projectId) : null));
-const baseBoq = computed(() =>
-	boq.value?.baseRevisionId ? store.boqById(boq.value.baseRevisionId) : null
+// === Data load: BOQ header + the three child levels ===
+const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
+function childList(doctype, orderBy) {
+	return adapter.list(doctype, {
+		filters: [["boq", "=", props.id]],
+		fields: ["*"],
+		pageLength: 0,
+		orderBy,
+	});
+}
+const groupsRes = childList("BOQ Group", "idx_order asc");
+const itemsRes = childList("BOQ Item", "code asc");
+const subsRes = childList("BOQ Sub Item", "creation asc");
+function reloadTree() {
+	boqResource?.reload?.();
+	groupsRes?.reload?.();
+	itemsRes?.reload?.();
+	subsRes?.reload?.();
+}
+const rowsOf = (res) => res?.data || [];
+
+const boqDoc = computed(() => boqResource?.doc || null);
+const boq = computed(() => {
+	const d = boqDoc.value;
+	if (!d) return null;
+	return {
+		id: d.name,
+		status: d.status,
+		revision: d.revision,
+		title: d.title,
+		projectId: d.project,
+		preparedBy: d.prepared_by,
+		preparedDate: d.prepared_date,
+		approvedBy: d.approved_by,
+		approvedDate: d.approved_date,
+		baseRevisionId: d.base_revision,
+		sourceScoId: d.source_sco,
+	};
+});
+
+usePageTitle(() => boq.value?.id);
+
+const projectsRes = useDocTypeList("Project", {
+	fields: ["name", "project_name", "custom_project_id"],
+	pageLength: 0,
+	cache: "buildsuite-boq-projects",
+});
+const project = computed(() => {
+	const pid = boq.value?.projectId;
+	if (!pid) return null;
+	const p = (projectsRes.data || []).find((x) => x.name === pid);
+	return p ? { id: p.name, name: p.project_name || p.name } : { id: pid, name: pid };
+});
+
+// Sibling revisions (for baseBoq label) + base-revision items (for compare mode).
+const projectBoqsRes = useDocTypeList("BOQ", {
+	filters: [["project", "=", props.id ? undefined : ""]],
+	fields: ["name", "revision"],
+	pageLength: 0,
+	auto: false,
+});
+watch(
+	() => boq.value?.projectId,
+	(pid) => {
+		if (pid) {
+			projectBoqsRes.filters = [["project", "=", pid]];
+			projectBoqsRes.reload?.();
+		}
+	},
+	{ immediate: true }
 );
-const sourceSco = computed(() =>
-	boq.value?.sourceScoId ? store.scos.find((s) => s.id === boq.value.sourceScoId) : null
+const baseBoq = computed(() => {
+	const bid = boq.value?.baseRevisionId;
+	if (!bid) return null;
+	const b = (projectBoqsRes.data || []).find((x) => x.name === bid);
+	return b ? { id: b.name, revision: b.revision } : { id: bid, revision: "?" };
+});
+const sourceSco = computed(() => (boq.value?.sourceScoId ? { id: boq.value.sourceScoId } : null));
+
+// Lazily load base-revision items when compare is on.
+const baseItems = ref([]);
+async function loadBaseItems() {
+	const bid = boq.value?.baseRevisionId;
+	if (!bid) {
+		baseItems.value = [];
+		return;
+	}
+	try {
+		const res = adapter.list("BOQ Item", {
+			filters: [["boq", "=", bid]],
+			fields: ["code", "planned_amount"],
+			pageLength: 0,
+			auto: false,
+		});
+		await res.reload?.();
+		baseItems.value = res.data || [];
+	} catch {
+		baseItems.value = [];
+	}
+}
+
+// === Tree shape (camelCase, matching the template) ===
+const groups = computed(() =>
+	rowsOf(groupsRes).map((g) => ({
+		id: g.name,
+		code: g.code,
+		name: g.group_name,
+		order: g.idx_order,
+	}))
 );
-const groups = computed(() => (boq.value ? store.boqGroupsByBoq(boq.value.id) : []));
-const totals = computed(() =>
-	boq.value
-		? store.boqTotals(boq.value.id)
-		: { planned: 0, actual: 0, variance: 0, variancePct: 0, itemCount: 0 }
+const allItems = computed(() =>
+	rowsOf(itemsRes).map((i) => ({
+		id: i.name,
+		groupId: i.boq_group,
+		code: i.code,
+		description: i.description,
+		unit: i.unit,
+		plannedQty: i.planned_qty,
+		rate: i.rate,
+		plannedAmount: i.planned_amount,
+		actualQty: i.actual_qty,
+		actualAmount: i.actual_amount,
+		taskId: i.task,
+		workPackageId: i.work_package,
+		costHead: i.cost_head,
+		assemblyId: i.assembly,
+		drivingQty: i.driving_qty,
+	}))
 );
+const allSubs = computed(() =>
+	rowsOf(subsRes).map((s) => ({
+		id: s.name,
+		itemId: s.boq_item,
+		rateMasterId: s.rate_master,
+		description: s.description,
+		qtyPerUnit: s.qty_per_unit,
+		rate: s.rate,
+		amount: s.amount,
+	}))
+);
+function boqItemsByGroup(groupId) {
+	return allItems.value.filter((i) => i.groupId === groupId);
+}
+function boqSubItemsByItem(itemId) {
+	return allSubs.value.filter((s) => s.itemId === itemId);
+}
+const boqItemsByBoq = computed(() => allItems.value);
+
+const totals = computed(() => {
+	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
+	const actual = allItems.value.reduce((a, i) => a + (i.actualAmount || 0), 0);
+	const variance = actual - planned;
+	return {
+		planned,
+		actual,
+		variance,
+		variancePct: planned ? (variance / planned) * 100 : 0,
+		itemCount: allItems.value.length,
+	};
+});
 
 const expandedGroups = ref({});
 const expandedItems = ref({});
 const compareMode = ref(false);
+watch(compareMode, (on) => {
+	if (on) loadBaseItems();
+});
 
 function toggleGroup(id) {
 	expandedGroups.value[id] = !expandedGroups.value[id];
@@ -58,12 +209,8 @@ function toggleItem(id) {
 	expandedItems.value[id] = !expandedItems.value[id];
 }
 function expandAll() {
-	groups.value.forEach((g) => {
-		expandedGroups.value[g.id] = true;
-	});
-	store.boqItemsByBoq(boq.value.id).forEach((i) => {
-		expandedItems.value[i.id] = true;
-	});
+	groups.value.forEach((g) => (expandedGroups.value[g.id] = true));
+	allItems.value.forEach((i) => (expandedItems.value[i.id] = true));
 }
 function collapseAll() {
 	expandedGroups.value = {};
@@ -77,25 +224,27 @@ function variancePill(pct) {
 function pctOf(part, whole) {
 	return whole ? (part / whole) * 100 : 0;
 }
-
 function groupTotals(groupId) {
-	const items = store.boqItems.filter((i) => i.groupId === groupId);
+	const items = boqItemsByGroup(groupId);
 	const planned = items.reduce((a, i) => a + (i.plannedAmount || 0), 0);
 	const actual = items.reduce((a, i) => a + (i.actualAmount || 0), 0);
 	return { planned, actual, count: items.length };
 }
-
-// Diff against base revision when compareMode is on. Match by item code. Preserved
-// verbatim — feeds the Δ chip rendering that stays brand-green styled per prompt.
 function baseAmount(code) {
 	if (!baseBoq.value) return null;
-	const base = store.boqItems.find((i) => i.boqId === baseBoq.value.id && i.code === code);
-	return base?.plannedAmount ?? null;
+	const base = baseItems.value.find((i) => i.code === code);
+	return base?.planned_amount ?? null;
 }
 
-// === Workflow actions ===
-function recalculate() {
-	store.recalculateActuals(boq.value.id);
+// === Workflow / advanced actions (boqApi) ===
+async function recalculate() {
+	try {
+		await boqApi.recalculateActuals(boq.value.id);
+		reloadTree();
+		showToast("Actuals recalculated");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to recalculate", "error");
+	}
 }
 async function submit() {
 	const ok = await confirmDialog({
@@ -103,28 +252,41 @@ async function submit() {
 		message: `Submit BOQ ${boq.value.id} for approval?`,
 		confirmLabel: "Submit",
 	});
-	if (ok) store.submitBoq(boq.value.id);
+	if (!ok) return;
+	try {
+		await boqApi.submitBoq(boq.value.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to submit", "error");
+	}
 }
 async function approve() {
-	const others = store.boqs.filter(
-		(b) =>
-			b.projectId === boq.value.projectId && b.status === "Approved" && b.id !== boq.value.id
+	const others = (projectBoqsRes.data || []).filter(
+		(b) => b.name !== boq.value.id && b.revision !== boq.value.revision
 	);
-	const msg = others.length
-		? `Approve revision ${boq.value.revision}? This will supersede the currently-active revision (${others[0].id}).`
-		: `Approve revision ${boq.value.revision}? It will become the live BOQ for this project.`;
-	if (await confirmDialog({ title: "Approve revision", message: msg, confirmLabel: "Approve" }))
-		store.approveBoq(boq.value.id);
+	void others;
+	const ok = await confirmDialog({
+		title: "Approve revision",
+		message: `Approve revision ${boq.value.revision}? Any other approved revision on this project is superseded.`,
+		confirmLabel: "Approve",
+	});
+	if (!ok) return;
+	try {
+		await boqApi.approveBoq(boq.value.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to approve", "error");
+	}
 }
-function createRevision() {
-	const note = window.prompt(
-		"Optional: enter SCO id to link this revision to (or leave blank).",
-		""
-	);
+async function createRevision() {
+	const note = window.prompt("Optional: SCO id to link this revision to (or leave blank).", "");
 	if (note === null) return;
-	const sco = note?.trim() ? note.trim() : null;
-	const newBoq = store.createBoqRevisionFrom(boq.value.id, { sourceScoId: sco });
-	if (newBoq) router.push(`/boq/${newBoq.id}`);
+	try {
+		const name = await boqApi.createRevision(boq.value.id, note?.trim() || null);
+		if (name) router.push(`/boq/${name}`);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to create revision", "error");
+	}
 }
 async function removeBoq() {
 	const ok = await confirmDialog({
@@ -134,8 +296,145 @@ async function removeBoq() {
 		destructive: true,
 	});
 	if (!ok) return;
-	store.deleteBoq(boq.value.id);
-	router.push("/boq");
+	try {
+		await adapter.remove("BOQ", boq.value.id);
+		router.push("/boq");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to delete BOQ", "error");
+	}
+}
+async function explode(item) {
+	if (!item.assemblyId) {
+		showToast("Link an Assembly to this item first.", "error");
+		return;
+	}
+	try {
+		await boqApi.explodeItem(item.id);
+		reloadTree();
+		showToast("Exploded from assembly");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to explode", "error");
+	}
+}
+
+// === CSV export (client-side, flat tree dump) ===
+function csvCell(v) {
+	const s = String(v ?? "");
+	return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function exportCsv() {
+	const lines = [];
+	lines.push(
+		["BOQ", boq.value.id, "Rev", boq.value.revision, "Status", boq.value.status]
+			.map(csvCell)
+			.join(",")
+	);
+	lines.push(
+		[
+			"Type",
+			"Code",
+			"Description",
+			"Unit",
+			"Planned Qty",
+			"Rate",
+			"Planned Amount",
+			"Actual Qty",
+			"Actual Amount",
+			"Work Package",
+			"Cost Head",
+		]
+			.map(csvCell)
+			.join(",")
+	);
+	for (const g of groups.value) {
+		lines.push(["Group", g.code, g.name].map(csvCell).join(","));
+		for (const it of boqItemsByGroup(g.id)) {
+			lines.push(
+				[
+					"Item",
+					it.code,
+					it.description,
+					it.unit,
+					it.plannedQty,
+					it.rate,
+					it.plannedAmount,
+					it.actualQty,
+					it.actualAmount,
+					it.workPackageId || "",
+					it.costHead || "",
+				]
+					.map(csvCell)
+					.join(",")
+			);
+			for (const si of boqSubItemsByItem(it.id)) {
+				lines.push(
+					["Sub", "↳", si.description, "", si.qtyPerUnit, si.rate, si.amount]
+						.map(csvCell)
+						.join(",")
+				);
+			}
+		}
+	}
+	const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `${boq.value.id}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+// === Import Estimate Template ===
+const importModal = ref(false);
+const importForm = ref({ template: "" });
+function openImport() {
+	importForm.value = { template: "" };
+	importModal.value = true;
+}
+async function doImport() {
+	if (!importForm.value.template) return;
+	try {
+		await boqApi.importTemplate(boq.value.id, importForm.value.template);
+		importModal.value = false;
+		reloadTree();
+		showToast("Template imported");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to import template", "error");
+	}
+}
+
+// === Clone (project->project or WP->WP) ===
+const cloneModal = ref(false);
+const cloneForm = ref({ toProject: "", toWorkPackage: "", fromWorkPackage: "", title: "" });
+function openClone() {
+	cloneForm.value = { toProject: "", toWorkPackage: "", fromWorkPackage: "", title: "" };
+	cloneModal.value = true;
+}
+async function doClone() {
+	const f = cloneForm.value;
+	const sameProject = !f.toProject || f.toProject === boq.value.projectId;
+	const payload = sameProject
+		? {
+				from_project: boq.value.projectId,
+				to_project: boq.value.projectId,
+				from_work_package: f.fromWorkPackage,
+				to_work_package: f.toWorkPackage,
+		  }
+		: {
+				from_project: boq.value.projectId,
+				to_project: f.toProject,
+				to_work_package: f.toWorkPackage || null,
+				title: f.title || null,
+		  };
+	try {
+		const res = await boqApi.cloneBoq(payload);
+		cloneModal.value = false;
+		if (res?.boq && res.boq !== boq.value.id) router.push(`/boq/${res.boq}`);
+		else reloadTree();
+		showToast("Cloned");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to clone", "error");
+	}
 }
 
 const canSubmit = computed(() => boq.value?.status === "Draft");
@@ -143,15 +442,11 @@ const canApprove = computed(() => boq.value?.status === "Submitted");
 const isLocked = computed(
 	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded"
 );
-// Add/edit/delete affordances on the tree are gated on Draft. Submitted BOQs are
-// waiting for an approver and shouldn't change underneath them; Approved/Superseded
-// are immutable by design (use + Revision to make changes downstream).
 const isEditable = computed(() => boq.value?.status === "Draft");
 
 // ===== Group add/edit/delete =====
-const groupModal = ref(null); // null | { mode: 'add' | 'edit', id?: string }
+const groupModal = ref(null);
 const groupForm = ref({ code: "", name: "" });
-
 function openAddGroup() {
 	groupForm.value = { code: "", name: "" };
 	groupModal.value = { mode: "add" };
@@ -160,70 +455,101 @@ function openEditGroup(g) {
 	groupForm.value = { code: g.code, name: g.name };
 	groupModal.value = { mode: "edit", id: g.id };
 }
-function saveGroup() {
+async function saveGroup() {
 	if (!groupForm.value.code.trim() || !groupForm.value.name.trim()) {
-		alert("Code and name are required.");
+		showToast("Code and name are required.", "error");
 		return;
 	}
-	if (groupModal.value.mode === "add") {
-		store.addBoqGroup({
-			boqId: boq.value.id,
-			code: groupForm.value.code.trim(),
-			name: groupForm.value.name.trim(),
-		});
-	} else {
-		store.updateBoqGroup(groupModal.value.id, {
-			code: groupForm.value.code.trim(),
-			name: groupForm.value.name.trim(),
-		});
+	const payload = { code: groupForm.value.code.trim(), group_name: groupForm.value.name.trim() };
+	try {
+		if (groupModal.value.mode === "add") {
+			await adapter.create("BOQ Group", { boq: boq.value.id, ...payload });
+		} else {
+			await adapter.update("BOQ Group", groupModal.value.id, payload);
+		}
+		groupModal.value = null;
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to save group", "error");
 	}
-	groupModal.value = null;
 }
 async function deleteGroupConfirm(g) {
-	const items = store.boqItemsByGroup(g.id);
+	const items = boqItemsByGroup(g.id);
 	const msg = items.length
-		? `Delete group "${g.code} — ${g.name}" along with ${items.length} item${
+		? `Delete group "${g.code} — ${g.name}" with ${items.length} item${
 				items.length === 1 ? "" : "s"
-		  } and their sub-items? This cannot be undone.`
+		  } and their sub-items?`
 		: `Delete group "${g.code} — ${g.name}"?`;
 	if (
-		await confirmDialog({
+		!(await confirmDialog({
 			title: "Delete group",
 			message: msg,
 			confirmLabel: "Delete",
 			destructive: true,
-		})
+		}))
 	)
-		store.deleteBoqGroup(g.id);
+		return;
+	try {
+		await adapter.remove("BOQ Group", g.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to delete group", "error");
+	}
 }
 
 // ===== Item add/edit/delete =====
-const itemModal = ref(null); // null | { mode: 'add' | 'edit', groupId?, id? }
+const itemModal = ref(null);
 const itemForm = ref({
 	code: "",
 	description: "",
-	unit: "nos",
+	unit: "",
 	plannedQty: 0,
 	rate: 0,
 	taskId: null,
+	workPackageId: null,
+	costHead: "",
+	assemblyId: null,
 });
-
-const availableTasks = computed(() =>
-	project.value ? store.tasksByProject(project.value.id) : []
+const availableTasks = computed(() => {
+	const pid = boq.value?.projectId;
+	return pid
+		? (tasksRes.data || []).map((t) => ({ id: t.name, name: t.subject || t.name }))
+		: [];
+});
+const tasksRes = useDocTypeList("Task", {
+	filters: [["project", "=", props.id ? undefined : ""]],
+	fields: ["name", "subject"],
+	pageLength: 0,
+	auto: false,
+});
+watch(
+	() => boq.value?.projectId,
+	(pid) => {
+		if (pid) {
+			tasksRes.filters = [["project", "=", pid]];
+			tasksRes.reload?.();
+		}
+	},
+	{ immediate: true }
 );
 const itemPlannedAmountPreview = computed(
 	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
 );
-
-function openAddItem(groupId) {
-	itemForm.value = {
+function blankItemForm() {
+	return {
 		code: "",
 		description: "",
-		unit: "nos",
+		unit: "",
 		plannedQty: 0,
 		rate: 0,
 		taskId: null,
+		workPackageId: null,
+		costHead: "",
+		assemblyId: null,
 	};
+}
+function openAddItem(groupId) {
+	itemForm.value = blankItemForm();
 	itemModal.value = { mode: "add", groupId };
 }
 function openEditItem(item) {
@@ -234,56 +560,87 @@ function openEditItem(item) {
 		plannedQty: item.plannedQty,
 		rate: item.rate,
 		taskId: item.taskId,
+		workPackageId: item.workPackageId,
+		costHead: item.costHead || "",
+		assemblyId: item.assemblyId,
 	};
 	itemModal.value = { mode: "edit", id: item.id };
 }
-function saveItem() {
+async function saveItem() {
 	const f = itemForm.value;
-	if (!f.code.trim() || !f.description.trim() || !f.unit.trim()) {
-		alert("Code, description, and unit are required.");
+	if (!f.code.trim() || !f.description.trim() || !f.unit) {
+		showToast("Code, description, and unit are required.", "error");
 		return;
 	}
-	const data = {
+	const payload = {
 		code: f.code.trim(),
 		description: f.description.trim(),
-		unit: f.unit.trim(),
-		plannedQty: Number(f.plannedQty) || 0,
+		unit: f.unit,
+		planned_qty: Number(f.plannedQty) || 0,
 		rate: Number(f.rate) || 0,
-		taskId: f.taskId || null,
+		task: f.taskId || null,
+		work_package: f.workPackageId || null,
+		cost_head: f.costHead || null,
+		assembly: f.assemblyId || null,
 	};
-	if (itemModal.value.mode === "add") {
-		store.addBoqItem({ boqId: boq.value.id, groupId: itemModal.value.groupId, ...data });
-	} else {
-		store.updateBoqItem(itemModal.value.id, data);
+	try {
+		if (itemModal.value.mode === "add") {
+			await adapter.create("BOQ Item", {
+				boq: boq.value.id,
+				boq_group: itemModal.value.groupId,
+				...payload,
+			});
+		} else {
+			await adapter.update("BOQ Item", itemModal.value.id, payload);
+		}
+		itemModal.value = null;
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to save item", "error");
 	}
-	itemModal.value = null;
 }
 async function deleteItemConfirm(item) {
-	const subs = store.boqSubItemsByItem(item.id);
+	const subs = boqSubItemsByItem(item.id);
 	const msg = subs.length
-		? `Delete item "${item.code} — ${item.description}" along with ${subs.length} sub-item${
+		? `Delete item "${item.code} — ${item.description}" with ${subs.length} sub-item${
 				subs.length === 1 ? "" : "s"
-		  }? This cannot be undone.`
+		  }?`
 		: `Delete item "${item.code} — ${item.description}"?`;
 	if (
-		await confirmDialog({
+		!(await confirmDialog({
 			title: "Delete item",
 			message: msg,
 			confirmLabel: "Delete",
 			destructive: true,
-		})
+		}))
 	)
-		store.deleteBoqItem(item.id);
+		return;
+	try {
+		await adapter.remove("BOQ Item", item.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to delete item", "error");
+	}
 }
 
 // ===== Sub-item add/edit/delete =====
-const subItemModal = ref(null); // null | { mode: 'add' | 'edit', itemId?, id?, parentUnit? }
+const subItemModal = ref(null);
 const subItemForm = ref({ rateMasterId: null, description: "", qtyPerUnit: 0, rate: 0 });
-
+const rateMasterRes = useDocTypeList("Construction Rate Master", {
+	fields: ["name", "rate_code", "rate_name", "current_rate", "category"],
+	orderBy: "rate_code asc",
+	pageLength: 0,
+	cache: "buildsuite-boq-rate-master",
+});
 const rateMasterOptions = computed(() =>
-	store.rateMaster.slice().sort((a, b) => a.code.localeCompare(b.code))
+	(rateMasterRes.data || []).map((r) => ({
+		id: r.name,
+		code: r.rate_code,
+		description: r.rate_name,
+		currentRate: r.current_rate,
+		category: r.category,
+	}))
 );
-
 function openAddSubItem(item) {
 	subItemForm.value = { rateMasterId: null, description: "", qtyPerUnit: 0, rate: 0 };
 	subItemModal.value = { mode: "add", itemId: item.id, parentUnit: item.unit };
@@ -297,13 +654,9 @@ function openEditSubItem(si, item) {
 	};
 	subItemModal.value = { mode: "edit", id: si.id, parentUnit: item.unit };
 }
-// When the user picks a Rate Master entry, auto-fill description + rate from it.
-// Per the store's addBoqSubItem behavior, rate is anyway re-fetched from rate master
-// on save when rateMasterId is set — this is just the preview while the user is in
-// the modal so they can see what the final amount will be.
 function onRateMasterPick(rateMasterId) {
 	if (!rateMasterId) return;
-	const rm = store.rateMaster.find((r) => r.id === rateMasterId);
+	const rm = rateMasterOptions.value.find((r) => r.id === rateMasterId);
 	if (rm) {
 		subItemForm.value.description = rm.description;
 		subItemForm.value.rate = rm.currentRate;
@@ -312,43 +665,58 @@ function onRateMasterPick(rateMasterId) {
 const subItemAmountPreview = computed(
 	() => (Number(subItemForm.value.qtyPerUnit) || 0) * (Number(subItemForm.value.rate) || 0)
 );
-function saveSubItem() {
+async function saveSubItem() {
 	const f = subItemForm.value;
 	if (!f.description.trim() || Number(f.qtyPerUnit) <= 0) {
-		alert("Description and a non-zero quantity per unit are required.");
+		showToast("Description and a non-zero quantity per unit are required.", "error");
 		return;
 	}
-	const data = {
-		rateMasterId: f.rateMasterId || null,
+	const payload = {
+		rate_master: f.rateMasterId || null,
 		description: f.description.trim(),
-		qtyPerUnit: Number(f.qtyPerUnit) || 0,
+		qty_per_unit: Number(f.qtyPerUnit) || 0,
 		rate: Number(f.rate) || 0,
 	};
-	if (subItemModal.value.mode === "add") {
-		store.addBoqSubItem({ boqId: boq.value.id, itemId: subItemModal.value.itemId, ...data });
-	} else {
-		store.updateBoqSubItem(subItemModal.value.id, data);
+	try {
+		if (subItemModal.value.mode === "add") {
+			await adapter.create("BOQ Sub Item", {
+				boq: boq.value.id,
+				boq_item: subItemModal.value.itemId,
+				...payload,
+			});
+		} else {
+			await adapter.update("BOQ Sub Item", subItemModal.value.id, payload);
+		}
+		subItemModal.value = null;
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to save sub-item", "error");
 	}
-	subItemModal.value = null;
 }
 async function deleteSubItemConfirm(si) {
 	if (
-		await confirmDialog({
+		!(await confirmDialog({
 			title: "Delete sub-item",
 			message: `Delete sub-item "${si.description}"?`,
 			confirmLabel: "Delete",
 			destructive: true,
-		})
+		}))
 	)
-		store.deleteBoqSubItem(si.id);
+		return;
+	try {
+		await adapter.remove("BOQ Sub Item", si.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to delete sub-item", "error");
+	}
 }
 
-// Primary action dispatcher — Submit when Draft, Approve when Submitted, hidden when locked.
+// Primary action dispatcher — Submit when Draft, Approve when Submitted.
 const showPrimary = computed(() => canSubmit.value || canApprove.value);
 const primaryLabel = computed(() =>
 	canSubmit.value ? "Submit for approval" : canApprove.value ? "Approve" : ""
 );
-function onPrimary() {
+function primaryAction() {
 	if (canSubmit.value) submit();
 	else if (canApprove.value) approve();
 }
@@ -360,16 +728,9 @@ const breadcrumbs = computed(() => {
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
+	out.push({ label: boq.value?.id || props.id });
 	return out;
 });
-
-const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.revision}` : ""));
-
-// Grid template for the tree (chevron / code / description / qty / rate / planned / actual / variance / task)
-const treeGridStyle =
-	"grid-template-columns: 28px 80px 1fr 80px 90px 100px 110px 110px 110px 80px;";
-
-usePageTitle(() => boq.value?.title);
 </script>
 
 <template>
@@ -436,6 +797,34 @@ usePageTitle(() => boq.value?.title);
 							@click="createRevision"
 						>
 							+ Revision
+						</button>
+
+						<button
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="exportCsv"
+						>
+							⬇ Export CSV
+						</button>
+
+						<button
+							v-if="isEditable"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openImport"
+						>
+							Import Template…
+						</button>
+
+						<button
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openClone"
+						>
+							Clone…
 						</button>
 
 						<button
@@ -680,7 +1069,7 @@ usePageTitle(() => boq.value?.title);
 
 					<!-- Items inside group -->
 					<template v-if="expandedGroups[g.id]">
-						<template v-for="item in store.boqItemsByGroup(g.id)" :key="item.id">
+						<template v-for="item in boqItemsByGroup(g.id)" :key="item.id">
 							<div
 								class="relative group/row grid items-center border-b border-ink-100 hover:bg-brand-50 cursor-pointer"
 								:style="treeGridStyle"
@@ -692,6 +1081,15 @@ usePageTitle(() => boq.value?.title);
 									class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
 									style="border-radius: 2px"
 								>
+									<button
+										v-if="item.assemblyId"
+										type="button"
+										@click.stop="explode(item)"
+										class="px-1.5 py-0.5 text-xs text-brand-700 hover:bg-brand-50"
+										title="Explode from assembly into sub-items"
+									>
+										⚡
+									</button>
 									<button
 										type="button"
 										@click.stop="openEditItem(item)"
@@ -731,7 +1129,7 @@ usePageTitle(() => boq.value?.title);
 								</div>
 								<div class="px-2 text-ink-400 text-[10px]">
 									{{
-										store.boqSubItemsByItem(item.id).length
+										boqSubItemsByItem(item.id).length
 											? expandedItems[item.id]
 												? "▾"
 												: "▸"
@@ -843,7 +1241,7 @@ usePageTitle(() => boq.value?.title);
 							<!-- Sub-items: rate analysis. Indented, smaller, Rate Master links Desk-blue. -->
 							<template v-if="expandedItems[item.id]">
 								<div
-									v-for="si in store.boqSubItemsByItem(item.id)"
+									v-for="si in boqSubItemsByItem(item.id)"
 									:key="si.id"
 									class="relative group/row grid items-center border-b border-ink-50 bg-ink-50/40"
 									:style="treeGridStyle"
@@ -927,7 +1325,7 @@ usePageTitle(() => boq.value?.title);
 									</div>
 								</div>
 								<div
-									v-if="!store.boqSubItemsByItem(item.id).length"
+									v-if="!boqSubItemsByItem(item.id).length"
 									class="grid items-center border-b border-ink-50 bg-ink-50/40 text-[11px] text-ink-400 italic"
 									:style="treeGridStyle"
 								>
@@ -1112,8 +1510,15 @@ usePageTitle(() => boq.value?.title);
 								<DeskInput v-model="itemForm.code" />
 							</DeskField>
 							<div class="col-span-2">
-								<DeskField label="Unit" required hint="m³, kg, m², nos, lot…">
-									<DeskInput v-model="itemForm.unit" />
+								<DeskField label="Unit" required>
+									<DeskLinkPicker
+										v-model="itemForm.unit"
+										doctype="UOM"
+										label-field="name"
+										value-field="name"
+										:search-fields="['name']"
+										placeholder="m³, kg, nos…"
+									/>
 								</DeskField>
 							</div>
 						</div>
@@ -1148,6 +1553,39 @@ usePageTitle(() => boq.value?.title);
 								</option>
 							</DeskSelect>
 						</DeskField>
+						<div class="grid grid-cols-3 gap-3">
+							<DeskField label="Work Package" hint="Optional · per-WP rollup">
+								<DeskLinkPicker
+									v-model="itemForm.workPackageId"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									placeholder="— None —"
+								/>
+							</DeskField>
+							<DeskField label="Cost head">
+								<DeskSelect v-model="itemForm.costHead">
+									<option value="">— None —</option>
+									<option>Material</option>
+									<option>Labour</option>
+									<option>Equipment</option>
+									<option>Subcontract</option>
+									<option>Preliminaries</option>
+									<option>Other</option>
+								</DeskSelect>
+							</DeskField>
+							<DeskField label="Assembly" hint="Then ‘Explode’ on the row">
+								<DeskLinkPicker
+									v-model="itemForm.assemblyId"
+									doctype="Assembly"
+									label-field="assembly_name"
+									value-field="name"
+									:search-fields="['assembly_code', 'assembly_name', 'name']"
+									placeholder="— None —"
+								/>
+							</DeskField>
+						</div>
 					</div>
 					<div
 						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
@@ -1268,6 +1706,141 @@ usePageTitle(() => boq.value?.title);
 						<button type="button" @click="saveSubItem" class="desk-save-btn">
 							{{ subItemModal.mode === "add" ? "Create sub-item" : "Save changes" }}
 						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Import template modal ========== -->
+			<div
+				v-if="importModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="importModal = false"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">Import from template</h2>
+						<button
+							type="button"
+							@click="importModal = false"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+						>
+							✕
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField label="Estimate template" required>
+							<DeskLinkPicker
+								v-model="importForm.template"
+								doctype="Estimate Template"
+								label-field="template_name"
+								value-field="name"
+								:search-fields="['template_code', 'template_name', 'name']"
+								placeholder="Pick a template"
+							/>
+						</DeskField>
+						<p class="text-[11px] text-ink-500">
+							Adds the template's rows to this BOQ. Assembly lines explode into
+							sub-items.
+						</p>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="importModal = false"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							Cancel
+						</button>
+						<button type="button" @click="doImport" class="desk-save-btn">
+							Import
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Clone modal ========== -->
+			<div
+				v-if="cloneModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="cloneModal = false"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">Clone BOQ</h2>
+						<button
+							type="button"
+							@click="cloneModal = false"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+						>
+							✕
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField
+							label="To project"
+							hint="Leave blank to clone within this project (WP → WP)."
+						>
+							<DeskLinkPicker
+								v-model="cloneForm.toProject"
+								doctype="Project"
+								label-field="project_name"
+								value-field="name"
+								:search-fields="['project_name', 'custom_project_id', 'name']"
+								placeholder="— Same project —"
+							/>
+						</DeskField>
+						<div
+							v-if="!cloneForm.toProject || cloneForm.toProject === boq.projectId"
+							class="grid grid-cols-2 gap-3"
+						>
+							<DeskField label="From WP" required>
+								<DeskLinkPicker
+									v-model="cloneForm.fromWorkPackage"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									:filters="[['project', '=', boq.projectId]]"
+									placeholder="Source WP"
+								/>
+							</DeskField>
+							<DeskField label="To WP" required>
+								<DeskLinkPicker
+									v-model="cloneForm.toWorkPackage"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									:filters="[['project', '=', boq.projectId]]"
+									placeholder="Target WP"
+								/>
+							</DeskField>
+						</div>
+						<DeskField v-else label="Title">
+							<DeskInput v-model="cloneForm.title" placeholder="Cloned BOQ title" />
+						</DeskField>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="cloneModal = false"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							Cancel
+						</button>
+						<button type="button" @click="doClone" class="desk-save-btn">Clone</button>
 					</div>
 				</div>
 			</div>
