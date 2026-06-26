@@ -23,6 +23,7 @@
   "tax_rate",
   "column_break_amounts",
   "planned_amount",
+  "actual_amount",
   "margin_amount",
   "tax_amount",
   "total",
@@ -141,6 +142,12 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Planned Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_amount",
+   "fieldtype": "Currency",
+   "label": "Actual Amount",
    "read_only": 1
   },
   {

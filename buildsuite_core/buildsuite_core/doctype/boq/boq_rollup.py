@@ -18,7 +18,7 @@ def compute_boq_totals(doc):
 		frappe.get_all(
 			"BOQ Item",
 			filters={"boq": doc.name},
-			fields=["planned_amount", "work_package"],
+			fields=["planned_amount", "actual_amount", "work_package"],
 		)
 		if not doc.is_new()
 		else []
@@ -27,6 +27,7 @@ def compute_boq_totals(doc):
 	margin = planned * flt(doc.margin_rate) / 100.0
 	tax = (planned + margin) * flt(doc.tax_rate) / 100.0
 	doc.planned_amount = planned
+	doc.actual_amount = sum(flt(i.actual_amount) for i in items)
 	doc.margin_amount = margin
 	doc.tax_amount = tax
 	doc.total = planned + margin + tax

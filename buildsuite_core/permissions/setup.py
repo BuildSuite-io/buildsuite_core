@@ -75,6 +75,36 @@ TASK_ROLE_PERMS = {
 	"BuildSuite HR Manager": {"read": 1, "report": 1, "print": 1},
 }
 
+# BOQ (Bill of Quantities) — estimation is the Estimator's and QS's job, so they get
+# full CRUD alongside Director / PM / Administrator. Everyone else is read-only.
+_BOQ_FULL = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1, "print": 1}
+_BOQ_READ = {"read": 1, "report": 1, "export": 1, "print": 1}
+BOQ_ROLE_PERMS = {
+	"BuildSuite Director": _BOQ_FULL,
+	"BuildSuite PM": _BOQ_FULL,
+	"BuildSuite Administrator": _BOQ_FULL,
+	"BuildSuite Estimator": _BOQ_FULL,
+	"BuildSuite QS": _BOQ_FULL,
+	"BuildSuite Site Engineer": _BOQ_READ,
+	"BuildSuite Foreman": _BOQ_READ,
+	"BuildSuite Accountant": _BOQ_READ,
+	"BuildSuite HR Manager": _BOQ_READ,
+}
+BOQ_DOCTYPES = ("BOQ", "BOQ Group", "BOQ Item", "BOQ Sub Item")
+
+# Only these roles may approve a BOQ (mirrors the prototype BOQ_APPROVE_ROLES). The
+# approve_boq API enforces this server-side.
+BOQ_APPROVE_ROLES = (
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite Administrator",
+	"System Manager",
+)
+
+# Masters the BOQ tree's link pickers resolve. Any BOQ-readable role needs read on
+# these or the pickers 403 (read-only mirror — never write).
+BOQ_LINKED_MASTER_DOCTYPES = ("UOM", "Construction Rate Master", "Assembly", "Estimate Template")
+
 # Per-role base permissions on Work Package — read-only for everyone except the
 # full-CRUD roles; scope inherits the parent project. No own-scope rules.
 WORK_PACKAGE_ROLE_PERMS = {
@@ -271,6 +301,15 @@ def setup_stage_planning_permissions():
 	_apply_role_perms("Stage Planning", STAGE_PLANNING_ROLE_PERMS)
 
 
+def setup_boq_permissions():
+	for doctype in BOQ_DOCTYPES:
+		_apply_role_perms(doctype, BOQ_ROLE_PERMS)
+	mirror = _readonly_mirror(BOQ_ROLE_PERMS)
+	for doctype in BOQ_LINKED_MASTER_DOCTYPES:
+		if frappe.db.exists("DocType", doctype):
+			_apply_role_perms(doctype, mirror)
+
+
 def _readonly_mirror(role_perms):
 	"""Reduce a role-perm matrix to its non-destructive ptypes, for read roles.
 
@@ -358,6 +397,7 @@ def setup_record_permissions():
 	setup_work_package_permissions()
 	setup_task_progress_entry_permissions()
 	setup_stage_planning_permissions()
+	setup_boq_permissions()
 	setup_linked_master_permissions()
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
