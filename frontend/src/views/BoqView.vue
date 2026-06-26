@@ -1,97 +1,121 @@
 <script setup>
-// BOQ list — Desk-styled (CLAUDE.md §12.4 destination: Desk in production). Every
-// computed (rows / kpis), the create-draft modal, and the store calls are preserved.
-// Visual only.
+// BOQ list — backend-backed via the data adapter (Construction Rate Master / Assembly
+// pattern). Rows/KPIs are transformed into the same shape the Desk template expects.
 
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { showToast } from "@/utils/appToast";
+import { parseFrappeError } from "@/utils/frappeError";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import { fmtCompactINR, fmtINR } from "@/utils/format";
 
 const router = useRouter();
-const store = useDataStore();
+const adapter = createDataAdapter(useDataStore());
 
 const search = ref("");
 const projectFilter = ref("");
 const statusFilter = ref("");
 const showNew = ref(false);
 const newForm = ref({ projectId: "", title: "" });
+const creating = ref(false);
 
-const boqProjects = computed(() =>
-	store.projects.slice().sort((a, b) => a.name.localeCompare(b.name))
+// Projects (for filter labels + the new-BOQ picker).
+const projectsRes = useDocTypeList("Project", {
+	fields: ["name", "project_name", "custom_project_id", "parent_project"],
+	orderBy: "project_name asc",
+	pageLength: 0,
+	cache: "buildsuite-boq-projects",
+});
+const projectsMap = computed(() => {
+	const map = {};
+	for (const p of projectsRes.data || []) {
+		map[p.name] = { name: p.project_name || p.name, code: p.custom_project_id || "" };
+	}
+	return map;
+});
+const rootProjects = computed(() =>
+	(projectsRes.data || [])
+		.filter((p) => !p.parent_project)
+		.map((p) => ({ id: p.name, name: p.project_name || p.name }))
 );
-
-function openNew() {
-	newForm.value = { projectId: store.projects[0]?.id || "", title: "" };
-	showNew.value = true;
-}
-function createBoq() {
-	if (!newForm.value.projectId) return;
-	const proj = store.projectById(newForm.value.projectId);
-	const existing = store.boqs.filter((b) => b.projectId === newForm.value.projectId);
-	const nextRev = existing.length ? Math.max(...existing.map((b) => b.revision)) + 1 : 1;
-	const boq = store.addBoq({
-		projectId: newForm.value.projectId,
-		revision: nextRev,
-		title: newForm.value.title?.trim() || `${proj?.name || "BOQ"} — Revision ${nextRev}`,
-	});
-	store.addBoqGroup({ boqId: boq.id, code: "A", name: "Civil Works — RCC", order: 1 });
-	showNew.value = false;
-	router.push(`/boq/${boq.id}`);
-}
-
-const rootProjects = computed(() => store.rootProjects);
 function projectName(id) {
-	return store.projectById(id)?.name || id;
+	return projectsMap.value[id]?.name || id;
 }
+
+const boqRes = useDocTypeList("BOQ", {
+	fields: [
+		"name",
+		"title",
+		"project",
+		"revision",
+		"status",
+		"planned_amount",
+		"actual_amount",
+		"prepared_date",
+	],
+	orderBy: "creation desc",
+	pageLength: 0,
+	cache: "buildsuite-boq-list",
+	transform: (data) =>
+		data.map((b) => {
+			const planned = b.planned_amount || 0;
+			const actual = b.actual_amount || 0;
+			const variance = actual - planned;
+			return {
+				id: b.name,
+				title: b.title,
+				projectId: b.project,
+				revision: b.revision,
+				status: b.status,
+				preparedDate: b.prepared_date,
+				totals: {
+					planned,
+					actual,
+					variance,
+					variancePct: planned ? (variance / planned) * 100 : 0,
+				},
+			};
+		}),
+});
 
 const rows = computed(() => {
 	const term = search.value.trim().toLowerCase();
-	let list = store.boqs.slice();
-	if (projectFilter.value) {
-		const childIds = store.projects
-			.filter((p) => p.parentId === projectFilter.value)
-			.map((p) => p.id);
-		const ids = [projectFilter.value, ...childIds];
-		list = list.filter((b) => ids.includes(b.projectId));
-	}
+	let list = boqRes.data || [];
+	if (projectFilter.value) list = list.filter((b) => b.projectId === projectFilter.value);
 	if (statusFilter.value) list = list.filter((b) => b.status === statusFilter.value);
 	if (term)
 		list = list.filter(
 			(b) =>
 				b.id.toLowerCase().includes(term) || (b.title || "").toLowerCase().includes(term)
 		);
-	return list
-		.map((b) => {
-			const totals = store.boqTotals(b.id);
-			const project = store.projectById(b.projectId);
-			return {
-				...b,
-				totals,
-				projectName: project?.name || b.projectId,
-				projectCode: project?.code || "",
-			};
-		})
-		.sort((a, b) => (b.preparedDate || "").localeCompare(a.preparedDate || ""));
+	return list.map((b) => ({
+		...b,
+		projectName: projectsMap.value[b.projectId]?.name || b.projectId,
+		projectCode: projectsMap.value[b.projectId]?.code || "",
+	}));
 });
 
 const kpis = computed(() => {
-	const approved = store.boqs.filter((b) => b.status === "Approved");
-	const totalPlanned = approved.reduce((a, b) => a + store.boqTotals(b.id).planned, 0);
-	const totalActual = approved.reduce((a, b) => a + store.boqTotals(b.id).actual, 0);
+	const all = boqRes.data || [];
+	const approved = all.filter((b) => b.status === "Approved");
+	const totalPlanned = approved.reduce((a, b) => a + b.totals.planned, 0);
+	const totalActual = approved.reduce((a, b) => a + b.totals.actual, 0);
 	const variance = totalActual - totalPlanned;
 	return {
-		active: store.activeBoqsCount,
-		draft: store.draftBoqsCount,
-		submitted: store.submittedBoqsCount,
+		active: approved.length,
+		draft: all.filter((b) => b.status === "Draft").length,
+		submitted: all.filter((b) => b.status === "Submitted").length,
 		totalPlanned,
 		totalActual,
 		variance,
@@ -102,6 +126,26 @@ const kpis = computed(() => {
 function variancePill(pct) {
 	if (Math.abs(pct) < 0.5) return "text-ink-500";
 	return pct > 0 ? "text-danger-700" : "text-success-700";
+}
+
+function openNew() {
+	newForm.value = { projectId: "", title: "" };
+	showNew.value = true;
+}
+async function createBoq() {
+	if (!newForm.value.projectId || creating.value) return;
+	creating.value = true;
+	try {
+		const title =
+			newForm.value.title?.trim() || `${projectName(newForm.value.projectId)} — BOQ`;
+		const res = await adapter.create("BOQ", { project: newForm.value.projectId, title });
+		showNew.value = false;
+		router.push(`/boq/${res.name}`);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? "Failed to create BOQ", "error");
+	} finally {
+		creating.value = false;
+	}
 }
 
 function onRowClick(row) {
@@ -119,9 +163,8 @@ const columns = [
 ];
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "BOQ" }];
-
 const subtitle = computed(
-	() => `${rows.value.length} of ${store.boqs.length} · M3 estimation engine`
+	() => `${rows.value.length} of ${(boqRes.data || []).length} · estimation`
 );
 </script>
 
@@ -137,7 +180,7 @@ const subtitle = computed(
 			<button type="button" class="desk-save-btn" @click="openNew">+ New BOQ</button>
 		</template>
 
-		<!-- KPI strip — Desk-tight: thin border, modest number sizing -->
+		<!-- KPI strip -->
 		<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -262,7 +305,7 @@ const subtitle = computed(
 			</template>
 		</DeskList>
 
-		<!-- New BOQ modal — kept as a modal pattern (modal ≠ Desk form); inputs restyled to Desk primitives -->
+		<!-- New BOQ modal -->
 		<div
 			v-if="showNew"
 			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
@@ -285,25 +328,18 @@ const subtitle = computed(
 					</button>
 				</div>
 				<div class="p-4 space-y-3">
-					<DeskField
-						label="Project"
-						required
-						hint="BOQs live at sub-project level too (per proposal)."
-					>
-						<DeskSelect v-model="newForm.projectId">
-							<option v-for="p in boqProjects" :key="p.id" :value="p.id">
-								{{ p.parentId ? "↳ " : "" }}{{ p.name }}
-							</option>
-						</DeskSelect>
-					</DeskField>
-					<DeskField
-						label="Title"
-						hint="Leave blank to auto-name. Revision number is computed."
-					>
-						<DeskInput
-							v-model="newForm.title"
-							placeholder="e.g. Original BOQ, Tender draft…"
+					<DeskField label="Project" required>
+						<DeskLinkPicker
+							v-model="newForm.projectId"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							:search-fields="['project_name', 'custom_project_id', 'name']"
+							placeholder="Select a project"
 						/>
+					</DeskField>
+					<DeskField label="Title" hint="Leave blank to auto-name.">
+						<DeskInput v-model="newForm.title" placeholder="e.g. Tender draft…" />
 					</DeskField>
 				</div>
 				<div class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2">
@@ -314,8 +350,13 @@ const subtitle = computed(
 					>
 						Cancel
 					</button>
-					<button type="button" @click="createBoq" class="desk-save-btn">
-						Create draft
+					<button
+						type="button"
+						@click="createBoq"
+						class="desk-save-btn"
+						:disabled="creating"
+					>
+						{{ creating ? "Creating…" : "Create draft" }}
 					</button>
 				</div>
 			</div>
