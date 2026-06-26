@@ -10,9 +10,10 @@ import {
 	getProjectSchedule,
 	addTaskPredecessor,
 	removeTaskPredecessor,
+	rescheduleDownstream,
 } from "@/utils/scheduleApi";
 import { dateBoundsError } from "@/utils/dateBounds";
-import { computeAllConflicts, hasCycle } from "@/composables/useScheduleEngine";
+import { computeAllConflicts, hasCycle, computeCascade } from "@/composables/useScheduleEngine";
 
 const store = useDataStore();
 const adapter = createDataAdapter(store);
@@ -38,6 +39,9 @@ let errorTimer = null;
 const newTaskOpen = ref(false);
 const draggedDep = ref(null);
 const popoverDep = ref(null);
+const draggedBar = ref(null);
+const previewState = ref(null);
+const undatedHover = ref(null);
 
 const timelineRef = ref(null);
 const containerRef = ref(null);
@@ -45,6 +49,9 @@ const containerRef = ref(null);
 // === Time scale =======================================================
 const PX_PER_DAY = { day: 36, week: 12, month: 4, quarter: 2 };
 const pxPerDay = computed(() => PX_PER_DAY[viewMode.value]);
+const STRIDE_DAYS = { day: 1, week: 7, month: 30, quarter: 90 };
+const strideDays = computed(() => STRIDE_DAYS[viewMode.value]);
+const strideWidth = computed(() => strideDays.value * pxPerDay.value);
 
 const LEFT_PANE_WIDTH = 280;
 const ROW_HEIGHT = 52;
@@ -75,6 +82,17 @@ function msToISO(ms) {
 	const m = String(d.getMonth() + 1).padStart(2, "0");
 	const day = String(d.getDate()).padStart(2, "0");
 	return `${y}-${m}-${day}`;
+}
+function addDays(iso, days) {
+	if (!iso) return iso;
+	const d = parseISO(iso);
+	d.setDate(d.getDate() + Number(days || 0));
+	return msToISO(d.getTime());
+}
+function xToISO(x) {
+	if (!dateRange.value) return null;
+	const days = Math.round(x / pxPerDay.value);
+	return msToISO(dateRange.value.minMs + days * 86400000);
 }
 function diffDays(a, b) {
 	if (!a || !b) return 0;
@@ -487,6 +505,18 @@ const bars = computed(() => {
 			bx = dateToX(t.startDate);
 			bw = Math.max(2, dateToX(t.endDate) - bx);
 		}
+		if (!undated && draggedBar.value && draggedBar.value.taskId === t.id) {
+			const dx = draggedBar.value.deltaDays * pxPerDay.value;
+			if (draggedBar.value.mode === "move") {
+				bx += dx;
+			} else if (!isMilestone && draggedBar.value.mode === "resize-start") {
+				const right = bx + bw;
+				bx = Math.min(bx + dx, right - 2);
+				bw = right - bx;
+			} else if (!isMilestone && draggedBar.value.mode === "resize-end") {
+				bw = Math.max(2, bw + dx);
+			}
+		}
 		out.push({
 			task: t,
 			x: bx,
@@ -643,15 +673,10 @@ async function onScheduleInput(task, field, evt) {
 		await loadSchedule(); // revert the edited input
 		return;
 	}
-	try {
-		await adapter.update("Task", task.id, {
-			exp_start_date: newStart || null,
-			exp_end_date: newEnd || null,
-		});
-	} catch (err) {
-		flashError(err?.message || "Failed to update the task dates.");
-	}
-	await loadSchedule();
+	await commitDates(task, newStart, newEnd, {
+		startDate: task.startDate,
+		endDate: task.endDate,
+	});
 }
 
 // === Zoom (Ctrl+wheel) + Today ========================================
@@ -678,6 +703,145 @@ function flashError(msg) {
 function onTaskCreated() {
 	loadSchedule();
 }
+// === Bar drag (move / resize) =========================================
+function onBarMouseDown(task, e, mode) {
+	if (e.button !== 0) return;
+	if (e.target.dataset?.linkArrow) return;
+	if (!canEditTask(task) && mode !== "move") return;
+	e.preventDefault();
+	e.stopPropagation();
+	draggedBar.value = {
+		taskId: task.id,
+		mode,
+		startClientX: e.clientX,
+		originalStart: task.startDate,
+		originalEnd: task.endDate,
+		deltaDays: 0,
+		canEdit: canEditTask(task),
+	};
+	window.addEventListener("mousemove", onBarMouseMove);
+	window.addEventListener("mouseup", onBarMouseUp);
+}
+function onBarMouseMove(e) {
+	if (!draggedBar.value) return;
+	draggedBar.value.deltaDays = Math.round(
+		(e.clientX - draggedBar.value.startClientX) / pxPerDay.value
+	);
+}
+function onBarMouseUp() {
+	window.removeEventListener("mousemove", onBarMouseMove);
+	window.removeEventListener("mouseup", onBarMouseUp);
+	const drag = draggedBar.value;
+	draggedBar.value = null;
+	if (!drag || drag.deltaDays === 0 || !drag.canEdit) return;
+	applyBarDrop(drag);
+}
+async function applyBarDrop(drag) {
+	const task = allTasks.value.find((t) => t.id === drag.taskId);
+	if (!task) return;
+	const isMs = task.task_type === "Milestone";
+	let newStart = drag.originalStart;
+	let newEnd = drag.originalEnd;
+	if (drag.mode === "move") {
+		if (isMs) {
+			newStart = "";
+			newEnd = addDays(drag.originalEnd, drag.deltaDays);
+		} else {
+			newStart = addDays(drag.originalStart, drag.deltaDays);
+			newEnd = addDays(drag.originalEnd, drag.deltaDays);
+		}
+	} else if (drag.mode === "resize-start") {
+		if (isMs) return;
+		newStart = addDays(drag.originalStart, drag.deltaDays);
+		if (diffDays(newStart, drag.originalEnd) < 0) newStart = drag.originalEnd;
+	} else if (drag.mode === "resize-end") {
+		if (isMs) return;
+		newEnd = addDays(drag.originalEnd, drag.deltaDays);
+		if (diffDays(drag.originalStart, newEnd) < 0) newEnd = drag.originalStart;
+	}
+	await commitDates(task, newStart, newEnd, {
+		startDate: drag.originalStart,
+		endDate: drag.originalEnd,
+	});
+}
+
+// Optimistically move the task (instant), preview the cascade (client), persist the
+// root (server flags downstream), then open the cascade modal if anything shifts.
+async function commitDates(task, newStart, newEnd, before) {
+	const isMs = task.task_type === "Milestone";
+	task.startDate = isMs ? "" : newStart;
+	task.endDate = newEnd;
+	recomputeLocalConflicts();
+	const { byId, edges } = engineInputs();
+	const moves = computeCascade(task.id, byId, edges, { start: newStart, end: newEnd });
+	try {
+		await adapter.update("Task", task.id, {
+			exp_start_date: isMs ? null : newStart || null,
+			exp_end_date: newEnd || null,
+		});
+	} catch (err) {
+		flashError(err?.message || "Could not reschedule.");
+		await loadSchedule();
+		return;
+	}
+	if (moves && moves.length > 0) {
+		previewState.value = {
+			rootTaskId: task.id,
+			rootAfter: { startDate: newStart, endDate: newEnd },
+			moves,
+		};
+	} else {
+		await loadSchedule();
+	}
+	void before;
+}
+
+// === Cascade modal ====================================================
+async function confirmCascade() {
+	if (!previewState.value) return;
+	const ps = previewState.value;
+	previewState.value = null;
+	try {
+		await rescheduleDownstream(
+			ps.rootTaskId,
+			ps.rootAfter.startDate || null,
+			ps.rootAfter.endDate || null,
+			0
+		);
+	} catch (err) {
+		flashError(err?.message || "Cascade failed.");
+	}
+	await loadSchedule();
+}
+async function cancelCascade() {
+	previewState.value = null;
+	await loadSchedule();
+}
+function taskName(id) {
+	return (allTasks.value.find((t) => t.id === id) || {}).name || id;
+}
+
+// === Undated row hover-to-place =======================================
+function onUndatedRowMouseMove(task, e) {
+	if (!canEditTask(task) || !dateRange.value) return;
+	const rect = timelineRef.value?.getBoundingClientRect();
+	if (!rect) return;
+	const innerX = e.clientX - rect.left + (timelineRef.value?.scrollLeft || 0);
+	const blockIdx = Math.max(0, Math.floor(innerX / strideWidth.value));
+	const ghostX = blockIdx * strideWidth.value;
+	undatedHover.value = { taskId: task.id, ghostX, ghostStartISO: xToISO(ghostX) };
+}
+function onUndatedRowMouseLeave() {
+	undatedHover.value = null;
+}
+async function onUndatedRowClick(task) {
+	if (!undatedHover.value || undatedHover.value.taskId !== task.id || !canEditTask(task)) return;
+	const start = undatedHover.value.ghostStartISO;
+	const end = addDays(start, strideDays.value);
+	undatedHover.value = null;
+	await commitDates(task, start, end, { startDate: task.startDate, endDate: task.endDate });
+}
+
 // === Conflict engine (client mirror; server stores the authoritative flags) ===
 function engineInputs() {
 	const byId = {};
@@ -817,6 +981,8 @@ async function deleteFromPopover() {
 
 onBeforeUnmount(() => {
 	if (errorTimer) clearTimeout(errorTimer);
+	window.removeEventListener("mousemove", onBarMouseMove);
+	window.removeEventListener("mouseup", onBarMouseUp);
 	window.removeEventListener("mousemove", onDepDragMove);
 	window.removeEventListener("mouseup", onDepDragUp);
 });
@@ -1341,6 +1507,48 @@ onBeforeUnmount(() => {
 								</g>
 							</svg>
 
+							<!-- Undated row hit-areas -->
+							<div
+								v-for="b in bars.filter((x) => x.undated)"
+								:key="'undated-' + b.task.id"
+								:style="{
+									position: 'absolute',
+									top: b.rowY + 'px',
+									left: 0,
+									width: timelineWidth + 'px',
+									height: ROW_HEIGHT + 'px',
+								}"
+								:class="canEditTask(b.task) ? 'cursor-pointer' : 'cursor-default'"
+								@mousemove="onUndatedRowMouseMove(b.task, $event)"
+								@mouseleave="onUndatedRowMouseLeave"
+								@click="onUndatedRowClick(b.task)"
+							>
+								<span
+									v-if="!undatedHover || undatedHover.taskId !== b.task.id"
+									class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-400 italic select-none pointer-events-none"
+									>{{
+										canEditTask(b.task)
+											? "Hover and click to place a 1-" +
+											  viewMode +
+											  " block · drag the edges after to extend"
+											: "No timeline set"
+									}}</span
+								>
+								<div
+									v-if="undatedHover && undatedHover.taskId === b.task.id"
+									class="absolute border-2 border-dashed border-brand-700 bg-brand-500/50 rounded flex items-center text-[10px] text-white font-medium px-1 pointer-events-none"
+									:style="{
+										left: undatedHover.ghostX + 'px',
+										top: ROW_PAD_Y + 'px',
+										width: strideWidth + 'px',
+										height: BAR_HEIGHT + 'px',
+									}"
+								>
+									<span class="truncate"
+										>+ {{ fmtShort(undatedHover.ghostStartISO) }}</span
+									>
+								</div>
+							</div>
 							<!-- Activity / Inspection bars -->
 							<div
 								v-for="b in bars.filter((x) => !x.undated && !x.isMilestone)"
@@ -1360,7 +1568,7 @@ onBeforeUnmount(() => {
 									b.isOverdue && !b.task.schedule_conflict
 										? 'ring-1 ring-warning-500 ring-offset-1'
 										: '',
-									'cursor-default',
+									canEditTask(b.task) ? 'cursor-move' : 'cursor-default',
 								]"
 								:title="
 									b.task.schedule_conflict
@@ -1376,6 +1584,7 @@ onBeforeUnmount(() => {
 										  (b.isOverdue ? ' · OVERDUE' : '') +
 										  (b.isInspection ? ' · Inspection' : '')
 								"
+								@mousedown="onBarMouseDown(b.task, $event, 'move')"
 							>
 								<div
 									v-if="b.task.progress > 0"
@@ -1384,6 +1593,18 @@ onBeforeUnmount(() => {
 										barFillClass(b.task),
 									]"
 									:style="{ width: Math.min(100, b.task.progress) + '%' }"
+								></div>
+								<div
+									v-if="canEditTask(b.task)"
+									class="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize hover:bg-white/30 z-10"
+									@mousedown.stop="
+										onBarMouseDown(b.task, $event, 'resize-start')
+									"
+								></div>
+								<div
+									v-if="canEditTask(b.task)"
+									class="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize hover:bg-white/30 z-10"
+									@mousedown.stop="onBarMouseDown(b.task, $event, 'resize-end')"
 								></div>
 								<span
 									v-if="b.width > 60"
@@ -1458,8 +1679,11 @@ onBeforeUnmount(() => {
 										:stroke-width="
 											b.task.schedule_conflict || b.isOverdue ? '2' : '1'
 										"
-										:class="'cursor-default'"
+										:class="
+											canEditTask(b.task) ? 'cursor-move' : 'cursor-default'
+										"
 										style="pointer-events: auto"
+										@mousedown="onBarMouseDown(b.task, $event, 'move')"
 									/>
 								</svg>
 								<span
@@ -1628,6 +1852,87 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 			<div v-if="popoverDep" class="fixed inset-0 z-[64]" @click="popoverDep = null"></div>
+		</Teleport>
+
+		<!-- Cascade preview modal -->
+		<Teleport to="body">
+			<div
+				v-if="previewState"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="cancelCascade"
+			>
+				<div class="bg-white rounded-lg shadow-fp-lg max-w-xl w-full" @click.stop>
+					<div
+						class="px-5 py-3 border-b border-ink-100 bg-gradient-to-r from-warning-50 to-white rounded-t-lg flex items-center justify-between"
+					>
+						<div>
+							<div class="text-sm font-semibold text-ink-900">
+								Reschedule downstream?
+							</div>
+							<div class="text-[11px] text-ink-500 mt-0.5">
+								{{ previewState.moves.length }} downstream task{{
+									previewState.moves.length === 1 ? "" : "s"
+								}}
+								would shift forward
+							</div>
+						</div>
+						<button
+							class="text-ink-400 hover:text-ink-700 text-lg leading-none"
+							@click="cancelCascade"
+						>
+							×
+						</button>
+					</div>
+					<div class="px-5 py-4 max-h-[60vh] overflow-y-auto">
+						<div
+							class="grid gap-2 text-xs"
+							style="grid-template-columns: minmax(140px, 1.4fr) 1fr 1fr"
+						>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								Task
+							</div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								From
+							</div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">To</div>
+							<template v-for="m in previewState.moves" :key="m.task">
+								<div class="text-ink-900 truncate" :title="taskName(m.task)">
+									{{ taskName(m.task) }}
+								</div>
+								<div class="text-ink-700">
+									{{ fmtShort(m.old_start || m.old_end) }} →
+									{{ fmtShort(m.old_end) }}
+								</div>
+								<div class="text-brand-700 font-medium">
+									{{ fmtShort(m.new_start || m.new_end) }} →
+									{{ fmtShort(m.new_end) }}
+								</div>
+							</template>
+						</div>
+						<p class="text-[11px] text-ink-500 mt-4 italic">
+							Cancel keeps your dragged task at its new dates but leaves dependents
+							flagged for conflict — you can resolve them manually or reschedule
+							again later.
+						</p>
+					</div>
+					<div
+						class="px-5 py-3 border-t border-ink-100 flex items-center justify-end gap-2 bg-ink-50/40 rounded-b-lg"
+					>
+						<button
+							class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-white"
+							@click="cancelCascade"
+						>
+							Cancel
+						</button>
+						<button
+							class="text-xs px-3 py-1.5 bg-ink-900 text-white rounded hover:bg-ink-800"
+							@click="confirmCascade"
+						>
+							Apply cascade
+						</button>
+					</div>
+				</div>
+			</div>
 		</Teleport>
 
 		<!-- Legend -->
