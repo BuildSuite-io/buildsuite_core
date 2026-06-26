@@ -196,6 +196,8 @@ doc_events = {
 			"buildsuite_core.api.schedule.normalize_milestone_task",
 			"buildsuite_core.utils.date_bounds.validate_task_dates",
 			"buildsuite_core.utils.task.update_task_status",
+			# Last: a task can't start while a Finish-to-Start predecessor is open.
+			"buildsuite_core.utils.task.enforce_predecessor_gate",
 		],
 		"on_update": [
 			"buildsuite_core.utils.task.update_work_package_progress",

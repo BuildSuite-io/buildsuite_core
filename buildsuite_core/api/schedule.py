@@ -10,6 +10,34 @@ import frappe
 from frappe import _
 
 
+def incomplete_fs_predecessor(task_name, depends_on_rows=None):
+	"""Name of a Finish-to-Start predecessor of `task_name` that isn't Completed yet
+	(and therefore blocks the successor from starting), or None.
+
+	Only FS edges gate (a start can't precede the predecessor's finish). A negative lag
+	is a lead — overlap is intended — so those edges don't block. `depends_on_rows`
+	lets callers pass an unsaved doc's in-memory child table; otherwise rows are read
+	from the DB. Predecessor "done" is its BuildSuite task_status == "Completed".
+	"""
+	if depends_on_rows is None:
+		if not task_name:
+			return None
+		depends_on_rows = frappe.get_all(
+			"Task Depends On",
+			filters={"parent": task_name, "parenttype": "Task"},
+			fields=["task", "dependency_type", "lag_days"],
+		)
+	for row in depends_on_rows:
+		if (row.get("dependency_type") or "FS") != "FS":
+			continue
+		if int(row.get("lag_days") or 0) < 0:
+			continue
+		pred = row.get("task")
+		if pred and frappe.db.get_value("Task", pred, "task_status") != "Completed":
+			return pred
+	return None
+
+
 @frappe.whitelist()
 def get_project_schedule(project: str):
 	"""Return the schedule graph for a project: every task with its scheduling

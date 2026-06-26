@@ -1,6 +1,7 @@
 import json
 
 import frappe
+from frappe import _
 from frappe.utils import flt
 
 
@@ -442,3 +443,32 @@ def backfill_native_task_type():
 		# the explicit commit persists the updates.
 		frappe.db.commit()  # nosemgrep
 	return updated
+
+
+def enforce_predecessor_gate(doc, method=None):
+	"""You can't start a task while a Finish-to-Start predecessor is still open: its
+	status can't move past "Yet To Start" / "Blocked" until that predecessor is
+	Completed. Runs last in Task validate so it sees the final task_status.
+
+	An overdue gated task is auto-tagged "In Delay" on insert; since it can't actually
+	have started, that is corrected back to "Yet To Start" (the schedule_conflict flag
+	already carries the behind/blocked signal). An explicit move to In Progress or
+	Completed is rejected outright.
+	"""
+	status = doc.task_status
+	if not status or status in ("Yet To Start", "Blocked"):
+		return
+	from buildsuite_core.api.schedule import incomplete_fs_predecessor
+
+	pred = incomplete_fs_predecessor(doc.name, depends_on_rows=doc.get("depends_on") or [])
+	if not pred:
+		return
+	if status == "In Delay":
+		doc.task_status = "Yet To Start"
+		doc.status = "Open"
+		return
+	frappe.throw(
+		_('"{0}" can\'t be set to {1} yet — its Finish-to-Start predecessor "{2}" isn\'t Completed.').format(
+			doc.get("subject") or doc.name, status, pred
+		)
+	)

@@ -82,6 +82,9 @@ class TaskProgressEntry(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		# A task can't log progress while a Finish-to-Start predecessor is still open.
+		self._block_if_predecessor_incomplete()
+
 		# Blocker flag requires a note. Server-side so the rule holds on both the
 		# File-Progress-Entry dialog and the TPE edit screen (the dialog enforces it
 		# client-side; the edit screen previously bypassed it).
@@ -90,6 +93,18 @@ class TaskProgressEntry(Document):
 
 		self._reject_noop_edit()
 		self._validate_monotonic_progress()
+
+	def _block_if_predecessor_incomplete(self):
+		from buildsuite_core.api.schedule import incomplete_fs_predecessor
+
+		pred = incomplete_fs_predecessor(self.task)
+		if pred:
+			frappe.throw(
+				_(
+					"You can't log progress on this task yet — its Finish-to-Start "
+					'predecessor "{0}" isn\'t Completed.'
+				).format(pred)
+			)
 
 	# Fields a user can change on a progress entry; if none differ from the stored
 	# row, the save is a no-op and must be blocked (not logged as a duplicate).
