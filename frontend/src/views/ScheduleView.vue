@@ -289,7 +289,9 @@ function barClass(task) {
 	if (task.schedule_conflict) return "bg-danger-100 border-danger-700";
 	if (task.status === "Completed") return "bg-success-100 border-success-700";
 	if (task.status === "In Progress") return "bg-brand-100 border-brand-700";
-	if (task.status === "In Delay") return "bg-warning-100 border-warning-700";
+	// In Delay uses .gantt-in-delay-track (same rgba(245,158,11,0.48) in light
+	// and dark mode) + the saturated -600 progress fill on top.
+	if (task.status === "In Delay") return "gantt-in-delay-track border-warning-700";
 	if (task.status === "Blocked") return "bg-ink-200 border-ink-600";
 	return "bg-ink-100 border-ink-400";
 }
@@ -1565,7 +1567,9 @@ onBeforeUnmount(() => {
 									'rounded flex items-center text-[10px] text-ink-900 px-1 group select-none transition-shadow hover:shadow-md relative',
 									barClass(b.task),
 									b.isInspection ? 'border border-dashed' : 'border',
-									b.isOverdue && !b.task.schedule_conflict
+									b.isOverdue &&
+									!b.task.schedule_conflict &&
+									b.task.status !== 'In Delay'
 										? 'ring-1 ring-warning-500 ring-offset-1'
 										: '',
 									canEditTask(b.task) ? 'cursor-move' : 'cursor-default',
@@ -1618,7 +1622,12 @@ onBeforeUnmount(() => {
 									>{{ b.task.progress }}%</span
 								>
 								<span
-									v-if="b.isOverdue && !b.task.schedule_conflict && b.width > 18"
+									v-if="
+										b.isOverdue &&
+										!b.task.schedule_conflict &&
+										b.task.status !== 'In Delay' &&
+										b.width > 18
+									"
 									class="relative ml-auto text-[11px] leading-none text-white z-[5]"
 									title="Overdue"
 									>⏱</span
@@ -1991,7 +2000,7 @@ onBeforeUnmount(() => {
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
-						class="inline-block w-5 h-2.5 rounded bg-warning-100 border border-warning-700 relative overflow-hidden"
+						class="inline-block w-5 h-2.5 rounded gantt-in-delay-track border border-warning-700 relative overflow-hidden"
 						><span class="absolute inset-y-0 left-0 w-2/5 bg-warning-600"></span></span
 					>In Delay
 				</div>
@@ -2055,6 +2064,12 @@ onBeforeUnmount(() => {
 .schedule-date-input:disabled {
 	background: #fafafa;
 	color: #a3a3a3;
+}
+/* S175 — In Delay track: the same amber wash in both light and dark mode
+   (peach over white, muted amber over the dark canvas). The saturated
+   warning-600 progress fill layers on top. */
+.gantt-in-delay-track {
+	background-color: rgba(245, 158, 11, 0.48);
 }
 /* S163 — bars are LIGHT-track + SATURATED-fill; the label is text-ink-900
    (near-black light / near-white dark). A same-mode halo lifts it off the
