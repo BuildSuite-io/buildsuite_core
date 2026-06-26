@@ -51,10 +51,16 @@ def get_boot():
 		except Exception:
 			csrf_token = ""
 
+	defaults = frappe.defaults.get_defaults()
+
 	return frappe._dict(
 		{
 			"frappe_version": frappe.__version__,
 			"session_user": frappe.session.user,
+			"sysdefaults": {
+				"currency": defaults.get("currency"),
+				"currency_precision": defaults.get("currency_precision"),
+			},
 			"default_route": f"/{APP_ROUTE}",
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
