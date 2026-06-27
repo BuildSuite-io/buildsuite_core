@@ -235,12 +235,7 @@ const routes = [
 			{
 				path: "procurement",
 				name: "procurement",
-				component: () => import("@/views/PlaceholderView.vue"),
-				props: {
-					title: "Procurement",
-					icon: "🛒",
-					desc: "Material requests, supplier follow-up and goods receipt.",
-				},
+				component: () => import("@/views/workspaces/ProcurementWorkspace.vue"),
 			},
 			{
 				path: "subcontract",
