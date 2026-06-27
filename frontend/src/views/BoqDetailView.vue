@@ -182,6 +182,11 @@ function boqSubItemsByItem(itemId) {
 }
 const boqItemsByBoq = computed(() => allItems.value);
 
+// Shared 10-column grid for the tree header + group / item / sub-item rows so every
+// level lines up. Without it the rows have no column template and collapse.
+const treeGridStyle =
+	"grid-template-columns: 28px 80px 1fr 80px 90px 100px 110px 110px 110px 80px;";
+
 const totals = computed(() => {
 	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
 	const actual = allItems.value.reduce((a, i) => a + (i.actualAmount || 0), 0);
