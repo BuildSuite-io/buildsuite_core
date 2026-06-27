@@ -91,7 +91,7 @@ const project = computed(() => {
 // Sibling revisions (for baseBoq label) + base-revision items (for compare mode).
 const projectBoqsRes = useDocTypeList("BOQ", {
 	filters: [["project", "=", props.id ? undefined : ""]],
-	fields: ["name", "revision"],
+	fields: ["name", "revision", "title"],
 	pageLength: 0,
 	auto: false,
 });
@@ -283,11 +283,30 @@ async function approve() {
 		showToast(parseFrappeError(err).summary ?? "Failed to approve", "error");
 	}
 }
-async function createRevision() {
-	const note = window.prompt("Optional: SCO id to link this revision to (or leave blank).", "");
-	if (note === null) return;
+// Revision popup (mirrors the prototype's S134 modal — a styled dialog with an
+// optional SCO reference + title, plus an inline duplicate-title check — instead of
+// a window.prompt).
+const revisionModal = ref(null); // null | { sourceSco, title }
+function openRevisionModal() {
+	revisionModal.value = { sourceSco: "", title: "" };
+}
+function closeRevisionModal() {
+	revisionModal.value = null;
+}
+const revisionTitleConflict = computed(() => {
+	const t = (revisionModal.value?.title || "").trim().toLowerCase();
+	if (!t) return false;
+	return (projectBoqsRes.data || []).some((b) => (b.title || "").trim().toLowerCase() === t);
+});
+async function submitRevision() {
+	if (!revisionModal.value || revisionTitleConflict.value) return;
 	try {
-		const name = await boqApi.createRevision(boq.value.id, note?.trim() || null);
+		const name = await boqApi.createRevision(
+			boq.value.id,
+			revisionModal.value.sourceSco.trim() || null,
+			revisionModal.value.title.trim() || null
+		);
+		revisionModal.value = null;
 		if (name) router.push(`/boq/${name}`);
 	} catch (err) {
 		showToast(parseFrappeError(err).summary ?? "Failed to create revision", "error");
@@ -799,7 +818,7 @@ const breadcrumbs = computed(() => {
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px"
-							@click="createRevision"
+							@click="openRevisionModal"
 						>
 							+ Revision
 						</button>
@@ -1712,6 +1731,87 @@ const breadcrumbs = computed(() => {
 							{{ subItemModal.mode === "add" ? "Create sub-item" : "Save changes" }}
 						</button>
 					</div>
+				</div>
+			</div>
+
+			<!-- ========== Revision modal (S134 — styled, replaces window.prompt) ========== -->
+			<div
+				v-if="revisionModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="closeRevisionModal"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">Create new revision</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								A new Draft revision is cloned from this one. Optionally reference
+								a Scope Change Order.
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="closeRevisionModal"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField
+							label="Linked SCO"
+							hint="Optional reference to a Scope Change Order this revision addresses."
+						>
+							<DeskInput
+								v-model="revisionModal.sourceSco"
+								placeholder="e.g. SCO-2026-0007"
+							/>
+						</DeskField>
+						<DeskField
+							label="Revision title"
+							:hint="
+								revisionTitleConflict ? '' : 'Optional. Auto-generated if blank.'
+							"
+							:error="
+								revisionTitleConflict
+									? `A revision titled “${revisionModal.title.trim()}” already exists on this project. Pick a different title.`
+									: ''
+							"
+						>
+							<DeskInput
+								v-model="revisionModal.title"
+								placeholder="e.g. Façade scope upgrade — R3"
+							/>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="closeRevisionModal"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="revisionTitleConflict"
+							@click="submitRevision"
+						>
+							Create revision
+						</button>
+					</footer>
 				</div>
 			</div>
 
