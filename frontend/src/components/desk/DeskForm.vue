@@ -19,7 +19,11 @@
 
 <template>
 	<form @submit.prevent>
-		<div class="sticky z-10 bg-white border-b border-ink-200" style="top: 48px">
+		<div
+			v-if="$slots['action-bar']"
+			class="sticky z-10 bg-white border-b border-ink-200"
+			style="top: 48px"
+		>
 			<slot name="action-bar" />
 		</div>
 		<div class="pt-4">
