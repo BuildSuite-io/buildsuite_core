@@ -37,6 +37,7 @@ const PAGE_TITLES = {
 	"report-stub": "Report",
 	estimation: "Estimation",
 	procurement: "Procurement",
+	"procurement-dashboard": "Procurement Dashboard",
 	subcontract: "Subcontract",
 	workforce: "Workforce",
 	"scope-change": "Scope Change",
@@ -235,12 +236,12 @@ const routes = [
 			{
 				path: "procurement",
 				name: "procurement",
-				component: () => import("@/views/PlaceholderView.vue"),
-				props: {
-					title: "Procurement",
-					icon: "🛒",
-					desc: "Material requests, supplier follow-up and goods receipt.",
-				},
+				component: () => import("@/views/workspaces/ProcurementWorkspace.vue"),
+			},
+			{
+				path: "procurement-dashboard",
+				name: "procurement-dashboard",
+				component: () => import("@/views/workspaces/ProcurementDashboardView.vue"),
 			},
 			{
 				path: "subcontract",
