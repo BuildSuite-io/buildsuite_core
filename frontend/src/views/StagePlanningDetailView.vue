@@ -363,11 +363,65 @@ const canDelete = computed(() => {
 // everyone (the Add/Remove control and the inline qty inputs go read-only).
 const tasksLocked = computed(() => stage.value?.workflowState === "Approved");
 
-// Route a workflow button to the right handler: Reject opens the reason modal,
-// a `clone` action (Revise on a Rejected stage) clones into a fresh Draft, and
-// everything else applies the Frappe workflow transition.
+// Confirmation copy per workflow action — mirrors the prototype's stage dialogs
+// so Submit / Approve / Revise / Cancel all ask before they act.
+const ACTION_CONFIRM = {
+	"Submit for Approval": {
+		title: "Submit for approval",
+		message:
+			"This stage will be sent for approval. You won't be able to edit it while it is pending.",
+		confirmLabel: "Submit",
+	},
+	Approve: {
+		title: "Approve stage",
+		message:
+			"Approving will lock the stage scope, dates, and task list. Subsequent edits require Revise.",
+		confirmLabel: "Approve",
+	},
+	Revise: {
+		title: "Revise stage",
+		message:
+			"This stage will move back to Draft. You can keep editing and resubmit for approval when ready.",
+		confirmLabel: "Revise",
+	},
+	Cancel: {
+		title: "Cancel stage",
+		message: "This will cancel the stage.",
+		confirmLabel: "Cancel stage",
+		destructive: true,
+	},
+};
+
+// The workflow action awaiting confirmation (drives the ConfirmDialog below).
+const pendingAction = ref(null);
+const confirmContent = computed(() => {
+	const wf = pendingAction.value;
+	if (!wf) return {};
+	// Revise on a Rejected stage clones into a fresh Draft — say so explicitly.
+	if (wf.action === "Revise" && wf.clone) {
+		return {
+			title: "Revise stage",
+			message:
+				"A new draft copy will be created from this rejected stage so you can edit and resubmit it. The rejected stage is kept as a record.",
+			confirmLabel: "Revise",
+		};
+	}
+	return ACTION_CONFIRM[wf.action] || {};
+});
+
+// Route a workflow button to the right handler: Reject opens the reason modal;
+// every other action (Submit / Approve / Revise / Cancel) confirms first.
 function runAction(wf) {
 	if (wf.action === "Reject") return openRejectModal();
+	pendingAction.value = wf;
+}
+
+// Run the action the user just confirmed: a `clone` action (Revise on a Rejected
+// stage) clones into a fresh Draft, everything else applies the workflow transition.
+function onConfirmAction() {
+	const wf = pendingAction.value;
+	pendingAction.value = null;
+	if (!wf) return;
 	if (wf.clone) return reviseRejectedStage();
 	return applyWorkflowAction(wf.action);
 }
@@ -469,7 +523,10 @@ async function fetchActivity() {
 		const res = await fetch(
 			"/api/method/buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning.get_stage_activity?" +
 				new URLSearchParams({ name: stage.value.id }),
-			{ credentials: "include", headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" } }
+			{
+				credentials: "include",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+			}
 		);
 		const data = await res.json().catch(() => ({}));
 		activityEntries.value = Array.isArray(data?.message) ? data.message : [];
@@ -1428,6 +1485,21 @@ usePageTitle(() => stage.value?.stageName);
 			confirm-label="Delete"
 			:destructive="true"
 			@confirm="confirmDelete"
+		/>
+
+		<!-- Workflow action confirmation (Submit / Approve / Revise / Cancel) -->
+		<ConfirmDialog
+			:open="!!pendingAction"
+			:title="confirmContent.title"
+			:message="confirmContent.message"
+			:confirm-label="confirmContent.confirmLabel"
+			:destructive="!!confirmContent.destructive"
+			@update:open="
+				(v) => {
+					if (!v) pendingAction = null;
+				}
+			"
+			@confirm="onConfirmAction"
 		/>
 	</DeskPage>
 
