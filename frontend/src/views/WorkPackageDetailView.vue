@@ -17,7 +17,6 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
-import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -81,7 +80,32 @@ const wp = computed(() => {
 	const backend = firstResourceRow(workPackageResource.value);
 	return backend || store.workPackageById(props.id);
 });
-const project = computed(() => (wp.value ? store.projectById(wp.value.projectId) : null));
+// Load the parent project from the backend so its name shows in the breadcrumb
+// (the local store isn't populated in backend mode). Falls back to the store.
+const projectResource = ref(null);
+function loadProjectResource(projectId) {
+	if (!projectId) {
+		projectResource.value = null;
+		return;
+	}
+	projectResource.value = adapter.read("Project", projectId, {
+		fields: ["name", "project_name"],
+		cache: `buildsuite-wp-detail-project:${projectId}`,
+		transform(rows) {
+			return rows.map((row) => ({
+				id: row?.name || "",
+				name: row?.project_name || row?.name || "",
+			}));
+		},
+	});
+}
+watch(() => wp.value?.projectId, loadProjectResource, { immediate: true });
+
+const project = computed(() => {
+	const backend = firstResourceRow(projectResource.value);
+	if (backend) return backend;
+	return wp.value ? store.projectById(wp.value.projectId) : null;
+});
 
 const tasksResource = ref(null);
 function loadTasksResource() {
@@ -212,9 +236,6 @@ async function saveEdit() {
 		saving.value = false;
 	}
 }
-function onPrimary() {
-	editing.value ? saveEdit() : startEdit();
-}
 
 async function onDelete() {
 	if (!wp.value) return;
@@ -304,32 +325,46 @@ usePageTitle(() => wp.value?.name);
 		:breadcrumbs="breadcrumbs"
 		:status="wp.status"
 	>
-		<DeskForm>
-			<template #action-bar>
-				<DeskActionBar
-					v-if="canEdit('workPackage') || canDelete('workPackage')"
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
-					:show-cancel="editing"
-					:show-save="canEdit('workPackage')"
-					:saving="saving"
-					cancel-label="Cancel"
-					@save="onPrimary"
-					@cancel="cancelEdit"
+		<!-- Edit / Delete (and Save / Cancel while editing) sit on the title row,
+		     inline with the work-package name and status. -->
+		<template #actions>
+			<template v-if="editing">
+				<button
+					type="button"
+					class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+					style="border-radius: 6px"
+					:disabled="saving"
+					@click="cancelEdit"
 				>
-					<template #menu>
-						<button
-							v-if="canDelete('workPackage')"
-							type="button"
-							class="text-xs px-2.5 py-1 border border-danger-200 text-danger-700 hover:bg-danger-50"
-							style="border-radius: 6px"
-							@click="onDelete"
-						>
-							Delete
-						</button>
-					</template>
-				</DeskActionBar>
+					Cancel
+				</button>
+				<button type="button" class="desk-save-btn" :disabled="saving" @click="saveEdit">
+					{{ saving ? "Saving…" : "Save" }}
+				</button>
 			</template>
+			<template v-else>
+				<button
+					v-if="canEdit('workPackage')"
+					type="button"
+					class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+					style="border-radius: 6px"
+					@click="startEdit"
+				>
+					Edit
+				</button>
+				<button
+					v-if="canDelete('workPackage')"
+					type="button"
+					class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+					style="border-radius: 6px"
+					@click="onDelete"
+				>
+					Delete
+				</button>
+			</template>
+		</template>
 
+		<DeskForm>
 			<!-- Summary strip — view mode only (becomes Details section when editing) -->
 			<div v-if="!editing" class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
