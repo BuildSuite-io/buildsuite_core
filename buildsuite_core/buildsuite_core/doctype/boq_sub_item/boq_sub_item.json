@@ -1,0 +1,148 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-26 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "boq",
+  "boq_item",
+  "rate_master",
+  "resource_name",
+  "description",
+  "column_break_qty",
+  "qty_per_unit",
+  "coefficient",
+  "rate",
+  "amount",
+  "qty",
+  "section_break_stamp",
+  "work_package",
+  "cost_head",
+  "source_assembly"
+ ],
+ "fields": [
+  {
+   "fieldname": "boq",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "BOQ",
+   "options": "BOQ",
+   "reqd": 1
+  },
+  {
+   "fieldname": "boq_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "BOQ Item",
+   "options": "BOQ Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate_master",
+   "fieldtype": "Link",
+   "label": "Rate Master",
+   "options": "Construction Rate Master"
+  },
+  {
+   "fetch_from": "rate_master.rate_name",
+   "fieldname": "resource_name",
+   "fieldtype": "Data",
+   "label": "Resource Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_qty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_per_unit",
+   "fieldtype": "Float",
+   "label": "Qty Per Unit"
+  },
+  {
+   "fieldname": "coefficient",
+   "fieldtype": "Float",
+   "label": "Coefficient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Total Qty"
+  },
+  {
+   "fieldname": "section_break_stamp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "work_package",
+   "fieldtype": "Link",
+   "label": "Work Package",
+   "options": "Work Package",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_head",
+   "fieldtype": "Select",
+   "label": "Cost Head",
+   "options": "\nMaterial\nLabour\nEquipment\nSubcontract\nPreliminaries\nOther",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_assembly",
+   "fieldtype": "Link",
+   "label": "Source Assembly",
+   "options": "Assembly",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Buildsuite Core",
+ "name": "BOQ Sub Item",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
