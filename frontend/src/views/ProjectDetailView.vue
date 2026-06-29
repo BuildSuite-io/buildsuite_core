@@ -565,11 +565,42 @@ function colorOf(id) {
 	for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
 	return TEAM_COLORS[h % TEAM_COLORS.length];
 }
+// Resolve each team member's persona (the "Role" column) from their User record.
+// The Project Team child row only carries user + full_name, so the human-readable
+// role lives on the User's `persona` custom field — same as the prototype shows.
+const teamUserIds = computed(() =>
+	(project.value?.teamMembers || []).map((m) => m.user).filter(Boolean)
+);
+const teamUsersResource = ref(null);
+watch(
+	teamUserIds,
+	(ids) => {
+		if (!ids.length) {
+			teamUsersResource.value = null;
+			return;
+		}
+		teamUsersResource.value = adapter.list("User", {
+			fields: ["name", "persona"],
+			filters: [["name", "in", ids]],
+			pageLength: ids.length,
+			cache: `buildsuite-team-personas:${ids.slice().sort().join(",")}`,
+			transform: (rows) => rows.map((r) => ({ name: r?.name, persona: r?.persona || "" })),
+		});
+	},
+	{ immediate: true }
+);
+const teamPersonaMap = computed(() => {
+	const raw = teamUsersResource.value?.data;
+	const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.value) ? raw.value : [];
+	const map = {};
+	for (const r of rows) map[r.name] = r.persona;
+	return map;
+});
 const projectTeam = computed(() =>
 	(project.value?.teamMembers || []).map((m) => ({
 		id: m.user,
 		name: m.fullName || m.user,
-		role: m.user, // shown as the "User" column (email/login id)
+		role: teamPersonaMap.value[m.user] || "", // the user's persona, e.g. "Project Manager"
 		initials: initialsOf(m.fullName || m.user),
 		color: colorOf(m.user),
 	}))
