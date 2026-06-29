@@ -6,6 +6,9 @@ export function useProjectDetailListFilters({ project, subs, workPackages, tasks
 	const wpProjectFilter = ref("");
 	const taskSearch = ref("");
 	const taskProjectFilter = ref("");
+	const taskStatusFilter = ref("");
+	const taskTypeFilter = ref("");
+	const taskPriorityFilter = ref("");
 	const scoSearch = ref("");
 	const boqSearch = ref("");
 
@@ -73,6 +76,10 @@ export function useProjectDetailListFilters({ project, subs, workPackages, tasks
 		const allowedProjectIds = new Set(expandProjectFilterIds(taskProjectFilter.value));
 		return tasks.value.filter((t) => {
 			if (taskProjectFilter.value && !allowedProjectIds.has(t.projectId)) return false;
+			if (taskStatusFilter.value && t.status !== taskStatusFilter.value) return false;
+			if (taskTypeFilter.value && (t.task_type || "Activity") !== taskTypeFilter.value)
+				return false;
+			if (taskPriorityFilter.value && t.priority !== taskPriorityFilter.value) return false;
 			if (!term) return true;
 			return t.name.toLowerCase().includes(term);
 		});
@@ -121,6 +128,9 @@ export function useProjectDetailListFilters({ project, subs, workPackages, tasks
 		taskProjectFilterOptions,
 		taskProjectNameById,
 		taskSearch,
+		taskStatusFilter,
+		taskTypeFilter,
+		taskPriorityFilter,
 		taskStats,
 		tasksFiltered,
 		wpFiltered,

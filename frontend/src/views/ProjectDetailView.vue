@@ -744,7 +744,10 @@ async function loadTemplateSummary(type) {
 		const res = await fetch(
 			"/api/method/buildsuite_core.utils.project.get_project_template_summary?" +
 				new URLSearchParams({ project_type: type }),
-			{ credentials: "include", headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" } }
+			{
+				credentials: "include",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+			}
 		);
 		const data = await res.json();
 		const s = data?.message || null;
@@ -798,6 +801,9 @@ const {
 	taskProjectFilterOptions,
 	taskProjectNameById,
 	taskSearch,
+	taskStatusFilter,
+	taskTypeFilter,
+	taskPriorityFilter,
 	taskStats,
 	tasksFiltered,
 	wpFiltered,
@@ -1169,6 +1175,26 @@ usePageTitle(() => project.value?.name);
 							>
 								{{ p.name }}
 							</option>
+						</DeskSelect>
+						<DeskSelect v-model="taskStatusFilter" class="!w-40">
+							<option value="">Status: Any</option>
+							<option>Yet To Start</option>
+							<option>In Progress</option>
+							<option>In Delay</option>
+							<option>Completed</option>
+							<option>Blocked</option>
+						</DeskSelect>
+						<DeskSelect v-model="taskTypeFilter" class="!w-40">
+							<option value="">Task Type: Any</option>
+							<option>Activity</option>
+							<option>Milestone</option>
+							<option>Inspection</option>
+						</DeskSelect>
+						<DeskSelect v-model="taskPriorityFilter" class="!w-36">
+							<option value="">Priority: Any</option>
+							<option>Low</option>
+							<option>Medium</option>
+							<option>High</option>
 						</DeskSelect>
 					</template>
 					<template #cell-name="{ row }">
