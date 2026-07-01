@@ -31,7 +31,9 @@ def _has_app_permission(log_denial: bool = True) -> bool:
 	return False
 
 
-@frappe.whitelist(methods=["GET"], allow_guest=True)
+# The SPA probes access on boot before login; returns only a guest-safe
+# {allowed: False} for unauthenticated users.
+@frappe.whitelist(methods=["GET"], allow_guest=True)  # nosemgrep
 def get_access_context():
 	user = frappe.session.user
 	if user == "Guest":
@@ -45,10 +47,12 @@ def get_access_context():
 	# BuildSuite role; the frontend uses it to set the active persona on load.
 	persona = frappe.db.get_value("User", user, "persona") if user != "Guest" else None
 
-	return frappe._dict({
-		"allowed": allowed,
-		"user": user,
-		"roles": roles,
-		"persona": persona,
-		"reason": reason,
-	})
+	return frappe._dict(
+		{
+			"allowed": allowed,
+			"user": user,
+			"roles": roles,
+			"persona": persona,
+			"reason": reason,
+		}
+	)

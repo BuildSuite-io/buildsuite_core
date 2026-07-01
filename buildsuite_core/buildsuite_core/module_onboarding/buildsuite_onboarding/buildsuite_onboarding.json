@@ -1,7 +1,7 @@
 {
  "allow_roles": [
   {
-   "role": "All"
+   "role": "System Manager"
   }
  ],
  "creation": "2026-05-28 13:48:03.859433",
@@ -11,7 +11,7 @@
  "is_complete": 0,
  "modified": "2026-05-28 13:48:20.692992",
  "modified_by": "Administrator",
- "module": "Buildsuite Core",
+ "module": "BuildSuite Core",
  "name": "BuildSuite Onboarding",
  "owner": "Administrator",
  "steps": [

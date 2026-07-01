@@ -12,34 +12,34 @@
 // naming convention (e.g., "Acme Commercial Pvt Ltd").
 
 export const COMPANIES = [
-  {
-    id: 'ACME-COM',
-    name: 'Acme Commercial Pvt Ltd',
-    shortName: 'Acme Commercial',
-    description: 'Commercial buildings · offices · IT parks · retail',
-    color: 'bg-violet-600',
-  },
-  {
-    id: 'ACME-RES',
-    name: 'Acme Builders Pvt Ltd',
-    shortName: 'Acme Builders',
-    description: 'Residential towers · apartments · gated communities',
-    color: 'bg-blue-600',
-  },
-  {
-    id: 'ACME-INF',
-    name: 'Acme Infrastructure Pvt Ltd',
-    shortName: 'Acme Infra',
-    description: 'Metro stations · roads · bridges · public infrastructure',
-    color: 'bg-amber-600',
-  },
-]
+	{
+		id: "ACME-COM",
+		name: "Acme Commercial Pvt Ltd",
+		shortName: "Acme Commercial",
+		description: "Commercial buildings · offices · IT parks · retail",
+		color: "bg-violet-600",
+	},
+	{
+		id: "ACME-RES",
+		name: "Acme Builders Pvt Ltd",
+		shortName: "Acme Builders",
+		description: "Residential towers · apartments · gated communities",
+		color: "bg-blue-600",
+	},
+	{
+		id: "ACME-INF",
+		name: "Acme Infrastructure Pvt Ltd",
+		shortName: "Acme Infra",
+		description: "Metro stations · roads · bridges · public infrastructure",
+		color: "bg-amber-600",
+	},
+];
 
 // The company id that auto-fills when only one company exists in seed AND nothing
 // is persisted yet. Falls back to the first entry — change the seed to flip the
 // default if needed.
-export const DEFAULT_COMPANY_ID = COMPANIES[0].id
+export const DEFAULT_COMPANY_ID = COMPANIES[0].id;
 
 export function companyById(id) {
-  return COMPANIES.find(c => c.id === id) || null
+	return COMPANIES.find((c) => c.id === id) || null;
 }

@@ -1,6 +1,6 @@
-import { createListResource } from 'frappe-ui-list-resource'
-import { useDataStore } from '@/stores'
-import { createLocalDataAdapter } from '@/data/adapters/localDataAdapter'
+import { createListResource } from "frappe-ui-list-resource";
+import { useDataStore } from "@/stores";
+import { createLocalDataAdapter } from "@/data/adapters/localDataAdapter";
 
 /**
  * Generic composable for a read-only Frappe DocType list.
@@ -25,27 +25,27 @@ import { createLocalDataAdapter } from '@/data/adapters/localDataAdapter'
  * @returns {import('frappe-ui').ListResource} Reactive resource
  */
 export function useDocTypeList(doctype, options = {}) {
-  const mode = import.meta.env.VITE_DATA_MODE || 'remote'
+	const mode = import.meta.env.VITE_DATA_MODE || "remote";
 
-  if (mode === 'local') {
-    const store = useDataStore()
-    const adapter = createLocalDataAdapter(store)
-    return adapter.list(doctype, options)
-  }
+	if (mode === "local") {
+		const store = useDataStore();
+		const adapter = createLocalDataAdapter(store);
+		return adapter.list(doctype, options);
+	}
 
-  const resourceConfig = {
-    doctype,
-    fields: options.fields ?? ['name'],
-    orderBy: options.orderBy,
-    start: options.start ?? 0,
-    pageLength: options.pageLength ?? 20,
-    auto: options.auto !== false,
-  }
+	const resourceConfig = {
+		doctype,
+		fields: options.fields ?? ["name"],
+		orderBy: options.orderBy,
+		start: options.start ?? 0,
+		pageLength: options.pageLength ?? 20,
+		auto: options.auto !== false,
+	};
 
-  if (options.filters !== undefined) resourceConfig.filters = options.filters
-  if (options.orFilters !== undefined) resourceConfig.orFilters = options.orFilters
-  if (options.cache !== undefined) resourceConfig.cache = options.cache
-  if (options.transform !== undefined) resourceConfig.transform = options.transform
+	if (options.filters !== undefined) resourceConfig.filters = options.filters;
+	if (options.orFilters !== undefined) resourceConfig.orFilters = options.orFilters;
+	if (options.cache !== undefined) resourceConfig.cache = options.cache;
+	if (options.transform !== undefined) resourceConfig.transform = options.transform;
 
-  return createListResource(resourceConfig)
+	return createListResource(resourceConfig);
 }

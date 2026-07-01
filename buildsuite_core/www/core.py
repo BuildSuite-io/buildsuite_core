@@ -28,7 +28,9 @@ def get_context():
 	return context
 
 
-@frappe.whitelist(methods=["POST"], allow_guest=True)
+# Gated to developer_mode on the first line; throws immediately in production,
+# so there is no guest-reachable behavior.
+@frappe.whitelist(methods=["POST"], allow_guest=True)  # nosemgrep
 def get_context_for_dev():
 	if not frappe.conf.developer_mode:
 		frappe.throw(_("This method is only meant for developer mode"))
@@ -49,10 +51,16 @@ def get_boot():
 		except Exception:
 			csrf_token = ""
 
+	defaults = frappe.defaults.get_defaults()
+
 	return frappe._dict(
 		{
 			"frappe_version": frappe.__version__,
 			"session_user": frappe.session.user,
+			"sysdefaults": {
+				"currency": defaults.get("currency"),
+				"currency_precision": defaults.get("currency_precision"),
+			},
 			"default_route": f"/{APP_ROUTE}",
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
@@ -71,11 +79,7 @@ def get_boot():
 
 
 def get_frontend_assets():
-	manifest_path = Path(
-		frappe.get_app_path(
-			"buildsuite_core", "public", "frontend", "manifest.json"
-		)
-	)
+	manifest_path = Path(frappe.get_app_path("buildsuite_core", "public", "frontend", "manifest.json"))
 	if not manifest_path.exists():
 		return None
 

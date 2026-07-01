@@ -1,344 +1,513 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
-import { useDataStore } from '@/stores'
-import { useSessionStore } from '@/stores/session'
-import { useUserNames } from '@/composables/useUserNames'
-import LogoIcon from '@/components/LogoIcon.vue'
-import RoleSwitcher from '@/components/RoleSwitcher.vue'
-import CompanySwitcher from '@/components/CompanySwitcher.vue'
-import UserAvatar from '@/components/UserAvatar.vue'
-import { getWorkspaceIconPath } from '@/utils/workspaceIcons'
-import { getDeskUrl, logout, getSessionUser } from '@/utils/session'
+import { computed, ref } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
+import { useUserNames } from "@/composables/useUserNames";
+import LogoIcon from "@/components/LogoIcon.vue";
+import RoleSwitcher from "@/components/RoleSwitcher.vue";
+import CompanySwitcher from "@/components/CompanySwitcher.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { getDeskUrl, logout, getSessionUser } from "@/utils/session";
 
-const route = useRoute()
-const store = useDataStore()
-const session = useSessionStore()
-const { userName } = useUserNames()
-const searchOpen = ref(false)
+const route = useRoute();
+const store = useDataStore();
+const session = useSessionStore();
+const { userName } = useUserNames();
+const searchOpen = ref(false);
 // Mobile sidebar drawer state. The sidebar is always visible on lg+ and
 // collapses to a slide-in drawer below that breakpoint.
-const sidebarOpen = ref(false)
-function closeSidebar() { sidebarOpen.value = false }
-function toggleTheme() { store.toggleTheme() }
+const sidebarOpen = ref(false);
+function closeSidebar() {
+	sidebarOpen.value = false;
+}
+function toggleTheme() {
+	store.toggleTheme();
+}
 
 // App-branding dropdown (mirrors prototype S149). The BuildSuite header is a
 // trigger that opens a menu with "Go to Desktop" (the real ERPNext desk) and
 // "Logout" (real Frappe logout → login). Backdrop click dismisses.
-const appMenuOpen = ref(false)
-function toggleAppMenu() { appMenuOpen.value = !appMenuOpen.value }
-function closeAppMenu() { appMenuOpen.value = false }
+const appMenuOpen = ref(false);
+function toggleAppMenu() {
+	appMenuOpen.value = !appMenuOpen.value;
+}
+function closeAppMenu() {
+	appMenuOpen.value = false;
+}
 function goToDesktop() {
-  closeAppMenu()
-  window.location.href = getDeskUrl()
+	closeAppMenu();
+	window.location.href = getDeskUrl();
 }
 function onLogout() {
-  closeAppMenu()
-  logout()
+	closeAppMenu();
+	logout();
 }
 
 // Footer profile — the REAL signed-in user (session store), not the prototype
 // demo user. Name + avatar resolve from the backend User directory; the role is
 // the user's BuildSuite persona (falling back to a real role label).
 const profileUser = computed(() => {
-  const u = session.user
-  return u && u !== 'Guest' ? u : getSessionUser()
-})
-const profileName = computed(() => userName(profileUser.value) || profileUser.value || 'User')
+	const u = session.user;
+	return u && u !== "Guest" ? u : getSessionUser();
+});
+const profileName = computed(() => userName(profileUser.value) || profileUser.value || "User");
 const profileRole = computed(() => {
-  const persona = session.access?.persona
-  if (persona) return persona
-  const roles = session.access?.roles || []
-  const bs = roles.find((r) => r.startsWith('BuildSuite '))
-  if (bs) return bs.replace('BuildSuite ', '')
-  if (roles.includes('System Manager')) return 'System Manager'
-  if (profileUser.value === 'Administrator') return 'Administrator'
-  return ''
-})
+	const persona = session.access?.persona;
+	if (persona) return persona;
+	const roles = session.access?.roles || [];
+	const bs = roles.find((r) => r.startsWith("BuildSuite "));
+	if (bs) return bs.replace("BuildSuite ", "");
+	if (roles.includes("System Manager")) return "System Manager";
+	if (profileUser.value === "Administrator") return "Administrator";
+	return "";
+});
 
 // Per-workspace UI metadata (label, route path, icon, group). The visibility matrix
 // and per-role ordering live in src/data/roles.js (CLAUDE.md §12.2, §12.3) — this
 // table is the UI-side mapping from slug → presentation.
 const WORKSPACES = {
-  'site-execution':  { name: 'Site Execution',  to: '/site-execution',  icon: '🏗️', group: 'buildsuite' },
-  'estimation':      { name: 'Estimation',      to: '/estimation',      icon: '📐', group: 'buildsuite' },
-  'procurement':     { name: 'Procurement',     to: '/procurement',     icon: '🛒', group: 'buildsuite' },
-  'subcontract':     { name: 'Subcontract',     to: '/subcontract',     icon: '🤝', group: 'buildsuite' },
-  'workforce':       { name: 'Workforce',       to: '/workforce',       icon: '👷', group: 'buildsuite' },
-  // 'scope-change' removed Session 33 — merged into Site Execution. The
-  // /app/scope-change route stays registered as a legacy redirect target but
-  // doesn't appear in the sidebar anymore.
-  'project-finance': { name: 'Project Finance', to: '/project-finance', icon: '💵', group: 'buildsuite' },
-  'accounting':      { name: 'Accounting',      to: '/accounting',      icon: '📊', group: 'erpnext' },
-  'buying':          { name: 'Buying',          to: '/buying',          icon: '📥', group: 'erpnext' },
-  'stock':           { name: 'Stock',           to: '/stock',           icon: '📦', group: 'erpnext' },
-  'assets':          { name: 'Assets',          to: '/assets',          icon: '🏭', group: 'erpnext' },
-  'hr':              { name: 'HR',              to: '/hr',              icon: '👤', group: 'erpnext' },
-}
+	"site-execution": {
+		name: "Site Execution",
+		to: "/site-execution",
+		icon: "🏗️",
+		group: "buildsuite",
+	},
+	estimation: { name: "Estimation", to: "/estimation", icon: "📐", group: "buildsuite" },
+	procurement: { name: "Procurement", to: "/procurement", icon: "🛒", group: "buildsuite" },
+	subcontract: { name: "Subcontract", to: "/subcontract", icon: "🤝", group: "buildsuite" },
+	workforce: { name: "Workforce", to: "/workforce", icon: "👷", group: "buildsuite" },
+	// 'scope-change' removed Session 33 — merged into Site Execution. The
+	// /app/scope-change route stays registered as a legacy redirect target but
+	// doesn't appear in the sidebar anymore.
+	"project-finance": {
+		name: "Project Finance",
+		to: "/project-finance",
+		icon: "💵",
+		group: "buildsuite",
+	},
+	accounting: { name: "Accounting", to: "/accounting", icon: "📊", group: "erpnext" },
+	buying: { name: "Buying", to: "/buying", icon: "📥", group: "erpnext" },
+	stock: { name: "Stock", to: "/stock", icon: "📦", group: "erpnext" },
+	assets: { name: "Assets", to: "/assets", icon: "🏭", group: "erpnext" },
+	hr: { name: "HR", to: "/hr", icon: "👤", group: "erpnext" },
+};
 
 // Access-level hint pills (CLAUDE.md §12.3). Shown next to a workspace link when
 // the active role has restricted access (anything other than 'full').
 const ACCESS_HINTS = {
-  'read':         { label: 'R',  title: 'Read-only access' },
-  'approve':      { label: 'A',  title: 'Approve-only access' },
-  'create-own':   { label: 'C',  title: 'Create own work only' },
-  'self-service': { label: 'SS', title: 'Self-service only' },
-  'team-only':    { label: 'T',  title: 'Team-only (direct reports)' },
-  'pay-only':     { label: 'P',  title: 'Pay-only view' },
-  'mr-only':      { label: 'MR', title: 'Material-request raise only' },
-}
+	read: { label: "R", title: "Read-only access" },
+	approve: { label: "A", title: "Approve-only access" },
+	"create-own": { label: "C", title: "Create own work only" },
+	"self-service": { label: "SS", title: "Self-service only" },
+	"team-only": { label: "T", title: "Team-only (direct reports)" },
+	"pay-only": { label: "P", title: "Pay-only view" },
+	"mr-only": { label: "MR", title: "Material-request raise only" },
+};
 
 // Sidebar groups for the active role.
 // Home is synthesized as the first BuildSuite item and Site Execution is pinned
 // second when visible because it is the highest-frequency workspace.
 const navGroups = computed(() => {
-  const HOME_ITEM = { slug: 'home', name: 'Home', to: '/home', group: 'buildsuite', hint: null }
-  const buildsuiteItems = [HOME_ITEM]
-  const erpnextItems = []
-  const otherBuildsuiteItems = []
-  for (const slug of store.visibleWorkspaces) {
-    if (slug === 'site-execution') continue
-    const meta = WORKSPACES[slug]
-    if (!meta) continue
-    const access = store.workspaceAccess(slug)
-    const hint = access && access !== 'full' ? ACCESS_HINTS[access] : null
-    const item = { slug, ...meta, hint }
-    if (meta.group === 'buildsuite') otherBuildsuiteItems.push(item)
-    else erpnextItems.push(item)
-  }
+	const HOME_ITEM = { slug: "home", name: "Home", to: "/home", group: "buildsuite", hint: null };
+	const buildsuiteItems = [HOME_ITEM];
+	const erpnextItems = [];
+	const otherBuildsuiteItems = [];
+	for (const slug of store.visibleWorkspaces) {
+		if (slug === "site-execution") continue;
+		const meta = WORKSPACES[slug];
+		if (!meta) continue;
+		const access = store.workspaceAccess(slug);
+		const hint = access && access !== "full" ? ACCESS_HINTS[access] : null;
+		const item = { slug, ...meta, hint };
+		if (meta.group === "buildsuite") otherBuildsuiteItems.push(item);
+		else erpnextItems.push(item);
+	}
 
-  if (store.visibleWorkspaces.includes('site-execution')) {
-    const meta = WORKSPACES['site-execution']
-    if (meta) {
-      const access = store.workspaceAccess('site-execution')
-      const hint = access && access !== 'full' ? ACCESS_HINTS[access] : null
-      buildsuiteItems.push({ slug: 'site-execution', ...meta, hint })
-    }
-  }
-  buildsuiteItems.push(...otherBuildsuiteItems)
+	if (store.visibleWorkspaces.includes("site-execution")) {
+		const meta = WORKSPACES["site-execution"];
+		if (meta) {
+			const access = store.workspaceAccess("site-execution");
+			const hint = access && access !== "full" ? ACCESS_HINTS[access] : null;
+			buildsuiteItems.push({ slug: "site-execution", ...meta, hint });
+		}
+	}
+	buildsuiteItems.push(...otherBuildsuiteItems);
 
-  const groups = []
-  if (buildsuiteItems.length) {
-    groups.push({ key: 'buildsuite', title: 'BuildSuite', muted: false, topSeparator: false, items: buildsuiteItems })
-  }
-  if (erpnextItems.length) {
-    groups.push({
-      key: 'erpnext',
-      title: 'ERPNext',
-      muted: true,
-      // Only render the top-border separator when there's a BuildSuite group above it;
-      // otherwise it looks like an orphan rule at the top of the nav.
-      topSeparator: groups.length > 0,
-      items: erpnextItems,
-    })
-  }
-  return groups
-})
+	const groups = [];
+	if (buildsuiteItems.length) {
+		groups.push({
+			key: "buildsuite",
+			title: "BuildSuite",
+			muted: false,
+			topSeparator: false,
+			items: buildsuiteItems,
+		});
+	}
+	if (erpnextItems.length) {
+		groups.push({
+			key: "erpnext",
+			title: "ERPNext",
+			muted: true,
+			// Only render the top-border separator when there's a BuildSuite group above it;
+			// otherwise it looks like an orphan rule at the top of the nav.
+			topSeparator: groups.length > 0,
+			items: erpnextItems,
+		});
+	}
+	return groups;
+});
 
 // Topbar breadcrumb removed; each view already renders richer page breadcrumbs.
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-white">
-    <!-- Mobile backdrop. Only visible when the drawer is open. -->
-    <div
-      v-if="sidebarOpen"
-      class="fixed inset-0 bg-ink-900/40 z-40 lg:hidden"
-      @click="closeSidebar"
-    ></div>
+	<div class="min-h-screen flex bg-white">
+		<!-- Mobile backdrop. Only visible when the drawer is open. -->
+		<div
+			v-if="sidebarOpen"
+			class="fixed inset-0 bg-ink-900/40 z-40 lg:hidden"
+			@click="closeSidebar"
+		></div>
 
-    <!-- Sidebar — sticky on lg+; slide-in drawer below that breakpoint. -->
-    <aside
-      class="w-60 bg-white border-r border-ink-200 flex flex-col flex-shrink-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 fixed inset-y-0 left-0 z-50 transform transition-transform duration-200"
-      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    >
-      <!-- App-branding dropdown (prototype S149): Go to Desktop / Logout.
+		<!-- Sidebar — sticky on lg+; slide-in drawer below that breakpoint. -->
+		<aside
+			class="w-60 bg-white border-r border-ink-200 flex flex-col flex-shrink-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 fixed inset-y-0 left-0 z-50 transform transition-transform duration-200"
+			:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+		>
+			<!-- App-branding dropdown (prototype S149): Go to Desktop / Logout.
            The "Core" badge moved into the dropdown sub-line. -->
-      <div class="h-14 border-b border-ink-200 relative">
-        <button
-          type="button"
-          class="w-full h-full flex items-center justify-between text-left hover:bg-ink-50 pl-3 pr-2"
-          :class="appMenuOpen ? 'bg-ink-50' : ''"
-          title="BuildSuite"
-          @click="toggleAppMenu"
-        >
-          <span class="flex items-center gap-2">
-            <LogoIcon :size="26" />
-            <span class="font-semibold text-ink-900 text-sm">BuildSuite</span>
-          </span>
-          <svg
-            class="w-4 h-4 text-ink-400 transition-transform"
-            :class="appMenuOpen ? 'rotate-180' : ''"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
+			<div class="h-14 border-b border-ink-200 relative">
+				<button
+					type="button"
+					class="w-full h-full flex items-center justify-between text-left hover:bg-ink-50 pl-3 pr-2"
+					:class="appMenuOpen ? 'bg-ink-50' : ''"
+					title="BuildSuite"
+					@click="toggleAppMenu"
+				>
+					<span class="flex items-center gap-2">
+						<LogoIcon :size="26" />
+						<span class="font-semibold text-ink-900 text-sm">BuildSuite</span>
+					</span>
+					<svg
+						class="w-4 h-4 text-ink-400 transition-transform"
+						:class="appMenuOpen ? 'rotate-180' : ''"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 9l-7 7-7-7"
+						/>
+					</svg>
+				</button>
 
-        <div v-if="appMenuOpen" class="fixed inset-0 z-[55]" @click="closeAppMenu"></div>
-        <div
-          v-if="appMenuOpen"
-          class="absolute left-2 right-2 top-full mt-1 z-[56] bg-white border border-ink-200 rounded-md shadow-fp-lg py-1"
-        >
-          <div class="px-3 py-2 border-b border-ink-100">
-            <div class="text-xs font-semibold text-ink-900">BuildSuite</div>
-            <div class="text-[10px] text-brand-700 mt-0.5">Core edition</div>
-          </div>
-          <button
-            type="button"
-            class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
-            @click="goToDesktop"
-          >
-            <svg class="w-3.5 h-3.5 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM13 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM13 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z"/></svg>
-            <span>Go to Desktop</span>
-          </button>
-          <button
-            type="button"
-            class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
-            @click="onLogout"
-          >
-            <svg class="w-3.5 h-3.5 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+				<div v-if="appMenuOpen" class="fixed inset-0 z-[55]" @click="closeAppMenu"></div>
+				<div
+					v-if="appMenuOpen"
+					class="absolute left-2 right-2 top-full mt-1 z-[56] bg-white border border-ink-200 rounded-md shadow-fp-lg py-1"
+				>
+					<div class="px-3 py-2 border-b border-ink-100">
+						<div class="text-xs font-semibold text-ink-900">BuildSuite</div>
+						<div class="text-[10px] text-brand-700 mt-0.5">Core edition</div>
+					</div>
+					<button
+						type="button"
+						class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+						@click="goToDesktop"
+					>
+						<svg
+							class="w-3.5 h-3.5 text-ink-500"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM13 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM13 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z"
+							/>
+						</svg>
+						<span>Go to Desktop</span>
+					</button>
+					<button
+						type="button"
+						class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+						@click="onLogout"
+					>
+						<svg
+							class="w-3.5 h-3.5 text-ink-500"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+							/>
+						</svg>
+						<span>Logout</span>
+					</button>
+				</div>
+			</div>
 
-      <div class="px-3 py-2">
-        <button @click="searchOpen = true" class="w-full px-2.5 py-1.5 text-xs bg-ink-50 text-ink-600 rounded flex items-center gap-2 hover:bg-ink-100">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          Search or jump to...
-          <span class="ml-auto text-[10px] text-ink-400 font-mono bg-white px-1.5 py-0.5 rounded border border-ink-200">⌘K</span>
-        </button>
-      </div>
+			<div class="px-3 py-2">
+				<button
+					@click="searchOpen = true"
+					class="w-full px-2.5 py-1.5 text-xs bg-ink-50 text-ink-600 rounded flex items-center gap-2 hover:bg-ink-100"
+				>
+					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+						/>
+					</svg>
+					Search or jump to...
+					<span
+						class="ml-auto text-[10px] text-ink-400 font-mono bg-white px-1.5 py-0.5 rounded border border-ink-200"
+						>⌘K</span
+					>
+				</button>
+			</div>
 
-      <nav class="flex-1 overflow-y-auto scrollbar-thin px-3 pb-4">
-        <div v-for="group in navGroups" :key="group.key" class="mb-1" :class="group.topSeparator ? 'mt-4 pt-3 border-t border-ink-100' : 'mt-2'">
-          <div class="px-2 py-1.5">
-            <div
-              class="font-semibold uppercase tracking-wider"
-              :class="group.muted ? 'text-[10px] text-ink-400' : 'text-[11px] text-ink-500'"
-            >{{ group.title }}</div>
-            <div
-              v-if="group.caption"
-              class="text-[9px] text-ink-400 font-normal normal-case tracking-normal mt-0.5"
-            >{{ group.caption }}</div>
-          </div>
-          <RouterLink
-            v-for="item in group.items"
-            :key="item.to"
-            :to="item.to"
-            class="desk-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-ink-50"
-            :class="group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700'"
-            active-class="active"
-            @click="closeSidebar"
-          >
-            <span
-              class="desk-icon w-5 h-5 flex items-center justify-center leading-none flex-shrink-0"
-              :class="group.muted ? 'text-ink-300' : 'text-ink-400'"
-            >
-              <svg
-                class="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                v-html="getWorkspaceIconPath(item.slug)"
-              />
-            </span>
-            <span class="flex-1 truncate">{{ item.name }}</span>
-            <span
-              v-if="item.hint"
-              :title="item.hint.title"
-              class="text-[9px] font-medium text-ink-400 border border-ink-200 rounded px-1 leading-4 flex-shrink-0"
-            >{{ item.hint.label }}</span>
-          </RouterLink>
-        </div>
+			<nav class="flex-1 overflow-y-auto scrollbar-thin px-3 pb-4">
+				<div
+					v-for="group in navGroups"
+					:key="group.key"
+					class="mb-1"
+					:class="group.topSeparator ? 'mt-4 pt-3 border-t border-ink-100' : 'mt-2'"
+				>
+					<div class="px-2 py-1.5">
+						<div
+							class="font-semibold uppercase tracking-wider"
+							:class="
+								group.muted
+									? 'text-[10px] text-ink-400'
+									: 'text-[11px] text-ink-500'
+							"
+						>
+							{{ group.title }}
+						</div>
+						<div
+							v-if="group.caption"
+							class="text-[9px] text-ink-400 font-normal normal-case tracking-normal mt-0.5"
+						>
+							{{ group.caption }}
+						</div>
+					</div>
+					<RouterLink
+						v-for="item in group.items"
+						:key="item.to"
+						:to="item.to"
+						class="desk-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-ink-50"
+						:class="group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700'"
+						active-class="active"
+						@click="closeSidebar"
+					>
+						<span
+							class="desk-icon w-5 h-5 flex items-center justify-center leading-none flex-shrink-0"
+							:class="group.muted ? 'text-ink-300' : 'text-ink-400'"
+						>
+							<svg
+								class="w-4 h-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.75"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								v-html="getWorkspaceIconPath(item.slug)"
+							/>
+						</span>
+						<span class="flex-1 truncate">{{ item.name }}</span>
+						<span
+							v-if="item.hint"
+							:title="item.hint.title"
+							class="text-[9px] font-medium text-ink-400 border border-ink-200 rounded px-1 leading-4 flex-shrink-0"
+							>{{ item.hint.label }}</span
+						>
+					</RouterLink>
+				</div>
+			</nav>
 
-      </nav>
-
-      <!-- Profile entry (prototype S149) — replaces the footer Settings link.
+			<!-- Profile entry (prototype S149) — replaces the footer Settings link.
            Settings is still reachable from the topbar gear. No flow wired yet. -->
-      <div class="border-t border-ink-200 p-2">
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-ink-700 hover:bg-ink-50 rounded"
-          title="Profile"
-          @click="closeSidebar"
-        >
-          <UserAvatar :user-id="profileUser" size="sm" />
-          <div class="flex-1 min-w-0 text-left">
-            <div class="truncate font-medium text-ink-900">{{ profileName }}</div>
-            <div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>
-          </div>
-        </button>
-      </div>
-    </aside>
+			<div class="border-t border-ink-200 p-2">
+				<button
+					type="button"
+					class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-ink-700 hover:bg-ink-50 rounded"
+					title="Profile"
+					@click="closeSidebar"
+				>
+					<UserAvatar :user-id="profileUser" size="sm" />
+					<div class="flex-1 min-w-0 text-left">
+						<div class="truncate font-medium text-ink-900">{{ profileName }}</div>
+						<div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>
+					</div>
+				</button>
+			</div>
+		</aside>
 
-    <!-- Main -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <header class="h-12 bg-white border-b border-ink-200 px-3 sm:px-5 flex items-center sticky top-0 z-20 gap-2">
-        <!-- Hamburger — opens the sidebar drawer on mobile -->
-        <button
-          type="button"
-          class="lg:hidden p-1.5 text-ink-600 hover:text-ink-900 hover:bg-ink-50 rounded"
-          aria-label="Open menu"
-          @click="sidebarOpen = true"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <div class="ml-auto flex items-center gap-1 sm:gap-2">
-          <!-- Theme toggle — sun in dark mode, moon in light mode -->
-          <button
-            type="button"
-            class="text-ink-500 hover:text-ink-900 hover:bg-ink-50 p-1.5 rounded"
-            :aria-label="store.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-            :title="store.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-            @click="toggleTheme"
-          >
-            <svg v-if="store.theme === 'dark'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-          </button>
-          <button class="text-ink-400 hover:text-ink-700 p-1.5 hidden sm:inline-flex">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-          </button>
-          <button class="text-ink-400 hover:text-ink-700 p-1.5 hidden sm:inline-flex">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </button>
-          <!-- Settings (Session 32) — Frappe-standard topbar placement (gear icon
+		<!-- Main -->
+		<div class="flex-1 flex flex-col min-w-0">
+			<header
+				class="h-12 bg-white border-b border-ink-200 px-3 sm:px-5 flex items-center sticky top-0 z-20 gap-2"
+			>
+				<!-- Hamburger — opens the sidebar drawer on mobile -->
+				<button
+					type="button"
+					class="lg:hidden p-1.5 text-ink-600 hover:text-ink-900 hover:bg-ink-50 rounded"
+					aria-label="Open menu"
+					@click="sidebarOpen = true"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 6h16M4 12h16M4 18h16"
+						/>
+					</svg>
+				</button>
+				<div class="ml-auto flex items-center gap-1 sm:gap-2">
+					<!-- Theme toggle — sun in dark mode, moon in light mode -->
+					<button
+						type="button"
+						class="text-ink-500 hover:text-ink-900 hover:bg-ink-50 p-1.5 rounded"
+						:aria-label="
+							store.theme === 'dark'
+								? 'Switch to light theme'
+								: 'Switch to dark theme'
+						"
+						:title="
+							store.theme === 'dark'
+								? 'Switch to light theme'
+								: 'Switch to dark theme'
+						"
+						@click="toggleTheme"
+					>
+						<svg
+							v-if="store.theme === 'dark'"
+							class="w-4 h-4"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+							/>
+						</svg>
+						<svg
+							v-else
+							class="w-4 h-4"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+							/>
+						</svg>
+					</button>
+					<button class="text-ink-400 hover:text-ink-700 p-1.5 hidden sm:inline-flex">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+							/>
+						</svg>
+					</button>
+					<button class="text-ink-400 hover:text-ink-700 p-1.5 hidden sm:inline-flex">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+					</button>
+					<!-- Settings (Session 32) — Frappe-standard topbar placement (gear icon
                near the user / role chip). Active state when on a /app/settings/* route. -->
-          <RouterLink
-            to="/settings"
-            class="p-1.5 rounded-md"
-            :class="route.path.startsWith('/settings') ? 'text-brand-700 bg-brand-50' : 'text-ink-400 hover:text-ink-700'"
-            title="Settings"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </RouterLink>
-          <CompanySwitcher />
-          <RoleSwitcher />
-        </div>
-      </header>
+					<RouterLink
+						v-if="store.isAdmin"
+						to="/settings"
+						class="p-1.5 rounded-md"
+						:class="
+							route.path.startsWith('/settings')
+								? 'text-brand-700 bg-brand-50'
+								: 'text-ink-400 hover:text-ink-700'
+						"
+						title="Settings"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+							/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+							/>
+						</svg>
+					</RouterLink>
+					<CompanySwitcher />
+					<RoleSwitcher />
+				</div>
+			</header>
 
-      <main class="flex-1 min-h-0">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </main>
-    </div>
+			<main class="flex-1 min-h-0">
+				<router-view v-slot="{ Component }">
+					<transition name="fade" mode="out-in">
+						<component :is="Component" />
+					</transition>
+				</router-view>
+			</main>
+		</div>
 
-    <!-- Search palette -->
-    <div v-if="searchOpen" class="fixed inset-0 bg-ink-900/40 z-50 flex items-start justify-center pt-20" @click="searchOpen = false">
-      <div class="bg-white rounded-lg shadow-fp-lg w-full max-w-lg border border-ink-200" @click.stop>
-        <div class="p-3 border-b border-ink-200">
-          <input autofocus placeholder="Type to search projects, tasks, work packages..." class="w-full px-3 py-2 text-sm focus:outline-none" />
-        </div>
-        <div class="p-3 text-xs text-ink-500">
-          Quick search across all data · ESC to close
-        </div>
-      </div>
-    </div>
-  </div>
+		<!-- Search palette -->
+		<div
+			v-if="searchOpen"
+			class="fixed inset-0 bg-ink-900/40 z-50 flex items-start justify-center pt-20"
+			@click="searchOpen = false"
+		>
+			<div
+				class="bg-white rounded-lg shadow-fp-lg w-full max-w-lg border border-ink-200"
+				@click.stop
+			>
+				<div class="p-3 border-b border-ink-200">
+					<input
+						autofocus
+						placeholder="Type to search projects, tasks, work packages..."
+						class="w-full px-3 py-2 text-sm focus:outline-none"
+					/>
+				</div>
+				<div class="p-3 text-xs text-ink-500">
+					Quick search across all data · ESC to close
+				</div>
+			</div>
+		</div>
+	</div>
 </template>

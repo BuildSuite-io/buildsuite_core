@@ -1,4 +1,4 @@
-import * as feather from 'feather-icons/dist/feather.js'
+import * as feather from "feather-icons/dist/feather.js";
 
-export * from 'feather-icons/dist/feather.js'
-export default feather
+export * from "feather-icons/dist/feather.js";
+export default feather;

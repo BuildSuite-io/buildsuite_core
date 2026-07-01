@@ -96,26 +96,77 @@ Twelve user roles, including a top-level BuildSuite Administrator role. Permissi
 
 ## Contributing
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+### Prerequisites
+
+This is a Frappe **v16** app. You need a bench with this app installed plus a test
+site (the examples below use `bs.local`). Runtimes are pinned by Frappe v16:
+**Python 3.14** and **Node ≥ 24**.
+
+### Frontend
+
+The Vue 3 SPA lives in [`frontend/`](frontend/) and is served by Frappe at `/core`.
+See [`frontend/README.md`](frontend/README.md) for dev / build / test, and
+[`frontend/DEVELOPER_GUIDE.md`](frontend/DEVELOPER_GUIDE.md) for the frontend
+architecture and feature-building patterns (data adapter, Desk primitives,
+permissions, routing).
+
+### Local dev gate
+
+All checks that CI runs are mirrored by a `Makefile` so you can run them before
+pushing. From the app directory (`apps/buildsuite_core`):
 
 ```bash
-cd apps/buildsuite_core
-pre-commit install
+make setup     # one-time: install pre-commit + semgrep (isolated) and wire the git hook
+make check     # the full gate: lint + semgrep + backend tests
+make lint      # ruff (lint + format + import sort), prettier, eslint
+make semgrep   # Frappe semgrep rules + python correctness rules
+make test      # bench run-tests --app buildsuite_core   (override: make test SITE=mysite)
+make e2e       # build the frontend + run Cypress  (see note below)
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+> **Install pre-commit in isolation — never `pip install pre-commit` inside the
+> bench venv.** pre-commit pulls in `virtualenv`, which requires a newer
+> `filelock` than Frappe's pin (`~=3.20.1`), and the two cannot coexist. Use
+> [`pipx`](https://pipx.pypa.io/) (what `make setup` does) or a dedicated venv.
 
-- ruff
-- eslint
-- prettier
-- pyupgrade
+Once `pre-commit install` has run, **ruff / prettier / eslint run automatically on
+every commit** against your staged files. To run them manually: `pre-commit run
+--all-files` (or `make lint`). Configured tools: `ruff`, `eslint`, `prettier`.
+
+### Running the tests
+
+```bash
+# backend (Frappe test runner)
+bench --site bs.local set-config allow_tests true
+bench --site bs.local run-tests --app buildsuite_core
+
+# frontend e2e (Cypress, real backend) — needs `bench start` running and the
+# persona test users provisioned first:
+bench --site bs.local execute buildsuite_core.api.cypress_setup.ensure_cypress_users
+cd frontend && yarn test          # headless;  yarn test:open for the GUI runner
+```
+
+`make test` / `make e2e` wrap the above. The Cypress suite points at the Frappe
+server (default `http://localhost:8001`; override with `CYPRESS_BASE_URL`) and
+needs the frontend **built** (`yarn build`) so Frappe serves the current bundle.
+
+### Commit conventions
+
+Single-sentence, semantic commit messages (`fix:`, `test:`, `chore:`, `docs:`),
+split per area of change.
 
 ## CI
 
-This app can use GitHub Actions for CI. The following workflows are configured:
+GitHub Actions workflows (`.github/workflows/`):
 
-- CI: Installs this app and runs unit tests on every push to `develop` branch.
-- Linters: Runs [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules) and [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
+- **CI** (`ci.yml`) — spins up a fresh bench, installs this app, and runs the
+  backend test suite. Triggers on pushes to `develop` / `main` / `version-16` and
+  on every pull request.
+- **Linters** (`linter.yml`) — runs the pre-commit hooks, the
+  [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules), and
+  [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
+
+Running `make check` locally reproduces the CI gate before you push.
 
 ## License
 

@@ -10,7 +10,8 @@ assigning the new user — there is never more than one.
 """
 
 import frappe
-from frappe.desk.form.assign_to import add as _assign_add, clear as _assign_clear
+from frappe.desk.form.assign_to import add as _assign_add
+from frappe.desk.form.assign_to import clear as _assign_clear
 
 
 def _current_assignee(task):
@@ -27,12 +28,12 @@ def _current_assignee(task):
 
 
 @frappe.whitelist()
-def get_task_assignee(task):
+def get_task_assignee(task: str):
 	return _current_assignee(task)
 
 
 @frappe.whitelist()
-def set_task_assignee(task, assignee=None):
+def set_task_assignee(task: str, assignee: str | None = None):
 	"""Single-assignee model on top of `_assign`: drop whatever was assigned
 	before, then assign the given user (if any). Returns the resulting assignee."""
 	frappe.get_doc("Task", task).check_permission("write")

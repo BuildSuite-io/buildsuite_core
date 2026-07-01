@@ -9,7 +9,10 @@
     "build:watch": "vite build --watch",
     "preview": "vite preview",
     "cypress:open": "cypress open --e2e --browser chrome",
-    "cypress:run": "cypress run"
+    "cypress:run": "cypress run",
+    "test": "cypress run",
+    "test:open": "cypress open --e2e --browser chrome",
+    "test:e2e": "vite build && cypress run"
   },
   "dependencies": {
     "frappe-ui": "^0.1.276",

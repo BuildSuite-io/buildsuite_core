@@ -10,13 +10,13 @@ Planning Approval workflow (see setup_stage_planning_workflow), not DocPerm.
 
 import frappe
 
-from buildsuite_core.permissions.project import _is_scoped, _is_project_member
+from buildsuite_core.permissions.project import _is_project_member, _is_scoped
 
 FULL_WRITE_ROLES = {
-    "BuildSuite Director",
-    "BuildSuite PM",
-    "BuildSuite Administrator",
-    "System Manager",
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite Administrator",
+	"System Manager",
 }
 OWN_SCOPE_ROLES = {"BuildSuite Site Engineer", "BuildSuite Foreman"}
 
@@ -25,45 +25,45 @@ _EDITABLE_STATES = {None, "", "Draft", "Rejected"}
 
 
 def get_stage_planning_permission_query(user):
-    if not user:
-        user = frappe.session.user
-    if not _is_scoped(user):
-        return ""
+	if not user:
+		user = frappe.session.user
+	if not _is_scoped(user):
+		return ""
 
-    return (
-        "(`tabStage Planning`.project IN ("
-        "SELECT `parent` FROM `tabProject Team` "
-        f"WHERE `user` = {frappe.db.escape(user)} AND `parenttype` = 'Project'"
-        "))"
-    )
+	return (
+		"(`tabStage Planning`.project IN ("
+		"SELECT `parent` FROM `tabProject Team` "
+		f"WHERE `user` = {frappe.db.escape(user)} AND `parenttype` = 'Project'"
+		"))"
+	)
 
 
 def has_stage_planning_permission(doc, ptype="read", user=None):
-    if not user:
-        user = frappe.session.user
-    if not _is_scoped(user):
-        return True
+	if not user:
+		user = frappe.session.user
+	if not _is_scoped(user):
+		return True
 
-    project = getattr(doc, "project", None)
-    if ptype == "create":
-        return (not project) or _is_project_member(user, project)
-    if not getattr(doc, "name", None):
-        return True
-    if project and not _is_project_member(user, project):
-        return False
+	project = getattr(doc, "project", None)
+	if ptype == "create":
+		return (not project) or _is_project_member(user, project)
+	if not getattr(doc, "name", None):
+		return True
+	if project and not _is_project_member(user, project):
+		return False
 
-    if ptype in ("write", "delete"):
-        roles = set(frappe.get_roles(user))
-        if roles & FULL_WRITE_ROLES:
-            return True
-        if roles & OWN_SCOPE_ROLES and doc.owner == user:
-            # Gate on the PERSISTED state, not the in-memory value. A workflow
-            # transition (e.g. Submit for Approval) sets workflow_state to the
-            # NEXT state before saving — checking the in-memory value would lock
-            # the own-creator out of submitting their own Draft stage. The current
-            # saved state is what determines whether they may still act on it.
-            current = frappe.db.get_value("Stage Planning", doc.name, "workflow_state")
-            return (current or doc.get("workflow_state")) in _EDITABLE_STATES
-        return False
+	if ptype in ("write", "delete"):
+		roles = set(frappe.get_roles(user))
+		if roles & FULL_WRITE_ROLES:
+			return True
+		if roles & OWN_SCOPE_ROLES and doc.owner == user:
+			# Gate on the PERSISTED state, not the in-memory value. A workflow
+			# transition (e.g. Submit for Approval) sets workflow_state to the
+			# NEXT state before saving — checking the in-memory value would lock
+			# the own-creator out of submitting their own Draft stage. The current
+			# saved state is what determines whether they may still act on it.
+			current = frappe.db.get_value("Stage Planning", doc.name, "workflow_state")
+			return (current or doc.get("workflow_state")) in _EDITABLE_STATES
+		return False
 
-    return True
+	return True
