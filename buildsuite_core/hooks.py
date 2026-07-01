@@ -164,6 +164,9 @@ doc_events = {
 	# 	"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	# },
+    "Purchase Receipt": {
+        "on_update":"buildsuite_core.utils.purchase_receipt.create_remarks"
+    },
 	"Project": {
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [
@@ -365,7 +368,12 @@ fixtures = [
 # include js in doctype views
 doctype_js = {
     "Project": "public/js/project.js",
-    "Task": "public/js/task.js"
+    "Task": "public/js/task.js",
+    "Stock Entry":"public/js/stock_entry.js",
+    "Material Request": "public/js/material_request.js",
+    "Purchase Order": "public/js/purchase_order.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js",
+    "Purchase Receipt": "public/js/purchase_receipt.js",
 }
 
 doctype_list_js = {
