@@ -272,28 +272,77 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
-  "Stock Entry":[
-         {
-            "fieldname": "custom_section_break_o8nvm",
-            "fieldtype": "Section Break",
-            "insert_after": "source_stock_entry",
-            "is_system_generated": 0,
-            "label": None,
-            "depends_on":"eval:doc.stock_entry_type&&doc.purpose!=\"Material Transfer\"",
-            "read_only": 0
-        },
-    ],
-    "Material Request":[
-        {
-            "fieldname": "project",
-            "fieldtype": "Link",
-            "insert_after": "naming_series",
-            "is_system_generated": 0,
-            "label": "Project",
-            "options":"Project",
-            "in_standard_filter":1,
-            "reqd":1,
-            "read_only": 0
-        }
-    ],
+	"Stock Entry": [
+		{
+			"fieldname": "custom_section_break_o8nvm",
+			"fieldtype": "Section Break",
+			"insert_after": "source_stock_entry",
+			"is_system_generated": 0,
+			"label": None,
+			"depends_on": 'eval:doc.stock_entry_type&&doc.purpose!="Material Transfer"',
+			"read_only": 0,
+		},
+	],
+	"Material Request": [
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"insert_after": "naming_series",
+			"is_system_generated": 0,
+			"label": "Project",
+			"options": "Project",
+			"in_standard_filter": 1,
+			"reqd": 1,
+			"read_only": 0,
+		}
+	],
+	"Item": [
+		{
+			"fieldname": "custom_rate_master",
+			"fieldtype": "Link",
+			"label": "Rate Master",
+			"options": "Construction Rate Master",
+			"insert_after": "image",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Purchase Order": [
+		{
+			"fieldname": "custom_rate_master_banner",
+			"fieldtype": "HTML",
+			"label": "Rate Master Preview",
+			"insert_after": "items_section",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Purchase Order Item": [
+		{
+			"fieldname": "custom_rate_master",
+			"fieldtype": "Link",
+			"label": "Rate Master",
+			"options": "Construction Rate Master",
+			"fetch_from": "item_code.custom_rate_master",
+			"insert_after": "item_group",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_rate_master_name",
+			"fieldtype": "Data",
+			"label": "RM Name",
+			"fetch_from": "custom_rate_master.rate_name",
+			"read_only": 1,
+			"insert_after": "custom_rate_master",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_rate_master_rate",
+			"fieldtype": "Currency",
+			"label": "RM Rate",
+			"fetch_from": "custom_rate_master.current_rate",
+			"read_only": 1,
+			"insert_after": "custom_rate_master_name",
+			"module": "BuildSuite Core",
+		},
+	],
 }
