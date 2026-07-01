@@ -6,6 +6,14 @@ const props = defineProps({
 	size: { type: String, default: "sm" },
 });
 
+// The BOQ status is stored as "Superseded" on the backend, but the prototype
+// renamed it to "Replaced" (reads less like document-control jargon). Alias it
+// at render time so the label matches the prototype without a backend change.
+const STATUS_ALIASES = {
+	Superseded: "Replaced",
+};
+const displayStatus = computed(() => STATUS_ALIASES[props.status] || props.status);
+
 const classes = computed(() => {
 	const map = {
 		Active: "bg-success-50 text-success-700",
@@ -26,6 +34,10 @@ const classes = computed(() => {
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
 		Cancelled: "bg-ink-100 text-ink-500",
+		// BOQ superseded revision — muted ink chip. Keyed on the stored value
+		// ("Superseded"); rendered as "Replaced" via STATUS_ALIASES above.
+		Superseded: "bg-ink-100 text-ink-500",
+		Replaced: "bg-ink-100 text-ink-500",
 		High: "bg-danger-50 text-danger-700",
 		Medium: "bg-warning-50 text-warning-700",
 		Low: "bg-info-50 text-info-700",
@@ -46,5 +58,5 @@ const classes = computed(() => {
 </script>
 
 <template>
-	<span :class="classes">{{ status }}</span>
+	<span :class="classes">{{ displayStatus }}</span>
 </template>
