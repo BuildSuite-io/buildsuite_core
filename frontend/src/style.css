@@ -169,10 +169,27 @@
   html.dark .bg-ink-50 { background-color: #1F1F1F; }
   html.dark .bg-ink-100 { background-color: #2E2E2E; }
   html.dark .bg-ink-200 { background-color: #333333; }
+  /* Gantt bars use bg-ink-300 (Yet To Start) + bg-ink-400 (Blocked) as status
+     colours; without dark overrides they kept the near-white light-mode greys and
+     washed out against the dark canvas. */
+  html.dark .bg-ink-300 { background-color: #404040; }
+  html.dark .bg-ink-400 { background-color: #525252; }
+  /* Opacity-variant overrides — Tailwind compiles `bg-ink-50/20` as its own class
+     (`.bg-ink-50\/20`), so the solid override above doesn't cascade. The Gantt
+     alt-row stripes (bg-ink-50/20) + group-header rows (bg-ink-50/60) and similar
+     translucent banding surfaces need explicit dark values, else they paint as
+     bright milky bands over the dark canvas. */
+  html.dark .bg-ink-50\/20 { background-color: rgba(255, 255, 255, 0.025); }
+  html.dark .bg-ink-50\/40 { background-color: rgba(31, 31, 31, 0.4); }
+  html.dark .bg-ink-50\/60 { background-color: rgba(31, 31, 31, 0.6); }
+  html.dark .bg-ink-50\/80 { background-color: rgba(31, 31, 31, 0.8); }
+  html.dark .bg-ink-100\/40 { background-color: rgba(46, 46, 46, 0.4); }
+  html.dark .bg-ink-100\/60 { background-color: rgba(46, 46, 46, 0.6); }
   html.dark .bg-ink-900\/40 { background-color: rgba(0, 0, 0, 0.7); }
   html.dark .bg-ink-900\/30 { background-color: rgba(0, 0, 0, 0.6); }
 
   /* Borders — subtle on cards, slightly stronger on dividers */
+  html.dark .border-ink-50  { border-color: #2A2A2A; }
   html.dark .border-ink-100 { border-color: #2E2E2E; }
   html.dark .border-ink-200 { border-color: #333333; }
   html.dark .border-ink-300 { border-color: #404040; }

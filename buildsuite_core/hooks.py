@@ -1,5 +1,5 @@
 app_name = "buildsuite_core"
-app_title = "Buildsuite Core"
+app_title = "BuildSuite Core"
 app_publisher = "Infraholic Innovations Pvt. Ltd"
 app_description = "A construction operating system built on Frappe"
 app_email = "app@buildsuite.io"
@@ -17,19 +17,19 @@ APP_ROUTE = "core"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-add_to_apps_screen = [
-	{
-		"name": "buildsuite_core",
-		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
-		"title": "Buildsuite Core",
-		"route": f"/{APP_ROUTE}",
-        "has_permission": "buildsuite_core.api.permission.has_app_permission",
-	}
-]
+# add_to_apps_screen = [
+# 	{
+# 		"name": "buildsuite_core",
+# 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
+# 		"title": "BuildSuite Core",
+# 		"route": f"/{APP_ROUTE}",
+#         "has_permission": "buildsuite_core.api.permission.has_app_permission",
+# 	}
+# ]
 
 website_route_rules = [
-    {"from_route": f"/{APP_ROUTE}/<path:app_path>", "to_route": APP_ROUTE},
-    {"from_route": f"/{APP_ROUTE}", "to_route": APP_ROUTE},
+	{"from_route": f"/{APP_ROUTE}/<path:app_path>", "to_route": APP_ROUTE},
+	{"from_route": f"/{APP_ROUTE}", "to_route": APP_ROUTE},
 ]
 
 # Includes in <head>
@@ -140,19 +140,19 @@ after_install = "buildsuite_core.install.after_install"
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
-    "Project": "buildsuite_core.permissions.project.get_project_permission_query",
-    "Task": "buildsuite_core.permissions.task.get_task_permission_query",
-    "Work Package": "buildsuite_core.permissions.work_package.get_work_package_permission_query",
-    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
-    "Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
+	"Project": "buildsuite_core.permissions.project.get_project_permission_query",
+	"Task": "buildsuite_core.permissions.task.get_task_permission_query",
+	"Work Package": "buildsuite_core.permissions.work_package.get_work_package_permission_query",
+	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
+	"Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
 }
 
 has_permission = {
-    "Project": "buildsuite_core.permissions.project.has_project_permission",
-    "Task": "buildsuite_core.permissions.task.has_task_permission",
-    "Work Package": "buildsuite_core.permissions.work_package.has_work_package_permission",
-    "Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
-    "Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
+	"Project": "buildsuite_core.permissions.project.has_project_permission",
+	"Task": "buildsuite_core.permissions.task.has_task_permission",
+	"Work Package": "buildsuite_core.permissions.work_package.has_work_package_permission",
+	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
+	"Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 }
 
 # Document Events
@@ -172,6 +172,7 @@ doc_events = {
 		"validate": [
 			"buildsuite_core.utils.project.sync_project_status",
 			"buildsuite_core.utils.project.enforce_company_rules",
+			"buildsuite_core.utils.date_bounds.validate_project_dates",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
@@ -179,25 +180,53 @@ doc_events = {
 		"after_insert": [
 			"buildsuite_core.utils.project.seed_from_template_on_insert",
 			"buildsuite_core.utils.project.create_warehouse_for_project",
+			"buildsuite_core.utils.project.ensure_project_team_membership",
 		],
+		# PRM-002 — keep team membership in sync when project_manager is
+		# (re)assigned; visibility is team-membership based.
+		"on_update": "buildsuite_core.utils.project.ensure_project_team_membership",
 		# cascade runs first (it blocks on accounting/stock links); warehouse
 		# cleanup follows only if the delete proceeds.
 		"on_trash": [
 			"buildsuite_core.utils.project.cascade_delete_project",
 			"buildsuite_core.utils.project.delete_warehouse_for_project",
-		]
+		],
 	},
 	"Task": {
 		"before_insert": "buildsuite_core.utils.task.update_task_status_insert",
-		"validate": ["buildsuite_core.api.schedule.validate_task_dependencies", "buildsuite_core.api.schedule.normalize_milestone_task", "buildsuite_core.utils.task.update_task_status"],
-		"on_update": ["buildsuite_core.utils.task.update_work_package_progress", "buildsuite_core.utils.task.update_project_progress", "buildsuite_core.utils.task.sync_stage_tasks_on_update"],
-		"on_trash": ["buildsuite_core.utils.task.recalculate_work_package_on_task_trash", "buildsuite_core.utils.task.update_project_progress", "buildsuite_core.utils.task.cascade_delete_task", "buildsuite_core.utils.task.sync_stage_tasks_on_delete"]
+		"validate": [
+			"buildsuite_core.api.schedule.validate_task_dependencies",
+			"buildsuite_core.api.schedule.normalize_milestone_task",
+			"buildsuite_core.utils.date_bounds.validate_task_dates",
+			"buildsuite_core.utils.task.update_task_status",
+			# Last: a task can't start while a Finish-to-Start predecessor is open.
+			"buildsuite_core.utils.task.enforce_predecessor_gate",
+		],
+		"on_update": [
+			"buildsuite_core.utils.task.update_work_package_progress",
+			"buildsuite_core.utils.task.update_project_progress",
+			"buildsuite_core.utils.task.sync_stage_tasks_on_update",
+			"buildsuite_core.utils.task.update_stage_aggregates_on_task",
+			# Re-flag downstream schedule conflicts when a task's dates/deps change.
+			"buildsuite_core.api.schedule_engine.recompute_conflicts_on_update",
+		],
+		"on_trash": [
+			"buildsuite_core.utils.task.recalculate_work_package_on_task_trash",
+			"buildsuite_core.utils.task.update_project_progress",
+			"buildsuite_core.utils.task.cascade_delete_task",
+			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
+		],
 	},
+	# Hierarchy date-boundary checks — a child's schedule must sit within its
+	# parent project (and end >= start on the record itself).
+	"Work Package": {"validate": "buildsuite_core.utils.date_bounds.validate_work_package_dates"},
+	"Stage Planning": {"validate": "buildsuite_core.utils.date_bounds.validate_stage_planning_dates"},
 	# Keep each user's BuildSuite role aligned with their persona. validate covers
 	# both create and edit; delete needs no handler (Has Role rows cascade).
-	"User": {
-		"validate": "buildsuite_core.utils.user.sync_persona_roles"
-	}
+	"User": {"validate": "buildsuite_core.utils.user.sync_persona_roles"},
+	# Guard the core scheduling Task Types (Activity/Milestone/Inspection) from
+	# deletion; admin-added types stay freely deletable.
+	"Task Type": {"on_trash": "buildsuite_core.utils.task_type.protect_core_task_types"},
 }
 # 	"*": {
 # 		"on_update": "method",
@@ -208,11 +237,7 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-scheduler_events = {
-    "daily": [
-        "buildsuite_core.utils.task.update_delayed_tasks"
-    ]
-}
+scheduler_events = {"daily": ["buildsuite_core.utils.task.update_delayed_tasks"]}
 
 # scheduler_events = {
 # 	"all": [
@@ -325,44 +350,22 @@ scheduler_events = {
 export_python_type_annotations = True
 
 fixtures = [
-    {
-        "doctype": "Custom HTML Block",
-        "filters": [
-            ["name", "in", ["Site Execution Workspace"]]
-        ]
-    },
-    # Custom Field and Property Setter are managed via after_migrate / before_migrate
-    # hooks in buildsuite_core.install — not as JSON fixtures.
-    {
-        "doctype": "Workflow State",
-        "filters": [
-            ["workflow_state_name", "in", [
-                "Draft",
-                "Pending Approval",
-                "Approved",
-                "Rejected",
-                "Cancelled"
-            ]]
-        ]
-    },
-    {
-        "doctype": "Workflow Action Master",
-        "filters": [
-            ["workflow_action_name", "in", [
-                "Submit for Approval",
-                "Approve",
-                "Reject",
-                "Revise",
-                "Cancel"
-            ]]
-        ]
-    },
-    {
-        "doctype": "Workflow",
-        "filters": [
-            ["workflow_name", "in", ["Stage Planning Approval"]]
-        ]
-    },
+	{"doctype": "Custom HTML Block", "filters": [["name", "in", ["Site Execution Workspace"]]]},
+	# Custom Field and Property Setter are managed via after_migrate / before_migrate
+	# hooks in buildsuite_core.install — not as JSON fixtures.
+	{
+		"doctype": "Workflow State",
+		"filters": [
+			["workflow_state_name", "in", ["Draft", "Pending Approval", "Approved", "Rejected", "Cancelled"]]
+		],
+	},
+	{
+		"doctype": "Workflow Action Master",
+		"filters": [
+			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel"]]
+		],
+	},
+	{"doctype": "Workflow", "filters": [["workflow_name", "in", ["Stage Planning Approval"]]]},
 ]
 
 # include js in doctype views
@@ -376,6 +379,4 @@ doctype_js = {
     "Purchase Receipt": "public/js/purchase_receipt.js",
 }
 
-doctype_list_js = {
-    "Task": "public/js/task_list.js"
-}
+doctype_list_js = {"Task": "public/js/task_list.js"}

@@ -65,3 +65,7 @@ buildsuite_core/public/frontend/**
 buildsuite_core.code-workspace
 frontend/auto-imports.d.ts
 frontend/components.d.ts
+
+# Locally-cloned semgrep rules (make semgrep)
+.frappe-semgrep-rules/
+buildsuite_core/public/node_modules

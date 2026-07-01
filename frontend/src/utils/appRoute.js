@@ -10,21 +10,24 @@
 // `bench change-app-route <new>` command rewrites this token AND the backend
 // (hooks constant, www file rename) in one shot.
 
-export const APP_ROUTE_NAME = 'core'
+export const APP_ROUTE_NAME = "core";
 
 // Leading-slash form, e.g. '/client' — used as the router base and route prefix.
-export const APP_ROUTE = `/${APP_ROUTE_NAME}`
+export const APP_ROUTE = `/${APP_ROUTE_NAME}`;
+
+// Brand suffix for the browser/document title (e.g. "Projects · BuildSuite Core").
+export const APP_TITLE = "BuildSuite Core";
 
 // The whitelisted dev-boot method lives in www/<route>.py, so its dotted path
 // tracks the route name (e.g. buildsuite_core.www.client.get_context_for_dev).
-export const DEV_BOOT_METHOD = `buildsuite_core.www.${APP_ROUTE_NAME}.get_context_for_dev`
+export const DEV_BOOT_METHOD = `buildsuite_core.www.${APP_ROUTE_NAME}.get_context_for_dev`;
 
 /**
  * Build a full path that INCLUDES the app base — for window.location, external
  * redirects, or absolute links. (RouterLink / router.push use bare paths; the
  * router prepends the base automatically, so you don't need this for them.)
  */
-export function appUrl(path = '') {
-  if (!path) return APP_ROUTE
-  return `${APP_ROUTE}${path.startsWith('/') ? path : `/${path}`}`
+export function appUrl(path = "") {
+	if (!path) return APP_ROUTE;
+	return `${APP_ROUTE}${path.startsWith("/") ? path : `/${path}`}`;
 }

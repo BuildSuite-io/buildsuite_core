@@ -8,26 +8,31 @@
 // §12.4 visual revision.
 
 defineProps({
-  label: { type: String, required: true },
-  value: { type: [String, Number], default: '' },
-})
-defineEmits(['remove'])
+	label: { type: String, required: true },
+	value: { type: [String, Number], default: "" },
+});
+defineEmits(["remove"]);
 </script>
 
 <template>
-  <span
-    class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 leading-4 bg-brand-50 text-brand-700"
-    style="border-radius: 9999px;"
-  >
-    <span class="truncate max-w-[12rem]">
-      {{ label }}<template v-if="value !== '' && value != null">: <strong class="font-semibold">{{ value }}</strong></template>
-    </span>
-    <button
-      type="button"
-      class="text-brand-700 hover:text-brand-800 leading-none"
-      style="font-size: 14px;"
-      aria-label="Remove filter"
-      @click="$emit('remove')"
-    >×</button>
-  </span>
+	<span
+		class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 leading-4 bg-brand-50 text-brand-700"
+		style="border-radius: 9999px"
+	>
+		<span class="truncate max-w-[12rem]">
+			{{ label
+			}}<template v-if="value !== '' && value != null"
+				>: <strong class="font-semibold">{{ value }}</strong></template
+			>
+		</span>
+		<button
+			type="button"
+			class="text-brand-700 hover:text-brand-800 leading-none"
+			style="font-size: 14px"
+			aria-label="Remove filter"
+			@click="$emit('remove')"
+		>
+			×
+		</button>
+	</span>
 </template>
