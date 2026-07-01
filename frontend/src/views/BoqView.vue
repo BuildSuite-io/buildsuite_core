@@ -34,7 +34,10 @@ const creating = ref(false);
 const projectsRes = useDocTypeList("Project", {
 	fields: ["name", "project_name", "custom_project_id", "parent_project"],
 	orderBy: "project_name asc",
-	pageLength: 0,
+	// Fetch all projects so every BOQ row resolves its project name + code (a
+	// `pageLength: 0` is treated as the default page of 20, which left rows
+	// falling back to the raw project id). Explicit high cap = "effectively all".
+	pageLength: 5000,
 	cache: "buildsuite-boq-projects",
 });
 const projectsMap = computed(() => {
@@ -44,11 +47,6 @@ const projectsMap = computed(() => {
 	}
 	return map;
 });
-const rootProjects = computed(() =>
-	(projectsRes.data || [])
-		.filter((p) => !p.parent_project)
-		.map((p) => ({ id: p.name, name: p.project_name || p.name }))
-);
 function projectName(id) {
 	return projectsMap.value[id]?.name || id;
 }
@@ -65,7 +63,9 @@ const boqRes = useDocTypeList("BOQ", {
 		"prepared_date",
 	],
 	orderBy: "creation desc",
-	pageLength: 0,
+	// Show every BOQ (client-side search/filter over the fetched rows); a
+	// `pageLength: 0` capped the list at 20. Explicit high cap = "effectively all".
+	pageLength: 5000,
 	cache: "buildsuite-boq-list",
 	transform: (data) =>
 		data.map((b) => {
@@ -126,6 +126,11 @@ const kpis = computed(() => {
 function variancePill(pct) {
 	if (Math.abs(pct) < 0.5) return "text-ink-500";
 	return pct > 0 ? "text-danger-700" : "text-success-700";
+}
+
+// Backend stores "Superseded"; the prototype renames it to "Replaced" for display.
+function statusLabel(s) {
+	return s === "Superseded" ? "Replaced" : s;
 }
 
 function openNew() {
@@ -238,12 +243,16 @@ const subtitle = computed(
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
-				<DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-48">
-					<option value="">Project: Any</option>
-					<option v-for="p in rootProjects" :key="p.id" :value="p.id">
-						{{ p.name }}
-					</option>
-				</DeskSelect>
+				<div v-if="!projectFilter" class="w-48">
+					<DeskLinkPicker
+						v-model="projectFilter"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						:search-fields="['project_name', 'custom_project_id', 'name']"
+						placeholder="Project: Any"
+					/>
+				</div>
 				<DeskFilterChip
 					v-else
 					label="Project"
@@ -256,12 +265,12 @@ const subtitle = computed(
 					<option>Draft</option>
 					<option>Submitted</option>
 					<option>Approved</option>
-					<option>Superseded</option>
+					<option value="Superseded">Replaced</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
 					label="Status"
-					:value="statusFilter"
+					:value="statusLabel(statusFilter)"
 					@remove="statusFilter = ''"
 				/>
 			</template>
