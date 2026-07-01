@@ -252,5 +252,30 @@ CUSTOM_FIELD = {
             "insert_after": "persona",
             "module": "BuildSuite Core"
         }
-    ]
+    ],
+    "Stock Entry":[
+         {
+            "fieldname": "custom_section_break_o8nvm",
+            "fieldtype": "Section Break",
+            "insert_after": "source_stock_entry",
+            "is_system_generated": 0,
+            "label": None,
+            "depends_on":"eval:doc.stock_entry_type&&doc.purpose!=\"Material Transfer\"",
+            "read_only": 0
+        },
+    ],
+    "Material Request":[
+        {
+            "fieldname": "project",
+            "fieldtype": "Link",
+            "insert_after": "naming_series",
+            "is_system_generated": 0,
+            "label": "Project",
+            "options":"Project",
+            "in_standard_filter":1,
+            "reqd":1,
+            "read_only": 0
+        }
+    ],
+    
 }
