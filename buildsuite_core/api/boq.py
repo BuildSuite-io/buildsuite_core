@@ -139,9 +139,11 @@ def recalculate_actuals(boq):
 # --- clone / revisions ----------------------------------------------------
 
 
-def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=None):
+def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=None, drop_wp=False):
 	"""Clone groups/items/sub-items from src_boq into dst_boq. `src_wp` limits the
-	source to items tagged to that Work Package; `wp_override` retags the copies."""
+	source to items tagged to that Work Package; `wp_override` retags the copies.
+	`drop_wp` clears the Work Package on the copies (used for a cross-project clone,
+	where the source project's Work Packages don't belong to the target project)."""
 	group_map = {}
 	for g in frappe.get_all(
 		"BOQ Group", filters={"boq": src_boq}, fields=["name", "code", "group_name", "idx_order"]
@@ -175,7 +177,7 @@ def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=N
 				"rate": it.rate,
 				"task": None if reset_actuals else it.task,
 				"quantity_source": it.quantity_source,
-				"work_package": wp_override or it.work_package,
+				"work_package": wp_override or (None if drop_wp else it.work_package),
 				"cost_head": it.cost_head,
 				"assembly": it.assembly,
 				"driving_qty": it.driving_qty,
@@ -194,7 +196,7 @@ def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=N
 					"qty_per_unit": si.qty_per_unit,
 					"rate": si.rate,
 					"qty": si.qty,
-					"work_package": wp_override or si.work_package,
+					"work_package": wp_override or (None if drop_wp else si.work_package),
 					"cost_head": si.cost_head,
 					"source_assembly": si.source_assembly,
 				}
@@ -273,7 +275,7 @@ def clone_boq(from_project, to_project, from_work_package=None, to_work_package=
 	).insert(ignore_permissions=True)
 	frappe.flags.boq_skip_rollup = True
 	try:
-		count = _clone_tree(src, new.name, wp_override=to_work_package)
+		count = _clone_tree(src, new.name, wp_override=to_work_package, drop_wp=True)
 	finally:
 		frappe.flags.boq_skip_rollup = False
 	recompute_boq(new.name)

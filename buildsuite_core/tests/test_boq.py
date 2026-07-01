@@ -63,6 +63,53 @@ class TestBOQ(BuildSuiteTestCase):
 		self.assertTrue(b.wp_summaries)
 		self.assertAlmostEqual(sum(r.total for r in b.wp_summaries), 2596, places=2)
 
+	# --- project-scope guard on Task / Work Package links ----------------
+	def _other_project(self):
+		# A second project with a distinct name (base `_make_project` reuses one
+		# hash per test, which would collide on the unique project_name).
+		h = frappe.generate_hash(length=6)
+		return frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"UAT {h}",
+				"custom_project_id": f"UAT-{h}",
+				"project_status": "Ongoing",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+
+	def _work_package(self, project, name="WP"):
+		return frappe.get_doc(
+			{
+				"doctype": "Work Package",
+				"project": project,
+				"work_package_name": name,
+				"code": f"{name}-{frappe.generate_hash(length=4)}",
+			}
+		).insert(ignore_permissions=True)
+
+	def test_item_rejects_cross_project_work_package(self):
+		# A BOQ Item may only tag a Work Package from the BOQ's own project.
+		pa = self._make_project(company=self.company)
+		pb = self._other_project()
+		b = self._boq(pa.name)
+		g = self._group(b.name)
+		with self.assertRaises(frappe.ValidationError):
+			self._item(b.name, g.name, 1, 1, work_package=self._work_package(pb.name).name)
+		# same-project Work Package is accepted
+		self._item(b.name, g.name, 1, 1, work_package=self._work_package(pa.name).name)
+
+	def test_item_rejects_cross_project_task(self):
+		# A BOQ Item may only link a Task from the BOQ's own project.
+		pa = self._make_project(company=self.company)
+		pb = self._other_project()
+		b = self._boq(pa.name)
+		g = self._group(b.name)
+		with self.assertRaises(frappe.ValidationError):
+			self._item(b.name, g.name, 1, 1, task=self._make_task(pb.name).name)
+		# same-project Task is accepted
+		self._item(b.name, g.name, 1, 1, task=self._make_task(pa.name).name)
+
 	def test_cascade_delete(self):
 		p = self._make_project(company=self.company)
 		b = self._boq(p.name)

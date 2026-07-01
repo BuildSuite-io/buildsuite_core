@@ -534,31 +534,34 @@ const itemForm = ref({
 	costHead: "",
 	assemblyId: null,
 });
-const availableTasks = computed(() => {
-	const pid = boq.value?.projectId;
-	return pid
-		? (tasksRes.data || []).map((t) => ({ id: t.name, name: t.subject || t.name }))
-		: [];
-});
-const tasksRes = useDocTypeList("Task", {
-	filters: [["project", "=", props.id ? undefined : ""]],
-	fields: ["name", "subject"],
-	pageLength: 0,
-	auto: false,
-});
-watch(
-	() => boq.value?.projectId,
-	(pid) => {
-		if (pid) {
-			tasksRes.filters = [["project", "=", pid]];
-			tasksRes.reload?.();
-		}
-	},
-	{ immediate: true }
-);
+// The BOQ's project — scopes the Work Package + Task pickers in the item modal
+// so you can only link records that belong to this BOQ's project.
+const boqProjectId = computed(() => boq.value?.projectId || "");
 const itemPlannedAmountPreview = computed(
 	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
 );
+// Assemblies for the "Source" picker — pick one to auto-fill unit / rate /
+// description (the save handler then auto-explodes the line into sub-items).
+const assembliesRes = useDocTypeList("Assembly", {
+	fields: ["name", "assembly_name", "uom", "rate_per_unit"],
+	pageLength: 5000,
+	cache: "buildsuite-boq-item-assemblies",
+});
+const assembliesMap = computed(() => {
+	const m = {};
+	for (const a of assembliesRes.data || [])
+		m[a.name] = { name: a.assembly_name || a.name, uom: a.uom || "", rate: a.rate_per_unit || 0 };
+	return m;
+});
+function onAssemblyPicked(id) {
+	itemForm.value.assemblyId = id || null;
+	if (!id) return;
+	const a = assembliesMap.value[id];
+	if (!a) return;
+	if (a.uom) itemForm.value.unit = a.uom;
+	itemForm.value.rate = a.rate;
+	if (!itemForm.value.description.trim()) itemForm.value.description = a.name;
+}
 function blankItemForm() {
 	return {
 		code: "",
@@ -606,19 +609,34 @@ async function saveItem() {
 		work_package: f.workPackageId || null,
 		cost_head: f.costHead || null,
 		assembly: f.assemblyId || null,
+		quantity_source: f.assemblyId ? "Assembly" : "Manual",
 	};
 	try {
 		if (itemModal.value.mode === "add") {
-			await adapter.create("BOQ Item", {
+			const created = await adapter.create("BOQ Item", {
 				boq: boq.value.id,
 				boq_group: itemModal.value.groupId,
 				...payload,
 			});
+			itemModal.value = null;
+			// An Assembly-sourced line auto-explodes so its snapshot sub-items
+			// appear in the tree immediately (mirrors the prototype's save flow).
+			if (f.assemblyId && created?.name) {
+				try {
+					await boqApi.explodeItem(created.name);
+				} catch (e) {
+					showToast(
+						parseFrappeError(e).summary ?? "Item saved, but explode failed",
+						"error"
+					);
+				}
+			}
+			reloadTree();
 		} else {
 			await adapter.update("BOQ Item", itemModal.value.id, payload);
+			itemModal.value = null;
+			reloadTree();
 		}
-		itemModal.value = null;
-		reloadTree();
 	} catch (err) {
 		showToast(parseFrappeError(err).summary ?? "Failed to save item", "error");
 	}
@@ -1529,6 +1547,20 @@ const breadcrumbs = computed(() => {
 						</button>
 					</div>
 					<div class="p-4 space-y-3">
+						<DeskField
+							label="Source — Assembly"
+							hint="Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line."
+						>
+							<DeskLinkPicker
+								v-model="itemForm.assemblyId"
+								doctype="Assembly"
+								label-field="assembly_name"
+								value-field="name"
+								:search-fields="['assembly_code', 'assembly_name', 'name']"
+								placeholder="— Manual line —"
+								@change="onAssemblyPicked"
+							/>
+						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
 							<DeskField label="Code" required hint="e.g. A.05, B.12">
 								<DeskInput v-model="itemForm.code" />
@@ -1557,7 +1589,10 @@ const breadcrumbs = computed(() => {
 							<DeskField label="Planned qty">
 								<DeskInput v-model="itemForm.plannedQty" type="number" />
 							</DeskField>
-							<DeskField label="Rate (₹)">
+							<DeskField
+								label="Rate (₹)"
+								:hint="itemForm.assemblyId ? 'Auto from Assembly' : ''"
+							>
 								<DeskInput v-model="itemForm.rate" type="number" />
 							</DeskField>
 							<DeskField label="Planned amount" hint="qty × rate (auto)">
@@ -1566,31 +1601,27 @@ const breadcrumbs = computed(() => {
 								</div>
 							</DeskField>
 						</div>
-						<DeskField
-							label="Link to task"
-							hint="Optional · drives live actuals from task progress"
-						>
-							<DeskSelect v-model="itemForm.taskId">
-								<option :value="null">— Not linked —</option>
-								<option v-for="t in availableTasks" :key="t.id" :value="t.id">
-									{{ t.id.slice(-4) }} · {{ t.name }}
-								</option>
-							</DeskSelect>
-						</DeskField>
-						<div class="grid grid-cols-3 gap-3">
-							<DeskField label="Work Package" hint="Optional · per-WP rollup">
+						<div class="grid grid-cols-2 gap-3">
+							<DeskField
+								label="Work Package (tag)"
+								hint="Optional. Drives per-WP roll-up in the BOQ summary."
+							>
 								<DeskLinkPicker
 									v-model="itemForm.workPackageId"
 									doctype="Work Package"
 									label-field="work_package_name"
 									value-field="name"
 									:search-fields="['work_package_name', 'code', 'name']"
-									placeholder="— None —"
+									:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
+									placeholder="— Unscoped —"
 								/>
 							</DeskField>
-							<DeskField label="Cost head">
+							<DeskField
+								label="Cost head"
+								hint="Material / Labour / Equipment / Subcontract / Preliminaries / Other"
+							>
 								<DeskSelect v-model="itemForm.costHead">
-									<option value="">— None —</option>
+									<option value="">—</option>
 									<option>Material</option>
 									<option>Labour</option>
 									<option>Equipment</option>
@@ -1599,17 +1630,21 @@ const breadcrumbs = computed(() => {
 									<option>Other</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField label="Assembly" hint="Then ‘Explode’ on the row">
-								<DeskLinkPicker
-									v-model="itemForm.assemblyId"
-									doctype="Assembly"
-									label-field="assembly_name"
-									value-field="name"
-									:search-fields="['assembly_code', 'assembly_name', 'name']"
-									placeholder="— None —"
-								/>
-							</DeskField>
 						</div>
+						<DeskField
+							label="Link to task"
+							hint="Optional · drives live actuals from task progress"
+						>
+							<DeskLinkPicker
+								v-model="itemForm.taskId"
+								doctype="Task"
+								label-field="subject"
+								value-field="name"
+								:search-fields="['subject', 'name']"
+								:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
+								placeholder="— Not linked —"
+							/>
+						</DeskField>
 					</div>
 					<div
 						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
