@@ -66,11 +66,14 @@ def seed_master_data():
 		if not frappe.db.exists("Task Type", tt):
 			frappe.get_doc({"doctype": "Task Type", "name": tt}).insert(ignore_permissions=True)
 
-	# Project Templates (Commercial / Residential / Infrastructure) — depend on the
-	# Project Types seeded above. Idempotent (Stage-Plan-Template-exists guard).
-	from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.seed_templates import seed_all
+	# Project Templates (Commercial / Residential / Infrastructure) — one ERPNext
+	# Project Template per Project Category, carrying default work packages, stages
+	# and tasks. Idempotent (skips a template that already exists).
+	from buildsuite_core.buildsuite_core.doctype.project_category.seed_project_templates import (
+		seed_project_templates,
+	)
 
-	seed_all()
+	seed_project_templates()
 
 
 def before_migrate():
