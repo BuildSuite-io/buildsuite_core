@@ -19,7 +19,7 @@ export function createLocalDataAdapter(store) {
 				expected_start_date: p.startDate || null,
 				expected_end_date: p.endDate || null,
 				customer: p.client || "",
-				project_type: p.type || "",
+				project_category: p.type || "",
 				estimated_costing: p.budget || 0,
 				owner: p.pm || "",
 				is_group: p.parentId ? 0 : 1,
@@ -279,7 +279,7 @@ export function createLocalDataAdapter(store) {
 				startDate: values.expected_start_date,
 				endDate: values.expected_end_date,
 				client: values.customer,
-				type: values.project_type,
+				type: values.project_category,
 				budget: values.estimated_costing,
 				pm: values.owner,
 				seedDefaultStages: values.seedDefaultStages,
@@ -366,7 +366,7 @@ export function createLocalDataAdapter(store) {
 				patch.startDate = values.expected_start_date;
 			if (values.expected_end_date !== undefined) patch.endDate = values.expected_end_date;
 			if (values.customer !== undefined) patch.client = values.customer;
-			if (values.project_type !== undefined) patch.type = values.project_type;
+			if (values.project_category !== undefined) patch.type = values.project_category;
 			if (values.estimated_costing !== undefined) patch.budget = values.estimated_costing;
 			if (values.owner !== undefined) patch.pm = values.owner;
 
@@ -472,7 +472,7 @@ export function createLocalDataAdapter(store) {
 						name: p.project_name || p.name,
 						client: p.customer || "",
 						status: p.status || "",
-						type: p.project_type || "",
+						type: p.project_category || "",
 						company: p.company || "",
 						startDate: p.expected_start_date || null,
 						endDate: p.expected_end_date || null,
