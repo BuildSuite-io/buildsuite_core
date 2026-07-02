@@ -46,6 +46,12 @@ def drop_legacy_task_type_field():
 
 
 def seed_master_data():
+	# Project Categories (our construction categories) — the New Project form and
+	# project templates key off these; the native Project Type stays Internal/External.
+	from buildsuite_core.buildsuite_core.doctype.project_category.seed_categories import seed_categories
+
+	seed_categories()
+
 	project_types = [
 		"Commercial",
 		"Residential",
