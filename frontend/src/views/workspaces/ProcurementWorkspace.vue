@@ -13,7 +13,11 @@ const shortcuts = [
 	{ label: "Material Requests", icon: "clipboard-list", href: "/app/material-request" },
 	{ label: "Purchase Orders", icon: "file-text", href: "/app/purchase-order" },
 	{ label: "Purchase Receipts", icon: "check-circle", href: "/app/purchase-receipt" },
-	{ label: "Material Consumption", icon: "stock", prevent: true },
+	{
+		label: "Material Consumption",
+		icon: "stock",
+		href: "/app/stock-entry?stock_entry_type=Material Consumption for Manufacture",
+	},
 	{ label: "Suppliers", icon: "building-2", href: "/app/supplier" },
 	{ label: "Items & Rates", icon: "tag", to: "/rate-master" },
 ];
