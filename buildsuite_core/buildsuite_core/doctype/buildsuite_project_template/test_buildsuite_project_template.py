@@ -18,30 +18,14 @@ class IntegrationTestBuildSuiteProjectTemplate(IntegrationTestCase):
 
 
 class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
-	"""PTT-005 — seeding stages onto an existing project from its Project Type
-	template, with template tasks at 100% planned qty."""
+	"""Seeding a project from its Project Category's ERPNext Project Template —
+	work packages, stages and tasks, per the opt-in seed flags."""
 
-	def test_seed_stages_from_template(self):
-		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
-			self.skipTest("No Commercial template seeded on this site")
-		from buildsuite_core.utils.project import seed_stages_from_template
+	def _has_template(self):
+		return frappe.db.exists("Project Template", {"project_category": "Commercial"})
 
-		p = self._make_project()
-		frappe.db.set_value("Project", p.name, "project_type", "Commercial")
-		res = seed_stages_from_template(p.name)
-		self.assertGreater(res["seeded"], 0)
-
-		stages = frappe.get_all("Stage Planning", filters={"project": p.name}, pluck="name")
-		self.assertTrue(stages)
-		for s in stages:
-			for r in frappe.get_doc("Stage Planning", s).stage_planning_tasks:
-				self.assertEqual(r.planned_qty, 100)
-
-	# --- the three seed-on-create modes (PTT-001) --------------------------
-	def _seeded_project(self, stages, tasks):
-		"""Create a Commercial project with the given seed flags so the
-		after_insert template hook fires. Skips when no template is seeded."""
-		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
+	def _seeded_project(self, wps=False, stages=False, tasks=False):
+		if not self._has_template():
 			self.skipTest("No Commercial template seeded on this site")
 		return frappe.get_doc(
 			{
@@ -49,33 +33,44 @@ class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
 				"project_name": f"SEED {self._n}",
 				"custom_project_id": f"SEED-{self._n}",
 				"company": self.company,
-				"project_type": "Commercial",
+				"project_category": "Commercial",
+				"custom_seed_default_work_packages": 1 if wps else 0,
 				"custom_seed_default_stages": 1 if stages else 0,
 				"custom_seed_default_tasks": 1 if tasks else 0,
 			}
 		).insert(ignore_permissions=True)
 
-	def test_seed_mode_stages_and_tasks(self):
-		# Both on → stages created WITH nested tasks, plus project-level tasks.
-		p = self._seeded_project(stages=True, tasks=True)
-		stages = frappe.get_all("Stage Planning", {"project": p.name}, pluck="name")
-		self.assertTrue(stages)
+	def test_seed_stages_from_template(self):
+		# Re-seed stages onto an EXISTING project from its category template.
+		if not self._has_template():
+			self.skipTest("No Commercial template seeded on this site")
+		from buildsuite_core.utils.project import seed_stages_from_template
+
+		p = self._make_project()
+		frappe.db.set_value("Project", p.name, "project_category", "Commercial")
+		res = seed_stages_from_template(p.name)
+		self.assertGreater(res["seeded"], 0)
+		self.assertTrue(frappe.get_all("Stage Planning", filters={"project": p.name}))
+
+	# --- the seed-on-create modes ---------------------------------------
+	def test_seed_mode_work_packages_and_tasks(self):
+		# WPs + tasks on → tasks created and linked to the seeded work packages.
+		p = self._seeded_project(wps=True, tasks=True)
+		self.assertTrue(frappe.db.count("Work Package", {"project": p.name}))
 		self.assertTrue(frappe.db.count("Task", {"project": p.name}))
-		nested = any(frappe.get_doc("Stage Planning", s).stage_planning_tasks for s in stages)
-		self.assertTrue(nested, "stages should carry nested tasks in this mode")
+		self.assertTrue(
+			frappe.db.count("Task", {"project": p.name, "work_package": ("is", "set")})
+		)
 
 	def test_seed_mode_stages_only(self):
-		# Stages on, tasks off → empty stages, NO tasks created.
-		p = self._seeded_project(stages=True, tasks=False)
-		stages = frappe.get_all("Stage Planning", {"project": p.name}, pluck="name")
-		self.assertTrue(stages)
+		# Stages on, tasks/WPs off → stages created; no tasks, no work packages.
+		p = self._seeded_project(stages=True)
+		self.assertTrue(frappe.db.count("Stage Planning", {"project": p.name}))
 		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)
-		for s in stages:
-			self.assertEqual(len(frappe.get_doc("Stage Planning", s).stage_planning_tasks), 0)
+		self.assertEqual(frappe.db.count("Work Package", {"project": p.name}), 0)
 
 	def test_seed_mode_tasks_only(self):
-		# Tasks on, stages off → no stages; every template task (project-level and
-		# the ones nested in stage plans) lands as a plain project task.
-		p = self._seeded_project(stages=False, tasks=True)
+		# Tasks on, stages/WPs off → tasks created; no stages.
+		p = self._seeded_project(tasks=True)
 		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
 		self.assertTrue(frappe.db.count("Task", {"project": p.name}))
