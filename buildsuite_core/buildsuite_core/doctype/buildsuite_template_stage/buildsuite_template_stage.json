@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-02 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "stage_name",
+  "offset_start_days",
+  "offset_end_days",
+  "planned_task_count",
+  "planned_completion_pct",
+  "description"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "stage_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Stage Name",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "offset_start_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Start (day)"
+  },
+  {
+   "columns": 1,
+   "fieldname": "offset_end_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "End (day)"
+  },
+  {
+   "columns": 1,
+   "fieldname": "planned_task_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Planned Tasks"
+  },
+  {
+   "columns": 2,
+   "default": "100",
+   "fieldname": "planned_completion_pct",
+   "fieldtype": "Percent",
+   "label": "Planned Completion %"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Template Stage",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
