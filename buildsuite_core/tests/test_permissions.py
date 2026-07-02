@@ -210,3 +210,83 @@ class TestPermissions(BuildSuiteTestCase):
 			self.assertTrue(doc.has_permission("read"))
 		finally:
 			frappe.set_user("Administrator")
+
+	# --- M2 access control (Estimation / Rate Master / Purchase & Stock) -----
+	def _as(self, persona, prefix):
+		user = self._make_persona_user(persona, prefix)
+		frappe.set_user(user)
+		return user
+
+	def test_estimator_full_estimation_crud(self):
+		# PERM-001 — Estimator has full CRUD across the estimation DocTypes.
+		self._as("Estimator", "est")
+		try:
+			for dt in ("BOQ", "Assembly", "Estimate Template", "Construction Rate Master"):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "write"), dt)
+				self.assertTrue(frappe.has_permission(dt, "delete"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_procurement_rate_master_read_only(self):
+		# PERM-004 / PERM-006 — Procurement Officer reads Rate Master but cannot write
+		# it from the form; PERM-003 — Estimation (BOQ) is hidden.
+		self._as("Procurement Officer", "proc")
+		try:
+			self.assertTrue(frappe.has_permission("Construction Rate Master", "read"))
+			self.assertFalse(frappe.has_permission("Construction Rate Master", "write"))
+			self.assertFalse(frappe.has_permission("BOQ", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_procurement_full_buying(self):
+		# PERM-007 — Procurement Officer: create + submit on the buying transactions.
+		self._as("Procurement Officer", "proc")
+		try:
+			for dt in ("Material Request", "Purchase Order", "Purchase Receipt"):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "submit"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_site_engineer_mr_raise_only(self):
+		# PERM-008 — Site Engineer can create a Material Request but not delete it,
+		# and has no estimation access.
+		self._as("Site Engineer", "se")
+		try:
+			self.assertTrue(frappe.has_permission("Material Request", "create"))
+			self.assertFalse(frappe.has_permission("Material Request", "delete"))
+			self.assertFalse(frappe.has_permission("Assembly", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_hr_no_procurement_or_estimation(self):
+		# PERM-015 — HR Manager sees neither procurement nor estimation DocTypes.
+		self._as("HR Manager", "hrm")
+		try:
+			self.assertFalse(frappe.has_permission("Construction Rate Master", "read"))
+			self.assertFalse(frappe.has_permission("Material Request", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_rate_update_guard_rejects_non_governance(self):
+		# PERM-013 — the PO-submit rate-update endpoint rejects a non-governance role
+		# and accepts the empowered Procurement Officer.
+		from buildsuite_core.api import rate_master as rm
+
+		self._as("Foreman / Supervisor", "fm")
+		try:
+			self.assertRaises(
+				frappe.PermissionError,
+				rm.update_rates_from_po,
+				purchase_order="PO-TEST",
+				updates=[],
+			)
+		finally:
+			frappe.set_user("Administrator")
+
+		self._as("Procurement Officer", "proc")
+		try:
+			self.assertEqual(rm.update_rates_from_po(purchase_order="PO-TEST", updates=[]), [])
+		finally:
+			frappe.set_user("Administrator")
