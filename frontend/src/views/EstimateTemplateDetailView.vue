@@ -281,7 +281,7 @@ function sourceToFields(source) {
 function startAddRow(groupKey = '') {
   Object.assign(newRow, {
     source: '',
-    group_name: groupKey === '__ungrouped__' ? '' : (groupKey || ''),
+    group_name: '',
     placeholder_qty: 1,
     cost_head: '',
     description: '',
