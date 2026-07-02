@@ -84,6 +84,7 @@ class TaskProgressEntry(Document):
 	def validate(self):
 		# A task can't log progress while a Finish-to-Start predecessor is still open.
 		self._block_if_predecessor_incomplete()
+		self._reject_if_task_completed()
 
 		# Blocker flag requires a note. Server-side so the rule holds on both the
 		# File-Progress-Entry dialog and the TPE edit screen (the dialog enforces it
@@ -104,6 +105,20 @@ class TaskProgressEntry(Document):
 					"You can't log progress on this task yet — its Finish-to-Start "
 					'predecessor "{0}" isn\'t Completed.'
 				).format(pred)
+			)
+
+	def _reject_if_task_completed(self):
+		# A completed task takes no further progress entries. Guards NEW entries only
+		# (editing the entry that completed the task must still be allowed). Enforced
+		# in the controller so it holds from the form, the TPE list, and the API alike.
+		if not self.is_new():
+			return
+		task = frappe.db.get_value("Task", self.task, ["task_status", "progress"], as_dict=True)
+		if task and (task.task_status == "Completed" or flt(task.progress) >= 100):
+			frappe.throw(
+				_("Task {0} is already Completed — no further progress entries can be added.").format(
+					self.task
+				)
 			)
 
 	# Fields a user can change on a progress entry; if none differ from the stored
