@@ -795,7 +795,11 @@ usePageTitle(() => task.value?.name);
 							<h3 class="text-sm font-semibold text-ink-900">Progress</h3>
 						</div>
 						<button
-							v-if="canCreate('taskProgressEntry')"
+							v-if="
+								canCreate('taskProgressEntry') &&
+								task.progress < 100 &&
+								task.status !== 'Completed'
+							"
 							type="button"
 							data-test="file-progress-entry"
 							class="desk-save-btn text-xs"

@@ -385,11 +385,22 @@ def create_warehouse_for_project(doc: Document, method: str | None = None):
 
 @frappe.whitelist()
 def delete_warehouse_for_project(doc: Document, method: str | None = None):
-	project_warehouse = f"{doc.project_name} Store"
-
-	warehouse_name = frappe.db.get_value(
-		"Warehouse", {"warehouse_name": project_warehouse, "company": doc.company}, "name"
+	"""Remove the per-project warehouses created in create_warehouse_for_project so a
+	project delete leaves no orphans: the "<project> Store" leaf first, then its
+	"<project>" group parent once empty. The shared company-level "Projects" group is
+	left intact — other projects hang off it."""
+	store = frappe.db.get_value(
+		"Warehouse", {"warehouse_name": f"{doc.project_name} Store", "company": doc.company}, "name"
 	)
+	if store:
+		frappe.delete_doc("Warehouse", store, ignore_permissions=True, force=True)
 
-	if warehouse_name:
-		frappe.delete_doc("Warehouse", warehouse_name, ignore_permissions=True)
+	# The per-project group warehouse (parent of the Store) was previously left
+	# orphaned. Remove it too, but only once it has no remaining child warehouses.
+	group = frappe.db.get_value(
+		"Warehouse",
+		{"warehouse_name": doc.project_name, "company": doc.company, "is_group": 1},
+		"name",
+	)
+	if group and not frappe.db.count("Warehouse", {"parent_warehouse": group}):
+		frappe.delete_doc("Warehouse", group, ignore_permissions=True, force=True)
