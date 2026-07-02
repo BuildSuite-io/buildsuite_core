@@ -10,7 +10,7 @@
   "template_code",
   "template_name",
   "description",
-  "project_type",
+  "project_category",
   "enabled",
   "row_count",
   "estimated_total",
@@ -37,10 +37,10 @@
    "label": "Description"
   },
   {
-   "fieldname": "project_type",
+   "fieldname": "project_category",
    "fieldtype": "Link",
-   "label": "Project Type",
-   "options": "Project Type"
+   "label": "Project Category",
+   "options": "Project Category"
   },
   {
    "default": "1",
