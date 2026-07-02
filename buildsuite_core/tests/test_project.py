@@ -169,6 +169,24 @@ class TestProject(BuildSuiteTestCase):
 		self.assertFalse(frappe.db.exists("Work Package", wp.name))
 		self.assertFalse(frappe.db.exists("Stage Planning", stage.name))
 
+	def test_delete_removes_project_warehouses(self):
+		# The delete cascade must not leave orphan warehouses: both the "<project>
+		# Store" leaf and its "<project>" group parent are removed; the shared
+		# company-level "Projects" group survives.
+		p = self._make_project(company=self.company)
+		store = {"warehouse_name": f"{p.project_name} Store", "company": self.company}
+		group = {"warehouse_name": p.project_name, "company": self.company, "is_group": 1}
+		self.assertTrue(frappe.db.exists("Warehouse", store))
+		self.assertTrue(frappe.db.exists("Warehouse", group))
+
+		frappe.delete_doc("Project", p.name, ignore_permissions=True)
+
+		self.assertFalse(frappe.db.exists("Warehouse", store))
+		self.assertFalse(frappe.db.exists("Warehouse", group))
+		self.assertTrue(
+			frappe.db.exists("Warehouse", {"warehouse_name": "Projects", "company": self.company})
+		)
+
 	# --- team membership (custom_team_members) --------------------------
 	def test_project_team_add_and_remove(self):
 		from buildsuite_core.api.project_team import (

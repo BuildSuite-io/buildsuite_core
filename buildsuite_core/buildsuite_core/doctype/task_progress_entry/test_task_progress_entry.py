@@ -85,6 +85,19 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		self.assertEqual(t.progress, 100)
 		self.assertEqual(t.task_status, "Completed")
 
+	def test_completed_task_rejects_new_entry(self):
+		# A completed task takes no further progress entries — enforced in the
+		# controller so it holds from the form, the TPE list, and the API alike.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self._file_tpe(t.name, 100)
+		t.reload()
+		self.assertEqual(t.task_status, "Completed")
+		before = frappe.db.count("Task Progress Entry", {"task": t.name})
+		with self.assertRaises(frappe.ValidationError):
+			self._file_tpe(t.name, 100)
+		self.assertEqual(frappe.db.count("Task Progress Entry", {"task": t.name}), before)
+
 	def test_delete_latest_tpe_reverts_to_previous(self):
 		# TPE-009
 		p = self._make_project(company=self.company)
