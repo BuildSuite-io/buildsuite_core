@@ -1,26 +1,15 @@
-# Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and Contributors
-# See license.txt
+# Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
+# For license information, please see license.txt
+
+"""Seeding a project from its Project Category's ERPNext Project Template —
+work packages, stages and tasks, per the opt-in seed flags."""
 
 import frappe
-from frappe.tests import IntegrationTestCase
 
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
-# On IntegrationTestCase, the doctype test records and all
-# link-field test record dependencies are recursively loaded
-# Use these module variables to add/remove to/from that list
-EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
-IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
-
-class IntegrationTestBuildSuiteProjectTemplate(IntegrationTestCase):
-	pass
-
-
-class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
-	"""Seeding a project from its Project Category's ERPNext Project Template —
-	work packages, stages and tasks, per the opt-in seed flags."""
-
+class TestProjectTemplates(BuildSuiteTestCase):
 	def _has_template(self):
 		return frappe.db.exists("Project Template", {"project_category": "Commercial"})
 
@@ -52,7 +41,6 @@ class TestBuildSuiteProjectTemplate(BuildSuiteTestCase):
 		self.assertGreater(res["seeded"], 0)
 		self.assertTrue(frappe.get_all("Stage Planning", filters={"project": p.name}))
 
-	# --- the seed-on-create modes ---------------------------------------
 	def test_seed_mode_work_packages_and_tasks(self):
 		# WPs + tasks on → tasks created and linked to the seeded work packages.
 		p = self._seeded_project(wps=True, tasks=True)
