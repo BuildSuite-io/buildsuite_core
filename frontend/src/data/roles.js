@@ -122,11 +122,8 @@ export const ROLES = [
 //    null          — —   hidden
 // =====================================================================
 export const WORKSPACE_VISIBILITY = {
-	// Session 33 — Scope Change merged into Site Execution. Estimator + Accountant
-	// gain read access here so they can still reach SCOs (which moved under this
-	// workspace from the dropped Scope Change workspace). Previously they had no
-	// Site Execution access; the SCO-visibility gap was the explicit reason for
-	// this matrix revision.
+	// M2 (Roles & Permissions spec) — Estimator + QS read here (Schedule/Gantt lives
+	// under Site Execution); Foreman create-own; Accountant is now hidden.
 	"site-execution": {
 		director: "full",
 		pm: "full",
@@ -136,14 +133,15 @@ export const WORKSPACE_VISIBILITY = {
 		foreman: "create-own",
 		procurement: null,
 		"store-keeper": null,
-		accountant: "read",
+		accountant: null,
 		"hr-manager": null,
 		admin: "full",
 		bsa: "full",
 	},
+	// M2 — PM now full on Estimation. Procurement Officer hidden (the ruling).
 	estimation: {
 		director: "full",
-		pm: "read",
+		pm: "full",
 		estimator: "full",
 		qs: "full",
 		"site-engineer": null,
@@ -155,13 +153,14 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
+	// M2 — Foreman can raise MRs (like Site Engineer). PM approve-only.
 	procurement: {
 		director: "full",
 		pm: "approve",
 		estimator: null,
 		qs: null,
 		"site-engineer": "mr-only",
-		foreman: null,
+		foreman: "mr-only",
 		procurement: "full",
 		"store-keeper": "full",
 		accountant: "read",
@@ -228,8 +227,9 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
+	// M2 — Director/PM read-only on the inherited ERPNext Buying surface.
 	buying: {
-		director: "full",
+		director: "read",
 		pm: "read",
 		estimator: null,
 		qs: null,
@@ -242,14 +242,16 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
+	// M2 — Procurement now full on Stock; Director read-only; Estimator read;
+	// Site Engineer hidden here (posts issues via Desk, not this workspace).
 	stock: {
-		director: "full",
+		director: "read",
 		pm: "read",
-		estimator: null,
+		estimator: "read",
 		qs: null,
-		"site-engineer": "read",
+		"site-engineer": null,
 		foreman: null,
-		procurement: "read",
+		procurement: "full",
 		"store-keeper": "full",
 		accountant: "read",
 		"hr-manager": null,
