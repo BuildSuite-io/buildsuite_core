@@ -3,6 +3,7 @@ import { reactive, ref, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
@@ -25,6 +26,7 @@ const adapter = createDataAdapter(store);
 const cameFromTaskId = route.query.taskId || null;
 
 const form = reactive({
+	projectId: "",
 	taskId: cameFromTaskId || "",
 	entryDate: new Date().toISOString().slice(0, 10),
 	progressPct: 0,
@@ -43,6 +45,40 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 });
 const saving = ref(false);
 
+// Project → its whole sub-tree (self + every nested sub-project). The Task picker
+// below is scoped with a `project in [...]` filter, so you can only pick a task
+// that belongs to the chosen project or one of its sub-projects.
+const allProjectsRes = useDocTypeList("Project", {
+	fields: ["name", "parent_project"],
+	pageLength: 5000,
+	cache: "buildsuite-tpe-project-tree",
+});
+const projectScope = computed(() => {
+	const pid = form.projectId;
+	if (!pid) return [];
+	const byParent = {};
+	for (const p of allProjectsRes.data || []) {
+		const parent = p.parent_project;
+		if (!byParent[parent]) byParent[parent] = [];
+		byParent[parent].push(p.name);
+	}
+	const out = [];
+	const stack = [pid];
+	while (stack.length) {
+		const cur = stack.pop();
+		out.push(cur);
+		for (const c of byParent[cur] || []) stack.push(c);
+	}
+	return out;
+});
+const taskFilters = computed(() =>
+	projectScope.value.length ? [["project", "in", projectScope.value]] : []
+);
+function onProjectChange() {
+	// A task from the previously-selected project no longer applies.
+	form.taskId = "";
+}
+
 // Load the selected task to show the info banner and pre-fill progress.
 const taskResource = ref(null);
 
@@ -53,13 +89,14 @@ function loadTaskResource(taskId) {
 	}
 	taskResource.value = adapter.read("Task", taskId, {
 		nameField: "name",
-		fields: ["name", "subject", "status", "progress"],
+		fields: ["name", "subject", "status", "progress", "project"],
 		transform(rows) {
 			return rows.map((row) => ({
 				id: row?.name || "",
 				name: row?.subject || row?.name || "",
 				status: row?.status || "",
 				progress: Number(row?.progress) || 0,
+				project: row?.project || "",
 			}));
 		},
 	});
@@ -89,8 +126,18 @@ const selectedTask = computed(() => {
 		name: row.subject || row.name || "",
 		status: row.status || "",
 		progress: Number(row.progress) || 0,
+		project: row.project || "",
 	};
 });
+
+// When arriving from a task (route ?taskId=), back-fill the Project picker from
+// that task so the picker + the task scope stay consistent.
+watch(
+	() => selectedTask.value?.project,
+	(proj) => {
+		if (proj && !form.projectId) form.projectId = proj;
+	}
+);
 
 // The task's current cumulative progress is the monotonic floor — a new entry
 // can never go below it.
@@ -144,7 +191,10 @@ function clampProgress() {
 
 function validate() {
 	const e = {};
+	if (!form.projectId) e.projectId = "Project is required";
 	if (!form.taskId) e.taskId = "Task is required";
+	else if (selectedTask.value && Number(selectedTask.value.progress) >= 100)
+		e.taskId = "This task is already Completed — no further progress entries can be added.";
 	const pct = Number(form.progressPct);
 	if (Number.isNaN(pct) || pct > 100) {
 		e.progressPct = "Progress must be between 0 and 100";
@@ -223,7 +273,19 @@ const breadcrumbs = [
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Task &amp; date" :cols="2">
+				<DeskSection title="Project, task &amp; date" :cols="2">
+					<DeskField label="Project" required :error="errors.projectId">
+						<DeskLinkPicker
+							v-model="form.projectId"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							:search-fields="['project_name', 'custom_project_id', 'name']"
+							:page-length="20"
+							placeholder="— Select project —"
+							@change="onProjectChange"
+						/>
+					</DeskField>
 					<DeskField label="Task" required :error="errors.taskId">
 						<DeskLinkPicker
 							v-model="form.taskId"
@@ -231,8 +293,10 @@ const breadcrumbs = [
 							label-field="subject"
 							value-field="name"
 							:search-fields="['subject', 'name']"
+							:filters="taskFilters"
+							:disabled="!form.projectId"
 							:page-length="20"
-							placeholder="— Select task —"
+							:placeholder="form.projectId ? '— Select task —' : '— Select a project first —'"
 						/>
 					</DeskField>
 					<DeskField label="Entry date">
