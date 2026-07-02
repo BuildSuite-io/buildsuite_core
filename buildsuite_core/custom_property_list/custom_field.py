@@ -155,6 +155,25 @@ CUSTOM_FIELD = {
 			"insert_after": "custom_seed_default_stages",
 			"module": "BuildSuite Core",
 		},
+		{
+			"fieldname": "custom_seed_default_work_packages",
+			"fieldtype": "Check",
+			"label": "Seed Default Work Packages",
+			"default": "0",
+			"hidden": 1,
+			"insert_after": "custom_seed_default_tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"label": "Project Category",
+			"options": "Project Category",
+			"insert_after": "project_type",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
 	],
 	"Task": [
 		{

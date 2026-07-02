@@ -52,16 +52,10 @@ def seed_master_data():
 
 	seed_categories()
 
-	project_types = [
-		"Commercial",
-		"Residential",
-		"Infrastructure",
-		"Industrial",
-		"Renovation",
-		"Interior",
-		"Other",
-	]
-	for pt in project_types:
+	# Project Type stays native ERPNext (Internal / External) — construction
+	# categories now live in Project Category above. ERPNext ships "External"; we
+	# add "Internal". (The legacy category Project Types are pruned by a patch.)
+	for pt in ("Internal", "External"):
 		if not frappe.db.exists("Project Type", pt):
 			frappe.get_doc({"doctype": "Project Type", "project_type": pt}).insert(ignore_permissions=True)
 
