@@ -76,17 +76,36 @@ const boq = computed(() => {
 
 usePageTitle(() => boq.value?.id);
 
-const projectsRes = useDocTypeList("Project", {
-	fields: ["name", "project_name", "custom_project_id"],
-	pageLength: 0,
-	cache: "buildsuite-boq-projects",
-});
-const project = computed(() => {
-	const pid = boq.value?.projectId;
-	if (!pid) return null;
-	const p = (projectsRes.data || []).find((x) => x.name === pid);
-	return p ? { id: p.name, name: p.project_name || p.name } : { id: pid, name: pid };
-});
+// Resolve just this BOQ's project (its name feeds the breadcrumb) with a single
+// document read — not a scan over a capped project list, which left the raw
+// project id (e.g. "PROJ-0260") in the breadcrumb. Mirrors TaskDetailView.
+const projectResource = ref(null);
+function loadProjectResource(projectId) {
+	if (!projectId) {
+		projectResource.value = null;
+		return;
+	}
+	projectResource.value = adapter.read("Project", projectId, {
+		fields: ["name", "project_name"],
+		transform(rows) {
+			return rows.map((row) => ({
+				id: row?.name || "",
+				name: row?.project_name || row?.name || "",
+			}));
+		},
+	});
+}
+watch(() => boq.value?.projectId, loadProjectResource, { immediate: true });
+const project = computed(() => firstResourceRow(projectResource.value));
+
+function firstResourceRow(resource) {
+	if (resource?.doc) return resource.doc;
+	const raw = resource?.data;
+	if (Array.isArray(raw)) return raw[0] || null;
+	if (Array.isArray(raw?.value)) return raw.value[0] || null;
+	if (raw && typeof raw === "object" && "value" in raw) return raw.value || null;
+	return raw || null;
+}
 
 // Sibling revisions (for baseBoq label) + base-revision items (for compare mode).
 const projectBoqsRes = useDocTypeList("BOQ", {
@@ -763,6 +782,12 @@ function primaryAction() {
 	else if (canApprove.value) approve();
 }
 
+// The BOQ id + revision live in the subtitle (as in the prototype), so the
+// breadcrumb trail ends at the project — not a raw BOQ-id crumb.
+const subtitle = computed(() =>
+	boq.value ? `${boq.value.id} · R${boq.value.revision}` : ""
+);
+
 const breadcrumbs = computed(() => {
 	const out = [
 		{ label: "BuildSuite Core", to: "/" },
@@ -770,7 +795,6 @@ const breadcrumbs = computed(() => {
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
-	out.push({ label: boq.value?.id || props.id });
 	return out;
 });
 </script>
