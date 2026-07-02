@@ -92,13 +92,16 @@ const form = reactive({
 	// Import project-level tasks from the template. Off by default; disabled
 	// entirely for subprojects since the parent owns the breakdown.
 	seedDefaultTasks: false,
+	// Import the template's work packages (tasks link to them). Default ON for
+	// top-level projects, off for subprojects.
+	seedDefaultWorkPackages: !route.query.parentId,
 });
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	project_name: "name",
 	custom_project_id: "code",
 	customer: "client",
 	company: "company",
-	project_type: "type",
+	project_category: "type",
 	expected_end_date: "endDate",
 	expected_start_date: "startDate",
 	project_manager: "pm",
@@ -143,15 +146,16 @@ const templateSummary = ref(null);
 
 const templateStageNames = computed(() => templateSummary.value?.stage_names || []);
 const templateTaskCount = computed(() => templateSummary.value?.task_count || 0);
+const templateWorkPackageCount = computed(() => templateSummary.value?.work_package_count || 0);
 
-async function loadTemplateForType(projectType) {
+async function loadTemplateForCategory(category) {
 	templateSummary.value = null;
-	if (!projectType) return;
+	if (!category) return;
 	templateLoading.value = true;
 	try {
 		const res = await fetch(
 			"/api/method/buildsuite_core.utils.project.get_project_template_summary?" +
-				new URLSearchParams({ project_type: projectType }),
+				new URLSearchParams({ project_category: category }),
 			{ credentials: "include", headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" } }
 		);
 		const data = await res.json();
@@ -159,8 +163,8 @@ async function loadTemplateForType(projectType) {
 		templateSummary.value = summary && summary.exists ? summary : null;
 	} catch (err) {
 		console.warn(
-			"[NewProjectView] Failed to load template summary for type",
-			projectType,
+			"[NewProjectView] Failed to load template summary for category",
+			category,
 			err
 		);
 	} finally {
@@ -170,7 +174,7 @@ async function loadTemplateForType(projectType) {
 
 watch(
 	() => form.type,
-	(type) => loadTemplateForType(type)
+	(category) => loadTemplateForCategory(category)
 );
 
 function validate() {
@@ -220,12 +224,13 @@ async function save() {
 			expected_start_date: form.startDate,
 			expected_end_date: form.endDate,
 			customer: form.client,
-			project_type: form.type,
+			project_category: form.type,
 			estimated_costing: Number(form.budget),
 			project_manager: form.pm || null,
 			notes: form.description,
 			custom_seed_default_stages: form.seedDefaultStages ? 1 : 0,
 			custom_seed_default_tasks: form.seedDefaultTasks ? 1 : 0,
+			custom_seed_default_work_packages: form.seedDefaultWorkPackages ? 1 : 0,
 		});
 		showToast("Project created");
 		router.push(`/projects/${res.name}`);
@@ -334,16 +339,16 @@ const breadcrumbs = computed(() => {
 							</button>
 						</div>
 					</DeskField>
-					<DeskField label="Project type" :error="errors.type">
+					<DeskField label="Project category" :error="errors.type">
 						<DeskLinkPicker
 							v-model="form.type"
-							data-test="pick-project-type"
-							doctype="Project Type"
-							placeholder="Select project type"
+							data-test="pick-project-category"
+							doctype="Project Category"
+							placeholder="Select project category"
 							label-field="name"
 							value-field="name"
-							:search-fields="['name']"
-							order-by="modified desc"
+							:search-fields="['category_name', 'name']"
+							order-by="sort_order asc"
 							:page-length="20"
 							:error="errors.type"
 							@change="clearError('type')"
@@ -384,6 +389,27 @@ const breadcrumbs = computed(() => {
 								</label>
 							</div>
 							<div
+								v-if="!parentProject && templateWorkPackageCount > 0"
+								class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100"
+							>
+								<div>
+									<span class="font-medium text-ink-900"
+										>{{ templateWorkPackageCount }} work packages</span
+									>
+									from this template can be imported.
+								</div>
+								<label
+									class="inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+								>
+									<input
+										type="checkbox"
+										v-model="form.seedDefaultWorkPackages"
+										class="accent-brand-600"
+									/>
+									<span class="text-ink-700">Import work packages</span>
+								</label>
+							</div>
+							<div
 								v-if="!parentProject && templateTaskCount > 0"
 								class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100"
 							>
@@ -405,8 +431,8 @@ const breadcrumbs = computed(() => {
 								</label>
 							</div>
 							<div v-if="parentProject" class="text-[10px] text-ink-500 italic">
-								Subproject — stage and task defaults are off; the parent project
-								owns the timeline.
+								Subproject — stage, work-package and task defaults are off; the
+								parent project owns the timeline.
 							</div>
 						</div>
 						<div
