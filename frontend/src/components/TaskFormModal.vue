@@ -38,7 +38,7 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 });
 
 const projectsResource = adapter.list("Project", {
-	fields: ["name", "project_name", "project_type", "expected_start_date", "expected_end_date"],
+	fields: ["name", "project_name", "project_category", "expected_start_date", "expected_end_date"],
 	orderBy: "modified desc",
 	pageLength: 200,
 });
