@@ -224,7 +224,7 @@ class TestStagePlanning(BuildSuiteTestCase):
 
 	def test_template_instantiation_on_create(self):
 		# HOK-003 — creating a project with the seed flag instantiates stages.
-		if not frappe.db.exists("BuildSuite Project Template", {"project_type": "Commercial"}):
+		if not frappe.db.exists("Project Template", {"project_category": "Commercial"}):
 			self.skipTest("No Commercial template seeded on this site")
 		p = frappe.get_doc(
 			{
@@ -233,7 +233,7 @@ class TestStagePlanning(BuildSuiteTestCase):
 				"custom_project_id": f"SEED-{self._n}",
 				"project_status": "Ongoing",
 				"company": self.company,
-				"project_type": "Commercial",
+				"project_category": "Commercial",
 				"custom_seed_default_stages": 1,
 			}
 		).insert(ignore_permissions=True)
