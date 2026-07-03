@@ -31,20 +31,20 @@ TEMPLATES = {
 			("Finishing", 240, 360, 22, "Masonry, plaster, flooring, painting, facade."),
 			("Handover", 350, 380, 4, "Snagging, statutory clearances, client handover."),
 		],
-		# (work_package_code, subject, priority, hours)
+		# (work_package_code, subject, priority, hours, stage)
 		"tasks": [
-			("WP-FND", "Earthwork excavation", "High", 240),
-			("WP-FND", "PCC laying", "Medium", 120),
-			("WP-FND", "Raft foundation casting", "High", 400),
-			("WP-STRUCT", "Column casting — Level 1 to 5", "High", 800),
-			("WP-STRUCT", "Slab casting — Level 1 to 5", "High", 720),
-			("WP-MEP", "Electrical conduit laying", "Medium", 320),
-			("WP-MEP", "Plumbing rough-in", "Medium", 280),
-			("WP-FIN", "Internal plaster", "Medium", 360),
-			("WP-FIN", "Floor tiling", "Medium", 240),
-			("WP-FIN", "Painting", "Low", 180),
-			("WP-HND", "Snagging walkthrough", "High", 40),
-			("WP-HND", "Occupancy certificate", "High", 20),
+			("WP-FND", "Earthwork excavation", "High", 240, "Foundation"),
+			("WP-FND", "PCC laying", "Medium", 120, "Foundation"),
+			("WP-FND", "Raft foundation casting", "High", 400, "Foundation"),
+			("WP-STRUCT", "Column casting — Level 1 to 5", "High", 800, "Superstructure"),
+			("WP-STRUCT", "Slab casting — Level 1 to 5", "High", 720, "Superstructure"),
+			("WP-MEP", "Electrical conduit laying", "Medium", 320, "MEP rough-in"),
+			("WP-MEP", "Plumbing rough-in", "Medium", 280, "MEP rough-in"),
+			("WP-FIN", "Internal plaster", "Medium", 360, "Finishing"),
+			("WP-FIN", "Floor tiling", "Medium", 240, "Finishing"),
+			("WP-FIN", "Painting", "Low", 180, "Finishing"),
+			("WP-HND", "Snagging walkthrough", "High", 40, "Handover"),
+			("WP-HND", "Occupancy certificate", "High", 20, "Handover"),
 		],
 	},
 	"Residential": {
@@ -64,17 +64,17 @@ TEMPLATES = {
 			("Handover", 350, 380, 4, "Snagging, statutory clearances, client handover."),
 		],
 		"tasks": [
-			("WP-FND", "Earthwork excavation", "High", 200),
-			("WP-FND", "Raft foundation casting", "High", 360),
-			("WP-STRUCT", "Tower column casting", "High", 720),
-			("WP-STRUCT", "Tower slab casting", "High", 640),
-			("WP-MEP", "Conduit + plumbing per unit", "Medium", 480),
-			("WP-FIT", "Wall plaster + putty", "Medium", 320),
-			("WP-FIT", "Floor tiling per unit", "Medium", 280),
-			("WP-FIT", "Joinery + kitchen fit-out", "Medium", 360),
-			("WP-FIT", "Painting", "Low", 200),
-			("WP-AMEN", "Clubhouse finishing", "Medium", 240),
-			("WP-AMEN", "Landscaping", "Low", 160),
+			("WP-FND", "Earthwork excavation", "High", 200, "Foundation"),
+			("WP-FND", "Raft foundation casting", "High", 360, "Foundation"),
+			("WP-STRUCT", "Tower column casting", "High", 720, "Superstructure"),
+			("WP-STRUCT", "Tower slab casting", "High", 640, "Superstructure"),
+			("WP-MEP", "Conduit + plumbing per unit", "Medium", 480, "MEP rough-in"),
+			("WP-FIT", "Wall plaster + putty", "Medium", 320, "Finishing"),
+			("WP-FIT", "Floor tiling per unit", "Medium", 280, "Finishing"),
+			("WP-FIT", "Joinery + kitchen fit-out", "Medium", 360, "Finishing"),
+			("WP-FIT", "Painting", "Low", 200, "Finishing"),
+			("WP-AMEN", "Clubhouse finishing", "Medium", 240, "Finishing"),
+			("WP-AMEN", "Landscaping", "Low", 160, "Finishing"),
 		],
 	},
 	"Infrastructure": {
@@ -91,15 +91,15 @@ TEMPLATES = {
 			("Finishing & Commissioning", 300, 400, 4, "Finishes, signalling fit-out, testing, commissioning."),
 		],
 		"tasks": [
-			("WP-SITE", "Site grading", "High", 320),
-			("WP-SITE", "Utility diversion", "High", 240),
-			("WP-PILE", "Pile installation", "High", 800),
-			("WP-PILE", "Pile cap casting", "High", 400),
-			("WP-STRUCT", "Column casting", "High", 960),
-			("WP-STRUCT", "Deck casting", "High", 720),
-			("WP-STRUCT", "Retaining wall construction", "Medium", 540),
-			("WP-COMM", "Signalling fit-out", "High", 480),
-			("WP-COMM", "Testing & commissioning", "High", 320),
+			("WP-SITE", "Site grading", "High", 320, "Site Prep"),
+			("WP-SITE", "Utility diversion", "High", 240, "Site Prep"),
+			("WP-PILE", "Pile installation", "High", 800, "Foundation"),
+			("WP-PILE", "Pile cap casting", "High", 400, "Foundation"),
+			("WP-STRUCT", "Column casting", "High", 960, "Structure"),
+			("WP-STRUCT", "Deck casting", "High", 720, "Structure"),
+			("WP-STRUCT", "Retaining wall construction", "Medium", 540, "Structure"),
+			("WP-COMM", "Signalling fit-out", "High", 480, "Finishing & Commissioning"),
+			("WP-COMM", "Testing & commissioning", "High", 320, "Finishing & Commissioning"),
 		],
 	},
 }
@@ -156,9 +156,16 @@ def seed_project_templates():
 					"description": desc,
 				},
 			)
-		for wp_code, subject, priority, hours in tpl["tasks"]:
+		for wp_code, subject, priority, hours, stage in tpl["tasks"]:
 			task = _template_task(subject, priority, hours)
-			doc.append("tasks", {"task": task.name, "custom_work_package_code": wp_code})
+			doc.append(
+				"tasks",
+				{
+					"task": task.name,
+					"custom_work_package_code": wp_code,
+					"custom_stage": stage,
+				},
+			)
 
 		doc.insert(ignore_permissions=True)
 		created.append(category)

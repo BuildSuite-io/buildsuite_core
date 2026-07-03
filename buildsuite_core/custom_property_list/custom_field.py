@@ -393,13 +393,21 @@ CUSTOM_FIELD = {
 		},
 	],
 	# Associate a template task with a template Work Package by code (resolved to a
-	# real Work Package at project-create time).
+	# real Work Package at project-create time) and with the template Stage it
+	# belongs to (so the seeded Stage Planning gets the task in its task list).
 	"Project Template Task": [
 		{
 			"fieldname": "custom_work_package_code",
 			"fieldtype": "Data",
 			"label": "Work Package Code",
 			"insert_after": "subject",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stage",
+			"fieldtype": "Data",
+			"label": "Stage",
+			"insert_after": "custom_work_package_code",
 			"module": "BuildSuite Core",
 		},
 	],
