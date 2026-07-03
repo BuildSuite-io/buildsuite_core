@@ -64,6 +64,7 @@ const PAGE_TITLES = {
 	"settings-project-categories": "Project Categories",
 	"settings-project-category-new": "New Project Category",
 	"settings-project-category-detail": "Project Category",
+	"settings-project-category-template": "Project Template",
 	forbidden: "Access Denied",
 };
 
@@ -442,6 +443,12 @@ const routes = [
 				path: "settings/project-categories/:id",
 				name: "settings-project-category-detail",
 				component: () => import("@/views/settings/ProjectCategoryDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "settings/project-categories/:id/template",
+				name: "settings-project-category-template",
+				component: () => import("@/views/settings/ProjectTemplateEditorView.vue"),
 				props: true,
 			},
 		],
