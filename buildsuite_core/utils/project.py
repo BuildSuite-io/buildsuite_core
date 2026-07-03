@@ -338,7 +338,22 @@ def seed_stages_from_template(project: str):
 		frappe.throw(_("No template is configured for category {0}.").format(category))
 
 	template = frappe.get_doc("Project Template", template_name)
-	return {"seeded": _seed_stages_from_template(doc, template)}
+
+	# Attach the project's existing tasks to the stage they belong to in the
+	# template (matched by subject), so re-seeded stages arrive with their tasks
+	# just like the create-time import does.
+	stage_by_subject = {}
+	for row in template.tasks:
+		subject = frappe.db.get_value("Task", row.task, "subject")
+		if subject and row.get("custom_stage"):
+			stage_by_subject[subject] = row.custom_stage
+	tasks_by_stage = {}
+	for t in frappe.get_all("Task", filters={"project": doc.name}, fields=["name", "subject"]):
+		stage = stage_by_subject.get(t.subject)
+		if stage:
+			tasks_by_stage.setdefault(stage, []).append(t.name)
+
+	return {"seeded": _seed_stages_from_template(doc, template, tasks_by_stage)}
 
 
 def ensure_project_team_membership(doc, method=None):
