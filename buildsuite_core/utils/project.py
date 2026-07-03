@@ -224,11 +224,14 @@ def seed_from_template_on_insert(doc, method=None):
 				)
 
 	# --- Tasks (undated; scheduled later on the Gantt) — linked to their WP ---
+	# Remember which seeded tasks belong to which template stage so the stages
+	# below can pick them up into their stage_planning_tasks list.
+	tasks_by_stage = {}
 	if seed_tasks:
 		for row in template.tasks:
 			try:
 				tt = frappe.get_doc("Task", row.task)  # the template Task
-				frappe.get_doc(
+				task = frappe.get_doc(
 					{
 						"doctype": "Task",
 						"project": doc.name,
@@ -239,6 +242,9 @@ def seed_from_template_on_insert(doc, method=None):
 						"task_status": "Yet To Start",
 					}
 				).insert(ignore_permissions=True)
+				stage = row.get("custom_stage")
+				if stage:
+					tasks_by_stage.setdefault(stage, []).append(task.name)
 			except Exception:
 				frappe.log_error(
 					frappe.get_traceback(),
@@ -248,7 +254,7 @@ def seed_from_template_on_insert(doc, method=None):
 	# --- Stages (planned dates from the template offsets, clamped to bounds) ---
 	if seed_stages:
 		try:
-			_seed_stages_from_template(doc, template)
+			_seed_stages_from_template(doc, template, tasks_by_stage)
 		except Exception:
 			frappe.log_error(
 				frappe.get_traceback(), f'BuildSuite: seed stages for project "{doc.name}"'
@@ -279,11 +285,14 @@ def get_project_template_summary(project_category: str = None, project_type: str
 	}
 
 
-def _seed_stages_from_template(project_doc, template):
+def _seed_stages_from_template(project_doc, template, tasks_by_stage=None):
 	"""Append the template's stages onto a project, dates clamped to the project's
-	own window so date-bounds validation passes. Returns the count created."""
+	own window so date-bounds validation passes. When tasks_by_stage maps a stage
+	name to seeded Task names, those tasks are added to the stage's task list (at a
+	default planned qty of 100%). Returns the count of stages created."""
 	from frappe.utils import add_days, getdate, today
 
+	tasks_by_stage = tasks_by_stage or {}
 	base = project_doc.expected_start_date or today()
 	end_bound = project_doc.expected_end_date
 
@@ -294,7 +303,7 @@ def _seed_stages_from_template(project_doc, template):
 
 	count = 0
 	for row in template.custom_stages:
-		frappe.get_doc(
+		stage = frappe.get_doc(
 			{
 				"doctype": "Stage Planning",
 				"project": project_doc.name,
@@ -305,7 +314,10 @@ def _seed_stages_from_template(project_doc, template):
 				"planned_completion_pct": row.planned_completion_pct or 0,
 				"workflow_state": "Draft",
 			}
-		).insert(ignore_permissions=True)
+		)
+		for task_name in tasks_by_stage.get(row.stage_name, []):
+			stage.append("stage_planning_tasks", {"task": task_name, "planned_qty": 100, "qty_unit": "%"})
+		stage.insert(ignore_permissions=True)
 		count += 1
 	return count
 
