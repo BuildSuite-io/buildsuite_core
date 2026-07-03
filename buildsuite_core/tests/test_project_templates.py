@@ -56,6 +56,29 @@ class TestProjectTemplates(BuildSuiteTestCase):
 		self.assertTrue(frappe.db.count("Stage Planning", {"project": p.name}))
 		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)
 		self.assertEqual(frappe.db.count("Work Package", {"project": p.name}), 0)
+		# No tasks seeded → the seeded stages carry no stage tasks.
+		self.assertEqual(
+			frappe.db.count(
+				"Stage Planning Task",
+				{"parent": ("in", frappe.get_all("Stage Planning", filters={"project": p.name}, pluck="name"))},
+			),
+			0,
+		)
+
+	def test_seed_stages_and_tasks_populates_stage_tasks(self):
+		# Stages + tasks on → each seeded task lands in its template stage's task
+		# list, so no stage plan is left empty of the tasks that belong to it.
+		p = self._seeded_project(stages=True, tasks=True)
+		stages = frappe.get_all("Stage Planning", filters={"project": p.name}, pluck="name")
+		self.assertTrue(stages)
+		staged_tasks = frappe.db.count("Stage Planning Task", {"parent": ("in", stages)})
+		self.assertGreater(staged_tasks, 0)
+		# Every stage task references a real task on this project.
+		rows = frappe.get_all(
+			"Stage Planning Task", filters={"parent": ("in", stages)}, fields=["task"]
+		)
+		for row in rows:
+			self.assertEqual(frappe.db.get_value("Task", row.task, "project"), p.name)
 
 	def test_seed_mode_tasks_only(self):
 		# Tasks on, stages/WPs off → tasks created; no stages.
