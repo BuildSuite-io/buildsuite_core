@@ -14,6 +14,7 @@
   "enabled",
   "row_count",
   "estimated_total",
+  "groups",
   "rows"
  ],
  "fields": [
@@ -66,14 +67,20 @@
    "fieldtype": "Table",
    "label": "Rows",
    "options": "Estimate Template Row"
+  },
+  {
+   "fieldname": "groups",
+   "fieldtype": "Table",
+   "label": "Groups",
+   "options": "Estimate Template Group"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-24 23:18:19.834920",
+ "modified": "2026-07-03 21:37:47.069752",
  "modified_by": "Administrator",
- "module": "Buildsuite Core",
+ "module": "BuildSuite Core",
  "name": "Estimate Template",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
