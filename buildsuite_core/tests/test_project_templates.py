@@ -41,6 +41,18 @@ class TestProjectTemplates(BuildSuiteTestCase):
 		self.assertGreater(res["seeded"], 0)
 		self.assertTrue(frappe.get_all("Stage Planning", filters={"project": p.name}))
 
+	def test_reseed_stages_attaches_existing_tasks(self):
+		# A project that already has its template tasks → re-seeding stages picks
+		# those tasks up into the matching stage plans (matched by subject).
+		from buildsuite_core.utils.project import seed_stages_from_template
+
+		p = self._seeded_project(tasks=True)  # tasks only; no stages yet
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
+		seed_stages_from_template(p.name)
+		stages = frappe.get_all("Stage Planning", filters={"project": p.name}, pluck="name")
+		self.assertTrue(stages)
+		self.assertGreater(frappe.db.count("Stage Planning Task", {"parent": ("in", stages)}), 0)
+
 	def test_seed_mode_work_packages_and_tasks(self):
 		# WPs + tasks on → tasks created and linked to the seeded work packages.
 		p = self._seeded_project(wps=True, tasks=True)
