@@ -12,6 +12,7 @@ class EstimateTemplate(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
+		from frappe.model.document import Document
 		from frappe.types import DF
 
 		from buildsuite_core.buildsuite_core.doctype.estimate_template_row.estimate_template_row import (
@@ -21,6 +22,7 @@ class EstimateTemplate(Document):
 		description: DF.SmallText | None
 		enabled: DF.Check
 		estimated_total: DF.Currency
+		groups: DF.Table[Document]
 		project_type: DF.Link | None
 		row_count: DF.Int
 		rows: DF.Table[EstimateTemplateRow]
