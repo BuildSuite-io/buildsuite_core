@@ -60,7 +60,7 @@ watch(
 		form.sortOrder = r.sort_order || 0;
 		loaded.value = true;
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 async function save() {
@@ -111,7 +111,10 @@ onMounted(() => {
 
 			<div class="max-w-3xl mx-auto">
 				<DeskSection title="Basic">
-					<DeskField label="Category name" hint="The name is the key and can't be changed.">
+					<DeskField
+						label="Category name"
+						hint="The name is the key and can't be changed."
+					>
 						<DeskInput :model-value="props.id" disabled />
 					</DeskField>
 					<DeskField label="Sort order">
@@ -119,7 +122,11 @@ onMounted(() => {
 					</DeskField>
 					<DeskField label="Enabled">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
-							<input type="checkbox" v-model="form.enabled" class="accent-brand-600" />
+							<input
+								type="checkbox"
+								v-model="form.enabled"
+								class="accent-brand-600"
+							/>
 							<span>{{ form.enabled ? "Enabled" : "Disabled" }}</span>
 						</label>
 					</DeskField>
@@ -135,6 +142,24 @@ onMounted(() => {
 							placeholder="Work Packages"
 						/>
 					</DeskField>
+				</DeskSection>
+
+				<DeskSection title="Default template" :cols="1">
+					<p class="text-sm text-ink-500 -mt-1">
+						The Work Packages, Stages and Tasks a project inherits when it's created
+						under this category. Tasks are assigned to their Stage, so imported stage
+						plans arrive with their tasks.
+					</p>
+					<div>
+						<button
+							class="text-sm text-brand-600 hover:underline"
+							@click="
+								router.push(`/settings/project-categories/${props.id}/template`)
+							"
+						>
+							Edit default template →
+						</button>
+					</div>
 				</DeskSection>
 			</div>
 		</DeskForm>
