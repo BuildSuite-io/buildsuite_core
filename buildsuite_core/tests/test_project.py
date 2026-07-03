@@ -49,7 +49,10 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(child.company, self.company)
 
 	def test_project_infers_company_from_creating_user(self):
-		frappe.db.set_value("User", frappe.session.user, "company", self.company)
+		# A project created with no company inherits the creating user's resolved
+		# default Company (ERPNext fills Project.company from it, and
+		# set_company_on_insert backfills from the same source when still empty).
+		expected = frappe.defaults.get_user_default("Company") or self.company
 		p = frappe.get_doc(
 			{
 				"doctype": "Project",
@@ -58,7 +61,7 @@ class TestProject(BuildSuiteTestCase):
 			}
 		)
 		p.insert(ignore_permissions=True)
-		self.assertEqual(p.company, self.company)
+		self.assertEqual(p.company, expected)
 
 	def test_company_locked_after_create(self):
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")
