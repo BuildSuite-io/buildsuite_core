@@ -311,6 +311,7 @@ LINKED_MASTER_DOCTYPES = (
 	"Project Category",  # New Project -> Category picker (drives templating)
 	"Employee",  # PM / owner / assignee pickers
 	"Task Type",  # New Task -> Task Type picker
+	"Persona",  # Users settings -> persona link picker
 )
 _READONLY_PTYPES = ("read", "report", "export", "print")
 

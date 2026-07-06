@@ -79,6 +79,19 @@ class TestUserPersona(BuildSuiteTestCase):
 		with self.assertRaises(frappe.LinkValidationError):
 			u.save(ignore_permissions=True)
 
+	def test_admin_personas_are_backend_only(self):
+		# The two admin personas are flagged backend-only, so they're excluded from
+		# the app's assignable set (enabled + not backend_only) that the user-form
+		# link picker queries — they can only be assigned from the Frappe desk.
+		for name in ("System Manager (Admin)", "BuildSuite Administrator"):
+			self.assertEqual(frappe.db.get_value("Persona", name, "backend_only"), 1)
+		assignable = frappe.get_all(
+			"Persona", filters={"enabled": 1, "backend_only": 0}, pluck="name"
+		)
+		self.assertNotIn("BuildSuite Administrator", assignable)
+		self.assertNotIn("System Manager (Admin)", assignable)
+		self.assertIn("Project Manager", assignable)
+
 	def test_repair_reenables_disabled_default_personas(self):
 		# The repair restores a default persona that was left disabled — so it
 		# reappears in the enabled-only user-form picker.

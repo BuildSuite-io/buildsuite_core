@@ -12,6 +12,7 @@
   "enabled",
   "sort_order",
   "is_default",
+  "backend_only",
   "section_break_roles",
   "roles",
   "section_break_desc",
@@ -58,6 +59,14 @@
    "fieldtype": "Check",
    "label": "Seeded Default",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Only assignable from the Frappe desk (backend), not the BuildSuite app's user forms.",
+   "fieldname": "backend_only",
+   "fieldtype": "Check",
+   "label": "Backend Only",
+   "in_list_view": 1
   },
   {
    "fieldname": "section_break_roles",
