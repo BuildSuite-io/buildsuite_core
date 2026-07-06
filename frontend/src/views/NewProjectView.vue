@@ -10,6 +10,7 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
+import { getProjectNaming } from "@/data/coreSettingsApi";
 import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -78,6 +79,8 @@ const form = reactive({
 	type: "",
 	// Native ERPNext Project Type (Internal / External) — distinct from Category.
 	projectType: "",
+	// Naming series (only used/sent when the org's naming mode is "Name Series").
+	namingSeries: "",
 	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 	budget: "",
@@ -110,6 +113,25 @@ const saving = ref(false);
 // Subprojects inherit the parent's company, so the field is hidden for them and
 // the value isn't sent. Company is locked after create. Uses a BuildSuite helper
 // rather than get_value on the Global Defaults Single (which 403s for non-admins).
+// Project naming mode (from BuildSuite Core Settings). When it's "Name Series", the
+// New Project form shows a naming-series select (default series pre-selected) and the
+// project's record ID comes from that series instead of the entered Project ID.
+const namingMode = ref("Project ID");
+const seriesOptions = ref([]);
+async function loadProjectNaming() {
+	try {
+		const res = await getProjectNaming();
+		namingMode.value = res.project_naming || "Project ID";
+		seriesOptions.value = res.series_options || [];
+		if (namingMode.value === "Name Series") {
+			form.namingSeries = res.default_series || seriesOptions.value[0] || "";
+		}
+	} catch {
+		/* default to Project ID mode */
+	}
+}
+loadProjectNaming();
+
 async function loadDefaultCompany() {
 	if (route.query.parentId) return; // subproject — inherits parent's company
 	try {
@@ -227,6 +249,8 @@ async function save() {
 			customer: form.client,
 			project_category: form.type,
 			project_type: form.projectType || null,
+			// Only meaningful in Name Series mode; the backend autoname uses it.
+			naming_series: namingMode.value === "Name Series" ? form.namingSeries || null : null,
 			estimated_costing: Number(form.budget),
 			project_manager: form.pm || null,
 			notes: form.description,
@@ -304,6 +328,17 @@ const breadcrumbs = computed(() => {
 							data-test="field-code"
 							placeholder="e.g. BTP-P2"
 						/>
+					</DeskField>
+					<!-- Shown only when the org's project naming mode is "Name Series":
+					     the record ID is generated from the chosen series. -->
+					<DeskField
+						v-if="namingMode === 'Name Series'"
+						label="Name series"
+						hint="The naming series used to generate this project's record ID."
+					>
+						<DeskSelect v-model="form.namingSeries">
+							<option v-for="s in seriesOptions" :key="s" :value="s">{{ s }}</option>
+						</DeskSelect>
 					</DeskField>
 					<!-- Session 40: Client is now a Link field onto the Customer master
              (ERPNext-native Customer DocType). The stored value is the

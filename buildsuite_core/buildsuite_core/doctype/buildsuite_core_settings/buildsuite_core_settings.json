@@ -5,8 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project_section",
-  "project_naming",
-  "project_naming_series"
+  "project_naming"
  ],
  "fields": [
   {
@@ -16,18 +15,11 @@
   },
   {
    "default": "Project ID",
-   "description": "How a Project's record ID (Frappe name) is generated. \"Project ID\" uses the entered Project ID; \"Name Series\" uses the naming series selected below.",
+   "description": "How a Project's record ID (Frappe name) is generated. \"Project ID\" uses the entered Project ID; \"Name Series\" uses a naming series chosen on the New Project form.",
    "fieldname": "project_naming",
    "fieldtype": "Select",
    "label": "Project Naming",
    "options": "Project ID\nName Series"
-  },
-  {
-   "depends_on": "eval:doc.project_naming=='Name Series'",
-   "description": "The ERPNext naming series used to generate the project's record ID when Project Naming is \"Name Series\" (e.g. PROJ-.####).",
-   "fieldname": "project_naming_series",
-   "fieldtype": "Data",
-   "label": "Project Naming Series"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -6,7 +6,7 @@
 // represents it as store.coreSettings (flat object). Edits flow through
 // store.updateCoreSettings(patch).
 
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { getCoreSettings, setProjectNaming } from "@/data/coreSettingsApi";
@@ -17,7 +17,6 @@ import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 
 const router = useRouter();
 const store = useDataStore();
@@ -26,34 +25,18 @@ const editing = ref(false);
 const form = ref({});
 const saving = ref(false);
 
-// Project naming is server-persisted (BuildSuite Core Settings Single), unlike the
-// other fields on this screen. It's a mode ("Project ID" | "Name Series") plus, for
-// Name Series, the specific Project naming series.
+// Project naming MODE is server-persisted (BuildSuite Core Settings Single). It's
+// just the mode here ("Project ID" | "Name Series"); the specific series, when Name
+// Series, is chosen per-project on the New Project form.
 const PROJECT_ID_MODE = "Project ID";
-const NAME_SERIES_MODE = "Name Series";
-const projectNaming = ref(PROJECT_ID_MODE); // the mode
-const projectNamingSeries = ref(""); // the chosen series (Name Series mode)
-const namingModes = ref([PROJECT_ID_MODE, NAME_SERIES_MODE]);
-const seriesOptions = ref([]); // Project naming series available to pick
-
-// { value, label } options for the searchable series picker.
-const seriesPickerOptions = computed(() =>
-	seriesOptions.value.map((s) => ({ value: s, label: s })),
-);
-// Human-readable summary for the read-only view.
-const projectNamingLabel = computed(() =>
-	projectNaming.value === NAME_SERIES_MODE
-		? `Name Series — ${projectNamingSeries.value || "(none selected)"}`
-		: "Project ID",
-);
+const projectNaming = ref(PROJECT_ID_MODE);
+const namingModes = ref([PROJECT_ID_MODE, "Name Series"]);
 
 onMounted(async () => {
 	try {
 		const res = await getCoreSettings();
 		projectNaming.value = res.project_naming || PROJECT_ID_MODE;
-		projectNamingSeries.value = res.project_naming_series || "";
-		namingModes.value = res.project_naming_modes || [PROJECT_ID_MODE, NAME_SERIES_MODE];
-		seriesOptions.value = res.project_series_options || [];
+		namingModes.value = res.project_naming_modes || namingModes.value;
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -71,7 +54,6 @@ function startEdit() {
 	form.value = {
 		...JSON.parse(JSON.stringify(store.coreSettings)),
 		naming_mode: projectNaming.value,
-		naming_series: projectNamingSeries.value || seriesOptions.value[0] || "",
 	};
 	editing.value = true;
 }
@@ -81,19 +63,12 @@ function cancelEdit() {
 }
 async function saveEdit() {
 	if (!store.isAdmin) return;
-	if (form.value.naming_mode === NAME_SERIES_MODE && !form.value.naming_series) {
-		showToast("Pick a naming series.", "error");
-		return;
-	}
 	saving.value = true;
 	try {
 		store.updateCoreSettings({ ...form.value });
-		const mode = form.value.naming_mode;
-		const series = mode === NAME_SERIES_MODE ? form.value.naming_series : "";
-		if (mode !== projectNaming.value || series !== projectNamingSeries.value) {
-			await setProjectNaming(mode, series);
-			projectNaming.value = mode;
-			projectNamingSeries.value = series;
+		if (form.value.naming_mode && form.value.naming_mode !== projectNaming.value) {
+			await setProjectNaming(form.value.naming_mode);
+			projectNaming.value = form.value.naming_mode;
 		}
 		editing.value = false;
 	} catch (err) {
@@ -196,26 +171,14 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 					<DeskField
 						label="Project naming"
-						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' uses the selected ERPNext naming series."
+						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form."
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ projectNamingLabel }}
+							{{ projectNaming }}
 						</div>
 						<DeskSelect v-else v-model="form.naming_mode">
 							<option v-for="m in namingModes" :key="m" :value="m">{{ m }}</option>
 						</DeskSelect>
-					</DeskField>
-					<DeskField
-						v-if="editing && form.naming_mode === 'Name Series'"
-						label="Name series"
-						hint="The Project naming series used to generate the record ID."
-					>
-						<DeskSearchableSelect
-							v-model="form.naming_series"
-							:options="seriesPickerOptions"
-							placeholder="Select a naming series"
-							search-placeholder="Search series…"
-						/>
 					</DeskField>
 				</DeskSection>
 			</div>
