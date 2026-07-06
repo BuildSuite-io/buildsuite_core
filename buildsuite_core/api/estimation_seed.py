@@ -19,7 +19,7 @@ from buildsuite_core.api import boq as boq_api
 DEMO_PASSWORD = "BuildSuite-Demo-2026!"
 PROJECT_CODE = "DEMO-EST-001"
 
-# --- persona users (persona must match PERSONA_TO_ROLE keys) ------------------
+# --- persona users (persona must match a Persona record name) -----------------
 DEMO_USERS = {
 	"director": ("demo-director@buildsuite.demo", "Dana Director", "Director / Owner"),
 	"pm": ("demo-pm@buildsuite.demo", "Paul Manager", "Project Manager"),

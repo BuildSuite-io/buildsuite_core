@@ -45,6 +45,14 @@ const groups = computed(() => [
 				adminOnly: true,
 			},
 			{
+				slug: "personas",
+				icon: "shield",
+				label: "Personas",
+				desc: "Job roles users pick from, each mapping to the Frappe roles it grants.",
+				to: "/settings/personas",
+				adminOnly: true,
+			},
+			{
 				slug: "roles",
 				icon: "shield",
 				label: "Roles & Permissions",
@@ -187,7 +195,7 @@ const visibleGroups = computed(() =>
 				return true;
 			}),
 		}))
-		.filter((g) => g.tiles.length)
+		.filter((g) => g.tiles.length),
 );
 
 function onTileClick(tile) {

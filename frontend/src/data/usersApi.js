@@ -12,6 +12,7 @@ async function call(method, args) {
 	}
 }
 
+export const listPersonas = () => call("list_personas");
 export const listBuildsuiteUsers = () => call("list_buildsuite_users");
 export const createBuildsuiteUser = (args) => call("create_buildsuite_user", args);
 export const updateBuildsuiteUser = (args) => call("update_buildsuite_user", args);
