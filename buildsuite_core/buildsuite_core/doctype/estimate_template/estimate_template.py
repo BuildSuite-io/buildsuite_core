@@ -38,9 +38,11 @@ class EstimateTemplate(Document):
 		self.row_count = len(self.rows)
 
 	def _sync_row(self, row):
-		"""Derive each row's uom + description from the linked Assembly /
-		Resource, clear the unused link, and return the row amount
-		(qty * current rate) so validate() can roll up estimated_total.
+		"""Derive each row's uom (+ a default description) from the linked
+		Assembly / Resource, clear the unused link, and return the row amount
+		(qty * current rate) so validate() can roll up estimated_total. A
+		description the user (or a seed) already set is kept — the linked
+		name only fills a blank one.
 		"""
 		if row.line_type == "Assembly":
 			row.resource = None
@@ -64,7 +66,8 @@ class EstimateTemplate(Document):
 			return 0
 
 		row.uom = uom
-		row.description = name
+		if not row.description:
+			row.description = name
 		row.rate = rate or 0
 		row.amount = (row.placeholder_qty or 0) * (rate or 0)
 		return row.amount

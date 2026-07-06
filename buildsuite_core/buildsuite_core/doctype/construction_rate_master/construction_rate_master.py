@@ -24,8 +24,10 @@ class ConstructionRateMaster(Document):
 		disabled: DF.Check
 		effective_date: DF.Date | None
 		notes: DF.SmallText | None
+		previous_rate: DF.Currency
 		rate_code: DF.Data
 		rate_history: DF.Table[ConstructionRateHistory]
+		rate_master_category: DF.Link | None
 		rate_name: DF.Data
 		uom: DF.Link
 	# end: auto-generated types
