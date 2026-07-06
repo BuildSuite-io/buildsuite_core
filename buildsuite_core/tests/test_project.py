@@ -76,7 +76,10 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(p.name, f"NMID-{self._n}")
 
 	def test_project_named_by_series_when_setting_is_a_series(self):
-		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "PROJ-.####")
+		frappe.db.set_single_value(
+			"BuildSuite Core Settings",
+			{"project_naming": "Name Series", "project_naming_series": "PROJ-.####"},
+		)
 		p = frappe.get_doc(
 			{
 				"doctype": "Project",
