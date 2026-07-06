@@ -16,8 +16,7 @@ async function call(method, args) {
 }
 
 export const getCoreSettings = () => call("get_core_settings");
-export const setProjectNaming = (projectNaming, projectNamingSeries) =>
-	call("set_project_naming", {
-		project_naming: projectNaming,
-		project_naming_series: projectNamingSeries || "",
-	});
+export const setProjectNaming = (projectNaming) =>
+	call("set_project_naming", { project_naming: projectNaming });
+// Naming mode + series options for the New Project form (available to any user).
+export const getProjectNaming = () => call("get_project_naming");
