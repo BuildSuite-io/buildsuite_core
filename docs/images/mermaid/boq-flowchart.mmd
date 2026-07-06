@@ -1,0 +1,69 @@
+flowchart TB
+    subgraph MASTERS["🧱 Estimation Masters (org-wide, reusable)"]
+        direction TB
+        RM["<b>Construction Rate Master</b><br/>rate_code · category M/L/E<br/>current_rate · UOM<br/><i>the atomic price source</i>"]
+        RH["Construction Rate History<br/><i>every rate change: PO / supplier / market</i>"]
+        ASM["<b>Assembly</b><br/>assembly_code · rate_per_unit<br/><i>a composite 'recipe'</i>"]
+        AC["Assembly Component<br/>resource → Rate Master<br/>coefficient (qty per unit)"]
+        ET["<b>Estimate Template</b><br/>template_code · project_type<br/><i>reusable BOQ skeleton</i>"]
+        ETR["Estimate Template Row<br/>line_type = Assembly | Resource<br/>group_name · placeholder_qty"]
+
+        RM -- "logs changes" --> RH
+        ASM -- "bundles" --> AC
+        AC -- "priced by" --> RM
+        ET -- "rows" --> ETR
+        ETR -. "Assembly row" .-> ASM
+        ETR -. "Resource row" .-> RM
+    end
+
+    subgraph BUILD["📋 Build a project BOQ (Draft)"]
+        direction TB
+        NEW["New BOQ on a Project<br/>(revision = max+1)"]
+        IMPORT{{"import_template(boq, template)"}}
+        GRP["BOQ Group<br/>code · group_name"]
+        ITEM["BOQ Item<br/>planned_qty · rate · cost_head<br/>quantity_source = Manual/Assembly/Template/Takeoff<br/>→ work_package, → task"]
+        EXPLODE{{"explode_item(boq_item)"}}
+        SUB["BOQ Sub Item<br/>rate_master · qty_per_unit<br/>qty = coefficient × driving_qty"]
+    end
+
+    subgraph COST["💰 Roll-up & lifecycle"]
+        direction TB
+        ROLLUP["recompute_boq()<br/>planned = Σ item amounts<br/>margin = planned × margin_rate%<br/>tax = (planned+margin) × tax_rate%<br/>total → split into BOQ WP Summary"]
+        SUBMIT(["Submitted"])
+        APPROVE(["Approved<br/><i>supersedes prior Approved rev</i>"])
+        SUPER(["Superseded"])
+        ACTUALS{{"recalculate_actuals(boq)<br/>actual_qty = planned_qty × Task.progress%"}}
+    end
+
+    %% template seeding
+    ET ==> IMPORT
+    IMPORT --> GRP
+    IMPORT --> ITEM
+    IMPORT -- "Assembly row auto-explodes" --> EXPLODE
+    IMPORT -- "Resource row → 1 sub-item" --> SUB
+
+    %% manual build path
+    NEW --> GRP --> ITEM
+    ITEM -- "links an Assembly,<br/>then explode" --> EXPLODE
+    ASM ==> EXPLODE
+    EXPLODE -- "snapshot rows<br/>(item.rate = assembly.rate_per_unit)" --> SUB
+    RM ==> SUB
+    ITEM -- "manual rate analysis" --> SUB
+
+    %% costing + lifecycle
+    SUB --> ROLLUP
+    ITEM --> ROLLUP
+    ROLLUP --> SUBMIT
+    SUBMIT -- "approve_boq()<br/>(Director/PM/Admin/SysMgr)" --> APPROVE
+    APPROVE -. "older approved rev" .-> SUPER
+    APPROVE -- "create_revision()<br/>clone → new Draft" --> NEW
+    APPROVE -- "site progress feeds back" --> ACTUALS
+    Task[("native Task<br/>.progress")] ==> ACTUALS
+    ACTUALS --> ROLLUP
+
+    classDef master fill:#ecfdf5,stroke:#10b981,color:#064e3b;
+    classDef api fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a;
+    classDef state fill:#fff7ed,stroke:#f59e0b,color:#7c2d12;
+    class RM,RH,ASM,AC,ET,ETR master;
+    class IMPORT,EXPLODE,ACTUALS api;
+    class SUBMIT,APPROVE,SUPER state;

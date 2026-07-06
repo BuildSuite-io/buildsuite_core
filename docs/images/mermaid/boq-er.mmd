@@ -1,0 +1,122 @@
+erDiagram
+    PROJECT ||--o{ BOQ : "revisions"
+    PROJECT ||--o{ WORK_PACKAGE : has
+    PROJECT ||--o{ TASK : has
+    PROJECT_TYPE ||--o{ ESTIMATE_TEMPLATE : "scopes"
+
+    BOQ ||--o| BOQ : "base_revision (self)"
+    BOQ ||--o{ BOQ_GROUP : contains
+    BOQ ||--o{ BOQ_ITEM : contains
+    BOQ ||--o{ BOQ_WP_SUMMARY : "rolls up (child table)"
+    BOQ_GROUP ||--o{ BOQ_ITEM : groups
+    BOQ_ITEM ||--o{ BOQ_SUB_ITEM : "breaks down to"
+
+    BOQ_ITEM }o--o| ASSEMBLY : "explodes from"
+    BOQ_ITEM }o--o| TASK : "actuals from"
+    BOQ_ITEM }o--o| WORK_PACKAGE : "tagged to"
+    BOQ_ITEM }o--o| UOM : unit
+    BOQ_SUB_ITEM }o--|| CONSTRUCTION_RATE_MASTER : "priced by"
+    BOQ_SUB_ITEM }o--o| ASSEMBLY : source_assembly
+    BOQ_SUB_ITEM }o--o| WORK_PACKAGE : "tagged to"
+    BOQ_WP_SUMMARY }o--|| WORK_PACKAGE : "per-WP bucket"
+
+    ASSEMBLY ||--o{ ASSEMBLY_COMPONENT : "recipe of"
+    ASSEMBLY ||--o| UOM : uom
+    ASSEMBLY_COMPONENT }o--|| CONSTRUCTION_RATE_MASTER : "resource"
+
+    CONSTRUCTION_RATE_MASTER ||--o{ CONSTRUCTION_RATE_HISTORY : "audit trail"
+    CONSTRUCTION_RATE_MASTER ||--o| UOM : uom
+
+    ESTIMATE_TEMPLATE ||--o{ ESTIMATE_TEMPLATE_ROW : rows
+    ESTIMATE_TEMPLATE_ROW }o--o| ASSEMBLY : "Assembly line"
+    ESTIMATE_TEMPLATE_ROW }o--o| CONSTRUCTION_RATE_MASTER : "Resource line"
+
+    BOQ {
+        Link project FK
+        Int revision
+        Link base_revision FK
+        Select status "Draft|Submitted|Approved|Superseded"
+        Percent margin_rate
+        Percent tax_rate
+        Currency planned_amount
+        Currency actual_amount
+        Currency total
+    }
+    BOQ_GROUP {
+        Link boq FK
+        Data code
+        Data group_name
+        Int idx_order
+    }
+    BOQ_ITEM {
+        Link boq FK
+        Link boq_group FK
+        Float planned_qty
+        Float driving_qty
+        Currency rate
+        Currency planned_amount
+        Float actual_qty
+        Select cost_head
+        Select quantity_source "Manual|Assembly|Template|Takeoff"
+        Link assembly FK
+        Link task FK
+        Link work_package FK
+    }
+    BOQ_SUB_ITEM {
+        Link boq FK
+        Link boq_item FK
+        Link rate_master FK
+        Float qty_per_unit
+        Float qty
+        Currency rate
+        Currency amount
+        Select cost_head
+        Link source_assembly FK
+    }
+    BOQ_WP_SUMMARY {
+        Link work_package FK
+        Currency planned_amount
+        Currency margin_amount
+        Currency tax_amount
+        Currency total
+    }
+    ASSEMBLY {
+        Data assembly_code PK
+        Select category
+        Currency rate_per_unit
+        Int component_count
+    }
+    ASSEMBLY_COMPONENT {
+        Link resource FK
+        Float coefficient
+        Currency rate
+        Currency amount
+    }
+    CONSTRUCTION_RATE_MASTER {
+        Data rate_code PK
+        Select category "Material|Labour|Equipment"
+        Currency current_rate
+        Currency previous_rate
+        Date effective_date
+    }
+    CONSTRUCTION_RATE_HISTORY {
+        Currency rate
+        Date effective_from
+        Date effective_to
+        Select reason
+        Link purchase_order FK
+        Link supplier FK
+    }
+    ESTIMATE_TEMPLATE {
+        Data template_code PK
+        Link project_type FK
+        Currency estimated_total
+    }
+    ESTIMATE_TEMPLATE_ROW {
+        Data group_name
+        Select line_type "Assembly|Resource"
+        Link assembly FK
+        Link resource FK
+        Float placeholder_qty
+        Select cost_head
+    }
