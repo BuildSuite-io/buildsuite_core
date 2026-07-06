@@ -48,6 +48,12 @@ def sync_persona_roles(doc, method=None):
 	if not frappe.db.table_exists("Persona Role"):
 		return
 
+	# A set-but-unknown persona (dangling link to a Persona that isn't there) must
+	# not strip the user's roles — that could silently unmake an admin. Leave roles
+	# untouched until the persona resolves.
+	if doc.persona and not frappe.db.exists("Persona", doc.persona):
+		return
+
 	desired = _persona_roles(doc.persona)
 
 	# Roles to keep/grant for the current persona (grants may include a protected
