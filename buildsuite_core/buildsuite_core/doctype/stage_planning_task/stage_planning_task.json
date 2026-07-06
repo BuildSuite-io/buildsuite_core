@@ -40,7 +40,7 @@
    "fieldname": "planned_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Planned Qty"
+   "label": "Planned Progress (%)"
   },
   {
    "allow_in_quick_entry": 1,
