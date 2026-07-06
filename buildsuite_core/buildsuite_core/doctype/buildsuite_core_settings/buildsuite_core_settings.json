@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "creation": "2026-07-06 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project_section",
+  "project_naming"
+ ],
+ "fields": [
+  {
+   "fieldname": "project_section",
+   "fieldtype": "Section Break",
+   "label": "Projects"
+  },
+  {
+   "default": "Project ID",
+   "description": "How a Project's record ID (Frappe name) is generated. \"Project ID\" uses the entered Project ID; any other value is an ERPNext naming series (e.g. PROJ-.####).",
+   "fieldname": "project_naming",
+   "fieldtype": "Data",
+   "label": "Project Naming"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Core Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
