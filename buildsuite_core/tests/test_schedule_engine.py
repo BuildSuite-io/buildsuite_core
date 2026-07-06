@@ -138,6 +138,16 @@ class TestScheduleEngineIntegration(BuildSuiteTestCase):
 			}
 		).insert(ignore_permissions=True)
 
+	def test_milestone_type_sets_native_is_milestone(self):
+		# A Milestone-type task gets ERPNext's native is_milestone flag on save, and
+		# it clears again when the type changes away from Milestone.
+		p = self._make_project(company=self.company)
+		t = self._task(p.name, f"MS {self._n}", "2026-01-05", "2026-01-05", type="Milestone")
+		self.assertEqual(t.is_milestone, 1)
+		t.type = "Activity"
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.is_milestone, 0)
+
 	def test_hook_flags_then_cascade_clears(self):
 		p = self._make_project(company=self.company)
 		a = self._task(p.name, f"A {self._n}", "2026-01-01", "2026-01-10")
