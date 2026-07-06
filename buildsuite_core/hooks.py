@@ -156,8 +156,12 @@ has_permission = {
 }
 
 # Override the Project controller so its record name honours the BuildSuite Core
-# Settings "Project Naming" option (Project ID vs an ERPNext naming series).
-override_doctype_class = {"Project": "buildsuite_core.overrides.project.BuildSuiteProject"}
+# Settings "Project Naming" option (Project ID vs an ERPNext naming series), and the
+# Task controller so it never auto-fills the end date from expected_time.
+override_doctype_class = {
+	"Project": "buildsuite_core.overrides.project.BuildSuiteProject",
+	"Task": "buildsuite_core.overrides.task.BuildSuiteTask",
+}
 
 # Document Events
 # ---------------
