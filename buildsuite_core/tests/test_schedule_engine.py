@@ -138,6 +138,24 @@ class TestScheduleEngineIntegration(BuildSuiteTestCase):
 			}
 		).insert(ignore_permissions=True)
 
+	def test_end_date_not_auto_filled_from_expected_time(self):
+		# A task carrying expected_time (as template-seeded tasks do) must NOT get an
+		# auto-generated end date when saved with a start but no end.
+		p = self._make_project(company=self.company)
+		t = frappe.get_doc(
+			{
+				"doctype": "Task",
+				"project": p.name,
+				"subject": f"ET {self._n}",
+				"expected_time": 240,
+				"task_status": "Yet To Start",
+			}
+		).insert(ignore_permissions=True)
+		t.exp_start_date = "2026-02-01"
+		t.save(ignore_permissions=True)
+		t.reload()
+		self.assertIsNone(t.exp_end_date)
+
 	def test_milestone_type_sets_native_is_milestone(self):
 		# A Milestone-type task gets ERPNext's native is_milestone flag on save, and
 		# it clears again when the type changes away from Milestone.

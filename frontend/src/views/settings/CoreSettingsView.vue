@@ -26,15 +26,30 @@ const form = ref({});
 const saving = ref(false);
 
 // Project naming is server-persisted (BuildSuite Core Settings Single), unlike the
-// other fields on this screen. Loaded from / saved to the backend directly.
-const projectNaming = ref("Project ID");
-const projectNamingOptions = ref(["Project ID"]);
+// other fields on this screen. Stored resolved value: "Project ID" or a naming
+// series string. In the UI it's a mode select ("Project ID" | "Name Series") plus a
+// series picker shown only in Name Series mode.
+const PROJECT_ID_MODE = "Project ID";
+const NAME_SERIES_MODE = "Name Series";
+const projectNaming = ref(PROJECT_ID_MODE);
+const projectNamingOptions = ref([PROJECT_ID_MODE]);
+
+// The naming series available on the Project doctype (everything but "Project ID").
+const seriesOptions = computed(() =>
+	projectNamingOptions.value.filter((o) => o !== PROJECT_ID_MODE),
+);
+// Human-readable summary of the current setting for the read-only view.
+const projectNamingLabel = computed(() =>
+	projectNaming.value === PROJECT_ID_MODE
+		? "Project ID"
+		: `Name Series — ${projectNaming.value}`,
+);
 
 onMounted(async () => {
 	try {
 		const res = await getCoreSettings();
-		projectNaming.value = res.project_naming || "Project ID";
-		projectNamingOptions.value = res.project_naming_options || ["Project ID"];
+		projectNaming.value = res.project_naming || PROJECT_ID_MODE;
+		projectNamingOptions.value = res.project_naming_options || [PROJECT_ID_MODE];
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -49,9 +64,11 @@ watch(
 );
 
 function startEdit() {
+	const isSeries = projectNaming.value !== PROJECT_ID_MODE;
 	form.value = {
 		...JSON.parse(JSON.stringify(store.coreSettings)),
-		project_naming: projectNaming.value,
+		naming_mode: isSeries ? NAME_SERIES_MODE : PROJECT_ID_MODE,
+		naming_series: isSeries ? projectNaming.value : seriesOptions.value[0] || "",
 	};
 	editing.value = true;
 }
@@ -64,9 +81,13 @@ async function saveEdit() {
 	saving.value = true;
 	try {
 		store.updateCoreSettings({ ...form.value });
-		if (form.value.project_naming && form.value.project_naming !== projectNaming.value) {
-			await setProjectNaming(form.value.project_naming);
-			projectNaming.value = form.value.project_naming;
+		const resolved =
+			form.value.naming_mode === NAME_SERIES_MODE
+				? form.value.naming_series || seriesOptions.value[0]
+				: PROJECT_ID_MODE;
+		if (resolved && resolved !== projectNaming.value) {
+			await setProjectNaming(resolved);
+			projectNaming.value = resolved;
 		}
 		editing.value = false;
 	} catch (err) {
@@ -169,13 +190,23 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 					<DeskField
 						label="Project naming"
-						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; otherwise the selected ERPNext naming series is used."
+						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' uses the selected ERPNext naming series."
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ projectNaming }}
+							{{ projectNamingLabel }}
 						</div>
-						<DeskSelect v-else v-model="form.project_naming">
-							<option v-for="opt in projectNamingOptions" :key="opt" :value="opt">
+						<DeskSelect v-else v-model="form.naming_mode">
+							<option value="Project ID">Project ID</option>
+							<option value="Name Series">Name Series</option>
+						</DeskSelect>
+					</DeskField>
+					<DeskField
+						v-if="editing && form.naming_mode === 'Name Series'"
+						label="Name series"
+						hint="The ERPNext naming series used to generate the project's record ID."
+					>
+						<DeskSelect v-model="form.naming_series">
+							<option v-for="opt in seriesOptions" :key="opt" :value="opt">
 								{{ opt }}
 							</option>
 						</DeskSelect>

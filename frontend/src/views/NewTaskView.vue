@@ -61,7 +61,7 @@ watch(
 	(newVal, oldVal) => {
 		if (lockedWP.value) return;
 		if (newVal !== oldVal) form.workPackageId = "";
-	}
+	},
 );
 
 function validate() {
@@ -82,11 +82,11 @@ async function save() {
 		form.endDate,
 		b.start,
 		b.end,
-		"project"
+		"project",
 	);
 	if (boundsErr) {
 		setErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
 		);
 		return;
 	}
@@ -100,7 +100,7 @@ async function save() {
 			description: form.description,
 			task_status: form.status,
 			priority: form.priority,
-			exp_start_date: form.startDate,
+			exp_start_date: form.taskType === "Milestone" ? form.endDate : form.startDate,
 			exp_end_date: form.endDate,
 			expected_time: Number(form.estimatedHours) || 0,
 			owner: form.assignee, // Map to owner for the adapter/Frappe consistency
@@ -228,8 +228,8 @@ const breadcrumbs = [
 								lockedWP
 									? []
 									: form.projectId
-									? [['project', '=', form.projectId]]
-									: []
+										? [['project', '=', form.projectId]]
+										: []
 							"
 							:page-length="20"
 							placeholder="— None · Direct project task —"
@@ -241,7 +241,13 @@ const breadcrumbs = [
 				</DeskSection>
 
 				<DeskSection title="Schedule" :cols="3">
-					<DeskField label="Start date" :error="errors.startDate">
+					<!-- A Milestone is a point in time: only a Due date, no start (the due
+					     date is the end date behind the scenes, used for delay). -->
+					<DeskField
+						v-if="form.taskType !== 'Milestone'"
+						label="Start date"
+						:error="errors.startDate"
+					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
 					<DeskField label="Due date" :error="errors.endDate">

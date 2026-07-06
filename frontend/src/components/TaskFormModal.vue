@@ -38,7 +38,13 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 });
 
 const projectsResource = adapter.list("Project", {
-	fields: ["name", "project_name", "project_category", "expected_start_date", "expected_end_date"],
+	fields: [
+		"name",
+		"project_name",
+		"project_category",
+		"expected_start_date",
+		"expected_end_date",
+	],
 	orderBy: "modified desc",
 	pageLength: 200,
 });
@@ -77,15 +83,15 @@ watch(
 		form.startDate = new Date().toISOString().slice(0, 10);
 		form.endDate = "";
 		setErrors({});
-	}
+	},
 );
 
 const selectedProject = computed(() =>
-	projectsResource.data.find((p) => p.name === form.projectId)
+	projectsResource.data.find((p) => p.name === form.projectId),
 );
 const selectedWP = computed(() => wpsResource.data.find((wp) => wp.name === form.workPackageId));
 const availableWPs = computed(() =>
-	wpsResource.data.filter((wp) => wp.project === form.projectId)
+	wpsResource.data.filter((wp) => wp.project === form.projectId),
 );
 // Project is locked when the parent supplied it. WP is locked when both
 // project + WP are supplied (work-package-scoped entry). When the parent
@@ -104,7 +110,7 @@ watch(
 		) {
 			form.workPackageId = null;
 		}
-	}
+	},
 );
 
 function close() {
@@ -122,7 +128,7 @@ function validate() {
 		form.endDate,
 		selectedProject.value?.expected_start_date,
 		selectedProject.value?.expected_end_date,
-		"project"
+		"project",
 	);
 	if (boundsErr) {
 		if (boundsErr.startsWith("Start")) e.startDate = boundsErr;
@@ -144,7 +150,7 @@ async function save() {
 			description: form.description,
 			task_status: form.status,
 			priority: form.priority,
-			exp_start_date: form.startDate,
+			exp_start_date: form.task_type === "Milestone" ? form.endDate : form.startDate,
 			exp_end_date: form.endDate,
 		});
 		// Assignee is Frappe-native `_assign`, set after insert (single-assignee).
@@ -274,14 +280,22 @@ async function save() {
 					</DeskSection>
 
 					<DeskSection title="Schedule">
-						<DeskField label="Start date" :error="errors.startDate">
+						<!-- Milestone = a point in time: only a Due date, no start. -->
+						<DeskField
+							v-if="form.task_type !== 'Milestone'"
+							label="Start date"
+							:error="errors.startDate"
+						>
 							<DeskInput
 								v-model="form.startDate"
 								type="date"
 								@change="clearError('startDate')"
 							/>
 						</DeskField>
-						<DeskField label="End date" :error="errors.endDate">
+						<DeskField
+							:label="form.task_type === 'Milestone' ? 'Due date' : 'End date'"
+							:error="errors.endDate"
+						>
 							<DeskInput
 								v-model="form.endDate"
 								type="date"
