@@ -64,7 +64,7 @@ const parentResource = parentId
 					id: r?.name,
 					name: r?.project_name || r?.name || "",
 				})),
-	  })
+		})
 	: null;
 const fetchedParent = computed(() => firstResourceRow(parentResource));
 
@@ -76,6 +76,8 @@ const form = reactive({
 	status: "New",
 	priority: "Medium",
 	type: "",
+	// Native ERPNext Project Type (Internal / External) — distinct from Category.
+	projectType: "",
 	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 	budget: "",
@@ -83,17 +85,13 @@ const form = reactive({
 	location: "",
 	description: "",
 	parentId: route.query.parentId || null,
-	// Group project by default. Turning this off makes the project a child
-	// record under a selected parent (is_group = 0).
-	allowSubprojects: !route.query.parentId,
-	// Seed stages from the matching BuildSuite Project Template on create.
-	// Default ON for top-level projects, OFF for subprojects.
+	// Sub-project capability is opt-in: off by default so a new project is a leaf
+	// unless the user deliberately allows children (is_group = 1).
+	allowSubprojects: false,
+	// Template import toggles — kept consistent with each other: all default ON for
+	// top-level projects and OFF for subprojects (the parent owns the breakdown).
 	seedDefaultStages: !route.query.parentId,
-	// Import project-level tasks from the template. Off by default; disabled
-	// entirely for subprojects since the parent owns the breakdown.
-	seedDefaultTasks: false,
-	// Import the template's work packages (tasks link to them). Default ON for
-	// top-level projects, off for subprojects.
+	seedDefaultTasks: !route.query.parentId,
 	seedDefaultWorkPackages: !route.query.parentId,
 });
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
@@ -128,7 +126,7 @@ async function loadDefaultCompany() {
 loadDefaultCompany();
 
 const parentProject = computed(
-	() => fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null)
+	() => fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null),
 );
 
 // The "Allow subprojects" toggle only controls is_group on a top-level project —
@@ -156,7 +154,10 @@ async function loadTemplateForCategory(category) {
 		const res = await fetch(
 			"/api/method/buildsuite_core.utils.project.get_project_template_summary?" +
 				new URLSearchParams({ project_category: category }),
-			{ credentials: "include", headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" } }
+			{
+				credentials: "include",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+			},
 		);
 		const data = await res.json();
 		const summary = data?.message || null;
@@ -165,7 +166,7 @@ async function loadTemplateForCategory(category) {
 		console.warn(
 			"[NewProjectView] Failed to load template summary for category",
 			category,
-			err
+			err,
 		);
 	} finally {
 		templateLoading.value = false;
@@ -174,7 +175,7 @@ async function loadTemplateForCategory(category) {
 
 watch(
 	() => form.type,
-	(category) => loadTemplateForCategory(category)
+	(category) => loadTemplateForCategory(category),
 );
 
 function validate() {
@@ -196,11 +197,11 @@ async function save() {
 			form.endDate,
 			b.start,
 			b.end,
-			"parent project"
+			"parent project",
 		);
 		if (boundsErr) {
 			setErrors(
-				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
 			);
 			return;
 		}
@@ -225,6 +226,7 @@ async function save() {
 			expected_end_date: form.endDate,
 			customer: form.client,
 			project_category: form.type,
+			project_type: form.projectType || null,
 			estimated_costing: Number(form.budget),
 			project_manager: form.pm || null,
 			notes: form.description,
@@ -245,7 +247,7 @@ function cancel() {
 }
 
 const subtitle = computed(() =>
-	parentProject.value ? `Subproject under ${parentProject.value.name}` : "Top-level project"
+	parentProject.value ? `Subproject under ${parentProject.value.name}` : "Top-level project",
 );
 
 const breadcrumbs = computed(() => {
@@ -338,6 +340,18 @@ const breadcrumbs = computed(() => {
 								+ New
 							</button>
 						</div>
+					</DeskField>
+					<DeskField label="Project type" hint="Internal or External (ERPNext).">
+						<DeskLinkPicker
+							v-model="form.projectType"
+							data-test="pick-project-type"
+							doctype="Project Type"
+							placeholder="Select project type"
+							label-field="name"
+							value-field="name"
+							:search-fields="['name']"
+							:page-length="20"
+						/>
 					</DeskField>
 					<DeskField label="Project category" :error="errors.type">
 						<DeskLinkPicker
