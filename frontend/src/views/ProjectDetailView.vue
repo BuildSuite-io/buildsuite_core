@@ -96,6 +96,7 @@ function loadProjectResource() {
 			"project_name",
 			"customer",
 			"project_category",
+			"project_type",
 			"status",
 			"project_status",
 			"priority",
@@ -123,6 +124,7 @@ function loadProjectResource() {
 				status: row?.project_status || row?.status || "New",
 				priority: row?.priority || "Medium",
 				type: row?.project_category || "",
+				projectType: row?.project_type || "",
 				company: row?.company || "",
 				startDate: row?.expected_start_date || null,
 				endDate: row?.expected_end_date || null,
@@ -178,7 +180,7 @@ watch(
 				rows.map((r) => ({ name: r?.name, fullName: r?.full_name || r?.name })),
 		});
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 const pmName = computed(() => {
 	const rows = pmUserResource.value?.data;
@@ -187,7 +189,7 @@ const pmName = computed(() => {
 });
 const resolvedProjectId = computed(() => project.value?.id || props.id);
 const parent = computed(() =>
-	project.value?.parentId ? store.projectById(project.value.parentId) : null
+	project.value?.parentId ? store.projectById(project.value.parentId) : null,
 );
 const subprojectsResource = ref(null);
 const subprojectFilterKey = computed(() => resolvedProjectId.value);
@@ -239,7 +241,7 @@ watch(
 	() => {
 		loadSubprojectsResource();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 const subs = computed(() => {
@@ -253,7 +255,7 @@ const subprojectIdsKey = computed(() =>
 	subs.value
 		.map((p) => p.id)
 		.filter(Boolean)
-		.join("|")
+		.join("|"),
 );
 
 const workPackageProjectIds = computed(() => {
@@ -305,6 +307,9 @@ function loadWorkPackagesResource() {
 			}));
 		},
 	});
+	// A cached list resource returns stale data when we return to this view after
+	// creating a Work Package elsewhere — force a fresh fetch so new WPs appear.
+	workPackagesResource.value?.reload?.();
 }
 
 watch(
@@ -312,7 +317,7 @@ watch(
 	() => {
 		loadWorkPackagesResource();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 watch(subprojectIdsKey, (next, prev) => {
@@ -395,7 +400,7 @@ watch(
 	() => {
 		loadTasksResource();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 watch(subprojectIdsKey, (next, prev) => {
@@ -451,12 +456,12 @@ const boqs = computed(() =>
 	store
 		.boqsByProject(resolvedProjectId.value)
 		.slice()
-		.sort((a, b) => (b.preparedDate || "").localeCompare(a.preparedDate || ""))
+		.sort((a, b) => (b.preparedDate || "").localeCompare(a.preparedDate || "")),
 );
 const activeBoq = computed(
 	() =>
 		store.activeBoqForProject(resolvedProjectId.value) ||
-		boqs.value.find((b) => b.status === "Approved")
+		boqs.value.find((b) => b.status === "Approved"),
 );
 
 // Cost rollups for the summary strip. Planned honours the active BOQ's
@@ -473,7 +478,7 @@ const actualCost = computed(() => {
 });
 const costDeviation = computed(() => actualCost.value - plannedCost.value);
 const costDeviationPct = computed(() =>
-	plannedCost.value ? (costDeviation.value / plannedCost.value) * 100 : 0
+	plannedCost.value ? (costDeviation.value / plannedCost.value) * 100 : 0,
 );
 function deviationColor(pct) {
 	if (Math.abs(pct) < 0.5) return "text-ink-500";
@@ -536,7 +541,7 @@ watch(
 	() => {
 		tab.value = "overview";
 		editing.value = false;
-	}
+	},
 );
 
 // Project team — read from the project's custom_team_members child table
@@ -569,7 +574,7 @@ function colorOf(id) {
 // The Project Team child row only carries user + full_name, so the human-readable
 // role lives on the User's `persona` custom field — same as the prototype shows.
 const teamUserIds = computed(() =>
-	(project.value?.teamMembers || []).map((m) => m.user).filter(Boolean)
+	(project.value?.teamMembers || []).map((m) => m.user).filter(Boolean),
 );
 const teamUsersResource = ref(null);
 watch(
@@ -587,7 +592,7 @@ watch(
 			transform: (rows) => rows.map((r) => ({ name: r?.name, persona: r?.persona || "" })),
 		});
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 const teamPersonaMap = computed(() => {
 	const raw = teamUsersResource.value?.data;
@@ -603,7 +608,7 @@ const projectTeam = computed(() =>
 		role: teamPersonaMap.value[m.user] || "", // the user's persona, e.g. "Project Manager"
 		initials: initialsOf(m.fullName || m.user),
 		color: colorOf(m.user),
-	}))
+	})),
 );
 
 // Users already on the team (+ the PM) — excluded from the add picker.
@@ -685,12 +690,12 @@ async function saveEdit() {
 			editForm.value.endDate,
 			b.start,
 			b.end,
-			"parent project"
+			"parent project",
 		);
 	}
 	if (boundsErr) {
 		setEditErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -709,6 +714,7 @@ async function saveEdit() {
 			expected_end_date: editForm.value.endDate,
 			customer: editForm.value.client,
 			project_category: editForm.value.type,
+			project_type: editForm.value.projectType || null,
 			location: editForm.value.location || null,
 			// company is locked/inferred server-side (§14) — not editable from the form.
 			estimated_costing: Number(editForm.value.budget),
@@ -778,7 +784,7 @@ async function loadTemplateSummary(type) {
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-			}
+			},
 		);
 		const data = await res.json();
 		const s = data?.message || null;
@@ -810,7 +816,7 @@ async function seedFromTemplate() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			}
+			},
 		);
 		const data = await res.json().catch(() => ({}));
 		if (!res.ok) throw new Error(data?.exception || data?.exc_type || `HTTP ${res.status}`);
@@ -913,7 +919,7 @@ const breadcrumbs = computed(() => {
 });
 
 const titleStatuses = computed(() =>
-	project.value ? [project.value.status, project.value.priority] : []
+	project.value ? [project.value.status, project.value.priority] : [],
 );
 
 // Schedule-based variance + progress-bar color, same as the list view.
@@ -1306,6 +1312,7 @@ usePageTitle(() => project.value?.name);
 						'description',
 						'planned_start',
 						'planned_end',
+						'task_count',
 						'planned_task_count',
 					]"
 					:columns="[
@@ -1363,9 +1370,11 @@ usePageTitle(() => project.value?.name);
 						}}</span>
 					</template>
 					<template #cell-planned_task_count="{ row }">
-						<span class="text-xs text-ink-700 tabular-nums">{{
-							row.planned_task_count || 0
-						}}</span>
+						<span
+							class="text-xs text-ink-700 tabular-nums"
+							:title="'Actual tasks in stage / planned task count'"
+							>{{ row.task_count || 0 }} / {{ row.planned_task_count || 0 }}</span
+						>
 					</template>
 					<template #cell-_status="{ row }">
 						<span

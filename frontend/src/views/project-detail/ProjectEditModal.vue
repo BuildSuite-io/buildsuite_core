@@ -94,6 +94,17 @@ function onCustomerCreated(name) {
 								</button>
 							</div>
 						</DeskField>
+						<DeskField label="Project type" hint="Internal or External (ERPNext).">
+							<DeskLinkPicker
+								v-model="editForm.projectType"
+								doctype="Project Type"
+								placeholder="Select project type"
+								label-field="name"
+								value-field="name"
+								:search-fields="['name']"
+								:page-length="20"
+							/>
+						</DeskField>
 						<DeskField label="Category" :error="errors.type">
 							<DeskLinkPicker
 								v-model="editForm.type"
@@ -123,7 +134,7 @@ function onCustomerCreated(name) {
 								subsCount > 0
 									? `Locked on - this project has ${subsCount} subproject${
 											subsCount === 1 ? '' : 's'
-									  }. Delete or move them out before turning this off.`
+										}. Delete or move them out before turning this off.`
 									: 'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
 							"
 						>
