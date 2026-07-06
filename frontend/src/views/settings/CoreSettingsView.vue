@@ -6,9 +6,11 @@
 // represents it as store.coreSettings (flat object). Edits flow through
 // store.updateCoreSettings(patch).
 
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { getCoreSettings, setProjectNaming } from "@/data/coreSettingsApi";
+import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -23,28 +25,55 @@ const editing = ref(false);
 const form = ref({});
 const saving = ref(false);
 
+// Project naming is server-persisted (BuildSuite Core Settings Single), unlike the
+// other fields on this screen. Loaded from / saved to the backend directly.
+const projectNaming = ref("Project ID");
+const projectNamingOptions = ref(["Project ID"]);
+
+onMounted(async () => {
+	try {
+		const res = await getCoreSettings();
+		projectNaming.value = res.project_naming || "Project ID";
+		projectNamingOptions.value = res.project_naming_options || ["Project ID"];
+	} catch {
+		/* leave defaults; non-admins can't read it */
+	}
+});
+
 watch(
 	() => store.coreSettings,
 	(s) => {
 		if (s) form.value = JSON.parse(JSON.stringify(s));
 	},
-	{ immediate: true, deep: true }
+	{ immediate: true, deep: true },
 );
 
 function startEdit() {
-	form.value = JSON.parse(JSON.stringify(store.coreSettings));
+	form.value = {
+		...JSON.parse(JSON.stringify(store.coreSettings)),
+		project_naming: projectNaming.value,
+	};
 	editing.value = true;
 }
 function cancelEdit() {
 	form.value = JSON.parse(JSON.stringify(store.coreSettings));
 	editing.value = false;
 }
-function saveEdit() {
+async function saveEdit() {
 	if (!store.isAdmin) return;
 	saving.value = true;
-	store.updateCoreSettings({ ...form.value });
-	saving.value = false;
-	editing.value = false;
+	try {
+		store.updateCoreSettings({ ...form.value });
+		if (form.value.project_naming && form.value.project_naming !== projectNaming.value) {
+			await setProjectNaming(form.value.project_naming);
+			projectNaming.value = form.value.project_naming;
+		}
+		editing.value = false;
+	} catch (err) {
+		showToast(err.message || "Failed to save settings", "error");
+	} finally {
+		saving.value = false;
+	}
 }
 function onPrimary() {
 	editing.value ? saveEdit() : startEdit();
@@ -136,6 +165,19 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 						</div>
 						<DeskSelect v-else v-model="form.default_project_type">
 							<option v-for="t in PROJECT_TYPES" :key="t">{{ t }}</option>
+						</DeskSelect>
+					</DeskField>
+					<DeskField
+						label="Project naming"
+						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; otherwise the selected ERPNext naming series is used."
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ projectNaming }}
+						</div>
+						<DeskSelect v-else v-model="form.project_naming">
+							<option v-for="opt in projectNamingOptions" :key="opt" :value="opt">
+								{{ opt }}
+							</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
