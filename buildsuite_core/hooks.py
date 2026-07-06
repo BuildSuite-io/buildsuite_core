@@ -155,6 +155,10 @@ has_permission = {
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 }
 
+# Override the Project controller so its record name honours the BuildSuite Core
+# Settings "Project Naming" option (Project ID vs an ERPNext naming series).
+override_doctype_class = {"Project": "buildsuite_core.overrides.project.BuildSuiteProject"}
+
 # Document Events
 # ---------------
 # Hook on document methods and events
