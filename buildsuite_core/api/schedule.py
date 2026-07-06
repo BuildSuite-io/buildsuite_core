@@ -213,11 +213,14 @@ def remove_task_predecessor(task: str, predecessor: str):
 
 
 def normalize_milestone_task(doc, method=None):
-	"""A Milestone is a point in time (zero-duration) — collapse its dates to a
+	"""A Milestone is a point in time (zero-duration): keep ERPNext's native
+	`is_milestone` flag in sync with the task's `type`, and collapse its dates to a
 	single day so the engine + Gantt render it as a diamond, not a bar.
 
-	Scheduling type now lives on the native `type` Link (-> Task Type master)."""
-	if getattr(doc, "type", None) != "Milestone":
+	Scheduling type lives on the native `type` Link (-> Task Type master)."""
+	is_milestone = getattr(doc, "type", None) == "Milestone"
+	doc.is_milestone = 1 if is_milestone else 0
+	if not is_milestone:
 		return
 	if doc.exp_start_date:
 		doc.exp_end_date = doc.exp_start_date
