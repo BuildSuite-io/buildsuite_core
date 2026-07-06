@@ -155,6 +155,25 @@ CUSTOM_FIELD = {
 			"insert_after": "custom_seed_default_stages",
 			"module": "BuildSuite Core",
 		},
+		{
+			"fieldname": "custom_seed_default_work_packages",
+			"fieldtype": "Check",
+			"label": "Seed Default Work Packages",
+			"default": "0",
+			"hidden": 1,
+			"insert_after": "custom_seed_default_tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"label": "Project Category",
+			"options": "Project Category",
+			"insert_after": "project_type",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
 	],
 	"Task": [
 		{
@@ -252,10 +271,14 @@ CUSTOM_FIELD = {
 	],
 	"User": [
 		{
+			# A Link to the Persona master (was a hardcoded Select). The Persona's
+			# `roles` child table drives which roles a user is granted — see
+			# utils.user.sync_persona_roles. Persona records are named after their
+			# label, so existing Select values resolve as Link targets unchanged.
 			"fieldname": "persona",
-			"fieldtype": "Select",
+			"fieldtype": "Link",
 			"label": "Persona",
-			"options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
+			"options": "Persona",
 			"insert_after": "username",
 			"module": "BuildSuite Core",
 		},
@@ -342,6 +365,53 @@ CUSTOM_FIELD = {
 			"fetch_from": "custom_rate_master.current_rate",
 			"read_only": 1,
 			"insert_after": "custom_rate_master_name",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Extend ERPNext's native Project Template: tag it to a Project Category and
+	# carry default Work Packages + Stages alongside the native task list.
+	"Project Template": [
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"label": "Project Category",
+			"options": "Project Category",
+			"insert_after": "project_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_work_packages",
+			"fieldtype": "Table",
+			"label": "Work Packages",
+			"options": "BuildSuite Template Work Package",
+			"insert_after": "tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stages",
+			"fieldtype": "Table",
+			"label": "Stages",
+			"options": "BuildSuite Template Stage",
+			"insert_after": "custom_work_packages",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Associate a template task with a template Work Package by code (resolved to a
+	# real Work Package at project-create time) and with the template Stage it
+	# belongs to (so the seeded Stage Planning gets the task in its task list).
+	"Project Template Task": [
+		{
+			"fieldname": "custom_work_package_code",
+			"fieldtype": "Data",
+			"label": "Work Package Code",
+			"insert_after": "subject",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stage",
+			"fieldtype": "Data",
+			"label": "Stage",
+			"insert_after": "custom_work_package_code",
 			"module": "BuildSuite Core",
 		},
 	],

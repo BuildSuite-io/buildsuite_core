@@ -3,19 +3,16 @@
 
 """BuildSuite user administration — real Frappe User CRUD from the Vue app.
 
-People are Frappe Users. A user's "persona" is the `persona` Select custom field
-on User; the buildsuite_core.utils.user.sync_persona_roles validate hook keeps
-exactly one BuildSuite role in sync with it. So we only ever set `persona` here —
-never touch roles directly.
+People are Frappe Users. A user's "persona" is the `persona` Link custom field on
+User, pointing at the Persona master; the buildsuite_core.utils.user.sync_persona_roles
+validate hook keeps their BuildSuite roles in sync with the persona's role mapping.
+So we only ever set `persona` here — never touch roles directly.
 """
 
 import frappe
 from frappe import _
 from frappe.utils import cint
 
-from buildsuite_core.permissions.setup import PERSONA_TO_ROLE
-
-PERSONA_OPTIONS = list(PERSONA_TO_ROLE)
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
 SYSTEM_ACCOUNTS = ["Administrator", "Guest"]
 
@@ -26,8 +23,20 @@ def _require_admin():
 
 
 def _validate_persona(persona):
-	if persona not in PERSONA_OPTIONS:
+	if not frappe.db.get_value("Persona", persona, "enabled"):
 		frappe.throw(_("Invalid persona."))
+
+
+@frappe.whitelist()
+def list_personas():
+	"""Enabled personas for the user-admin picker (name doubles as the label)."""
+	_require_admin()
+	return frappe.get_all(
+		"Persona",
+		filters={"enabled": 1},
+		fields=["name", "slug", "description"],
+		order_by="sort_order asc",
+	)
 
 
 @frappe.whitelist()
@@ -36,7 +45,7 @@ def list_buildsuite_users():
 	_require_admin()
 	return frappe.get_all(
 		"User",
-		filters={"persona": ["in", PERSONA_OPTIONS], "name": ["not in", SYSTEM_ACCOUNTS]},
+		filters={"persona": ["is", "set"], "name": ["not in", SYSTEM_ACCOUNTS]},
 		fields=["name", "full_name", "email", "enabled", "persona"],
 		order_by="full_name asc",
 	)

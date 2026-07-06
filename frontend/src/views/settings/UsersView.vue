@@ -15,7 +15,6 @@ import {
 	deleteBuildsuiteUser,
 	outgoingEmailConfigured,
 } from "@/data/usersApi";
-import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -25,7 +24,7 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const store = useDataStore();
 const router = useRouter();
@@ -65,7 +64,7 @@ const items = computed(() => {
 	const term = search.value.trim().toLowerCase();
 	if (!term) return users.value;
 	return users.value.filter((u) =>
-		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term)
+		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term),
 	);
 });
 
@@ -91,9 +90,6 @@ const editError = ref("");
 const editSaving = ref(false);
 const emailActing = ref(""); // '' | 'welcome' | 'reset'
 const mailConfigured = ref(null);
-
-const { selectOptions } = useDoctypeMeta("User");
-const personaOptions = computed(() => selectOptions("persona"));
 
 function openEdit(row) {
 	editForm.email = row.email || row.name;
@@ -347,18 +343,21 @@ async function deleteUser() {
 								:error="editErrors.persona"
 								hint="Frappe Roles are auto-assigned from the persona on the production side."
 							>
-								<DeskSelect
+								<DeskLinkPicker
 									v-model="editForm.persona"
+									doctype="Persona"
+									placeholder="Select persona"
+									label-field="persona_name"
+									value-field="name"
+									:search-fields="['persona_name', 'name']"
+									:filters="{ enabled: 1, backend_only: 0 }"
+									order-by="sort_order asc"
+									:error="editErrors.persona"
 									@change="
 										editErrors.persona = '';
 										editError = '';
 									"
-								>
-									<option value="">— Select persona —</option>
-									<option v-for="opt in personaOptions" :key="opt" :value="opt">
-										{{ opt }}
-									</option>
-								</DeskSelect>
+								/>
 							</DeskField>
 						</DeskSection>
 
