@@ -271,10 +271,14 @@ CUSTOM_FIELD = {
 	],
 	"User": [
 		{
+			# A Link to the Persona master (was a hardcoded Select). The Persona's
+			# `roles` child table drives which roles a user is granted — see
+			# utils.user.sync_persona_roles. Persona records are named after their
+			# label, so existing Select values resolve as Link targets unchanged.
 			"fieldname": "persona",
-			"fieldtype": "Select",
+			"fieldtype": "Link",
 			"label": "Persona",
-			"options": "Director / Owner\nProject Manager\nEstimator\nQuantity Surveyor\nSite Engineer\nForeman / Supervisor\nProcurement Officer\nStore Keeper\nAccountant\nHR Manager\nSystem Manager (Admin)\nBuildSuite Administrator",
+			"options": "Persona",
 			"insert_after": "username",
 			"module": "BuildSuite Core",
 		},
