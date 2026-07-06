@@ -11,3 +11,4 @@ buildsuite_core.patches.migrate_task_type_to_native_type
 buildsuite_core.patches.backfill_stage_aggregates
 buildsuite_core.patches.migrate_project_type_to_category
 buildsuite_core.patches.remove_legacy_project_template_doctypes
+buildsuite_core.patches.repair_default_personas
