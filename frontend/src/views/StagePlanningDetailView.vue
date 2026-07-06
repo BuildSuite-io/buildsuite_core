@@ -1144,7 +1144,7 @@ usePageTitle(() => stage.value?.stageName);
 						<div class="px-3 py-1.5">Task</div>
 						<div class="px-3 py-1.5">Planned Start</div>
 						<div class="px-3 py-1.5">Planned End</div>
-						<div class="px-3 py-1.5 text-right">Planned Qty (%)</div>
+						<div class="px-3 py-1.5 text-right">Planned Progress (%)</div>
 						<div class="px-3 py-1.5">Status</div>
 					</div>
 					<div
