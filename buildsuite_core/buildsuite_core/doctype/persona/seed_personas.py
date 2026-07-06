@@ -32,6 +32,8 @@ PERSONAS = (
 
 
 def seed_personas():
+	"""Create any missing default persona. Idempotent; leaves existing personas
+	(and any admin edits to them) untouched."""
 	created = []
 	for persona_name, slug, order, roles in PERSONAS:
 		if frappe.db.exists("Persona", persona_name):
@@ -53,3 +55,67 @@ def seed_personas():
 		doc.insert(ignore_permissions=True)
 		created.append(persona_name)
 	return created
+
+
+def _add_missing_roles(doc, roles):
+	"""Append any default role the persona is missing (existing role rows kept)."""
+	have = {r.role for r in doc.roles}
+	added = False
+	for role in roles:
+		if role not in have and frappe.db.exists("Role", role):
+			doc.append("roles", {"role": role})
+			added = True
+	return added
+
+
+def _repair_existing(persona_name, slug, roles):
+	"""Re-enable a default persona and restore its default roles. Returns True if it
+	changed. Never removes an admin's extra roles."""
+	doc = frappe.get_doc("Persona", persona_name)
+	changed = False
+	if not doc.enabled:
+		doc.enabled = 1
+		changed = True
+	if not doc.is_default:
+		doc.is_default = 1
+		changed = True
+	if not (doc.slug or "").strip():
+		doc.slug = slug
+		changed = True
+	changed = _add_missing_roles(doc, roles) or changed
+	if changed:
+		doc.flags.ignore_permissions = True
+		doc.save()
+	return changed
+
+
+def repair_default_personas():
+	"""Restore the default personas to a working state: create any that are missing,
+	re-enable any that were left disabled, and add back any default role rows that
+	went missing. This recovers sites where the two admin personas ended up disabled
+	(dropping them from the user-form picker and locking admins out of Settings).
+
+	Only ever creates, enables and ADDS roles — never removes an admin's extra roles
+	or personas — so it's safe to re-run."""
+	repaired = []
+	for persona_name, slug, order, roles in PERSONAS:
+		if frappe.db.exists("Persona", persona_name):
+			if _repair_existing(persona_name, slug, roles):
+				repaired.append(persona_name)
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "Persona",
+				"persona_name": persona_name,
+				"slug": slug,
+				"sort_order": order,
+				"enabled": 1,
+				"is_default": 1,
+			}
+		)
+		for role in roles:
+			if frappe.db.exists("Role", role):
+				doc.append("roles", {"role": role})
+		doc.insert(ignore_permissions=True)
+		repaired.append(persona_name)
+	return repaired
