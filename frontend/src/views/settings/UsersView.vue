@@ -102,6 +102,14 @@ listPersonas()
 		personaOptions.value = [];
 	});
 
+// Always include the user's current persona in the edit dropdown, even if it's
+// disabled/absent from the enabled list — otherwise editing would silently blank it.
+const editPersonaOptions = computed(() => {
+	const opts = [...personaOptions.value];
+	if (editForm.persona && !opts.includes(editForm.persona)) opts.unshift(editForm.persona);
+	return opts;
+});
+
 function openEdit(row) {
 	editForm.email = row.email || row.name;
 	editForm.fullName = row.full_name || "";
@@ -362,7 +370,11 @@ async function deleteUser() {
 									"
 								>
 									<option value="">— Select persona —</option>
-									<option v-for="opt in personaOptions" :key="opt" :value="opt">
+									<option
+										v-for="opt in editPersonaOptions"
+										:key="opt"
+										:value="opt"
+									>
 										{{ opt }}
 									</option>
 								</DeskSelect>
