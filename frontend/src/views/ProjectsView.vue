@@ -65,7 +65,7 @@ function onRowClick(row) {
 				'custom_project_id',
 				'project_name',
 				'customer',
-				'project_type',
+				'project_category',
 				'project_status',
 				'estimated_costing',
 				'percent_complete',
@@ -77,7 +77,7 @@ function onRowClick(row) {
 				{ key: 'custom_project_id', label: 'Project ID' },
 				{ key: 'project_name', label: 'Project Name' },
 				{ key: 'customer', label: 'Client' },
-				{ key: 'project_type', label: 'Project Type' },
+				{ key: 'project_category', label: 'Project Category' },
 				{
 					key: 'project_status',
 					label: 'Status',
@@ -98,7 +98,7 @@ function onRowClick(row) {
 			:filter-values="filterValues"
 			:filter-field-map="{
 				status: 'project_status',
-				type: 'project_type',
+				type: 'project_category',
 				company: 'company',
 			}"
 			cache-key="buildsuite-project-list-generic"
@@ -116,7 +116,7 @@ function onRowClick(row) {
 				</DeskSelect>
 
 				<DeskSelect v-model="typeFilter" class="!w-40">
-					<option value="">Type: Any</option>
+					<option value="">Category: Any</option>
 					<option>Commercial</option>
 					<option>Residential</option>
 					<option>Infrastructure</option>

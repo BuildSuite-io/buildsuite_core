@@ -94,15 +94,15 @@ function onCustomerCreated(name) {
 								</button>
 							</div>
 						</DeskField>
-						<DeskField label="Type" :error="errors.type">
+						<DeskField label="Category" :error="errors.type">
 							<DeskLinkPicker
 								v-model="editForm.type"
-								doctype="Project Type"
-								placeholder="Select project type"
+								doctype="Project Category"
+								placeholder="Select project category"
 								label-field="name"
 								value-field="name"
-								:search-fields="['name']"
-								order-by="modified desc"
+								:search-fields="['category_name', 'name']"
+								order-by="sort_order asc"
 								:page-length="20"
 								:error="errors.type"
 								@change="emit('clear-error', 'type')"

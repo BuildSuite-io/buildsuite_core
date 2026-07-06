@@ -49,7 +49,10 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(child.company, self.company)
 
 	def test_project_infers_company_from_creating_user(self):
-		frappe.db.set_value("User", frappe.session.user, "company", self.company)
+		# A project created with no company inherits the creating user's resolved
+		# default Company (ERPNext fills Project.company from it, and
+		# set_company_on_insert backfills from the same source when still empty).
+		expected = frappe.defaults.get_user_default("Company") or self.company
 		p = frappe.get_doc(
 			{
 				"doctype": "Project",
@@ -58,7 +61,32 @@ class TestProject(BuildSuiteTestCase):
 			}
 		)
 		p.insert(ignore_permissions=True)
-		self.assertEqual(p.company, self.company)
+		self.assertEqual(p.company, expected)
+
+	def test_project_named_by_project_id_when_setting_is_project_id(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "Project ID")
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"NM {self._n}",
+				"custom_project_id": f"NMID-{self._n}",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(p.name, f"NMID-{self._n}")
+
+	def test_project_named_by_series_when_setting_is_a_series(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "PROJ-.####")
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"NM2 {self._n}",
+				"custom_project_id": f"NMID2-{self._n}",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(p.name.startswith("PROJ-"))
+		self.assertNotEqual(p.name, f"NMID2-{self._n}")  # the id is not the record name here
 
 	def test_company_locked_after_create(self):
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")
@@ -186,6 +214,51 @@ class TestProject(BuildSuiteTestCase):
 		self.assertTrue(
 			frappe.db.exists("Warehouse", {"warehouse_name": "Projects", "company": self.company})
 		)
+
+	# --- category templating (work packages / stages / tasks) -----------
+	def test_category_template_seeds_wps_tasks_stages(self):
+		if not frappe.db.exists("Project Template", "Commercial"):
+			self.skipTest("Commercial project template is not seeded on this site")
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"CAT {self._n}",
+				"custom_project_id": f"CAT-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"project_category": "Commercial",
+				"custom_seed_default_work_packages": 1,
+				"custom_seed_default_stages": 1,
+				"custom_seed_default_tasks": 1,
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(frappe.db.count("Work Package", {"project": p.name}), 5)
+		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 12)
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 6)
+		# every seeded task is linked to its work package
+		self.assertEqual(
+			frappe.db.count("Task", {"project": p.name, "work_package": ("is", "set")}), 12
+		)
+
+	def test_subproject_does_not_seed_template(self):
+		# Subprojects don't seed a template — the parent owns the breakdown.
+		parent = self._make_project(company=self.company)
+		child = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"SUB {self._n}",
+				"custom_project_id": f"SUB-{self._n}",
+				"project_status": "Ongoing",
+				"company": self.company,
+				"parent_project": parent.name,
+				"project_category": "Commercial",
+				"custom_seed_default_work_packages": 1,
+				"custom_seed_default_stages": 1,
+				"custom_seed_default_tasks": 1,
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(frappe.db.count("Work Package", {"project": child.name}), 0)
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": child.name}), 0)
 
 	# --- team membership (custom_team_members) --------------------------
 	def test_project_team_add_and_remove(self):

@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:persona_name",
+ "creation": "2026-07-06 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "persona_name",
+  "slug",
+  "column_break_meta",
+  "enabled",
+  "sort_order",
+  "is_default",
+  "backend_only",
+  "section_break_roles",
+  "roles",
+  "section_break_desc",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "persona_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Persona Name",
+   "placeholder": "Project Manager",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "Frontend id used by the role switcher / gating (e.g. pm).",
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Slug"
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "0",
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order"
+  },
+  {
+   "default": "0",
+   "description": "Set on the personas seeded by BuildSuite. Informational only.",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Seeded Default",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Only assignable from the Frappe desk (backend), not the BuildSuite app's user forms.",
+   "fieldname": "backend_only",
+   "fieldtype": "Check",
+   "label": "Backend Only",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "section_break_roles",
+   "fieldtype": "Section Break",
+   "label": "Roles"
+  },
+  {
+   "description": "Roles granted to a user assigned this persona.",
+   "fieldname": "roles",
+   "fieldtype": "Table",
+   "label": "Roles",
+   "options": "Persona Role"
+  },
+  {
+   "fieldname": "section_break_desc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Persona",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "sort_order",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

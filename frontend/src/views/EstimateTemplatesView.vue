@@ -20,7 +20,7 @@ const breadcrumbs = [
 ]
 
 const templatesRes = useDocTypeList('Estimate Template', {
-  fields: ['name', 'template_code', 'template_name', 'project_type', 'enabled', 'row_count', 'estimated_total', 'modified'],
+  fields: ['name', 'template_code', 'template_name', 'project_category', 'enabled', 'row_count', 'estimated_total', 'modified'],
   orderBy: 'template_code asc',
   pageLength: 0,
   cache: 'buildsuite-estimate-template-list',
@@ -29,7 +29,7 @@ const templatesRes = useDocTypeList('Estimate Template', {
       id: t.name,
       code: t.template_code,
       name: t.template_name,
-      projectType: t.project_type,
+      projectType: t.project_category,
       rows: t.row_count,
       estimated: t.estimated_total,
       updated: t.modified,
@@ -52,7 +52,7 @@ const rows = computed(() => {
 const columns = [
   { key: 'code', label: 'Code' },
   { key: 'name', label: 'Name' },
-  { key: 'projectType', label: 'Project Type' },
+  { key: 'projectType', label: 'Project Category' },
   { key: 'rows', label: 'Rows', align: 'right' },
   { key: 'estimated', label: 'Estimated', align: 'right' },
   { key: 'updated', label: 'Updated' },

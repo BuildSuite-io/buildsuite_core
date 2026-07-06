@@ -44,7 +44,7 @@ async function onSave() {
     const res = await adapter.create('Estimate Template', {
       template_code: form.templateCode.trim(),
       template_name: form.templateName.trim(),
-      project_type: form.projectType || null,
+      project_category: form.projectType || null,
       description: form.description,
     })
     router.push(`/estimate-template/${res.name}`)
@@ -80,8 +80,8 @@ const breadcrumbs = [
         <DeskField label="Name" required :error="errors.templateName">
           <DeskInput v-model="form.templateName" />
         </DeskField>
-        <DeskField label="Project Type" hint="Used to suggest this template for matching project types.">
-          <DeskLinkPicker v-model="form.projectType" doctype="Project Type" label-field="name" value-field="name"
+        <DeskField label="Project Category" hint="Used to suggest this template for matching project types.">
+          <DeskLinkPicker v-model="form.projectType" doctype="Project Category" label-field="name" value-field="name"
             placeholder="— Any project type —" />
         </DeskField>
         <DeskField label="Description">

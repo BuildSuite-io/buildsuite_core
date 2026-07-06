@@ -45,6 +45,14 @@ const groups = computed(() => [
 				adminOnly: true,
 			},
 			{
+				slug: "personas",
+				icon: "shield",
+				label: "Personas",
+				desc: "Job roles users pick from, each mapping to the Frappe roles it grants.",
+				to: "/settings/personas",
+				adminOnly: true,
+			},
+			{
 				slug: "roles",
 				icon: "shield",
 				label: "Roles & Permissions",
@@ -90,11 +98,11 @@ const groups = computed(() => [
 				bsaOnly: true,
 			},
 			{
-				slug: "project-types",
+				slug: "project-categories",
 				icon: "tag",
-				label: "Project Types",
-				desc: "Configurable list of project types. Per-type Work Package label and default template picker.",
-				to: "/settings/project-types",
+				label: "Project Categories",
+				desc: "Construction categories that drive project templating, each with its own Work Package label.",
+				to: "/settings/project-categories",
 				adminOnly: true,
 			},
 		],
@@ -187,7 +195,7 @@ const visibleGroups = computed(() =>
 				return true;
 			}),
 		}))
-		.filter((g) => g.tiles.length)
+		.filter((g) => g.tiles.length),
 );
 
 function onTileClick(tile) {

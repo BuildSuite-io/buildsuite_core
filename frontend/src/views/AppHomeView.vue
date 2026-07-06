@@ -65,7 +65,7 @@ const progressTodayCount = computed(
 const quickActions = [
 	{ label: "Users", to: "/settings/users", icon: "users" },
 	{ label: "Companies", to: "/settings/companies", icon: "companies" },
-	{ label: "Project Types", to: "/settings/project-types", icon: "project-types" },
+	{ label: "Project Categories", to: "/settings/project-categories", icon: "project-types" },
 	{
 		label: "Workspace Structure",
 		to: "/settings/workspace-structure",

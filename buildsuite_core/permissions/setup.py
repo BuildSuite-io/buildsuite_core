@@ -307,10 +307,11 @@ STAGE_PLANNING_ROLE_PERMS = {
 LINKED_MASTER_DOCTYPES = (
 	"Company",  # Projects list multi-company filter
 	"Customer",  # New Project -> Client picker
-	"Project Type",  # New Project -> Project Type picker
+	"Project Type",  # native Internal / External
+	"Project Category",  # New Project -> Category picker (drives templating)
 	"Employee",  # PM / owner / assignee pickers
 	"Task Type",  # New Task -> Task Type picker
-	"BuildSuite Project Template",  # New Project -> template preview + seed
+	"Persona",  # Users settings -> persona link picker
 )
 _READONLY_PTYPES = ("read", "report", "export", "print")
 
@@ -322,24 +323,9 @@ WORKFLOW_EDITOR_ROLE = "BuildSuite Project User"
 # All BuildSuite roles, for the app-level access gate (api.permission).
 BUILDSUITE_ROLES = tuple(PROJECT_ROLE_PERMS.keys())
 
-# User.persona Select value -> the role that persona grants. The persona option
-# strings mirror the `name` fields in frontend/src/data/roles.js so the frontend
-# and backend agree on one vocabulary. "System Manager (Admin)" maps to Frappe's
-# native System Manager role (not a BuildSuite role).
-PERSONA_TO_ROLE = {
-	"Director / Owner": "BuildSuite Director",
-	"Project Manager": "BuildSuite PM",
-	"Estimator": "BuildSuite Estimator",
-	"Quantity Surveyor": "BuildSuite QS",
-	"Site Engineer": "BuildSuite Site Engineer",
-	"Foreman / Supervisor": "BuildSuite Foreman",
-	"Procurement Officer": "BuildSuite Procurement Officer",
-	"Store Keeper": "BuildSuite Store Keeper",
-	"Accountant": "BuildSuite Accountant",
-	"HR Manager": "BuildSuite HR Manager",
-	"System Manager (Admin)": "System Manager",
-	"BuildSuite Administrator": "BuildSuite Administrator",
-}
+# The persona -> role mapping now lives in the Persona master (seeded from
+# buildsuite_core.buildsuite_core.doctype.persona.seed_personas). utils.user reads
+# a user's Persona.roles to keep their BuildSuite roles in sync.
 
 # Every flag we may set on a DocPerm — anything not granted is explicitly cleared.
 _PTYPES = ("read", "write", "create", "delete", "report", "export", "print")
@@ -510,6 +496,8 @@ def setup_stage_planning_workflow():
 
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
+	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import seed_personas
+
 	setup_project_permissions()
 	setup_task_permissions()
 	setup_work_package_permissions()
@@ -521,3 +509,5 @@ def setup_record_permissions():
 	setup_linked_master_permissions()
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
+	# Personas map to the roles ensured above — seed them once the roles exist.
+	seed_personas()

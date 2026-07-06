@@ -53,10 +53,10 @@ const rateMastersRes = useDocTypeList("Construction Rate Master", {
 	cache: "buildsuite-rate-master-options",
 });
 const assemblyMap = computed(() =>
-	Object.fromEntries((assembliesRes.data || []).map((a) => [a.name, a]))
+	Object.fromEntries((assembliesRes.data || []).map((a) => [a.name, a])),
 );
 const rateMap = computed(() =>
-	Object.fromEntries((rateMastersRes.data || []).map((r) => [r.name, r]))
+	Object.fromEntries((rateMastersRes.data || []).map((r) => [r.name, r])),
 );
 
 const { selectOptions } = useDoctypeMeta("Estimate Template Row");
@@ -177,7 +177,7 @@ const cards = computed(() => {
 	const d = doc.value;
 	if (!d) return [];
 	return [
-		{ label: "Project Type", value: d.project_type || "Any" },
+		{ label: "Project Category", value: d.project_category || "Any" },
 		{ label: "Rows", value: rawRows.value.length, cls: "tabular-nums" },
 		{
 			label: "Estimated total",
@@ -231,7 +231,7 @@ function snapshot() {
 	if (!d) return {};
 	return {
 		templateName: d.template_name || "",
-		projectType: d.project_type || "",
+		projectType: d.project_category || "",
 		enabled: !!d.enabled,
 		description: d.description || "",
 	};
@@ -241,7 +241,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function startEdit() {
@@ -263,7 +263,7 @@ async function saveEdit() {
 	try {
 		await adapter.update("Estimate Template", props.id, {
 			template_name: form.value.templateName.trim(),
-			project_type: form.value.projectType || null,
+			project_category: form.value.projectType || null,
 			enabled: form.value.enabled ? 1 : 0,
 			description: form.value.description,
 		});
@@ -338,10 +338,10 @@ async function saveRenameGroup(group) {
 		return showToast("A group with that name already exists.", "error");
 	// Rename the group AND re-point every row joined to its old name, in one save.
 	const groups = currentGroups().map((g) =>
-		(g.group_name || "").trim() === group.name ? { ...g, group_name: name } : g
+		(g.group_name || "").trim() === group.name ? { ...g, group_name: name } : g,
 	);
 	const rows = currentRows().map((r) =>
-		(r.group_name || "").trim() === group.name ? { ...r, group_name: name } : r
+		(r.group_name || "").trim() === group.name ? { ...r, group_name: name } : r,
 	);
 	await persistTemplate({ groups, rows });
 	cancelRenameGroup();
@@ -353,7 +353,7 @@ async function removeGroup(group) {
 		message: group.count
 			? `Delete "${group.name}" and its ${group.count} row${
 					group.count === 1 ? "" : "s"
-			  }? This cannot be undone.`
+				}? This cannot be undone.`
 			: `Delete the empty group "${group.name}"?`,
 		confirmLabel: "Delete",
 		destructive: true,
@@ -385,7 +385,7 @@ const newRowSource = computed(() => {
 	return r ? { unit: r.uom, rate: r.current_rate } : null;
 });
 const newRowAmount = computed(
-	() => (Number(newRow.placeholder_qty) || 0) * (newRowSource.value?.rate || 0)
+	() => (Number(newRow.placeholder_qty) || 0) * (newRowSource.value?.rate || 0),
 );
 
 function startAddRow(group) {
@@ -708,7 +708,7 @@ async function removeRow(name) {
 											patchRowByName(
 												row.name,
 												'placeholder_qty',
-												$event.target.value
+												$event.target.value,
 											)
 										"
 									/>
@@ -925,10 +925,10 @@ async function removeRow(name) {
 							<DeskField label="Name" required :error="errors.templateName">
 								<DeskInput v-model="form.templateName" />
 							</DeskField>
-							<DeskField label="Project Type tag" hint="Empty = universal.">
+							<DeskField label="Project Category tag" hint="Empty = universal.">
 								<DeskLinkPicker
 									v-model="form.projectType"
-									doctype="Project Type"
+									doctype="Project Category"
 									label-field="name"
 									value-field="name"
 									placeholder="— Universal —"

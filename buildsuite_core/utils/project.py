@@ -178,128 +178,182 @@ def backfill_project_status(doc=None, method=None):
 
 
 def seed_from_template_on_insert(doc, method=None):
-	if not doc.project_type:
+	"""Seed Work Packages, Tasks and Stages onto a new project from the ERPNext
+	Project Template that matches its Project Category. Each layer is opt-in via the
+	Project's seed flags; tasks link to the seeded Work Package by the template task's
+	work-package code. Subprojects don't seed — the parent project owns the timeline.
+	"""
+	if doc.parent_project:
 		return
-	if not (doc.custom_seed_default_stages or doc.custom_seed_default_tasks):
+	category = doc.get("project_category")
+	if not category:
 		return
 
-	template_name = frappe.db.get_value(
-		"BuildSuite Project Template", {"project_type": doc.project_type}, "name"
-	)
+	seed_wps = bool(doc.get("custom_seed_default_work_packages"))
+	seed_stages = bool(doc.get("custom_seed_default_stages"))
+	seed_tasks = bool(doc.get("custom_seed_default_tasks"))
+	if not (seed_wps or seed_stages or seed_tasks):
+		return
+
+	template_name = frappe.db.get_value("Project Template", {"project_category": category}, "name")
 	if not template_name:
 		return
+	template = frappe.get_doc("Project Template", template_name)
 
-	template = frappe.get_doc("BuildSuite Project Template", template_name)
-
-	from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.buildsuite_project_template import (
-		create_stage_plan,
-		create_task,
-	)
-
-	seed_stages = bool(doc.custom_seed_default_stages)
-	seed_tasks = bool(doc.custom_seed_default_tasks)
-
-	# Three seed modes:
-	#   Stages + Tasks -> stages created WITH their nested tasks, plus project-level tasks.
-	#   Stages only    -> empty stages (no tasks created at all).
-	#   Tasks only     -> no stages; every template task (project-level AND the ones
-	#                     nested in stage plans) created as a plain project task.
-	if seed_stages:
-		for row in template.stage_plans:
+	# --- Work Packages -----------------------------------------------------
+	wp_by_code = {}
+	if seed_wps:
+		for row in sorted(template.custom_work_packages, key=lambda r: r.sort_order or 0):
 			try:
-				stage_plan_doc = frappe.get_doc("Stage Plan Template", row.stage_plan)
-				create_stage_plan(doc.name, stage_plan_doc, with_tasks=seed_tasks)
+				wp = frappe.get_doc(
+					{
+						"doctype": "Work Package",
+						"project": doc.name,
+						"code": row.code,
+						"work_package_name": row.work_package_name,
+						"budget": row.budget or 0,
+						"description": row.description,
+						"status": "Planned",
+					}
+				).insert(ignore_permissions=True)
+				wp_by_code[row.code] = wp.name
 			except Exception:
 				frappe.log_error(
 					frappe.get_traceback(),
-					f'BuildSuite: seed stage plan "{row.stage_plan}" for project "{doc.name}"',
+					f'BuildSuite: seed work package "{row.code}" for project "{doc.name}"',
 				)
 
+	# --- Tasks (undated; scheduled later on the Gantt) — linked to their WP ---
+	# Remember which seeded tasks belong to which template stage so the stages
+	# below can pick them up into their stage_planning_tasks list.
+	tasks_by_stage = {}
 	if seed_tasks:
-		for row in template.project_task:
+		for row in template.tasks:
 			try:
-				create_task(doc.name, row)
+				tt = frappe.get_doc("Task", row.task)  # the template Task
+				task = frappe.get_doc(
+					{
+						"doctype": "Task",
+						"project": doc.name,
+						"subject": tt.subject,
+						"priority": tt.priority or "Medium",
+						"expected_time": tt.expected_time or 0,
+						"work_package": wp_by_code.get(row.get("custom_work_package_code")),
+						"task_status": "Yet To Start",
+					}
+				).insert(ignore_permissions=True)
+				stage = row.get("custom_stage")
+				if stage:
+					tasks_by_stage.setdefault(stage, []).append(task.name)
 			except Exception:
 				frappe.log_error(
-					frappe.get_traceback(), f'BuildSuite: seed task "{row.task}" for project "{doc.name}"'
+					frappe.get_traceback(),
+					f'BuildSuite: seed task "{row.task}" for project "{doc.name}"',
 				)
-		# Tasks-only: the tasks that would otherwise be nested under stage plans
-		# are still wanted — create them as project-level tasks (no stage).
-		if not seed_stages:
-			for row in template.stage_plans:
-				try:
-					stage_plan_doc = frappe.get_doc("Stage Plan Template", row.stage_plan)
-					for task_row in stage_plan_doc.tasks:
-						create_task(doc.name, task_row)
-				except Exception:
-					frappe.log_error(
-						frappe.get_traceback(),
-						f'BuildSuite: seed nested tasks from stage plan "{row.stage_plan}" for project "{doc.name}"',
-					)
+
+	# --- Stages (planned dates from the template offsets, clamped to bounds) ---
+	if seed_stages:
+		try:
+			_seed_stages_from_template(doc, template, tasks_by_stage)
+		except Exception:
+			frappe.log_error(
+				frappe.get_traceback(), f'BuildSuite: seed stages for project "{doc.name}"'
+			)
 
 
 @frappe.whitelist()
-def get_project_template_summary(project_type: str):
-	"""Preview summary of the template for a Project Type (used by the create form).
-
-	Returns the stage names and the TOTAL task count — the flat project-level
-	`project_task` rows PLUS every task nested inside the template's stage plans.
-	The task count is what the "Import default tasks" option will seed.
-	"""
-	if not project_type:
+def get_project_template_summary(project_category: str = None, project_type: str = None):
+	"""Preview of the template for a Project Category (used by the create form):
+	its stage names, work-package count and task count. `project_type` is accepted
+	for backward compatibility with older callers."""
+	category = project_category or project_type
+	if not category:
 		return {"exists": False}
 
-	template_name = frappe.db.get_value("BuildSuite Project Template", {"project_type": project_type}, "name")
+	template_name = frappe.db.get_value("Project Template", {"project_category": category}, "name")
 	if not template_name:
 		return {"exists": False}
 
-	template = frappe.get_doc("BuildSuite Project Template", template_name)
-
-	stage_names = []
-	nested_task_count = 0
-	for row in template.stage_plans:
-		stage_plan_doc = frappe.get_doc("Stage Plan Template", row.stage_plan)
-		stage_names.append(stage_plan_doc.stage_name)
-		nested_task_count += len(stage_plan_doc.tasks or [])
-
+	template = frappe.get_doc("Project Template", template_name)
+	stage_names = [s.stage_name for s in (template.custom_stages or [])]
 	return {
 		"exists": True,
 		"stage_names": stage_names,
 		"stage_count": len(stage_names),
-		"task_count": len(template.project_task or []) + nested_task_count,
+		"work_package_count": len(template.custom_work_packages or []),
+		"task_count": len(template.tasks or []),
 	}
+
+
+def _seed_stages_from_template(project_doc, template, tasks_by_stage=None):
+	"""Append the template's stages onto a project, dates clamped to the project's
+	own window so date-bounds validation passes. When tasks_by_stage maps a stage
+	name to seeded Task names, those tasks are added to the stage's task list (at a
+	default planned qty of 100%). Returns the count of stages created."""
+	from frappe.utils import add_days, getdate, today
+
+	tasks_by_stage = tasks_by_stage or {}
+	base = project_doc.expected_start_date or today()
+	end_bound = project_doc.expected_end_date
+
+	def _clamp(d):
+		if end_bound and getdate(d) > getdate(end_bound):
+			return end_bound
+		return d
+
+	count = 0
+	for row in template.custom_stages:
+		stage = frappe.get_doc(
+			{
+				"doctype": "Stage Planning",
+				"project": project_doc.name,
+				"stage_name": row.stage_name,
+				"planned_start": _clamp(add_days(base, row.offset_start_days or 0)),
+				"planned_end": _clamp(add_days(base, row.offset_end_days or 0)),
+				"planned_task_count": row.planned_task_count or 0,
+				"planned_completion_pct": row.planned_completion_pct or 0,
+				"workflow_state": "Draft",
+			}
+		)
+		for task_name in tasks_by_stage.get(row.stage_name, []):
+			stage.append("stage_planning_tasks", {"task": task_name, "planned_qty": 100, "qty_unit": "%"})
+		stage.insert(ignore_permissions=True)
+		count += 1
+	return count
 
 
 @frappe.whitelist()
 def seed_stages_from_template(project: str):
-	"""PTT-005 — append stages from the matching BuildSuite Project Template onto
-	an EXISTING project. Mirrors the create-time seed (seed_from_template_on_insert)
-	and reuses create_stage_plan, so each seeded stage carries its template tasks
-	at 100% planned qty. Returns the number of stages created.
-	"""
+	"""Append the matching category template's stages onto an EXISTING project.
+	Mirrors the create-time seed. Returns the number of stages created."""
 	doc = frappe.get_doc("Project", project)
 	doc.check_permission("write")
 
-	if not doc.project_type:
-		frappe.throw(_("This project has no Project Type, so there is no template to seed from."))
+	category = doc.get("project_category")
+	if not category:
+		frappe.throw(_("This project has no Project Category, so there is no template to seed from."))
 
-	template_name = frappe.db.get_value(
-		"BuildSuite Project Template", {"project_type": doc.project_type}, "name"
-	)
+	template_name = frappe.db.get_value("Project Template", {"project_category": category}, "name")
 	if not template_name:
-		frappe.throw(_("No template is configured for project type {0}.").format(doc.project_type))
+		frappe.throw(_("No template is configured for category {0}.").format(category))
 
-	template = frappe.get_doc("BuildSuite Project Template", template_name)
-	from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.buildsuite_project_template import (
-		create_stage_plan,
-	)
+	template = frappe.get_doc("Project Template", template_name)
 
-	count = 0
-	for row in template.stage_plans:
-		stage_plan_doc = frappe.get_doc("Stage Plan Template", row.stage_plan)
-		create_stage_plan(doc.name, stage_plan_doc, with_tasks=True)
-		count += 1
-	return {"seeded": count}
+	# Attach the project's existing tasks to the stage they belong to in the
+	# template (matched by subject), so re-seeded stages arrive with their tasks
+	# just like the create-time import does.
+	stage_by_subject = {}
+	for row in template.tasks:
+		subject = frappe.db.get_value("Task", row.task, "subject")
+		if subject and row.get("custom_stage"):
+			stage_by_subject[subject] = row.custom_stage
+	tasks_by_stage = {}
+	for t in frappe.get_all("Task", filters={"project": doc.name}, fields=["name", "subject"]):
+		stage = stage_by_subject.get(t.subject)
+		if stage:
+			tasks_by_stage.setdefault(stage, []).append(t.name)
+
+	return {"seeded": _seed_stages_from_template(doc, template, tasks_by_stage)}
 
 
 def ensure_project_team_membership(doc, method=None):
