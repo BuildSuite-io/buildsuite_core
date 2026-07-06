@@ -10,7 +10,6 @@ import {
 	createBuildsuiteUser,
 	sendUserPasswordReset,
 	outgoingEmailConfigured,
-	listPersonas,
 } from "@/data/usersApi";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -19,7 +18,7 @@ import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const router = useRouter();
 const store = useDataStore();
@@ -46,16 +45,6 @@ onMounted(() => {
 			mailConfigured.value = null;
 		});
 });
-
-// Persona options come from the Persona master (a Link now, not a hardcoded Select).
-const personaOptions = ref([]);
-listPersonas()
-	.then((rows) => {
-		personaOptions.value = (rows || []).map((p) => p.name);
-	})
-	.catch(() => {
-		personaOptions.value = [];
-	});
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -185,18 +174,21 @@ async function save() {
 						:error="errors.persona"
 						hint="Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work."
 					>
-						<DeskSelect
+						<DeskLinkPicker
 							v-model="form.persona"
+							doctype="Persona"
+							placeholder="Select persona"
+							label-field="persona_name"
+							value-field="name"
+							:search-fields="['persona_name', 'name']"
+							:filters="{ enabled: 1, backend_only: 0 }"
+							order-by="sort_order asc"
+							:error="errors.persona"
 							@change="
 								errors.persona = '';
 								formError = '';
 							"
-						>
-							<option value="">— Select persona —</option>
-							<option v-for="opt in personaOptions" :key="opt" :value="opt">
-								{{ opt }}
-							</option>
-						</DeskSelect>
+						/>
 					</DeskField>
 				</DeskSection>
 
