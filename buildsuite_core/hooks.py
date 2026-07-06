@@ -155,6 +155,10 @@ has_permission = {
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 }
 
+# Override the Project controller so its record name honours the BuildSuite Core
+# Settings "Project Naming" option (Project ID vs an ERPNext naming series).
+override_doctype_class = {"Project": "buildsuite_core.overrides.project.BuildSuiteProject"}
+
 # Document Events
 # ---------------
 # Hook on document methods and events
@@ -173,6 +177,7 @@ doc_events = {
 			"buildsuite_core.utils.project.sync_project_status",
 			"buildsuite_core.utils.project.enforce_company_rules",
 			"buildsuite_core.utils.date_bounds.validate_project_dates",
+			"buildsuite_core.overrides.project.reject_duplicate_project_id",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
