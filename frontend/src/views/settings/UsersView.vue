@@ -14,7 +14,6 @@ import {
 	sendUserPasswordReset,
 	deleteBuildsuiteUser,
 	outgoingEmailConfigured,
-	listPersonas,
 } from "@/data/usersApi";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -25,7 +24,7 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const store = useDataStore();
 const router = useRouter();
@@ -91,24 +90,6 @@ const editError = ref("");
 const editSaving = ref(false);
 const emailActing = ref(""); // '' | 'welcome' | 'reset'
 const mailConfigured = ref(null);
-
-// Persona options come from the Persona master (a Link now, not a hardcoded Select).
-const personaOptions = ref([]);
-listPersonas()
-	.then((rows) => {
-		personaOptions.value = (rows || []).map((p) => p.name);
-	})
-	.catch(() => {
-		personaOptions.value = [];
-	});
-
-// Always include the user's current persona in the edit dropdown, even if it's
-// disabled/absent from the enabled list — otherwise editing would silently blank it.
-const editPersonaOptions = computed(() => {
-	const opts = [...personaOptions.value];
-	if (editForm.persona && !opts.includes(editForm.persona)) opts.unshift(editForm.persona);
-	return opts;
-});
 
 function openEdit(row) {
 	editForm.email = row.email || row.name;
@@ -362,22 +343,21 @@ async function deleteUser() {
 								:error="editErrors.persona"
 								hint="Frappe Roles are auto-assigned from the persona on the production side."
 							>
-								<DeskSelect
+								<DeskLinkPicker
 									v-model="editForm.persona"
+									doctype="Persona"
+									placeholder="Select persona"
+									label-field="persona_name"
+									value-field="name"
+									:search-fields="['persona_name', 'name']"
+									:filters="{ enabled: 1, backend_only: 0 }"
+									order-by="sort_order asc"
+									:error="editErrors.persona"
 									@change="
 										editErrors.persona = '';
 										editError = '';
 									"
-								>
-									<option value="">— Select persona —</option>
-									<option
-										v-for="opt in editPersonaOptions"
-										:key="opt"
-										:value="opt"
-									>
-										{{ opt }}
-									</option>
-								</DeskSelect>
+								/>
 							</DeskField>
 						</DeskSection>
 
