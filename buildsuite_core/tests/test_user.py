@@ -69,3 +69,28 @@ class TestUserPersona(BuildSuiteTestCase):
 		u.persona = "Estimator"
 		u.save(ignore_permissions=True)
 		self.assertIn("System Manager", self._roles(u.name))
+
+	def test_unknown_persona_is_rejected(self):
+		# Frappe's Link validation blocks assigning a persona that doesn't exist, so a
+		# user can never be left pointing at a missing persona (and thus silently
+		# stripped of their roles). The sync hook also guards against it defensively.
+		u = self._make_user("BuildSuite Administrator")
+		u.persona = "No Such Persona"
+		with self.assertRaises(frappe.LinkValidationError):
+			u.save(ignore_permissions=True)
+
+	def test_repair_reenables_disabled_default_personas(self):
+		# The repair restores a default persona that was left disabled — so it
+		# reappears in the enabled-only user-form picker.
+		from buildsuite_core.api.users import list_personas
+		from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import (
+			repair_default_personas,
+		)
+
+		frappe.db.set_value("Persona", "BuildSuite Administrator", "enabled", 0)
+		self.assertNotIn(
+			"BuildSuite Administrator", [p["name"] for p in list_personas()]
+		)
+		repair_default_personas()
+		self.assertEqual(frappe.db.get_value("Persona", "BuildSuite Administrator", "enabled"), 1)
+		self.assertIn("BuildSuite Administrator", [p["name"] for p in list_personas()])
