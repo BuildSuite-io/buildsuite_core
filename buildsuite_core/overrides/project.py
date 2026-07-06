@@ -41,3 +41,15 @@ class BuildSuiteProject(_ERPNextProject):
 		# Otherwise treat the setting as a naming series.
 		self.naming_series = mode
 		set_name_by_naming_series(self)
+
+
+def reject_duplicate_project_id(doc, method=None):
+	"""In Project-ID naming mode the record name IS the Project ID, so a duplicate id
+	collides on the primary key and would surface as a raw DB error. Reject it up
+	front with a clean message (Frappe's own unique-field check can't catch it here,
+	since it excludes the row whose name equals the id)."""
+	if not doc.is_new() or project_naming_mode() != PROJECT_ID_MODE:
+		return
+	project_id = (doc.get("custom_project_id") or "").strip()
+	if project_id and frappe.db.exists("Project", project_id):
+		frappe.throw(_("A project with ID {0} already exists.").format(project_id))
