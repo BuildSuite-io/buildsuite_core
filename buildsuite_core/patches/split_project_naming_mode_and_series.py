@@ -2,9 +2,9 @@
 # For license information, please see license.txt
 
 """Project Naming was originally a single Data field holding either "Project ID" or
-a naming-series string. It's now a Select mode ("Project ID" | "Name Series") plus a
-separate "Project Naming Series" field. Migrate any stored series string into the new
-shape so existing sites keep naming projects the same way."""
+a naming-series string. It's now a Select MODE only ("Project ID" | "Name Series") —
+the specific series is chosen per-project on the New Project form. Map any legacy
+series string to "Name Series" so existing sites keep generating series-based names."""
 
 import frappe
 
@@ -18,10 +18,6 @@ def execute():
 	if not current or current in (PROJECT_ID_MODE, NAME_SERIES_MODE):
 		return  # already in the new shape (or unset → default Project ID)
 
-	# A legacy series string (e.g. "PROJ-.####") → Name Series mode + that series.
-	doc = frappe.get_single(SETTINGS)
-	doc.project_naming = NAME_SERIES_MODE
-	doc.project_naming_series = current
-	doc.flags.ignore_permissions = True
-	doc.save()
+	# A legacy series string (e.g. "PROJ-.####") just means Name Series mode now.
+	frappe.db.set_single_value(SETTINGS, "project_naming", NAME_SERIES_MODE)
 	frappe.db.commit()
