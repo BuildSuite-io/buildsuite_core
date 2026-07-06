@@ -13,8 +13,8 @@ or with a custom password (matching Cypress `adminPassword` / CYPRESS_ADMIN_PWD)
 
 import frappe
 
-# persona id (Cypress `loginAs`) -> (email, full_name, User.persona Select value).
-# The persona values must match PERSONA_TO_ROLE keys in permissions/setup.py.
+# persona id (Cypress `loginAs`) -> (email, full_name, User.persona value).
+# The persona values must match a Persona record name (see the Persona master).
 CYPRESS_USERS = {
 	"admin": ("cypress-admin@buildsuite.test", "Cypress Admin", "BuildSuite Administrator"),
 	"pm": ("cypress-pm@buildsuite.test", "Cypress PM", "Project Manager"),
