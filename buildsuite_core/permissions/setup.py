@@ -307,10 +307,10 @@ STAGE_PLANNING_ROLE_PERMS = {
 LINKED_MASTER_DOCTYPES = (
 	"Company",  # Projects list multi-company filter
 	"Customer",  # New Project -> Client picker
-	"Project Type",  # New Project -> Project Type picker
+	"Project Type",  # native Internal / External
+	"Project Category",  # New Project -> Category picker (drives templating)
 	"Employee",  # PM / owner / assignee pickers
 	"Task Type",  # New Task -> Task Type picker
-	"BuildSuite Project Template",  # New Project -> template preview + seed
 )
 _READONLY_PTYPES = ("read", "report", "export", "print")
 

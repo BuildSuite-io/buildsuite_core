@@ -152,7 +152,7 @@ const cards = computed(() => {
   const d = doc.value
   if (!d) return []
   return [
-    { label: 'Project Type', value: d.project_type || 'Any' },
+    { label: 'Project Category', value: d.project_category || 'Any' },
     { label: 'Rows', value: rawRows.value.length, cls: 'tabular-nums' },
     { label: 'Estimated total', value: fmtINR(estimatedTotal.value), cls: 'tabular-nums font-semibold' },
     { label: 'Updated', value: fmtDate(d.modified), cls: 'text-xs' },
@@ -167,7 +167,7 @@ function snapshot() {
   if (!d) return {}
   return {
     templateName: d.template_name || '',
-    projectType: d.project_type || '',
+    projectType: d.project_category || '',
     enabled: !!d.enabled,
     description: d.description || '',
   }
@@ -192,7 +192,7 @@ async function saveEdit() {
   try {
     await adapter.update('Estimate Template', props.id, {
       template_name: form.value.templateName.trim(),
-      project_type: form.value.projectType || null,
+      project_category: form.value.projectType || null,
       enabled: form.value.enabled ? 1 : 0,
       description: form.value.description,
     })
@@ -523,8 +523,8 @@ async function removeRow(name) {
               <DeskField label="Name" required :error="errors.templateName">
                 <DeskInput v-model="form.templateName" />
               </DeskField>
-              <DeskField label="Project Type tag" hint="Empty = universal.">
-                <DeskLinkPicker v-model="form.projectType" doctype="Project Type" label-field="name" value-field="name"
+              <DeskField label="Project Category tag" hint="Empty = universal.">
+                <DeskLinkPicker v-model="form.projectType" doctype="Project Category" label-field="name" value-field="name"
                   placeholder="— Universal —" />
               </DeskField>
               <DeskField label="Enabled">
