@@ -63,6 +63,31 @@ class TestProject(BuildSuiteTestCase):
 		p.insert(ignore_permissions=True)
 		self.assertEqual(p.company, expected)
 
+	def test_project_named_by_project_id_when_setting_is_project_id(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "Project ID")
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"NM {self._n}",
+				"custom_project_id": f"NMID-{self._n}",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(p.name, f"NMID-{self._n}")
+
+	def test_project_named_by_series_when_setting_is_a_series(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "PROJ-.####")
+		p = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"NM2 {self._n}",
+				"custom_project_id": f"NMID2-{self._n}",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(p.name.startswith("PROJ-"))
+		self.assertNotEqual(p.name, f"NMID2-{self._n}")  # the id is not the record name here
+
 	def test_company_locked_after_create(self):
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")
 		p = self._make_project(company=self.company)
