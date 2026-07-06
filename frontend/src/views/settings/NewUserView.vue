@@ -3,15 +3,15 @@
 // drives the BuildSuite role via the server-side sync hook. Optional welcome /
 // password-reset emails use Frappe's native flows.
 
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import {
 	createBuildsuiteUser,
 	sendUserPasswordReset,
 	outgoingEmailConfigured,
+	listPersonas,
 } from "@/data/usersApi";
-import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -47,8 +47,15 @@ onMounted(() => {
 		});
 });
 
-const { selectOptions } = useDoctypeMeta("User");
-const personaOptions = computed(() => selectOptions("persona"));
+// Persona options come from the Persona master (a Link now, not a hardcoded Select).
+const personaOptions = ref([]);
+listPersonas()
+	.then((rows) => {
+		personaOptions.value = (rows || []).map((p) => p.name);
+	})
+	.catch(() => {
+		personaOptions.value = [];
+	});
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

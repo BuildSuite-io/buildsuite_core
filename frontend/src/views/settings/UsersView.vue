@@ -14,8 +14,8 @@ import {
 	sendUserPasswordReset,
 	deleteBuildsuiteUser,
 	outgoingEmailConfigured,
+	listPersonas,
 } from "@/data/usersApi";
-import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -65,7 +65,7 @@ const items = computed(() => {
 	const term = search.value.trim().toLowerCase();
 	if (!term) return users.value;
 	return users.value.filter((u) =>
-		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term)
+		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term),
 	);
 });
 
@@ -92,8 +92,15 @@ const editSaving = ref(false);
 const emailActing = ref(""); // '' | 'welcome' | 'reset'
 const mailConfigured = ref(null);
 
-const { selectOptions } = useDoctypeMeta("User");
-const personaOptions = computed(() => selectOptions("persona"));
+// Persona options come from the Persona master (a Link now, not a hardcoded Select).
+const personaOptions = ref([]);
+listPersonas()
+	.then((rows) => {
+		personaOptions.value = (rows || []).map((p) => p.name);
+	})
+	.catch(() => {
+		personaOptions.value = [];
+	});
 
 function openEdit(row) {
 	editForm.email = row.email || row.name;
