@@ -46,16 +46,16 @@ def drop_legacy_task_type_field():
 
 
 def seed_master_data():
-	project_types = [
-		"Commercial",
-		"Residential",
-		"Infrastructure",
-		"Industrial",
-		"Renovation",
-		"Interior",
-		"Other",
-	]
-	for pt in project_types:
+	# Project Categories (our construction categories) — the New Project form and
+	# project templates key off these; the native Project Type stays Internal/External.
+	from buildsuite_core.buildsuite_core.doctype.project_category.seed_categories import seed_categories
+
+	seed_categories()
+
+	# Project Type stays native ERPNext (Internal / External) — construction
+	# categories now live in Project Category above. ERPNext ships "External"; we
+	# add "Internal". (The legacy category Project Types are pruned by a patch.)
+	for pt in ("Internal", "External"):
 		if not frappe.db.exists("Project Type", pt):
 			frappe.get_doc({"doctype": "Project Type", "project_type": pt}).insert(ignore_permissions=True)
 
@@ -66,11 +66,14 @@ def seed_master_data():
 		if not frappe.db.exists("Task Type", tt):
 			frappe.get_doc({"doctype": "Task Type", "name": tt}).insert(ignore_permissions=True)
 
-	# Project Templates (Commercial / Residential / Infrastructure) — depend on the
-	# Project Types seeded above. Idempotent (Stage-Plan-Template-exists guard).
-	from buildsuite_core.buildsuite_core.doctype.buildsuite_project_template.seed_templates import seed_all
+	# Project Templates (Commercial / Residential / Infrastructure) — one ERPNext
+	# Project Template per Project Category, carrying default work packages, stages
+	# and tasks. Idempotent (skips a template that already exists).
+	from buildsuite_core.buildsuite_core.doctype.project_category.seed_project_templates import (
+		seed_project_templates,
+	)
 
-	seed_all()
+	seed_project_templates()
 
 
 def before_migrate():

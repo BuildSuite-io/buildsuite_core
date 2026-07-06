@@ -62,7 +62,7 @@ const {
 	custom_project_id: "code",
 	company: "company",
 	customer: "client",
-	project_type: "type",
+	project_category: "type",
 	expected_end_date: "endDate",
 	expected_start_date: "startDate",
 	project_manager: "pm",
@@ -95,7 +95,7 @@ function loadProjectResource() {
 			"custom_project_id",
 			"project_name",
 			"customer",
-			"project_type",
+			"project_category",
 			"status",
 			"project_status",
 			"priority",
@@ -122,7 +122,7 @@ function loadProjectResource() {
 				client: row?.customer || "",
 				status: row?.project_status || row?.status || "New",
 				priority: row?.priority || "Medium",
-				type: row?.project_type || "",
+				type: row?.project_category || "",
 				company: row?.company || "",
 				startDate: row?.expected_start_date || null,
 				endDate: row?.expected_end_date || null,
@@ -708,7 +708,7 @@ async function saveEdit() {
 			expected_start_date: editForm.value.startDate,
 			expected_end_date: editForm.value.endDate,
 			customer: editForm.value.client,
-			project_type: editForm.value.type,
+			project_category: editForm.value.type,
 			location: editForm.value.location || null,
 			// company is locked/inferred server-side (§14) — not editable from the form.
 			estimated_costing: Number(editForm.value.budget),
@@ -774,7 +774,7 @@ async function loadTemplateSummary(type) {
 	try {
 		const res = await fetch(
 			"/api/method/buildsuite_core.utils.project.get_project_template_summary?" +
-				new URLSearchParams({ project_type: type }),
+				new URLSearchParams({ project_category: type }),
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
