@@ -118,7 +118,7 @@ function loadTasksResource() {
 			"name",
 			"subject",
 			"project",
-			"status",
+			"task_status",
 			"priority",
 			"type as task_type",
 			"owner",
@@ -135,7 +135,9 @@ function loadTasksResource() {
 				id: row.name || row.id,
 				name: row.subject || row.task_name || row.name || "",
 				projectId: row.project || "",
-				status: row.status || "Open",
+				// BuildSuite task_status (Yet To Start / In Progress / …), not ERPNext's
+				// native `status` (Open / Working / Completed).
+				status: row.task_status || "Yet To Start",
 				priority: row.priority || "Medium",
 				task_type: row.task_type || "Activity",
 				assignee: row.owner || "",
@@ -179,7 +181,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function startEdit() {
@@ -208,11 +210,11 @@ async function saveEdit() {
 		form.value.endDate,
 		b.start,
 		b.end,
-		"project"
+		"project",
 	);
 	if (boundsErr) {
 		setErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -243,7 +245,7 @@ async function onDelete() {
 	const msg = n
 		? `Delete "${wp.value.name}"? This will also delete ${n} task${
 				n === 1 ? "" : "s"
-		  } and any progress entries on them.`
+			} and any progress entries on them.`
 		: `Delete "${wp.value.name}"?`;
 	if (
 		!(await confirmDialog({
