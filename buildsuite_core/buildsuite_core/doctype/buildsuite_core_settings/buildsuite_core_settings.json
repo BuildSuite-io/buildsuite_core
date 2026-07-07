@@ -15,10 +15,11 @@
   },
   {
    "default": "Project ID",
-   "description": "How a Project's record ID (Frappe name) is generated. \"Project ID\" uses the entered Project ID; any other value is an ERPNext naming series (e.g. PROJ-.####).",
+   "description": "How a Project's record ID (Frappe name) is generated. \"Project ID\" uses the entered Project ID; \"Name Series\" uses a naming series chosen on the New Project form.",
    "fieldname": "project_naming",
-   "fieldtype": "Data",
-   "label": "Project Naming"
+   "fieldtype": "Select",
+   "label": "Project Naming",
+   "options": "Project ID\nName Series"
   }
  ],
  "index_web_pages_for_search": 1,

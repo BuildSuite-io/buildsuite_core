@@ -355,8 +355,12 @@ function deviationColor(pct) {
 							<dd><StatusBadge :status="project.priority" /></dd>
 						</div>
 						<div class="flex items-center justify-between px-4 py-2.5 text-xs">
-							<dt class="text-ink-500 font-medium">Type</dt>
+							<dt class="text-ink-500 font-medium">Category</dt>
 							<dd class="text-ink-800">{{ project.type || "—" }}</dd>
+						</div>
+						<div class="flex items-center justify-between px-4 py-2.5 text-xs">
+							<dt class="text-ink-500 font-medium">Project Type</dt>
+							<dd class="text-ink-800">{{ project.projectType || "—" }}</dd>
 						</div>
 						<div
 							v-if="store.isMultiCompany && project.company"

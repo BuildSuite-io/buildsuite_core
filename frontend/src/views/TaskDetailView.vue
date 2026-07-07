@@ -236,14 +236,14 @@ async function saveDep() {
 				props.id,
 				depForm.otherTaskId,
 				depForm.dependency_type,
-				Number(depForm.lag) || 0
+				Number(depForm.lag) || 0,
 			);
 		} else {
 			await addTaskPredecessor(
 				depForm.otherTaskId,
 				props.id,
 				depForm.dependency_type,
-				Number(depForm.lag) || 0
+				Number(depForm.lag) || 0,
 			);
 		}
 		await loadDeps();
@@ -271,8 +271,8 @@ const depPickerFilters = computed(() =>
 		? [
 				["project", "=", task.value.projectId],
 				["name", "!=", props.id],
-		  ]
-		: [["name", "!=", props.id]]
+			]
+		: [["name", "!=", props.id]],
 );
 
 const projectResource = ref(null);
@@ -598,7 +598,7 @@ watch(
 	() => {
 		if (task.value && !editing.value) form.value = buildEditForm(task.value);
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function startEdit() {
@@ -617,11 +617,11 @@ async function saveEdit() {
 			form.value.endDate,
 			b.start,
 			b.end,
-			"project"
+			"project",
 		);
 	if (boundsErr) {
 		setEditErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -633,7 +633,9 @@ async function saveEdit() {
 			task_status: form.value.status,
 			priority: form.value.priority,
 			type: form.value.task_type,
-			exp_start_date: form.value.startDate,
+			// Milestone = a single date: start collapses onto the due (end) date.
+			exp_start_date:
+				form.value.task_type === "Milestone" ? form.value.endDate : form.value.startDate,
 			exp_end_date: form.value.endDate,
 			description: form.value.description,
 		});
@@ -1164,7 +1166,11 @@ usePageTitle(() => task.value?.name);
 							<DeskField label="Description">
 								<DeskTextarea v-model="form.description" :rows="4" />
 							</DeskField>
-							<DeskField label="Start" :error="editErrors.startDate">
+							<DeskField
+								v-if="form.task_type !== 'Milestone'"
+								label="Start"
+								:error="editErrors.startDate"
+							>
 								<DeskInput
 									v-model="form.startDate"
 									type="date"
@@ -1551,8 +1557,8 @@ usePageTitle(() => task.value?.name);
 								depForm.mode === "edit"
 									? "Edit dependency"
 									: depForm.mode === "add-pred"
-									? "Add predecessor"
-									: "Add successor"
+										? "Add predecessor"
+										: "Add successor"
 							}}
 						</h2>
 						<button

@@ -4,13 +4,14 @@
 """Project naming override.
 
 The Frappe record `name` for a Project is controlled by the BuildSuite Core
-Settings "Project Naming" option:
+Settings "Project Naming" select (the mode):
 
   - "Project ID"  -> the name IS the entered Project ID (custom_project_id). The
                      field is already required + unique, so the id doubles as the
                      record key.
-  - anything else -> treated as an ERPNext naming series (e.g. PROJ-.####), and
-                     the name is generated from it as ERPNext would by default.
+  - "Name Series" -> the name is generated from the naming series chosen on the New
+                     Project form (the project's own `naming_series` field), falling
+                     back to the Project doctype's default series.
 
 ERPNext's Project has no autoname() of its own (it relies on the naming_series
 autoname rule), so defining one here takes precedence via override_doctype_class.
@@ -23,24 +24,42 @@ from frappe.model.naming import set_name_by_naming_series
 from erpnext.projects.doctype.project.project import Project as _ERPNextProject
 
 PROJECT_ID_MODE = "Project ID"
+NAME_SERIES_MODE = "Name Series"
+SETTINGS = "BuildSuite Core Settings"
 
 
 def project_naming_mode():
-	return frappe.db.get_single_value("BuildSuite Core Settings", "project_naming") or PROJECT_ID_MODE
+	return frappe.db.get_single_value(SETTINGS, "project_naming") or PROJECT_ID_MODE
+
+
+def default_project_series():
+	"""The Project doctype's default naming series (its field default, else the first
+	configured option)."""
+	field = frappe.get_meta("Project").get_field("naming_series")
+	if not field or not field.options:
+		return None
+	options = [row.strip() for row in field.options.split("\n") if row.strip()]
+	return field.default or (options[0] if options else None)
+
+
+def _name_by_project_id(doc):
+	project_id = (doc.get("custom_project_id") or "").strip()
+	if not project_id:
+		frappe.throw(_("Project ID is required."))
+	doc.name = project_id
 
 
 class BuildSuiteProject(_ERPNextProject):
 	def autoname(self):
-		mode = project_naming_mode()
-		if mode == PROJECT_ID_MODE:
-			project_id = (self.get("custom_project_id") or "").strip()
-			if not project_id:
-				frappe.throw(_("Project ID is required."))
-			self.name = project_id
-			return
-		# Otherwise treat the setting as a naming series.
-		self.naming_series = mode
-		set_name_by_naming_series(self)
+		if project_naming_mode() == NAME_SERIES_MODE:
+			# Use the series chosen on the New Project form; fall back to the default.
+			if not self.naming_series:
+				self.naming_series = default_project_series()
+			if self.naming_series:
+				set_name_by_naming_series(self)
+				return
+		# Project ID mode (also the fallback when no series is available).
+		_name_by_project_id(self)
 
 
 def reject_duplicate_project_id(doc, method=None):
@@ -48,7 +67,7 @@ def reject_duplicate_project_id(doc, method=None):
 	collides on the primary key and would surface as a raw DB error. Reject it up
 	front with a clean message (Frappe's own unique-field check can't catch it here,
 	since it excludes the row whose name equals the id)."""
-	if not doc.is_new() or project_naming_mode() != PROJECT_ID_MODE:
+	if not doc.is_new() or project_naming_mode() == NAME_SERIES_MODE:
 		return
 	project_id = (doc.get("custom_project_id") or "").strip()
 	if project_id and frappe.db.exists("Project", project_id):

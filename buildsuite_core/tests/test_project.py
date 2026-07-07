@@ -75,14 +75,17 @@ class TestProject(BuildSuiteTestCase):
 		).insert(ignore_permissions=True)
 		self.assertEqual(p.name, f"NMID-{self._n}")
 
-	def test_project_named_by_series_when_setting_is_a_series(self):
-		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "PROJ-.####")
+	def test_project_named_by_series_when_mode_is_name_series(self):
+		# Name Series mode: the record name comes from the series chosen on the form
+		# (the project's naming_series), not the entered Project ID.
+		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "Name Series")
 		p = frappe.get_doc(
 			{
 				"doctype": "Project",
 				"project_name": f"NM2 {self._n}",
 				"custom_project_id": f"NMID2-{self._n}",
 				"company": self.company,
+				"naming_series": "PROJ-.####",
 			}
 		).insert(ignore_permissions=True)
 		self.assertTrue(p.name.startswith("PROJ-"))

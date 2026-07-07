@@ -6,7 +6,7 @@
 // represents it as store.coreSettings (flat object). Edits flow through
 // store.updateCoreSettings(patch).
 
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { getCoreSettings, setProjectNaming } from "@/data/coreSettingsApi";
@@ -25,16 +25,18 @@ const editing = ref(false);
 const form = ref({});
 const saving = ref(false);
 
-// Project naming is server-persisted (BuildSuite Core Settings Single), unlike the
-// other fields on this screen. Loaded from / saved to the backend directly.
-const projectNaming = ref("Project ID");
-const projectNamingOptions = ref(["Project ID"]);
+// Project naming MODE is server-persisted (BuildSuite Core Settings Single). It's
+// just the mode here ("Project ID" | "Name Series"); the specific series, when Name
+// Series, is chosen per-project on the New Project form.
+const PROJECT_ID_MODE = "Project ID";
+const projectNaming = ref(PROJECT_ID_MODE);
+const namingModes = ref([PROJECT_ID_MODE, "Name Series"]);
 
 onMounted(async () => {
 	try {
 		const res = await getCoreSettings();
-		projectNaming.value = res.project_naming || "Project ID";
-		projectNamingOptions.value = res.project_naming_options || ["Project ID"];
+		projectNaming.value = res.project_naming || PROJECT_ID_MODE;
+		namingModes.value = res.project_naming_modes || namingModes.value;
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -51,7 +53,7 @@ watch(
 function startEdit() {
 	form.value = {
 		...JSON.parse(JSON.stringify(store.coreSettings)),
-		project_naming: projectNaming.value,
+		naming_mode: projectNaming.value,
 	};
 	editing.value = true;
 }
@@ -64,9 +66,9 @@ async function saveEdit() {
 	saving.value = true;
 	try {
 		store.updateCoreSettings({ ...form.value });
-		if (form.value.project_naming && form.value.project_naming !== projectNaming.value) {
-			await setProjectNaming(form.value.project_naming);
-			projectNaming.value = form.value.project_naming;
+		if (form.value.naming_mode && form.value.naming_mode !== projectNaming.value) {
+			await setProjectNaming(form.value.naming_mode);
+			projectNaming.value = form.value.naming_mode;
 		}
 		editing.value = false;
 	} catch (err) {
@@ -169,15 +171,13 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 					<DeskField
 						label="Project naming"
-						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; otherwise the selected ERPNext naming series is used."
+						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form."
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
 							{{ projectNaming }}
 						</div>
-						<DeskSelect v-else v-model="form.project_naming">
-							<option v-for="opt in projectNamingOptions" :key="opt" :value="opt">
-								{{ opt }}
-							</option>
+						<DeskSelect v-else v-model="form.naming_mode">
+							<option v-for="m in namingModes" :key="m" :value="m">{{ m }}</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
