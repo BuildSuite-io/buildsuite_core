@@ -12,12 +12,15 @@ class Assembly(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.assembly_component.assembly_component import AssemblyComponent
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.assembly_component.assembly_component import (
+			AssemblyComponent,
+		)
 
 		assembly_code: DF.Data
 		assembly_name: DF.Data
-		category: DF.Literal["", "Concrete", "Masonry", "Reinforcement", "Finishing", "General"]
+		category: DF.Link | None
 		component_count: DF.Int
 		components: DF.Table[AssemblyComponent]
 		disabled: DF.Check
