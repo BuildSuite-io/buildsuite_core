@@ -497,6 +497,9 @@ def setup_stage_planning_workflow():
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
 	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import seed_personas
+	from buildsuite_core.buildsuite_core.doctype.site_execution_settings.seed_site_execution import (
+		seed_site_execution_reports,
+	)
 
 	setup_project_permissions()
 	setup_task_permissions()
@@ -511,3 +514,5 @@ def setup_record_permissions():
 	setup_stage_planning_workflow()
 	# Personas map to the roles ensured above — seed them once the roles exist.
 	seed_personas()
+	# Site Execution workspace reports (Query Reports + the settings table).
+	seed_site_execution_reports()
