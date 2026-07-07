@@ -197,6 +197,17 @@ const stage = computed(() => {
 	return local || null;
 });
 
+// Derived operational status (same rule as the stage list views), shown beside the
+// approval state (workflowState) after the title.
+const stageStatus = computed(() => {
+	const s = stage.value;
+	if (!s) return "";
+	if (!s.plannedStart && !s.plannedEnd) return "Not Started";
+	if (s.plannedStart && TODAY_ISO < s.plannedStart) return "Not Started";
+	if (s.plannedEnd && TODAY_ISO > s.plannedEnd) return "Complete";
+	return "In Progress";
+});
+
 const projectResource = ref(null);
 
 function loadProjectResource(projectId) {
@@ -343,7 +354,7 @@ const userRoles = computed(() => session.access?.roles || []);
 const availableActions = computed(() => {
 	const state = stage.value?.workflowState || "Draft";
 	return (WORKFLOW_ACTIONS[state] || []).filter((a) =>
-		a.roles.some((r) => userRoles.value.includes(r))
+		a.roles.some((r) => userRoles.value.includes(r)),
 	);
 });
 
@@ -474,7 +485,7 @@ async function reviseRejectedStage() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			}
+			},
 		);
 		const data = await response.json().catch(() => ({}));
 		if (!response.ok) {
@@ -526,7 +537,7 @@ async function fetchActivity() {
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-			}
+			},
 		);
 		const data = await res.json().catch(() => ({}));
 		activityEntries.value = Array.isArray(data?.message) ? data.message : [];
@@ -562,7 +573,7 @@ async function confirmReject() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			}
+			},
 		);
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
@@ -599,7 +610,7 @@ watch(
 	(s) => {
 		if (s && !editing.value) editForm.value = snapshotStage(s);
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 // Load the activity feed when the stage resolves / changes; auto-enter edit mode
@@ -611,7 +622,7 @@ watch(
 		fetchActivity();
 		if (route.query.edit && canEdit.value && !editing.value) startEdit();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function startEdit() {
@@ -657,11 +668,13 @@ async function saveEdit() {
 		editForm.value.plannedEnd,
 		b.start,
 		b.end,
-		"project"
+		"project",
 	);
 	if (boundsErr) {
 		setErrors(
-			boundsErr.startsWith("Start") ? { plannedStart: boundsErr } : { plannedEnd: boundsErr }
+			boundsErr.startsWith("Start")
+				? { plannedStart: boundsErr }
+				: { plannedEnd: boundsErr },
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -716,7 +729,7 @@ async function onPlannedQtyChange(row, value) {
 	if (!stage.value || !row) return;
 	const qty = Math.max(0, Math.min(100, Number(value) || 0));
 	const nextRows = (stage.value.stagePlanningTasks || []).map((r) =>
-		r.id === row.id ? { ...r, plannedQty: qty, qtyUnit: "%" } : r
+		r.id === row.id ? { ...r, plannedQty: qty, qtyUnit: "%" } : r,
 	);
 	try {
 		await persistChildRows(nextRows);
@@ -811,7 +824,7 @@ usePageTitle(() => stage.value?.stageName);
 		v-if="stage"
 		:title="stage.stageName"
 		:subtitle="`${stage.id} · ${project ? project.name : stage.project}`"
-		:status="stage.workflowState"
+		:status="[stage.workflowState, stageStatus].filter(Boolean)"
 		:breadcrumbs="breadcrumbs"
 	>
 		<template #actions>
@@ -1032,8 +1045,8 @@ usePageTitle(() => stage.value?.stageName);
 						dependencyCount === 0
 							? "starts independently"
 							: dependencyCount === 1
-							? "stage must complete first"
-							: "stages must complete first"
+								? "stage must complete first"
+								: "stages must complete first"
 					}}
 				</div>
 			</div>
