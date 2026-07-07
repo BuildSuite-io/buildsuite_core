@@ -23,12 +23,13 @@
 // is deliberate and clearly marked: these are visual mockups for stakeholder
 // review of dashboard + report layout, not production architecture.
 
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { getSiteExecutionReports } from "@/data/siteExecutionApi";
 
 const store = useDataStore();
 
@@ -65,56 +66,18 @@ function descriptionFor(routePath) {
 const OWNER_ROLES = ["director", "pm", "admin", "accountant", "bsa"];
 const showProjectDashboard = computed(() => OWNER_ROLES.includes(store.role));
 
-// --- Session 35 additive: Reports group ----------------------------------
-// 5 hardcoded reports per the prompt. `roles: 'all'` = visible to everyone
-// who can see this workspace. Per-report role filtering would be wired
-// through Workspace Structure Settings in production.
-const REPORT_TILES = [
-	{
-		slug: "project-status-summary",
-		icon: "chart-line",
-		label: "Project Status Summary",
-		desc: "Active projects · status · progress · variance.",
-		roles: "all",
-	},
-	{
-		slug: "task-completion-by-week",
-		icon: "chart-line",
-		label: "Task Completion by Week",
-		desc: "Tasks completed per project per week.",
-		roles: "all",
-	},
-	{
-		slug: "pending-progress-entries",
-		icon: "file-text",
-		label: "Pending Progress Entries",
-		desc: "Open tasks with no progress entry in N days.",
-		roles: "all",
-	},
-	{
-		slug: "stage-vs-actual",
-		icon: "calendar",
-		label: "Stage Plan vs Actual",
-		desc: "Planned stages vs actual task progress per stage.",
-		roles: ["director", "pm", "qs", "admin", "bsa"],
-	},
-	{
-		slug: "labour-deployed",
-		icon: "workforce",
-		label: "Labour Deployed",
-		desc: "Skilled + unskilled labour by task / week.",
-		roles: ["director", "pm", "site-engineer", "foreman", "admin", "bsa"],
-	},
-];
-
-function tileVisibleForRole(tile, roleId) {
-	if (tile.roles === "all") return true;
-	return Array.isArray(tile.roles) && tile.roles.includes(roleId);
-}
-
-const visibleReportTiles = computed(() =>
-	REPORT_TILES.filter((t) => tileVisibleForRole(t, store.role))
-);
+// --- Reports group --------------------------------------------------------
+// The reports are configured in Site Execution Settings (report + icon +
+// description, in order) and resolve to real Frappe reports. Each tile links to
+// the report's desk route.
+const reportTiles = ref([]);
+onMounted(async () => {
+	try {
+		reportTiles.value = await getSiteExecutionReports();
+	} catch {
+		reportTiles.value = [];
+	}
+});
 </script>
 
 <template>
@@ -251,21 +214,21 @@ const visibleReportTiles = computed(() =>
 				</div>
 			</div>
 
-			<!-- Session 35 additive — Reports group (hardcoded, role-filtered).
-           Uses the shared WorkspaceShortcut with a "Report" badge slot. -->
-			<div v-if="visibleReportTiles.length" class="mt-8">
+			<!-- Reports group — configured in Site Execution Settings (report + icon
+           + description, in order). Each tile opens the report's desk route. -->
+			<div v-if="reportTiles.length" class="mt-8">
 				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
 					Reports
 				</h2>
 				<div class="border-t border-ink-200 mb-3"></div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					<WorkspaceShortcut
-						v-for="rt in visibleReportTiles"
-						:key="rt.slug"
-						:to="`/reports/${rt.slug}`"
+						v-for="rt in reportTiles"
+						:key="rt.report"
+						:href="rt.route || '#'"
 						:icon="rt.icon"
 						:label="rt.label"
-						:description="rt.desc"
+						:description="rt.description"
 					>
 						<template #badge>
 							<span

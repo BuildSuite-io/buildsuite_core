@@ -1,49 +1,69 @@
 <script setup>
-// Site Execution Settings — Single DocType. Module-operational defaults for
-// the Site Execution workspace (Projects, WPs, Tasks, TPEs, Stage Planning).
-// Session 34, M1 scope. Admin or BSA gated.
+// Site Execution Settings — the reports shown in the Site Execution workspace.
+// Each row is a Frappe report + icon + description; row order = display order.
+// Admin / BSA only.
 
-import { ref, watch } from "vue";
-import { RouterLink } from "vue-router";
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { getSiteExecutionSettings, setSiteExecutionReports } from "@/data/siteExecutionApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
-import DeskField from "@/components/desk/DeskField.vue";
-import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const store = useDataStore();
+const router = useRouter();
 
-const editing = ref(false);
-const form = ref({});
+const reports = ref([]);
 const saving = ref(false);
+const loading = ref(true);
 
-watch(
-	() => store.siteExecutionSettings,
-	(s) => {
-		if (s) form.value = JSON.parse(JSON.stringify(s));
-	},
-	{ immediate: true, deep: true }
-);
+async function load() {
+	loading.value = true;
+	try {
+		const res = await getSiteExecutionSettings();
+		reports.value = (res?.reports || []).map((r) => ({ ...r }));
+	} catch (err) {
+		showToast(err.message || "Failed to load settings", "error");
+	} finally {
+		loading.value = false;
+	}
+}
 
-function startEdit() {
-	form.value = JSON.parse(JSON.stringify(store.siteExecutionSettings));
-	editing.value = true;
+function addReport() {
+	reports.value.push({ report: "", icon: "file-text", description: "" });
 }
-function cancelEdit() {
-	form.value = JSON.parse(JSON.stringify(store.siteExecutionSettings));
-	editing.value = false;
+function removeReport(i) {
+	reports.value.splice(i, 1);
 }
-function saveEdit() {
-	if (!store.isAdmin) return;
+function move(i, delta) {
+	const j = i + delta;
+	if (j < 0 || j >= reports.value.length) return;
+	const [row] = reports.value.splice(i, 1);
+	reports.value.splice(j, 0, row);
+}
+
+async function save() {
+	if (saving.value) return;
+	const bad = reports.value.find((r) => !r.report);
+	if (bad) {
+		showToast("Every row needs a report selected.", "error");
+		return;
+	}
 	saving.value = true;
-	store.updateSiteExecutionSettings({ ...form.value });
-	saving.value = false;
-	editing.value = false;
-}
-function onPrimary() {
-	editing.value ? saveEdit() : startEdit();
+	try {
+		const res = await setSiteExecutionReports(reports.value);
+		reports.value = (res?.reports || []).map((r) => ({ ...r }));
+		showToast("Site Execution reports saved");
+	} catch (err) {
+		showToast(err.message || "Failed to save", "error");
+	} finally {
+		saving.value = false;
+	}
 }
 
 const breadcrumbs = [
@@ -52,116 +72,111 @@ const breadcrumbs = [
 	{ label: "Site Execution Settings" },
 ];
 
-const TASK_TYPES = ["Activity", "Milestone", "Inspection"];
+onMounted(() => {
+	if (!store.isAdmin && !store.isBSA) {
+		router.replace("/settings");
+		return;
+	}
+	load();
+});
 </script>
 
 <template>
 	<DeskPage
 		title="Site Execution Settings"
-		subtitle="Module operational defaults"
+		subtitle="Reports shown in the Site Execution workspace"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					v-if="store.isAdmin"
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
-					:show-cancel="editing"
+					:save-label="saving ? 'Saving…' : 'Save reports'"
 					:saving="saving"
-					cancel-label="Cancel"
-					@save="onPrimary"
-					@cancel="cancelEdit"
+					@save="save"
+					@cancel="load"
 				/>
-				<div
-					v-else
-					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
-				>
-					Read-only. Editing requires Admin or BuildSuite Administrator role.
-				</div>
 			</template>
 
-			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Task defaults">
-					<DeskField
-						label="Default task type"
-						hint="Pre-fills task type on new tasks. Choose Activity, Milestone or Inspection."
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ store.siteExecutionSettings.default_task_type }}
-						</div>
-						<DeskSelect v-else v-model="form.default_task_type">
-							<option v-for="t in TASK_TYPES" :key="t">{{ t }}</option>
-						</DeskSelect>
-					</DeskField>
-				</DeskSection>
+			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">Loading…</div>
 
-				<DeskSection title="Company propagation">
-					<DeskField
-						label="Auto-propagate company"
-						hint="When ON, child records (Work Package, Task, Progress Entry, Stage Planning, Attachments) inherit company from their parent project on create. When OFF, company is left blank and must be set explicitly."
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ store.siteExecutionSettings.auto_propagate_company ? "On" : "Off" }}
-						</div>
-						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
-							<input
-								type="checkbox"
-								v-model="form.auto_propagate_company"
-								class="accent-brand-600"
-							/>
-							<span>{{ form.auto_propagate_company ? "On" : "Off" }}</span>
-						</label>
-					</DeskField>
-				</DeskSection>
-
-				<DeskSection title="Task Progress Entry">
-					<DeskField
-						label="Require attachment"
-						hint="When ON, filing a progress entry without at least one attachment is rejected. Enforces site photo discipline."
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{
-								store.siteExecutionSettings.tpe_attachment_required
-									? "Required"
-									: "Optional"
-							}}
-						</div>
-						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
-							<input
-								type="checkbox"
-								v-model="form.tpe_attachment_required"
-								class="accent-brand-600"
-							/>
-							<span>{{
-								form.tpe_attachment_required ? "Required" : "Optional"
-							}}</span>
-						</label>
-					</DeskField>
-				</DeskSection>
-
-				<DeskSection title="Safety">
-					<DeskField
-						label="Cascade-delete confirmation"
-						hint="When ON, deleting a Project, Work Package or Task shows a confirm dialog listing the cascaded child records. Off skips the prompt."
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{
-								store.siteExecutionSettings.cascade_delete_confirmation
-									? "On"
-									: "Off"
-							}}
-						</div>
-						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
-							<input
-								type="checkbox"
-								v-model="form.cascade_delete_confirmation"
-								class="accent-brand-600"
-							/>
-							<span>{{ form.cascade_delete_confirmation ? "On" : "Off" }}</span>
-						</label>
-					</DeskField>
-				</DeskSection>
-			</div>
+			<DeskSection v-else title="Workspace reports" :cols="1">
+				<p class="text-sm text-ink-500 -mt-1">
+					Each report opens in the Site Execution workspace, in the order below. Pick a
+					Frappe report, an icon slug (e.g. chart-line, file-text, calendar), and a short
+					description.
+				</p>
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="text-left text-ink-500 border-b border-ink-100">
+								<th class="py-1.5 pr-2 font-medium w-8">#</th>
+								<th class="py-1.5 pr-2 font-medium w-64">Report</th>
+								<th class="py-1.5 pr-2 font-medium w-32">Icon</th>
+								<th class="py-1.5 pr-2 font-medium">Description</th>
+								<th class="w-20"></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="(r, i) in reports" :key="i" class="border-b border-ink-50">
+								<td class="py-1 pr-2 text-ink-400 tabular-nums">{{ i + 1 }}</td>
+								<td class="py-1 pr-2">
+									<DeskLinkPicker
+										v-model="r.report"
+										doctype="Report"
+										placeholder="Select report"
+										label-field="report_name"
+										value-field="name"
+										:search-fields="['report_name', 'name']"
+										:page-length="20"
+									/>
+								</td>
+								<td class="py-1 pr-2">
+									<DeskInput v-model="r.icon" placeholder="file-text" />
+								</td>
+								<td class="py-1 pr-2">
+									<DeskInput
+										v-model="r.description"
+										placeholder="Short description"
+									/>
+								</td>
+								<td class="py-1 text-center whitespace-nowrap">
+									<button
+										class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
+										:disabled="i === 0"
+										title="Move up"
+										@click="move(i, -1)"
+									>
+										↑
+									</button>
+									<button
+										class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
+										:disabled="i === reports.length - 1"
+										title="Move down"
+										@click="move(i, 1)"
+									>
+										↓
+									</button>
+									<button
+										class="text-ink-400 hover:text-danger-600 px-1"
+										title="Remove"
+										@click="removeReport(i)"
+									>
+										×
+									</button>
+								</td>
+							</tr>
+							<tr v-if="!reports.length">
+								<td colspan="5" class="py-3 text-center text-ink-400">
+									No reports configured yet.
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addReport">
+					+ Add report
+				</button>
+			</DeskSection>
 		</DeskForm>
 	</DeskPage>
 </template>
