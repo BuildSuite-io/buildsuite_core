@@ -1314,6 +1314,7 @@ usePageTitle(() => project.value?.name);
 						'planned_end',
 						'task_count',
 						'planned_task_count',
+						'workflow_state',
 					]"
 					:columns="[
 						{
@@ -1327,7 +1328,7 @@ usePageTitle(() => project.value?.name);
 						{
 							key: '_status',
 							label: 'Status',
-							fields: ['planned_start', 'planned_end'],
+							fields: ['planned_start', 'planned_end', 'workflow_state'],
 						},
 						{ key: '_open', label: '', fields: ['name'], align: 'right' },
 					]"
@@ -1377,12 +1378,19 @@ usePageTitle(() => project.value?.name);
 						>
 					</template>
 					<template #cell-_status="{ row }">
-						<span
-							class="text-[10px] px-1.5 py-0.5 font-medium"
-							style="border-radius: 2px"
-							:class="stageStatusClass(stageStatus(row))"
-							>{{ stageStatus(row) }}</span
-						>
+						<span class="inline-flex items-center gap-1">
+							<span
+								class="text-[10px] px-1.5 py-0.5 font-medium"
+								style="border-radius: 2px"
+								:class="stageStatusClass(stageStatus(row))"
+								>{{ stageStatus(row) }}</span
+							>
+							<StatusBadge
+								v-if="row.workflow_state"
+								:status="row.workflow_state"
+								size="xs"
+							/>
+						</span>
 					</template>
 					<template #cell-_open="{ row }">
 						<DeskLink :to="`/stage-plannings/${row.name}`" @click.stop class="text-xs"
