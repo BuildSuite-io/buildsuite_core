@@ -3,17 +3,14 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDocTypeList } from '@/composables/useDocTypeList'
-import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
 import { fmtINR } from '@/utils/format'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskList from '@/components/desk/DeskList.vue'
 import DeskLink from '@/components/desk/DeskLink.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
+import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskFilterChip from '@/components/desk/DeskFilterChip.vue'
 
 const router = useRouter()
-const { selectOptions } = useDoctypeMeta('Assembly')
-const categoryOptions = computed(() => selectOptions('category'))
 
 function onRowClick(row) {
   router.push(`/assembly/${row.id}`)
@@ -77,10 +74,8 @@ const columns = [
     <DeskList v-model="search" :rows="rows" :columns="columns" row-key="id"
       search-placeholder="Search by code or name…" @row-click="onRowClick">
       <template #filter-chips>
-        <DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
-          <option value="">Category: Any</option>
-          <option v-for="c in categoryOptions" :key="c">{{ c }}</option>
-        </DeskSelect>
+        <DeskLinkPicker v-if="!categoryFilter" v-model="categoryFilter" doctype="Assembly Category"
+          label-field="name" value-field="name" placeholder="Category: Any" class="!w-40" />
         <DeskFilterChip v-else label="Category" :value="categoryFilter" @remove="categoryFilter = ''" />
       </template>
 

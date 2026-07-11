@@ -1,10 +1,9 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
-import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -12,16 +11,12 @@ import DeskActionBar from '@/components/desk/DeskActionBar.vue'
 import DeskSection from '@/components/desk/DeskSection.vue'
 import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 
 const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
-
-const { selectOptions } = useDoctypeMeta('Assembly')
-const categoryOptions = computed(() => selectOptions('category'))
 
 const form = reactive({ assemblyCode: '', assemblyName: '', uom: '', category: '', notes: '' })
 const { errors, applyServerErrors, setErrors } = useFormErrors({
@@ -92,10 +87,8 @@ const breadcrumbs = [
             placeholder="— Select unit —" />
         </DeskField>
         <DeskField label="Category">
-          <DeskSelect v-model="form.category">
-            <option value="">— Select —</option>
-            <option v-for="c in categoryOptions" :key="c">{{ c }}</option>
-          </DeskSelect>
+          <DeskLinkPicker v-model="form.category" doctype="Assembly Category" label-field="name"
+            value-field="name" placeholder="— Select category —" />
         </DeskField>
         <DeskField label="Notes">
           <DeskTextarea v-model="form.notes" :rows="3" />
