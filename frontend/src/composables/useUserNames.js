@@ -9,6 +9,7 @@
 import { computed } from "vue";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
+import { useHiddenUsers } from "@/composables/useHiddenUsers";
 
 let _resource = null;
 
@@ -30,9 +31,13 @@ export function useUserNames() {
 		});
 	}
 
+	const { hiddenUsers } = useHiddenUsers();
+
 	const directory = computed(() => {
+		const hidden = new Set(hiddenUsers.value);
 		const map = {};
 		rows(_resource).forEach((u) => {
+			if (hidden.has(u.name)) return; // never surface Administrator / platform admins
 			map[u.name] = { fullName: u.full_name || u.name, image: u.user_image || "" };
 		});
 		return map;

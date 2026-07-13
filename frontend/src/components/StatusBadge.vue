@@ -33,6 +33,10 @@ const classes = computed(() => {
 		"Pending Approval": "bg-warning-50 text-warning-700",
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
+		// Subcontractor Work Order lifecycle + Subcontractor status.
+		Awarded: "bg-info-50 text-info-700",
+		Closed: "bg-ink-100 text-ink-500",
+		Inactive: "bg-ink-100 text-ink-500",
 		Cancelled: "bg-ink-100 text-ink-500",
 		// BOQ superseded revision — muted ink chip. Keyed on the stored value
 		// ("Superseded"); rendered as "Replaced" via STATUS_ALIASES above.

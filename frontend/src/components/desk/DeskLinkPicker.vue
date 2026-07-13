@@ -3,6 +3,11 @@ import { computed, ref, watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import Autocomplete from "../../../node_modules/frappe-ui/src/components/Autocomplete/Autocomplete.vue";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useHiddenUsers } from "@/composables/useHiddenUsers";
+
+// Users that BuildSuite Core's own UI must never surface (Administrator, Guest,
+// platform System-Manager admins). Applied to every User picker centrally.
+const { hiddenUsers } = useHiddenUsers();
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -54,11 +59,20 @@ const resolvedFields = computed(() => {
 			props.labelField,
 			...resolvedSearchFields.value,
 			...filterFieldNames.value,
-		])
+		]),
 	);
 });
 
-const serverFilters = computed(() => props.filters);
+const serverFilters = computed(() => {
+	// For the User doctype, exclude the accounts BuildSuite Core hides from its own
+	// pickers (Administrator, Guest, platform admins). Only the array filter form is
+	// rewritten (all User pickers use it); everywhere else, pass through untouched.
+	const usesArrayFilters = Array.isArray(props.filters) || !props.filters;
+	if (props.doctype === "User" && hiddenUsers.value.length && usesArrayFilters) {
+		return [...(props.filters || []), ["name", "not in", hiddenUsers.value]];
+	}
+	return props.filters;
+});
 
 function matchesFilterValue(actual, operator, expected) {
 	if (operator === "=") {
@@ -162,7 +176,13 @@ const selectedOption = computed(() => {
 });
 
 const options = computed(() => {
-	const rows = applyClientFilters(optionsResource.data || [], serverFilters.value);
+	let rows = applyClientFilters(optionsResource.data || [], serverFilters.value);
+	// Belt-and-braces: never render a hidden user even if the server page included
+	// one ("not in" is applied server-side, but this guarantees it in the UI).
+	if (props.doctype === "User" && hiddenUsers.value.length) {
+		const hidden = new Set(hiddenUsers.value);
+		rows = rows.filter((row) => !hidden.has(row?.name));
+	}
 	return rows.map(buildOption);
 });
 
@@ -181,7 +201,7 @@ watchDebounced(
 		});
 		optionsResource.list.fetch();
 	},
-	{ debounce: 250, immediate: true }
+	{ debounce: 250, immediate: true },
 );
 
 watch(
@@ -198,7 +218,7 @@ watch(
 		});
 		optionsResource.list.fetch();
 		fetchSelectedRecord();
-	}
+	},
 );
 
 watch(
@@ -214,7 +234,7 @@ watch(
 		});
 		optionsResource.list.fetch();
 	},
-	{ deep: true }
+	{ deep: true },
 );
 
 watch(
@@ -222,7 +242,7 @@ watch(
 	() => {
 		fetchSelectedRecord();
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function fetchSelectedRecord() {
@@ -321,7 +341,9 @@ function onQueryUpdate(value) {
 	z-index: 80 !important;
 	border: 1px solid theme("colors.ink.200") !important;
 	border-radius: 6px !important;
-	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+	box-shadow:
+		0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Force compact typography inside teleported popover */

@@ -76,6 +76,12 @@ def seed_master_data():
 	)
 
 	seed_project_templates()
+  
+  from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_subcontract import (
+		seed_subcontract_masters,
+	)
+
+	seed_subcontract_masters()
 
 def create_item_group():
     if frappe.db.get_value("Item Group","Raw Material"):
