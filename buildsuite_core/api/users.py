@@ -52,6 +52,28 @@ def list_buildsuite_users():
 
 
 @frappe.whitelist()
+def get_hidden_user_names():
+	"""User accounts BuildSuite Core's own UI must never surface — its user lists,
+	team pickers, assignee dropdowns and mention/autocomplete. That's the built-in
+	system accounts (Administrator, Guest) plus platform admins: System Manager
+	holders that aren't BuildSuite users (they carry no persona). A real BuildSuite
+	user who also happens to hold System Manager stays visible. Frappe Desk is
+	unaffected — this only feeds the SPA's pickers."""
+	hidden = set(SYSTEM_ACCOUNTS)
+	sysman = frappe.get_all(
+		"Has Role", filters={"role": "System Manager", "parenttype": "User"}, pluck="parent"
+	)
+	if sysman:
+		with_persona = set(
+			frappe.get_all(
+				"User", filters={"name": ["in", sysman], "persona": ["is", "set"]}, pluck="name"
+			)
+		)
+		hidden |= set(sysman) - with_persona
+	return sorted(hidden)
+
+
+@frappe.whitelist()
 def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: int = 1, send_welcome: int = 1):
 	_require_admin()
 	full_name = (full_name or "").strip()
