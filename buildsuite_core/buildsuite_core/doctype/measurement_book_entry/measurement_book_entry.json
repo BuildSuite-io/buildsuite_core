@@ -1,0 +1,116 @@
+{
+ "actions": [],
+ "creation": "2026-07-13 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "description",
+  "work_order_line",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
+  "cost_code_label",
+  "uom",
+  "nos",
+  "length",
+  "breadth",
+  "depth",
+  "quantity",
+  "is_deduction"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_order_line",
+   "fieldtype": "Data",
+   "label": "Work Order Line"
+  },
+  {
+   "fieldname": "cost_code_type",
+   "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem"
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group"
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item"
+  },
+  {
+   "columns": 2,
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
+   "label": "Cost Code"
+  },
+  {
+   "columns": 1,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "default": "1",
+   "fieldname": "nos",
+   "fieldtype": "Float",
+   "label": "Nos"
+  },
+  {
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length"
+  },
+  {
+   "fieldname": "breadth",
+   "fieldtype": "Float",
+   "label": "Breadth"
+  },
+  {
+   "default": "1",
+   "fieldname": "depth",
+   "fieldtype": "Float",
+   "label": "Depth"
+  },
+  {
+   "columns": 1,
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "is_deduction",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Deduction"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Measurement Book Entry",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
