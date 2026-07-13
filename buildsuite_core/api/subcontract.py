@@ -172,3 +172,189 @@ def get_project_cost_codes(project: str):
 			}
 		)
 	return out
+
+
+# ---------------------------------------------------------------------------
+# Measurement Book — site measurements against a Work Order's SOV lines. Each
+# entry records Nos x L x B x D -> quantity (or a directly-typed quantity), with
+# deduction rows subtracting. Certified books are the source of measured-to-date.
+# ---------------------------------------------------------------------------
+
+MEASUREMENT_BOOK = "Measurement Book"
+
+_MB_ENTRY_FIELDS = (
+	"description",
+	"work_order_line",
+	"cost_code_type",
+	"cost_code_group",
+	"cost_code_item",
+	"cost_code_label",
+	"uom",
+	"nos",
+	"length",
+	"breadth",
+	"depth",
+	"quantity",
+	"is_deduction",
+)
+
+
+def _serialize_mb(doc):
+	return {
+		"name": doc.name,
+		"work_order": doc.work_order,
+		"project": doc.project,
+		"date": str(doc.date) if doc.date else None,
+		"measured_by": doc.measured_by,
+		"certified_by": doc.certified_by,
+		"status": doc.status,
+		"remarks": doc.remarks,
+		"measured_total": doc.measured_total,
+		"company": doc.company,
+		"entries": [
+			{
+				"name": r.name,
+				"description": r.description,
+				"work_order_line": r.work_order_line,
+				"cost_code_type": r.cost_code_type,
+				"cost_code_group": r.cost_code_group,
+				"cost_code_item": r.cost_code_item,
+				"cost_code_label": r.cost_code_label,
+				"uom": r.uom,
+				"nos": r.nos,
+				"length": r.length,
+				"breadth": r.breadth,
+				"depth": r.depth,
+				"quantity": r.quantity,
+				"is_deduction": r.is_deduction,
+			}
+			for r in doc.entries
+		],
+	}
+
+
+@frappe.whitelist()
+def get_work_order_lines(work_order: str):
+	"""A Work Order's SOV lines (id + scope + stored cost code + uom) — used to
+	pick which line a measurement entry is against, and to default its code/uom."""
+	if not work_order:
+		return []
+	doc = frappe.get_doc(WORK_ORDER, work_order)
+	doc.check_permission("read")
+	return [
+		{
+			"name": r.name,
+			"scope": r.scope,
+			"cost_code_type": r.cost_code_type,
+			"cost_code_group": r.cost_code_group,
+			"cost_code_item": r.cost_code_item,
+			"cost_code_label": r.cost_code_label,
+			"uom": r.uom,
+		}
+		for r in doc.lines
+	]
+
+
+@frappe.whitelist()
+def get_measurement_book(name: str):
+	"""A Measurement Book with its entries + the parent WO's lines (for labels)."""
+	doc = frappe.get_doc(MEASUREMENT_BOOK, name)
+	doc.check_permission("read")
+	out = _serialize_mb(doc)
+	out["wo_lines"] = get_work_order_lines(doc.work_order) if doc.work_order else []
+	return out
+
+
+@frappe.whitelist()
+def save_measurement_book(
+	name=None,
+	work_order=None,
+	project=None,
+	date=None,
+	measured_by=None,
+	remarks=None,
+	entries=None,
+):
+	"""Create or update a Measurement Book (header + entries). Only Draft books
+	are editable — Certified books feed billed quantity, so editing is blocked."""
+	entries = frappe.parse_json(entries) or []
+
+	if name and frappe.db.exists(MEASUREMENT_BOOK, name):
+		doc = frappe.get_doc(MEASUREMENT_BOOK, name)
+		doc.check_permission("write")
+		if doc.status != "Draft":
+			frappe.throw("Only Draft measurement books can be edited. Revert to Draft first.")
+	else:
+		doc = frappe.new_doc(MEASUREMENT_BOOK)
+
+	doc.work_order = work_order
+	doc.project = project
+	doc.date = date
+	doc.measured_by = measured_by
+	doc.remarks = remarks
+
+	doc.set("entries", [])
+	for row in entries:
+		doc.append("entries", {k: row.get(k) for k in _MB_ENTRY_FIELDS})
+
+	doc.save()
+	return _serialize_mb(doc)
+
+
+@frappe.whitelist()
+def certify_measurement_book(name: str):
+	"""Certify a Draft measurement book — stamps the certifier and locks it."""
+	doc = frappe.get_doc(MEASUREMENT_BOOK, name)
+	doc.check_permission("write")
+	if doc.status == "Certified":
+		return _serialize_mb(doc)
+	doc.status = "Certified"
+	doc.certified_by = frappe.session.user
+	doc.save()
+	return _serialize_mb(doc)
+
+
+@frappe.whitelist()
+def revert_measurement_book(name: str):
+	"""Send a Certified measurement book back to Draft (clears the certifier)."""
+	doc = frappe.get_doc(MEASUREMENT_BOOK, name)
+	doc.check_permission("write")
+	doc.status = "Draft"
+	doc.certified_by = None
+	doc.save()
+	return _serialize_mb(doc)
+
+
+@frappe.whitelist()
+def get_wo_measurements(work_order: str):
+	"""Measurement Books against a Work Order + certified measured-to-date per SOV
+	line. Powers the WO detail's Measurements tab and its 'measured to date' column."""
+	if not work_order:
+		return {"books": [], "measured_by_line": {}}
+
+	books = frappe.get_all(
+		MEASUREMENT_BOOK,
+		filters={"work_order": work_order},
+		fields=["name", "date", "status", "measured_total"],
+		order_by="date desc",
+	)
+	entry_counts = {}
+	measured_by_line = {}
+	for b in books:
+		rows = frappe.get_all(
+			"Measurement Book Entry",
+			filters={"parent": b.name},
+			fields=["work_order_line", "quantity", "is_deduction"],
+		)
+		entry_counts[b.name] = len(rows)
+		if b.status != "Certified":
+			continue
+		for r in rows:
+			line = r.work_order_line or ""
+			signed = (-1 if r.is_deduction else 1) * (r.quantity or 0)
+			measured_by_line[line] = measured_by_line.get(line, 0) + signed
+
+	for b in books:
+		b["entries_count"] = entry_counts.get(b.name, 0)
+
+	return {"books": books, "measured_by_line": measured_by_line}

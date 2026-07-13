@@ -10,8 +10,9 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
-import { getWorkOrder, applyWoAction } from "@/data/subcontractApi";
+import { getWorkOrder, applyWoAction, getWoMeasurements } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -22,6 +23,7 @@ const adapter = createDataAdapter(useDataStore());
 
 const wo = ref(null);
 const actions = ref([]);
+const measurements = ref({ books: [], measured_by_line: {} });
 const loading = ref(true);
 const busy = ref(false);
 
@@ -32,6 +34,10 @@ async function load() {
 		actions.value = data.actions || [];
 		delete data.actions;
 		wo.value = data;
+		measurements.value = await getWoMeasurements(props.id).catch(() => ({
+			books: [],
+			measured_by_line: {},
+		}));
 	} catch (err) {
 		showToast(err.message || "Failed to load work order", "error");
 	} finally {
@@ -41,6 +47,14 @@ async function load() {
 watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => wo.value?.status === "Draft");
+const mbs = computed(() => measurements.value.books || []);
+const measuredByLine = computed(() => measurements.value.measured_by_line || {});
+function lineMeasured(name) {
+	return Number(measuredByLine.value[name] || 0);
+}
+function onRecordMeasurement() {
+	router.push(`/measurement-books/new?work_order=${wo.value.name}`);
+}
 
 async function onAction(action) {
 	const ok = await confirmDialog({
@@ -90,10 +104,11 @@ const breadcrumbs = computed(() => [
 ]);
 
 const tab = ref("sov");
-const tabs = [
+const tabs = computed(() => [
 	{ id: "sov", label: "Schedule of values" },
+	{ id: "measurements", label: "Measurements", count: mbs.value.length },
 	{ id: "terms", label: "Terms" },
-];
+]);
 </script>
 
 <template>
@@ -124,6 +139,16 @@ const tabs = [
 				@click="onAction(action)"
 			>
 				{{ action }}
+			</button>
+			<button
+				v-if="!isDraft && wo.status !== 'Closed'"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
+				style="border-radius: 6px"
+				title="Capture a site measurement (Nos × L × B × D → qty) against this WO"
+				@click="onRecordMeasurement"
+			>
+				+ Record measurement
 			</button>
 			<button
 				type="button"
@@ -185,7 +210,8 @@ const tabs = [
 				"
 				@click="tab = t.id"
 			>
-				{{ t.label }}
+				{{ t.label
+				}}<span v-if="t.count != null" class="ml-1 text-ink-400">({{ t.count }})</span>
 			</button>
 		</div>
 
@@ -213,6 +239,7 @@ const tabs = [
 						<th class="text-left px-3 py-2">UOM</th>
 						<th class="text-right px-3 py-2">Rate</th>
 						<th class="text-right px-3 py-2">Line value</th>
+						<th class="text-right px-3 py-2">Measured to date</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -246,6 +273,16 @@ const tabs = [
 						<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
 							{{ fmtINR(line.amount) }}
 						</td>
+						<td
+							class="px-3 py-2 text-right tabular-nums text-info-700 font-medium"
+							:title="
+								lineMeasured(line.name) > line.qty
+									? 'Exceeds awarded qty — flag for variation'
+									: 'Sum across certified Measurement Books for this line'
+							"
+						>
+							{{ lineMeasured(line.name).toLocaleString("en-IN") }} {{ line.uom }}
+						</td>
 					</tr>
 				</tbody>
 				<tfoot>
@@ -261,9 +298,70 @@ const tabs = [
 						>
 							{{ fmtINR(wo.total_value) }}
 						</td>
+						<td></td>
 					</tr>
 				</tfoot>
 			</table>
+		</section>
+
+		<!-- Measurements against this WO -->
+		<section v-if="tab === 'measurements'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					Measurement books ({{ mbs.length }})
+				</h3>
+				<button
+					v-if="!isDraft && wo.status !== 'Closed'"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onRecordMeasurement"
+				>
+					+ Record measurement
+				</button>
+			</div>
+			<div
+				v-if="mbs.length"
+				class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+			>
+				<table class="w-full text-xs" style="min-width: 520px">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">MB</th>
+							<th class="text-left px-3 py-2">Date</th>
+							<th class="text-right px-3 py-2">Entries</th>
+							<th class="text-right px-3 py-2">Measured</th>
+							<th class="text-left px-3 py-2">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="mb in mbs"
+							:key="mb.name"
+							class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
+							@click="router.push(`/measurement-books/${mb.name}`)"
+						>
+							<td class="px-3 py-2">
+								<DeskLink :to="`/measurement-books/${mb.name}`" @click.stop>{{
+									mb.name
+								}}</DeskLink>
+							</td>
+							<td class="px-3 py-2 text-ink-500">{{ fmtDate(mb.date) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ mb.entries_count }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
+								{{ Number(mb.measured_total || 0).toLocaleString("en-IN") }}
+							</td>
+							<td class="px-3 py-2">
+								<StatusBadge :status="mb.status" size="xs" />
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				No measurements recorded yet against this WO.
+			</div>
 		</section>
 
 		<!-- Terms (read-only; edit via the WO form) -->

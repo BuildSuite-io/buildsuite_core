@@ -513,6 +513,13 @@ SUBCONTRACT_MASTER_ROLE_PERMS = {
 	"BuildSuite Procurement Officer": _FULL,
 	"BuildSuite Administrator": _FULL,
 }
+# Measurement Book — the QS + Site Engineer record and certify site measurements,
+# so they get full CRUD here (they only read the WO/Subcontractor masters).
+_MB_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS", "BuildSuite Site Engineer")
+MEASUREMENT_BOOK_ROLE_PERMS = {
+	**{role: _FULL for role in _MB_FULL_ROLES},
+	"BuildSuite Accountant": _READ,
+}
 
 # Subcontractor Work Order Approval workflow (status is the workflow state field).
 _WO_CREATE_ROLES = _SUBCONTRACT_FULL_ROLES  # raise + submit a WO
@@ -533,6 +540,7 @@ _WO_TRANSITIONS = (
 def setup_subcontract_permissions():
 	_apply_role_perms("Subcontractor", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_ROLE_PERMS)
+	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
 	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS)
 	_apply_role_perms("Subcontract Delivery Type", SUBCONTRACT_MASTER_ROLE_PERMS)
 
