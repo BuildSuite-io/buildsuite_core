@@ -5,7 +5,7 @@
 // current user). Measurement Books + RA bills land in a later pass.
 
 import { computed, ref, watch } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -115,7 +115,7 @@ const tabs = computed(() => [
 	<DeskPage
 		v-if="wo"
 		:title="wo.subcontractor_name || wo.name"
-		:subtitle="`${wo.name} · ${wo.project}`"
+		:subtitle="`${wo.name} · ${wo.project_name || wo.project}`"
 		:breadcrumbs="breadcrumbs"
 		:status="wo.delivery_type ? [wo.status, wo.delivery_type] : wo.status"
 	>
@@ -174,7 +174,7 @@ const tabs = computed(() => [
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Project
 				</div>
-				<div class="text-sm text-ink-900 mt-0.5 truncate">{{ wo.project }}</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">{{ wo.project_name || wo.project }}</div>
 				<div class="text-[10px] text-ink-500">{{ fmtDate(wo.date) }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
