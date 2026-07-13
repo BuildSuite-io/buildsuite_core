@@ -24,3 +24,14 @@ export const applyWoAction = (workOrder, action) =>
 	call("apply_wo_action", { work_order: workOrder, action });
 export const getWoTransitions = (name) => call("get_wo_transitions", { name });
 export const getProjectCostCodes = (project) => call("get_project_cost_codes", { project });
+
+// Measurement Book — site measurements against a Work Order's SOV lines.
+export const getWorkOrderLines = (workOrder) =>
+	call("get_work_order_lines", { work_order: workOrder });
+export const getMeasurementBook = (name) => call("get_measurement_book", { name });
+export const saveMeasurementBook = (payload) =>
+	call("save_measurement_book", { ...payload, entries: JSON.stringify(payload.entries || []) });
+export const certifyMeasurementBook = (name) => call("certify_measurement_book", { name });
+export const revertMeasurementBook = (name) => call("revert_measurement_book", { name });
+export const getWoMeasurements = (workOrder) =>
+	call("get_wo_measurements", { work_order: workOrder });

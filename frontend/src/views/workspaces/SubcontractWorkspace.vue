@@ -19,6 +19,7 @@ const today = computed(() => {
 const shortcuts = [
 	{ label: "Subcontractors", icon: "users-2", to: "/subcontractors" },
 	{ label: "Work Orders", icon: "clipboard-list", to: "/subcontractor-work-orders" },
+	{ label: "Measurement Books", icon: "chart-bar", to: "/measurement-books" },
 ];
 
 const reports = [
@@ -27,6 +28,12 @@ const reports = [
 		icon: "clipboard-list",
 		to: "/subcontractor-work-orders",
 		desc: "Every WO across projects with status + committed value.",
+	},
+	{
+		label: "Measurement Book Register",
+		icon: "chart-bar",
+		to: "/measurement-books",
+		desc: "Site measurements certified by the QS, feeding billed quantity.",
 	},
 	{
 		label: "Subcontractor Ledger",

@@ -1,9 +1,8 @@
 <script setup>
-// Subcontractor Dashboard — rolls the Work Order + Subcontractor slices
-// into KPI cards + a recent-work-orders panel. Mirrors the prototype's
-// SubcontractorDashboardView; the RA-bill / Measurement-Book panels land
-// in a later pass (those doctypes don't exist yet), so retention + billed
-// KPIs are omitted here rather than shown as fake zeros.
+// Subcontractor Dashboard — rolls the Work Order, Subcontractor and
+// Measurement Book slices into KPI cards + recent-activity panels. Mirrors
+// the prototype's SubcontractorDashboardView; the RA-bill panels land in a
+// later pass, so retention + billed KPIs are omitted rather than faked.
 
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
@@ -38,9 +37,16 @@ const subsRes = useDocTypeList("Subcontractor", {
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-dashboard",
 });
+const mbsRes = useDocTypeList("Measurement Book", {
+	fields: ["name", "project", "work_order", "date", "measured_total", "status"],
+	orderBy: "date desc",
+	pageLength: 0,
+	cache: "buildsuite-measurement-book-dashboard",
+});
 
 const wos = computed(() => wosRes.data || []);
 const subs = computed(() => subsRes.data || []);
+const recentMBs = computed(() => (mbsRes.data || []).slice(0, 5));
 
 const openWos = computed(() =>
 	wos.value.filter((w) => w.status === "Awarded" || w.status === "In Progress"),
@@ -172,6 +178,69 @@ const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 				</ul>
 				<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
 					{{ wosRes.loading ? "Loading work orders…" : "No work orders raised yet." }}
+				</div>
+			</div>
+
+			<!-- Recent measurement books -->
+			<div class="bg-white border border-ink-200 overflow-hidden rounded-xl mb-6">
+				<div
+					class="px-4 py-3 border-b border-ink-100 bg-gradient-to-r from-info-50/40 to-white flex items-center gap-2"
+				>
+					<svg
+						class="w-4 h-4 text-info-700"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						v-html="getWorkspaceIconPath('chart-bar')"
+					/>
+					<h2 class="text-sm font-semibold text-ink-900">Recent measurement books</h2>
+					<RouterLink
+						to="/measurement-books"
+						class="ml-auto text-xs text-brand-700 hover:underline"
+						>View all →</RouterLink
+					>
+				</div>
+				<ul v-if="recentMBs.length" class="divide-y divide-ink-100">
+					<li
+						v-for="mb in recentMBs"
+						:key="mb.name"
+						class="px-4 py-3 flex items-center gap-3"
+					>
+						<div class="flex-1 min-w-0">
+							<div class="flex items-baseline gap-2">
+								<RouterLink
+									:to="`/measurement-books/${mb.name}`"
+									class="text-sm text-ink-900 font-medium hover:text-brand-700 truncate"
+									>{{ mb.name }}</RouterLink
+								>
+								<StatusBadge :status="mb.status" size="xs" />
+							</div>
+							<div class="text-[11px] text-ink-500 mt-0.5 truncate">
+								{{ mb.project }} ·
+								<RouterLink
+									:to="`/subcontractor-work-orders/${mb.work_order}`"
+									class="text-brand-700 hover:underline"
+									>{{ mb.work_order }}</RouterLink
+								>
+								· {{ fmtDate(mb.date) }}
+							</div>
+						</div>
+						<div
+							class="text-sm font-semibold text-info-700 tabular-nums whitespace-nowrap"
+						>
+							{{ Number(mb.measured_total || 0).toLocaleString("en-IN") }}
+						</div>
+					</li>
+				</ul>
+				<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
+					{{
+						mbsRes.loading
+							? "Loading measurement books…"
+							: "No measurements recorded yet."
+					}}
 				</div>
 			</div>
 		</div>
