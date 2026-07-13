@@ -5,6 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from buildsuite_core.buildsuite_core.doctype.boq_item.boq_item import roll_up_item_rate
+
 
 class BOQSubItem(Document):
 	def validate(self):
@@ -22,3 +24,21 @@ class BOQSubItem(Document):
 			if parent:
 				self.work_package = self.work_package or parent.work_package
 				self.cost_head = self.cost_head or parent.cost_head
+
+	def _roll_up_parent(self):
+		"""Refresh the parent item's rate from its current sub-items — unless the
+		parent is itself being deleted (its own on_trash recomputes the BOQ)."""
+		if not self.boq_item:
+			return
+		if frappe.flags.get("boq_item_deleting") == self.boq_item:
+			return
+		roll_up_item_rate(self.boq_item)
+
+	def after_insert(self):
+		self._roll_up_parent()
+
+	def on_update(self):
+		self._roll_up_parent()
+
+	def after_delete(self):
+		self._roll_up_parent()
