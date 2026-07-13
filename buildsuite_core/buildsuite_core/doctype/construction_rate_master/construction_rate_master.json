@@ -44,7 +44,7 @@
    "fieldname": "category",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Resource Type",
+   "label": "Category",
    "options": "Material\nLabour\nEquipment",
    "reqd": 1
   },
@@ -111,6 +111,7 @@
   {
    "fieldname": "rate_master_category",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Rate Master Category",
    "options": "Rate Master Category"
   }
@@ -118,7 +119,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-06 21:25:33.913303",
+ "modified": "2026-07-11 07:15:06.422414",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Construction Rate Master",

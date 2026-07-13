@@ -6,7 +6,6 @@ import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { useConfirm } from '@/composables/useConfirm'
 import { useFormErrors } from '@/composables/useFormErrors'
-import { useDoctypeMeta } from '@/composables/useDoctypeMeta'
 import { useDocTypeList } from '@/composables/useDocTypeList'
 import { showToast } from '@/utils/appToast'
 import { createDataAdapter } from '@/data/adapters'
@@ -15,7 +14,6 @@ import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskSection from '@/components/desk/DeskSection.vue'
 import DeskField from '@/components/desk/DeskField.vue'
 import DeskInput from '@/components/desk/DeskInput.vue'
-import DeskSelect from '@/components/desk/DeskSelect.vue'
 import DeskTextarea from '@/components/desk/DeskTextarea.vue'
 import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 import DeskSearchableSelect from '@/components/desk/DeskSearchableSelect.vue'
@@ -29,9 +27,6 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
   uom: 'uom',
 })
 const adapter = createDataAdapter(useDataStore())
-
-const { selectOptions } = useDoctypeMeta('Assembly')
-const categoryOptions = computed(() => selectOptions('category'))
 
 const resource = adapter.read('Assembly', props.id, { fields: ['*'] })
 const doc = computed(() => resource?.doc || null)
@@ -349,10 +344,8 @@ async function removeComponent(index) {
                   placeholder="— Select unit —" />
               </DeskField>
               <DeskField label="Category">
-                <DeskSelect v-model="form.category">
-                  <option value="">— Select —</option>
-                  <option v-for="c in categoryOptions" :key="c">{{ c }}</option>
-                </DeskSelect>
+                <DeskLinkPicker v-model="form.category" doctype="Assembly Category" label-field="name"
+                  value-field="name" placeholder="— Select category —" />
               </DeskField>
               <DeskField label="Notes">
                 <DeskTextarea v-model="form.notes" :rows="3" />
