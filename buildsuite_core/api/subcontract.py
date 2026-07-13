@@ -38,6 +38,7 @@ def _serialize(doc):
 		"subcontractor": doc.subcontractor,
 		"subcontractor_name": doc.subcontractor_name,
 		"project": doc.project,
+		"project_name": frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None,
 		"date": str(doc.date) if doc.date else None,
 		"delivery_type": doc.delivery_type,
 		"retention_percent": doc.retention_percent,
