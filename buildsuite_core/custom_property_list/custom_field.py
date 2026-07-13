@@ -415,4 +415,27 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	"Employee":[
+        {
+            "fieldname": "custom_wage",
+            "description": "Daily Wage Amount",
+            "fieldtype": "Currency",
+            "insert_after": "salary_currency",
+            "is_system_generated": 0,
+            "label": "Wage",
+            "depends_on": "eval:doc.employment_type == \"Labour\"",
+            "mandatory_depends_on": "eval:doc.employment_type == \"Labour\"",
+            "options": "currency",
+        },
+        {
+            "fieldname": "custom_wage_for_overtime",
+            "description": "Hourly Wage for Overtime",
+            "fieldtype": "Currency",
+            "insert_after": "custom_wage",
+            "is_system_generated": 0,
+            "label": "Wage For Overtime",
+            "depends_on": "eval:doc.employment_type == \"Labour\"",
+            "options": "currency",
+        },
+    ]
 }
