@@ -520,6 +520,14 @@ MEASUREMENT_BOOK_ROLE_PERMS = {
 	**{role: _FULL for role in _MB_FULL_ROLES},
 	"BuildSuite Accountant": _READ,
 }
+# Subcontractor Bill (RA Bill) — submittable. The QS + subcontract full roles raise and
+# submit progress bills; the Accountant + Site Engineer read them.
+_BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
+SUBCONTRACT_BILL_ROLE_PERMS = {
+	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
+	"BuildSuite Accountant": _READ,
+	"BuildSuite Site Engineer": _READ,
+}
 
 # Subcontractor Work Order Approval workflow (status is the workflow state field).
 _WO_CREATE_ROLES = _SUBCONTRACT_FULL_ROLES  # raise + submit a WO
@@ -541,6 +549,7 @@ def setup_subcontract_permissions():
 	_apply_role_perms("Subcontractor", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
+	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS)
 	_apply_role_perms("Subcontract Delivery Type", SUBCONTRACT_MASTER_ROLE_PERMS)
 

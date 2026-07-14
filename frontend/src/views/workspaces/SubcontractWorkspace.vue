@@ -20,6 +20,8 @@ const shortcuts = [
 	{ label: "Subcontractors", icon: "users-2", to: "/subcontractors" },
 	{ label: "Work Orders", icon: "clipboard-list", to: "/subcontractor-work-orders" },
 	{ label: "Measurement Books", icon: "chart-bar", to: "/measurement-books" },
+	// RA Bills live in Frappe Desk (accounting-bound); the tile links out.
+	{ label: "RA Bills", icon: "file-text", href: "/app/subcontractor-bill" },
 ];
 
 const reports = [

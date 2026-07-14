@@ -150,6 +150,15 @@ const tabs = computed(() => [
 			>
 				+ Record measurement
 			</button>
+			<a
+				v-if="!isDraft && wo.status !== 'Closed'"
+				:href="`/app/subcontractor-bill/new?work_order=${wo.name}`"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium inline-flex items-center"
+				style="border-radius: 6px"
+				title="Raise a Running Account bill against this work order (opens in Frappe Desk)"
+			>
+				+ Raise RA Bill
+			</a>
 			<button
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
@@ -174,7 +183,9 @@ const tabs = computed(() => [
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Project
 				</div>
-				<div class="text-sm text-ink-900 mt-0.5 truncate">{{ wo.project_name || wo.project }}</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">
+					{{ wo.project_name || wo.project }}
+				</div>
 				<div class="text-[10px] text-ink-500">{{ fmtDate(wo.date) }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
