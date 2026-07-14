@@ -518,7 +518,7 @@ export const useDataStore = defineStore("data", {
 				// reachable via Project Detail tabs / direct URLs; just not surfaced
 				// as workspace tiles. Idempotent — only marks dirty if rows were
 				// actually present. New (post-S38) localStorage never had them.
-				const RETIRED_SITE_EXEC_SHORTCUTS = ["WSST-002", "WSST-004", "WSST-006"];
+				const RETIRED_SITE_EXEC_SHORTCUTS = ["WSST-002", "WSST-004"];
 				let workspaceMigrationDirty = false;
 				for (const def of this.workspaceStructure.workspace_definitions || []) {
 					if (def.workspace_slug !== "site-execution") continue;

@@ -50,6 +50,24 @@ export function fmtDate(d) {
 	}
 }
 
+// Cost-impact variance colour: positive = added cost (red), negative = saving
+// (green), zero = neutral. Keeps the coloring identical across the SCO views.
+export function impactClass(n) {
+	const v = Number(n) || 0;
+	if (v > 0) return "text-danger-700";
+	if (v < 0) return "text-success-700";
+	return "text-ink-500";
+}
+
+// Sign prefix for an impact shown as an absolute number: "+" added cost, "−" saving,
+// nothing at zero.
+export function impactSign(n) {
+	const v = Number(n) || 0;
+	if (v > 0) return "+";
+	if (v < 0) return "−";
+	return "";
+}
+
 export function daysBetween(a, b) {
 	if (!a || !b) return 0;
 	const d1 = new Date(a);

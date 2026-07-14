@@ -184,6 +184,13 @@ const routes = [
 				component: () => import("@/views/ScheduleView.vue"),
 			},
 			{ path: "sco", name: "sco", component: () => import("@/views/ScoView.vue") },
+			{ path: "sco/new", name: "sco-new", component: () => import("@/views/NewScoView.vue") },
+			{
+				path: "sco/:id",
+				name: "sco-detail",
+				component: () => import("@/views/ScoDetailView.vue"),
+				props: true,
+			},
 			{ path: "boq", name: "boq", component: () => import("@/views/BoqView.vue") },
 			{
 				path: "boq/:id",

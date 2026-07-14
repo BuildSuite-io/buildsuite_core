@@ -1,0 +1,25 @@
+# Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
+# For license information, please see license.txt
+
+# import frappe
+from frappe.model.document import Document
+
+
+class ScopeChangeOrderActivity(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		action: DF.Literal["raised", "submitted", "approved", "rejected", "revised"]
+		activity_on: DF.Datetime | None
+		parent: DF.Data
+		parentfield: DF.Data
+		parenttype: DF.Data
+		user: DF.Link | None
+	# end: auto-generated types
+
+	pass

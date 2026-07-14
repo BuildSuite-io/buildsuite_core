@@ -26,7 +26,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { createDataAdapter } from "@/data/adapters";
 import { addProjectTeamMember, removeProjectTeamMember } from "@/data/projectTeamApi";
 import { toDateInputValue } from "@/utils/dateInput";
-import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtCompactINR, fmtDate, impactClass, impactSign } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import ProjectEditModal from "@/views/project-detail/ProjectEditModal.vue";
 import ProjectTeamMemberModal from "@/views/project-detail/ProjectTeamMemberModal.vue";
@@ -415,7 +415,37 @@ const tasks = computed(() => {
 	return [];
 });
 
-const scos = computed(() => store.scosByProject(resolvedProjectId.value));
+const scosResource = ref(null);
+function loadScosResource() {
+	if (!resolvedProjectId.value) {
+		scosResource.value = null;
+		return;
+	}
+	scosResource.value = adapter.list("Scope Change Order", {
+		fields: ["name", "title", "project", "sco_type", "cost_impact", "status", "raised_by", "raised_date"],
+		filters: { project: resolvedProjectId.value },
+		orderBy: "creation desc",
+		pageLength: 0,
+		cache: `buildsuite-project-detail-sco:${resolvedProjectId.value}`,
+		transform(rows) {
+			return rows.map((r) => ({
+				id: r?.name,
+				title: r?.title || "",
+				projectId: r?.project || "",
+				type: r?.sco_type || "",
+				impact: Number(r?.cost_impact) || 0,
+				status: r?.status || "Pending Approval",
+				raisedBy: r?.raised_by || "",
+				raisedDate: r?.raised_date || null,
+			}));
+		},
+	});
+}
+watch(resolvedProjectId, loadScosResource, { immediate: true });
+const scos = computed(() => {
+	const raw = scosResource.value?.data;
+	return Array.isArray(raw) ? raw : [];
+});
 
 const stageCount = ref(null);
 const stageListRef = ref(null);
@@ -1526,9 +1556,15 @@ usePageTitle(() => project.value?.name);
 						>
 					</span>
 					<RouterLink
-						to="/sco"
+						:to="`/sco/new?projectId=${resolvedProjectId}`"
 						class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white ml-auto"
-						style="border-radius: 2px"
+						style="border-radius: 6px"
+						>+ Raise SCO</RouterLink
+					>
+					<RouterLink
+						to="/sco"
+						class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white"
+						style="border-radius: 6px"
 						>Open SCO module →</RouterLink
 					>
 				</div>
@@ -1540,7 +1576,7 @@ usePageTitle(() => project.value?.name);
 					search-placeholder="Search scope changes…"
 				>
 					<template #cell-id="{ row }">
-						<DeskLink to="/sco" class="font-mono text-xs">{{ row.id }}</DeskLink>
+						<DeskLink :to="`/sco/${row.id}`" class="font-mono text-xs">{{ row.id }}</DeskLink>
 					</template>
 					<template #cell-title="{ row }">
 						<span class="text-ink-900">{{ row.title }}</span>
@@ -1548,9 +1584,9 @@ usePageTitle(() => project.value?.name);
 					<template #cell-impact="{ row }">
 						<span
 							class="tabular-nums"
-							:class="row.impact >= 0 ? 'text-danger-700' : 'text-success-700'"
+							:class="impactClass(row.impact)"
 						>
-							{{ row.impact >= 0 ? "+" : "" }}{{ fmtINR(Math.abs(row.impact)) }}
+							{{ impactSign(row.impact) }}{{ fmtINR(Math.abs(row.impact)) }}
 						</span>
 					</template>
 					<template #cell-status="{ row }">

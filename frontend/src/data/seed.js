@@ -1146,6 +1146,14 @@ export const seedData = {
 						sort_order: 5,
 					},
 					{
+						id: "WSST-006",
+						label: "Scope Change Orders",
+						icon: "🔄",
+						route_path: "/sco",
+						visible_to_roles: null,
+						sort_order: 6,
+					},
+					{
 						id: "WSST-007",
 						label: "Schedule",
 						icon: "📅",

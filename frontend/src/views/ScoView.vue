@@ -1,11 +1,8 @@
 <script setup>
-// Scope Change Orders (M7) â€” Desk-styled list (CLAUDE.md Â§12.4). Every computed and
-// store call preserved verbatim. Variance-style coloring on impact: positive = cost
-// to the project = red; negative = savings = green (matches the convention in
-// ProjectDetailView's SCO tab).
 
 import { computed, ref } from "vue";
-import { useDataStore } from "@/stores";
+import { useRouter } from "vue-router";
+import { useDocTypeList } from "@/composables/useDocTypeList";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -13,31 +10,80 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
-import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtCompactINR, fmtDate, impactClass, impactSign } from "@/utils/format";
 
-const store = useDataStore();
+// Cost-recovery value â†’ pill label + colour. Add a row here to support a new type.
+const COST_RECOVERY = {
+	"Recoverable from Client": { label: "Client", class: "bg-success-50 text-success-700" },
+	Internal: { label: "Internal", class: "bg-ink-100 text-ink-600" },
+};
+
+const router = useRouter();
 
 const search = ref("");
 const statusFilter = ref("");
 
+const scosRes = useDocTypeList("Scope Change Order", {
+	fields: [
+		"name",
+		"title",
+		"project",
+		"sco_type",
+		"cost_impact",
+		"cost_recovery",
+		"status",
+		"raised_by",
+		"raised_date",
+	],
+	orderBy: "creation desc",
+	pageLength: 0,
+	cache: "buildsuite-sco-list",
+	transform: (data) =>
+		data.map((s) => ({
+			id: s.name,
+			title: s.title,
+			project: s.project,
+			type: s.sco_type,
+			impact: s.cost_impact || 0,
+			costRecovery: s.cost_recovery,
+			status: s.status,
+			raisedBy: s.raised_by,
+			raisedDate: s.raised_date,
+		})),
+});
+
+const rows = computed(() => scosRes.data || []);
+
 const items = computed(() => {
 	const term = search.value.trim().toLowerCase();
-	return store.scos.filter((s) => {
+	return rows.value.filter((s) => {
 		if (statusFilter.value && s.status !== statusFilter.value) return false;
-		if (term && !s.title.toLowerCase().includes(term) && !s.id.toLowerCase().includes(term))
+		if (
+			term &&
+			!(s.title || "").toLowerCase().includes(term) &&
+			!(s.id || "").toLowerCase().includes(term)
+		)
 			return false;
 		return true;
 	});
 });
 
-function projectName(id) {
-	return store.projectById(id)?.name || id;
-}
-
-const totalImpact = computed(() => store.scos.reduce((a, s) => a + (s.impact || 0), 0));
-const recoverableTotal = computed(() =>
-	store.scos.filter((s) => s.recoverable).reduce((a, s) => a + (s.impact || 0), 0)
+const pendingCount = computed(
+	() => rows.value.filter((s) => s.status === "Pending Approval").length
 );
+const totalImpact = computed(() => rows.value.reduce((a, s) => a + (s.impact || 0), 0));
+const recoverableTotal = computed(() =>
+	rows.value
+		.filter((s) => s.costRecovery === "Recoverable from Client")
+		.reduce((a, s) => a + (s.impact || 0), 0)
+);
+
+function onRowClick(row) {
+	router.push(`/sco/${row.id}`);
+}
+function onNew() {
+	router.push("/sco/new");
+}
 
 const columns = [
 	{ key: "id", label: "ID" },
@@ -45,21 +91,19 @@ const columns = [
 	{ key: "project", label: "Project" },
 	{ key: "type", label: "Type" },
 	{ key: "impact", label: "Impact", align: "right" },
-	{ key: "recoverable", label: "Recoverable" },
+	{ key: "costRecovery", label: "Cost Recovery" },
 	{ key: "status", label: "Status" },
 	{ key: "raisedBy", label: "Raised by" },
 	{ key: "raisedDate", label: "Date" },
 ];
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Scope Change" }];
-
-const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â· M7 module`);
 </script>
 
 <template>
-	<DeskPage title="Scope Change Order" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage title="Scope Change Order" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn">+ Raise SCO</button>
+			<button type="button" class="desk-save-btn" @click="onNew">+ Raise SCO</button>
 		</template>
 
 		<!-- KPI strip â€” Desk-tight -->
@@ -69,7 +113,7 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 					Total SCOs
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">
-					{{ store.scos.length }}
+					{{ rows.length }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -77,7 +121,7 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 					Pending approval
 				</div>
 				<div class="text-base font-semibold text-warning-700 mt-0.5">
-					{{ store.pendingScosCount }}
+					{{ pendingCount }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -86,9 +130,9 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 				</div>
 				<div
 					class="text-base font-semibold mt-0.5 tabular-nums"
-					:class="totalImpact >= 0 ? 'text-danger-700' : 'text-success-700'"
+					:class="impactClass(totalImpact)"
 				>
-					{{ totalImpact >= 0 ? "+" : "" }}{{ fmtCompactINR(Math.abs(totalImpact)) }}
+					{{ impactSign(totalImpact) }}{{ fmtCompactINR(Math.abs(totalImpact)) }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -107,6 +151,7 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 			:columns="columns"
 			row-key="id"
 			search-placeholder="Search SCO id or titleâ€¦"
+			@row-click="onRowClick"
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-44">
@@ -124,13 +169,15 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 			</template>
 
 			<template #cell-id="{ row }">
-				<DeskLink class="font-mono text-xs">{{ row.id }}</DeskLink>
+				<DeskLink :to="`/sco/${row.id}`" class="font-mono text-xs" @click.stop>{{
+					row.id
+				}}</DeskLink>
 			</template>
 			<template #cell-title="{ row }">
 				<span class="text-ink-900 font-medium text-sm">{{ row.title }}</span>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-ink-700 text-xs">{{ projectName(row.projectId) }}</span>
+				<span class="text-ink-700 text-xs">{{ row.project }}</span>
 			</template>
 			<template #cell-type="{ row }">
 				<span class="text-ink-700 text-xs">{{ row.type }}</span>
@@ -138,37 +185,35 @@ const subtitle = computed(() => `${items.value.length} of ${store.scos.length} Â
 			<template #cell-impact="{ row }">
 				<span
 					class="tabular-nums"
-					:class="row.impact >= 0 ? 'text-danger-700' : 'text-success-700'"
+					:class="impactClass(row.impact)"
 				>
-					{{ row.impact >= 0 ? "+" : "" }}{{ fmtINR(Math.abs(row.impact)) }}
+					{{ impactSign(row.impact) }}{{ fmtINR(Math.abs(row.impact)) }}
 				</span>
 			</template>
-			<template #cell-recoverable="{ row }">
+			<template #cell-costRecovery="{ row }">
 				<span
-					v-if="row.recoverable"
-					class="text-[10px] px-1.5 py-0.5 bg-success-50 text-success-700 font-medium"
-					style="border-radius: 2px"
-					>Yes</span
+					v-if="COST_RECOVERY[row.costRecovery]"
+					class="text-[10px] px-1.5 py-0.5 font-medium rounded-full"
+					:class="COST_RECOVERY[row.costRecovery].class"
+					>{{ COST_RECOVERY[row.costRecovery].label }}</span
 				>
-				<span
-					v-else
-					class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600 font-medium"
-					style="border-radius: 2px"
-					>Internal</span
-				>
+				<span v-else class="text-ink-300">â€”</span>
 			</template>
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
 			</template>
 			<template #cell-raisedBy="{ row }">
-				<UserAvatar :user-id="row.raisedBy" size="xs" />
+				<UserAvatar v-if="row.raisedBy" :user-id="row.raisedBy" size="xs" />
+				<span v-else class="text-ink-300">â€”</span>
 			</template>
 			<template #cell-raisedDate="{ row }">
-				<span class="text-xs text-ink-500">{{ fmtDate(row.raisedDate) }}</span>
+				<span class="text-xs text-ink-500">{{ row.raisedDate ? fmtDate(row.raisedDate) : "â€”" }}</span>
 			</template>
 
 			<template #empty>
-				<div class="text-sm text-ink-500">No SCOs match your filters.</div>
+				<div class="text-sm text-ink-500">
+					{{ scosRes.loading ? "Loadingâ€¦" : "No scope change orders yet." }}
+				</div>
 			</template>
 		</DeskList>
 	</DeskPage>
