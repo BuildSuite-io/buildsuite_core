@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -18,6 +19,8 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
+const props = defineProps({ id: { type: String, default: "" } });
+const router = useRouter();
 const store = useDataStore();
 const adapter = createDataAdapter(store);
 const confirmDialog = useConfirm();
@@ -91,7 +94,7 @@ const rows = computed(() => {
 		data = data.filter(
 			(r) =>
 				(r.code || "").toLowerCase().includes(q) ||
-				(r.description || "").toLowerCase().includes(q)
+				(r.description || "").toLowerCase().includes(q),
 		);
 	}
 	return data;
@@ -189,8 +192,10 @@ async function save() {
 }
 
 // Load the full doc (incl. rate_history) for the side sheet — the list payload omits child tables.
-function onRowClick(row) {
-	rateRes.value = adapter.read("Construction Rate Master", row.id, {
+// Open the detail drawer for a rate. Reads the record directly, so a deep link to
+// /rate-master/<code> works even before the list has loaded.
+function openRate(id) {
+	rateRes.value = adapter.read("Construction Rate Master", id, {
 		transform: (docs) =>
 			docs.map((d) => ({
 				id: d.name,
@@ -211,8 +216,27 @@ function onRowClick(row) {
 			})),
 	});
 }
+
+// Clicking a row navigates to the record's URL; the route watcher opens the drawer.
+function onRowClick(row) {
+	if (props.id === row.id) openRate(row.id);
+	else router.push(`/rate-master/${encodeURIComponent(row.id)}`);
+}
+
+// Drive the drawer from the route param so /rate-master/<code> deep-links work and
+// the URL reflects the open record.
+watch(
+	() => props.id,
+	(id) => {
+		if (id) openRate(id);
+		else rateRes.value = null;
+	},
+	{ immediate: true },
+);
+
 function closeDrawer() {
-	rateRes.value = null;
+	if (props.id) router.push("/rate-master");
+	else rateRes.value = null;
 }
 
 function editRate() {
