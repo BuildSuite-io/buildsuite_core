@@ -52,7 +52,6 @@ def seed_master_data():
 
 	seed_categories()
 	create_item_group()
-	
 
 	# Project Type stays native ERPNext (Internal / External) — construction
 	# categories now live in Project Category above. ERPNext ships "External"; we
@@ -76,19 +75,21 @@ def seed_master_data():
 	)
 
 	seed_project_templates()
-  
-  from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_subcontract import (
+
+	# Subcontract module masters — Construction Trades + Work Order Delivery Types.
+	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_subcontract import (
 		seed_subcontract_masters,
 	)
 
 	seed_subcontract_masters()
 
+
 def create_item_group():
-    if frappe.db.get_value("Item Group","Raw Material"):
-        frappe.rename_doc("Item Group", "Raw Material", "Materials", force=1, merge=0)
-    if frappe.db.get_value("Item Group","Asset"):
-        frappe.rename_doc("Item Group", "Asset", "Assets", force=1, merge=0)
-    frappe.db.commit()
+	if frappe.db.get_value("Item Group", "Raw Material"):
+		frappe.rename_doc("Item Group", "Raw Material", "Materials", force=1, merge=0)
+	if frappe.db.get_value("Item Group", "Asset"):
+		frappe.rename_doc("Item Group", "Asset", "Assets", force=1, merge=0)
+	frappe.db.commit()
 
 def before_migrate():
 	delete_custom_fields(CUSTOM_FIELD)
