@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "creation": "2026-07-14 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scope",
+  "work_order_line",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
+  "cost_code_label",
+  "uom",
+  "rate",
+  "measured_qty_to_date",
+  "previous_qty",
+  "this_period_qty",
+  "this_period_amount"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "scope",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Scope",
+   "read_only": 1
+  },
+  {
+   "fieldname": "work_order_line",
+   "fieldtype": "Data",
+   "label": "Work Order Line",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_type",
+   "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cost Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "measured_qty_to_date",
+   "fieldtype": "Float",
+   "label": "Measured To Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "previous_qty",
+   "fieldtype": "Float",
+   "label": "Previously Billed Qty",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "this_period_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "This Period Qty",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "this_period_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "This Period Amount",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Subcontractor Bill Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
