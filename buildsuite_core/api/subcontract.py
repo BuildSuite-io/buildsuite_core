@@ -132,6 +132,34 @@ def get_wo_transitions(name: str):
 
 
 @frappe.whitelist()
+def committed_by_cost_code(project: str):
+	"""Sum of OPEN (Awarded / In Progress) Subcontractor Work Order line amounts for a
+	project, grouped by cost-code group. Feeds the BOQ 'Committed' column — how much of
+	each BOQ group's scope is already committed to subcontractors."""
+	if not project:
+		return {}
+	wos = frappe.get_all(
+		WORK_ORDER,
+		filters={"project": project, "status": ["in", ["Awarded", "In Progress"]]},
+		pluck="name",
+	)
+	if not wos:
+		return {}
+	rows = frappe.get_all(
+		"Subcontractor Work Order Line",
+		filters={"parent": ["in", wos]},
+		fields=["cost_code_group", "amount"],
+	)
+	out = {}
+	for r in rows:
+		code = r.cost_code_group or ""
+		if not code:
+			continue
+		out[code] = out.get(code, 0) + (r.amount or 0)
+	return out
+
+
+@frappe.whitelist()
 def get_project_cost_codes(project: str):
 	"""BOQ groups + items for a project, as pickable cost codes for SOV lines."""
 	if not project:

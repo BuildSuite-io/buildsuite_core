@@ -15,6 +15,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
+import { getCommittedByCostCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -204,7 +205,7 @@ const boqItemsByBoq = computed(() => allItems.value);
 // Shared 10-column grid for the tree header + group / item / sub-item rows so every
 // level lines up. Without it the rows have no column template and collapse.
 const treeGridStyle =
-	"grid-template-columns: 28px 80px 1fr 80px 90px 100px 110px 110px 110px 80px;";
+	"grid-template-columns: 28px 80px minmax(240px, 1fr) 80px 90px 100px 110px 120px 110px 110px 120px 80px 110px; min-width: 1360px;";
 
 const totals = computed(() => {
 	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
@@ -253,6 +254,47 @@ function groupTotals(groupId) {
 	const planned = items.reduce((a, i) => a + (i.plannedAmount || 0), 0);
 	const actual = items.reduce((a, i) => a + (i.actualAmount || 0), 0);
 	return { planned, actual, count: items.length };
+}
+
+// === Committed (open subcontractor work orders) + Work Package labels ===
+// Committed is a group-level column: the sum of open WO line amounts mapped to the
+// group's cost code. WP + Cost Head are per-item (already on the item).
+const committedMap = ref({}); // { cost_code_group: amount }
+watch(
+	() => boq.value?.projectId,
+	async (pid) => {
+		committedMap.value = {};
+		if (!pid) return;
+		try {
+			committedMap.value = (await getCommittedByCostCode(pid)) || {};
+		} catch {
+			committedMap.value = {};
+		}
+	},
+	{ immediate: true },
+);
+function groupCommitted(group) {
+	return committedMap.value[group.code] || 0;
+}
+
+const wpRes = useDocTypeList("Work Package", {
+	fields: ["name", "code", "work_package_name"],
+	orderBy: "code asc",
+	pageLength: 0,
+	cache: "buildsuite-wp-code-map",
+});
+const wpMap = computed(() => {
+	const m = {};
+	(wpRes.data || []).forEach((w) => {
+		m[w.name] = { code: w.code || w.name, name: w.work_package_name || "" };
+	});
+	return m;
+});
+function wpCode(id) {
+	return id ? wpMap.value[id]?.code || id : "";
+}
+function wpName(id) {
+	return id ? wpMap.value[id]?.name || "" : "";
 }
 function baseAmount(code) {
 	if (!baseBoq.value) return null;
@@ -1021,8 +1063,9 @@ const breadcrumbs = computed(() => {
 				</div>
 			</div>
 
-			<!-- The 3-level tree — Desk styling -->
-			<div class="bg-white border border-ink-200 overflow-hidden" style="border-radius: 2px">
+			<!-- The 3-level tree — Desk styling. overflow-x-auto so the row grid keeps
+			     its full min-width on narrow viewports. -->
+			<div class="bg-white border border-ink-200 overflow-x-auto" style="border-radius: 2px">
 				<!-- Header strip -->
 				<div
 					class="grid items-center bg-ink-50 border-b border-ink-200 text-[11px] text-ink-500 uppercase tracking-wider font-semibold"
@@ -1035,9 +1078,12 @@ const breadcrumbs = computed(() => {
 					<div class="px-3 py-2 text-right">Plan Qty</div>
 					<div class="px-3 py-2 text-right">Rate (₹)</div>
 					<div class="px-3 py-2 text-right">Planned</div>
+					<div class="px-3 py-2 text-right">Committed</div>
 					<div class="px-3 py-2 text-right">Actual</div>
 					<div class="px-3 py-2 text-right">Variance</div>
+					<div class="px-3 py-2">WP</div>
 					<div class="px-3 py-2 text-center">Task</div>
+					<div class="px-3 py-2">Cost Head</div>
 				</div>
 
 				<template v-for="g in groups" :key="g.id">
@@ -1064,6 +1110,12 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupTotals(g.id).planned) }}
 						</div>
+						<div
+							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
+							:title="`Open subcontractor work orders mapped to cost code ${g.code}`"
+						>
+							{{ fmtCompactINR(groupCommitted(g)) }}
+						</div>
 						<div class="px-3 py-2 text-right tabular-nums text-sm text-ink-700">
 							{{ fmtCompactINR(groupTotals(g.id).actual) }}
 						</div>
@@ -1088,6 +1140,8 @@ const breadcrumbs = computed(() => {
 									: "0.0"
 							}}%
 						</div>
+						<div></div>
+						<div></div>
 						<div></div>
 
 						<!-- Edit / Delete (hover-visible, only when BOQ is Draft) -->
@@ -1247,6 +1301,7 @@ const breadcrumbs = computed(() => {
 								>
 									{{ fmtCompactINR(item.plannedAmount) }}
 								</div>
+								<div></div>
 								<div class="px-3 py-1.5">
 									<div class="flex flex-col items-end">
 										<span class="tabular-nums text-sm text-ink-700">{{
@@ -1294,6 +1349,17 @@ const breadcrumbs = computed(() => {
 											: "0.0"
 									}}%
 								</div>
+								<div class="px-3 py-1.5">
+									<DeskLink
+										v-if="item.workPackageId"
+										:to="`/work-packages/${item.workPackageId}`"
+										@click.stop
+										class="text-[10px] font-mono"
+										:title="wpName(item.workPackageId)"
+										>{{ wpCode(item.workPackageId) }}</DeskLink
+									>
+									<span v-else class="text-[10px] text-ink-300">—</span>
+								</div>
 								<div class="px-3 py-1.5 text-center">
 									<DeskLink
 										v-if="item.taskId"
@@ -1301,6 +1367,15 @@ const breadcrumbs = computed(() => {
 										@click.stop
 										class="text-[10px] font-mono"
 										>{{ item.taskId.slice(-4) }}</DeskLink
+									>
+									<span v-else class="text-[10px] text-ink-300">—</span>
+								</div>
+								<div class="px-3 py-1.5">
+									<span
+										v-if="item.costHead"
+										class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-700"
+										style="border-radius: 9999px"
+										>{{ item.costHead }}</span
 									>
 									<span v-else class="text-[10px] text-ink-300">—</span>
 								</div>
@@ -1320,7 +1395,7 @@ const breadcrumbs = computed(() => {
 										↳ {{ si.description }}
 										<DeskLink
 											v-if="si.rateMasterId"
-											to="/rate-master"
+											:to="`/rate-master/${si.rateMasterId}`"
 											@click.stop
 											class="ml-2 text-[10px] font-mono"
 											>{{ si.rateMasterId }}</DeskLink
@@ -1344,9 +1419,12 @@ const breadcrumbs = computed(() => {
 									>
 										{{ fmtINR(si.amount) }}
 									</div>
+									<div></div>
 									<div class="px-3 py-1 text-right text-[10px] text-ink-400">
 										per {{ item.unit }}
 									</div>
+									<div></div>
+									<div></div>
 									<div></div>
 									<div></div>
 
@@ -1411,6 +1489,9 @@ const breadcrumbs = computed(() => {
 									<div></div>
 									<div></div>
 									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
 								</div>
 
 								<!-- Inline "+ Add Sub-item" affordance -->
@@ -1434,6 +1515,9 @@ const breadcrumbs = computed(() => {
 									<div></div>
 									<div></div>
 									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
 								</div>
 							</template>
 						</template>
@@ -1450,6 +1534,9 @@ const breadcrumbs = computed(() => {
 							<div class="px-3 py-1.5 text-xs text-brand-700 font-medium">
 								+ Add item to {{ g.code }} — {{ g.name }}
 							</div>
+							<div></div>
+							<div></div>
+							<div></div>
 							<div></div>
 							<div></div>
 							<div></div>

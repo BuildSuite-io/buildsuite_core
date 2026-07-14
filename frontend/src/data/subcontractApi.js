@@ -24,6 +24,7 @@ export const applyWoAction = (workOrder, action) =>
 	call("apply_wo_action", { work_order: workOrder, action });
 export const getWoTransitions = (name) => call("get_wo_transitions", { name });
 export const getProjectCostCodes = (project) => call("get_project_cost_codes", { project });
+export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
 
 // Measurement Book — site measurements against a Work Order's SOV lines.
 export const getWorkOrderLines = (workOrder) =>

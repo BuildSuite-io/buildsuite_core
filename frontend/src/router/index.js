@@ -29,6 +29,7 @@ const PAGE_TITLES = {
 	boq: "Bill of Quantities",
 	"boq-detail": "BOQ",
 	"rate-master": "Rate Master",
+	"rate-master-detail": "Rate Master",
 	assembly: "Assemblies",
 	"assembly-new": "New Assembly",
 	"assembly-detail": "Assembly",
@@ -194,6 +195,12 @@ const routes = [
 				path: "rate-master",
 				name: "rate-master",
 				component: () => import("@/views/RateMasterView.vue"),
+			},
+			{
+				path: "rate-master/:id",
+				name: "rate-master-detail",
+				component: () => import("@/views/RateMasterView.vue"),
+				props: true,
 			},
 			{
 				path: "assembly",
