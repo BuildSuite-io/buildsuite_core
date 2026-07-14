@@ -1,4 +1,16 @@
+from datetime import datetime
+
 import frappe
+from frappe import _
+from frappe.model.docstatus import DocStatus
+from frappe.model.workflow import (
+	WorkflowTransitionError,
+	get_transitions,
+	get_workflow,
+	has_approval_access,
+)
+from frappe.utils import cint
+
 
 @frappe.whitelist()
 def apply_workflow(doc, action):
@@ -51,7 +63,11 @@ def apply_workflow(doc, action):
 	return doc
 
 
-def create_workflow_log(doc,old_state,new_state,user, workflow):
+def create_workflow_log(doc, old_state, new_state, user, workflow):
+    # The Pending Approval Log doctype is optional — skip logging (rather than
+    # break the workflow transition) when it isn't installed on the site.
+    if not frappe.db.table_exists("Pending Approval Log"):
+        return
     now = datetime.now()
     transitions = get_transitions(doc, workflow)
 
@@ -87,9 +103,6 @@ def create_workflow_log(doc,old_state,new_state,user, workflow):
             frappe.db.commit()
         except Exception as e:
             frappe.log_error(f"Error creating Pending Approval Log: {str(e)}", "Approval Log Error")
-
-
-from frappe.model.workflow import get_workflow
 
 
 def delete_workflow_log(doc, method):
