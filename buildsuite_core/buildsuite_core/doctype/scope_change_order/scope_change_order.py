@@ -28,6 +28,7 @@ class ScopeChangeOrder(Document):
 		rejection_comment: DF.SmallText | None
 		sco_type: DF.Literal["Design Change", "Client Request", "Statutory", "Site Condition", "Rework", "Other"]
 		scope_change_order_activity: DF.Table[ScopeChangeOrderActivity]
+		status: DF.Literal["Pending Approval", "Approved", "Rejected"]
 		title: DF.Data
 	# end: auto-generated types
 

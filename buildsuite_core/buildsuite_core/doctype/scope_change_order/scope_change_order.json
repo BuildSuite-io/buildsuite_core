@@ -24,8 +24,7 @@
   "raised_date",
   "column_break_nzfw",
   "approved_by",
-  "approved_date",
-  "boq_revision"
+  "approved_date"
  ],
  "fields": [
   {
@@ -131,13 +130,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "boq_revision",
-   "fieldtype": "Link",
-   "label": "BOQ Revision",
-   "options": "BOQ",
-   "read_only": 1
-  },
-  {
    "fieldname": "scope_change_order_activity",
    "fieldtype": "Table",
    "label": "Scope Change Order Activity",
@@ -147,7 +139,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-13 20:39:18.472516",
+ "modified": "2026-07-14 23:53:08.501193",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Scope Change Order",
