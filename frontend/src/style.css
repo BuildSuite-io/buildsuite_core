@@ -244,3 +244,32 @@
   html.dark .text-brand-700   { color: #86EFAC; }
   html.dark .text-brand-600   { color: #4ADE80; }
 }
+
+/* Print rules for report surfaces that live inside DeskShell (currently the
+   Subcontractor Work Order print view). When the user prints from a .report-root
+   page we hide the app chrome so the PDF captures only the document. */
+@media print {
+  /* Force a light background regardless of dark-mode preference — PDFs read
+     better on white. */
+  html, body, .report-root { background: #fff !important; color: #000 !important; }
+
+  /* Hide DeskShell chrome: the sidebar aside, the sticky topbar header, and any
+     element explicitly tagged .print:hidden (the report's own control bar). */
+  aside, header.h-12, .print\:hidden { display: none !important; }
+
+  /* Let the report content fill the page. */
+  .report-root, .report-content { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+  main.report-content { padding: 8mm 0 !important; }
+
+  /* Avoid splitting report sections across pages where possible. */
+  .report-section { page-break-inside: avoid; break-inside: avoid; }
+
+  /* Tighten table cell padding for print density. */
+  .report-content table { font-size: 10pt; }
+  .report-content table th, .report-content table td { padding: 4px 6px !important; }
+
+  /* Make borders crisp in print. */
+  .border, .border-ink-100, .border-ink-200, .border-ink-300 { border-color: #cbd5e1 !important; }
+
+  @page { size: A4; margin: 12mm; }
+}

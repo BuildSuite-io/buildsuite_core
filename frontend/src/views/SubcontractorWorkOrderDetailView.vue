@@ -56,19 +56,11 @@ function onRecordMeasurement() {
 	router.push(`/measurement-books/new?work_order=${wo.value.name}`);
 }
 
-// Frappe-native print: opens the seeded Subcontractor Work Order print format with
-// the default letter head in Frappe's print view (Save as PDF from there).
-const printUrl = computed(() => {
-	if (!wo.value) return "#";
-	const p = new URLSearchParams({
-		doctype: "Subcontractor Work Order",
-		name: wo.value.name,
-		format: "Subcontractor Work Order",
-		letterhead: "BuildSuite Standard",
-		trigger_print: "1",
-	});
-	return `/printview?${p.toString()}`;
-});
+// In-app print: routes to the Vue print view, which renders the work order as a
+// printable document and exports via the browser print dialog (Save as PDF).
+function onPrint() {
+	router.push(`/subcontractor-work-orders/${wo.value.name}/print`);
+}
 
 async function onAction(action) {
 	const ok = await confirmDialog({
@@ -173,16 +165,15 @@ const tabs = computed(() => [
 			>
 				+ Raise RA Bill
 			</a>
-			<a
-				:href="printUrl"
-				target="_blank"
-				rel="noopener"
+			<button
+				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center"
 				style="border-radius: 6px"
-				title="Open the printable work order (Frappe print — Save as PDF from the dialog)"
+				title="Open the printable work order (Save as PDF from the browser print dialog)"
+				@click="onPrint"
 			>
 				Print / PDF
-			</a>
+			</button>
 			<button
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
