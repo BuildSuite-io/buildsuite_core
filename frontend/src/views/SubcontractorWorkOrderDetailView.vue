@@ -56,6 +56,20 @@ function onRecordMeasurement() {
 	router.push(`/measurement-books/new?work_order=${wo.value.name}`);
 }
 
+// Frappe-native print: opens the seeded Subcontractor Work Order print format with
+// the default letter head in Frappe's print view (Save as PDF from there).
+const printUrl = computed(() => {
+	if (!wo.value) return "#";
+	const p = new URLSearchParams({
+		doctype: "Subcontractor Work Order",
+		name: wo.value.name,
+		format: "Subcontractor Work Order",
+		letterhead: "BuildSuite Standard",
+		trigger_print: "1",
+	});
+	return `/printview?${p.toString()}`;
+});
+
 async function onAction(action) {
 	const ok = await confirmDialog({
 		title: `${action}?`,
@@ -158,6 +172,16 @@ const tabs = computed(() => [
 				title="Raise a Running Account bill against this work order (opens in Frappe Desk)"
 			>
 				+ Raise RA Bill
+			</a>
+			<a
+				:href="printUrl"
+				target="_blank"
+				rel="noopener"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center"
+				style="border-radius: 6px"
+				title="Open the printable work order (Frappe print — Save as PDF from the dialog)"
+			>
+				Print / PDF
 			</a>
 			<button
 				type="button"
