@@ -708,11 +708,32 @@ async function persistChildRows(rows) {
 			planned_task_count: childRows.length,
 		});
 		await stageResource.value?.reload?.();
+		pendingQty.value = {}; // authoritative data reloaded — drop optimistic overrides
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? "Failed to update stage tasks", "error");
 		throw err;
 	} finally {
 		saving.value = false;
+	}
+}
+
+// Inline planned-progress edits are optimistic + debounced: the typed value is held
+// locally (pendingQty) so the input stays controlled, and the save runs quietly
+// (no `saving` toggle, no reload) so it never disables or re-renders the focused
+// input mid-keystroke.
+const pendingQty = ref({});
+let qtyTimer = null;
+
+async function persistQtyRows(rows) {
+	if (!stage.value) return;
+	const childRows = mapChildRowsToBackend(rows);
+	try {
+		await adapter.update("Stage Planning", stage.value.id, {
+			stage_planning_tasks: childRows,
+			planned_task_count: childRows.length,
+		});
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? "Failed to save planned progress", "error");
 	}
 }
 
@@ -725,17 +746,20 @@ async function onPickerSave(payload) {
 	}
 }
 
-async function onPlannedQtyChange(row, value) {
+function onPlannedQtyChange(row, value) {
 	if (!stage.value || !row) return;
 	const qty = Math.max(0, Math.min(100, Number(value) || 0));
-	const nextRows = (stage.value.stagePlanningTasks || []).map((r) =>
-		r.id === row.id ? { ...r, plannedQty: qty, qtyUnit: "%" } : r,
-	);
-	try {
-		await persistChildRows(nextRows);
-	} catch {
-		// toast already shown
-	}
+	// Optimistic: hold the typed value locally so the controlled input keeps it.
+	pendingQty.value = { ...pendingQty.value, [row.id]: qty };
+	// Debounced quiet save — only fires once the user pauses typing.
+	clearTimeout(qtyTimer);
+	qtyTimer = setTimeout(() => {
+		const nextRows = (stage.value?.stagePlanningTasks || []).map((r) => {
+			const q = pendingQty.value[r.id];
+			return q !== undefined ? { ...r, plannedQty: q, qtyUnit: "%" } : r;
+		});
+		persistQtyRows(nextRows);
+	}, 500);
 }
 
 function openPicker() {
@@ -1184,13 +1208,13 @@ usePageTitle(() => stage.value?.stageName);
 						<div class="px-2 py-1">
 							<div class="flex items-center gap-1 justify-end">
 								<DeskInput
-									:model-value="row.plannedQty ?? 100"
+									:model-value="pendingQty[row.id] ?? row.plannedQty ?? 100"
 									type="number"
 									min="0"
 									max="100"
 									step="1"
 									class="!text-xs !text-right !py-1"
-									:disabled="saving || tasksLocked"
+									:disabled="tasksLocked"
 									@update:model-value="onPlannedQtyChange(row, $event)"
 								/>
 								<span class="text-[11px] text-ink-500">%</span>
