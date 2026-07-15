@@ -190,6 +190,7 @@ const allSubs = computed(() =>
 		rateMasterId: s.rate_master,
 		description: s.description,
 		qtyPerUnit: s.qty_per_unit,
+		uom: s.uom,
 		rate: s.rate,
 		amount: s.amount,
 	})),
@@ -1402,7 +1403,7 @@ const breadcrumbs = computed(() => {
 										>
 									</div>
 									<div class="px-3 py-1 text-xs text-ink-500">
-										{{ item.unit }}
+										{{ si.uom || item.unit }}
 									</div>
 									<div
 										class="px-3 py-1 text-right tabular-nums text-xs text-ink-500"
