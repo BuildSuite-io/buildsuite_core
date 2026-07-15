@@ -18,6 +18,7 @@ async function call(method, args) {
 }
 
 export const getWorkOrder = (name) => call("get_work_order", { name });
+export const getWoPrintData = (name) => call("get_wo_print_data", { name });
 export const saveWorkOrder = (payload) =>
 	call("save_work_order", { ...payload, lines: JSON.stringify(payload.lines || []) });
 export const applyWoAction = (workOrder, action) =>

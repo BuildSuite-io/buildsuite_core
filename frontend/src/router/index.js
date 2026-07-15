@@ -328,6 +328,12 @@ const routes = [
 				props: true,
 			},
 			{
+				path: "subcontractor-work-orders/:id/print",
+				name: "subcontractor-work-order-print",
+				component: () => import("@/views/SubcontractorWorkOrderPrintView.vue"),
+				props: true,
+			},
+			{
 				path: "measurement-books",
 				name: "measurement-books",
 				component: () => import("@/views/MeasurementBooksListView.vue"),
