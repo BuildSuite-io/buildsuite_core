@@ -13,6 +13,7 @@
   "description",
   "column_break_qty",
   "qty_per_unit",
+  "uom",
   "coefficient",
   "rate",
   "amount",
@@ -67,6 +68,15 @@
    "fieldname": "qty_per_unit",
    "fieldtype": "Float",
    "label": "Qty Per Unit"
+  },
+  {
+   "description": "The component's own native unit, snapshotted from its Rate Master (e.g. bag, litre, day).",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
   },
   {
    "fieldname": "coefficient",
