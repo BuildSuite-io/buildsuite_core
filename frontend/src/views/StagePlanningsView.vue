@@ -69,10 +69,11 @@ function statusClass(s) {
 	return "bg-ink-100 text-ink-600";
 }
 
-// Real nested-task count, server-maintained (task_count) — Frappe's list API can't
-// return the child table, so the count is materialised on the record.
+// "Tasks in the stage / planned task count" (the target number of tasks set when the
+// stage was created). Both are server-maintained on the record — Frappe's list API
+// can't return the child table.
 function taskCountDisplay(row) {
-	return String(Number(row.task_count) || 0);
+	return `${Number(row.task_count) || 0} / ${Number(row.planned_task_count) || 0}`;
 }
 
 const filterValues = computed(() => ({
@@ -124,6 +125,7 @@ function onRowClick(row) {
 				'planned_start',
 				'planned_end',
 				'task_count',
+				'planned_task_count',
 				'mean_progress',
 				'workflow_state',
 			]"

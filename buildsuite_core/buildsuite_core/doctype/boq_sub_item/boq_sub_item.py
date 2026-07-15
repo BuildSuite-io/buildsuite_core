@@ -10,9 +10,16 @@ from buildsuite_core.buildsuite_core.doctype.boq_item.boq_item import roll_up_it
 
 class BOQSubItem(Document):
 	def validate(self):
-		# Snapshot the rate from the Rate Master when linked (not a live link).
+		# Snapshot the rate + native unit from the Rate Master when linked (not a live
+		# link). Each component keeps its OWN unit (bag / litre / day…), distinct from
+		# the parent BOQ item's UOM that its coefficient converts to.
 		if self.rate_master:
-			self.rate = frappe.db.get_value("Construction Rate Master", self.rate_master, "current_rate") or 0
+			rm = frappe.db.get_value(
+				"Construction Rate Master", self.rate_master, ["current_rate", "uom"], as_dict=True
+			)
+			if rm:
+				self.rate = rm.current_rate or 0
+				self.uom = rm.uom
 		self.coefficient = flt(self.qty_per_unit)
 		self.amount = flt(self.qty_per_unit) * flt(self.rate)
 

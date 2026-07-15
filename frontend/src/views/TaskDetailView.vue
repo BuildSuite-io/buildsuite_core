@@ -929,7 +929,11 @@ usePageTitle(() => task.value?.name);
 							Dependencies
 						</div>
 						<RouterLink
-							to="/schedule"
+							:to="
+								task?.projectId
+									? `/schedule?project=${task.projectId}`
+									: '/schedule'
+							"
 							class="text-[10px] text-brand-700 hover:underline"
 							>Open Gantt →</RouterLink
 						>
