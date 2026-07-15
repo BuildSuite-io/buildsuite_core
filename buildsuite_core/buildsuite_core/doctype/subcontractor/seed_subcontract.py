@@ -61,3 +61,10 @@ def seed_delivery_types():
 def seed_subcontract_masters():
 	seed_construction_trades()
 	seed_delivery_types()
+
+	# Print assets — default Letter Head + the Subcontractor Work Order Print Format.
+	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (
+		seed_print_assets,
+	)
+
+	seed_print_assets()
