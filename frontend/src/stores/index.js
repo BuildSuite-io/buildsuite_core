@@ -434,7 +434,7 @@ export const useDataStore = defineStore("data", {
 		// (anyone who can see the workspace sees the shortcut).
 		visibleShortcutsFor: (s) => (slug) => {
 			const def = s.workspaceStructure.workspace_definitions.find(
-				(d) => d.workspace_slug === slug
+				(d) => d.workspace_slug === slug,
 			);
 			if (!def || !def.enabled) return [];
 			// Definition-level role gate first
@@ -514,19 +514,37 @@ export const useDataStore = defineStore("data", {
 					stored.projectTypes ?? JSON.parse(JSON.stringify(seedData.projectTypes));
 				// Session 38 — strip retired Site Execution shortcuts from any stored
 				// workspace definition: WSST-002 (Work Packages), WSST-004 (Stage
-				// Planning), WSST-006 (Scope Change Orders). All three are still
-				// reachable via Project Detail tabs / direct URLs; just not surfaced
-				// as workspace tiles. Idempotent — only marks dirty if rows were
-				// actually present. New (post-S38) localStorage never had them.
-				const RETIRED_SITE_EXEC_SHORTCUTS = ["WSST-002", "WSST-004", "WSST-006"];
+				// Planning). Both are still reachable via Project Detail tabs / direct
+				// URLs; just not surfaced as workspace tiles. (WSST-006 / Scope Change
+				// Orders was restored once the SCO register became a real backend
+				// surface.) Idempotent — only marks dirty if rows were actually present.
+				const RETIRED_SITE_EXEC_SHORTCUTS = ["WSST-002", "WSST-004"];
 				let workspaceMigrationDirty = false;
 				for (const def of this.workspaceStructure.workspace_definitions || []) {
 					if (def.workspace_slug !== "site-execution") continue;
 					const before = (def.shortcuts || []).length;
 					def.shortcuts = (def.shortcuts || []).filter(
-						(s) => !RETIRED_SITE_EXEC_SHORTCUTS.includes(s.id)
+						(s) => !RETIRED_SITE_EXEC_SHORTCUTS.includes(s.id),
 					);
 					if (def.shortcuts.length !== before) workspaceMigrationDirty = true;
+				}
+				// Restore the Scope Change Orders shortcut (WSST-006) for sessions whose
+				// stored definition had it stripped by the earlier S38 migration — the SCO
+				// register is now a real backend surface. Idempotent (only adds if absent).
+				for (const def of this.workspaceStructure.workspace_definitions || []) {
+					if (def.workspace_slug !== "site-execution") continue;
+					const shortcuts = def.shortcuts || (def.shortcuts = []);
+					if (!shortcuts.some((s) => s.id === "WSST-006")) {
+						shortcuts.push({
+							id: "WSST-006",
+							label: "Scope Change Orders",
+							icon: "🔁",
+							route_path: "/sco",
+							visible_to_roles: null,
+							sort_order: 6,
+						});
+						workspaceMigrationDirty = true;
+					}
 				}
 				// Strip legacy /app/ prefix from any route_path values left in localStorage
 				// from before the /app prefix was removed from all routes.
@@ -571,7 +589,7 @@ export const useDataStore = defineStore("data", {
 				this.workPackages = JSON.parse(JSON.stringify(seedData.workPackages));
 				this.tasks = JSON.parse(JSON.stringify(seedData.tasks));
 				this.taskProgressEntries = JSON.parse(
-					JSON.stringify(seedData.taskProgressEntries)
+					JSON.stringify(seedData.taskProgressEntries),
 				);
 				this.stagePlannings = JSON.parse(JSON.stringify(seedData.stagePlannings));
 				this.attachments = JSON.parse(JSON.stringify(seedData.attachments));
@@ -585,7 +603,7 @@ export const useDataStore = defineStore("data", {
 				// Session 34 — Settings DocTypes from seed defaults (first-run branch).
 				this.coreSettings = JSON.parse(JSON.stringify(seedData.coreSettings));
 				this.siteExecutionSettings = JSON.parse(
-					JSON.stringify(seedData.siteExecutionSettings)
+					JSON.stringify(seedData.siteExecutionSettings),
 				);
 				this.workspaceStructure = JSON.parse(JSON.stringify(seedData.workspaceStructure));
 				// Session 39 — Project Type Settings (exploratory).
@@ -723,7 +741,7 @@ export const useDataStore = defineStore("data", {
 		},
 		updateWorkspaceDefinition(id, patch) {
 			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === id
+				(d) => d.id === id,
 			);
 			if (idx === -1) return null;
 			const merged = { ...this.workspaceStructure.workspace_definitions[idx], ...patch };
@@ -742,7 +760,7 @@ export const useDataStore = defineStore("data", {
 		// Shortcut child rows — patch the parent definition's array.
 		addWorkspaceShortcut(defId, rowData) {
 			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId
+				(d) => d.id === defId,
 			);
 			if (idx === -1) return null;
 			const existing = this.workspaceStructure.workspace_definitions[idx].shortcuts || [];
@@ -765,7 +783,7 @@ export const useDataStore = defineStore("data", {
 		},
 		updateWorkspaceShortcut(defId, shortcutId, patch) {
 			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId
+				(d) => d.id === defId,
 			);
 			if (idx === -1) return null;
 			const rows = (this.workspaceStructure.workspace_definitions[idx].shortcuts || []).map(
@@ -775,7 +793,7 @@ export const useDataStore = defineStore("data", {
 					if (patch.sort_order !== undefined)
 						merged.sort_order = Number(patch.sort_order) || 0;
 					return merged;
-				}
+				},
 			);
 			this.workspaceStructure.workspace_definitions[idx] = {
 				...this.workspaceStructure.workspace_definitions[idx],
@@ -786,7 +804,7 @@ export const useDataStore = defineStore("data", {
 		},
 		removeWorkspaceShortcut(defId, shortcutId) {
 			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId
+				(d) => d.id === defId,
 			);
 			if (idx === -1) return;
 			const rows = (
@@ -990,7 +1008,7 @@ export const useDataStore = defineStore("data", {
 			this.workPackages = this.workPackages.filter((wp) => !allIds.includes(wp.projectId));
 			this.tasks = this.tasks.filter((t) => !allIds.includes(t.projectId));
 			this.taskProgressEntries = this.taskProgressEntries.filter(
-				(e) => !deletedTaskIds.includes(e.taskId)
+				(e) => !deletedTaskIds.includes(e.taskId),
 			);
 			this.stagePlannings = this.stagePlannings.filter((s) => !allIds.includes(s.project));
 			this.scos = this.scos.filter((s) => !allIds.includes(s.projectId));
@@ -1063,7 +1081,7 @@ export const useDataStore = defineStore("data", {
 			this.workPackages = this.workPackages.filter((wp) => wp.id !== id);
 			this.tasks = this.tasks.filter((t) => t.workPackageId !== id);
 			this.taskProgressEntries = this.taskProgressEntries.filter(
-				(e) => !deletedTaskIds.includes(e.taskId)
+				(e) => !deletedTaskIds.includes(e.taskId),
 			);
 			// Attachments cascade (no UI for WP/Task/TPE attachments yet, but the
 			// store contract should stay coherent — same pattern as deleteProject).
@@ -1247,7 +1265,7 @@ export const useDataStore = defineStore("data", {
 			const idx = this.stagePlannings.findIndex((sp) => sp.id === stageId);
 			if (idx === -1) return;
 			const rows = (this.stagePlannings[idx].stagePlanningTasks || []).filter(
-				(r) => r.id !== sptId
+				(r) => r.id !== sptId,
 			);
 			this.stagePlannings[idx] = { ...this.stagePlannings[idx], stagePlanningTasks: rows };
 			this._persist();
