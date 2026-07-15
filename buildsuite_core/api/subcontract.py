@@ -76,6 +76,37 @@ def get_work_order(name: str):
 
 
 @frappe.whitelist()
+def get_wo_print_data(name: str):
+	"""A Work Order enriched with the party/project detail the in-app print view needs
+	(subcontractor contact + tax ids, project code/client/location). Single fetch so the
+	Vue print page mirrors the seeded Frappe Print Format from one payload."""
+	doc = frappe.get_doc(WORK_ORDER, name)
+	doc.check_permission("read")
+	out = _serialize(doc)
+	out["subcontractor_detail"] = (
+		frappe.db.get_value(
+			"Subcontractor",
+			doc.subcontractor,
+			["trade", "contact_person", "phone", "email", "gstin", "pan"],
+			as_dict=True,
+		)
+		if doc.subcontractor
+		else None
+	)
+	out["project_detail"] = (
+		frappe.db.get_value(
+			"Project",
+			doc.project,
+			["custom_project_id", "customer", "location"],
+			as_dict=True,
+		)
+		if doc.project
+		else None
+	)
+	return out
+
+
+@frappe.whitelist()
 def save_work_order(
 	name=None,
 	subcontractor=None,
