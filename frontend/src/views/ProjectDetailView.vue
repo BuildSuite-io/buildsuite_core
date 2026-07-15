@@ -425,6 +425,14 @@ const stageBaseFilters = computed(() => {
 	return [["project", "in", ids]];
 });
 
+// Scope Change Orders tab — backend-backed, scoped to the project + its subprojects.
+const scoCount = ref(null);
+const scoBaseFilters = computed(() => {
+	const ids = workPackageProjectIds.value;
+	if (!ids.length) return [];
+	return [["project", "in", ids]];
+});
+
 // Attachment count — fetched eagerly (not behind the tab v-if) so the badge
 // shows on the tab heading without the user needing to open the tab first.
 const fileCountResource = ref(null);
@@ -890,7 +898,7 @@ const tabs = computed(() => {
 		{ id: "tasks", label: "Tasks", count: tasks.value.length },
 		{ id: "stage-planning", label: "Stage Planning", count: stageCount.value },
 		{ id: "boq", label: "BOQ", count: boqs.value.length },
-		{ id: "scos", label: "Scope Changes", count: scos.value.length },
+		{ id: "scos", label: "Scope Changes", count: scoCount.value },
 		{ id: "attachments", label: "Attachments", count: attachmentCount.value },
 		{ id: "team", label: "Team", count: projectTeam.value.length },
 	];
@@ -1519,28 +1527,46 @@ usePageTitle(() => project.value?.name);
 
 			<!-- SCOs -->
 			<div v-if="tab === 'scos'" class="pt-4">
-				<div class="flex items-center gap-2 mb-2">
-					<span class="text-xs text-ink-500">
-						<span class="text-ink-900 font-medium"
-							>{{ scos.length }} scope change{{ scos.length === 1 ? "" : "s" }}</span
-						>
-					</span>
-					<RouterLink
-						to="/sco"
-						class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1 border border-ink-200 bg-white ml-auto"
-						style="border-radius: 2px"
-						>Open SCO module →</RouterLink
-					>
-				</div>
-				<DeskList
-					v-model="scoSearch"
-					:rows="scosFiltered"
-					:columns="scoCols"
-					row-key="id"
+				<DocTypeListView
+					doctype="Scope Change Order"
+					:field-order="[
+						'title',
+						'type',
+						'impact',
+						'recoverable',
+						'status',
+						'raised_date',
+					]"
+					:columns="[
+						{ key: 'name', label: 'ID' },
+						{ key: 'title', label: 'Title' },
+						{ key: 'type', label: 'Type' },
+						{ key: 'impact', label: 'Impact', align: 'right' },
+						{ key: 'status', label: 'Status' },
+						{ key: 'raised_date', label: 'Date' },
+					]"
+					:base-filters="scoBaseFilters"
+					:search-fields="['title', 'name']"
+					cache-key="buildsuite-sco-project-tab"
+					row-key="name"
+					initial-order-by="creation desc"
 					search-placeholder="Search scope changes…"
+					:compact="true"
+					@row-click="(row) => router.push('/sco/' + row.name)"
+					@count-change="scoCount = $event"
 				>
-					<template #cell-id="{ row }">
-						<DeskLink to="/sco" class="font-mono text-xs">{{ row.id }}</DeskLink>
+					<template #actions>
+						<RouterLink
+							v-if="canCreate('project')"
+							:to="`/sco/new?project=${resolvedProjectId}`"
+							class="desk-save-btn"
+							>+ Raise SCO</RouterLink
+						>
+					</template>
+					<template #cell-name="{ row }">
+						<DeskLink :to="`/sco/${row.name}`" class="font-mono text-xs" @click.stop>{{
+							row.name
+						}}</DeskLink>
 					</template>
 					<template #cell-title="{ row }">
 						<span class="text-ink-900">{{ row.title }}</span>
@@ -1548,21 +1574,21 @@ usePageTitle(() => project.value?.name);
 					<template #cell-impact="{ row }">
 						<span
 							class="tabular-nums"
-							:class="row.impact >= 0 ? 'text-danger-700' : 'text-success-700'"
+							:class="
+								Number(row.impact) >= 0 ? 'text-danger-700' : 'text-success-700'
+							"
 						>
-							{{ row.impact >= 0 ? "+" : "" }}{{ fmtINR(Math.abs(row.impact)) }}
+							{{ Number(row.impact) >= 0 ? "+" : "-"
+							}}{{ fmtINR(Math.abs(Number(row.impact) || 0)) }}
 						</span>
 					</template>
 					<template #cell-status="{ row }">
 						<StatusBadge :status="row.status" />
 					</template>
-					<template #cell-raisedBy="{ row }">
-						<UserAvatar :user-id="row.raisedBy" size="xs" />
-					</template>
 					<template #empty>
 						<div class="text-sm text-ink-500">No scope changes on this project.</div>
 					</template>
-				</DeskList>
+				</DocTypeListView>
 			</div>
 
 			<AttachmentsTab

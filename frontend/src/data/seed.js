@@ -1108,12 +1108,11 @@ export const seedData = {
 				enabled: true,
 				visible_to_roles: null, // null = inherit from §12.3 matrix
 				shortcuts: [
-					// Trimmed shortcut set — WSST-002 (Work Packages), WSST-004 (Stage Planning),
-					// and WSST-006 (Scope Change Orders) removed per user direction. The
-					// underlying DocTypes still exist and are reachable via direct URL or as
-					// tabs inside Project Detail (Work Packages tab, Stage Planning tab, Scope
-					// Changes tab). BSA can re-surface any of them via Workspace Structure
-					// Settings without code changes.
+					// Trimmed shortcut set — WSST-002 (Work Packages) and WSST-004 (Stage
+					// Planning) removed per user direction (still reachable via Project Detail
+					// tabs / direct URL). WSST-006 (Scope Change Orders) is restored now that
+					// the SCO register is a real backend surface. BSA can re-surface any of
+					// them via Workspace Structure Settings without code changes.
 					{
 						id: "WSST-001",
 						label: "Projects",
@@ -1129,6 +1128,14 @@ export const seedData = {
 						route_path: "/tasks",
 						visible_to_roles: null,
 						sort_order: 3,
+					},
+					{
+						id: "WSST-006",
+						label: "Scope Change Orders",
+						icon: "🔁",
+						route_path: "/sco",
+						visible_to_roles: null,
+						sort_order: 6,
 					},
 					{
 						id: "WSST-005",

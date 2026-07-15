@@ -1,0 +1,191 @@
+{
+ "actions": [],
+ "autoname": "SCO-.YYYY.-.#####",
+ "creation": "2026-07-15 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "project_name",
+  "title",
+  "type",
+  "column_break_hdr",
+  "impact",
+  "recoverable",
+  "status",
+  "company",
+  "details_section",
+  "reason",
+  "approval_section",
+  "raised_by",
+  "raised_date",
+  "column_break_approval",
+  "approved_by",
+  "approved_date",
+  "rejection_reason",
+  "boq_section",
+  "boq_revision"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "project.project_name",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "default": "Design Change",
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Type",
+   "options": "Design Change\nClient Request\nStatutory\nSite Condition\nRework\nOther"
+  },
+  {
+   "fieldname": "column_break_hdr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Positive = added cost to the project; negative = a saving.",
+   "fieldname": "impact",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Cost Impact"
+  },
+  {
+   "default": "0",
+   "description": "Recoverable from the client (vs. absorbed internally).",
+   "fieldname": "recoverable",
+   "fieldtype": "Check",
+   "label": "Recoverable from Client"
+  },
+  {
+   "default": "Pending Approval",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending Approval\nApproved\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Justification"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "raised_by",
+   "fieldtype": "Link",
+   "label": "Raised By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "raised_date",
+   "fieldtype": "Date",
+   "label": "Raised Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_approval",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_date",
+   "fieldtype": "Date",
+   "label": "Approved Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "boq_section",
+   "fieldtype": "Section Break",
+   "label": "BOQ Impact"
+  },
+  {
+   "description": "The BOQ revision raised from this approved change order.",
+   "fieldname": "boq_revision",
+   "fieldtype": "Link",
+   "label": "BOQ Revision",
+   "options": "BOQ",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Scope Change Order",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}

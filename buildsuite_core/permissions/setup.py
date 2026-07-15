@@ -545,6 +545,25 @@ _WO_TRANSITIONS = (
 )
 
 
+# Scope Change Order — the site-execution delivery roles raise change orders; approval
+# is gated in api/sco.py to BOQ_APPROVE_ROLES (PM / Director / Admin).
+SCO_ROLE_PERMS = {
+	"BuildSuite Director": _FULL,
+	"BuildSuite PM": _FULL,
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Estimator": _FULL,
+	"BuildSuite QS": _FULL,
+	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Procurement Officer": _READ,
+	"BuildSuite Accountant": _READ,
+	"BuildSuite Foreman": _READ,
+}
+
+
+def setup_sco_permissions():
+	_apply_role_perms("Scope Change Order", SCO_ROLE_PERMS)
+
+
 def setup_subcontract_permissions():
 	_apply_role_perms("Subcontractor", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_ROLE_PERMS)
@@ -631,6 +650,7 @@ def setup_record_permissions():
 	setup_purchase_stock_permissions()
 	setup_linked_master_permissions()
 	setup_subcontract_permissions()
+	setup_sco_permissions()
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
 	setup_subcontractor_wo_workflow()
