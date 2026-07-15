@@ -417,14 +417,21 @@ CUSTOM_FIELD = {
 	],
 	"Employee":[
         {
+			"fieldname":"is_labour",
+			"fieldtype":"Check",
+            "insert_after":"reports_to",
+            "is_system_generated": 0,
+            "label":"Is Labour",
+		},
+        {
             "fieldname": "custom_wage",
             "description": "Daily Wage Amount",
             "fieldtype": "Currency",
             "insert_after": "salary_currency",
             "is_system_generated": 0,
             "label": "Wage",
-            "depends_on": "eval:doc.employment_type == \"Labour\"",
-            "mandatory_depends_on": "eval:doc.employment_type == \"Labour\"",
+            "depends_on": "eval:doc.is_labour==1",
+            "mandatory_depends_on": "eval:doc.is_labour==1",
             "options": "currency",
         },
         {
@@ -434,8 +441,8 @@ CUSTOM_FIELD = {
             "insert_after": "custom_wage",
             "is_system_generated": 0,
             "label": "Wage For Overtime",
-            "depends_on": "eval:doc.employment_type == \"Labour\"",
+            "depends_on": "eval:doc.is_labour==1",
             "options": "currency",
-        },
+        }
     ]
 }
