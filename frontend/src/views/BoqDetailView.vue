@@ -243,6 +243,100 @@ function collapseAll() {
 	expandedItems.value = {};
 }
 
+// ===== Tree search (path-only filter + auto-expand) =====
+// Filters the Group → Item → Sub-item tree to only the rows on a matching path:
+// a match keeps itself + its ancestors and hides sibling/other content. Manual
+// expand state is preserved (not mutated) so clearing the term restores the tree.
+const search = ref("");
+const searchTerm = computed(() => search.value.trim().toLowerCase());
+const searching = computed(() => !!searchTerm.value);
+
+function matchGroup(g) {
+	const t = searchTerm.value;
+	return (g.code || "").toLowerCase().includes(t) || (g.name || "").toLowerCase().includes(t);
+}
+function matchItem(item) {
+	const t = searchTerm.value;
+	return (
+		(item.code || "").toLowerCase().includes(t) ||
+		(item.description || "").toLowerCase().includes(t) ||
+		(item.unit || "").toLowerCase().includes(t)
+	);
+}
+function matchSub(si) {
+	const t = searchTerm.value;
+	return (
+		(si.description || "").toLowerCase().includes(t) ||
+		(si.rateMasterId || "").toLowerCase().includes(t)
+	);
+}
+
+// One pass builds the visible + matched id sets. Rule: a row is visible if it
+// matches OR has a visible descendant. Null when no search term is active.
+const filterState = computed(() => {
+	if (!searching.value) return null;
+	const visGroups = new Set(),
+		visItems = new Set(),
+		visSubs = new Set();
+	const mGroups = new Set(),
+		mItems = new Set(),
+		mSubs = new Set();
+	for (const g of groups.value) {
+		let groupHasVisChild = false;
+		const gm = matchGroup(g);
+		if (gm) mGroups.add(g.id);
+		for (const item of boqItemsByGroup(g.id)) {
+			let itemHasVisChild = false;
+			const im = matchItem(item);
+			if (im) mItems.add(item.id);
+			for (const si of boqSubItemsByItem(item.id)) {
+				if (matchSub(si)) {
+					visSubs.add(si.id);
+					mSubs.add(si.id);
+					itemHasVisChild = true;
+				}
+			}
+			if (im || itemHasVisChild) {
+				visItems.add(item.id);
+				groupHasVisChild = true;
+			}
+		}
+		if (gm || groupHasVisChild) visGroups.add(g.id);
+	}
+	return {
+		visGroups,
+		visItems,
+		visSubs,
+		mGroups,
+		mItems,
+		mSubs,
+		matchCount: mGroups.size + mItems.size + mSubs.size,
+	};
+});
+
+// Effective expansion: derived (force-open the path) while searching, manual otherwise.
+function groupExpanded(g) {
+	return searching.value ? !!filterState.value?.visGroups.has(g.id) : !!expandedGroups.value[g.id];
+}
+function itemExpanded(item) {
+	return searching.value
+		? !!filterState.value?.visItems.has(item.id)
+		: !!expandedItems.value[item.id];
+}
+
+// Filtered row lists for the template (full lists when not searching).
+const visibleGroupsList = computed(() =>
+	searching.value ? groups.value.filter((g) => filterState.value?.visGroups.has(g.id)) : groups.value,
+);
+function visibleItemsFor(g) {
+	const items = boqItemsByGroup(g.id);
+	return searching.value ? items.filter((i) => filterState.value?.visItems.has(i.id)) : items;
+}
+function visibleSubsFor(item) {
+	const subs = boqSubItemsByItem(item.id);
+	return searching.value ? subs.filter((si) => filterState.value?.visSubs.has(si.id)) : subs;
+}
+
 function variancePill(pct) {
 	if (Math.abs(pct) < 0.5) return "text-ink-500";
 	return pct > 0 ? "text-danger-700" : "text-success-700";
@@ -1042,6 +1136,48 @@ const breadcrumbs = computed(() => {
 				<button type="button" @click="collapseAll" class="desk-link text-xs">
 					Collapse all
 				</button>
+				<!-- Tree search — filters to matching paths + auto-expands -->
+				<div class="relative ml-2">
+					<svg
+						class="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400 pointer-events-none"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<circle cx="11" cy="11" r="8" />
+						<path d="m21 21-4.3-4.3" />
+					</svg>
+					<input
+						v-model="search"
+						type="text"
+						aria-label="Search BOQ tree by code or description"
+						placeholder="Search code / description…"
+						class="desk-input !py-1 !text-xs"
+						style="width: 240px; padding-left: 26px; padding-right: 22px"
+					/>
+					<button
+						v-if="search"
+						type="button"
+						class="absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700 text-sm leading-none"
+						@click="search = ''"
+					>
+						×
+					</button>
+				</div>
+				<span
+					v-if="searching"
+					class="text-[11px] tabular-nums"
+					:class="filterState?.matchCount ? 'text-ink-500' : 'text-danger-600'"
+				>
+					{{
+						filterState?.matchCount
+							? filterState.matchCount + (filterState.matchCount === 1 ? " match" : " matches")
+							: "No matches"
+					}}
+				</span>
 				<div v-if="compareMode && baseBoq" class="ml-2 text-[11px] text-ink-500">
 					Δ vs R{{ baseBoq.revision }} shown on each item row
 				</div>
@@ -1087,15 +1223,16 @@ const breadcrumbs = computed(() => {
 					<div class="px-3 py-2">Cost Head</div>
 				</div>
 
-				<template v-for="g in groups" :key="g.id">
+				<template v-for="g in visibleGroupsList" :key="g.id">
 					<!-- Group row — bold, light grey, slightly larger -->
 					<div
-						class="relative group/row grid items-center bg-ink-50 border-b border-ink-200 hover:bg-ink-100 cursor-pointer"
+						class="relative group/row grid items-center border-b border-ink-200 hover:bg-ink-100 cursor-pointer"
+						:class="searching && filterState?.mGroups.has(g.id) ? 'bg-warning-50' : 'bg-ink-50'"
 						:style="treeGridStyle"
 						@click="toggleGroup(g.id)"
 					>
 						<div class="px-2 text-ink-500 text-xs">
-							{{ expandedGroups[g.id] ? "▾" : "▸" }}
+							{{ groupExpanded(g) ? "▾" : "▸" }}
 						</div>
 						<div class="px-3 py-2 font-mono text-xs text-ink-700">{{ g.code }}</div>
 						<div class="px-3 py-2 text-sm font-semibold text-ink-900">
@@ -1191,10 +1328,11 @@ const breadcrumbs = computed(() => {
 					</div>
 
 					<!-- Items inside group -->
-					<template v-if="expandedGroups[g.id]">
-						<template v-for="item in boqItemsByGroup(g.id)" :key="item.id">
+					<template v-if="groupExpanded(g)">
+						<template v-for="item in visibleItemsFor(g)" :key="item.id">
 							<div
 								class="relative group/row grid items-center border-b border-ink-100 hover:bg-brand-50 cursor-pointer"
+								:class="{ 'bg-warning-50': searching && filterState?.mItems.has(item.id) }"
 								:style="treeGridStyle"
 								@click="toggleItem(item.id)"
 							>
@@ -1253,7 +1391,7 @@ const breadcrumbs = computed(() => {
 								<div class="px-2 text-ink-400 text-[10px]">
 									{{
 										boqSubItemsByItem(item.id).length
-											? expandedItems[item.id]
+											? itemExpanded(item)
 												? "▾"
 												: "▸"
 											: "·"
@@ -1383,11 +1521,12 @@ const breadcrumbs = computed(() => {
 							</div>
 
 							<!-- Sub-items: rate analysis. Indented, smaller, Rate Master links Desk-blue. -->
-							<template v-if="expandedItems[item.id]">
+							<template v-if="itemExpanded(item)">
 								<div
-									v-for="si in boqSubItemsByItem(item.id)"
+									v-for="si in visibleSubsFor(item)"
 									:key="si.id"
-									class="relative group/row grid items-center border-b border-ink-50 bg-ink-50/40"
+									class="relative group/row grid items-center border-b border-ink-50"
+									:class="searching && filterState?.mSubs.has(si.id) ? 'bg-warning-50' : 'bg-ink-50/40'"
 									:style="treeGridStyle"
 								>
 									<div></div>
@@ -1495,9 +1634,9 @@ const breadcrumbs = computed(() => {
 									<div></div>
 								</div>
 
-								<!-- Inline "+ Add Sub-item" affordance -->
+								<!-- Inline "+ Add Sub-item" affordance (hidden while searching) -->
 								<div
-									v-if="isEditable"
+									v-if="isEditable && !searching"
 									class="grid items-center border-b border-dashed border-ink-200 bg-ink-50/40 cursor-pointer hover:bg-brand-50"
 									:style="treeGridStyle"
 									@click="openAddSubItem(item)"
@@ -1523,9 +1662,9 @@ const breadcrumbs = computed(() => {
 							</template>
 						</template>
 
-						<!-- Inline "+ Add Item" affordance — at the bottom of the expanded group -->
+						<!-- Inline "+ Add Item" affordance — at the bottom of the expanded group (hidden while searching) -->
 						<div
-							v-if="isEditable"
+							v-if="isEditable && !searching"
 							class="grid items-center border-b border-dashed border-ink-200 cursor-pointer hover:bg-brand-50"
 							:style="treeGridStyle"
 							@click="openAddItem(g.id)"
