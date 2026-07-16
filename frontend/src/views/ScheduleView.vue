@@ -11,10 +11,17 @@ import {
 	addTaskPredecessor,
 	removeTaskPredecessor,
 	rescheduleDownstream,
+	undoLast,
+	listSnapshots,
+	saveRevision,
+	restoreSnapshot,
+	deleteSnapshot,
 } from "@/utils/scheduleApi";
 import { dateBoundsError } from "@/utils/dateBounds";
 import { parseFrappeError } from "@/utils/frappeError";
 import { computeAllConflicts, hasCycle, computeCascade } from "@/composables/useScheduleEngine";
+import { showToast } from "@/utils/appToast";
+import { useConfirm } from "@/composables/useConfirm";
 
 const store = useDataStore();
 const adapter = createDataAdapter(store);
@@ -36,6 +43,101 @@ const projectMeta = ref(null); // {name, startDate, endDate} — project boundar
 const loading = ref(false);
 const errorMsg = ref("");
 let errorTimer = null;
+
+const confirmDialog = useConfirm();
+
+// === Schedule snapshots: undo (auto) + revisions (named) ==============
+const undoSnaps = ref([]); // auto-captured Undo stack (newest first)
+const revisions = ref([]); // user-saved Revision snapshots
+const revisionsOpen = ref(false);
+const newRevisionLabel = ref("");
+const snapBusy = ref(false);
+const undoCount = computed(() => undoSnaps.value.length);
+
+async function refreshSnapshots() {
+	if (!selectedProject.value) {
+		undoSnaps.value = [];
+		revisions.value = [];
+		return;
+	}
+	try {
+		const all = await listSnapshots(selectedProject.value);
+		undoSnaps.value = all.filter((s) => s.kind === "Undo");
+		revisions.value = all.filter((s) => s.kind === "Revision");
+	} catch {
+		/* non-fatal — leave existing lists */
+	}
+}
+
+async function onUndo() {
+	if (!undoCount.value || snapBusy.value) return;
+	snapBusy.value = true;
+	try {
+		const res = await undoLast(selectedProject.value);
+		if (res?.undone) {
+			await loadSchedule(); // reloads + refreshes snapshots
+			showToast(`Undone: ${res.label || "last cascade"} (${res.changed} tasks)`);
+		}
+	} catch (err) {
+		flashError(parseFrappeError(err).summary || "Undo failed.");
+	} finally {
+		snapBusy.value = false;
+	}
+}
+
+async function onSaveRevision() {
+	const label = newRevisionLabel.value.trim();
+	if (!label) {
+		flashError("Give the revision a name first.");
+		return;
+	}
+	snapBusy.value = true;
+	try {
+		await saveRevision(selectedProject.value, label);
+		newRevisionLabel.value = "";
+		await refreshSnapshots();
+		showToast(`Saved revision "${label}".`);
+	} catch (err) {
+		flashError(parseFrappeError(err).summary || "Could not save revision.");
+	} finally {
+		snapBusy.value = false;
+	}
+}
+
+async function onRestoreRevision(snap) {
+	const ok = await confirmDialog({
+		title: "Restore revision?",
+		message: `Restore the schedule to "${snap.label}"? Current dates are saved to Undo first, so you can revert this.`,
+		confirmLabel: "Restore",
+	});
+	if (!ok) return;
+	snapBusy.value = true;
+	try {
+		await restoreSnapshot(snap.name);
+		await loadSchedule(); // reloads + refreshes snapshots
+		showToast(`Restored "${snap.label}".`);
+	} catch (err) {
+		flashError(parseFrappeError(err).summary || "Restore failed.");
+	} finally {
+		snapBusy.value = false;
+	}
+}
+
+async function onDeleteRevision(snap) {
+	const ok = await confirmDialog({
+		title: "Delete revision?",
+		message: `Delete the saved revision "${snap.label}"? This does not change the schedule.`,
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await deleteSnapshot(snap.name);
+		await refreshSnapshots();
+	} catch (err) {
+		flashError(parseFrappeError(err).summary || "Could not delete revision.");
+	}
+}
 
 const newTaskOpen = ref(false);
 const draggedDep = ref(null);
@@ -66,7 +168,7 @@ const ROW_PAD_Y = (ROW_HEIGHT - BAR_HEIGHT) / 2;
 const SCROLLBAR_CLEARANCE = 16;
 
 const isDarkMode = computed(
-	() => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+	() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
 );
 const diamondBaseFill = computed(() => (isDarkMode.value ? "#F1F5F9" : "#0F172A"));
 const diamondBaseStroke = computed(() => (isDarkMode.value ? "#94A3B8" : "#0F172A"));
@@ -144,6 +246,7 @@ async function loadSchedule() {
 		wpData.value = [];
 		stageData.value = [];
 		projectMeta.value = null;
+		refreshSnapshots();
 		return;
 	}
 	loading.value = true;
@@ -170,6 +273,7 @@ async function loadSchedule() {
 	} finally {
 		loading.value = false;
 		nextTick(jumpToToday);
+		refreshSnapshots();
 	}
 }
 // Keep the selected project in the URL (?project=) so the schedule is bookmarkable
@@ -183,7 +287,7 @@ watch(
 	() => route.query.project,
 	(val) => {
 		if ((val || "") !== (selectedProject.value || "")) selectedProject.value = val || "";
-	}
+	},
 );
 watch(selectedProject, loadSchedule, { immediate: true });
 
@@ -208,14 +312,14 @@ const allSorted = computed(() =>
 			);
 		}
 		return (a.name || "").localeCompare(b.name || "");
-	})
+	}),
 );
 // Search filters the rows (client-side); the axis uses the unfiltered set so it doesn't shift.
 const tasks = computed(() => {
 	const q = search.value.trim().toLowerCase();
 	if (!q) return allSorted.value;
 	return allSorted.value.filter(
-		(t) => t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)
+		(t) => t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q),
 	);
 });
 
@@ -259,7 +363,7 @@ const timelineWidth = computed(() => {
 });
 const timelineHeight = computed(() => Math.max(layoutRows.value.length, 1) * ROW_HEIGHT);
 const effectiveBodyHeight = computed(
-	() => Math.max(timelineHeight.value, MIN_BODY_HEIGHT) + SCROLLBAR_CLEARANCE
+	() => Math.max(timelineHeight.value, MIN_BODY_HEIGHT) + SCROLLBAR_CLEARANCE,
 );
 const todayX = computed(() => dateToX(new Date().toISOString().slice(0, 10)));
 
@@ -451,7 +555,7 @@ const groupedRows = computed(() => {
 	return rows;
 });
 const layoutRows = computed(() =>
-	groupedRows.value.map((r, i) => ({ ...r, rowIndex: i, rowY: i * ROW_HEIGHT }))
+	groupedRows.value.map((r, i) => ({ ...r, rowIndex: i, rowY: i * ROW_HEIGHT })),
 );
 
 const summaryBars = computed(() => {
@@ -544,7 +648,7 @@ const barById = computed(() => {
 const dependencies = computed(() => {
 	const visibleIds = new Set(tasks.value.map((t) => t.id));
 	return allDeps.value.filter(
-		(d) => visibleIds.has(d.predecessor) && visibleIds.has(d.successor)
+		(d) => visibleIds.has(d.predecessor) && visibleIds.has(d.successor),
 	);
 });
 function arrowPath(fromX, fromY, toX, toY, type) {
@@ -616,10 +720,10 @@ const subTicks = computed(() => {
 		viewMode.value === "day"
 			? 1
 			: viewMode.value === "week"
-			? 7
-			: viewMode.value === "month"
-			? 30
-			: 90;
+				? 7
+				: viewMode.value === "month"
+					? 30
+					: 90;
 	while (cursor.getTime() < dateRange.value.maxMs) {
 		let label = "";
 		if (viewMode.value === "day") label = String(cursor.getDate());
@@ -728,7 +832,7 @@ function onBarMouseDown(task, e, mode) {
 function onBarMouseMove(e) {
 	if (!draggedBar.value) return;
 	draggedBar.value.deltaDays = Math.round(
-		(e.clientX - draggedBar.value.startClientX) / pxPerDay.value
+		(e.clientX - draggedBar.value.startClientX) / pxPerDay.value,
 	);
 }
 function onBarMouseUp() {
@@ -812,7 +916,7 @@ async function confirmCascade() {
 			ps.rootTaskId,
 			ps.rootAfter.startDate || null,
 			ps.rootAfter.endDate || null,
-			0
+			0,
 		);
 	} catch (err) {
 		flashError(parseFrappeError(err).summary || "Cascade failed.");
@@ -988,7 +1092,7 @@ async function applyPopover() {
 			d.successor,
 			d.predecessor,
 			d.dependency_type,
-			Number(d.lag) || 0
+			Number(d.lag) || 0,
 		);
 	} catch (err) {
 		if (prev && idx >= 0) {
@@ -1118,6 +1222,107 @@ onBeforeUnmount(() => {
 			>
 				Today
 			</button>
+
+			<!-- Undo the last cascading (group) action -->
+			<button
+				v-if="selectedProject"
+				class="text-xs px-2.5 py-1 border border-ink-200 rounded bg-white hover:bg-ink-50 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+				:disabled="!undoCount || snapBusy"
+				:title="
+					undoCount
+						? `Undo the last cascade (${undoCount} step${undoCount === 1 ? '' : 's'} available)`
+						: 'Nothing to undo — undo captures cascading (multi-task) changes'
+				"
+				@click="onUndo"
+			>
+				<span>↶ Undo</span>
+				<span
+					v-if="undoCount"
+					class="text-[10px] px-1 rounded bg-ink-100 text-ink-600 tabular-nums"
+					>{{ undoCount }}</span
+				>
+			</button>
+
+			<!-- Revisions: named restore points -->
+			<div v-if="selectedProject" class="relative">
+				<button
+					class="text-xs px-2.5 py-1 border border-ink-200 rounded bg-white hover:bg-ink-50 inline-flex items-center gap-1"
+					:class="revisionsOpen ? 'bg-ink-50' : ''"
+					@click="revisionsOpen = !revisionsOpen"
+				>
+					<span>Revisions</span>
+					<span
+						v-if="revisions.length"
+						class="text-[10px] px-1 rounded bg-ink-100 text-ink-600 tabular-nums"
+						>{{ revisions.length }}</span
+					>
+					<span class="text-ink-400">▾</span>
+				</button>
+				<div
+					v-if="revisionsOpen"
+					class="fixed inset-0 z-[55]"
+					@click="revisionsOpen = false"
+				></div>
+				<div
+					v-if="revisionsOpen"
+					class="absolute right-0 top-full mt-1 z-[56] w-80 bg-white border border-ink-200 rounded-md shadow-fp-lg"
+				>
+					<div class="p-2 border-b border-ink-100 flex items-center gap-1.5">
+						<input
+							v-model="newRevisionLabel"
+							type="text"
+							placeholder="Name this revision…"
+							class="desk-input !py-1 !text-xs flex-1"
+							aria-label="Revision name"
+							@keydown.enter="onSaveRevision"
+						/>
+						<button
+							class="text-xs px-2.5 py-1 rounded bg-ink-900 text-white hover:bg-ink-800 disabled:opacity-50"
+							:disabled="snapBusy || !newRevisionLabel.trim()"
+							@click="onSaveRevision"
+						>
+							Save
+						</button>
+					</div>
+					<div class="max-h-72 overflow-y-auto scrollbar-thin py-1">
+						<div
+							v-if="!revisions.length"
+							class="px-3 py-4 text-center text-[11px] text-ink-400 italic"
+						>
+							No saved revisions yet. Save one to snapshot the current schedule.
+						</div>
+						<div
+							v-for="rev in revisions"
+							:key="rev.name"
+							class="px-3 py-2 hover:bg-ink-50 flex items-center gap-2 group/rev"
+						>
+							<div class="min-w-0 flex-1">
+								<div class="text-xs text-ink-900 truncate font-medium">
+									{{ rev.label }}
+								</div>
+								<div class="text-[10px] text-ink-500 tabular-nums">
+									{{ rev.task_count }} tasks ·
+									{{ rev.creation ? rev.creation.slice(0, 16) : "" }}
+								</div>
+							</div>
+							<button
+								class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded"
+								:disabled="snapBusy"
+								@click="onRestoreRevision(rev)"
+							>
+								Restore
+							</button>
+							<button
+								class="text-[11px] px-1.5 py-0.5 text-ink-400 hover:text-danger-600"
+								title="Delete revision"
+								@click="onDeleteRevision(rev)"
+							>
+								✕
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
 
 			<button v-if="canCreateHere" class="desk-save-btn" @click="newTaskOpen = true">
 				+ New Task
@@ -1434,8 +1639,8 @@ onBeforeUnmount(() => {
 									r.kind === 'group'
 										? 'bg-ink-50/60 border-b border-ink-200'
 										: idx % 2
-										? 'bg-ink-50/20'
-										: '',
+											? 'bg-ink-50/20'
+											: '',
 								]"
 							></div>
 
@@ -1565,8 +1770,8 @@ onBeforeUnmount(() => {
 									>{{
 										canEditTask(b.task)
 											? "Hover and click to place a 1-" +
-											  viewMode +
-											  " block · drag the edges after to extend"
+												viewMode +
+												" block · drag the edges after to extend"
 											: "No timeline set"
 									}}</span
 								>
@@ -1612,15 +1817,15 @@ onBeforeUnmount(() => {
 									b.task.schedule_conflict
 										? b.task.name + ' — ' + b.task.conflict_reason
 										: b.task.name +
-										  ' · ' +
-										  fmtShort(b.task.startDate) +
-										  ' → ' +
-										  fmtShort(b.task.endDate) +
-										  ' · ' +
-										  b.task.progress +
-										  '%' +
-										  (b.isOverdue ? ' · OVERDUE' : '') +
-										  (b.isInspection ? ' · Inspection' : '')
+											' · ' +
+											fmtShort(b.task.startDate) +
+											' → ' +
+											fmtShort(b.task.endDate) +
+											' · ' +
+											b.task.progress +
+											'%' +
+											(b.isOverdue ? ' · OVERDUE' : '') +
+											(b.isInspection ? ' · Inspection' : '')
 								"
 								@mousedown="onBarMouseDown(b.task, $event, 'move')"
 							>
@@ -1692,9 +1897,9 @@ onBeforeUnmount(() => {
 									b.task.schedule_conflict
 										? b.task.name + ' — ' + b.task.conflict_reason
 										: b.task.name +
-										  ' · Milestone · ' +
-										  fmtShort(b.task.endDate) +
-										  (b.isOverdue ? ' · OVERDUE' : '')
+											' · Milestone · ' +
+											fmtShort(b.task.endDate) +
+											(b.isOverdue ? ' · OVERDUE' : '')
 								"
 							>
 								<svg :width="DIAMOND_W" :height="ROW_HEIGHT" class="flex-shrink-0">
@@ -1709,15 +1914,15 @@ onBeforeUnmount(() => {
 											b.task.status === 'Completed'
 												? '#16A34A'
 												: b.task.schedule_conflict
-												? '#DC2626'
-												: diamondBaseFill
+													? '#DC2626'
+													: diamondBaseFill
 										"
 										:stroke="
 											b.task.schedule_conflict
 												? '#7F1D1D'
 												: b.isOverdue
-												? '#D97706'
-												: diamondBaseStroke
+													? '#D97706'
+													: diamondBaseStroke
 										"
 										:stroke-width="
 											b.task.schedule_conflict || b.isOverdue ? '2' : '1'
@@ -1793,7 +1998,7 @@ onBeforeUnmount(() => {
 											Math.max(
 												0,
 												Math.min(timelineWidth, projectBand.endX) -
-													Math.max(0, projectBand.startX)
+													Math.max(0, projectBand.startX),
 											) + 'px',
 										top: '0px',
 										bottom: '0px',
@@ -2128,9 +2333,13 @@ html.dark .schedule-date-input:focus {
    (near-black light / near-white dark). A same-mode halo lifts it off the
    fill in either theme. */
 .gantt-bar-label {
-	text-shadow: 0 0 3px rgba(255, 255, 255, 0.85), 0 1px 1px rgba(255, 255, 255, 0.55);
+	text-shadow:
+		0 0 3px rgba(255, 255, 255, 0.85),
+		0 1px 1px rgba(255, 255, 255, 0.55);
 }
 html.dark .gantt-bar-label {
-	text-shadow: 0 0 3px rgba(0, 0, 0, 0.65), 0 1px 1px rgba(0, 0, 0, 0.45);
+	text-shadow:
+		0 0 3px rgba(0, 0, 0, 0.65),
+		0 1px 1px rgba(0, 0, 0, 0.45);
 }
 </style>
