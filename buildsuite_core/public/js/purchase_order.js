@@ -1,5 +1,12 @@
 frappe.ui.form.on('Purchase Order', {
     onload: function (frm) {
+        frappe.call({
+            method: "buildsuite_core.api.rate_master.get_rate_update_threshold",
+            callback(r) {
+                rm_threshold_pct = flt(r.message);
+                render_banner(frm);
+            },
+        });
         ['schedule_date'].forEach(field => {
           frappe.ui.form.on('Purchase Order', {
             [field]: function (frm) {
@@ -122,11 +129,11 @@ frappe.ui.form.on("Purchase Order Item", {
 // Rate Master sync: warn on submit when a PO line's rate is above the linked
 // Construction Rate Master, and offer to update the master.
 // ---------------------------------------------------------------------------
-const RM_THRESHOLD_PCT = 5; // TODO: move to BuildSuite Core Settings.
+let rm_threshold_pct = 5; // set from BuildSuite Core Settings on form load (onload)
 const esc = frappe.utils.escape_html;
 
 function above_threshold_lines(frm) {
-	const limit = 1 + RM_THRESHOLD_PCT / 100;
+	const limit = 1 + rm_threshold_pct / 100;
 	return (frm.doc.items || []).filter(
 		(row) =>
 			row.custom_rate_master &&
@@ -186,7 +193,7 @@ function render_banner(frm) {
 			<b>⚠ On Submit: ${rows.length} Rate Master update(s) will be proposed</b>
 			<ul style="margin:6px 0 0;padding-left:0;list-style:none;">${items}</ul>
 			<div style="margin-top:8px;font-size:11px;color:var(--text-muted);font-style:italic;">
-				Rates above ${RM_THRESHOLD_PCT}% of the Rate Master rate trigger the prompt at submit.
+				Rates above ${rm_threshold_pct}% of the Rate Master rate trigger the prompt at submit.
 				Updating affects future estimates only.
 			</div>
 		</div>

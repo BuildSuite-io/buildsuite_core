@@ -6,6 +6,13 @@ from frappe.utils import flt
 
 
 @frappe.whitelist()
+def get_rate_update_threshold():
+	"""PO-submit rate-prompt threshold (%) from Core Settings; 5.0 if unset."""
+	raw = frappe.db.get_single_value("BuildSuite Core Settings", "rate_master_update_threshold")
+	return flt(raw) if raw else 5.0
+
+
+@frappe.whitelist()
 def update_rates_from_po(purchase_order, updates, supplier=None):
 	if isinstance(updates, str):
 		updates = json.loads(updates)

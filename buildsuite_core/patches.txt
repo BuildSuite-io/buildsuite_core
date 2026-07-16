@@ -16,3 +16,4 @@ buildsuite_core.patches.enforce_persona_backend_only
 buildsuite_core.patches.seed_estimation_catalog
 buildsuite_core.patches.split_project_naming_mode_and_series
 buildsuite_core.patches.backfill_boq_sub_item_uom
+buildsuite_core.patches.set_default_rate_master_update_threshold
