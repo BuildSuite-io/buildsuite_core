@@ -211,6 +211,7 @@ function openRate(id) {
 					rate: h.rate,
 					effectiveFrom: h.effective_from,
 					reason: h.reason,
+					purchaseOrder: h.purchase_order,
 					changedBy: h.changed_by,
 				})),
 			})),
@@ -521,7 +522,7 @@ async function removeRate() {
 								>
 									<th class="px-3 py-1.5 text-right font-semibold">Rate</th>
 									<th class="px-3 py-1.5 text-left font-semibold">Effective</th>
-									<th class="px-3 py-1.5 text-left font-semibold">Reason</th>
+									<th class="px-3 py-1.5 text-left font-semibold">Source</th>
 									<th class="px-3 py-1.5"></th>
 								</tr>
 							</thead>
@@ -539,7 +540,17 @@ async function removeRate() {
 									<td class="px-3 py-1.5 text-ink-700">
 										{{ fmtDate(h.effectiveFrom) }}
 									</td>
-									<td class="px-3 py-1.5 text-ink-600">{{ h.reason }}</td>
+									<td class="px-3 py-1.5">
+										<DeskLink
+											v-if="h.purchaseOrder"
+											:href="`/app/purchase-order/${encodeURIComponent(h.purchaseOrder)}`"
+											target="_blank"
+											class="font-mono"
+										>
+											{{ h.purchaseOrder }}
+										</DeskLink>
+										<span v-else class="text-ink-600">{{ h.reason }}</span>
+									</td>
 									<td class="px-3 py-1.5 text-right">
 										<FrappeUserBadge
 											:user-id="h.changedBy"
