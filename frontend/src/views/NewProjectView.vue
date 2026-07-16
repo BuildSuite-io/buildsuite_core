@@ -49,21 +49,22 @@ function firstResourceRow(resource) {
 	return raw || null;
 }
 
-// §14 — company is NOT collected on this form. It's inferred server-side from the
-// creating user's company (top-level) or the parent project (subproject), and is
-// only displayed read-only on the Project detail view. The parent is still fetched
-// from the backend for the breadcrumb / subtitle / subproject template note (the
-// local Pinia store is empty in remote mode).
+// §14 — Company is always shown on this form. For a top-level project it defaults
+// to the site's default company and stays editable; for a subproject it inherits
+// the parent's company and is shown read-only (locked). The parent is fetched from
+// the backend for the breadcrumb / subtitle / subproject template note + the
+// inherited company (the local Pinia store is empty in remote mode).
 const parentId = route.query.parentId || null;
 const parentResource = parentId
 	? adapter.read("Project", parentId, {
 			nameField: "name",
-			fields: ["name", "project_name"],
+			fields: ["name", "project_name", "company"],
 			cache: `buildsuite-new-project-parent:${parentId}`,
 			transform: (rows) =>
 				rows.map((r) => ({
 					id: r?.name,
 					name: r?.project_name || r?.name || "",
+					company: r?.company || "",
 				})),
 		})
 	: null;
@@ -133,7 +134,18 @@ async function loadProjectNaming() {
 loadProjectNaming();
 
 async function loadDefaultCompany() {
-	if (route.query.parentId) return; // subproject — inherits parent's company
+	if (route.query.parentId) {
+		// Subproject — inherit the parent's company (shown read-only). Prefill as
+		// soon as the parent resolves from the backend.
+		watch(
+			fetchedParent,
+			(p) => {
+				if (p?.company) form.company = p.company;
+			},
+			{ immediate: true },
+		);
+		return;
+	}
 	try {
 		const res = await fetch("/api/method/buildsuite_core.api.company.get_default_company", {
 			credentials: "include",
@@ -494,17 +506,18 @@ const breadcrumbs = computed(() => {
 							>. You'll plan stages manually after create.
 						</div>
 					</DeskField>
-					<!-- §14 — Company is chosen once on create (defaults to the site's default
-             company). Hidden for subprojects, which inherit the parent's company.
-             Locked after create (enforced server-side). -->
+					<!-- §14 — Company is always shown. Top-level: defaults to the site's
+             default company (Global Defaults) and stays editable. Subproject:
+             inherits the parent's company, shown read-only. Locked after create. -->
 					<DeskField
-						v-if="!route.query.parentId"
 						label="Company"
 						:error="errors.company"
 						:hint="
-							errors.company
-								? ''
-								: 'Defaults to your default company. This is locked after the project is created.'
+							parentProject
+								? 'Inherited from the parent project — locked.'
+								: errors.company
+									? ''
+									: 'Defaults to your default company. This is locked after the project is created.'
 						"
 					>
 						<DeskLinkPicker
@@ -517,6 +530,7 @@ const breadcrumbs = computed(() => {
 							:search-fields="['company_name', 'abbr', 'name']"
 							order-by="company_name asc"
 							:page-length="20"
+							:disabled="!!parentProject"
 							:error="errors.company"
 							@change="clearError('company')"
 						/>
