@@ -4,6 +4,7 @@ import { RouterLink } from "vue-router";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getProcurementDashboard } from "@/data/procurementApi";
+import { dayjs } from "frappe-ui";
 
 const today = computed(() =>
 	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
@@ -31,6 +32,14 @@ function plural(n) {
 	return n === 1 ? "" : "s";
 }
 
+// Frappe Desk list URL with filters, e.g. per_received=["<",100].
+function deskUrl(doctype, filters = {}) {
+	const qs = Object.entries(filters)
+		.map(([k, v]) => `${k}=${encodeURIComponent(typeof v === "string" ? v : JSON.stringify(v))}`)
+		.join("&");
+	return `/app/${doctype}?${qs}`;
+}
+
 // Needs-action rows, composed from the API's needs_action block.
 const actionRows = computed(() => {
 	const na = kpis.value?.needs_action;
@@ -53,6 +62,11 @@ const actionRows = computed(() => {
 				  )}`
 				: "All caught up",
 			count: na.approved_to_order.count,
+			href: deskUrl("material-request", {
+				docstatus: 1,
+				material_request_type: "Purchase",
+				per_ordered: ["<", 100],
+			}),
 		},
 		{
 			key: "overdue",
@@ -61,6 +75,11 @@ const actionRows = computed(() => {
 			label: "Deliveries overdue",
 			sub: overdueSub,
 			count: overdue.count,
+			href: deskUrl("purchase-order", {
+				docstatus: 1,
+				per_received: ["<", 100],
+				schedule_date: ["<", dayjs().format("YYYY-MM-DD")],
+			}),
 		},
 		{
 			key: "partial",
@@ -73,6 +92,13 @@ const actionRows = computed(() => {
 				  )} between 1–99% received`
 				: "No partial deliveries pending",
 			count: na.partial_deliveries.count,
+			href: deskUrl("purchase-order", {
+				docstatus: 1,
+				per_received: [
+					[">", 0],
+					["<", 100],
+				],
+			}),
 		},
 		{
 			key: "unbilled",
@@ -85,9 +111,24 @@ const actionRows = computed(() => {
 				  )} awaiting supplier invoice`
 				: "All receipts billed",
 			count: na.received_not_billed.count,
+			href: deskUrl("purchase-receipt", { docstatus: 1, per_billed: ["<", 100] }),
 		},
 	];
 });
+
+// "Above estimated rate" is intentionally left unlinked (added later).
+const kpiLinks = {
+	open_material_requests: deskUrl("material-request", {
+		docstatus: 1,
+		material_request_type: "Purchase",
+		per_ordered: ["<", 100],
+	}),
+	on_order: deskUrl("purchase-order", { docstatus: 1, per_received: ["<", 100] }),
+	received_this_week: deskUrl("purchase-receipt", {
+		docstatus: 1,
+		posting_date: [">=", dayjs().subtract(7, "day").format("YYYY-MM-DD")],
+	}),
+};
 
 function toneClasses(tone) {
 	switch (tone) {
@@ -139,7 +180,10 @@ function grnTone(status) {
 				<!-- ===== KPI strip ===== -->
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 					<!-- 1 — Open material requests -->
-					<div class="card p-4 bg-white border border-ink-200">
+					<a
+						:href="kpiLinks.open_material_requests"
+						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 							Open material requests
 						</div>
@@ -154,10 +198,13 @@ function grnTone(status) {
 						<div class="text-[10px] text-ink-400 mt-1">
 							Pending + Approved + Partially Ordered
 						</div>
-					</div>
+					</a>
 
 					<!-- 2 — On order · awaiting delivery -->
-					<div class="card p-4 bg-white border border-ink-200">
+					<a
+						:href="kpiLinks.on_order"
+						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 							On order · awaiting delivery
 						</div>
@@ -170,10 +217,13 @@ function grnTone(status) {
 							</div>
 						</div>
 						<div class="text-[10px] text-ink-400 mt-1">POs not yet fully received</div>
-					</div>
+					</a>
 
 					<!-- 3 — Received this week -->
-					<div class="card p-4 bg-white border border-ink-200">
+					<a
+						:href="kpiLinks.received_this_week"
+						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 							Received this week
 						</div>
@@ -183,7 +233,7 @@ function grnTone(status) {
 						<div class="text-[10px] text-ink-400 mt-1">
 							Goods receipts in last 7 days
 						</div>
-					</div>
+					</a>
 
 					<!-- 4 — Above estimated rate -->
 					<div class="card p-4 bg-white border border-ink-200">
@@ -230,11 +280,11 @@ function grnTone(status) {
 							<span class="ml-auto text-[11px] text-ink-500">Today</span>
 						</div>
 						<ul class="divide-y divide-ink-100">
-							<li
-								v-for="row in actionRows"
-								:key="row.key"
-								class="px-4 py-3 flex items-center gap-3"
-							>
+							<li v-for="row in actionRows" :key="row.key">
+								<a
+									:href="row.href"
+									class="px-4 py-3 flex items-center gap-3 hover:bg-ink-50 transition-colors"
+								>
 								<span
 									:class="[
 										'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
@@ -269,6 +319,7 @@ function grnTone(status) {
 									>{{ row.count }}</span
 								>
 								<span class="text-ink-300">›</span>
+								</a>
 							</li>
 						</ul>
 					</div>
