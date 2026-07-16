@@ -443,6 +443,23 @@ CUSTOM_FIELD = {
             "label": "Wage For Overtime",
             "depends_on": "eval:doc.is_labour==1",
             "options": "currency",
-        }
+        },
+        {
+            "fieldname": "project_assignment_section",
+            "fieldtype": "Section Break",
+            "insert_after": "branch",
+            "is_system_generated": 0,
+            "label":"Project Assignment"
+        },
+        {
+            "fieldname": "custom_project_assigned",
+            "fieldtype": "Table",
+            "insert_after": "project_assignment_section",
+            "is_system_generated": 0,
+            "permleavel":1,
+            "label": "Project Assigned",
+            "depends_on": "eval:doc.is_labour==1",
+            "options": "Project Assigned",
+        },
     ]
 }
