@@ -2,7 +2,7 @@ import frappe
 from frappe.query_builder.functions import Count, Sum
 from frappe.utils import add_days, date_diff, flt, nowdate
 
-RM_THRESHOLD_PCT = 5  # keep in sync with public/js/purchase_order.js
+from buildsuite_core.api.rate_master import get_rate_update_threshold
 
 
 @frappe.whitelist()
@@ -72,7 +72,7 @@ def _over_rate_line_count(po_names: list[str]) -> int:
 	if not po_names:
 		return 0
 	poi = frappe.qb.DocType("Purchase Order Item")
-	limit = 1 + RM_THRESHOLD_PCT / 100
+	limit = 1 + get_rate_update_threshold() / 100
 	return (
 		frappe.qb.from_(poi)
 		.select(Count(poi.name))

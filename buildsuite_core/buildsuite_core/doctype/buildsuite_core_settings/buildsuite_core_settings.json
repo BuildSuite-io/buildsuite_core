@@ -1,11 +1,12 @@
 {
  "actions": [],
- "creation": "2026-07-06 00:00:00.000000",
+ "creation": "2026-07-06 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "project_section",
-  "project_naming"
+  "project_naming",
+  "rate_master_update_threshold"
  ],
  "fields": [
   {
@@ -20,12 +21,18 @@
    "fieldtype": "Select",
    "label": "Project Naming",
    "options": "Project ID\nName Series"
+  },
+  {
+   "default": "5.0",
+   "fieldname": "rate_master_update_threshold",
+   "fieldtype": "Percent",
+   "label": "Rate Master Update Threshold (%)"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-06 00:00:00.000000",
+ "modified": "2026-07-15 20:52:17.220438",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Core Settings",
@@ -41,6 +48,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
