@@ -31,7 +31,7 @@ async function request(method, { params, body, base = BASE } = {}) {
 				? {
 						"Content-Type": "application/json",
 						"X-Frappe-CSRF-Token": window.csrf_token || "",
-				  }
+					}
 				: {}),
 		},
 		...(body ? { body: JSON.stringify(body) } : {}),
@@ -61,3 +61,31 @@ export const rescheduleDownstream = (task, newStart = null, newEnd = null, dryRu
 		base: ENGINE_BASE,
 		body: { task, new_start: newStart, new_end: newEnd, dry_run: dryRun },
 	});
+
+// --- schedule snapshots: undo + revisions --------------------------------
+const SNAPSHOT_BASE = "/api/method/buildsuite_core.api.schedule_snapshot.";
+
+// Pop + restore the newest auto-captured Undo snapshot (walks the stack back).
+export const undoLast = (project) =>
+	request("undo_last", { base: SNAPSHOT_BASE, body: { project } });
+
+// Snapshots for a project; pass kind ("Undo" | "Revision") to filter.
+export const listSnapshots = (project, kind = null) =>
+	request("list_snapshots", {
+		base: SNAPSHOT_BASE,
+		params: kind ? { project, kind } : { project },
+	});
+
+// Save the current schedule as a named Revision restore point.
+export const saveRevision = (project, label) =>
+	request("save_revision", { base: SNAPSHOT_BASE, body: { project, label } });
+
+// Restore a snapshot by name (captures an Undo first unless captureUndo=0).
+export const restoreSnapshot = (name, captureUndo = 1) =>
+	request("restore_snapshot", {
+		base: SNAPSHOT_BASE,
+		body: { name, capture_undo: captureUndo },
+	});
+
+export const deleteSnapshot = (name) =>
+	request("delete_snapshot", { base: SNAPSHOT_BASE, body: { name } });

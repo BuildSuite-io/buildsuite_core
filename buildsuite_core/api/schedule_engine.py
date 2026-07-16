@@ -382,6 +382,14 @@ def reschedule_downstream(task, new_start=None, new_end=None, dry_run=1):
 	if dry_run:
 		return {"moves": moves}
 
+	# A downstream cascade is a *group* action — capture an undo snapshot of the
+	# project schedule before mutating, so the whole shift can be reverted in one
+	# step. Skipped when nothing downstream moves (that's a single-task change).
+	if moves:
+		from buildsuite_core.api.schedule_snapshot import capture_snapshot
+
+		capture_snapshot(root.project, "Undo", trigger="reschedule_downstream", root_task=task)
+
 	frappe.flags.in_schedule_cascade = True
 	try:
 		if root_override:

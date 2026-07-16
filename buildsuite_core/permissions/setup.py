@@ -378,6 +378,13 @@ def setup_task_permissions():
 	_apply_role_perms("Task", TASK_ROLE_PERMS)
 
 
+def setup_schedule_snapshot_permissions():
+	# Schedule undo/revision snapshots follow Task-edit rights — whoever can change
+	# the schedule can capture, restore and delete its snapshots. Restore additionally
+	# enforces per-Task write on save.
+	_apply_role_perms("Schedule Snapshot", TASK_ROLE_PERMS)
+
+
 def setup_work_package_permissions():
 	_apply_role_perms("Work Package", WORK_PACKAGE_ROLE_PERMS)
 
@@ -642,6 +649,7 @@ def setup_record_permissions():
 
 	setup_project_permissions()
 	setup_task_permissions()
+	setup_schedule_snapshot_permissions()
 	setup_work_package_permissions()
 	setup_task_progress_entry_permissions()
 	setup_stage_planning_permissions()
