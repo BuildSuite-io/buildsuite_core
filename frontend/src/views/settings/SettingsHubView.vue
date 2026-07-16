@@ -3,9 +3,10 @@
 // from non-admin roles. Only a subset have working CRUD pages today; the
 // rest are visible placeholders for the eventual sub-sections.
 
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
+import { listBuildsuiteUsers } from "@/data/usersApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
@@ -17,6 +18,11 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Settings" 
 
 const isAdmin = computed(() => store.isAdmin);
 const isBSA = computed(() => store.isBSA);
+
+const userCount = ref(undefined);
+onMounted(async () => {
+	if (isAdmin.value) userCount.value = (await listBuildsuiteUsers()).length;
+});
 
 // Tile groups. `adminOnly: true` filters the tile out for non-admin roles.
 // `bsaOnly: true` filters out for non-BSA. `stub: true` renders the tile in
@@ -40,7 +46,7 @@ const groups = computed(() => [
 				label: "Users",
 				desc: "People who can log in. Role assignment and enabled status.",
 				to: "/settings/users",
-				count: store.team.length,
+				count: userCount.value,
 				countLabel: "users",
 				adminOnly: true,
 			},
