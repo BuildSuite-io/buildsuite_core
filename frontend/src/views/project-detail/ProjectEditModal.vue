@@ -119,8 +119,14 @@ function onCustomerCreated(name) {
 								@change="emit('clear-error', 'type')"
 							/>
 						</DeskField>
-						<!-- Company is inferred and locked server-side (§14) — not editable
-                 here. It remains visible read-only on the Overview tab. -->
+						<!-- Company is locked after create (§14). Shown read-only so the user
+                 can see which company the project belongs to, but not change it. -->
+						<DeskField
+							label="Company"
+							hint="Locked after create — a project can't be moved between companies."
+						>
+							<DeskInput :model-value="editForm.company" disabled />
+						</DeskField>
 						<DeskField label="Location">
 							<DeskInput v-model="editForm.location" />
 						</DeskField>

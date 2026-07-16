@@ -316,7 +316,9 @@ const filterState = computed(() => {
 
 // Effective expansion: derived (force-open the path) while searching, manual otherwise.
 function groupExpanded(g) {
-	return searching.value ? !!filterState.value?.visGroups.has(g.id) : !!expandedGroups.value[g.id];
+	return searching.value
+		? !!filterState.value?.visGroups.has(g.id)
+		: !!expandedGroups.value[g.id];
 }
 function itemExpanded(item) {
 	return searching.value
@@ -326,7 +328,9 @@ function itemExpanded(item) {
 
 // Filtered row lists for the template (full lists when not searching).
 const visibleGroupsList = computed(() =>
-	searching.value ? groups.value.filter((g) => filterState.value?.visGroups.has(g.id)) : groups.value,
+	searching.value
+		? groups.value.filter((g) => filterState.value?.visGroups.has(g.id))
+		: groups.value,
 );
 function visibleItemsFor(g) {
 	const items = boqItemsByGroup(g.id);
@@ -635,12 +639,45 @@ function openEditGroup(g) {
 	groupForm.value = { code: g.code, name: g.name };
 	groupModal.value = { mode: "edit", id: g.id };
 }
+// Code is optional. Blank → auto-generate: groups get the next unused letter
+// (A, B, C …); items get parentGroupCode.NN (A.01, A.02 …).
+function nextGroupCode() {
+	const used = new Set(groups.value.map((g) => (g.code || "").toUpperCase()));
+	for (let i = 0; i < 26; i++) {
+		const c = String.fromCharCode(65 + i);
+		if (!used.has(c)) return c;
+	}
+	let n = used.size + 1;
+	while (used.has("G" + n)) n++;
+	return "G" + n;
+}
+function nextItemCode(groupId) {
+	const g = groups.value.find((x) => x.id === groupId);
+	const prefix = g?.code || "X";
+	const items = boqItemsByGroup(groupId);
+	const used = new Set(items.map((i) => i.code || ""));
+	const re = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\.(\\d+)$");
+	let max = 0;
+	for (const it of items) {
+		const m = (it.code || "").match(re);
+		if (m) max = Math.max(max, parseInt(m[1], 10));
+	}
+	let n = max + 1;
+	let code = `${prefix}.${String(n).padStart(2, "0")}`;
+	while (used.has(code)) {
+		n++;
+		code = `${prefix}.${String(n).padStart(2, "0")}`;
+	}
+	return code;
+}
+
 async function saveGroup() {
-	if (!groupForm.value.code.trim() || !groupForm.value.name.trim()) {
-		showToast("Code and name are required.", "error");
+	if (!groupForm.value.name.trim()) {
+		showToast("Name is required.", "error");
 		return;
 	}
-	const payload = { code: groupForm.value.code.trim(), group_name: groupForm.value.name.trim() };
+	const code = groupForm.value.code.trim() || nextGroupCode();
+	const payload = { code, group_name: groupForm.value.name.trim() };
 	try {
 		if (groupModal.value.mode === "add") {
 			await adapter.create("BOQ Group", { boq: boq.value.id, ...payload });
@@ -755,12 +792,16 @@ function openEditItem(item) {
 }
 async function saveItem() {
 	const f = itemForm.value;
-	if (!f.code.trim() || !f.description.trim() || !f.unit) {
-		showToast("Code, description, and unit are required.", "error");
+	if (!f.description.trim() || !f.unit) {
+		showToast("Description and unit are required.", "error");
 		return;
 	}
+	const groupId =
+		itemModal.value.mode === "add"
+			? itemModal.value.groupId
+			: allItems.value.find((i) => i.id === itemModal.value.id)?.groupId;
 	const payload = {
-		code: f.code.trim(),
+		code: f.code.trim() || nextItemCode(groupId),
 		description: f.description.trim(),
 		unit: f.unit,
 		planned_qty: Number(f.plannedQty) || 0,
@@ -1174,7 +1215,8 @@ const breadcrumbs = computed(() => {
 				>
 					{{
 						filterState?.matchCount
-							? filterState.matchCount + (filterState.matchCount === 1 ? " match" : " matches")
+							? filterState.matchCount +
+								(filterState.matchCount === 1 ? " match" : " matches")
 							: "No matches"
 					}}
 				</span>
@@ -1227,7 +1269,11 @@ const breadcrumbs = computed(() => {
 					<!-- Group row — bold, light grey, slightly larger -->
 					<div
 						class="relative group/row grid items-center border-b border-ink-200 hover:bg-ink-100 cursor-pointer"
-						:class="searching && filterState?.mGroups.has(g.id) ? 'bg-warning-50' : 'bg-ink-50'"
+						:class="
+							searching && filterState?.mGroups.has(g.id)
+								? 'bg-warning-50'
+								: 'bg-ink-50'
+						"
 						:style="treeGridStyle"
 						@click="toggleGroup(g.id)"
 					>
@@ -1332,7 +1378,9 @@ const breadcrumbs = computed(() => {
 						<template v-for="item in visibleItemsFor(g)" :key="item.id">
 							<div
 								class="relative group/row grid items-center border-b border-ink-100 hover:bg-brand-50 cursor-pointer"
-								:class="{ 'bg-warning-50': searching && filterState?.mItems.has(item.id) }"
+								:class="{
+									'bg-warning-50': searching && filterState?.mItems.has(item.id),
+								}"
 								:style="treeGridStyle"
 								@click="toggleItem(item.id)"
 							>
@@ -1526,7 +1574,11 @@ const breadcrumbs = computed(() => {
 									v-for="si in visibleSubsFor(item)"
 									:key="si.id"
 									class="relative group/row grid items-center border-b border-ink-50"
-									:class="searching && filterState?.mSubs.has(si.id) ? 'bg-warning-50' : 'bg-ink-50/40'"
+									:class="
+										searching && filterState?.mSubs.has(si.id)
+											? 'bg-warning-50'
+											: 'bg-ink-50/40'
+									"
 									:style="treeGridStyle"
 								>
 									<div></div>
@@ -1737,8 +1789,8 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<div class="grid grid-cols-3 gap-3">
-							<DeskField label="Code" required>
-								<DeskInput v-model="groupForm.code" placeholder="A, B, C…" />
+							<DeskField label="Code" hint="Leave blank to auto-generate (A, B, C…)">
+								<DeskInput v-model="groupForm.code" placeholder="Auto" />
 							</DeskField>
 							<div class="col-span-2">
 								<DeskField label="Name" required>
@@ -1817,8 +1869,11 @@ const breadcrumbs = computed(() => {
 							/>
 						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
-							<DeskField label="Code" required hint="e.g. A.05, B.12">
-								<DeskInput v-model="itemForm.code" />
+							<DeskField
+								label="Code"
+								hint="Leave blank to auto-generate (e.g. A.05)"
+							>
+								<DeskInput v-model="itemForm.code" placeholder="Auto" />
 							</DeskField>
 							<div class="col-span-2">
 								<DeskField label="Unit" required>
