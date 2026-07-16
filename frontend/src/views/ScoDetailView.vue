@@ -50,6 +50,12 @@ const sco = computed(() => resource?.doc || null);
 const isPending = computed(() => sco.value?.status === "Pending Approval");
 const isApproved = computed(() => sco.value?.status === "Approved");
 const isRejected = computed(() => sco.value?.status === "Rejected");
+// Audit trail of workflow actions (approve / reject / revise), newest first.
+const activity = computed(() =>
+	[...(sco.value?.scope_change_order_activity || [])].sort((a, b) =>
+		(b.activity_on || "").localeCompare(a.activity_on || ""),
+	),
+);
 const canApprove = computed(() =>
 	(session.access?.roles || []).some((r) => APPROVER_ROLES.includes(r)),
 );
@@ -374,6 +380,27 @@ const breadcrumbs = computed(() => [
 				<div v-else class="text-xs text-ink-400 italic">
 					A BOQ revision can be raised once this change order is approved.
 				</div>
+			</section>
+
+			<!-- Activity -->
+			<section v-if="activity.length" class="mt-6">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
+					Activity
+				</h3>
+				<ul class="space-y-1.5">
+					<li
+						v-for="(a, i) in activity"
+						:key="i"
+						class="flex items-start gap-1.5 text-xs flex-wrap"
+					>
+						<span class="font-medium text-ink-800">{{ a.action }}</span>
+						<span class="text-ink-500">by {{ a.user }}</span>
+						<span class="text-ink-400">
+							· {{ a.activity_on ? fmtDate(a.activity_on.slice(0, 10)) : "" }}</span
+						>
+						<span v-if="a.comment" class="text-ink-600 italic">— {{ a.comment }}</span>
+					</li>
+				</ul>
 			</section>
 		</div>
 
