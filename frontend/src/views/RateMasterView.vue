@@ -465,7 +465,7 @@ async function removeRate() {
 		<!-- History side sheet -->
 		<div
 			v-if="rateRes"
-			class="fixed inset-0 bg-ink-900/30 z-30 flex justify-end"
+			:class="['fixed inset-0 z-[55] flex justify-end', editing ? '' : 'bg-ink-900/40']"
 			@click="closeDrawer"
 		>
 			<div
