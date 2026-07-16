@@ -24,7 +24,9 @@
   "approved_date",
   "rejection_reason",
   "boq_section",
-  "boq_revision"
+  "boq_revision",
+  "activity_section",
+  "scope_change_order_activity"
  ],
  "fields": [
   {
@@ -158,6 +160,20 @@
    "fieldtype": "Link",
    "label": "BOQ Revision",
    "options": "BOQ",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "activity_section",
+   "fieldtype": "Section Break",
+   "label": "Activity"
+  },
+  {
+   "description": "Audit trail of approval-workflow actions on this change order.",
+   "fieldname": "scope_change_order_activity",
+   "fieldtype": "Table",
+   "label": "Activity",
+   "options": "Scope Change Order Activity",
    "read_only": 1
   }
  ],

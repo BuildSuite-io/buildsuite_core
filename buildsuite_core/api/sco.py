@@ -7,7 +7,7 @@ plain CRUD go through the standard data adapter; only these transitions need the
 
 import frappe
 from frappe import _
-from frappe.utils import today
+from frappe.utils import now_datetime, today
 
 from buildsuite_core.permissions.setup import BOQ_APPROVE_ROLES
 
@@ -17,6 +17,19 @@ SCO = "Scope Change Order"
 def _require_approver():
 	if not set(frappe.get_roles()) & set(BOQ_APPROVE_ROLES):
 		frappe.throw(_("You are not permitted to approve or reject a scope change order."), frappe.PermissionError)
+
+
+def _add_activity(doc, action, comment=None):
+	"""Append an audit-trail row (who did what, when) to the change order."""
+	doc.append(
+		"scope_change_order_activity",
+		{
+			"action": action,
+			"user": frappe.session.user,
+			"activity_on": now_datetime(),
+			"comment": comment,
+		},
+	)
 
 
 @frappe.whitelist()
@@ -31,6 +44,7 @@ def approve_sco(name: str):
 	doc.approved_by = frappe.session.user
 	doc.approved_date = today()
 	doc.rejection_reason = None
+	_add_activity(doc, "Approved")
 	doc.save()
 	return doc.status
 
@@ -45,6 +59,7 @@ def reject_sco(name: str, reason: str = None):
 		frappe.throw(_("Only a Pending Approval change order can be rejected."))
 	doc.status = "Rejected"
 	doc.rejection_reason = reason
+	_add_activity(doc, "Rejected", reason)
 	doc.save()
 	return doc.status
 
@@ -60,6 +75,7 @@ def revise_sco(name: str):
 	doc.approved_by = None
 	doc.approved_date = None
 	doc.rejection_reason = None
+	_add_activity(doc, "Revised")
 	doc.save()
 	return doc.status
 
