@@ -88,11 +88,11 @@ const groups = computed(() => [
 				adminOnly: true,
 			},
 			{
-				slug: "site-execution-settings",
+				slug: "workspace-setting",
 				icon: "site-execution",
-				label: "Site Execution Settings",
-				desc: "Module defaults for Projects, Work Packages, Tasks, Progress Entries and Stage Planning.",
-				to: "/settings/site-execution",
+				label: "Workspace Setting",
+				desc: "Report-style shortcut tiles shown in each workspace — one tab per workspace.",
+				to: "/settings/workspaces",
 				adminOnly: true,
 			},
 			{

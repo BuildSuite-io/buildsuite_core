@@ -74,7 +74,7 @@ const PAGE_TITLES = {
 	"settings-user-new": "New User",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
-	"settings-site-execution": "Site Execution Settings",
+	"settings-workspaces": "Workspace Setting",
 	"settings-workspace-structure": "Workspace Structure",
 	"settings-project-categories": "Project Categories",
 	"settings-project-category-new": "New Project Category",
@@ -521,9 +521,14 @@ const routes = [
 				component: () => import("@/views/settings/CoreSettingsView.vue"),
 			},
 			{
+				path: "settings/workspaces",
+				name: "settings-workspaces",
+				component: () => import("@/views/settings/WorkspaceSettingsView.vue"),
+			},
+			// Legacy redirect — Site Execution Settings became the tabbed Workspace Setting.
+			{
 				path: "settings/site-execution",
-				name: "settings-site-execution",
-				component: () => import("@/views/settings/SiteExecutionSettingsView.vue"),
+				redirect: "/settings/workspaces",
 			},
 			{
 				path: "settings/workspace-structure",
