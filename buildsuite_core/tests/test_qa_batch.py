@@ -54,3 +54,17 @@ class TestWorkPackageAutoCode(BuildSuiteTestCase):
 		p = self._make_project(company=self.company)
 		wp = self._wp(p.name, "MEP", code="WP-MEP")
 		self.assertEqual(wp.code, "WP-MEP")
+
+
+class TestPersonaCustomRoles(BuildSuiteTestCase):
+	def test_custom_role_is_assignable_to_a_persona(self):
+		# Issue 9 — a custom (admin-created) role can be added to any persona, even
+		# with a name that isn't "BuildSuite …", because list_assignable_roles now
+		# includes is_custom roles (no code change needed).
+		from buildsuite_core.api.persona import list_assignable_roles
+
+		role_name = f"QA Custom Role {self._n}"
+		frappe.get_doc(
+			{"doctype": "Role", "role_name": role_name, "is_custom": 1, "desk_access": 1}
+		).insert(ignore_permissions=True)
+		self.assertIn(role_name, list_assignable_roles())
