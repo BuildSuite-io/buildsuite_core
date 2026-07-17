@@ -59,15 +59,25 @@ def get_persona(name: str):
 
 @frappe.whitelist()
 def list_assignable_roles():
-	"""Roles a persona may grant — the BuildSuite roles plus native System Manager.
-	Excludes the workflow-editor marker, which the sync hook grants automatically."""
+	"""Roles a persona may grant — the BuildSuite roles, any admin-created **custom**
+	roles (Role.is_custom, whatever their name), plus native System Manager. This lets
+	admins extend a persona's role set with roles they created, without a code change.
+	Excludes disabled roles and the workflow-editor marker (the sync hook grants that
+	one automatically)."""
 	_require_admin()
 	from buildsuite_core.permissions.setup import WORKFLOW_EDITOR_ROLE
 
-	roles = frappe.get_all("Role", filters={"name": ["like", "BuildSuite %"]}, pluck="name")
+	roles = set(
+		frappe.get_all(
+			"Role",
+			filters={"disabled": 0},
+			or_filters=[["name", "like", "BuildSuite %"], ["is_custom", "=", 1]],
+			pluck="name",
+		)
+	)
 	if frappe.db.exists("Role", "System Manager"):
-		roles.append("System Manager")
-	return sorted(set(roles) - {WORKFLOW_EDITOR_ROLE})
+		roles.add("System Manager")
+	return sorted(roles - {WORKFLOW_EDITOR_ROLE})
 
 
 @frappe.whitelist()

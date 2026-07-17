@@ -69,11 +69,15 @@ function statusClass(s) {
 	return "bg-ink-100 text-ink-600";
 }
 
-// "Tasks in the stage / planned task count" (the target number of tasks set when the
-// stage was created). Both are server-maintained on the record — Frappe's list API
-// can't return the child table.
+// "Completed tasks (by planned progress) / total tasks in the stage." The completed
+// figure is the progress-weighted equivalent: total × mean task progress. Both
+// task_count and mean_progress are server-maintained aggregates on the record
+// (Frappe's list API can't return the child table to count them client-side).
 function taskCountDisplay(row) {
-	return `${Number(row.task_count) || 0} / ${Number(row.planned_task_count) || 0}`;
+	const total = Number(row.task_count) || 0;
+	const meanPct = Number(row.mean_progress) || 0;
+	const completed = Math.round((total * meanPct) / 100);
+	return `${completed} / ${total}`;
 }
 
 const filterValues = computed(() => ({
@@ -125,7 +129,6 @@ function onRowClick(row) {
 				'planned_start',
 				'planned_end',
 				'task_count',
-				'planned_task_count',
 				'mean_progress',
 				'workflow_state',
 			]"
@@ -135,7 +138,12 @@ function onRowClick(row) {
 				{ key: 'project', label: 'Project' },
 				{ key: 'planned_start', label: 'Planned Start' },
 				{ key: 'planned_end', label: 'Planned End' },
-				{ key: 'task_count', label: 'Tasks', align: 'right' },
+				{
+					key: 'task_count',
+					label: 'Tasks (done / total)',
+					align: 'right',
+					fields: ['task_count', 'mean_progress'],
+				},
 				{ key: 'workflow_state', label: 'State' },
 				{ key: '_status', label: 'Status', fields: ['mean_progress'] },
 			]"

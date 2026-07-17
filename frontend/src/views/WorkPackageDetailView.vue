@@ -107,6 +107,17 @@ const project = computed(() => {
 	return wp.value ? store.projectById(wp.value.projectId) : null;
 });
 
+// ERPNext stores assignments as a JSON list on the `_assign` field; the first entry
+// is the primary assignee (empty when unassigned) — not the document owner/creator.
+function parseAssignee(raw) {
+	try {
+		const list = JSON.parse(raw || "[]");
+		return Array.isArray(list) && list.length ? list[0] : "";
+	} catch {
+		return "";
+	}
+}
+
 const tasksResource = ref(null);
 function loadTasksResource() {
 	if (!wp.value?.id) {
@@ -121,7 +132,7 @@ function loadTasksResource() {
 			"task_status",
 			"priority",
 			"type as task_type",
-			"owner",
+			"_assign",
 			"exp_start_date",
 			"exp_end_date",
 			"progress",
@@ -140,7 +151,9 @@ function loadTasksResource() {
 				status: row.task_status || "Yet To Start",
 				priority: row.priority || "Medium",
 				task_type: row.task_type || "Activity",
-				assignee: row.owner || "",
+				// The assignee is the ERPNext assignment (_assign JSON list), NOT the
+				// document owner/creator. Show the first assignee.
+				assignee: parseAssignee(row._assign),
 				startDate: row.exp_start_date || null,
 				endDate: row.exp_end_date || null,
 				progress: Number(row.progress) || 0,

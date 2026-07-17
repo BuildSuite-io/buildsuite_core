@@ -58,7 +58,11 @@ def apply_workflow(doc, action):
 	else:
 		frappe.throw(_("Illegal Document Status for {0}").format(next_state.state))
 
-	doc.add_comment("Workflow", _(next_state.state))
+	# A doctype controller may log the transition itself on save/on_update (e.g. Stage
+	# Planning's richer label with the reject reason). It sets this flag so we don't add
+	# a second, duplicate "Workflow" comment for the same transition.
+	if not doc.flags.get("workflow_comment_logged"):
+		doc.add_comment("Workflow", _(next_state.state))
 	create_workflow_log(doc, old_state, new_state, user, workflow)
 	return doc
 

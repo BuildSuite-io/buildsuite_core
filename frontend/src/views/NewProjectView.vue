@@ -450,7 +450,7 @@ const breadcrumbs = computed(() => {
 								</label>
 							</div>
 							<div
-								v-if="!parentProject && templateWorkPackageCount > 0"
+								v-if="templateWorkPackageCount > 0"
 								class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100"
 							>
 								<div>
@@ -471,7 +471,7 @@ const breadcrumbs = computed(() => {
 								</label>
 							</div>
 							<div
-								v-if="!parentProject && templateTaskCount > 0"
+								v-if="templateTaskCount > 0"
 								class="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-ink-100"
 							>
 								<div>
@@ -490,10 +490,6 @@ const breadcrumbs = computed(() => {
 									/>
 									<span class="text-ink-700">Import default tasks</span>
 								</label>
-							</div>
-							<div v-if="parentProject" class="text-[10px] text-ink-500 italic">
-								Subproject — stage, work-package and task defaults are off; the
-								parent project owns the timeline.
 							</div>
 						</div>
 						<div

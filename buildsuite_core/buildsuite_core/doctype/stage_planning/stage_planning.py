@@ -91,6 +91,9 @@ class StagePlanning(Document):
 		label = _stage_transition_label(old, new, self.reject_reason)
 		if label:
 			self.add_comment("Workflow", label)
+			# Tell the generic apply_workflow (workflow.py) not to add its own duplicate
+			# "Workflow" comment for this same transition — this richer label wins.
+			self.flags.workflow_comment_logged = True
 
 
 def _stage_aggregates(task_names):

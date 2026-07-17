@@ -33,12 +33,17 @@ export function useDocTypeList(doctype, options = {}) {
 		return adapter.list(doctype, options);
 	}
 
+	// frappe-ui's listResource does `pageLength || 20`, so a caller's `pageLength: 0`
+	// (the Frappe convention for "no limit / all rows") is silently capped at 20.
+	// Translate 0 → a high cap so "0 = all" works as intended across every list that
+	// needs the full set (name→label maps, KPI totals, client-side pagination, …).
+	const ALL_ROWS = 100000;
 	const resourceConfig = {
 		doctype,
 		fields: options.fields ?? ["name"],
 		orderBy: options.orderBy,
 		start: options.start ?? 0,
-		pageLength: options.pageLength ?? 20,
+		pageLength: options.pageLength === 0 ? ALL_ROWS : (options.pageLength ?? 20),
 		auto: options.auto !== false,
 	};
 
