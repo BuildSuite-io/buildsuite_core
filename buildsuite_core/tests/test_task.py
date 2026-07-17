@@ -29,6 +29,26 @@ class TestTask(BuildSuiteTestCase):
 		t.save(ignore_permissions=True)
 		self.assertEqual(t.status, "Working")
 
+	def test_task_status_defaults_to_yet_to_start(self):
+		# TSK-006 — a new task with no explicit task_status defaults to
+		# "Yet To Start" (the field's own default, not just a value we happen
+		# to pass in every other test's helper call).
+		p = self._make_project(company=self.company)
+		t = frappe.get_doc({"doctype": "Task", "subject": f"UAT {self._n}", "project": p.name}).insert(
+			ignore_permissions=True
+		)
+		self.assertEqual(t.task_status, "Yet To Start")
+
+	def test_task_status_enum_complete(self):
+		# TSK-007 — every allowed task_status value is accepted; an unknown
+		# one is rejected outright.
+		p = self._make_project(company=self.company)
+		for status in ("Yet To Start", "In Progress", "In Delay", "Completed", "Blocked"):
+			t = self._make_task(p.name, task_status=status)
+			self.assertEqual(t.task_status, status)
+		with self.assertRaises(frappe.ValidationError):
+			self._make_task(p.name, task_status="Not A Real Status")
+
 	def test_task_directly_under_project(self):
 		# TSK-002: a task can be created with no work package.
 		p = self._make_project(company=self.company)
@@ -70,6 +90,31 @@ class TestTask(BuildSuiteTestCase):
 		frappe.delete_doc("Task", t.name, ignore_permissions=True)
 		self.assertFalse(frappe.db.exists("Task", t.name))
 		self.assertFalse(frappe.db.exists("Task Progress Entry", tpe.name))
+
+	def test_delete_task_cascades_attachments(self):
+		# TSK-013 — deleting a task also removes File attachments made against it
+		# (cascade_delete_task doesn't stop at Task Progress Entries).
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		f = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": "note.txt",
+				"attached_to_doctype": "Task",
+				"attached_to_name": t.name,
+				"content": "hello",
+			}
+		).insert(ignore_permissions=True)
+		frappe.delete_doc("Task", t.name, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("Task", t.name))
+		self.assertFalse(frappe.db.exists("File", f.name))
+
+	def test_task_company_derived_from_project(self):
+		# TSK-011 — Task.company fetches from its project's company (a plain
+		# fetch_from, not custom BuildSuite code, but worth locking in).
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		self.assertEqual(t.company, self.company)
 
 	def test_owner_stamped_on_create(self):
 		# TSK-012: the creating user is recorded as the task owner.

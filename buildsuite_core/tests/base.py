@@ -69,3 +69,17 @@ class BuildSuiteTestCase(UnitTestCase):
 		)
 		doc.insert(ignore_permissions=True)
 		return doc
+
+	def _make_rate_master(self, rate=100, category="Material", uom="Nos"):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Construction Rate Master",
+				"rate_code": f"UAT-{frappe.generate_hash(length=5)}",
+				"rate_name": "UAT Rate",
+				"category": category,
+				"uom": uom,
+				"current_rate": rate,
+			}
+		)
+		doc.insert(ignore_permissions=True)
+		return doc

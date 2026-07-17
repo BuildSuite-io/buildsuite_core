@@ -97,3 +97,11 @@ class TestProjectTemplates(BuildSuiteTestCase):
 		p = self._seeded_project(tasks=True)
 		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
 		self.assertTrue(frappe.db.count("Task", {"project": p.name}))
+
+	def test_template_seed_opt_out_checkbox_skips_seeding(self):
+		# PTT-004 — a project_category with a template attached seeds nothing
+		# when the user has unchecked all three seed flags (opt-out).
+		p = self._seeded_project()  # wps=stages=tasks=False
+		self.assertEqual(frappe.db.count("Work Package", {"project": p.name}), 0)
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
+		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)

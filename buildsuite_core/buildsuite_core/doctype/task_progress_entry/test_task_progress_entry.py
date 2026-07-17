@@ -235,3 +235,16 @@ class TestTaskProgressEntry(BuildSuiteTestCase):
 		self.assertEqual(frappe.db.get_value("Work Package", wp.name, "status"), "Completed")
 		self.assertEqual(frappe.db.get_value("Project", sub.name, "percent_complete"), 100)
 		self.assertEqual(frappe.db.get_value("Project", parent.name, "percent_complete"), 100)
+
+	def test_tpe_entered_by_stamped_to_session_user(self):
+		# TPE-005 — there's no separate "entered_by" field; the entry's native
+		# `owner` is stamped to the creating user on insert, and Frappe itself
+		# locks `owner` against being changed afterward.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name)
+		tpe = self._file_tpe(t.name, 30)
+		self.assertEqual(tpe.owner, frappe.session.user)
+
+		tpe.owner = "someone-else@example.com"
+		with self.assertRaises(frappe.CannotChangeConstantError):
+			tpe.save(ignore_permissions=True)
