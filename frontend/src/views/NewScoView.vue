@@ -9,6 +9,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -23,6 +24,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 const route = useRoute();
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
 
 const TYPES = [
 	"Design Change",
@@ -92,7 +94,14 @@ const breadcrumbs = [
 		subtitle="Raising submits it for PM / Director approval"
 		:breadcrumbs="breadcrumbs"
 	>
-		<DeskForm>
+		<div
+			v-if="!canCreate('sco')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to raise a scope change order.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Raising…' : 'Raise SCO'"

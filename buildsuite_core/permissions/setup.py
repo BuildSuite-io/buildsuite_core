@@ -552,18 +552,21 @@ _WO_TRANSITIONS = (
 )
 
 
-# Scope Change Order — the site-execution delivery roles raise change orders; approval
-# is gated in api/sco.py to BOQ_APPROVE_ROLES (PM / Director / Admin).
+# Scope Change Order — role matrix (SCO is header-only + status-based, not submittable,
+# so Submit/Cancel don't apply; "full" = CRWD). PM/QS prepare + quantify, Director
+# approves; approval is gated in api/sco.py to BOQ_APPROVE_ROLES (PM / Director / Admin).
+# The Site Engineer can *raise* (create) and read only their OWN change orders
+# (own-scope enforced in permissions/sco.py); Foreman / Store Keeper / HR Manager have
+# no access; Estimator / Procurement Officer / Accountant are read-only.
 SCO_ROLE_PERMS = {
 	"BuildSuite Director": _FULL,
 	"BuildSuite PM": _FULL,
-	"BuildSuite Administrator": _FULL,
-	"BuildSuite Estimator": _FULL,
 	"BuildSuite QS": _FULL,
-	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Estimator": _READ,
+	"BuildSuite Site Engineer": _RAISE,  # create-own; cannot approve
 	"BuildSuite Procurement Officer": _READ,
 	"BuildSuite Accountant": _READ,
-	"BuildSuite Foreman": _READ,
 }
 
 

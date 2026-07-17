@@ -8,6 +8,7 @@ import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
@@ -26,6 +27,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const session = useSessionStore();
 const confirmDialog = useConfirm();
+const { canEditRecord, canDeleteRecord } = usePermissions();
 const adapter = createDataAdapter(useDataStore());
 const { errors, applyServerErrors, setErrors } = useFormErrors({ title: "title" });
 
@@ -220,7 +222,7 @@ const breadcrumbs = computed(() => [
 		<template #actions>
 			<template v-if="!editing">
 				<button
-					v-if="isPending || isRejected"
+					v-if="(isPending || isRejected) && canEditRecord('sco', sco)"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 					style="border-radius: 6px"
@@ -249,7 +251,7 @@ const breadcrumbs = computed(() => [
 					Reject
 				</button>
 				<button
-					v-if="isApproved && !sco.boq_revision"
+					v-if="isApproved && !sco.boq_revision && canEditRecord('sco', sco)"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 					style="border-radius: 6px"
@@ -259,7 +261,7 @@ const breadcrumbs = computed(() => [
 					+ Raise BOQ revision
 				</button>
 				<button
-					v-if="isApproved || isRejected"
+					v-if="(isApproved || isRejected) && canEditRecord('sco', sco)"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-warning-200 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 					style="border-radius: 6px"
@@ -269,6 +271,7 @@ const breadcrumbs = computed(() => [
 					Revise
 				</button>
 				<button
+					v-if="canDeleteRecord('sco', sco)"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 					style="border-radius: 6px"
