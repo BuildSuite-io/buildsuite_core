@@ -121,6 +121,63 @@ class TestScheduleEngine(UnitTestCase):
 		self.assertEqual(earliest, date(2026, 1, 21))
 		self.assertIn("from C", reason)
 
+	def test_positive_lag_shifts_successor_later(self):
+		# SCH-011 — a positive lag on an FS edge shifts the cascaded successor
+		# later by exactly the lag, beyond the bare (lag=0) FS position.
+		tasks = {
+			"A": _t("A", start=date(2026, 1, 1), end=date(2026, 1, 10)),
+			"B": _t("B", start=date(2026, 1, 11), end=date(2026, 1, 21)),
+		}
+		moves = eng.compute_cascade(
+			"A", tasks, [_e("A", "B", lag=3)], {"start": date(2026, 1, 1), "end": date(2026, 1, 15)}
+		)
+		self.assertEqual(len(moves), 1)
+		self.assertEqual(moves[0]["new_start"], "2026-01-18")  # new A end (01-15) + lag 3
+		self.assertEqual(moves[0]["new_end"], "2026-01-28")  # 10-day duration preserved
+
+	def test_cascade_recomputes_ff_dependents(self):
+		# SCH-016 — an FF-linked dependent recomputes under cascade: its END
+		# tracks the predecessor's new end (+ lag), duration preserved.
+		tasks = {
+			"A": _t("A", start=date(2026, 1, 1), end=date(2026, 1, 10)),
+			"B": _t("B", start=date(2026, 1, 3), end=date(2026, 1, 8)),  # FF: ends before A
+		}
+		moves = eng.compute_cascade(
+			"A", tasks, [_e("A", "B", type="FF")], {"start": date(2026, 1, 1), "end": date(2026, 1, 20)}
+		)
+		self.assertEqual(len(moves), 1)
+		self.assertEqual(moves[0]["new_end"], "2026-01-20")  # tracks A's new end
+		self.assertEqual(moves[0]["new_start"], "2026-01-15")  # 5-day duration preserved
+
+	def test_cascade_preserves_lag_offsets(self):
+		# SCH-017 — cascading through a chain (A->B->C) preserves each edge's
+		# OWN lag/lead offset, not just the first hop's.
+		tasks = {
+			"A": _t("A", start=date(2026, 1, 1), end=date(2026, 1, 10)),
+			"B": _t("B", start=date(2026, 1, 12), end=date(2026, 1, 17)),  # FS lag +2 from A
+			"C": _t("C", start=date(2026, 1, 16), end=date(2026, 1, 20)),  # FS lag -1 from B (lead)
+		}
+		edges = [_e("A", "B", lag=2), _e("B", "C", lag=-1)]
+		moves = eng.compute_cascade("A", tasks, edges, {"start": date(2026, 1, 1), "end": date(2026, 1, 20)})
+		self.assertEqual(len(moves), 2)
+		b_move = next(m for m in moves if m["task"] == "B")
+		c_move = next(m for m in moves if m["task"] == "C")
+		self.assertEqual(b_move["new_start"], "2026-01-22")  # A's new end (01-20) + lag 2
+		self.assertEqual(b_move["new_end"], "2026-01-27")  # 5-day duration preserved
+		self.assertEqual(c_move["new_start"], "2026-01-26")  # B's new end (01-27) + lag -1
+		self.assertEqual(c_move["new_end"], "2026-01-30")  # 4-day duration preserved
+
+	def test_long_cycle_rejected(self):
+		# SCH-019 — a longer cycle (A->B->C->A), not just a direct 2-node one,
+		# is still detected and aborts the cascade.
+		tasks = {
+			"A": _t("A", start=date(2026, 1, 1), end=date(2026, 1, 5)),
+			"B": _t("B", start=date(2026, 1, 6), end=date(2026, 1, 10)),
+			"C": _t("C", start=date(2026, 1, 11), end=date(2026, 1, 15)),
+		}
+		edges = [_e("A", "B"), _e("B", "C"), _e("C", "A")]
+		self.assertIsNone(eng.compute_cascade("A", tasks, edges))
+
 
 class TestScheduleEngineIntegration(BuildSuiteTestCase):
 	"""End-to-end over the DB: the on_update hook flags conflicts, and
@@ -187,3 +244,32 @@ class TestScheduleEngineIntegration(BuildSuiteTestCase):
 		b.reload()
 		self.assertEqual(str(b.exp_start_date)[:10], "2026-01-20")
 		self.assertFalse(b.schedule_conflict)
+
+	def test_ff_dependency_recompute(self):
+		# SCH-010 — an FF (Finish-to-Finish) dependency ties the successor's END
+		# to the predecessor's end (+ lag), exercised end-to-end through the
+		# on_update conflict hook and a committed cascade.
+		p = self._make_project(company=self.company)
+		a = self._task(p.name, f"A {self._n}", "2026-01-01", "2026-01-10")
+		b = self._task(p.name, f"B {self._n}", "2026-01-05", "2026-01-08")  # ends before A (FF conflict)
+
+		b.append("depends_on", {"task": a.name, "dependency_type": "FF", "lag_days": 0})
+		b.save(ignore_permissions=True)
+		b.reload()
+		self.assertTrue(b.schedule_conflict)
+
+		# Move A's end later -> B's end cascades to match (duration preserved).
+		eng.reschedule_downstream(a.name, new_start="2026-01-01", new_end="2026-01-20", dry_run=0)
+		b.reload()
+		self.assertEqual(str(b.exp_end_date)[:10], "2026-01-20")
+		self.assertFalse(b.schedule_conflict)
+
+	def test_task_move_persists_dates(self):
+		# SCH-026 — moving the ROOT task itself via reschedule_downstream (not
+		# just its cascaded dependents) persists its own new dates after commit.
+		p = self._make_project(company=self.company)
+		a = self._task(p.name, f"MOVE {self._n}", "2026-01-01", "2026-01-10")
+		eng.reschedule_downstream(a.name, new_start="2026-02-01", new_end="2026-02-15", dry_run=0)
+		a.reload()
+		self.assertEqual(str(a.exp_start_date)[:10], "2026-02-01")
+		self.assertEqual(str(a.exp_end_date)[:10], "2026-02-15")

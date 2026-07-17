@@ -20,6 +20,24 @@ class TestProject(BuildSuiteTestCase):
 		p.save(ignore_permissions=True)
 		self.assertEqual(p.status, "Completed")
 
+	def test_project_status_full_lifecycle(self):
+		# PRJ-009 — every BuildSuite project_status syncs to its native status:
+		# New/Ongoing/Delayed all map to Open; only Completed closes it.
+		p = self._make_project(status="New", company=self.company)
+		self.assertEqual(p.status, "Open")
+
+		p.project_status = "Ongoing"
+		p.save(ignore_permissions=True)
+		self.assertEqual(p.status, "Open")
+
+		p.project_status = "Delayed"
+		p.save(ignore_permissions=True)
+		self.assertEqual(p.status, "Open")
+
+		p.project_status = "Completed"
+		p.save(ignore_permissions=True)
+		self.assertEqual(p.status, "Completed")
+
 	def test_project_status_defaults_to_new(self):
 		p = frappe.get_doc(
 			{
@@ -218,6 +236,23 @@ class TestProject(BuildSuiteTestCase):
 			frappe.db.exists("Warehouse", {"warehouse_name": "Projects", "company": self.company})
 		)
 
+	def test_delete_project_cascades_attachments(self):
+		# ATT-005 — deleting a project also removes File attachments made
+		# directly against it (not just its descendant tasks/stages).
+		p = self._make_project(company=self.company)
+		f = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": "project-note.txt",
+				"attached_to_doctype": "Project",
+				"attached_to_name": p.name,
+				"content": "hello",
+			}
+		).insert(ignore_permissions=True)
+		frappe.delete_doc("Project", p.name, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("Project", p.name))
+		self.assertFalse(frappe.db.exists("File", f.name))
+
 	# --- category templating (work packages / stages / tasks) -----------
 	def test_category_template_seeds_wps_tasks_stages(self):
 		if not frappe.db.exists("Project Template", "Commercial"):
@@ -242,6 +277,14 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(
 			frappe.db.count("Task", {"project": p.name, "work_package": ("is", "set")}), 12
 		)
+
+	def test_project_without_template_creates_empty(self):
+		# PRJ-016 — a project with no project_category (or with the seed flags
+		# left off) seeds nothing: no Work Packages, Tasks, or Stage Plannings.
+		p = self._make_project(company=self.company)
+		self.assertEqual(frappe.db.count("Work Package", {"project": p.name}), 0)
+		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)
+		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
 
 	def test_subproject_does_not_seed_template(self):
 		# Subprojects don't seed a template — the parent owns the breakdown.
