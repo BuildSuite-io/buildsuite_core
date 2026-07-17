@@ -17,3 +17,4 @@ buildsuite_core.patches.seed_estimation_catalog
 buildsuite_core.patches.split_project_naming_mode_and_series
 buildsuite_core.patches.backfill_boq_sub_item_uom
 buildsuite_core.patches.set_default_rate_master_update_threshold
+buildsuite_core.patches.retire_site_execution_settings
