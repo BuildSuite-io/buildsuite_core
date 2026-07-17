@@ -643,8 +643,8 @@ def setup_subcontractor_wo_workflow():
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
 	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import seed_personas
-	from buildsuite_core.buildsuite_core.doctype.site_execution_settings.seed_site_execution import (
-		seed_site_execution_reports,
+	from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
+		seed_workspace_reports,
 	)
 
 	setup_project_permissions()
@@ -664,5 +664,5 @@ def setup_record_permissions():
 	setup_subcontractor_wo_workflow()
 	# Personas map to the roles ensured above — seed them once the roles exist.
 	seed_personas()
-	# Site Execution workspace reports (Query Reports + the settings table).
-	seed_site_execution_reports()
+	# Per-workspace report tiles (Query Reports + the Workspace Setting table).
+	seed_workspace_reports()

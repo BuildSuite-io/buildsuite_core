@@ -6,10 +6,11 @@
 // First pass ships Subcontractors + Work Orders. Measurement Books and
 // RA Bills land in a later pass — their tiles are omitted until then.
 
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 
 const today = computed(() => {
 	const d = new Date();
@@ -24,32 +25,15 @@ const shortcuts = [
 	{ label: "RA Bills", icon: "file-text", href: "/app/subcontractor-bill" },
 ];
 
-const reports = [
-	{
-		label: "Work Order Register",
-		icon: "clipboard-list",
-		to: "/subcontractor-work-orders",
-		desc: "Every WO across projects with status + committed value.",
-	},
-	{
-		label: "Measurement Book Register",
-		icon: "chart-bar",
-		to: "/measurement-books",
-		desc: "Site measurements certified by the QS, feeding billed quantity.",
-	},
-	{
-		label: "Subcontractor Ledger",
-		icon: "chart-line",
-		prevent: true,
-		desc: "Per-sub view: WOs committed + bills paid + retention held.",
-	},
-	{
-		label: "Cost code variance",
-		icon: "chart-bar",
-		prevent: true,
-		desc: "Planned vs Committed vs Actual per BOQ group code.",
-	},
-];
+// Report tiles are configured per workspace in Workspace Setting.
+const reports = ref([]);
+onMounted(async () => {
+	try {
+		reports.value = await getWorkspaceReports("subcontract");
+	} catch {
+		reports.value = [];
+	}
+});
 </script>
 
 <template>
@@ -118,20 +102,20 @@ const reports = [
 			</div>
 
 			<!-- Reports group -->
-			<div class="mt-8">
+			<div v-if="reports.length" class="mt-8">
 				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
 					Reports
 				</h2>
 				<div class="border-t border-ink-200 mb-3"></div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					<WorkspaceShortcut
-						v-for="r in reports"
-						:key="r.label"
+						v-for="(r, i) in reports"
+						:key="i"
 						:icon="r.icon"
 						:label="r.label"
-						:description="r.desc"
-						:to="r.to"
-						:prevent="r.prevent"
+						:description="r.description"
+						:to="r.external ? null : r.route"
+						:href="r.external ? r.route : null"
 					>
 						<template #badge>
 							<span

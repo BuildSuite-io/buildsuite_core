@@ -29,7 +29,7 @@ import { useDataStore } from "@/stores";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getSiteExecutionReports } from "@/data/siteExecutionApi";
+import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 
 const store = useDataStore();
 
@@ -67,13 +67,13 @@ const OWNER_ROLES = ["director", "pm", "admin", "accountant", "bsa"];
 const showProjectDashboard = computed(() => OWNER_ROLES.includes(store.role));
 
 // --- Reports group --------------------------------------------------------
-// The reports are configured in Site Execution Settings (report + icon +
-// description, in order) and resolve to real Frappe reports. Each tile links to
-// the report's desk route.
+// Configured per workspace in Workspace Setting (label + destination + icon +
+// description, in order). Each tile resolves to a Frappe report route, an in-app
+// path, or a Desk URL (rt.external → open via href, else the SPA router).
 const reportTiles = ref([]);
 onMounted(async () => {
 	try {
-		reportTiles.value = await getSiteExecutionReports();
+		reportTiles.value = await getWorkspaceReports("site-execution");
 	} catch {
 		reportTiles.value = [];
 	}
@@ -223,9 +223,10 @@ onMounted(async () => {
 				<div class="border-t border-ink-200 mb-3"></div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					<WorkspaceShortcut
-						v-for="rt in reportTiles"
-						:key="rt.report"
-						:href="rt.route || '#'"
+						v-for="(rt, i) in reportTiles"
+						:key="i"
+						:to="rt.external ? null : rt.route"
+						:href="rt.external ? rt.route : null"
 						:icon="rt.icon"
 						:label="rt.label"
 						:description="rt.description"

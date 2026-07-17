@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "creation": "2026-07-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "workspace",
+  "label",
+  "report",
+  "route",
+  "icon",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "workspace",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Workspace",
+   "reqd": 1
+  },
+  {
+   "description": "Tile title. Falls back to the linked report's name when blank.",
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label"
+  },
+  {
+   "description": "Pick a Frappe Report — its Desk route + name are used when Route is blank.",
+   "fieldname": "report",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Report",
+   "options": "Report"
+  },
+  {
+   "description": "Explicit destination: an in-app path (e.g. /subcontractor-work-orders) or a Desk URL (e.g. /app/query-report/Stock Balance). Overrides Report.",
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "label": "Route"
+  },
+  {
+   "default": "file-text",
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Workspace Report",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "ASC",
+ "states": []
+}
