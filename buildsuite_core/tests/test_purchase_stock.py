@@ -37,9 +37,16 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 	def _warehouse(self):
 		return frappe.db.get_value("Warehouse", {"is_group": 0, "company": self.company}, "name")
 
+	def _currency(self):
+		# The company's own default currency — so the document currency matches the
+		# party/creditors account (avoids a currency mismatch when the site's global
+		# default currency differs from the test company's, e.g. multi-company sites).
+		return frappe.get_cached_value("Company", self.company, "default_currency")
+
 	def test_project_field_present_required_on_material_request(self):
 		# BUY-001 — project is present and mandatory on Material Request.
 		item = self._item()
+		wh = self._warehouse()
 		due = add_days(nowdate(), 7)
 		with self.assertRaises(frappe.MandatoryError):
 			frappe.get_doc(
@@ -48,7 +55,9 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 					"material_request_type": "Purchase",
 					"company": self.company,
 					"schedule_date": due,
-					"items": [{"item_code": item.name, "qty": 1, "schedule_date": due, "rate": 10}],
+					"items": [
+						{"item_code": item.name, "qty": 1, "schedule_date": due, "rate": 10, "warehouse": wh}
+					],
 				}
 			).insert(ignore_permissions=True)
 
@@ -60,7 +69,9 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 				"company": self.company,
 				"project": p.name,
 				"schedule_date": due,
-				"items": [{"item_code": item.name, "qty": 1, "schedule_date": due, "rate": 10}],
+				"items": [
+					{"item_code": item.name, "qty": 1, "schedule_date": due, "rate": 10, "warehouse": wh}
+				],
 			}
 		).insert(ignore_permissions=True)
 		self.assertEqual(mr.project, p.name)
@@ -69,6 +80,8 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 		# BUY-002 — project is present and mandatory on Purchase Order.
 		supplier = self._supplier()
 		item = self._item()
+		wh = self._warehouse()
+		currency = self._currency()
 		due = add_days(nowdate(), 7)
 		with self.assertRaises(frappe.MandatoryError):
 			frappe.get_doc(
@@ -76,8 +89,12 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 					"doctype": "Purchase Order",
 					"supplier": supplier.name,
 					"company": self.company,
+					"currency": currency,
+					"conversion_rate": 1,
 					"schedule_date": due,
-					"items": [{"item_code": item.name, "qty": 1, "rate": 10, "schedule_date": due}],
+					"items": [
+						{"item_code": item.name, "qty": 1, "rate": 10, "schedule_date": due, "warehouse": wh}
+					],
 				}
 			).insert(ignore_permissions=True)
 
@@ -87,9 +104,13 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 				"doctype": "Purchase Order",
 				"supplier": supplier.name,
 				"company": self.company,
+				"currency": currency,
+				"conversion_rate": 1,
 				"project": p.name,
 				"schedule_date": due,
-				"items": [{"item_code": item.name, "qty": 1, "rate": 10, "schedule_date": due}],
+				"items": [
+					{"item_code": item.name, "qty": 1, "rate": 10, "schedule_date": due, "warehouse": wh}
+				],
 			}
 		).insert(ignore_permissions=True)
 		self.assertEqual(po.project, p.name)
@@ -127,11 +148,14 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 		# can also carry one when set.
 		supplier = self._supplier()
 		item = self._item()
+		currency = self._currency()
 		pi = frappe.get_doc(
 			{
 				"doctype": "Purchase Invoice",
 				"supplier": supplier.name,
 				"company": self.company,
+				"currency": currency,
+				"conversion_rate": 1,
 				"items": [{"item_code": item.name, "qty": 1, "rate": 10}],
 			}
 		).insert(ignore_permissions=True)  # no throw
@@ -143,6 +167,8 @@ class TestPurchaseStockProjectField(BuildSuiteTestCase):
 				"doctype": "Purchase Invoice",
 				"supplier": supplier.name,
 				"company": self.company,
+				"currency": currency,
+				"conversion_rate": 1,
 				"project": p.name,
 				"items": [{"item_code": item.name, "qty": 1, "rate": 10}],
 			}
