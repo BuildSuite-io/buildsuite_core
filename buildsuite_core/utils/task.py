@@ -288,13 +288,23 @@ def compute_project_progress(project):
 
 def _recompute_project_progress(project):
 	"""Persist the weighted rollup. Written with percent_complete_method=Manual so
-	erpnext's own auto-calc (which short-circuits on Manual) doesn't override it."""
-	frappe.db.set_value(
-		"Project",
-		project,
-		{"percent_complete": compute_project_progress(project), "percent_complete_method": "Manual"},
-		update_modified=False,
-	)
+	erpnext's own auto-calc (which short-circuits on Manual) doesn't override it.
+
+	Also auto-advances a still-"New" project to "Ongoing" the moment work starts on
+	any of its tasks (progress logged, or a task moved past "Yet To Start"). It never
+	downgrades and leaves Delayed / Completed / already-Ongoing untouched.
+	"""
+	pct = compute_project_progress(project)
+	values = {"percent_complete": pct, "percent_complete_method": "Manual"}
+	if frappe.db.get_value("Project", project, "project_status") == "New" and (
+		pct > 0
+		or frappe.db.exists(
+			"Task", {"project": project, "task_status": ["not in", ["", "Yet To Start"]]}
+		)
+	):
+		values["project_status"] = "Ongoing"
+		values["status"] = "Open"
+	frappe.db.set_value("Project", project, values, update_modified=False)
 
 
 def update_project_progress(doc, method=None):

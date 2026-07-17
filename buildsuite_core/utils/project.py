@@ -181,10 +181,9 @@ def seed_from_template_on_insert(doc, method=None):
 	"""Seed Work Packages, Tasks and Stages onto a new project from the ERPNext
 	Project Template that matches its Project Category. Each layer is opt-in via the
 	Project's seed flags; tasks link to the seeded Work Package by the template task's
-	work-package code. Subprojects don't seed — the parent project owns the timeline.
+	work-package code. Applies to sub-projects too — seeding is driven purely by the
+	seed flags, so a sub-project that ticks them gets its category's template as well.
 	"""
-	if doc.parent_project:
-		return
 	category = doc.get("project_category")
 	if not category:
 		return

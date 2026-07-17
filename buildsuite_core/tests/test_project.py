@@ -286,8 +286,10 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 0)
 		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 0)
 
-	def test_subproject_does_not_seed_template(self):
-		# Subprojects don't seed a template — the parent owns the breakdown.
+	def test_subproject_with_seed_flags_off_seeds_nothing(self):
+		# Seeding is now flag-driven (not parent-driven): a sub-project created with the
+		# seed flags OFF (the default for sub-projects) seeds nothing. When a sub-project
+		# ticks the flags it DOES seed — covered in test_project_templates.
 		parent = self._make_project(company=self.company)
 		child = frappe.get_doc(
 			{
@@ -298,9 +300,9 @@ class TestProject(BuildSuiteTestCase):
 				"company": self.company,
 				"parent_project": parent.name,
 				"project_category": "Commercial",
-				"custom_seed_default_work_packages": 1,
-				"custom_seed_default_stages": 1,
-				"custom_seed_default_tasks": 1,
+				"custom_seed_default_work_packages": 0,
+				"custom_seed_default_stages": 0,
+				"custom_seed_default_tasks": 0,
 			}
 		).insert(ignore_permissions=True)
 		self.assertEqual(frappe.db.count("Work Package", {"project": child.name}), 0)

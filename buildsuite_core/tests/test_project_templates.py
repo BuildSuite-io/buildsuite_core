@@ -41,6 +41,35 @@ class TestProjectTemplates(BuildSuiteTestCase):
 		self.assertGreater(res["seeded"], 0)
 		self.assertTrue(frappe.get_all("Stage Planning", filters={"project": p.name}))
 
+	def test_subproject_seeds_from_template_when_flags_set(self):
+		# Issue 7 — a sub-project that ticks the seed flags gets its category's template
+		# too. Previously a hard `if doc.parent_project: return` skipped all seeding.
+		if not self._has_template():
+			self.skipTest("No Commercial template seeded on this site")
+		parent = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"PARENT {self._n}",
+				"custom_project_id": f"PARENT-{self._n}",
+				"company": self.company,
+				"is_group": 1,
+			}
+		).insert(ignore_permissions=True)
+		sub = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"SUB {self._n}",
+				"custom_project_id": f"SUB-{self._n}",
+				"company": self.company,
+				"parent_project": parent.name,
+				"project_category": "Commercial",
+				"custom_seed_default_stages": 1,
+				"custom_seed_default_work_packages": 1,
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(frappe.get_all("Stage Planning", filters={"project": sub.name}))
+		self.assertTrue(frappe.get_all("Work Package", filters={"project": sub.name}))
+
 	def test_reseed_stages_attaches_existing_tasks(self):
 		# A project that already has its template tasks → re-seeding stages picks
 		# those tasks up into the matching stage plans (matched by subject).

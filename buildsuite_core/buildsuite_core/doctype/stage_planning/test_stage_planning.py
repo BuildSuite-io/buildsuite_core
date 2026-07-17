@@ -147,6 +147,17 @@ class TestStagePlanning(BuildSuiteTestCase):
 		self.assertIn("created", types)
 		self.assertIn("submitted", types)
 
+	def test_approval_records_single_activity_entry(self):
+		"""One approval = ONE timeline entry. Regression for the duplicate 'Workflow'
+		comment that apply_workflow and the on_update hook both used to add."""
+		p = self._make_project()
+		st = self._make_stage(p.name)
+		apply_workflow(st, "Submit for Approval")
+		apply_workflow(st, "Approve")
+		types = [a["type"] for a in get_stage_activity(st.name)]
+		self.assertEqual(types.count("approved"), 1)
+		self.assertEqual(types.count("submitted"), 1)
+
 	def test_new_stage_starts_in_draft(self):
 		# SAW-001 / STG-001
 		p = self._make_project()
