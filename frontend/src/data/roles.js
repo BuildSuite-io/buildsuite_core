@@ -427,6 +427,8 @@ const _FULL = { c: true, r: true, e: true, d: true };
 const _READ = { c: false, r: true, e: false, d: false };
 const _NONE = { c: false, r: false, e: false, d: false };
 const _OWN = { c: true, r: true, e: "own", d: "own" };
+// Create + read only (no edit/delete) — the SCO "raise-own" grant for Site Engineer.
+const _CREATE_READ = { c: true, r: true, e: false, d: false };
 
 export const PERSONA_CAPS = {
 	director: {
@@ -435,6 +437,7 @@ export const PERSONA_CAPS = {
 		task: _FULL,
 		taskProgressEntry: _FULL,
 		stagePlanning: _FULL,
+		sco: _FULL,
 	},
 	pm: {
 		project: _FULL,
@@ -442,6 +445,7 @@ export const PERSONA_CAPS = {
 		task: _FULL,
 		taskProgressEntry: _FULL,
 		stagePlanning: _FULL,
+		sco: _FULL,
 	},
 	admin: {
 		project: _FULL,
@@ -449,6 +453,7 @@ export const PERSONA_CAPS = {
 		task: _FULL,
 		taskProgressEntry: _FULL,
 		stagePlanning: _FULL,
+		sco: _FULL,
 	},
 	bsa: {
 		project: _FULL,
@@ -456,6 +461,7 @@ export const PERSONA_CAPS = {
 		task: _FULL,
 		taskProgressEntry: _FULL,
 		stagePlanning: _FULL,
+		sco: _FULL,
 	},
 	estimator: {
 		project: _READ,
@@ -463,6 +469,7 @@ export const PERSONA_CAPS = {
 		task: _READ,
 		taskProgressEntry: _READ,
 		stagePlanning: _READ,
+		sco: _READ,
 	},
 	qs: {
 		project: _READ,
@@ -470,6 +477,7 @@ export const PERSONA_CAPS = {
 		task: _READ,
 		taskProgressEntry: _READ,
 		stagePlanning: _READ,
+		sco: _FULL,
 	},
 	accountant: {
 		project: _READ,
@@ -477,6 +485,7 @@ export const PERSONA_CAPS = {
 		task: _READ,
 		taskProgressEntry: _READ,
 		stagePlanning: _READ,
+		sco: _READ,
 	},
 	procurement: {
 		project: _READ,
@@ -484,6 +493,7 @@ export const PERSONA_CAPS = {
 		task: _READ,
 		taskProgressEntry: _NONE,
 		stagePlanning: _NONE,
+		sco: _READ,
 	},
 	"store-keeper": {
 		project: _READ,
@@ -491,6 +501,7 @@ export const PERSONA_CAPS = {
 		task: _READ,
 		taskProgressEntry: _NONE,
 		stagePlanning: _NONE,
+		sco: _NONE,
 	},
 	"site-engineer": {
 		project: _READ,
@@ -498,6 +509,7 @@ export const PERSONA_CAPS = {
 		task: _OWN,
 		taskProgressEntry: _OWN,
 		stagePlanning: _OWN,
+		sco: _CREATE_READ,
 	},
 	foreman: {
 		project: _READ,
@@ -505,6 +517,7 @@ export const PERSONA_CAPS = {
 		task: _OWN,
 		taskProgressEntry: _OWN,
 		stagePlanning: _OWN,
+		sco: _NONE,
 	},
 	"hr-manager": {
 		project: _NONE,
@@ -512,5 +525,6 @@ export const PERSONA_CAPS = {
 		task: _NONE,
 		taskProgressEntry: _READ,
 		stagePlanning: _NONE,
+		sco: _NONE,
 	},
 };

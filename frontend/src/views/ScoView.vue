@@ -5,6 +5,7 @@
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { usePermissions } from "@/composables/usePermissions";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -14,6 +15,7 @@ import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 const scosRes = useDocTypeList("Scope Change Order", {
 	fields: [
@@ -92,7 +94,9 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Scope Change Orders" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/sco/new" class="desk-save-btn">+ Raise SCO</RouterLink>
+			<RouterLink v-if="canCreate('sco')" to="/sco/new" class="desk-save-btn"
+				>+ Raise SCO</RouterLink
+			>
 		</template>
 
 		<!-- KPI strip -->
