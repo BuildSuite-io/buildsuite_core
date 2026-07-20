@@ -1,9 +1,9 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
-import { useDocTypeList } from "@/composables/useDocTypeList";
+import { listRateMasters } from "@/data/rateMasterApi";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useConfirm } from "@/composables/useConfirm";
 import { parseFrappeError } from "@/utils/frappeError";
@@ -32,38 +32,66 @@ const breadcrumbs = [
 	{ label: "Rate Master" },
 ];
 
-// Fetch all rates once — feeds both the KPI cards and the table.
-const ratesRes = useDocTypeList("Construction Rate Master", {
-	fields: [
-		"name",
-		"rate_code",
-		"rate_name",
-		"category",
-		"uom",
-		"current_rate",
-		"previous_rate",
-		"effective_date",
-		"modified_by",
-	],
-	orderBy: "rate_code asc",
-	pageLength: 0, // 0 = no limit, so counts cover every rate
-	cache: "buildsuite-rate-master-list",
-	transform: (data) =>
-		data.map((r) => ({
-			id: r.name,
-			code: r.rate_code,
-			description: r.rate_name,
-			category: r.category,
-			unit: r.uom,
-			currentRate: r.current_rate,
-			previousRate: r.previous_rate,
-			updatedAt: r.effective_date,
-			updatedBy: r.modified_by,
-		})),
-});
-
+// Server-side pagination: one page of rows + counts per fetch.
+const rows = ref([]);
+const totalCount = ref(0);
+const totalRates = ref(0);
+const categoryCounts = ref({});
+const loading = ref(false);
+const page = ref(1);
+const pageSize = ref(10);
 const search = ref("");
 const categoryFilter = ref("");
+
+function mapRow(r) {
+	return {
+		id: r.name,
+		code: r.rate_code,
+		description: r.rate_name,
+		category: r.category,
+		unit: r.uom,
+		currentRate: r.current_rate,
+		previousRate: r.previous_rate,
+		updatedAt: r.effective_date,
+		updatedBy: r.modified_by,
+	};
+}
+
+async function reload() {
+	loading.value = true;
+	try {
+		const res = await listRateMasters({
+			start: (page.value - 1) * pageSize.value,
+			page_length: pageSize.value,
+			search: search.value.trim() || undefined,
+			category: categoryFilter.value || undefined,
+		});
+		rows.value = (res.rows || []).map(mapRow);
+		totalCount.value = res.total_count || 0;
+		totalRates.value = res.total || 0;
+		categoryCounts.value = res.category_counts || {};
+	} catch (err) {
+		showToast(err.message || "Could not load rates.", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+
+// Search debounced, category immediate; both reset to page 1.
+let searchTimer;
+watch(search, () => {
+	clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => {
+		page.value = 1;
+		reload();
+	}, 300);
+});
+watch(categoryFilter, () => {
+	page.value = 1;
+	reload();
+});
+onMounted(reload);
+
 const editing = ref(null);
 const saving = ref(false);
 const formError = ref("");
@@ -72,13 +100,15 @@ const rateRes = ref(null);
 
 const drawer = computed(() => rateRes.value?.doc || null);
 const categoryOptions = computed(() => selectOptions("category"));
+// KPI cards: global counts (whole catalog), unaffected by the filter.
 const kpis = computed(() => {
-	const data = ratesRes.data || [];
-	const byCat = { Material: 0, Labour: 0, Equipment: 0 };
-	data.forEach((r) => {
-		if (r.category in byCat) byCat[r.category]++;
-	});
-	return { total: data.length, ...byCat };
+	const c = categoryCounts.value;
+	return {
+		total: totalRates.value,
+		Material: c.Material || 0,
+		Labour: c.Labour || 0,
+		Equipment: c.Equipment || 0,
+	};
 });
 const kpiCards = computed(() => [
 	{ label: "Total rates", value: kpis.value.total, color: "text-ink-900" },
@@ -86,19 +116,6 @@ const kpiCards = computed(() => [
 	{ label: "Labour", value: kpis.value.Labour, color: "text-amber-700" },
 	{ label: "Equipment", value: kpis.value.Equipment, color: "text-violet-700" },
 ]);
-const rows = computed(() => {
-	let data = ratesRes.data || [];
-	if (categoryFilter.value) data = data.filter((r) => r.category === categoryFilter.value);
-	const q = search.value.trim().toLowerCase();
-	if (q) {
-		data = data.filter(
-			(r) =>
-				(r.code || "").toLowerCase().includes(q) ||
-				(r.description || "").toLowerCase().includes(q),
-		);
-	}
-	return data;
-});
 const drawerHistory = computed(() => (drawer.value?.history || []).slice().reverse()); // latest first
 
 const columns = [
@@ -183,7 +200,7 @@ async function save() {
 			if (rateRes.value) rateRes.value.reload();
 		}
 		editing.value = null;
-		await ratesRes.reload();
+		await reload();
 	} catch (err) {
 		formError.value = parseFrappeError(err).summary || "Could not save the rate.";
 	} finally {
@@ -268,7 +285,7 @@ async function removeRate() {
 		await adapter.remove("Construction Rate Master", target.id);
 		showToast("Rate deleted");
 		closeDrawer();
-		await ratesRes.reload();
+		await reload();
 	} catch (err) {
 		showToast(parseFrappeError(err).summary || "Could not delete the rate.", "error");
 	}
@@ -302,7 +319,13 @@ async function removeRate() {
 			:columns="columns"
 			row-key="id"
 			search-placeholder="Search code or description…"
+			:server-paginated="true"
+			:total-rows="totalCount"
+			:current-page="page"
+			:page-size="pageSize"
 			@row-click="onRowClick"
+			@page-change="(p) => { page = p; reload(); }"
+			@page-size-change="(s) => { pageSize = s; page = 1; }"
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
@@ -360,7 +383,7 @@ async function removeRate() {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ ratesRes.loading ? "Loading rates…" : "No rates match your filters." }}
+					{{ loading ? "Loading rates…" : "No rates match your filters." }}
 				</div>
 			</template>
 		</DeskList>

@@ -2,7 +2,54 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
+
+
+@frappe.whitelist()
+def list_rate_masters(start=0, page_length=10, search=None, category=None, order_by="rate_code asc"):
+	"""One page of rate masters + total_count (filtered, for the pager) and global
+	per-category counts with a total (for the KPI cards)."""
+	filters = {}
+	if category:
+		filters["category"] = category
+	or_filters = None
+	if search:
+		or_filters = [
+			["rate_code", "like", f"%{search}%"],
+			["rate_name", "like", f"%{search}%"],
+		]
+
+	rows = frappe.get_list(
+		"Construction Rate Master",
+		filters=filters,
+		or_filters=or_filters,
+		fields=[
+			"name", "rate_code", "rate_name", "category", "uom",
+			"current_rate", "previous_rate", "effective_date", "modified_by",
+		],
+		order_by=order_by,
+		start=cint(start),
+		page_length=cint(page_length),
+	)
+	total_count = frappe.get_list(
+		"Construction Rate Master",
+		filters=filters,
+		or_filters=or_filters,
+		fields=[{"COUNT": "name", "as": "count"}],
+	)[0].count
+
+	# Global per-category counts (whole catalog) for the KPI cards.
+	cat_rows = frappe.get_list(
+		"Construction Rate Master",
+		fields=["category", {"COUNT": "name", "as": "count"}],
+		group_by="category",
+	)
+	return {
+		"rows": rows,
+		"total_count": total_count,
+		"total": sum(r.count for r in cat_rows),
+		"category_counts": {r.category: r.count for r in cat_rows},
+	}
 
 
 @frappe.whitelist()
