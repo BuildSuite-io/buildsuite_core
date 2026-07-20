@@ -6,9 +6,9 @@ from frappe.utils import cint, flt
 
 
 @frappe.whitelist()
-def list_rate_masters(start=0, page_length=10, search=None, category=None, order_by="rate_code asc"):
-	"""One page of rate masters + total_count (filtered, for the pager) and global
-	per-category counts with a total (for the KPI cards)."""
+def list_rate_masters(start=0, page_length=10, search=None, category=None, with_counts=False):
+	"""One page of rate masters + total_count (filtered, for the pager). When
+	with_counts is set, also the global total and per-category counts (KPI cards)."""
 	filters = {}
 	if category:
 		filters["category"] = category
@@ -27,7 +27,7 @@ def list_rate_masters(start=0, page_length=10, search=None, category=None, order
 			"name", "rate_code", "rate_name", "category", "uom",
 			"current_rate", "previous_rate", "effective_date", "modified_by",
 		],
-		order_by=order_by,
+		order_by="rate_code asc",
 		start=cint(start),
 		page_length=cint(page_length),
 	)
@@ -38,18 +38,20 @@ def list_rate_masters(start=0, page_length=10, search=None, category=None, order
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0].count
 
-	# Global per-category counts (whole catalog) for the KPI cards.
-	cat_rows = frappe.get_list(
-		"Construction Rate Master",
-		fields=["category", {"COUNT": "name", "as": "count"}],
-		group_by="category",
-	)
-	return {
-		"rows": rows,
-		"total_count": total_count,
-		"total": sum(r.count for r in cat_rows),
-		"category_counts": {r.category: r.count for r in cat_rows},
-	}
+	result = {"rows": rows, "total_count": total_count}
+
+	# Global counts (whole catalog) change only on add/edit/delete, not on paging or
+	# search — so the client asks for them once on load + after mutations, not per page.
+	if cint(with_counts):
+		cat_rows = frappe.get_list(
+			"Construction Rate Master",
+			fields=["category", {"COUNT": "name", "as": "count"}],
+			group_by="category",
+		)
+		result["total"] = sum(r.count for r in cat_rows)
+		result["category_counts"] = {r.category: r.count for r in cat_rows}
+
+	return result
 
 
 @frappe.whitelist()

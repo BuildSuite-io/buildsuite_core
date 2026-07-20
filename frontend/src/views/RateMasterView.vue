@@ -57,7 +57,11 @@ function mapRow(r) {
 	};
 }
 
-async function reload() {
+// reqId guards against out-of-order responses: only the latest request wins.
+// Global counts are fetched only when withCounts is set (load + after mutations).
+let reqId = 0;
+async function reload({ withCounts = false } = {}) {
+	const my = ++reqId;
 	loading.value = true;
 	try {
 		const res = await listRateMasters({
@@ -65,15 +69,19 @@ async function reload() {
 			page_length: pageSize.value,
 			search: search.value.trim() || undefined,
 			category: categoryFilter.value || undefined,
+			with_counts: withCounts ? 1 : undefined,
 		});
+		if (my !== reqId) return;
 		rows.value = (res.rows || []).map(mapRow);
 		totalCount.value = res.total_count || 0;
-		totalRates.value = res.total || 0;
-		categoryCounts.value = res.category_counts || {};
+		if (withCounts) {
+			totalRates.value = res.total || 0;
+			categoryCounts.value = res.category_counts || {};
+		}
 	} catch (err) {
-		showToast(err.message || "Could not load rates.", "error");
+		if (my === reqId) showToast(err.message || "Could not load rates.", "error");
 	} finally {
-		loading.value = false;
+		if (my === reqId) loading.value = false;
 	}
 }
 
@@ -90,7 +98,7 @@ watch(categoryFilter, () => {
 	page.value = 1;
 	reload();
 });
-onMounted(reload);
+onMounted(() => reload({ withCounts: true }));
 
 const editing = ref(null);
 const saving = ref(false);
@@ -200,7 +208,7 @@ async function save() {
 			if (rateRes.value) rateRes.value.reload();
 		}
 		editing.value = null;
-		await reload();
+		await reload({ withCounts: true });
 	} catch (err) {
 		formError.value = parseFrappeError(err).summary || "Could not save the rate.";
 	} finally {
@@ -285,7 +293,7 @@ async function removeRate() {
 		await adapter.remove("Construction Rate Master", target.id);
 		showToast("Rate deleted");
 		closeDrawer();
-		await reload();
+		await reload({ withCounts: true });
 	} catch (err) {
 		showToast(parseFrappeError(err).summary || "Could not delete the rate.", "error");
 	}
@@ -324,8 +332,8 @@ async function removeRate() {
 			:current-page="page"
 			:page-size="pageSize"
 			@row-click="onRowClick"
-			@page-change="(p) => { page = p; reload(); }"
-			@page-size-change="(s) => { pageSize = s; page = 1; }"
+			@page-change="(p) => { if (p !== page) { page = p; reload(); } }"
+			@page-size-change="(s) => { pageSize = s; page = 1; reload(); }"
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
