@@ -1,6 +1,16 @@
 def get_property_setters():
 	return [
 		{
+			# Subcontractors are modelled as Suppliers tagged with this type. Extend the
+			# native supplier_type options so "Subcontractor" is selectable.
+			"doctype_or_field": "DocField",
+			"doctype": "Supplier",
+			"fieldname": "supplier_type",
+			"property": "options",
+			"value": "Company\nIndividual\nPartnership\nSubcontractor",
+			"property_type": "Text",
+		},
+		{
 			"name": "Project-status-options",
 			"doctype_or_field": "DocField",
 			"doctype": "Project",

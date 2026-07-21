@@ -40,9 +40,17 @@ class SubcontractorBill(Document):
 		if self.work_order and not self.is_direct:
 			self._require_open_work_order()
 		self._assign_ra_no()
+		self._default_expense_account()
 		self._resolve_tds_rate()
 		self._compute_totals()
 		self._sync_status()
+
+	def _default_expense_account(self):
+		if self.expense_account or not self.company:
+			return
+		from buildsuite_core.utils.subcontract_billing import settings_expense_account_for
+
+		self.expense_account = settings_expense_account_for(self.company)
 
 	def before_submit(self):
 		if not self.lines:
@@ -85,7 +93,7 @@ class SubcontractorBill(Document):
 		else:
 			if self.subcontractor and not self.subcontractor_name:
 				self.subcontractor_name = frappe.db.get_value(
-					"Subcontractor", self.subcontractor, "subcontractor_name"
+					"Supplier", self.subcontractor, "supplier_name"
 				)
 			if self.project and not self.company:
 				self.company = frappe.db.get_value("Project", self.project, "company")

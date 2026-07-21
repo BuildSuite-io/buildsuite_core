@@ -575,7 +575,9 @@ def setup_sco_permissions():
 
 
 def setup_subcontract_permissions():
-	_apply_role_perms("Subcontractor", SUBCONTRACT_ROLE_PERMS)
+	# Subcontractors are native Suppliers (supplier_type="Subcontractor") — grant the
+	# BuildSuite roles CRUD on Supplier so the Vue "Subcontractor" screens work.
+	_apply_role_perms("Supplier", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_ROLE_PERMS)
 	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)

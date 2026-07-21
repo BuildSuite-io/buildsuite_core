@@ -51,7 +51,7 @@ _WO_PRINT_HTML = """
 	.footer { text-align:center; font-size:9px; color:#94a3b8; border-top:1px solid #f1f5f9; padding-top:8px; margin-top:16px; }
 </style>
 
-{% set sub = frappe.db.get_value("Subcontractor", doc.subcontractor, ["trade", "contact_person", "phone", "email", "tax_id", "secondary_tax_id"], as_dict=True) if doc.subcontractor else None %}
+{% set sub = frappe.db.get_value("Supplier", doc.subcontractor, ["custom_trade", "tax_id"], as_dict=True) if doc.subcontractor else None %}
 {% set proj = frappe.db.get_value("Project", doc.project, ["project_name", "custom_project_id", "customer", "location"], as_dict=True) if doc.project else None %}
 {% set currency = frappe.db.get_value("Company", doc.company, "default_currency") if doc.company else None %}
 {% set retention = (doc.total_value or 0) * (doc.retention_percent or 0) / 100.0 %}
@@ -77,10 +77,8 @@ _WO_PRINT_HTML = """
 			<div class="label">To &mdash; Subcontractor</div>
 			<div style="font-weight:600; margin-top:4px;">{{ doc.subcontractor_name or doc.subcontractor }}</div>
 			{% if sub %}
-				{% if sub.trade %}<div class="muted">{{ sub.trade }}</div>{% endif %}
-				{% if sub.contact_person %}<div style="margin-top:4px;">Attn: {{ sub.contact_person }}</div>{% endif %}
-				{% if sub.phone or sub.email %}<div>{{ sub.phone or "" }}{% if sub.phone and sub.email %} &middot; {% endif %}{{ sub.email or "" }}</div>{% endif %}
-				{% if sub.tax_id or sub.secondary_tax_id %}<div class="muted">{% if sub.tax_id %}Tax ID: {{ sub.tax_id }}{% endif %}{% if sub.tax_id and sub.secondary_tax_id %} &middot; {% endif %}{% if sub.secondary_tax_id %}Sec. Tax ID: {{ sub.secondary_tax_id }}{% endif %}</div>{% endif %}
+				{% if sub.custom_trade %}<div class="muted">{{ sub.custom_trade }}</div>{% endif %}
+				{% if sub.tax_id %}<div class="muted">Tax ID: {{ sub.tax_id }}</div>{% endif %}
 			{% endif %}
 		</div>
 	</div>
