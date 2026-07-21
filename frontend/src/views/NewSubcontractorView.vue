@@ -30,8 +30,8 @@ const form = reactive({
 	contact_person: "",
 	phone: "",
 	email: "",
-	gstin: "",
-	pan: "",
+	tax_id: "",
+	secondary_tax_id: "",
 });
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	subcontractor_name: "subcontractor_name",
@@ -63,8 +63,8 @@ async function onSave() {
 			contact_person: form.contact_person,
 			phone: form.phone,
 			email: form.email,
-			gstin: form.gstin,
-			pan: form.pan,
+			tax_id: form.tax_id,
+			secondary_tax_id: form.secondary_tax_id,
 		});
 		router.push(`/subcontractors/${res.name}`);
 	} catch (err) {
@@ -123,8 +123,12 @@ const breadcrumbs = [
 			</DeskSection>
 
 			<DeskSection title="Statutory & accounting" :cols="3">
-				<DeskField label="GSTIN"><DeskInput v-model="form.gstin" /></DeskField>
-				<DeskField label="PAN"><DeskInput v-model="form.pan" /></DeskField>
+				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
+					><DeskInput v-model="form.tax_id"
+				/></DeskField>
+				<DeskField label="Secondary Tax ID" hint="e.g. PAN (India)"
+					><DeskInput v-model="form.secondary_tax_id"
+				/></DeskField>
 				<DeskField
 					label="Supplier"
 					hint="Optional — link to an ERPNext Supplier for accounting."

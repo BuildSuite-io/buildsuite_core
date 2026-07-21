@@ -338,6 +338,21 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	"Purchase Invoice": [
+		{
+			# Back-link to the Subcontractor Bill that generated this PI (idempotency +
+			# read-through payment status). Mirrors how India Compliance adds its own
+			# custom fields to Purchase Invoice.
+			"fieldname": "subcontractor_bill",
+			"fieldtype": "Link",
+			"label": "Subcontractor Bill",
+			"options": "Subcontractor Bill",
+			"insert_after": "bill_no",
+			"read_only": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order Item": [
 		{
 			"fieldname": "custom_rate_master",

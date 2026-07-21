@@ -57,8 +57,8 @@ function snapshot() {
 		contact_person: d.contact_person || "",
 		phone: d.phone || "",
 		email: d.email || "",
-		gstin: d.gstin || "",
-		pan: d.pan || "",
+		tax_id: d.tax_id || "",
+		secondary_tax_id: d.secondary_tax_id || "",
 	};
 }
 watch(
@@ -96,8 +96,8 @@ async function saveEdit() {
 			contact_person: form.value.contact_person,
 			phone: form.value.phone,
 			email: form.value.email,
-			gstin: form.value.gstin,
-			pan: form.value.pan,
+			tax_id: form.value.tax_id,
+			secondary_tax_id: form.value.secondary_tax_id,
 		});
 		await resource?.reload?.();
 		editing.value = false;
@@ -207,14 +207,14 @@ const breadcrumbs = computed(() => [
 				>
 			</DeskSection>
 			<DeskSection title="Statutory & accounting" :cols="3">
-				<DeskField label="GSTIN"
+				<DeskField label="Tax ID"
 					><div class="text-sm font-mono text-ink-700">
-						{{ doc.gstin || "—" }}
+						{{ doc.tax_id || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="PAN"
+				<DeskField label="Secondary Tax ID"
 					><div class="text-sm font-mono text-ink-700">
-						{{ doc.pan || "—" }}
+						{{ doc.secondary_tax_id || "—" }}
 					</div></DeskField
 				>
 				<DeskField label="Supplier"
@@ -315,8 +315,12 @@ const breadcrumbs = computed(() => [
 				/></DeskField>
 			</DeskSection>
 			<DeskSection title="Statutory & accounting" :cols="3">
-				<DeskField label="GSTIN"><DeskInput v-model="form.gstin" /></DeskField>
-				<DeskField label="PAN"><DeskInput v-model="form.pan" /></DeskField>
+				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
+					><DeskInput v-model="form.tax_id"
+				/></DeskField>
+				<DeskField label="Secondary Tax ID" hint="e.g. PAN (India)"
+					><DeskInput v-model="form.secondary_tax_id"
+				/></DeskField>
 				<DeskField
 					label="Supplier"
 					hint="Optional — link to an ERPNext Supplier for accounting."

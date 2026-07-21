@@ -24,8 +24,7 @@
    "fieldname": "scope",
    "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Scope",
-   "read_only": 1
+   "label": "Scope"
   },
   {
    "fieldname": "work_order_line",
@@ -98,8 +97,7 @@
    "fieldname": "this_period_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "This Period Amount",
-   "read_only": 1
+   "label": "This Period Amount"
   }
  ],
  "index_web_pages_for_search": 1,

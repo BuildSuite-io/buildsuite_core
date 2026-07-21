@@ -17,9 +17,9 @@
   "column_break_contact",
   "email",
   "statutory_section",
-  "gstin",
+  "tax_id",
   "column_break_stat",
-  "pan"
+  "secondary_tax_id"
  ],
  "fields": [
   {
@@ -96,18 +96,20 @@
    "label": "Statutory"
   },
   {
-   "fieldname": "gstin",
+   "description": "Primary tax identifier — e.g. GSTIN (India), VAT No, TIN. Country-neutral.",
+   "fieldname": "tax_id",
    "fieldtype": "Data",
-   "label": "GSTIN"
+   "label": "Tax ID"
   },
   {
    "fieldname": "column_break_stat",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "pan",
+   "description": "Secondary tax identifier — e.g. PAN (India). Optional.",
+   "fieldname": "secondary_tax_id",
    "fieldtype": "Data",
-   "label": "PAN"
+   "label": "Secondary Tax ID"
   }
  ],
  "index_web_pages_for_search": 1,

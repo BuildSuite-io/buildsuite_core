@@ -6,22 +6,44 @@
  "engine": "InnoDB",
  "field_order": [
   "work_order",
+  "is_direct",
   "ra_no",
   "subcontractor",
   "subcontractor_name",
   "project",
   "column_break_hdr",
   "date",
+  "bill_type",
   "retention_percent",
   "status",
   "company",
   "sov_section",
   "lines",
+  "taxes_section",
+  "taxes_and_charges",
+  "tax_category",
+  "taxes",
+  "adjustments_section",
+  "apply_tds",
+  "tax_withholding_category",
+  "tds_rate",
+  "column_break_adj",
+  "additional_discount_on",
+  "additional_discount_percentage",
+  "discount_amount",
+  "advance_recovery",
   "totals_section",
   "gross",
-  "retention_amount",
+  "taxable_value",
+  "total_taxes",
+  "grand_total",
   "column_break_totals",
+  "tds_amount",
+  "retention_amount",
+  "invoice_value",
   "net_payable",
+  "pi_section",
+  "purchase_invoice",
   "amended_from"
  ],
  "fields": [
@@ -32,7 +54,14 @@
    "in_standard_filter": 1,
    "label": "Work Order",
    "options": "Subcontractor Work Order",
-   "reqd": 1
+   "depends_on": "eval:!doc.is_direct"
+  },
+  {
+   "default": "0",
+   "description": "A direct bill has no Work Order / Measurement Book — lines are free-text charges.",
+   "fieldname": "is_direct",
+   "fieldtype": "Check",
+   "label": "Direct Bill"
   },
   {
    "fieldname": "ra_no",
@@ -42,15 +71,13 @@
    "read_only": 1
   },
   {
-   "fetch_from": "work_order.subcontractor",
    "fieldname": "subcontractor",
    "fieldtype": "Link",
    "label": "Subcontractor",
    "options": "Subcontractor",
-   "read_only": 1
+   "reqd": 1
   },
   {
-   "fetch_from": "work_order.subcontractor_name",
    "fieldname": "subcontractor_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -58,13 +85,12 @@
    "read_only": 1
   },
   {
-   "fetch_from": "work_order.project",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
-   "read_only": 1
+   "reqd": 1
   },
   {
    "fieldname": "column_break_hdr",
@@ -79,11 +105,17 @@
    "reqd": 1
   },
   {
-   "fetch_from": "work_order.retention_percent",
+   "default": "Normal",
+   "description": "A Final bill releases the retention held on earlier bills back into the payable.",
+   "fieldname": "bill_type",
+   "fieldtype": "Select",
+   "label": "Bill Type",
+   "options": "Normal\nFinal"
+  },
+  {
    "fieldname": "retention_percent",
    "fieldtype": "Percent",
-   "label": "Retention %",
-   "read_only": 1
+   "label": "Retention %"
   },
   {
    "default": "Draft",
@@ -96,7 +128,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "work_order.company",
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -109,15 +140,92 @@
    "label": "This Period"
   },
   {
-   "description": "Use 'Fetch from Work Order' to derive this period's quantities from certified Measurement Books.",
+   "description": "For a Work Order bill, use 'Fetch from Work Order' to derive this period's quantities from certified Measurement Books. Direct bills carry free-text charge lines.",
    "fieldname": "lines",
    "fieldtype": "Table",
    "label": "Lines",
    "options": "Subcontractor Bill Line"
   },
   {
+   "fieldname": "taxes_section",
+   "fieldtype": "Section Break",
+   "label": "Taxes & Charges"
+  },
+  {
+   "description": "Country-agnostic: pick any Purchase Taxes and Charges Template (GST, VAT, none). Its rows populate the tax table below; the generated Purchase Invoice posts them.",
+   "fieldname": "taxes_and_charges",
+   "fieldtype": "Link",
+   "label": "Tax Template",
+   "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "tax_category",
+   "fieldtype": "Link",
+   "label": "Tax Category",
+   "options": "Tax Category"
+  },
+  {
+   "fieldname": "taxes",
+   "fieldtype": "Table",
+   "label": "Taxes",
+   "options": "Subcontractor Bill Tax"
+  },
+  {
+   "fieldname": "adjustments_section",
+   "fieldtype": "Section Break",
+   "label": "Withholding, Discount & Recovery"
+  },
+  {
+   "default": "0",
+   "fieldname": "apply_tds",
+   "fieldtype": "Check",
+   "label": "Apply TDS (Withholding)"
+  },
+  {
+   "depends_on": "eval:doc.apply_tds",
+   "fieldname": "tax_withholding_category",
+   "fieldtype": "Link",
+   "label": "Withholding Category",
+   "options": "Tax Withholding Category"
+  },
+  {
+   "depends_on": "eval:doc.apply_tds",
+   "fieldname": "tds_rate",
+   "fieldtype": "Percent",
+   "label": "TDS Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_adj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Net Total",
+   "fieldname": "additional_discount_on",
+   "fieldtype": "Select",
+   "label": "Apply Discount On",
+   "options": "Net Total\nGrand Total"
+  },
+  {
+   "fieldname": "additional_discount_percentage",
+   "fieldtype": "Percent",
+   "label": "Additional Discount (%)"
+  },
+  {
+   "description": "Flat discount amount (overrides the % when set).",
+   "fieldname": "discount_amount",
+   "fieldtype": "Currency",
+   "label": "Discount Amount"
+  },
+  {
+   "fieldname": "advance_recovery",
+   "fieldtype": "Currency",
+   "label": "Advance Recovery"
+  },
+  {
    "fieldname": "totals_section",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Totals"
   },
   {
    "fieldname": "gross",
@@ -127,9 +235,21 @@
    "read_only": 1
   },
   {
-   "fieldname": "retention_amount",
+   "fieldname": "taxable_value",
    "fieldtype": "Currency",
-   "label": "Retention",
+   "label": "Taxable Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_taxes",
+   "fieldtype": "Currency",
+   "label": "Total Taxes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
    "read_only": 1
   },
   {
@@ -137,10 +257,42 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "tds_amount",
+   "fieldtype": "Currency",
+   "label": "TDS Withheld",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retention_amount",
+   "fieldtype": "Currency",
+   "label": "Retention",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_value",
+   "fieldtype": "Currency",
+   "label": "Invoice Value",
+   "read_only": 1
+  },
+  {
    "fieldname": "net_payable",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Net Payable",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pi_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Invoice"
+  },
+  {
+   "description": "The Purchase Invoice generated when this bill is submitted.",
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "no_copy": 1,
+   "options": "Purchase Invoice",
    "read_only": 1
   },
   {
@@ -157,7 +309,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-14 00:00:00.000000",
+ "modified": "2026-07-20 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Subcontractor Bill",

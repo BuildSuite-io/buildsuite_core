@@ -36,24 +36,59 @@ def previously_billed_by_line(work_order, exclude_bill=None):
 
 class SubcontractorBill(Document):
 	def validate(self):
-		self._require_open_work_order()
+		self._sync_from_work_order()
+		if self.work_order and not self.is_direct:
+			self._require_open_work_order()
 		self._assign_ra_no()
+		self._resolve_tds_rate()
 		self._compute_totals()
 		self._sync_status()
 
 	def before_submit(self):
 		if not self.lines:
-			frappe.throw(_("Add at least one line — use 'Fetch from Work Order' to derive this period's quantities."))
+			frappe.throw(_("Add at least one line before submitting."))
 		if flt(self.gross) <= 0:
-			frappe.throw(_("Nothing to bill: this period's quantity is zero. Certify a Measurement Book first."))
+			frappe.throw(_("Nothing to bill: this period's value is zero."))
+		if not self.subcontractor:
+			frappe.throw(_("A subcontractor is required."))
 
 	def on_submit(self):
+		from buildsuite_core.utils.subcontract_billing import generate_purchase_invoice
+
+		self.purchase_invoice = generate_purchase_invoice(self)
+		self.db_set("purchase_invoice", self.purchase_invoice)
 		self._sync_status()
 
 	def on_cancel(self):
+		self._cancel_purchase_invoice()
 		self._sync_status()
 
 	# --- helpers ----------------------------------------------------------
+
+	def _sync_from_work_order(self):
+		"""WO bills inherit party/project/company/retention from the Work Order. Direct bills
+		carry their own (subcontractor + project entered on the form)."""
+		if self.work_order and not self.is_direct:
+			wo = frappe.db.get_value(
+				WORK_ORDER,
+				self.work_order,
+				["subcontractor", "subcontractor_name", "project", "company", "retention_percent"],
+				as_dict=True,
+			)
+			if wo:
+				self.subcontractor = wo.subcontractor
+				self.subcontractor_name = wo.subcontractor_name
+				self.project = wo.project
+				self.company = wo.company
+				if self.retention_percent in (None, ""):
+					self.retention_percent = wo.retention_percent
+		else:
+			if self.subcontractor and not self.subcontractor_name:
+				self.subcontractor_name = frappe.db.get_value(
+					"Subcontractor", self.subcontractor, "subcontractor_name"
+				)
+			if self.project and not self.company:
+				self.company = frappe.db.get_value("Project", self.project, "company")
 
 	def _require_open_work_order(self):
 		status = frappe.db.get_value(WORK_ORDER, self.work_order, "status")
@@ -67,25 +102,100 @@ class SubcontractorBill(Document):
 	def _assign_ra_no(self):
 		if self.ra_no:
 			return
+		# WO bills sequence per work order; direct bills sequence per subcontractor.
+		if self.work_order and not self.is_direct:
+			scope = {"work_order": self.work_order}
+		else:
+			scope = {"subcontractor": self.subcontractor, "is_direct": 1}
 		existing = frappe.get_all(
 			"Subcontractor Bill",
-			filters={"work_order": self.work_order, "docstatus": ["<", 2], "name": ["!=", self.name or ""]},
+			filters={**scope, "docstatus": ["<", 2], "name": ["!=", self.name or ""]},
 			pluck="ra_no",
 		)
 		self.ra_no = max([r for r in existing if r] or [0]) + 1
 
+	def _resolve_tds_rate(self):
+		"""Best-effort withholding rate for the PREVIEW waterfall, read from the chosen
+		Tax Withholding Category. The authoritative TDS is computed by ERPNext on the PI."""
+		self.tds_rate = 0
+		if not (self.apply_tds and self.tax_withholding_category):
+			return
+		rows = frappe.get_all(
+			"Tax Withholding Rate",
+			filters={"parent": self.tax_withholding_category},
+			fields=["tax_withholding_rate", "from_date", "to_date"],
+		)
+		rate = 0
+		for r in rows:
+			if r.from_date and self.date and str(r.from_date) <= str(self.date) and (
+				not r.to_date or str(self.date) <= str(r.to_date)
+			):
+				rate = flt(r.tax_withholding_rate)
+				break
+		if not rate and rows:
+			rate = flt(rows[0].tax_withholding_rate)
+		self.tds_rate = rate
+
 	def _compute_totals(self):
+		"""The prototype waterfall: gross → (net discount) → taxable → +taxes → grand total
+		→ (grand discount) → invoice value → −tds −retention −advance → net payable."""
 		gross = 0.0
 		for row in self.lines:
-			row.this_period_amount = flt(row.this_period_qty) * flt(row.rate)
+			# WO lines carry qty×rate; direct lines carry a typed amount only.
+			if flt(row.this_period_qty) and flt(row.rate):
+				row.this_period_amount = flt(row.this_period_qty) * flt(row.rate)
 			gross += flt(row.this_period_amount)
 		self.gross = gross
-		self.retention_amount = flt(gross) * flt(self.retention_percent) / 100.0
-		self.net_payable = flt(gross) - flt(self.retention_amount)
+
+		net_discount = grand_discount = 0.0
+		disc_pct = flt(self.additional_discount_percentage)
+		disc_amt = flt(self.discount_amount)
+		if self.additional_discount_on == "Net Total":
+			net_discount = disc_amt or (gross * disc_pct / 100.0)
+		elif self.additional_discount_on == "Grand Total":
+			grand_discount = disc_amt  # % on grand total resolved below once grand known
+
+		self.taxable_value = max(0.0, gross - net_discount)
+
+		total_taxes = 0.0
+		for t in self.taxes:
+			t.tax_amount = flt(self.taxable_value) * flt(t.rate) / 100.0
+			total_taxes += flt(t.tax_amount)
+		self.total_taxes = total_taxes
+		self.grand_total = flt(self.taxable_value) + total_taxes
+
+		if self.additional_discount_on == "Grand Total" and not grand_discount:
+			grand_discount = flt(self.grand_total) * disc_pct / 100.0
+		self.invoice_value = max(0.0, flt(self.grand_total) - grand_discount)
+
+		self.tds_amount = flt(self.taxable_value) * flt(self.tds_rate) / 100.0 if self.apply_tds else 0.0
+		self.retention_amount = flt(self.taxable_value) * flt(self.retention_percent) / 100.0
+		self.net_payable = max(
+			0.0,
+			flt(self.invoice_value)
+			- flt(self.tds_amount)
+			- flt(self.retention_amount)
+			- flt(self.advance_recovery),
+		)
 
 	def _sync_status(self):
-		# Payment ("Paid") arrives with the accounting pass; for now status mirrors docstatus.
 		self.status = {0: "Draft", 1: "Submitted", 2: "Cancelled"}.get(self.docstatus, "Draft")
+
+	def _cancel_purchase_invoice(self):
+		if not self.purchase_invoice:
+			return
+		pi = frappe.db.exists("Purchase Invoice", self.purchase_invoice)
+		if not pi:
+			return
+		doc = frappe.get_doc("Purchase Invoice", self.purchase_invoice)
+		if doc.docstatus == 1:
+			paid = flt(doc.grand_total) - flt(doc.outstanding_amount)
+			if paid > 0:
+				frappe.throw(
+					_("This bill's Purchase Invoice has payments against it. Cancel the Payment Entries first.")
+				)
+			doc.flags.ignore_permissions = True
+			doc.cancel()
 
 	@frappe.whitelist()
 	def fetch_lines(self):
