@@ -44,6 +44,7 @@ def _serialize(doc):
 		"additional_discount_percentage": doc.additional_discount_percentage,
 		"discount_amount": doc.discount_amount,
 		"advance_recovery": doc.advance_recovery,
+		"expense_account": doc.expense_account,
 		# Totals waterfall
 		"gross": doc.gross,
 		"taxable_value": doc.taxable_value,
@@ -268,6 +269,8 @@ def save_bill(payload):
 	doc.additional_discount_percentage = flt(data.get("additional_discount_percentage"))
 	doc.discount_amount = flt(data.get("discount_amount"))
 	doc.advance_recovery = flt(data.get("advance_recovery"))
+	if "expense_account" in data:
+		doc.expense_account = data.get("expense_account")
 
 	# Taxes: explicit rows if given, else expand the chosen template.
 	rows = data.get("taxes")

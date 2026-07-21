@@ -22,14 +22,15 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		self.project = self._make_project(company=self.company).name
 
 	# --- builders --------------------------------------------------------
-	def _subcontractor(self, supplier=None):
+	def _subcontractor(self):
+		"""A subcontractor is a native Supplier tagged supplier_type='Subcontractor'."""
 		return frappe.get_doc(
 			{
-				"doctype": "Subcontractor",
-				"subcontractor_name": f"Sub {self._n}",
-				"trade": frappe.db.get_value("Construction Trade", {}, "name"),
-				"company": self.company,
-				"supplier": supplier,
+				"doctype": "Supplier",
+				"supplier_name": f"Sub {self._n}",
+				"supplier_type": "Subcontractor",
+				"supplier_group": "Subcontractor",
+				"custom_trade": frappe.db.get_value("Construction Trade", {}, "name"),
 			}
 		).insert(ignore_permissions=True)
 
@@ -89,26 +90,34 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		self.assertEqual(flt(bill.retention_amount), 10000)
 		self.assertEqual(flt(bill.net_payable), 90000)
 
-	def test_submit_generates_pi_and_autocreates_supplier(self):
-		sub = self._subcontractor()  # no supplier linked
+	def test_submit_generates_pi_against_the_supplier(self):
+		sub = self._subcontractor()  # the subcontractor IS a Supplier
 		bill = self._direct_bill(sub, amount=100000, retention=10)
 		bill.submit()
 		bill.reload()
 
 		self.assertTrue(bill.purchase_invoice)
 		self.assertEqual(bill.status, "Submitted")
-		# Supplier was auto-created and linked back.
-		supplier = frappe.db.get_value("Subcontractor", sub.name, "supplier")
-		self.assertTrue(supplier)
 
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
-		self.assertEqual(pi.supplier, supplier)
+		# The PI posts directly against the subcontractor Supplier — no shadow supplier.
+		self.assertEqual(pi.supplier, sub.name)
 		self.assertEqual(pi.subcontractor_bill, bill.name)
 		# Expense recognised at FULL value (100k); retention only reduces the payable.
 		self.assertEqual(flt(pi.total), 100000)
 		deduct = [t for t in pi.taxes if t.add_deduct_tax == "Deduct"]
 		self.assertTrue(any("Retention" in (t.description or "") for t in deduct))
 		self.assertAlmostEqual(flt(pi.grand_total), 90000, places=2)
+
+	def test_expense_account_flows_to_pi(self):
+		from buildsuite_core.utils.subcontract_billing import resolve_accounts
+
+		acct = resolve_accounts(self.company)["expense"]
+		bill = self._direct_bill(self._subcontractor(), amount=50000, retention=0, expense_account=acct)
+		bill.submit()
+		bill.reload()
+		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
+		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
 	def test_pi_generation_is_idempotent(self):
 		bill = self._direct_bill(self._subcontractor())

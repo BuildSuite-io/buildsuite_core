@@ -353,6 +353,19 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	"Supplier": [
+		{
+			# Subcontractors are Suppliers of type "Subcontractor" (set via property setter).
+			# Their construction trade lives here; shown only for that type.
+			"fieldname": "custom_trade",
+			"fieldtype": "Link",
+			"label": "Trade",
+			"options": "Construction Trade",
+			"insert_after": "supplier_type",
+			"depends_on": "eval:doc.supplier_type=='Subcontractor'",
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order Item": [
 		{
 			"fieldname": "custom_rate_master",

@@ -28,11 +28,12 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Subcontractor",
-   "options": "Subcontractor",
+   "link_filters": "[[\"Supplier\",\"supplier_type\",\"=\",\"Subcontractor\"]]",
+   "options": "Supplier",
    "reqd": 1
   },
   {
-   "fetch_from": "subcontractor.subcontractor_name",
+   "fetch_from": "subcontractor.supplier_name",
    "fieldname": "subcontractor_name",
    "fieldtype": "Data",
    "label": "Subcontractor Name",

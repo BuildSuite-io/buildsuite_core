@@ -75,6 +75,27 @@ def get_work_order(name: str):
 	return out
 
 
+def _subcontractor_detail(supplier):
+	"""Party block for the WO print view. A subcontractor is a Supplier (type=Subcontractor);
+	trade + tax id live on the Supplier, contact person/phone/email on its native Contact."""
+	if not supplier or not frappe.db.exists("Supplier", supplier):
+		return None
+	sup = frappe.db.get_value("Supplier", supplier, ["custom_trade", "tax_id"], as_dict=True) or {}
+	detail = {"trade": sup.get("custom_trade"), "tax_id": sup.get("tax_id")}
+	contact = frappe.get_all(
+		"Contact",
+		filters=[["Dynamic Link", "link_doctype", "=", "Supplier"], ["Dynamic Link", "link_name", "=", supplier]],
+		fields=["name", "first_name", "email_id", "mobile_no", "phone"],
+		limit=1,
+	)
+	if contact:
+		c = contact[0]
+		detail["contact_person"] = c.first_name
+		detail["email"] = c.email_id
+		detail["phone"] = c.mobile_no or c.phone
+	return detail
+
+
 @frappe.whitelist()
 def get_wo_print_data(name: str):
 	"""A Work Order enriched with the party/project detail the in-app print view needs
@@ -83,16 +104,7 @@ def get_wo_print_data(name: str):
 	doc = frappe.get_doc(WORK_ORDER, name)
 	doc.check_permission("read")
 	out = _serialize(doc)
-	out["subcontractor_detail"] = (
-		frappe.db.get_value(
-			"Subcontractor",
-			doc.subcontractor,
-			["trade", "contact_person", "phone", "email", "tax_id", "secondary_tax_id"],
-			as_dict=True,
-		)
-		if doc.subcontractor
-		else None
-	)
+	out["subcontractor_detail"] = _subcontractor_detail(doc.subcontractor)
 	out["project_detail"] = (
 		frappe.db.get_value(
 			"Project",

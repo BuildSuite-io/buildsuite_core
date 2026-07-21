@@ -32,6 +32,7 @@
   "additional_discount_percentage",
   "discount_amount",
   "advance_recovery",
+  "expense_account",
   "totals_section",
   "gross",
   "taxable_value",
@@ -74,7 +75,8 @@
    "fieldname": "subcontractor",
    "fieldtype": "Link",
    "label": "Subcontractor",
-   "options": "Subcontractor",
+   "link_filters": "[[\"Supplier\",\"supplier_type\",\"=\",\"Subcontractor\"]]",
+   "options": "Supplier",
    "reqd": 1
   },
   {
@@ -221,6 +223,13 @@
    "fieldname": "advance_recovery",
    "fieldtype": "Currency",
    "label": "Advance Recovery"
+  },
+  {
+   "description": "Expense account the generated Purchase Invoice posts the cost to. Defaults from BuildSuite Core Settings.",
+   "fieldname": "expense_account",
+   "fieldtype": "Link",
+   "label": "Expense Account",
+   "options": "Account"
   },
   {
    "fieldname": "totals_section",

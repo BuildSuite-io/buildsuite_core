@@ -58,9 +58,20 @@ def seed_delivery_types():
 	return created
 
 
+def seed_subcontractor_supplier_group():
+	"""A 'Subcontractor' Supplier Group so subcontractor Suppliers group cleanly. Idempotent."""
+	if frappe.db.exists("Supplier Group", "Subcontractor"):
+		return
+	parent = frappe.db.get_value("Supplier Group", {"is_group": 1}, "name") or "All Supplier Groups"
+	frappe.get_doc(
+		{"doctype": "Supplier Group", "supplier_group_name": "Subcontractor", "parent_supplier_group": parent}
+	).insert(ignore_permissions=True)
+
+
 def seed_subcontract_masters():
 	seed_construction_trades()
 	seed_delivery_types()
+	seed_subcontractor_supplier_group()
 
 	# Print assets — default Letter Head + the Subcontractor Work Order Print Format.
 	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (

@@ -22,58 +22,14 @@ ADVANCE_ACCOUNT_NAME = "Supplier Advance"
 
 
 # --------------------------------------------------------------------------- #
-# Supplier resolution (auto-create from Subcontractor)
+# Supplier resolution
 # --------------------------------------------------------------------------- #
 def ensure_supplier(subcontractor):
-	"""Return the ERPNext Supplier linked to a Subcontractor, creating one if absent.
-
-	A Purchase Invoice needs a Supplier; a Subcontractor's `supplier` link is optional, so on
-	first bill submit we create the Supplier from the Subcontractor's details and link it back.
-	The subcontractor's tax ids are carried across when the Supplier custom fields exist
-	(India Compliance adds gstin/pan; core ERPNext has tax_id)."""
-	sub = frappe.get_doc("Subcontractor", subcontractor)
-	if sub.supplier and frappe.db.exists("Supplier", sub.supplier):
-		return sub.supplier
-
-	supplier = frappe.new_doc("Supplier")
-	supplier.supplier_name = sub.subcontractor_name
-	supplier.supplier_group = _default_supplier_group()
-	supplier.supplier_type = "Company"
-	# Carry tax ids across when the target fields exist on Supplier. The Subcontractor's
-	# fields are country-neutral (tax_id / secondary_tax_id); India Compliance's Supplier
-	# custom fields (gstin/pan) receive them when present.
-	primary = _tax_id_of(sub)
-	secondary = getattr(sub, "secondary_tax_id", None)
-	meta = frappe.get_meta("Supplier")
-	if primary and meta.has_field("tax_id"):
-		supplier.tax_id = primary
-	if primary and meta.has_field("gstin"):
-		supplier.gstin = primary
-	if secondary and meta.has_field("pan"):
-		supplier.pan = secondary
-	supplier.flags.ignore_permissions = True
-	supplier.insert()
-
-	sub.db_set("supplier", supplier.name)
-	return supplier.name
-
-
-def _tax_id_of(sub):
-	"""Primary tax id off a Subcontractor, tolerant of the field name (country-neutral
-	tax_id, or legacy gstin on an un-migrated site)."""
-	for f in ("tax_id", "gstin"):
-		if hasattr(sub, f) and getattr(sub, f):
-			return getattr(sub, f)
-	return None
-
-
-def _default_supplier_group():
-	for name in ("Subcontractor", "Services", "All Supplier Groups"):
-		if frappe.db.exists("Supplier Group", name):
-			return name
-	# Fall back to any leaf group.
-	grp = frappe.db.get_value("Supplier Group", {"is_group": 0}, "name")
-	return grp or "All Supplier Groups"
+	"""A subcontractor IS a Supplier (supplier_type = "Subcontractor"), so the bill's
+	`subcontractor` field already holds a Supplier name — just validate + return it."""
+	if not subcontractor or not frappe.db.exists("Supplier", subcontractor):
+		frappe.throw(_("Subcontractor {0} is not a valid Supplier.").format(subcontractor or "—"))
+	return subcontractor
 
 
 # --------------------------------------------------------------------------- #
@@ -154,6 +110,26 @@ def ensure_service_item():
 	return SERVICE_ITEM
 
 
+def resolve_expense_account(bill, fallback):
+	"""The expense account the PI posts the subcontract cost to: the bill's own override,
+	else the BuildSuite Core Settings default, else the per-company 'Subcontractor Charges'.
+	The settings default is only honoured when it belongs to the bill's company."""
+	if bill.get("expense_account"):
+		return bill.expense_account
+	default = frappe.db.get_single_value("BuildSuite Core Settings", "default_subcontractor_expense_account")
+	if default and frappe.db.get_value("Account", default, "company") == bill.company:
+		return default
+	return fallback
+
+
+def settings_expense_account_for(company):
+	"""The default expense account to pre-fill on a new bill, if it matches the company."""
+	default = frappe.db.get_single_value("BuildSuite Core Settings", "default_subcontractor_expense_account")
+	if default and frappe.db.get_value("Account", default, "company") == company:
+		return default
+	return None
+
+
 # --------------------------------------------------------------------------- #
 # Purchase Invoice generation
 # --------------------------------------------------------------------------- #
@@ -181,6 +157,7 @@ def generate_purchase_invoice(bill):
 	supplier = ensure_supplier(bill.subcontractor)
 	item_code = ensure_service_item()
 	accts = resolve_accounts(bill.company)
+	expense_account = resolve_expense_account(bill, accts["expense"])
 
 	pi = frappe.new_doc("Purchase Invoice")
 	pi.company = bill.company
@@ -210,7 +187,7 @@ def generate_purchase_invoice(bill):
 				"rate": rate,
 				"amount": amount,
 				"uom": line.uom or None,
-				"expense_account": accts["expense"],
+				"expense_account": expense_account,
 				"cost_center": accts["cost_center"],
 				"project": bill.project,
 			},

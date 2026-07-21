@@ -313,9 +313,10 @@ const breadcrumbs = computed(() => [
 					<DeskField label="Subcontractor" required :error="errors.subcontractor">
 						<DeskLinkPicker
 							v-model="form.subcontractor"
-							doctype="Subcontractor"
-							label-field="subcontractor_name"
+							doctype="Supplier"
+							label-field="supplier_name"
 							value-field="name"
+							:filters="[['supplier_type', '=', 'Subcontractor']]"
 							placeholder="Pick a subcontractor…"
 						/>
 					</DeskField>

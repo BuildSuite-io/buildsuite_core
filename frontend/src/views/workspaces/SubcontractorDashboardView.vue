@@ -31,9 +31,10 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 	pageLength: 0,
 	cache: "buildsuite-subcontract-wo-dashboard",
 });
-const subsRes = useDocTypeList("Subcontractor", {
-	fields: ["name", "subcontractor_name", "status"],
-	orderBy: "subcontractor_name asc",
+const subsRes = useDocTypeList("Supplier", {
+	fields: ["name", "supplier_name", "disabled"],
+	filters: [["supplier_type", "=", "Subcontractor"]],
+	orderBy: "supplier_name asc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-dashboard",
 });
@@ -57,7 +58,7 @@ const openWosValue = computed(() =>
 const totalWoValue = computed(() =>
 	wos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0),
 );
-const activeSubs = computed(() => subs.value.filter((s) => s.status === "Active").length);
+const activeSubs = computed(() => subs.value.filter((s) => !s.disabled).length);
 
 const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 </script>

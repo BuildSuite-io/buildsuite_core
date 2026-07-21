@@ -6,7 +6,9 @@
  "field_order": [
   "project_section",
   "project_naming",
-  "rate_master_update_threshold"
+  "rate_master_update_threshold",
+  "subcontract_section",
+  "default_subcontractor_expense_account"
  ],
  "fields": [
   {
@@ -27,6 +29,18 @@
    "fieldname": "rate_master_update_threshold",
    "fieldtype": "Percent",
    "label": "Rate Master Update Threshold (%)"
+  },
+  {
+   "fieldname": "subcontract_section",
+   "fieldtype": "Section Break",
+   "label": "Subcontract"
+  },
+  {
+   "description": "Default expense account posted on the Purchase Invoice generated from a Subcontractor Bill. Overridable per bill. Falls back to a per-company 'Subcontractor Charges' account.",
+   "fieldname": "default_subcontractor_expense_account",
+   "fieldtype": "Link",
+   "label": "Default Subcontractor Expense Account",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,

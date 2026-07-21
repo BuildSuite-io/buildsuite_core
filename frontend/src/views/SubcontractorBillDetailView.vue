@@ -108,6 +108,7 @@ async function saveBilling() {
 			tax_withholding_category: b.tax_withholding_category,
 			additional_discount_on: b.additional_discount_on,
 			additional_discount_percentage: b.additional_discount_percentage,
+			expense_account: b.expense_account,
 			discount_amount: b.discount_amount,
 			advance_recovery: b.advance_recovery,
 			taxes: (b.taxes || []).map((t) => ({
@@ -445,6 +446,17 @@ const statusPills = computed(() => {
 					</DeskField>
 					<DeskField label="Discount (%)">
 						<DeskInput v-model.number="bill.additional_discount_percentage" type="number" min="0" step="0.5" :disabled="!isDraft" />
+					</DeskField>
+					<DeskField label="Expense account" class="col-span-2" hint="Where the PI posts the cost. Defaults from settings.">
+						<DeskLinkPicker
+							v-model="bill.expense_account"
+							doctype="Account"
+							label-field="name"
+							value-field="name"
+							:filters="[['account_type', '=', 'Expense Account'], ['company', '=', bill.company]]"
+							placeholder="Default (Subcontractor Charges)"
+							:disabled="!isDraft"
+						/>
 					</DeskField>
 				</div>
 
