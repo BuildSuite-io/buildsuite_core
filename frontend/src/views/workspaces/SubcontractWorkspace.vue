@@ -4,7 +4,7 @@
 // Dashboard CTA, a DocType shortcuts grid, and a Reports group.
 //
 // First pass ships Subcontractors + Work Orders. Measurement Books and
-// RA Bills land in a later pass — their tiles are omitted until then.
+// Subcontractor Bills generate a Purchase Invoice on submit (see the bill detail view).
 
 import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
@@ -21,8 +21,7 @@ const shortcuts = [
 	{ label: "Subcontractors", icon: "users-2", to: "/subcontractors" },
 	{ label: "Work Orders", icon: "clipboard-list", to: "/subcontractor-work-orders" },
 	{ label: "Measurement Books", icon: "chart-bar", to: "/measurement-books" },
-	// RA Bills live in Frappe Desk (accounting-bound); the tile links out.
-	{ label: "RA Bills", icon: "file-text", href: "/app/subcontractor-bill" },
+	{ label: "Subcontractor Bills", icon: "file-text", to: "/subcontractor-bills" },
 ];
 
 // Report tiles are configured per workspace in Workspace Setting.

@@ -37,3 +37,29 @@ export const certifyMeasurementBook = (name) => call("certify_measurement_book",
 export const revertMeasurementBook = (name) => call("revert_measurement_book", { name });
 export const getWoMeasurements = (workOrder) =>
 	call("get_wo_measurements", { work_order: workOrder });
+
+// --- Subcontractor Bill -------------------------------------------------
+// The bill is the front-end instrument; Submit generates a linked Purchase
+// Invoice. Taxes are country-agnostic (any Purchase Taxes and Charges Template).
+async function billCall(method, args) {
+	try {
+		return await frappeRequest({
+			url: `buildsuite_core.api.subcontractor_bill.${method}`,
+			params: args || {},
+		});
+	} catch (err) {
+		throw new Error(parseFrappeError(err).summary || "Request failed.");
+	}
+}
+
+export const getBill = (name) => billCall("get_bill", { name });
+export const getWoBillContext = (workOrder) => billCall("get_wo_bill_context", { work_order: workOrder });
+export const saveBill = (payload) => billCall("save_bill", { payload: JSON.stringify(payload) });
+export const submitBill = (name) => billCall("submit_bill", { name });
+export const cancelBill = (name) => billCall("cancel_bill", { name });
+export const deleteBill = (name) => billCall("delete_bill", { name });
+export const listTaxTemplates = (company) => billCall("list_tax_templates", { company });
+export const getTaxTemplateRows = (template) => billCall("get_tax_template_rows", { template });
+export const listWithholdingCategories = () => billCall("list_withholding_categories", {});
+export const recordBillPayment = (args) => billCall("record_payment", args);
+export const listBillPayments = (name) => billCall("list_payments", { name });

@@ -55,6 +55,9 @@ function lineMeasured(name) {
 function onRecordMeasurement() {
 	router.push(`/measurement-books/new?work_order=${wo.value.name}`);
 }
+function onRaiseBill() {
+	router.push(`/subcontractor-bills/new?work_order=${wo.value.name}`);
+}
 
 // In-app print: routes to the Vue print view, which renders the work order as a
 // printable document and exports via the browser print dialog (Save as PDF).
@@ -156,15 +159,16 @@ const tabs = computed(() => [
 			>
 				+ Record measurement
 			</button>
-			<a
+			<button
 				v-if="!isDraft && wo.status !== 'Closed'"
-				:href="`/app/subcontractor-bill/new?work_order=${wo.name}`"
+				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium inline-flex items-center"
 				style="border-radius: 6px"
-				title="Raise a Running Account bill against this work order (opens in Frappe Desk)"
+				title="Raise a bill against this work order (derives this period from certified Measurement Books)"
+				@click="onRaiseBill"
 			>
-				+ Raise RA Bill
-			</a>
+				+ Raise Bill
+			</button>
 			<button
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center"
