@@ -146,10 +146,10 @@ watch(() => props.id, load, { immediate: true });
 							<span v-if="sub?.phone && sub?.email"> · </span>
 							<span v-if="sub?.email">{{ sub.email }}</span>
 						</div>
-						<div v-if="sub?.gstin || sub?.pan" class="text-ink-500">
-							<span v-if="sub?.gstin">GSTIN: {{ sub.gstin }}</span>
-							<span v-if="sub?.gstin && sub?.pan"> · </span>
-							<span v-if="sub?.pan">PAN: {{ sub.pan }}</span>
+						<div v-if="sub?.tax_id || sub?.secondary_tax_id" class="text-ink-500">
+							<span v-if="sub?.tax_id">Tax ID: {{ sub.tax_id }}</span>
+							<span v-if="sub?.tax_id && sub?.secondary_tax_id"> · </span>
+							<span v-if="sub?.secondary_tax_id">Sec. Tax ID: {{ sub.secondary_tax_id }}</span>
 						</div>
 					</div>
 				</div>

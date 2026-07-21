@@ -87,7 +87,7 @@ def get_wo_print_data(name: str):
 		frappe.db.get_value(
 			"Subcontractor",
 			doc.subcontractor,
-			["trade", "contact_person", "phone", "email", "gstin", "pan"],
+			["trade", "contact_person", "phone", "email", "tax_id", "secondary_tax_id"],
 			as_dict=True,
 		)
 		if doc.subcontractor
