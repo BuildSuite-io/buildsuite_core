@@ -213,10 +213,11 @@ const saveLabel = computed(() =>
 				<DeskField label="Subcontractor" required :error="errors.subcontractor">
 					<DeskLinkPicker
 						v-model="form.subcontractor"
-						doctype="Subcontractor"
-						label-field="subcontractor_name"
+						doctype="Supplier"
+						label-field="supplier_name"
 						value-field="name"
-						:search-fields="['subcontractor_name', 'name']"
+						:search-fields="['supplier_name', 'name']"
+						:filters="[['supplier_type', '=', 'Subcontractor']]"
 						placeholder="Pick a subcontractor…"
 					/>
 				</DeskField>

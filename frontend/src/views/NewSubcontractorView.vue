@@ -1,8 +1,7 @@
 <script setup>
-// New Subcontractor master form — Desk-styled, mirrors the prototype.
-// Trade is a Link to Construction Trade (seeded master), picked with
-// DeskLinkPicker. The optional Supplier link is the one addition over
-// the prototype (for future accounting integration).
+// New Subcontractor form. A subcontractor is a native ERPNext Supplier tagged
+// supplier_type="Subcontractor" — so accounting (PI/payment) is native. Contact
+// details live on the Supplier's native Contact (managed in Desk).
 
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -26,16 +25,11 @@ const form = reactive({
 	subcontractor_name: "",
 	trade: "",
 	status: "Active",
-	supplier: "",
-	contact_person: "",
-	phone: "",
-	email: "",
 	tax_id: "",
-	secondary_tax_id: "",
 });
 const { errors, applyServerErrors, setErrors } = useFormErrors({
-	subcontractor_name: "subcontractor_name",
-	trade: "trade",
+	supplier_name: "subcontractor_name",
+	custom_trade: "trade",
 });
 const saving = ref(false);
 
@@ -55,16 +49,13 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Subcontractor", {
-			subcontractor_name: form.subcontractor_name.trim(),
-			trade: form.trade,
-			status: form.status,
-			supplier: form.supplier || null,
-			contact_person: form.contact_person,
-			phone: form.phone,
-			email: form.email,
+		const res = await adapter.create("Supplier", {
+			supplier_name: form.subcontractor_name.trim(),
+			supplier_type: "Subcontractor",
+			supplier_group: "Subcontractor",
+			custom_trade: form.trade,
 			tax_id: form.tax_id,
-			secondary_tax_id: form.secondary_tax_id,
+			disabled: form.status === "Inactive" ? 1 : 0,
 		});
 		router.push(`/subcontractors/${res.name}`);
 	} catch (err) {
@@ -94,7 +85,7 @@ const breadcrumbs = [
 				/>
 			</template>
 
-			<DeskSection title="Contact" :cols="3">
+			<DeskSection title="Details" :cols="3">
 				<DeskField label="Name" required :error="errors.subcontractor_name">
 					<DeskInput v-model="form.subcontractor_name" />
 				</DeskField>
@@ -113,35 +104,14 @@ const breadcrumbs = [
 						<option>Inactive</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Contact person"
-					><DeskInput v-model="form.contact_person"
-				/></DeskField>
-				<DeskField label="Phone"><DeskInput v-model="form.phone" /></DeskField>
-				<DeskField label="Email"
-					><DeskInput v-model="form.email" type="email"
-				/></DeskField>
-			</DeskSection>
-
-			<DeskSection title="Statutory & accounting" :cols="3">
 				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
-				<DeskField label="Secondary Tax ID" hint="e.g. PAN (India)"
-					><DeskInput v-model="form.secondary_tax_id"
-				/></DeskField>
-				<DeskField
-					label="Supplier"
-					hint="Optional — link to an ERPNext Supplier for accounting."
-				>
-					<DeskLinkPicker
-						v-model="form.supplier"
-						doctype="Supplier"
-						label-field="supplier_name"
-						value-field="name"
-						placeholder="— Optional —"
-					/>
-				</DeskField>
 			</DeskSection>
+			<p class="text-xs text-ink-400 mt-3">
+				Contact person, phone and email are managed on the subcontractor's Supplier record in the
+				accounting desk.
+			</p>
 		</DeskForm>
 	</DeskPage>
 </template>

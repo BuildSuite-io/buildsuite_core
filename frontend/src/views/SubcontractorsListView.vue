@@ -11,19 +11,20 @@ import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
 
-const subsRes = useDocTypeList("Subcontractor", {
-	fields: ["name", "subcontractor_name", "trade", "contact_person", "phone", "status"],
-	orderBy: "subcontractor_name asc",
+// Subcontractors are Suppliers of type "Subcontractor".
+const subsRes = useDocTypeList("Supplier", {
+	fields: ["name", "supplier_name", "custom_trade", "tax_id", "disabled"],
+	filters: [["supplier_type", "=", "Subcontractor"]],
+	orderBy: "supplier_name asc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-list",
 	transform: (data) =>
 		data.map((s) => ({
 			id: s.name,
-			name: s.subcontractor_name,
-			trade: s.trade,
-			contact_person: s.contact_person,
-			phone: s.phone,
-			status: s.status,
+			name: s.supplier_name,
+			trade: s.custom_trade,
+			tax_id: s.tax_id,
+			status: s.disabled ? "Inactive" : "Active",
 		})),
 });
 
@@ -36,7 +37,7 @@ const rows = computed(() => {
 			(s) =>
 				(s.name || "").toLowerCase().includes(q) ||
 				(s.trade || "").toLowerCase().includes(q) ||
-				(s.contact_person || "").toLowerCase().includes(q),
+				(s.tax_id || "").toLowerCase().includes(q),
 		);
 	return data;
 });
@@ -45,8 +46,7 @@ const columns = [
 	{ key: "id", label: "ID" },
 	{ key: "name", label: "Name" },
 	{ key: "trade", label: "Trade" },
-	{ key: "contact_person", label: "Contact" },
-	{ key: "phone", label: "Phone" },
+	{ key: "tax_id", label: "Tax ID" },
 	{ key: "status", label: "Status" },
 ];
 
@@ -94,11 +94,8 @@ function onRowClick(row) {
 				>
 				<span v-else class="text-ink-300">—</span>
 			</template>
-			<template #cell-contact_person="{ row }">
-				<span class="text-xs text-ink-700">{{ row.contact_person || "—" }}</span>
-			</template>
-			<template #cell-phone="{ row }">
-				<span class="text-xs text-ink-500">{{ row.phone || "—" }}</span>
+			<template #cell-tax_id="{ row }">
+				<span class="text-xs font-mono text-ink-500">{{ row.tax_id || "—" }}</span>
 			</template>
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />

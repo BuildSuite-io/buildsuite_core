@@ -29,7 +29,8 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 	trade: "trade",
 });
 
-const resource = adapter.read("Subcontractor", props.id, { fields: ["*"] });
+// A subcontractor is a Supplier (supplier_type="Subcontractor").
+const resource = adapter.read("Supplier", props.id, { fields: ["*"] });
 const doc = computed(() => resource?.doc || null);
 
 // Linked Work Orders for this subcontractor.
@@ -50,15 +51,10 @@ function snapshot() {
 	const d = doc.value;
 	if (!d) return {};
 	return {
-		subcontractor_name: d.subcontractor_name || "",
-		trade: d.trade || "",
-		status: d.status || "Active",
-		supplier: d.supplier || "",
-		contact_person: d.contact_person || "",
-		phone: d.phone || "",
-		email: d.email || "",
+		subcontractor_name: d.supplier_name || "",
+		trade: d.custom_trade || "",
+		status: d.disabled ? "Inactive" : "Active",
 		tax_id: d.tax_id || "",
-		secondary_tax_id: d.secondary_tax_id || "",
 	};
 }
 watch(
@@ -88,16 +84,11 @@ async function saveEdit() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		await adapter.update("Subcontractor", props.id, {
-			subcontractor_name: form.value.subcontractor_name.trim(),
-			trade: form.value.trade,
-			status: form.value.status,
-			supplier: form.value.supplier || null,
-			contact_person: form.value.contact_person,
-			phone: form.value.phone,
-			email: form.value.email,
+		await adapter.update("Supplier", props.id, {
+			supplier_name: form.value.subcontractor_name.trim(),
+			custom_trade: form.value.trade,
 			tax_id: form.value.tax_id,
-			secondary_tax_id: form.value.secondary_tax_id,
+			disabled: form.value.status === "Inactive" ? 1 : 0,
 		});
 		await resource?.reload?.();
 		editing.value = false;
@@ -111,7 +102,7 @@ async function saveEdit() {
 async function onDelete() {
 	const n = linkedWOs.value.length;
 	const ok = await confirmDialog({
-		title: `Delete ${doc.value?.subcontractor_name}?`,
+		title: `Delete ${doc.value?.supplier_name}?`,
 		message: n
 			? `${n} work order${n === 1 ? "" : "s"} reference this subcontractor and would be left dangling.`
 			: "This subcontractor master record will be removed permanently.",
@@ -120,7 +111,7 @@ async function onDelete() {
 	});
 	if (!ok) return;
 	try {
-		await adapter.remove("Subcontractor", props.id);
+		await adapter.remove("Supplier", props.id);
 		router.push("/subcontractors");
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? "Failed to delete subcontractor", "error");
@@ -138,10 +129,10 @@ const breadcrumbs = computed(() => [
 <template>
 	<DeskPage
 		v-if="doc"
-		:title="doc.subcontractor_name"
-		:subtitle="`${doc.name} · ${doc.trade || '—'}`"
+		:title="doc.supplier_name"
+		:subtitle="`${doc.name} · ${doc.custom_trade || '—'}`"
 		:breadcrumbs="breadcrumbs"
-		:status="doc.status"
+		:status="doc.disabled ? 'Inactive' : 'Active'"
 	>
 		<template #actions>
 			<button
@@ -184,46 +175,28 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Contact" :cols="3">
+			<DeskSection title="Details" :cols="3">
 				<DeskField label="Name"
 					><div class="text-sm text-ink-900">
-						{{ doc.subcontractor_name }}
+						{{ doc.supplier_name }}
 					</div></DeskField
 				>
 				<DeskField label="Trade"
-					><div class="text-sm text-ink-700">{{ doc.trade || "—" }}</div></DeskField
+					><div class="text-sm text-ink-700">{{ doc.custom_trade || "—" }}</div></DeskField
 				>
-				<DeskField label="Status"><StatusBadge :status="doc.status" /></DeskField>
-				<DeskField label="Contact person"
-					><div class="text-sm text-ink-900">
-						{{ doc.contact_person || "—" }}
-					</div></DeskField
-				>
-				<DeskField label="Phone"
-					><div class="text-sm text-ink-700">{{ doc.phone || "—" }}</div></DeskField
-				>
-				<DeskField label="Email"
-					><div class="text-sm text-ink-700">{{ doc.email || "—" }}</div></DeskField
-				>
-			</DeskSection>
-			<DeskSection title="Statutory & accounting" :cols="3">
+				<DeskField label="Status"
+					><StatusBadge :status="doc.disabled ? 'Inactive' : 'Active'"
+				/></DeskField>
 				<DeskField label="Tax ID"
 					><div class="text-sm font-mono text-ink-700">
 						{{ doc.tax_id || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Secondary Tax ID"
-					><div class="text-sm font-mono text-ink-700">
-						{{ doc.secondary_tax_id || "—" }}
-					</div></DeskField
-				>
-				<DeskField label="Supplier"
-					><div class="text-sm text-ink-700">{{ doc.supplier || "—" }}</div></DeskField
-				>
-				<DeskField label="Company"
-					><div class="text-sm text-ink-700">{{ doc.company || "—" }}</div></DeskField
-				>
 			</DeskSection>
+			<p class="text-xs text-ink-400 mt-2">
+				Contact person, phone and email live on this subcontractor's Supplier record in the
+				accounting desk.
+			</p>
 
 			<!-- Linked Work Orders -->
 			<section class="mt-6">
@@ -287,7 +260,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection title="Contact" :cols="3">
+			<DeskSection title="Details" :cols="3">
 				<DeskField label="Name" required :error="errors.subcontractor_name"
 					><DeskInput v-model="form.subcontractor_name"
 				/></DeskField>
@@ -306,33 +279,9 @@ const breadcrumbs = computed(() => [
 						<option>Inactive</option></DeskSelect
 					>
 				</DeskField>
-				<DeskField label="Contact person"
-					><DeskInput v-model="form.contact_person"
-				/></DeskField>
-				<DeskField label="Phone"><DeskInput v-model="form.phone" /></DeskField>
-				<DeskField label="Email"
-					><DeskInput v-model="form.email" type="email"
-				/></DeskField>
-			</DeskSection>
-			<DeskSection title="Statutory & accounting" :cols="3">
 				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
-				<DeskField label="Secondary Tax ID" hint="e.g. PAN (India)"
-					><DeskInput v-model="form.secondary_tax_id"
-				/></DeskField>
-				<DeskField
-					label="Supplier"
-					hint="Optional — link to an ERPNext Supplier for accounting."
-				>
-					<DeskLinkPicker
-						v-model="form.supplier"
-						doctype="Supplier"
-						label-field="supplier_name"
-						value-field="name"
-						placeholder="— Optional —"
-					/>
-				</DeskField>
 			</DeskSection>
 		</div>
 	</DeskPage>
