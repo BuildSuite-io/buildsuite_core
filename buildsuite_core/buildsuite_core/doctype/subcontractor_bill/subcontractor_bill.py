@@ -41,6 +41,7 @@ class SubcontractorBill(Document):
 			self._require_open_work_order()
 		self._assign_ra_no()
 		self._default_expense_account()
+		self._validate_account_companies()
 		self._resolve_tds_rate()
 		self._compute_totals()
 		self._sync_status()
@@ -51,6 +52,37 @@ class SubcontractorBill(Document):
 		from buildsuite_core.utils.subcontract_billing import settings_expense_account_for
 
 		self.expense_account = settings_expense_account_for(self.company)
+
+	def _validate_account_companies(self):
+		"""The tax template, tax-row accounts and expense account must all belong to the bill's
+		company (which is anchored to the project). Caught here with a clear message rather than
+		as a cryptic Purchase Invoice error on submit — the generated PI validates the same."""
+		if not self.company:
+			return
+
+		def _belongs(account, doctype="Account"):
+			company = frappe.db.get_value(doctype, account, "company")
+			return not company or company == self.company
+
+		if self.taxes_and_charges and not _belongs(self.taxes_and_charges, "Purchase Taxes and Charges Template"):
+			frappe.throw(
+				_("Tax template {0} belongs to a different company — pick one for {1} (this project's company).").format(
+					frappe.bold(self.taxes_and_charges), frappe.bold(self.company)
+				)
+			)
+		for t in self.taxes:
+			if t.account_head and not _belongs(t.account_head):
+				frappe.throw(
+					_("Tax row #{0}: account {1} does not belong to company {2}.").format(
+						t.idx, frappe.bold(t.account_head), frappe.bold(self.company)
+					)
+				)
+		if self.expense_account and not _belongs(self.expense_account):
+			frappe.throw(
+				_("Expense account {0} does not belong to company {1}.").format(
+					frappe.bold(self.expense_account), frappe.bold(self.company)
+				)
+			)
 
 	def before_submit(self):
 		if not self.lines:

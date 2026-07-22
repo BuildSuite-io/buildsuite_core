@@ -119,6 +119,21 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
+	def test_tax_account_company_mismatch_rejected(self):
+		# A tax-row account from another company must be rejected up front (the PI would post
+		# to the wrong company's GL). Consistency validated on the bill, not deep in the PI.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		other_acct = frappe.db.get_value(
+			"Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name"
+		)
+		if not other_acct:
+			self.skipTest("no cross-company account available")
+		bill = self._direct_bill(self._subcontractor(), amount=1000, retention=0)
+		bill.append("taxes", {"charge_type": "On Net Total", "account_head": other_acct, "rate": 5})
+		self.assertRaises(frappe.ValidationError, bill.save)
+
 	def test_work_order_company_anchored_to_project(self):
 		# A WO always takes its project's company, even if a different one is supplied — so the
 		# inconsistency that broke PI posting can't be created in the first place.
