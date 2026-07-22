@@ -340,6 +340,7 @@ const statusPills = computed(() => {
 						doctype="Purchase Taxes and Charges Template"
 						label-field="name"
 						value-field="name"
+						:filters="bill.company ? [['company', '=', bill.company]] : []"
 						placeholder="— No tax —"
 						@update:model-value="onPickTemplate"
 					/>
@@ -363,6 +364,7 @@ const statusPills = computed(() => {
 										doctype="Account"
 										label-field="name"
 										value-field="name"
+										:filters="bill.company ? [['is_group', '=', 0], ['company', '=', bill.company]] : [['is_group', '=', 0]]"
 										placeholder="Account…"
 									/>
 									<span v-else>{{ t.account_head }}</span>
@@ -453,7 +455,7 @@ const statusPills = computed(() => {
 							doctype="Account"
 							label-field="name"
 							value-field="name"
-							:filters="[['account_type', '=', 'Expense Account'], ['company', '=', bill.company]]"
+							:filters="[['root_type', '=', 'Expense'], ['is_group', '=', 0], ['company', '=', bill.company]]"
 							placeholder="Default (Subcontractor Charges)"
 							:disabled="!isDraft"
 						/>
