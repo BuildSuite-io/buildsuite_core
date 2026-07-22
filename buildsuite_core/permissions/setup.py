@@ -583,6 +583,12 @@ def setup_subcontract_permissions():
 	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS)
 	_apply_role_perms("Subcontract Delivery Type", SUBCONTRACT_MASTER_ROLE_PERMS)
+	# The bill's billing pickers (expense account, tax template, withholding category) read
+	# ERPNext's accounting masters — grant the finance-facing BuildSuite roles read so the
+	# Vue dropdowns populate for non-admin personas.
+	_billing_read = {role: _READ for role in _BILL_FULL_ROLES + ("BuildSuite Accountant",)}
+	for dt in ("Account", "Purchase Taxes and Charges Template", "Tax Category", "Tax Withholding Category"):
+		_apply_role_perms(dt, _billing_read)
 
 
 def _ensure_workflow_state(name):
