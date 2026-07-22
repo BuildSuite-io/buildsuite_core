@@ -33,24 +33,34 @@ def after_migrate():
 	# safe; it is a no-op on every subsequent migrate.
 	drop_legacy_task_type_field()
 	backfill_work_order_company()
+	backfill_bill_company()
 	seed_master_data()
 	setup_record_permissions()
 
 
-def backfill_work_order_company():
-	"""Re-anchor any Subcontractor Work Order whose company drifted from its project's company
-	(historically the WO could inherit the user's default company). Idempotent — the bill's
-	generated PI validates the project against this company, so a mismatch would block posting."""
+def _backfill_project_company(doctype, extra_where=""):
+	"""Re-anchor a doctype's `company` to its project's company where they drifted. Idempotent."""
 	rows = frappe.db.sql(
-		"""select wo.name, p.company as project_company
-		from `tabSubcontractor Work Order` wo join `tabProject` p on p.name = wo.project
-		where wo.company != p.company and p.company is not null and p.company != ''""",
+		f"""select d.name, p.company as project_company
+		from `tab{doctype}` d join `tabProject` p on p.name = d.project
+		where d.company != p.company and p.company is not null and p.company != '' {extra_where}""",
 		as_dict=True,
 	)
 	for r in rows:
-		frappe.db.set_value(
-			"Subcontractor Work Order", r.name, "company", r.project_company, update_modified=False
-		)
+		frappe.db.set_value(doctype, r.name, "company", r.project_company, update_modified=False)
+
+
+def backfill_work_order_company():
+	"""Re-anchor any Subcontractor Work Order whose company drifted from its project's company
+	(historically the WO could inherit the user's default company). The bill's generated PI
+	validates the project against this company, so a mismatch would block posting."""
+	_backfill_project_company("Subcontractor Work Order")
+
+
+def backfill_bill_company():
+	"""Re-anchor DRAFT Subcontractor Bills whose company drifted from their project's — so the
+	Vue tax/account pickers filter to the right company and the PI can post."""
+	_backfill_project_company("Subcontractor Bill", extra_where="and d.docstatus = 0 and d.project is not null")
 
 
 def drop_legacy_task_type_field():

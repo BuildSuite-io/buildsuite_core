@@ -19,6 +19,15 @@ WORK_ORDER = "Subcontractor Work Order"
 # --------------------------------------------------------------------------- #
 # Serialisation
 # --------------------------------------------------------------------------- #
+def _effective_company(doc):
+	"""The company the bill's accounting is anchored to — the project's company when there is
+	a project (re-derived so a Draft saved before the anchoring fix still serves the right
+	one for the Vue tax/account pickers), else the stored/default company."""
+	if doc.project:
+		return frappe.db.get_value("Project", doc.project, "company") or doc.company
+	return doc.company
+
+
 def _serialize(doc):
 	return {
 		"name": doc.name,
@@ -29,7 +38,7 @@ def _serialize(doc):
 		"subcontractor_name": doc.subcontractor_name,
 		"project": doc.project,
 		"project_name": frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None,
-		"company": doc.company,
+		"company": _effective_company(doc),
 		"date": str(doc.date) if doc.date else None,
 		"bill_type": doc.bill_type,
 		"retention_percent": doc.retention_percent,

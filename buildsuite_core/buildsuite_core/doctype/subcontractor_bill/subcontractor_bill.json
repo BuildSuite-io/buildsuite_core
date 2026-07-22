@@ -87,12 +87,12 @@
    "read_only": 1
   },
   {
+   "description": "Anchors the accounting company. Optional for a direct bill (then the default company is used).",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Project",
-   "options": "Project",
-   "reqd": 1
+   "options": "Project"
   },
   {
    "fieldname": "column_break_hdr",

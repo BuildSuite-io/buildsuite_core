@@ -124,11 +124,16 @@ class SubcontractorBill(Document):
 		elif self.subcontractor and not self.subcontractor_name:
 			self.subcontractor_name = frappe.db.get_value("Supplier", self.subcontractor, "supplier_name")
 
-		# Company is anchored to the PROJECT (the accounting dimension the generated PI
-		# validates against), never the Work Order — a WO whose company drifted from its
-		# project's would otherwise make the PI reject the project dimension.
+		# Company: a WO bill (and any bill with a project) anchors to the PROJECT's company —
+		# the accounting dimension the generated PI validates against. A direct bill with no
+		# project has nothing to anchor to, so it uses the site default company (the same one
+		# the New Project screen defaults to).
 		if self.project:
 			self.company = frappe.db.get_value("Project", self.project, "company")
+		elif not self.company:
+			from buildsuite_core.utils.project import default_company
+
+			self.company = default_company()
 
 	def _require_open_work_order(self):
 		status = frappe.db.get_value(WORK_ORDER, self.work_order, "status")

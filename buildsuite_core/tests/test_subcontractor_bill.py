@@ -119,6 +119,25 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
+	def test_direct_bill_without_project_uses_default_company(self):
+		# A direct bill needs no project link; with none it falls back to the default company
+		# using the SAME resolution as the New Project screen.
+		from buildsuite_core.utils.project import default_company
+
+		default_co = default_company()
+		bill = frappe.get_doc(
+			{
+				"doctype": "Subcontractor Bill",
+				"is_direct": 1,
+				"subcontractor": self._subcontractor().name,
+				"date": "2026-07-22",
+				"retention_percent": 0,
+				"lines": [{"scope": "One-off charge", "this_period_amount": 5000}],
+			}
+		).insert(ignore_permissions=True)
+		self.assertFalse(bill.project)
+		self.assertEqual(bill.company, default_co)
+
 	def test_tax_account_company_mismatch_rejected(self):
 		# A tax-row account from another company must be rejected up front (the PI would post
 		# to the wrong company's GL). Consistency validated on the bill, not deep in the PI.
