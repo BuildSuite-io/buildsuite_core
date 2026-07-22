@@ -4,9 +4,34 @@
 import frappe
 from frappe.utils import *
 from frappe.model.document import Document
+from frappe.utils import flt, getdate
+from frappe.query_builder.functions import Sum
 
 
 class OvertimeAttendanceRegister(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		amended_from: DF.Link | None
+		comments: DF.SmallText | None
+		company: DF.Link | None
+		employee: DF.Link
+		employee_name: DF.Data | None
+		field_attendance: DF.Link | None
+		naming_series: DF.Literal["HR-OTATT-.YYYY.-"]
+		overtime_date: DF.Date
+		overtime_hours: DF.Float
+		overtime_rate: DF.Currency
+		overtime_wage_calculated: DF.Currency
+		project: DF.Link
+		project_name: DF.Data | None
+	# end: auto-generated types
+
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -30,7 +55,7 @@ class OvertimeAttendanceRegister(Document):
 
 
 	def before_save(self):
-		self.overtime_rate = frappe.db.get_value("Employee", self.employee, "custom_wage_for_overtime") or 0
+		self.overtime_rate = get_employee_rates(self.employee, self.overtime_date)
 
 	def validate(self):
 		self.validate_date_ot_and_rate()
@@ -45,17 +70,21 @@ class OvertimeAttendanceRegister(Document):
 			frappe.throw(
 					f"Cannot mark overtime as labour {frappe.bold(self.employee_name)} was not Present full day for date {frappe.bold(self.overtime_date)}"
 				)
-		overtime_hours = frappe.db.get_value(
-			"Overtime Attendance Register",
-			{
-				"employee": self.employee,
-				"overtime_date": self.overtime_date,
-				"docstatus": 1,
-				"name": ["!=", self.name],
-			},
-			"SUM(overtime_hours) as overtime_hours"
-		)
-		total_overtime_hours = overtime_hours+self.overtime_hours if overtime_hours else self.overtime_hours 
+		OTR = frappe.qb.DocType("Overtime Attendance Register")
+
+		existing_hours = (
+			frappe.qb.from_(OTR)
+			.select(Sum(OTR.overtime_hours))
+			.where(
+				(OTR.employee == self.employee)
+				& (OTR.overtime_date == self.overtime_date)
+				& (OTR.docstatus == 1)
+				& (OTR.name != self.name)
+			)
+		).run()
+
+		existing_hours = flt(existing_hours[0][0]) if existing_hours else 0.0
+		total_overtime_hours = existing_hours + flt(self.overtime_hours)
 		if total_overtime_hours and total_overtime_hours >= 16:
 			frappe.throw(
 				f"Overtime already marked for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}."
@@ -98,36 +127,46 @@ def update_wage(employee_id, wage):
 # 			'page_len': page_len
 # 		})
 # 		return values
-    
-# def get_employee_rates(employee, date):
-#     # Returns the overtime rate as a scalar. The non-salaried branch used to
-#     # return a (wage, ot_wage) tuple, which was assigned straight to the
-#     # Currency field `overtime_rate` in before_save — that broke save_version's
-#     # diff formatter (fmt_money does `amount % 1` and a tuple raises TypeError).
-#     if frappe.db.get_value("Employee", employee, "custom_labour_wage_type") != "Salaried":
-#         return frappe.db.get_value("Employee", employee, "custom_wage_for_overtime") or 0
+def get_employee_rates(emp, date):
+	"""`emp` is a dict from get_employee_map(), not an employee id."""
+	emp = frappe.get_doc("Employee",emp)
+	wage_rates =  flt(emp.custom_wage_for_overtime)
 
+	if "buildsuite_hr" not in frappe.get_installed_apps():
+		return wage_rates
 
-#     validate_employee_date(employee, date)
+	if emp.get("custom_labour_wage_type") != "Salaried":
+		return wage_rates
 
-#     salary_structure = frappe.db.get_value(
-#         "Salary Structure Assignment",
-#         {"employee": employee, "from_date": ("<=", date)},
-#         "salary_structure",
-#         order_by="from_date desc"
-#     )
+	salary_structure = frappe.db.get_value(
+		"Salary Structure Assignment",
+		{"employee": emp.name, "from_date": ("<=", date), "docstatus": 1},
+		"salary_structure",
+		order_by="from_date desc",
+	)
 
-#     if not salary_structure:
-#         frappe.throw(f"Salary Structure not found for employee {employee}")
+	if not salary_structure:
+		frappe.throw(
+			_("Salary Structure Assignment not found for {0} as on {1}.").format(
+				emp.employee_name or emp.name, date
+			)
+		)
 
-#     doc = frappe.get_doc("Salary Structure", salary_structure)
+	if salary_structure:
+		doc = frappe.get_doc("Salary Structure", salary_structure)
+		net = sum(flt(e.amount) for e in doc.earnings) - sum(flt(d.amount) for d in doc.deductions)
 
-#     net = sum(e.amount for e in doc.earnings) - sum(d.amount for d in doc.deductions)
+		if net <= 0:
+			frappe.throw(
+				_(
+					"Salary Structure {0} evaluates to a net of zero. "
+					"Formula-based components need amounts before they can be used here."
+				).format(salary_structure)
+			)
 
-#     labour_rate = net / 30
-#     overtime_rate = labour_rate / 8
+		labour_rate = net / 30
 
-#     return overtime_rate
+	return labour_rate / 8
 
 # def validate_employee_date(employee, date):
 #     emp = frappe.db.get_value("Employee", employee, ["employee_name", "date_of_joining"], as_dict=True)

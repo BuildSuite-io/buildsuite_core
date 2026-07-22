@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import *
 from frappe import _
+from frappe.utils import flt, getdate
 
 class LabourAttendanceRegister(Document):
 	# begin: auto-generated types
@@ -17,11 +18,12 @@ class LabourAttendanceRegister(Document):
 
 		amended_from: DF.Link | None
 		attendance_date: DF.Date
+		comments: DF.SmallText | None
 		company: DF.Link | None
 		daily_wage_calculated: DF.Currency
-		day_type: DF.Literal["", "Regular", "Off Day"]
 		employee: DF.Link
 		employee_name: DF.Data | None
+		field_attendance: DF.Link | None
 		naming_series: DF.Literal["LAB-ATT-.YYYY.-"]
 		project: DF.Link
 		project_name: DF.Data | None
@@ -30,7 +32,7 @@ class LabourAttendanceRegister(Document):
 	# end: auto-generated types
 
 	def before_save(self):
-		self.wage_rate = frappe.db.get_value("Employee", self.employee, "custom_wage") or 0
+		self.wage_rate = get_employee_rates(self.employee, self.attendance_date)
 	
 	def validate(self):
 		self.validate_status()
@@ -61,48 +63,47 @@ class LabourAttendanceRegister(Document):
 				frappe.throw(f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as 2 Half Days are Marked Already!")
 
 
-# def get_employee_rates(employee, date):
-#     # Returns the daily labour rate as a scalar. The non-salaried branch used
-#     # to return a (wage, ot_wage) tuple, which was assigned straight to the
-#     # Currency field `wage_rate` in before_save — that broke save_version's
-#     # diff formatter (fmt_money does `amount % 1` and a tuple raises TypeError).
-#     if frappe.db.get_value("Employee", employee, "custom_labour_wage_type") != "Salaried":
-#         return frappe.db.get_value("Employee", employee, "custom_wage") or 0
+def get_employee_rates(emp, date):
+	"""`emp` is a dict from get_employee_map(), not an employee id."""
+	emp = frappe.get_doc("Employee",emp)
+	wage_rates = (flt(emp.custom_wage))
 
-#     validate_employee_date(employee, date)
+	if "buildsuite_hr" not in frappe.get_installed_apps():
+		return wage_rates
 
-#     salary_structure = frappe.db.get_value(
-#         "Salary Structure Assignment",
-#         {"employee": employee, "from_date": ("<=", date)},
-#         "salary_structure",
-#         order_by="from_date desc"
-#     )
+	if emp.get("custom_labour_wage_type") != "Salaried":
+		return wage_rates
 
-#     if not salary_structure:
-#         frappe.throw(f"Salary Structure not found for employee {employee}")
+	salary_structure = frappe.db.get_value(
+		"Salary Structure Assignment",
+		{"employee": emp.name, "from_date": ("<=", date), "docstatus": 1},
+		"salary_structure",
+		order_by="from_date desc",
+	)
 
-#     doc = frappe.get_doc("Salary Structure", salary_structure)
+	if not salary_structure:
+		frappe.throw(
+			_("Salary Structure Assignment not found for {0} as on {1}.").format(
+				emp.employee_name or emp.name, date
+			)
+		)
 
-#     net = sum(e.amount for e in doc.earnings) - sum(d.amount for d in doc.deductions)
+	if salary_structure:
+		doc = frappe.get_doc("Salary Structure", salary_structure)
+		net = sum(flt(e.amount) for e in doc.earnings) - sum(flt(d.amount) for d in doc.deductions)
 
-#     labour_rate = net / 30
+		if net <= 0:
+			frappe.throw(
+				_(
+					"Salary Structure {0} evaluates to a net of zero. "
+					"Formula-based components need amounts before they can be used here."
+				).format(salary_structure)
+			)
 
-#     return labour_rate
+		labour_rate = net / 30
 
-# def validate_employee_date(employee, date):
-#     emp = frappe.db.get_value("Employee", employee, ["employee_name", "date_of_joining"], as_dict=True)
 
-#     if not emp:
-#         frappe.throw(_("Employee {0} not found").format(employee))
-
-#     if not emp.date_of_joining:
-#         frappe.throw(_("Joining Date not found for Employee {0}").format(emp.employee_name))
-
-#     if frappe.utils.getdate(date) < frappe.utils.getdate(emp.date_of_joining):
-#         frappe.throw(
-#             _("Date {0} is before the joining date {1} of Employee {2} ({3})")
-#             .format(date, emp.date_of_joining, emp.employee_name, employee)
-#         )
+	return labour_rate
 
 @frappe.whitelist()
 def project_list_query(doctype, txt, searchfield, start, page_len, filters):
