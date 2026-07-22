@@ -12,14 +12,15 @@
   "employee",
   "employee_name",
   "overtime_hours",
-  "working_hours",
   "column_break0",
   "overtime_date",
   "project",
   "project_name",
   "company",
+  "comments",
   "wage_detail_section",
   "overtime_rate",
+  "field_attendance",
   "column_break_0yfgj",
   "overtime_wage_calculated",
   "amended_from"
@@ -72,14 +73,6 @@
    "reqd": 1
   },
   {
-   "depends_on": "working_hours",
-   "fieldname": "working_hours",
-   "fieldtype": "Float",
-   "label": "Working Hours",
-   "precision": "1",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break0",
    "fieldtype": "Column Break",
    "oldfieldtype": "Column Break",
@@ -127,7 +120,6 @@
    "label": "Wage Detail"
   },
   {
-   "fetch_from": "employee.custom_wage_for_overtime",
    "fieldname": "overtime_rate",
    "fieldtype": "Currency",
    "label": "Overtime Rate",
@@ -157,19 +149,33 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "field_attendance",
+   "fieldtype": "Link",
+   "label": "Field Attendance",
+   "options": "Field Attendance",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-13 12:53:38.791758",
+ "modified": "2026-07-22 18:25:20.290809",
  "modified_by": "Administrator",
- "module": "Buildsuite Core",
+ "module": "BuildSuite Core",
  "name": "Overtime Attendance Register",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -178,6 +184,20 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
    "share": 1,
    "submit": 1,
    "write": 1
