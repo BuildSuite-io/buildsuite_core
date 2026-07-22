@@ -119,12 +119,10 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
-	def test_direct_bill_without_project_uses_default_company(self):
-		# A direct bill needs no project link; with none it falls back to the default company
-		# using the SAME resolution as the New Project screen.
-		from buildsuite_core.utils.project import default_company
+	def test_direct_bill_requires_a_project(self):
+		# The project anchors the accounting company, so a direct bill must have one.
+		from frappe.exceptions import MandatoryError
 
-		default_co = default_company()
 		bill = frappe.get_doc(
 			{
 				"doctype": "Subcontractor Bill",
@@ -134,9 +132,19 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 				"retention_percent": 0,
 				"lines": [{"scope": "One-off charge", "this_period_amount": 5000}],
 			}
-		).insert(ignore_permissions=True)
-		self.assertFalse(bill.project)
-		self.assertEqual(bill.company, default_co)
+		)
+		self.assertRaises(MandatoryError, bill.insert, ignore_permissions=True)
+
+	def test_make_payment_entry_creates_draft_against_pi(self):
+		from buildsuite_core.api.subcontractor_bill import make_payment_entry
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		bill.submit()
+		bill.reload()
+		res = make_payment_entry(bill.name)
+		pe = frappe.get_doc("Payment Entry", res["payment_entry"])
+		self.assertEqual(pe.docstatus, 0)  # draft — user reviews + submits in Desk
+		self.assertTrue(any(r.reference_name == bill.purchase_invoice for r in pe.references))
 
 	def test_tax_account_company_mismatch_rejected(self):
 		# A tax-row account from another company must be rejected up front (the PI would post

@@ -87,12 +87,13 @@
    "read_only": 1
   },
   {
-   "description": "Anchors the accounting company. Optional for a direct bill (then the default company is used).",
+   "description": "Anchors the accounting company (the generated Purchase Invoice validates against it).",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Project",
-   "options": "Project"
+   "options": "Project",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_hdr",

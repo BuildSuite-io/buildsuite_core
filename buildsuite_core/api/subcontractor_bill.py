@@ -332,8 +332,26 @@ def delete_bill(name: str):
 # Payment (real ERPNext Payment Entry against the generated PI)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
+def make_payment_entry(name: str):
+	"""Create a DRAFT Payment Entry against the bill's Purchase Invoice and return its name, so
+	the Vue 'Make Payment' button can open it in Desk (/app/payment-entry/<name>) pre-filled for
+	the user to review + submit."""
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("read")
+	if not bill.purchase_invoice:
+		frappe.throw(_("This bill has no Purchase Invoice yet — submit it first."))
+
+	pe = get_payment_entry("Purchase Invoice", bill.purchase_invoice)
+	pe.flags.ignore_permissions = True
+	pe.insert()  # draft — the user reviews + submits it in Desk
+	return {"payment_entry": pe.name}
+
+
+@frappe.whitelist()
 def record_payment(name, amount=None, date=None, mode_of_payment=None, paid_from=None, reference_no=None):
-	"""Create + submit a Payment Entry against the bill's Purchase Invoice."""
+	"""Create + submit a Payment Entry against the bill's Purchase Invoice (used by tests / API)."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 	bill = frappe.get_doc(BILL, name)
