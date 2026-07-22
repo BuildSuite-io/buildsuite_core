@@ -41,6 +41,7 @@ class SubcontractorBill(Document):
 			self._require_open_work_order()
 		self._assign_ra_no()
 		self._default_expense_account()
+		self._validate_account_companies()
 		self._resolve_tds_rate()
 		self._compute_totals()
 		self._sync_status()
@@ -51,6 +52,37 @@ class SubcontractorBill(Document):
 		from buildsuite_core.utils.subcontract_billing import settings_expense_account_for
 
 		self.expense_account = settings_expense_account_for(self.company)
+
+	def _validate_account_companies(self):
+		"""The tax template, tax-row accounts and expense account must all belong to the bill's
+		company (which is anchored to the project). Caught here with a clear message rather than
+		as a cryptic Purchase Invoice error on submit — the generated PI validates the same."""
+		if not self.company:
+			return
+
+		def _belongs(account, doctype="Account"):
+			company = frappe.db.get_value(doctype, account, "company")
+			return not company or company == self.company
+
+		if self.taxes_and_charges and not _belongs(self.taxes_and_charges, "Purchase Taxes and Charges Template"):
+			frappe.throw(
+				_("Tax template {0} belongs to a different company — pick one for {1} (this project's company).").format(
+					frappe.bold(self.taxes_and_charges), frappe.bold(self.company)
+				)
+			)
+		for t in self.taxes:
+			if t.account_head and not _belongs(t.account_head):
+				frappe.throw(
+					_("Tax row #{0}: account {1} does not belong to company {2}.").format(
+						t.idx, frappe.bold(t.account_head), frappe.bold(self.company)
+					)
+				)
+		if self.expense_account and not _belongs(self.expense_account):
+			frappe.throw(
+				_("Expense account {0} does not belong to company {1}.").format(
+					frappe.bold(self.expense_account), frappe.bold(self.company)
+				)
+			)
 
 	def before_submit(self):
 		if not self.lines:
@@ -74,29 +106,29 @@ class SubcontractorBill(Document):
 	# --- helpers ----------------------------------------------------------
 
 	def _sync_from_work_order(self):
-		"""WO bills inherit party/project/company/retention from the Work Order. Direct bills
-		carry their own (subcontractor + project entered on the form)."""
+		"""WO bills inherit party/project/retention from the Work Order. Direct bills carry
+		their own (subcontractor + project entered on the form)."""
 		if self.work_order and not self.is_direct:
 			wo = frappe.db.get_value(
 				WORK_ORDER,
 				self.work_order,
-				["subcontractor", "subcontractor_name", "project", "company", "retention_percent"],
+				["subcontractor", "subcontractor_name", "project", "retention_percent"],
 				as_dict=True,
 			)
 			if wo:
 				self.subcontractor = wo.subcontractor
 				self.subcontractor_name = wo.subcontractor_name
 				self.project = wo.project
-				self.company = wo.company
 				if self.retention_percent in (None, ""):
 					self.retention_percent = wo.retention_percent
-		else:
-			if self.subcontractor and not self.subcontractor_name:
-				self.subcontractor_name = frappe.db.get_value(
-					"Supplier", self.subcontractor, "supplier_name"
-				)
-			if self.project and not self.company:
-				self.company = frappe.db.get_value("Project", self.project, "company")
+		elif self.subcontractor and not self.subcontractor_name:
+			self.subcontractor_name = frappe.db.get_value("Supplier", self.subcontractor, "supplier_name")
+
+		# Company is anchored to the PROJECT (required on every bill) — the accounting
+		# dimension the generated PI validates against. Never the Work Order, whose company
+		# could have drifted.
+		if self.project:
+			self.company = frappe.db.get_value("Project", self.project, "company")
 
 	def _require_open_work_order(self):
 		status = frappe.db.get_value(WORK_ORDER, self.work_order, "status")

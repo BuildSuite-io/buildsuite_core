@@ -119,6 +119,91 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
+	def test_direct_bill_requires_a_project(self):
+		# The project anchors the accounting company, so a direct bill must have one.
+		from frappe.exceptions import MandatoryError
+
+		bill = frappe.get_doc(
+			{
+				"doctype": "Subcontractor Bill",
+				"is_direct": 1,
+				"subcontractor": self._subcontractor().name,
+				"date": "2026-07-22",
+				"retention_percent": 0,
+				"lines": [{"scope": "One-off charge", "this_period_amount": 5000}],
+			}
+		)
+		self.assertRaises(MandatoryError, bill.insert, ignore_permissions=True)
+
+	def test_make_payment_entry_creates_draft_against_pi(self):
+		from buildsuite_core.api.subcontractor_bill import make_payment_entry
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		bill.submit()
+		bill.reload()
+		res = make_payment_entry(bill.name)
+		pe = frappe.get_doc("Payment Entry", res["payment_entry"])
+		self.assertEqual(pe.docstatus, 0)  # draft — user reviews + submits in Desk
+		self.assertTrue(any(r.reference_name == bill.purchase_invoice for r in pe.references))
+
+	def test_tax_account_company_mismatch_rejected(self):
+		# A tax-row account from another company must be rejected up front (the PI would post
+		# to the wrong company's GL). Consistency validated on the bill, not deep in the PI.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		other_acct = frappe.db.get_value(
+			"Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name"
+		)
+		if not other_acct:
+			self.skipTest("no cross-company account available")
+		bill = self._direct_bill(self._subcontractor(), amount=1000, retention=0)
+		bill.append("taxes", {"charge_type": "On Net Total", "account_head": other_acct, "rate": 5})
+		self.assertRaises(frappe.ValidationError, bill.save)
+
+	def test_work_order_company_anchored_to_project(self):
+		# A WO always takes its project's company, even if a different one is supplied — so the
+		# inconsistency that broke PI posting can't be created in the first place.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		wo = frappe.get_doc(
+			{
+				"doctype": "Subcontractor Work Order",
+				"subcontractor": self._subcontractor().name,
+				"project": self.project,
+				"company": other,  # deliberately wrong
+				"date": "2026-07-01",
+				"retention_percent": 5,
+				"lines": [{"scope": "X", "uom": "Nos", "qty": 1, "rate": 1}],
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(wo.company, frappe.db.get_value("Project", self.project, "company"))
+
+	def test_bill_company_follows_project_not_work_order(self):
+		# A WO whose company has drifted from its project's must not leak that company onto
+		# the bill (the PI validates the project against the company). Anchor to the project.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company to simulate the drift")
+		sub = self._subcontractor()
+		wo = self._work_order(sub, qty=100, rate=85)
+		frappe.db.set_value("Subcontractor Work Order", wo.name, "company", other)  # drift
+		self._certified_mb(wo, qty=40)
+		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"})
+		bill.fetch_lines()
+		bill.insert(ignore_permissions=True)
+		self.assertEqual(bill.company, frappe.db.get_value("Project", self.project, "company"))
+
+	def test_submit_via_api_with_db_loaded_date(self):
+		# Regression: the API submit path reloads the bill from the DB, so `date` is a
+		# datetime.date — the PI's get_due_date() is strictly typed str|None and must not trip.
+		from buildsuite_core.api.subcontractor_bill import submit_bill
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		res = submit_bill(bill.name)
+		self.assertTrue(res["purchase_invoice"])
+
 	def test_pi_generation_is_idempotent(self):
 		bill = self._direct_bill(self._subcontractor())
 		bill.submit()

@@ -63,3 +63,4 @@ export const getTaxTemplateRows = (template) => billCall("get_tax_template_rows"
 export const listWithholdingCategories = () => billCall("list_withholding_categories", {});
 export const recordBillPayment = (args) => billCall("record_payment", args);
 export const listBillPayments = (name) => billCall("list_payments", { name });
+export const makeBillPaymentEntry = (name) => billCall("make_payment_entry", { name });

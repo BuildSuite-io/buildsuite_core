@@ -163,10 +163,13 @@ def generate_purchase_invoice(bill):
 	pi.company = bill.company
 	pi.supplier = supplier
 	pi.currency = frappe.db.get_value("Company", bill.company, "default_currency")
+	# ERPNext's get_due_date() is strictly typed (str | None) — a DB-loaded Date field is a
+	# datetime.date, which pydantic rejects. Pass ISO strings.
+	bill_date = str(bill.date) if bill.date else None
 	pi.set_posting_time = 1
-	pi.posting_date = bill.date
+	pi.posting_date = bill_date
 	pi.bill_no = bill.name
-	pi.bill_date = bill.date
+	pi.bill_date = bill_date
 	pi.project = bill.project
 	pi.update_stock = 0
 	if frappe.get_meta("Purchase Invoice").has_field("subcontractor_bill"):

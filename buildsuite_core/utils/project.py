@@ -36,6 +36,18 @@ def sync_project_status(doc, method=None):
 		doc.percent_complete = compute_project_progress(doc.name)
 
 
+def default_company():
+	"""The company a new record defaults to when none is chosen — the creating user's
+	company, else their user default, else the site default. This is the resolution the New
+	Project screen uses; shared so other docs (e.g. a direct Subcontractor Bill with no
+	project) default their accounting company the same way."""
+	return (
+		frappe.db.get_value("User", frappe.session.user, "company")
+		or frappe.defaults.get_user_default("Company")
+		or frappe.db.get_single_value("Global Defaults", "default_company")
+	)
+
+
 def set_company_on_insert(doc, method=None):
 	"""Default/inherit company before insert (PRJ-005, PRJ-012).
 
@@ -50,13 +62,7 @@ def set_company_on_insert(doc, method=None):
 			return
 
 	if not doc.get("company"):
-		# Inferred from the creating user's company (the Vue form no longer asks
-		# for it), falling back to the site default.
-		doc.company = (
-			frappe.db.get_value("User", frappe.session.user, "company")
-			or frappe.defaults.get_user_default("Company")
-			or frappe.db.get_single_value("Global Defaults", "default_company")
-		)
+		doc.company = default_company()
 
 
 def enforce_company_rules(doc, method=None):

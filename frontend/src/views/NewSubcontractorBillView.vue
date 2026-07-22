@@ -320,7 +320,7 @@ const breadcrumbs = computed(() => [
 							placeholder="Pick a subcontractor…"
 						/>
 					</DeskField>
-					<DeskField label="Project" required :error="errors.project">
+					<DeskField label="Project" required hint="Sets the accounting company." :error="errors.project">
 						<DeskLinkPicker
 							v-model="form.project"
 							doctype="Project"
