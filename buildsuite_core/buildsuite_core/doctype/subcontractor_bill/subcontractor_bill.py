@@ -74,29 +74,29 @@ class SubcontractorBill(Document):
 	# --- helpers ----------------------------------------------------------
 
 	def _sync_from_work_order(self):
-		"""WO bills inherit party/project/company/retention from the Work Order. Direct bills
-		carry their own (subcontractor + project entered on the form)."""
+		"""WO bills inherit party/project/retention from the Work Order. Direct bills carry
+		their own (subcontractor + project entered on the form)."""
 		if self.work_order and not self.is_direct:
 			wo = frappe.db.get_value(
 				WORK_ORDER,
 				self.work_order,
-				["subcontractor", "subcontractor_name", "project", "company", "retention_percent"],
+				["subcontractor", "subcontractor_name", "project", "retention_percent"],
 				as_dict=True,
 			)
 			if wo:
 				self.subcontractor = wo.subcontractor
 				self.subcontractor_name = wo.subcontractor_name
 				self.project = wo.project
-				self.company = wo.company
 				if self.retention_percent in (None, ""):
 					self.retention_percent = wo.retention_percent
-		else:
-			if self.subcontractor and not self.subcontractor_name:
-				self.subcontractor_name = frappe.db.get_value(
-					"Supplier", self.subcontractor, "supplier_name"
-				)
-			if self.project and not self.company:
-				self.company = frappe.db.get_value("Project", self.project, "company")
+		elif self.subcontractor and not self.subcontractor_name:
+			self.subcontractor_name = frappe.db.get_value("Supplier", self.subcontractor, "supplier_name")
+
+		# Company is anchored to the PROJECT (the accounting dimension the generated PI
+		# validates against), never the Work Order — a WO whose company drifted from its
+		# project's would otherwise make the PI reject the project dimension.
+		if self.project:
+			self.company = frappe.db.get_value("Project", self.project, "company")
 
 	def _require_open_work_order(self):
 		status = frappe.db.get_value(WORK_ORDER, self.work_order, "status")

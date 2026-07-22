@@ -32,8 +32,25 @@ def after_migrate():
 	# native `type` is already populated by backfill_native_task_type() above, so this is
 	# safe; it is a no-op on every subsequent migrate.
 	drop_legacy_task_type_field()
+	backfill_work_order_company()
 	seed_master_data()
 	setup_record_permissions()
+
+
+def backfill_work_order_company():
+	"""Re-anchor any Subcontractor Work Order whose company drifted from its project's company
+	(historically the WO could inherit the user's default company). Idempotent — the bill's
+	generated PI validates the project against this company, so a mismatch would block posting."""
+	rows = frappe.db.sql(
+		"""select wo.name, p.company as project_company
+		from `tabSubcontractor Work Order` wo join `tabProject` p on p.name = wo.project
+		where wo.company != p.company and p.company is not null and p.company != ''""",
+		as_dict=True,
+	)
+	for r in rows:
+		frappe.db.set_value(
+			"Subcontractor Work Order", r.name, "company", r.project_company, update_modified=False
+		)
 
 
 def drop_legacy_task_type_field():

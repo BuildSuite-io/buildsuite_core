@@ -119,6 +119,40 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
+	def test_work_order_company_anchored_to_project(self):
+		# A WO always takes its project's company, even if a different one is supplied — so the
+		# inconsistency that broke PI posting can't be created in the first place.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		wo = frappe.get_doc(
+			{
+				"doctype": "Subcontractor Work Order",
+				"subcontractor": self._subcontractor().name,
+				"project": self.project,
+				"company": other,  # deliberately wrong
+				"date": "2026-07-01",
+				"retention_percent": 5,
+				"lines": [{"scope": "X", "uom": "Nos", "qty": 1, "rate": 1}],
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(wo.company, frappe.db.get_value("Project", self.project, "company"))
+
+	def test_bill_company_follows_project_not_work_order(self):
+		# A WO whose company has drifted from its project's must not leak that company onto
+		# the bill (the PI validates the project against the company). Anchor to the project.
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company to simulate the drift")
+		sub = self._subcontractor()
+		wo = self._work_order(sub, qty=100, rate=85)
+		frappe.db.set_value("Subcontractor Work Order", wo.name, "company", other)  # drift
+		self._certified_mb(wo, qty=40)
+		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"})
+		bill.fetch_lines()
+		bill.insert(ignore_permissions=True)
+		self.assertEqual(bill.company, frappe.db.get_value("Project", self.project, "company"))
+
 	def test_submit_via_api_with_db_loaded_date(self):
 		# Regression: the API submit path reloads the bill from the DB, so `date` is a
 		# datetime.date — the PI's get_due_date() is strictly typed str|None and must not trip.
