@@ -119,6 +119,15 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		pi = frappe.get_doc("Purchase Invoice", bill.purchase_invoice)
 		self.assertTrue(all(item.expense_account == acct for item in pi.items))
 
+	def test_submit_via_api_with_db_loaded_date(self):
+		# Regression: the API submit path reloads the bill from the DB, so `date` is a
+		# datetime.date — the PI's get_due_date() is strictly typed str|None and must not trip.
+		from buildsuite_core.api.subcontractor_bill import submit_bill
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		res = submit_bill(bill.name)
+		self.assertTrue(res["purchase_invoice"])
+
 	def test_pi_generation_is_idempotent(self):
 		bill = self._direct_bill(self._subcontractor())
 		bill.submit()
