@@ -127,7 +127,7 @@ function validate() {
 			e.lines = "No fresh measured quantity to bill — certify a Measurement Book first.";
 	} else {
 		if (!form.value.subcontractor) e.subcontractor = "Pick a subcontractor.";
-		if (!form.value.project) e.project = "Pick a project.";
+		// Project is optional for a direct bill — without one the default company is used.
 		if (directGross.value <= 0) e.lines = "Add at least one line with an amount.";
 	}
 	errors.value = e;
@@ -320,13 +320,13 @@ const breadcrumbs = computed(() => [
 							placeholder="Pick a subcontractor…"
 						/>
 					</DeskField>
-					<DeskField label="Project" required :error="errors.project">
+					<DeskField label="Project" hint="Optional — sets the company. Blank uses the default company." :error="errors.project">
 						<DeskLinkPicker
 							v-model="form.project"
 							doctype="Project"
 							label-field="project_name"
 							value-field="name"
-							placeholder="Pick a project…"
+							placeholder="— Optional —"
 						/>
 					</DeskField>
 					<DeskField label="Date" required><DeskInput v-model="form.date" type="date" /></DeskField>
