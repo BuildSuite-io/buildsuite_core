@@ -191,6 +191,28 @@ const resolvedProjectId = computed(() => project.value?.id || props.id);
 const parent = computed(() =>
 	project.value?.parentId ? store.projectById(project.value.parentId) : null,
 );
+// Resolve the master (parent) project's display name reliably in remote mode, where the
+// Pinia store may not hold the parent (TASK-116 — surface the master-project link on a subproject).
+const parentResource = ref(null);
+watch(
+	() => project.value?.parentId,
+	(pid) => {
+		parentResource.value = pid
+			? adapter.read("Project", pid, {
+					fields: ["name", "project_name", "project_status", "status"],
+					cache: `buildsuite-project-parent:${pid}`,
+				})
+			: null;
+	},
+	{ immediate: true },
+);
+const parentName = computed(
+	() => parentResource.value?.doc?.project_name || parent.value?.name || project.value?.parentId || "",
+);
+const parentStatus = computed(() => {
+	const d = parentResource.value?.doc;
+	return d?.project_status || d?.status || parent.value?.status || "";
+});
 const subprojectsResource = ref(null);
 const subprojectFilterKey = computed(() => resolvedProjectId.value);
 
@@ -1004,6 +1026,34 @@ usePageTitle(() => project.value?.name);
 		</template>
 
 		<div>
+			<!-- TASK-116 — a subproject shows a prominent, clickable "Subproject of" banner
+				 linking to its master (parent) project. -->
+			<button
+				v-if="project.parentId"
+				type="button"
+				class="mb-3 w-full flex items-center gap-2 px-3 py-2 bg-brand-50 border border-brand-200 rounded-lg text-left hover:bg-brand-100 transition-colors group"
+				@click="router.push(`/projects/${project.parentId}`)"
+			>
+				<svg
+					class="w-4 h-4 text-brand-700 flex-shrink-0"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					v-html="getWorkspaceIconPath('building-2')"
+				/>
+				<span class="text-xs text-ink-600">Subproject of</span>
+				<span
+					class="text-sm font-semibold text-ink-900 group-hover:text-brand-700 transition-colors truncate"
+					>{{ parentName }}</span
+				>
+				<StatusBadge v-if="parentStatus" :status="parentStatus" size="xs" class="flex-shrink-0" />
+				<span class="ml-auto text-brand-700 text-xs flex-shrink-0">Open parent →</span>
+			</button>
+
 			<!-- Tabs (thin underline, brand-green for active) -->
 			<div class="border-b border-ink-200 flex overflow-x-auto scrollbar-thin mb-0">
 				<button
