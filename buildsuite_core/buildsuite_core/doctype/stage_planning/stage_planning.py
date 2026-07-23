@@ -65,9 +65,10 @@ class StagePlanning(Document):
 			frappe.throw(_("A rejection reason is required to reject this stage."))
 
 		# Server-maintained aggregates for the list: real nested-task count + mean
-		# task progress (the list derives status from mean_progress, not dates).
+		# task progress (the list derives status from mean_progress, not dates) +
+		# the count of member tasks actually completed (for the "done / total" chip).
 		task_names = [r.task for r in (self.stage_planning_tasks or []) if r.task]
-		self.task_count, self.mean_progress = _stage_aggregates(task_names)
+		self.task_count, self.mean_progress, self.completed_task_count = _stage_aggregates(task_names)
 
 	def _stage_tasks_changed(self, before):
 		"""Whether stage_planning_tasks differ from the persisted version — rows
@@ -97,28 +98,34 @@ class StagePlanning(Document):
 
 
 def _stage_aggregates(task_names):
-	"""(task_count, mean_progress) for member task names. Mean is the simple average
-	of member task progress; (0, 0) when the stage has no tasks."""
+	"""(task_count, mean_progress, completed_task_count) for member task names.
+	Mean is the simple average of member task progress; completed counts tasks at
+	100% progress (which is how a Completed task_status is stored — see utils/task.py).
+	(0, 0, 0) when the stage has no tasks."""
 	count = len(task_names)
 	if not count:
-		return 0, 0
+		return 0, 0, 0
 	rows = frappe.get_all("Task", filters={"name": ["in", task_names]}, fields=["progress"])
 	mean = sum(flt(r.progress) for r in rows) / len(rows) if rows else 0
-	return count, round(mean)
+	completed = sum(1 for r in rows if flt(r.progress) >= 100)
+	return count, round(mean), completed
 
 
 def recompute_stage_aggregates(stage):
-	"""Set task_count + mean_progress on a Stage Planning from its current child rows
-	and member task progress, via db.set_value (no save) — safe to call from a Task
-	hook when a member task's progress changes."""
+	"""Set task_count + mean_progress + completed_task_count on a Stage Planning from
+	its current child rows and member task progress, via db.set_value (no save) — safe
+	to call from a Task hook when a member task's progress changes."""
 	task_names = frappe.get_all(
 		"Stage Planning Task",
 		filters={"parent": stage, "parenttype": "Stage Planning"},
 		pluck="task",
 	)
-	count, mean = _stage_aggregates([t for t in task_names if t])
+	count, mean, completed = _stage_aggregates([t for t in task_names if t])
 	frappe.db.set_value(
-		"Stage Planning", stage, {"task_count": count, "mean_progress": mean}, update_modified=False
+		"Stage Planning",
+		stage,
+		{"task_count": count, "mean_progress": mean, "completed_task_count": completed},
+		update_modified=False,
 	)
 
 

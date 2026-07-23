@@ -21,11 +21,11 @@ const emit = defineEmits(["edit"]);
 const store = useDataStore();
 
 function plannedCost() {
-	if (props.activeBoq) return store.boqTotals(props.activeBoq.id).planned;
+	if (props.activeBoq) return props.activeBoq.totals?.planned || 0;
 	return props.project?.budget || 0;
 }
 function actualCost() {
-	if (props.activeBoq) return store.boqTotals(props.activeBoq.id).actual;
+	if (props.activeBoq) return props.activeBoq.totals?.actual || 0;
 	return 0;
 }
 function costDeviation() {

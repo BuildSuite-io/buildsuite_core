@@ -113,7 +113,9 @@ export function useProjectDetailListFilters({ project, subs, workPackages, tasks
 			total: all.length,
 			completed: all.filter((t) => t.status === "Completed").length,
 			inProgress: all.filter((t) => t.status === "In Progress").length,
-			open: all.filter((t) => t.status === "Open").length,
+			// "Yet To Start" is the default task_status (see loadTasksResource transform);
+			// there is no "Open" status, so match the row pills' vocabulary here.
+			yetToStart: all.filter((t) => t.status === "Yet To Start").length,
 		};
 	});
 

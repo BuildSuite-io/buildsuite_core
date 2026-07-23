@@ -482,28 +482,71 @@ const attachmentCount = computed(() => {
 	if (Array.isArray(raw?.value)) return raw.value.length;
 	return null;
 });
-const boqs = computed(() =>
-	store
-		.boqsByProject(resolvedProjectId.value)
-		.slice()
-		.sort((a, b) => (b.preparedDate || "").localeCompare(a.preparedDate || "")),
-);
-const activeBoq = computed(
-	() =>
-		store.activeBoqForProject(resolvedProjectId.value) ||
-		boqs.value.find((b) => b.status === "Approved"),
-);
+// BOQ tab — backend-backed (like the standalone BOQ module). Fetch the project's
+// BOQs straight from the server, scoped to the project + its subprojects, so a BOQ
+// created for the project actually shows here. (The old store.boqsByProject read
+// the seed/localStorage store, which is never hydrated from the backend, so real
+// BOQs never appeared.) The transform mirrors BoqView so the row shape is identical.
+const boqsResource = ref(null);
+function loadBoqsResource() {
+	if (!resolvedProjectId.value) {
+		boqsResource.value = null;
+		return;
+	}
+	boqsResource.value = adapter.list("BOQ", {
+		fields: [
+			"name",
+			"title",
+			"project",
+			"revision",
+			"status",
+			"source_sco",
+			"planned_amount",
+			"actual_amount",
+			"prepared_date",
+		],
+		filters: { project: ["in", taskProjectIds.value] },
+		orderBy: "creation desc",
+		pageLength: 500,
+		cache: `buildsuite-project-detail-boq:${taskFilterKey.value}`,
+		transform(rows) {
+			return rows.map((b) => {
+				const planned = b.planned_amount || 0;
+				const actual = b.actual_amount || 0;
+				const variance = actual - planned;
+				return {
+					id: b.name,
+					title: b.title || b.name,
+					projectId: b.project || "",
+					revision: b.revision,
+					status: b.status,
+					sourceScoId: b.source_sco || "",
+					preparedDate: b.prepared_date,
+					totals: { planned, actual, variance, variancePct: planned ? (variance / planned) * 100 : 0 },
+				};
+			});
+		},
+	});
+}
+watch(taskFilterKey, loadBoqsResource, { immediate: true });
+
+const boqs = computed(() => {
+	const raw = boqsResource.value?.data;
+	const list = Array.isArray(raw) ? raw : Array.isArray(raw?.value) ? raw.value : [];
+	return list.slice().sort((a, b) => (b.preparedDate || "").localeCompare(a.preparedDate || ""));
+});
+const activeBoq = computed(() => boqs.value.find((b) => b.status === "Approved") || null);
 
 // Cost rollups for the summary strip. Planned honours the active BOQ's
 // planned total when one exists, otherwise falls back to the project budget.
 // Actual is 0 until an Approved BOQ exists and its actuals have been
 // recalculated.
 const plannedCost = computed(() => {
-	if (activeBoq.value) return store.boqTotals(activeBoq.value.id).planned;
+	if (activeBoq.value) return activeBoq.value.totals.planned;
 	return project.value?.budget || 0;
 });
 const actualCost = computed(() => {
-	if (activeBoq.value) return store.boqTotals(activeBoq.value.id).actual;
+	if (activeBoq.value) return activeBoq.value.totals.actual;
 	return 0;
 });
 const costDeviation = computed(() => actualCost.value - plannedCost.value);
@@ -1243,7 +1286,7 @@ usePageTitle(() => project.value?.name);
 					<span class="text-xs text-ink-500">
 						<span class="text-ink-900 font-medium">{{ taskStats.total }} tasks</span>
 						· {{ taskStats.completed }} completed · {{ taskStats.inProgress }} in
-						progress · {{ taskStats.open }} open
+						progress · {{ taskStats.yetToStart }} yet to start
 					</span>
 					<RouterLink
 						v-if="canCreate('task')"
@@ -1513,8 +1556,8 @@ usePageTitle(() => project.value?.name);
 							<DeskLink :to="`/boq/${activeBoq.id}`" class="font-mono">{{
 								activeBoq.id
 							}}</DeskLink>
-							({{ fmtCompactINR(store.boqTotals(activeBoq.id).planned) }} planned ·
-							{{ fmtCompactINR(store.boqTotals(activeBoq.id).actual) }} actual)
+							({{ fmtCompactINR(activeBoq.totals.planned) }} planned ·
+							{{ fmtCompactINR(activeBoq.totals.actual) }} actual)
 						</template>
 					</span>
 					<RouterLink
@@ -1552,14 +1595,10 @@ usePageTitle(() => project.value?.name);
 						}}</span>
 					</template>
 					<template #cell-planned="{ row }">
-						<span class="tabular-nums">{{
-							fmtCompactINR(store.boqTotals(row.id).planned)
-						}}</span>
+						<span class="tabular-nums">{{ fmtCompactINR(row.totals.planned) }}</span>
 					</template>
 					<template #cell-actual="{ row }">
-						<span class="tabular-nums text-ink-700">{{
-							fmtCompactINR(store.boqTotals(row.id).actual)
-						}}</span>
+						<span class="tabular-nums text-ink-700">{{ fmtCompactINR(row.totals.actual) }}</span>
 					</template>
 					<template #cell-preparedDate="{ row }">
 						<span class="text-xs text-ink-500">{{ fmtDate(row.preparedDate) }}</span>
