@@ -8,7 +8,9 @@
   "project_naming",
   "rate_master_update_threshold",
   "subcontract_section",
-  "default_subcontractor_expense_account"
+  "default_subcontractor_expense_account",
+  "finance_section",
+  "default_petty_cash_account"
  ],
  "fields": [
   {
@@ -40,6 +42,18 @@
    "fieldname": "default_subcontractor_expense_account",
    "fieldtype": "Link",
    "label": "Default Subcontractor Expense Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "finance_section",
+   "fieldtype": "Section Break",
+   "label": "Project Finance"
+  },
+  {
+   "description": "The Petty Cash ledger a disbursement's Journal Entry debits. Falls back to a per-company 'Petty Cash' account.",
+   "fieldname": "default_petty_cash_account",
+   "fieldtype": "Link",
+   "label": "Default Petty Cash Account",
    "options": "Account"
   }
  ],

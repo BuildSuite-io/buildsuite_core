@@ -574,6 +574,36 @@ def setup_sco_permissions():
 	_apply_role_perms("Scope Change Order", SCO_ROLE_PERMS)
 
 
+# --- Project Finance — Petty Cash -------------------------------------------
+# Site roles (Site Engineer / Foreman) raise + manage their own requests; finance
+# roles have full access. Disbursing is gated in the API by PETTY_CASH_DISBURSE_ROLES,
+# not a DocPerm (any writer can save a request; only approvers can disburse).
+_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+PETTY_CASH_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Director": _FULL,
+	"BuildSuite PM": _FULL,
+	"BuildSuite Accountant": _FULL,
+	"BuildSuite Site Engineer": _PETTY_CASH_SITE,
+	"BuildSuite Foreman": _PETTY_CASH_SITE,
+	"BuildSuite QS": _READ,
+}
+PETTY_CASH_DISBURSE_ROLES = (
+	"BuildSuite Accountant",
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite Administrator",
+)
+
+
+def setup_petty_cash_permissions():
+	_apply_role_perms("Petty Cash Request", PETTY_CASH_ROLE_PERMS)
+	# The disburse Journal Entry + its account picker read accounting masters.
+	_read = {role: _READ for role in PETTY_CASH_DISBURSE_ROLES}
+	for dt in ("Account", "Journal Entry"):
+		_apply_role_perms(dt, _read)
+
+
 def setup_subcontract_permissions():
 	# Subcontractors are native Suppliers (supplier_type="Subcontractor") — grant the
 	# BuildSuite roles CRUD on Supplier so the Vue "Subcontractor" screens work.
@@ -670,6 +700,7 @@ def setup_record_permissions():
 	setup_linked_master_permissions()
 	setup_subcontract_permissions()
 	setup_sco_permissions()
+	setup_petty_cash_permissions()
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
 	setup_subcontractor_wo_workflow()

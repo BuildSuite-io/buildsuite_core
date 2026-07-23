@@ -366,6 +366,19 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	"Journal Entry": [
+		{
+			# Back-link to the Petty Cash Request whose disbursement posted this JE.
+			"fieldname": "petty_cash_request",
+			"fieldtype": "Link",
+			"label": "Petty Cash Request",
+			"options": "Petty Cash Request",
+			"insert_after": "voucher_type",
+			"read_only": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order Item": [
 		{
 			"fieldname": "custom_rate_master",
