@@ -419,17 +419,24 @@ const routes = [
 			{
 				path: "project-finance",
 				name: "project-finance",
-				component: () => import("@/views/PlaceholderView.vue"),
-				props: {
-					title: "Project Finance",
-					icon: "💵",
-					desc: "Petty cash, cost summary, project P&L and variance reports.",
-				},
+				component: () => import("@/views/workspaces/ProjectFinanceWorkspace.vue"),
 			},
 			{
 				path: "project-finance/petty-cash",
 				name: "petty-cash",
 				component: () => import("@/views/finance/FinancePettyCashPanel.vue"),
+			},
+			{
+				path: "project-finance/report/:slug",
+				name: "finance-report",
+				component: () => import("@/views/finance/FinanceReportPageView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/:section",
+				name: "finance-section",
+				component: () => import("@/views/finance/FinancePageView.vue"),
+				props: true,
 			},
 
 			{
