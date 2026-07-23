@@ -61,6 +61,7 @@ const PAGE_TITLES = {
 	workforce: "Workforce",
 	"scope-change": "Scope Change",
 	"project-finance": "Project Finance",
+	"petty-cash": "Petty Cash",
 	accounting: "Accounting",
 	buying: "Buying",
 	stock: "Stock",
@@ -424,6 +425,11 @@ const routes = [
 					icon: "💵",
 					desc: "Petty cash, cost summary, project P&L and variance reports.",
 				},
+			},
+			{
+				path: "project-finance/petty-cash",
+				name: "petty-cash",
+				component: () => import("@/views/finance/FinancePettyCashPanel.vue"),
 			},
 
 			{
