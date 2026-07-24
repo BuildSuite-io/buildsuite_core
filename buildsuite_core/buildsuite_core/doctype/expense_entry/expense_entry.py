@@ -2,14 +2,14 @@
 # For license information, please see license.txt
 
 import frappe
-import erpnext
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
+
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 )
 
-from frappe.utils import cstr, flt, get_link_to_form
 
 class ExpenseEntry(Document):
 	# begin: auto-generated types
@@ -18,8 +18,11 @@ class ExpenseEntry(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.expense_entry_table.expense_entry_table import ExpenseEntryTable
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.expense_entry_table.expense_entry_table import (
+			ExpenseEntryTable,
+		)
 
 		amended_from: DF.Link | None
 		company: DF.Link | None
@@ -37,210 +40,211 @@ class ExpenseEntry(Document):
 		total_amount: DF.Currency
 	# end: auto-generated types
 
-	# begin: auto-generated types
-	# This code is auto-generated. Do not modify anything in this block.
-
-	from typing import TYPE_CHECKING
-
-	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.expense_entry_table.expense_entry_table import ExpenseEntryTable
-		from frappe.types import DF
-
-		amended_from: DF.Link | None
-		company: DF.Link | None
-		cost_center: DF.Link | None
-		date: DF.Date
-		description: DF.SmallText | None
-		employee: DF.Link | None
-		employee_name: DF.Data | None
-		expense_entry_table: DF.Table[ExpenseEntryTable]
-		naming_series: DF.Data
-		payment_account: DF.Link
-		payment_account_name: DF.Data | None
-		project: DF.Link
-		total_amount: DF.Currency
-
 	def validate(self):
-		amount = 0
-		for expense_entry in self.expense_entry_table:
-			amount += expense_entry.amount
-		self.db_set('total_amount', amount)
-		generate_remarks(self)
-    
+		if not self.expense_entry_table:
+			frappe.throw(_("At least one expense row is required."))
+
+		self.total_amount = sum(flt(row.amount) for row in self.expense_entry_table)
+
+		for idx, row in enumerate(self.expense_entry_table, start=1):
+			if flt(row.amount) <= 0:
+				frappe.throw(_("Row #{0}: Amount must be greater than zero.").format(idx))
+			if not row.expense_account or not row.payment_account:
+				frappe.throw(
+					_("Row #{0}: Both Expense Account and Payment Account are required.").format(idx)
+				)
+
+		self.set_description()
+
 	def on_submit(self):
-		if self.expense_entry_table:
-			accounts = []
-			for expense_entry in self.expense_entry_table:
-				accounting_dimensions = get_accounting_dimensions() or []
-				if expense_entry.payment_account:
-					accounts.append(create_account_entry(
-						expense_entry.payment_account,
-						None,
-						expense_entry.amount,
-						expense_entry.cost_center or frappe.db.get_value("Company", self.company, 'cost_center'),
-						expense_entry.project,
-						expense_entry.employee,
-						expense_entry.description,
-						accounting_dimensions
-					))
-				if expense_entry.expense_account:
-					accounts.append(create_account_entry(
-						expense_entry.expense_account,
-						expense_entry.amount,
-						None,
-						expense_entry.cost_center or frappe.db.get_value("Company", self.company, 'cost_center'),
-						expense_entry.project,
-						expense_entry.employee,
-						expense_entry.description,
-						accounting_dimensions
-					))
-				journal_entry = create_journal_entry_doc(accounts, self.company, self.date, 0, "Journal Entry", self.description, self.doctype, self.name)
-				self.db_set('journal_entry', journal_entry.name)
-				self.reload()
+		self.create_journal_entry()
 
 	def on_cancel(self):
-		if self.journal_entry:
-			journal_entry_doc = frappe.get_doc("Journal Entry", self.journal_entry)
-			journal_entry_doc.cancel()
-			self.db_set('journal_entry', None)
-			self.reload()
-	pass
+		self.ignore_linked_doctypes = ("GL Entry", "Stock Ledger Entry")
+		self.cancel_journal_entry()
 
-def create_journal_entry_doc(accounts, company, posting_date, multi_currency, voucher_type, remark, reference_doctype, reference_docname):
-	journal_entry = frappe.new_doc("Journal Entry")
-	journal_entry.voucher_type = voucher_type
-	journal_entry.company = company
-	journal_entry.posting_date = posting_date
-	journal_entry.multi_currency = multi_currency
-	journal_entry.docstatus = 1
-	journal_entry.remark = remark
-	journal_entry.reference_doctype = reference_doctype
-	journal_entry.reference_docname = reference_docname
-	journal_entry.set("accounts", accounts)
-	journal_entry.save(ignore_permissions=True)
-	return journal_entry
+	# ------------------------------------------------------------------
+	# Journal Entry
+	# ------------------------------------------------------------------
 
-def create_account_entry(account, debit_amount, cerdit_amount, cost_center, project, employee, user_remark, accounting_dimensions):
-    precision = frappe.get_precision("Journal Entry Account", "debit_in_account_currency")
-    entry = {
-        "account": account,
-        "debit_in_account_currency": flt(debit_amount, precision) if debit_amount else None,
-        "credit_in_account_currency": flt(cerdit_amount, precision) if cerdit_amount else None,
-        "cost_center": cost_center,
-        "project": project,
-		"user_remark":user_remark,
-		"employee":employee
-    }
-    return update_accounting_dimensions(entry, accounting_dimensions)
+	def create_journal_entry(self):
+		accounting_dimensions = get_accounting_dimensions() or []
+		default_cost_center = frappe.db.get_value("Company", self.company, "cost_center")
+
+		accounts = []
+		for row in self.expense_entry_table:
+			cost_center = row.cost_center or self.cost_center or default_cost_center
+
+			# Debit: expense account
+			accounts.append(
+				self.get_account_row(row, row.expense_account, flt(row.amount), 0, cost_center, accounting_dimensions)
+			)
+			# Credit: payment account
+			accounts.append(
+				self.get_account_row(row, row.payment_account, 0, flt(row.amount), cost_center, accounting_dimensions)
+			)
+
+		if not accounts:
+			return
+
+		je = frappe.new_doc("Journal Entry")
+		je.update(
+			{
+				"voucher_type": "Journal Entry",
+				"company": self.company,
+				"posting_date": self.date,
+				"multi_currency": 0,
+				"remark": self.description,
+				"user_remark": self.description,
+				"reference_doctype": self.doctype,
+				"reference_docname": self.name,
+			}
+		)
+		je.set("accounts", accounts)
+		je.flags.ignore_permissions = True
+		je.insert()
+		je.submit()
+
+		self.db_set("journal_entry", je.name)
+
+	def cancel_journal_entry(self):
+		if not self.journal_entry:
+			return
+
+		docstatus = frappe.db.get_value("Journal Entry", self.journal_entry, "docstatus")
+		if docstatus == 1:
+			je = frappe.get_doc("Journal Entry", self.journal_entry)
+			je.flags.ignore_permissions = True
+			je.cancel()
+
+		self.db_set("journal_entry", None)
+
+	def get_account_row(self, row, account, debit, credit, cost_center, accounting_dimensions):
+		entry = {
+			"account": account,
+			"debit_in_account_currency": debit or 0,
+			"credit_in_account_currency": credit or 0,
+			"cost_center": cost_center,
+			"project": row.project or self.project,
+			"user_remark": row.description,
+			"employee": row.employee or self.employee,
+		}
+
+		for dimension in accounting_dimensions:
+			value = row.get(dimension) or self.get(dimension)
+			if value:
+				entry[dimension] = value
+
+		return entry
+
+	# ------------------------------------------------------------------
+	# Description
+	# ------------------------------------------------------------------
+
+	def set_description(self):
+		before_save = self.get_doc_before_save()
+		old_description = before_save.description if before_save else None
+
+		if self.description and self.description != old_description:
+			full_name = frappe.db.get_value("User", frappe.session.user, "full_name")
+			self.description = f"{self.description} - Updated by {full_name}"
+		elif old_description and "Updated by" in old_description:
+			self.description = old_description
+		else:
+			self.description = self.build_description()
+
+	def build_description(self):
+		employee_name = (
+			frappe.db.get_value("Employee", self.employee, "employee_name") if self.employee else ""
+		)
+		project_name = frappe.db.get_value("Project", self.project, "project_name") if self.project else ""
+		payment_account = self.payment_account or "N/A"
+
+		expenses = ", ".join(row.expense_account for row in self.expense_entry_table if row.expense_account)
+
+		parts = [f"Amount of {flt(self.total_amount)} for"]
+		if expenses:
+			parts.append(f"Expenses include - {expenses}.")
+		if project_name:
+			parts.append(f"For Project: {project_name} in")
+
+		if "Petty Cash" in payment_account:
+			parts.append(f"{payment_account} of {employee_name}.")
+		else:
+			parts.append(f"{payment_account}.")
+
+		return " ".join(parts)
 
 
-def update_accounting_dimensions(row, accounting_dimensions):
-    for dimension in accounting_dimensions:
-        row.update({dimension: row.get(dimension)})
-    return row
+# ----------------------------------------------------------------------
+# Link queries
+# ----------------------------------------------------------------------
 
-def generate_remarks(self):
-    full_name = frappe.db.get_value("User", frappe.session.user, 'full_name')
-    old_remark = self.get_doc_before_save().description if self.get_doc_before_save() else None
-    
-    if self.description != old_remark:
-        if not self.description:  # If remark is empty
-            self.description = remarks_creation(self)
-        else:
-            self.description = f"{self.remark} - Updated by {full_name}"
-    elif old_remark and "Updated by" in old_remark:
-        self.description = old_remark
-    else:
-        # If none of the above, generate the remark
-        self.description = remarks_creation(self)
 
-def remarks_creation(self):
-    employee = frappe.db.get_value("Employee", self.employee, 'employee_name') or ""
-    project = frappe.db.get_value("Project", self.project, 'project_name') or ""
-    mode_of_payment_account = self.payment_account or "N/A"
-    amount = self.total_amount or "N/A"
-    expense_entry_table = self.expense_entry_table or []
-    remarks = ''
+def get_petty_cash_account(company, throw=True):
+	account = frappe.db.get_value(
+		"Account", {"account_name": "Petty Cash", "company": company, "is_group": 0}, "name"
+	)
+	if not account and throw:
+		frappe.throw(
+			_("Petty Cash account not found for company {0}. Contact Accounts Manager.").format(company)
+		)
+	return account
 
-    # Start constructing the remarks
-    remarks += f"Amount of {amount} for "
-
-    expense_details = [single_expense.expense_account for single_expense in expense_entry_table]
-    expense_summary = ", ".join(expense_details)
-    remarks += f"Expenses include - {expense_summary}."
-    
-    # Add project if available
-    if project:
-        remarks += f" For Project: {project} in "
-    
-    if "Petty Cash" in mode_of_payment_account:
-        remarks += f"{mode_of_payment_account} of {employee}."
-    else:
-        remarks += f" {mode_of_payment_account}."
-    
-    return remarks
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_petty_cash_account_query(doctype, txt, searchfield, start, page_len, filters):
-    """
-    Return only the petty cash account for the given company.
-    Used by set_query for field 'mode_of_payment_account'
-    """
-    company = filters.get("company")
-    if not company:
-        return []
+	"""Return only the petty cash account for the given company."""
+	company = (filters or {}).get("company")
+	if not company:
+		return []
 
-    # Get configured petty cash account for the company
-    petty_cash_account = get_petty_cash_account(company)
-    if not petty_cash_account:
-        return []
+	account = get_petty_cash_account(company, throw=False)
+	if not account:
+		return []
 
-    # Support partial search matching on dropdown (txt)
-    return frappe.db.sql("""
-        SELECT name, account_name
-        FROM `tabAccount`
-        WHERE name = %(account)s
-          AND (name LIKE %(txt)s OR account_name LIKE %(txt)s)
-        LIMIT %(start)s, %(page_len)s
-    """, {
-        "account": petty_cash_account,
-        "txt": "%%%s%%" % txt,
-        "start": start,
-        "page_len": page_len,
-    })
-
-def get_petty_cash_account(company):
-    petty_cash_account = frappe.db.get_value(
-        "Account", {"account_name": "Petty Cash", "company": company}, "name"
-    )
-    if petty_cash_account:
-        return petty_cash_account
-    else:
-        frappe.throw(_("Petty Cash account not found for company {0}. Contact Accounts Manager.").format(company))
+	return frappe.db.sql(
+		"""
+		SELECT name, account_name
+		FROM `tabAccount`
+		WHERE name = %(account)s
+		  AND (name LIKE %(txt)s OR account_name LIKE %(txt)s)
+		LIMIT %(start)s, %(page_len)s
+		""",
+		{
+			"account": account,
+			"txt": f"%{txt}%",
+			"start": start,
+			"page_len": page_len,
+		},
+	)
 
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_employee_for_petty_cash_user(doctype, txt, searchfield, start, page_len, filters):
-    """
-    Returns only the employee record linked to the logged-in Petty cash user.
-    """
-    user = filters.get("user")
-    if not user:
-        return []
+	"""Return only the employee record linked to the logged-in Petty Cash user."""
+	user = (filters or {}).get("user")
+	if not user:
+		return []
 
-    employee_id = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
-    if not employee_id:
-        return []
+	employee = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+	if not employee:
+		return []
 
-    return frappe.db.sql("""
-        SELECT name, employee_name
-        FROM `tabEmployee`
-        WHERE name = %(employee)s
-          AND (name LIKE %(txt)s OR employee_name LIKE %(txt)s)
-        LIMIT %(start)s, %(page_len)s
-    """, {
-        "employee": employee_id,
-        "txt": f"%{txt}%",
-        "start": start,
-        "page_len": page_len,
-    })
+	return frappe.db.sql(
+		"""
+		SELECT name, employee_name
+		FROM `tabEmployee`
+		WHERE name = %(employee)s
+		  AND (name LIKE %(txt)s OR employee_name LIKE %(txt)s)
+		LIMIT %(start)s, %(page_len)s
+		""",
+		{
+			"employee": employee,
+			"txt": f"%{txt}%",
+			"start": start,
+			"page_len": page_len,
+		},
+	)
