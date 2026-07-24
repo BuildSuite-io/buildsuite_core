@@ -502,5 +502,28 @@ CUSTOM_FIELD = {
             "depends_on": "eval:doc.is_labour==1",
             "options": "Project Assigned",
         },
-    ]
+    ],
+    "GL Entry":[
+        {
+            "fieldname": "employee",
+            "fieldtype": "Link",
+            "insert_after": "project",
+            "is_system_generated": 0,
+            "label": "Employee",
+            "options":"Employee",
+            "read_only": 0
+        },
+	],
+    "Journal Entry Account":[
+		{
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"insert_after": "project",
+			"is_system_generated": 0,
+			"label": "Employee",
+			"options":"Employee",
+			"read_only": 0
+
+		}
+	],
 }

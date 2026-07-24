@@ -163,6 +163,7 @@ has_permission = {
 override_doctype_class = {
 	"Project": "buildsuite_core.overrides.project.BuildSuiteProject",
 	"Task": "buildsuite_core.overrides.task.BuildSuiteTask",
+    "Journal Entry":"buildsuite_core.overrides.journal_entry.CustomJournalEntry"
 }
 
 # Document Events
@@ -227,6 +228,9 @@ doc_events = {
 			"buildsuite_core.utils.task.cascade_delete_task",
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
+	},
+	"Company":{
+		"on_update":"buildsuite_core.utils.petty_cash.create_account",
 	},
 	# Hierarchy date-boundary checks — a child's schedule must sit within its
 	# parent project (and end >= start on the record itself).
