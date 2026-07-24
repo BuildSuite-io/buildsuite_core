@@ -71,12 +71,14 @@ function statusClass(s) {
 
 // "Completed tasks (by planned progress) / total tasks in the stage." The completed
 // figure is the progress-weighted equivalent: total × mean task progress. Both
-// task_count and mean_progress are server-maintained aggregates on the record
-// (Frappe's list API can't return the child table to count them client-side).
+// task_count and completed_task_count are server-maintained aggregates on the
+// record (Frappe's list API can't return the child table to count them
+// client-side). completed_task_count is the real count of member tasks at 100%
+// — the old "mean_progress × total" estimate rounded to 0 unless the stage was
+// well past half done.
 function taskCountDisplay(row) {
 	const total = Number(row.task_count) || 0;
-	const meanPct = Number(row.mean_progress) || 0;
-	const completed = Math.round((total * meanPct) / 100);
+	const completed = Number(row.completed_task_count) || 0;
 	return `${completed} / ${total}`;
 }
 
@@ -130,6 +132,7 @@ function onRowClick(row) {
 				'planned_end',
 				'task_count',
 				'mean_progress',
+				'completed_task_count',
 				'workflow_state',
 			]"
 			:columns="[
@@ -142,7 +145,7 @@ function onRowClick(row) {
 					key: 'task_count',
 					label: 'Tasks (done / total)',
 					align: 'right',
-					fields: ['task_count', 'mean_progress'],
+					fields: ['task_count', 'completed_task_count'],
 				},
 				{ key: 'workflow_state', label: 'State' },
 				{ key: '_status', label: 'Status', fields: ['mean_progress'] },

@@ -1690,7 +1690,8 @@ onBeforeUnmount(() => {
 										width: '2px',
 										height: ROW_HEIGHT + 'px',
 									}"
-									class="bg-ink-900 pointer-events-none"
+									class="bg-ink-900 cursor-help"
+									:title="'Stage planned end · ' + fmtShort(sb.group.plannedEnd)"
 								></div>
 							</template>
 
@@ -2261,7 +2262,10 @@ onBeforeUnmount(() => {
 						><span class="absolute inset-y-0 left-0 w-3/5 bg-brand-600"></span></span
 					>Overdue <span class="text-ink-500">⏱</span>
 				</div>
-				<div class="ml-auto flex items-center gap-1.5">
+				<div v-if="groupBy === 'stage'" class="ml-auto flex items-center gap-1.5">
+					<span class="inline-block w-0.5 h-3 bg-ink-900"></span>Stage planned end
+				</div>
+				<div class="flex items-center gap-1.5" :class="{ 'ml-auto': groupBy !== 'stage' }">
 					<span class="w-px h-3 bg-danger-500/60"></span>Today
 				</div>
 			</div>

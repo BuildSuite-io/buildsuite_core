@@ -17,6 +17,7 @@
   "planned_completion_pct",
   "task_count",
   "mean_progress",
+  "completed_task_count",
   "section_break_desc",
   "description",
   "reject_reason",
@@ -100,6 +101,13 @@
    "fieldname": "mean_progress",
    "fieldtype": "Percent",
    "label": "Mean Progress",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "completed_task_count",
+   "fieldtype": "Int",
+   "label": "Completed Task Count",
    "read_only": 1
   },
   {
