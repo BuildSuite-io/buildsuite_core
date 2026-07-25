@@ -17,7 +17,7 @@ const shortcuts = [
 	{
 		label: "Material Consumption",
 		icon: "stock",
-		href: "/app/stock-entry?stock_entry_type=Material Consumption for Manufacture",
+		href: "/app/stock-entry?stock_entry_type=Material Issue",
 	},
 	{ label: "Suppliers", icon: "building-2", href: "/app/supplier" },
 	{ label: "Items & Rates", icon: "tag", to: "/rate-master" },
