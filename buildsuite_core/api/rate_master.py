@@ -27,7 +27,7 @@ def list_rate_masters(start=0, page_length=10, search=None, category=None, with_
 			"name", "rate_code", "rate_name", "category", "uom",
 			"current_rate", "previous_rate", "effective_date", "modified_by",
 		],
-		order_by="rate_code asc",
+		order_by="modified desc",
 		start=cint(start),
 		page_length=cint(page_length),
 	)
