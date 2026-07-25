@@ -165,7 +165,7 @@ def _attach_items(pr: dict) -> None:
 	items = frappe.get_all(
 		"Purchase Receipt Item",
 		filters={"parent": pr["name"], "parenttype": "Purchase Receipt"},
-		fields=["item_name", "received_qty", "rejected_qty", "uom"],
+		fields=["item_name", "received_qty", "rejected_qty", "uom", "purchase_order"],
 	)
 	pr["items"] = [{"item": i.item_name, "qty": i.received_qty, "uom": i.uom} for i in items]
 	pr["item_count"] = len(items)
@@ -173,9 +173,13 @@ def _attach_items(pr: dict) -> None:
 
 
 def _receipt_status(items: list[dict]) -> str:
-	"""Full (clean) / Partial (some rejected) / Short (all rejected)."""
-	received = sum(flt(i.received_qty) for i in items)
-	rejected = sum(flt(i.rejected_qty) for i in items)
-	if rejected <= 0:
+	"""Full / Partial, based on how much of the linked order has been received."""
+	po_names = {i.purchase_order for i in items if i.get("purchase_order")}
+	if not po_names:
 		return "Full"
-	return "Short" if rejected >= received else "Partial"
+	pos = frappe.get_all(
+		"Purchase Order",
+		filters={"name": ["in", list(po_names)]},
+		fields=["per_received"],
+	)
+	return "Full" if all(flt(p.per_received) >= 100 for p in pos) else "Partial"
