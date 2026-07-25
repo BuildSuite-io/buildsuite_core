@@ -20,7 +20,7 @@ const shortcuts = [
 		href: "/app/stock-entry?stock_entry_type=Material Issue",
 	},
 	{ label: "Suppliers", icon: "building-2", href: "/app/supplier" },
-	{ label: "Items & Rates", icon: "tag", to: "/rate-master" },
+	{ label: "Items & Rates", icon: "tag", href: "/app/item" },
 ];
 
 // Report tiles are configured per workspace in Workspace Setting.
