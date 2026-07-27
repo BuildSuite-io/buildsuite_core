@@ -96,9 +96,14 @@ def post_disbursement_journal_entry(doc):
 		frappe.throw(_("Disbursement amount must be greater than zero."))
 
 	petty = resolve_petty_cash_account(doc.company)
-	# Tag the holder on the Petty Cash (debit) line so the issued float lands in the
-	# same employee ledger the balance / transaction endpoints read.
+	# Imprest (custody) treatment: cash moves from the source into the holder's custody —
+	# Dr Petty Cash (Asset/Cash) / Cr source. The Petty Cash balance is total cash out with
+	# employees; per-holder position is derived by the app from the `employee` dimension
+	# (ERPNext won't accept a party on a Cash account, so `employee` is the per-person GL
+	# trail). The holder is mandatory (spec PF-02 rule 1).
 	employee = employee_for_user(doc.requested_by)
+	if not employee:
+		frappe.throw(_("Only employees hold petty cash — no active Employee is linked to {0}.").format(doc.requested_by))
 
 	je = frappe.new_doc("Journal Entry")
 	je.voucher_type = "Journal Entry"

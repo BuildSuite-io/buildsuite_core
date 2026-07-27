@@ -89,8 +89,9 @@ class TestPettyCash(BuildSuiteTestCase):
 		self.assertEqual(je.docstatus, 1)
 		debit = [a for a in je.accounts if flt(a.debit_in_account_currency) > 0]
 		credit = [a for a in je.accounts if flt(a.credit_in_account_currency) > 0]
-		# Dr Petty Cash 15000 / Cr bank 15000.
+		# Imprest treatment: Dr Petty Cash 15000 (holder on the `employee` dimension) / Cr bank 15000.
 		self.assertEqual(flt(debit[0].debit_in_account_currency), 15000)
+		self.assertEqual(debit[0].employee, frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name"))
 		self.assertEqual(credit[0].account, bank)
 		self.assertEqual(flt(credit[0].credit_in_account_currency), 15000)
 

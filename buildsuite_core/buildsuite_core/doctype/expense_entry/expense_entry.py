@@ -142,7 +142,8 @@ class ExpenseEntry(Document):
 			accounts.append(
 				self.get_account_row(row, row.expense_account, flt(row.amount), 0, cost_center, accounting_dimensions)
 			)
-			# Credit: payment account
+			# Credit: payment account (Petty Cash / Reimbursements). The holder is carried
+			# on the `employee` dimension — ERPNext won't accept a party on these accounts.
 			accounts.append(
 				self.get_account_row(row, row.payment_account, 0, flt(row.amount), cost_center, accounting_dimensions)
 			)
