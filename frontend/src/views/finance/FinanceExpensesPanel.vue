@@ -170,52 +170,72 @@ function openTab(t) {
 }
 
 // --- create modal ---
+// One expense per record (matches the prototype's single-expense form).
 const COST_TYPES = ["Material", "Labour", "Plant & Machinery", "Subcontract", "Overhead"];
-const blankRow = () => ({ expense_account: "", cost_type: "Overhead", amount: 0, description: "", attachment: "" });
-
-// --- receipt upload (per row) ---
-const uploadingRow = ref(-1);
-async function uploadReceipt(e, i) {
+const PAID_FROM = [
+	{ value: "petty", label: "Petty Cash float" },
+	{ value: "own", label: "My own pocket (reimburse me)" },
+];
+const blankForm = () => ({
+	open: false,
+	date: new Date().toISOString().slice(0, 10),
+	amount: 0,
+	description: "",
+	project: "",
+	expense_account: "",
+	cost_type: "Overhead",
+	paid_from: "petty",
+	attachment: "",
+	uploading: false,
+	saving: false,
+});
+const form = reactive(blankForm());
+function openForm() {
+	Object.assign(form, blankForm(), { open: true });
+}
+async function uploadReceipt(e) {
 	const file = e.target.files?.[0];
 	if (!file) return;
-	uploadingRow.value = i;
+	form.uploading = true;
 	try {
 		const handler = new FileUploadHandler();
-		const res = await handler.upload(file, { private: true });
-		const url = res?.file_url || res?.message?.file_url || "";
+		const r = await handler.upload(file, { private: true });
+		const url = r?.file_url || r?.message?.file_url || "";
 		if (!url) throw new Error("no url");
-		form.rows[i].attachment = url;
+		form.attachment = url;
 		showToast("Receipt attached.");
 	} catch {
 		showToast("Upload failed.", "error");
 	} finally {
-		uploadingRow.value = -1;
+		form.uploading = false;
 		if (e.target) e.target.value = "";
 	}
 }
-const form = reactive({ open: false, project: "", date: new Date().toISOString().slice(0, 10), reimbursable: false, rows: [blankRow()], saving: false });
-function openForm() {
-	Object.assign(form, { open: true, project: "", date: new Date().toISOString().slice(0, 10), reimbursable: false, rows: [blankRow()], saving: false });
-}
-const formTotal = computed(() => form.rows.reduce((s, r) => s + (Number(r.amount) || 0), 0));
-function addRow() {
-	form.rows.push(blankRow());
-}
-function removeRow(i) {
-	form.rows.splice(i, 1);
-	if (!form.rows.length) form.rows.push(blankRow());
-}
 async function submitForm() {
+	if (!form.description.trim()) return showToast("Enter a description.", "error");
+	if (!(Number(form.amount) > 0)) return showToast("Enter an amount.", "error");
 	if (!form.project) return showToast("Pick a project.", "error");
-	const rows = form.rows.filter((r) => r.expense_account && Number(r.amount) > 0);
-	if (!rows.length) return showToast("Add at least one line with an account and amount.", "error");
+	if (!form.expense_account) return showToast("Pick an expense account.", "error");
 	form.saving = true;
 	try {
-		await saveExpense({ project: form.project, date: form.date, reimbursable: form.reimbursable, rows });
+		await saveExpense({
+			project: form.project,
+			date: form.date,
+			reimbursable: form.paid_from === "own",
+			rows: [
+				{
+					expense_account: form.expense_account,
+					cost_type: form.cost_type,
+					amount: form.amount,
+					description: form.description,
+					attachment: form.attachment,
+				},
+			],
+		});
 		form.open = false;
 		res.reload?.();
 		loadContext();
-		showToast("Expense entry saved — pending approval.");
+		showToast("Expense saved — pending approval.");
 	} catch (err) {
 		showToast(err.message || "Failed to save", "error");
 	} finally {
@@ -269,25 +289,11 @@ const expenseAccountFilters = [
 <template>
 	<DeskPage title="Expenses" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn" :disabled="!hasEmployee" @click="openForm">+ Log Expense</button>
+			<button type="button" class="desk-save-btn" :disabled="!hasEmployee" @click="openForm">+ New expense</button>
 		</template>
 
-		<!-- balance strip -->
-		<div v-if="hasEmployee" class="grid grid-cols-3 gap-3 mb-4 max-w-2xl">
-			<div class="bg-white border border-ink-200 rounded-lg px-4 py-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Approved balance</div>
-				<div class="text-lg font-semibold text-ink-900 tabular-nums">{{ fmtINR(ctx.approved) }}</div>
-			</div>
-			<div class="bg-white border border-ink-200 rounded-lg px-4 py-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Pending approval</div>
-				<div class="text-lg font-semibold text-warning-700 tabular-nums">{{ fmtINR(ctx.pending) }}</div>
-			</div>
-			<div class="bg-white border border-ink-200 rounded-lg px-4 py-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Available (incl. review)</div>
-				<div class="text-lg font-semibold text-brand-700 tabular-nums">{{ fmtINR(ctx.available) }}</div>
-			</div>
-		</div>
-		<div v-else class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 mb-4 text-sm text-warning-700 max-w-2xl">
+		<p class="text-sm text-ink-600 mb-4">Log site spend. It hits balances once <span class="font-medium text-ink-700">verified</span>.</p>
+		<div v-if="!hasEmployee" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 mb-4 text-sm text-warning-700 max-w-2xl">
 			Your user account isn't linked to an Employee, so petty-cash spend can't be logged. Ask an administrator to set the Employee's User ID.
 		</div>
 
@@ -373,46 +379,33 @@ const expenseAccountFilters = [
 			</table>
 		</div>
 
-		<!-- create modal -->
-		<div v-if="form.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="form.open = false">
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">Log petty-cash expense</h3>
-				<div class="grid grid-cols-2 gap-3 mb-3">
-					<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" /></DeskField>
+		<!-- create modal — one expense, matching the prototype's New expense form -->
+		<div v-if="form.open" class="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-6 overflow-y-auto" @click.self="form.open = false">
+			<div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-5">
+				<h3 class="text-sm font-semibold text-ink-900 mb-4">New expense</h3>
+				<div class="grid grid-cols-2 gap-3">
 					<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
+					<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 				</div>
-				<div class="border border-ink-200 rounded-lg overflow-hidden mb-3">
-					<table class="w-full text-xs">
-						<thead class="bg-ink-50 text-ink-500 uppercase text-[10px]"><tr><th class="text-left px-3 py-2">Expense account</th><th class="text-left px-3 py-2 w-36">Cost type</th><th class="text-left px-3 py-2">Description</th><th class="text-right px-3 py-2 w-28">Amount</th><th class="text-center px-3 py-2 w-20">Receipt</th><th class="w-8"></th></tr></thead>
-						<tbody>
-							<tr v-for="(r, i) in form.rows" :key="i" class="border-t border-ink-100">
-								<td class="px-2 py-1.5"><DeskLinkPicker v-model="r.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Expense account…" /></td>
-								<td class="px-2 py-1.5"><DeskSelect v-model="r.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></td>
-								<td class="px-2 py-1.5"><DeskInput v-model="r.description" placeholder="What was it for?" /></td>
-								<td class="px-2 py-1.5"><DeskInput v-model.number="r.amount" type="number" min="0" class="text-right" /></td>
-								<td class="px-2 py-1.5 text-center">
-									<label class="cursor-pointer text-[11px]" :class="r.attachment ? 'text-success-700' : 'text-brand-700 hover:underline'">
-										{{ uploadingRow === i ? "Uploading…" : r.attachment ? "✓ Attached" : "Attach" }}
-										<input type="file" class="hidden" accept="image/*,application/pdf" @change="uploadReceipt($event, i)" />
-									</label>
-								</td>
-								<td class="px-2 py-1.5 text-center"><button type="button" class="text-ink-400 hover:text-danger-600" @click="removeRow(i)">✕</button></td>
-							</tr>
-						</tbody>
-					</table>
+				<DeskField label="Description" required class="mt-3"><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
+				<DeskField label="Project" required class="mt-3"><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" /></DeskField>
+				<div class="grid grid-cols-2 gap-3 mt-3">
+					<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
+					<DeskField label="Cost type"><DeskSelect v-model="form.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></DeskField>
 				</div>
-				<div class="flex items-center justify-between mb-3">
-					<button type="button" class="text-xs text-brand-700 hover:underline" @click="addRow">+ Add line</button>
-					<div class="text-sm">Total <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(formTotal) }}</span></div>
-				</div>
-				<label class="flex items-center gap-2 text-xs text-ink-700 mb-3 cursor-pointer">
-					<input v-model="form.reimbursable" type="checkbox" class="rounded border-ink-300" />
-					I paid out of my own pocket — reimburse me
-				</label>
-				<p class="text-[11px] text-ink-500 mb-4">{{ form.reimbursable ? "Booked to Employee Reimbursements (a payable); pay it out from the To Reimburse queue." : "Paid from your Petty Cash float." }} Saved as a draft pending a finance approver.</p>
+				<DeskField label="Paid from" class="mt-3">
+					<DeskSelect v-model="form.paid_from"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
+				</DeskField>
+				<DeskField label="Receipt (optional)" class="mt-3">
+					<label class="inline-flex items-center gap-2 text-xs cursor-pointer px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded-md" :class="form.attachment ? 'text-success-700' : 'text-ink-700'">
+						{{ form.uploading ? "Uploading…" : form.attachment ? "✓ Receipt attached" : "Attach receipt" }}
+						<input type="file" class="hidden" accept="image/*,application/pdf" @change="uploadReceipt($event)" />
+					</label>
+				</DeskField>
+				<p class="text-[11px] text-ink-500 mt-4 mb-4">{{ form.paid_from === "own" ? "Booked to Employee Reimbursements; pay it out from the To Reimburse queue." : "Paid from your Petty Cash float." }} Saved as a draft pending a finance approver.</p>
 				<div class="flex justify-end gap-2">
 					<button class="desk-btn" @click="form.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="form.saving" @click="submitForm">{{ form.saving ? "Saving…" : "Save" }}</button>
+					<button class="desk-save-btn" :disabled="form.saving" @click="submitForm">{{ form.saving ? "Saving…" : "Save as draft" }}</button>
 				</div>
 			</div>
 		</div>
