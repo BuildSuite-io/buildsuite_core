@@ -140,13 +140,9 @@ def list_cash_bank_accounts(company):
 
 @frappe.whitelist()
 def holder_balances(company=None):
-	"""Total disbursed per holder (the live float handed out). Verified spend lives on the
-	dummy Expenses side, so this is the cash-out figure."""
-	filters = {"status": "Disbursed"}
-	if company:
-		filters["company"] = company
-	rows = frappe.get_all(DOCTYPE, filters=filters, fields=["requested_by", "amount"])
-	out = {}
-	for r in rows:
-		out[r.requested_by] = out.get(r.requested_by, 0) + flt(r.amount)
-	return [{"holder": k, "disbursed": v} for k, v in sorted(out.items())]
+	"""Reconciled per-holder petty-cash position from the GL: disbursed (float in),
+	spent (verified expense out) and the net balance in hand. One view over both the
+	Petty Cash Request (disburse) and Expense Entry (spend) legs."""
+	from buildsuite_core.utils.petty_cash import reconciled_holder_balances
+
+	return reconciled_holder_balances(company)

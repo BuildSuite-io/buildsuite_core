@@ -213,27 +213,31 @@ const rowsForTab = computed(() => {
 			</button>
 		</div>
 
-		<!-- balances -->
+		<!-- balances — reconciled: disbursed float in − verified spend out = in hand -->
 		<div v-if="tab === 'balances'" class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 			<table class="w-full text-xs">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
 						<th class="text-left px-3 py-2">Holder</th>
-						<th class="text-right px-3 py-2">Disbursed (float out)</th>
+						<th class="text-right px-3 py-2">Disbursed</th>
+						<th class="text-right px-3 py-2">Verified spend</th>
+						<th class="text-right px-3 py-2">Balance in hand</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-for="b in balances" :key="b.holder" class="border-t border-ink-100">
+					<tr v-for="b in balances" :key="b.employee || b.holder" class="border-t border-ink-100">
 						<td class="px-3 py-2 text-ink-900">{{ b.holder }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-medium">{{ fmtINR(b.disbursed) }}</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.disbursed) }}</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.spent) }}</td>
+						<td class="px-3 py-2 text-right tabular-nums font-semibold" :class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'">{{ fmtINR(b.balance) }}</td>
 					</tr>
 					<tr v-if="!balances.length">
-						<td colspan="2" class="px-3 py-4 text-center text-ink-400 italic">No disbursements yet.</td>
+						<td colspan="4" class="px-3 py-4 text-center text-ink-400 italic">No petty-cash activity yet.</td>
 					</tr>
 				</tbody>
 			</table>
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				Verified spend against these floats is tracked on the Expenses tab.
+				Balance in hand = disbursed float − approved expenses (from the Expenses tab).
 			</p>
 		</div>
 

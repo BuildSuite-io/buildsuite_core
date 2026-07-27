@@ -18,6 +18,25 @@ from frappe.utils import flt, formatdate, getdate
 
 PETTY_CASH_ACCOUNT_NAME = "Petty Cash"
 PETTY_CASH_PARENT_ACCOUNT = "Cash In Hand"
+REIMBURSEMENTS_ACCOUNT_NAME = "Employee Reimbursements"
+
+
+def resolve_reimbursements_account(company):
+	"""The company's Employee Reimbursements liability — where out-of-pocket expense
+	spend is parked until the employee is paid back. Created on first use."""
+	existing = frappe.db.get_value(
+		"Account",
+		{"account_name": REIMBURSEMENTS_ACCOUNT_NAME, "company": company, "is_group": 0},
+		"name",
+	)
+	if existing:
+		return existing
+
+	from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+	# Plain liability (not account_type "Payable") so GL posting doesn't force ERPNext
+	# party handling — the holder is carried on our own `employee` dimension instead.
+	return _ensure_account(company, REIMBURSEMENTS_ACCOUNT_NAME, "Liability", None, "Current Liabilities")
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +80,15 @@ def resolve_petty_cash_account(company):
 # ---------------------------------------------------------------------------
 
 
+def employee_for_user(user):
+	"""The active Employee linked to a User, or None. Petty Cash Requests are raised
+	by a User (requested_by); the employee ledger (GL Entry.employee) keys on Employee,
+	so we resolve the link to keep issued float and later spend on one ledger."""
+	if not user:
+		return None
+	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+
+
 def post_disbursement_journal_entry(doc):
 	"""Build + submit the disbursement JE and return its name."""
 	amount = flt(doc.amount)
@@ -68,6 +96,9 @@ def post_disbursement_journal_entry(doc):
 		frappe.throw(_("Disbursement amount must be greater than zero."))
 
 	petty = resolve_petty_cash_account(doc.company)
+	# Tag the holder on the Petty Cash (debit) line so the issued float lands in the
+	# same employee ledger the balance / transaction endpoints read.
+	employee = employee_for_user(doc.requested_by)
 
 	je = frappe.new_doc("Journal Entry")
 	je.voucher_type = "Journal Entry"
@@ -79,7 +110,7 @@ def post_disbursement_journal_entry(doc):
 
 	je.append(
 		"accounts",
-		{"account": petty, "debit_in_account_currency": amount, "project": doc.project},
+		{"account": petty, "debit_in_account_currency": amount, "project": doc.project, "employee": employee},
 	)
 	je.append(
 		"accounts",
@@ -162,6 +193,62 @@ def _draft_journal_balance(employee, account):
 	return flt(balance[0][0]) if balance else 0.0
 
 
+def reconciled_holder_balances(company=None):
+	"""Per-holder petty-cash position from the GL, reconciling the two legs into one
+	view (the prototype's Balances tab): disbursed = float in (debits), spent = float
+	out (credits), balance = net in hand. Keyed on the holder Employee, so it needs the
+	disbursement / expense JEs to carry `employee` (they do).
+	"""
+	conditions = "a.account_name = %(petty)s AND gle.is_cancelled = 0 AND gle.employee IS NOT NULL AND gle.employee != ''"
+	params = {"petty": PETTY_CASH_ACCOUNT_NAME}
+	if company:
+		conditions += " AND a.company = %(company)s"
+		params["company"] = company
+
+	rows = frappe.db.sql(
+		f"""
+		SELECT gle.employee AS employee,
+			COALESCE(SUM(gle.debit), 0) AS disbursed,
+			COALESCE(SUM(gle.credit), 0) AS spent
+		FROM `tabGL Entry` gle
+		INNER JOIN `tabAccount` a ON a.name = gle.account
+		WHERE {conditions}
+		GROUP BY gle.employee
+		""",
+		params,
+		as_dict=True,
+	)
+
+	name_map = {
+		e.name: e.employee_name
+		for e in (
+			frappe.get_all(
+				"Employee",
+				filters={"name": ("in", [r.employee for r in rows])},
+				fields=["name", "employee_name"],
+			)
+			if rows
+			else []
+		)
+	}
+
+	out = []
+	for r in rows:
+		disbursed = flt(r.disbursed)
+		spent = flt(r.spent)
+		out.append(
+			{
+				"employee": r.employee,
+				"holder": name_map.get(r.employee) or r.employee,
+				"disbursed": disbursed,
+				"spent": spent,
+				"balance": round(disbursed - spent, 2),
+			}
+		)
+	out.sort(key=lambda x: x["balance"], reverse=True)
+	return out
+
+
 def _pending_expense_total(employee, account):
 	"""Total of expense lines awaiting approval against the petty cash account."""
 	total = frappe.db.sql(
@@ -170,7 +257,7 @@ def _pending_expense_total(employee, account):
 		FROM `tabExpense Entry Table` eet
 		INNER JOIN `tabExpense Entry` et ON et.name = eet.parent
 		WHERE eet.employee = %(employee)s
-			AND eet.mode_of_payment_account = %(account)s
+			AND eet.payment_account = %(account)s
 			AND et.docstatus = 0
 		""",
 		{"employee": employee, "account": account},
