@@ -1,0 +1,25 @@
+%% Expense Entry — live workflow (buildsuite_core)
+%% Log (draft) -> Verify/submit (posts JE) -> optionally Reimburse; Cancel reverses.
+flowchart TD
+    start(["Holder incurs site spend"]) --> log["Log Expense Entry<br/>lines: expense account · cost type ·<br/>amount · description · receipt"]
+    log --> pay{"Paid from?"}
+    pay -->|"Petty cash float"| pcacct["payment_account = Petty Cash"]
+    pay -->|"Own pocket (reimbursable)"| reacct["payment_account = Employee Reimbursements<br/>(liability)"]
+    pcacct --> DRAFT{{"docstatus 0: Draft<br/>= Pending approval"}}
+    reacct --> DRAFT
+
+    DRAFT -->|"Holder deletes draft"| DEL(["Deleted"])
+    DRAFT -->|"Approver: To Verify queue<br/>Verify = submit"| je1["Post Journal Entry<br/>Dr Expense accounts /<br/>Cr payment_account<br/>tagged employee · project · cost centre"]
+    je1 --> SUBM{{"docstatus 1: Submitted<br/>= Approved / posted"}}
+
+    SUBM --> effect{"Reimbursable?"}
+    effect -->|"No — paid from petty cash"| float["Reduces holder's petty-cash balance<br/>(verified spend)"]
+    effect -->|"Yes — out of pocket"| queue["Appears in To Reimburse queue<br/>does NOT touch the petty float"]
+    queue -->|"Approver reimburses<br/>pick Bank account"| je2["Post Journal Entry<br/>Dr Employee Reimbursements /<br/>Cr Bank (tagged employee)"]
+    je2 --> REIMB{{"reimbursed = 1<br/>reimbursed_on · reimbursement_journal_entry"}}
+
+    SUBM -->|"Approver cancels"| canc["Cancel Journal Entry(s)<br/>incl. reimbursement JE"]
+    canc --> CANCELLED{{"docstatus 2: Cancelled"}}
+
+    %% Balances / ledger
+    float -.-> ledger["Employee petty-cash ledger<br/>approved / pending / available<br/>+ running-balance transaction list"]
