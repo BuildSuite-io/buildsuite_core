@@ -1,0 +1,21 @@
+%% Petty Cash Request — live workflow (buildsuite_core)
+%% Request -> Disburse (posts a Journal Entry) -> optionally Reverse.
+flowchart TD
+    start(["Site user / PM needs cash"]) --> req["Raise Petty Cash Request<br/>project · amount · purpose<br/>requested_by, company from project"]
+    req --> S_REQ{{"Status: Requested"}}
+
+    S_REQ -->|"Requester withdraws<br/>(cancel_request)"| CANC{{"Status: Cancelled"}}
+
+    S_REQ -->|"Approver reviews<br/>Accountant / Director / PM / Admin"| disb["Disburse<br/>pick Bank / Cash account"]
+    disb --> gate{"Account valid?<br/>non-group Bank/Cash in company"}
+    gate -->|"No"| err["Rejected"]
+    gate -->|"Yes"| je1["Post submitted Journal Entry<br/>Dr Petty Cash (employee) / Cr Bank<br/>+ project accounting dimension"]
+    je1 --> S_DIS{{"Status: Disbursed<br/>journal_entry set · float issued"}}
+
+    S_DIS -->|"Reverse disbursement<br/>(undisburse)"| rev["Cancel Journal Entry"]
+    rev --> S_REQ
+
+    S_DIS --> bal["Holder float increases<br/>feeds reconciled balance:<br/>disbursed - verified spend = in hand"]
+
+    %% Spend against the float is recorded separately as an Expense Entry
+    bal -.->|"spend recorded via"| exp["Expense Entry workflow<br/>(see expense-entry-workflow)"]
