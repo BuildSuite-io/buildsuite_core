@@ -132,6 +132,16 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		# Newest first; the latest row's running balance is the net position.
 		self.assertEqual(flt(rows[0]["balance"]), 7000)
 
+	def test_reconciled_holder_balances(self):
+		self._disburse(10000)
+		self._expense_entry(3000, submit=True)
+		rows = pc.reconciled_holder_balances(self.company)
+		mine = [r for r in rows if r["employee"] == self.employee]
+		self.assertEqual(len(mine), 1)
+		self.assertEqual(flt(mine[0]["disbursed"]), 10000)
+		self.assertEqual(flt(mine[0]["spent"]), 3000)
+		self.assertEqual(flt(mine[0]["balance"]), 7000)
+
 	def test_misspelled_alias_matches(self):
 		self._disburse(5000)
 		self.assertEqual(

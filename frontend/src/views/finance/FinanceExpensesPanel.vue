@@ -46,10 +46,34 @@ const res = useDocTypeList("Expense Entry", {
 });
 const entries = computed(() => res.data || []);
 function statusLabel(d) {
-	return d === 2 ? "Cancelled" : d === 1 ? "Approved" : "Pending Approval";
+	if (d === 2) return "Cancelled";
+	if (d === 1) return "Approved";
+	return "Pending Approval";
 }
 
-const tab = ref("entries");
+// Draft = pending a finance approver's verification (the demo's Draft → Submitted).
+const drafts = computed(() => entries.value.filter((e) => e.docstatus === 0));
+const mine = computed(() => entries.value.filter((e) => e.employee === ctx.value.employee));
+
+const tabs = computed(() => {
+	const t = [];
+	if (canSubmit.value) {
+		t.push({ id: "verify", label: "To Verify", count: drafts.value.length, alert: true });
+		t.push({ id: "all", label: "All", count: entries.value.length });
+	}
+	t.push({ id: "mine", label: "My Expenses", count: null });
+	t.push({ id: "ledger", label: "Ledger", count: null });
+	return t;
+});
+const tab = ref(null);
+const activeTab = computed(() =>
+	tab.value && tabs.value.some((t) => t.id === tab.value) ? tab.value : tabs.value[0]?.id,
+);
+const tableRows = computed(() => {
+	if (activeTab.value === "verify") return drafts.value;
+	if (activeTab.value === "mine") return mine.value;
+	return entries.value;
+});
 
 // --- ledger ---
 const ledgerRows = ref([]);
@@ -114,8 +138,8 @@ async function onApprove(row) {
 		await submitExpense(row.name);
 		res.reload?.();
 		loadContext();
-		if (tab.value === "ledger") loadLedger();
-		showToast("Approved — Journal Entry posted.");
+		if (activeTab.value === "ledger") loadLedger();
+		showToast("Verified — Journal Entry posted.");
 	} catch (err) {
 		showToast(err.message || "Approve failed", "error");
 	}
@@ -171,19 +195,29 @@ const expenseAccountFilters = [
 		</div>
 
 		<!-- tabs -->
-		<div class="border-b border-ink-200 flex mb-4">
-			<button type="button" class="px-3 py-2 text-xs font-medium" :class="tab === 'entries' ? 'text-brand-600' : 'text-ink-600'" :style="tab === 'entries' ? 'border-bottom:2px solid currentColor;margin-bottom:-1px;' : 'border-bottom:2px solid transparent;margin-bottom:-1px;'" @click="openTab('entries')">Entries</button>
-			<button type="button" class="px-3 py-2 text-xs font-medium" :class="tab === 'ledger' ? 'text-brand-600' : 'text-ink-600'" :style="tab === 'ledger' ? 'border-bottom:2px solid currentColor;margin-bottom:-1px;' : 'border-bottom:2px solid transparent;margin-bottom:-1px;'" @click="openTab('ledger')">Ledger</button>
+		<div class="border-b border-ink-200 flex mb-4 overflow-x-auto scrollbar-thin">
+			<button
+				v-for="t in tabs"
+				:key="t.id"
+				type="button"
+				class="px-3 py-2 text-xs font-medium whitespace-nowrap"
+				:class="activeTab === t.id ? 'text-brand-600' : 'text-ink-600 hover:text-ink-900'"
+				:style="activeTab === t.id ? 'border-bottom:2px solid currentColor;margin-bottom:-1px;' : 'border-bottom:2px solid transparent;margin-bottom:-1px;'"
+				@click="openTab(t.id)"
+			>
+				{{ t.label
+				}}<span v-if="t.count !== null" class="ml-1 tabular-nums" :class="t.alert && t.count > 0 ? 'text-warning-700 font-semibold' : 'text-ink-400'">({{ t.count }})</span>
+			</button>
 		</div>
 
-		<!-- entries -->
-		<div v-if="tab === 'entries'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+		<!-- entries (verify / all / mine) -->
+		<div v-if="activeTab !== 'ledger'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 			<table class="w-full text-xs" style="min-width: 720px">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">Amount</th><th class="text-left px-3 py-2">Status</th><th></th></tr>
 				</thead>
 				<tbody>
-					<tr v-for="row in entries" :key="row.name" class="border-t border-ink-100">
+					<tr v-for="row in tableRows" :key="row.name" class="border-t border-ink-100">
 						<td class="px-3 py-2 font-mono text-ink-400 text-[10px]">{{ row.name }}</td>
 						<td class="px-3 py-2 text-ink-500">{{ fmtDate(row.date) }}</td>
 						<td class="px-3 py-2 text-ink-500">{{ row.project }}</td>
@@ -191,12 +225,12 @@ const expenseAccountFilters = [
 						<td class="px-3 py-2"><StatusBadge :status="statusLabel(row.docstatus)" /></td>
 						<td class="px-3 py-2 text-right">
 							<div class="flex justify-end gap-2">
-								<button v-if="row.docstatus === 0 && canSubmit" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="onApprove(row)">Approve</button>
+								<button v-if="row.docstatus === 0 && canSubmit" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="onApprove(row)">Verify</button>
 								<button v-if="row.docstatus !== 2" type="button" class="text-[11px] px-2 py-0.5 border border-ink-200 text-danger-700 rounded" @click="onCancel(row)">{{ row.docstatus === 1 ? "Cancel" : "Delete" }}</button>
 							</div>
 						</td>
 					</tr>
-					<tr v-if="!entries.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">{{ res.loading ? "Loading…" : "No expense entries yet." }}</td></tr>
+					<tr v-if="!tableRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">{{ res.loading ? "Loading…" : "Nothing here." }}</td></tr>
 				</tbody>
 			</table>
 		</div>
