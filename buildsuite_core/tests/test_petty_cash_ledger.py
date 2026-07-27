@@ -76,7 +76,8 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		req.disburse(self._bank())
 		return req
 
-	def _expense_entry(self, amount, submit=False):
+	def _expense_entry(self, amount, submit=False, reimbursable=False, cost_type="Overhead"):
+		account = pc.resolve_reimbursements_account(self.company) if reimbursable else self.petty
 		doc = frappe.get_doc(
 			{
 				"doctype": "Expense Entry",
@@ -84,12 +85,14 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 				"company": self.company,
 				"project": self.project,
 				"employee": self.employee,
-				"payment_account": self.petty,
+				"payment_account": account,
+				"reimbursable": 1 if reimbursable else 0,
 				"expense_entry_table": [
 					{
 						"employee": self.employee,
-						"payment_account": self.petty,
+						"payment_account": account,
 						"expense_account": self._expense_account(),
+						"cost_type": cost_type,
 						"project": self.project,
 						"amount": amount,
 						"description": "Diesel",
@@ -148,3 +151,26 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 			flt(pc.get_total_balance_inculde_review(self.employee)),
 			flt(pc.get_total_balance_include_review(self.employee)),
 		)
+
+	def test_cost_type_stored(self):
+		ee = self._expense_entry(1000, cost_type="Material")
+		self.assertEqual(ee.expense_entry_table[0].cost_type, "Material")
+
+	def test_own_pocket_expense_does_not_touch_petty_balance(self):
+		self._disburse(10000)
+		# Out-of-pocket spend books to Employee Reimbursements, not the petty float.
+		self._expense_entry(2000, submit=True, reimbursable=True)
+		self.assertEqual(flt(pc.get_balance_amount_approved(self.employee)), 10000)
+		mine = [r for r in pc.reconciled_holder_balances(self.company) if r["employee"] == self.employee][0]
+		self.assertEqual(flt(mine["spent"]), 0)
+
+	def test_reimburse_posts_je_and_flags(self):
+		ee = self._expense_entry(2000, submit=True, reimbursable=True)
+		je = ee.reimburse(self._bank())
+		ee.reload()
+		self.assertTrue(ee.reimbursed)
+		self.assertEqual(ee.reimbursement_journal_entry, je)
+		self.assertEqual(frappe.db.get_value("Journal Entry", je, "docstatus"), 1)
+		# Non-reimbursable can't be reimbursed.
+		petty = self._expense_entry(500, submit=True)
+		self.assertRaises(frappe.ValidationError, petty.reimburse, self._bank())

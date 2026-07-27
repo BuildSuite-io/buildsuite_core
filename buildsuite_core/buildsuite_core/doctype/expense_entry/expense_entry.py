@@ -61,7 +61,70 @@ class ExpenseEntry(Document):
 
 	def on_cancel(self):
 		self.ignore_linked_doctypes = ("GL Entry", "Stock Ledger Entry")
+		self.cancel_reimbursement_journal_entry()
 		self.cancel_journal_entry()
+
+	# ------------------------------------------------------------------
+	# Reimbursement (own-pocket spend)
+	# ------------------------------------------------------------------
+
+	def reimburse(self, bank_account):
+		"""Pay the employee back for an out-of-pocket (reimbursable) expense.
+
+		The submit JE credited a reimbursements payable (self.payment_account); this
+		clears it: Dr Employee Reimbursements / Cr bank, tagged with the employee.
+		"""
+		if self.docstatus != 1:
+			frappe.throw(_("Only a submitted expense entry can be reimbursed."))
+		if not self.reimbursable:
+			frappe.throw(_("This expense was not marked reimbursable."))
+		if self.reimbursed:
+			frappe.throw(_("This expense has already been reimbursed."))
+		if not bank_account:
+			frappe.throw(_("Choose the account to pay the reimbursement from."))
+		account = frappe.db.get_value(
+			"Account", bank_account, ["is_group", "company", "account_type"], as_dict=True
+		)
+		if not account or account.is_group or account.company != self.company or account.account_type not in ("Bank", "Cash"):
+			frappe.throw(_("Pick a non-group Bank/Cash account in {0}.").format(self.company))
+
+		default_cc = frappe.db.get_value("Company", self.company, "cost_center")
+		je = frappe.new_doc("Journal Entry")
+		je.update(
+			{
+				"voucher_type": "Journal Entry",
+				"company": self.company,
+				"posting_date": frappe.utils.today(),
+				"user_remark": f"Reimbursement for {self.name}",
+				"reference_doctype": self.doctype,
+				"reference_docname": self.name,
+			}
+		)
+		je.append(
+			"accounts",
+			{"account": self.payment_account, "debit_in_account_currency": flt(self.total_amount), "cost_center": self.cost_center or default_cc, "employee": self.employee, "project": self.project},
+		)
+		je.append(
+			"accounts",
+			{"account": bank_account, "credit_in_account_currency": flt(self.total_amount), "cost_center": self.cost_center or default_cc, "project": self.project},
+		)
+		je.flags.ignore_permissions = True
+		je.insert()
+		je.submit()
+
+		self.db_set("reimbursement_journal_entry", je.name)
+		self.db_set("reimbursed", 1)
+		self.db_set("reimbursed_on", frappe.utils.now_datetime())
+		self.add_comment("Info", _("Reimbursed via {0}").format(je.name))
+		return je.name
+
+	def cancel_reimbursement_journal_entry(self):
+		if not self.reimbursement_journal_entry:
+			return
+		if frappe.db.get_value("Journal Entry", self.reimbursement_journal_entry, "docstatus") == 1:
+			je = frappe.get_doc("Journal Entry", self.reimbursement_journal_entry)
+			je.flags.ignore_permissions = True
+			je.cancel()
 
 	# ------------------------------------------------------------------
 	# Journal Entry

@@ -13,10 +13,13 @@ import {
 	saveExpense,
 	submitExpense,
 	cancelExpense,
+	expenseToReimburse,
+	reimburseExpense,
 } from "@/data/expenseEntryApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
@@ -59,6 +62,7 @@ const tabs = computed(() => {
 	const t = [];
 	if (canSubmit.value) {
 		t.push({ id: "verify", label: "To Verify", count: drafts.value.length, alert: true });
+		t.push({ id: "reimburse", label: "To Reimburse", count: reimburseRows.value.length, alert: true });
 		t.push({ id: "all", label: "All", count: entries.value.length });
 	}
 	t.push({ id: "mine", label: "My Expenses", count: null });
@@ -89,16 +93,57 @@ async function loadLedger() {
 	}
 }
 
+// --- reimbursement queue (approvers) ---
+const reimburseRows = ref([]);
+const reimburseTotal = ref(0);
+async function loadReimburse() {
+	try {
+		const r = await expenseToReimburse();
+		reimburseRows.value = r.rows || [];
+		reimburseTotal.value = r.total || 0;
+	} catch (err) {
+		showToast(err.message || "Failed to load reimbursements", "error");
+	}
+}
+if (canSubmit.value) loadReimburse();
+
+const reimb = reactive({ open: false, row: null, bank: "", saving: false });
+function openReimburse(row) {
+	Object.assign(reimb, { open: true, row, bank: "", saving: false });
+}
+const reimburseAccountFilters = computed(() => [
+	["account_type", "in", ["Bank", "Cash"]],
+	["is_group", "=", 0],
+	["company", "=", reimb.row?.company],
+]);
+async function confirmReimburse() {
+	if (!reimb.bank) return showToast("Pick the account to pay from.", "error");
+	reimb.saving = true;
+	try {
+		await reimburseExpense(reimb.row.name, reimb.bank);
+		reimb.open = false;
+		loadReimburse();
+		res.reload?.();
+		showToast("Reimbursed — Journal Entry posted.");
+	} catch (err) {
+		showToast(err.message || "Reimburse failed", "error");
+	} finally {
+		reimb.saving = false;
+	}
+}
+
 function openTab(t) {
 	tab.value = t;
 	if (t === "ledger" && !ledgerRows.value.length) loadLedger();
+	if (t === "reimburse") loadReimburse();
 }
 
 // --- create modal ---
-const blankRow = () => ({ expense_account: "", amount: 0, description: "" });
-const form = reactive({ open: false, project: "", date: new Date().toISOString().slice(0, 10), rows: [blankRow()], saving: false });
+const COST_TYPES = ["Material", "Labour", "Plant & Machinery", "Subcontract", "Overhead"];
+const blankRow = () => ({ expense_account: "", cost_type: "Overhead", amount: 0, description: "" });
+const form = reactive({ open: false, project: "", date: new Date().toISOString().slice(0, 10), reimbursable: false, rows: [blankRow()], saving: false });
 function openForm() {
-	Object.assign(form, { open: true, project: "", date: new Date().toISOString().slice(0, 10), rows: [blankRow()], saving: false });
+	Object.assign(form, { open: true, project: "", date: new Date().toISOString().slice(0, 10), reimbursable: false, rows: [blankRow()], saving: false });
 }
 const formTotal = computed(() => form.rows.reduce((s, r) => s + (Number(r.amount) || 0), 0));
 function addRow() {
@@ -114,7 +159,7 @@ async function submitForm() {
 	if (!rows.length) return showToast("Add at least one line with an account and amount.", "error");
 	form.saving = true;
 	try {
-		await saveExpense({ project: form.project, date: form.date, rows });
+		await saveExpense({ project: form.project, date: form.date, reimbursable: form.reimbursable, rows });
 		form.open = false;
 		res.reload?.();
 		loadContext();
@@ -211,7 +256,7 @@ const expenseAccountFilters = [
 		</div>
 
 		<!-- entries (verify / all / mine) -->
-		<div v-if="activeTab !== 'ledger'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+		<div v-if="activeTab === 'verify' || activeTab === 'all' || activeTab === 'mine'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 			<table class="w-full text-xs" style="min-width: 720px">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">Amount</th><th class="text-left px-3 py-2">Status</th><th></th></tr>
@@ -231,6 +276,27 @@ const expenseAccountFilters = [
 						</td>
 					</tr>
 					<tr v-if="!tableRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">{{ res.loading ? "Loading…" : "Nothing here." }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- to reimburse (approvers) -->
+		<div v-else-if="activeTab === 'reimburse'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+			<table class="w-full text-xs" style="min-width: 720px">
+				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+					<tr><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Employee</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">Amount</th><th></th></tr>
+				</thead>
+				<tbody>
+					<tr v-for="row in reimburseRows" :key="row.name" class="border-t border-ink-100">
+						<td class="px-3 py-2 font-mono text-ink-400 text-[10px]">{{ row.name }}</td>
+						<td class="px-3 py-2 text-ink-500">{{ fmtDate(row.date) }}</td>
+						<td class="px-3 py-2 text-ink-900">{{ row.employee_name || row.employee }}</td>
+						<td class="px-3 py-2 text-ink-500">{{ row.project }}</td>
+						<td class="px-3 py-2 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(row.total_amount) }}</td>
+						<td class="px-3 py-2 text-right"><button type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="openReimburse(row)">Reimburse</button></td>
+					</tr>
+					<tr v-if="reimburseRows.length" class="border-t-2 border-ink-200 font-semibold"><td colspan="4" class="px-3 py-2">Total to reimburse</td><td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(reimburseTotal) }}</td><td></td></tr>
+					<tr v-if="!reimburseRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">Nothing awaiting reimbursement.</td></tr>
 				</tbody>
 			</table>
 		</div>
@@ -265,10 +331,11 @@ const expenseAccountFilters = [
 				</div>
 				<div class="border border-ink-200 rounded-lg overflow-hidden mb-3">
 					<table class="w-full text-xs">
-						<thead class="bg-ink-50 text-ink-500 uppercase text-[10px]"><tr><th class="text-left px-3 py-2">Expense account</th><th class="text-left px-3 py-2">Description</th><th class="text-right px-3 py-2 w-28">Amount</th><th class="w-8"></th></tr></thead>
+						<thead class="bg-ink-50 text-ink-500 uppercase text-[10px]"><tr><th class="text-left px-3 py-2">Expense account</th><th class="text-left px-3 py-2 w-36">Cost type</th><th class="text-left px-3 py-2">Description</th><th class="text-right px-3 py-2 w-28">Amount</th><th class="w-8"></th></tr></thead>
 						<tbody>
 							<tr v-for="(r, i) in form.rows" :key="i" class="border-t border-ink-100">
 								<td class="px-2 py-1.5"><DeskLinkPicker v-model="r.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Expense account…" /></td>
+								<td class="px-2 py-1.5"><DeskSelect v-model="r.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></td>
 								<td class="px-2 py-1.5"><DeskInput v-model="r.description" placeholder="What was it for?" /></td>
 								<td class="px-2 py-1.5"><DeskInput v-model.number="r.amount" type="number" min="0" class="text-right" /></td>
 								<td class="px-2 py-1.5 text-center"><button type="button" class="text-ink-400 hover:text-danger-600" @click="removeRow(i)">✕</button></td>
@@ -276,14 +343,33 @@ const expenseAccountFilters = [
 						</tbody>
 					</table>
 				</div>
-				<div class="flex items-center justify-between mb-4">
+				<div class="flex items-center justify-between mb-3">
 					<button type="button" class="text-xs text-brand-700 hover:underline" @click="addRow">+ Add line</button>
 					<div class="text-sm">Total <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(formTotal) }}</span></div>
 				</div>
-				<p class="text-[11px] text-ink-500 mb-4">Paid from your Petty Cash float. Saved as a draft pending a finance approver.</p>
+				<label class="flex items-center gap-2 text-xs text-ink-700 mb-3 cursor-pointer">
+					<input v-model="form.reimbursable" type="checkbox" class="rounded border-ink-300" />
+					I paid out of my own pocket — reimburse me
+				</label>
+				<p class="text-[11px] text-ink-500 mb-4">{{ form.reimbursable ? "Booked to Employee Reimbursements (a payable); pay it out from the To Reimburse queue." : "Paid from your Petty Cash float." }} Saved as a draft pending a finance approver.</p>
 				<div class="flex justify-end gap-2">
 					<button class="desk-btn" @click="form.open = false">Cancel</button>
 					<button class="desk-save-btn" :disabled="form.saving" @click="submitForm">{{ form.saving ? "Saving…" : "Save" }}</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- reimburse modal -->
+		<div v-if="reimb.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="reimb.open = false">
+			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
+				<h3 class="text-sm font-semibold text-ink-900 mb-1">Reimburse {{ fmtINR(reimb.row?.total_amount) }}</h3>
+				<p class="text-xs text-ink-500 mb-4">to {{ reimb.row?.employee_name || reimb.row?.employee }} · posts a Journal Entry (Dr Employee Reimbursements / Cr the account).</p>
+				<DeskField label="Pay from" required>
+					<DeskLinkPicker v-model="reimb.bank" doctype="Account" label-field="name" value-field="name" :filters="reimburseAccountFilters" placeholder="Bank / Cash account…" />
+				</DeskField>
+				<div class="flex justify-end gap-2 mt-5">
+					<button class="desk-btn" @click="reimb.open = false">Cancel</button>
+					<button class="desk-save-btn" :disabled="reimb.saving" @click="confirmReimburse">{{ reimb.saving ? "Posting…" : "Reimburse" }}</button>
 				</div>
 			</div>
 		</div>

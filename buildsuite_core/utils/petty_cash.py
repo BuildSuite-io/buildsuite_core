@@ -18,6 +18,25 @@ from frappe.utils import flt, formatdate, getdate
 
 PETTY_CASH_ACCOUNT_NAME = "Petty Cash"
 PETTY_CASH_PARENT_ACCOUNT = "Cash In Hand"
+REIMBURSEMENTS_ACCOUNT_NAME = "Employee Reimbursements"
+
+
+def resolve_reimbursements_account(company):
+	"""The company's Employee Reimbursements liability — where out-of-pocket expense
+	spend is parked until the employee is paid back. Created on first use."""
+	existing = frappe.db.get_value(
+		"Account",
+		{"account_name": REIMBURSEMENTS_ACCOUNT_NAME, "company": company, "is_group": 0},
+		"name",
+	)
+	if existing:
+		return existing
+
+	from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+	# Plain liability (not account_type "Payable") so GL posting doesn't force ERPNext
+	# party handling — the holder is carried on our own `employee` dimension instead.
+	return _ensure_account(company, REIMBURSEMENTS_ACCOUNT_NAME, "Liability", None, "Current Liabilities")
 
 
 # ---------------------------------------------------------------------------

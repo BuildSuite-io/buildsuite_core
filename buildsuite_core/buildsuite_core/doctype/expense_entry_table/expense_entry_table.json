@@ -13,6 +13,7 @@
   "column_break_vnem",
   "expense_account",
   "expense_account_name",
+  "cost_type",
   "column_break_ogch",
   "project",
   "project_name",
@@ -65,6 +66,14 @@
    "fieldtype": "Data",
    "label": "Expense Account Name",
    "read_only": 1
+  },
+  {
+   "default": "Overhead",
+   "fieldname": "cost_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Cost Type",
+   "options": "Material\nLabour\nPlant & Machinery\nSubcontract\nOverhead"
   },
   {
    "fieldname": "section_break_5wop",

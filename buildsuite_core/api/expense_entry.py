@@ -74,9 +74,16 @@ def save_expense(payload):
 	if not project:
 		frappe.throw(_("A project is required."))
 	company = frappe.db.get_value("Project", project, "company")
-	account = pc.get_petty_cash_account(company)
-	if not account:
-		frappe.throw(_("Petty Cash account not found for {0}.").format(company))
+
+	# Out-of-pocket spend parks in Employee Reimbursements (a payable) so it doesn't
+	# touch the petty-cash float; otherwise it's paid straight from Petty Cash.
+	reimbursable = 1 if data.get("reimbursable") else 0
+	if reimbursable:
+		account = pc.resolve_reimbursements_account(company)
+	else:
+		account = pc.get_petty_cash_account(company)
+		if not account:
+			frappe.throw(_("Petty Cash account not found for {0}.").format(company))
 
 	rows = data.get("rows") or []
 	if not rows:
@@ -97,6 +104,7 @@ def save_expense(payload):
 	doc.project = project
 	doc.employee = employee
 	doc.payment_account = account
+	doc.reimbursable = reimbursable
 	for r in rows:
 		doc.append(
 			"expense_entry_table",
@@ -104,6 +112,7 @@ def save_expense(payload):
 				"employee": employee,
 				"payment_account": account,
 				"expense_account": r.get("expense_account"),
+				"cost_type": r.get("cost_type") or "Overhead",
 				"project": r.get("project") or project,
 				"amount": flt(r.get("amount")),
 				"description": r.get("description"),
@@ -112,6 +121,39 @@ def save_expense(payload):
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def to_reimburse():
+	"""Submitted out-of-pocket expenses awaiting reimbursement (approver queue)."""
+	rows = frappe.get_all(
+		DOCTYPE,
+		filters={"docstatus": 1, "reimbursable": 1, "reimbursed": 0},
+		fields=["name", "date", "project", "employee", "employee_name", "company", "total_amount"],
+		order_by="date asc",
+	)
+	return {"rows": rows, "total": sum(flt(r.total_amount) for r in rows)}
+
+
+@frappe.whitelist()
+def reimburse(name, bank_account):
+	"""Pay an employee back for an out-of-pocket expense (posts the reimbursement JE)."""
+	if not _can_submit():
+		frappe.throw(_("You are not authorised to reimburse expenses."), frappe.PermissionError)
+	doc = frappe.get_doc(DOCTYPE, name)
+	je = doc.reimburse(bank_account)
+	return {"name": doc.name, "reimbursement_journal_entry": je}
+
+
+@frappe.whitelist()
+def list_cash_bank_accounts(company):
+	"""Bank/Cash accounts to pay a reimbursement from."""
+	return frappe.get_all(
+		"Account",
+		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
+		fields=["name", "account_type"],
+		order_by="account_type, name",
+	)
 
 
 @frappe.whitelist()

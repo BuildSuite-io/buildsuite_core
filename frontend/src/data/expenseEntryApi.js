@@ -21,3 +21,6 @@ export const saveExpense = (payload) => call("save_expense", { payload: JSON.str
 export const submitExpense = (name) => call("submit_expense", { name });
 export const cancelExpense = (name) => call("cancel_expense", { name });
 export const listExpenseAccounts = (company) => call("list_expense_accounts", { company });
+export const expenseToReimburse = () => call("to_reimburse", {});
+export const reimburseExpense = (name, bankAccount) => call("reimburse", { name, bank_account: bankAccount });
+export const listReimburseAccounts = (company) => call("list_cash_bank_accounts", { company });
