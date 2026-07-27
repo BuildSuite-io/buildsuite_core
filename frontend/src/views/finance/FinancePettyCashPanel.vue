@@ -34,7 +34,6 @@ pettyCashCanDisburse()
 const res = useDocTypeList("Petty Cash Request", {
 	fields: [
 		"name",
-		"project",
 		"requested_by",
 		"request_date",
 		"amount",
@@ -69,15 +68,13 @@ const filteredAll = computed(() => {
 		(r) =>
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q) ||
-			(r.project || "").toLowerCase().includes(q),
+			(r.requested_by || "").toLowerCase().includes(q),
 	);
 });
 
 const columns = [
 	{ key: "requested_by", label: "Holder" },
 	{ key: "purpose", label: "Purpose" },
-	{ key: "project", label: "Project" },
 	{ key: "request_date", label: "Date" },
 	{ key: "amount", label: "Amount", align: "right" },
 	{ key: "status", label: "Status" },
@@ -96,17 +93,16 @@ async function loadBalances() {
 loadBalances();
 
 // --- request modal ---
-const reqForm = reactive({ open: false, project: "", amount: 0, purpose: "", saving: false });
+const reqForm = reactive({ open: false, amount: 0, purpose: "", saving: false });
 function openRequest() {
-	Object.assign(reqForm, { open: true, project: "", amount: 0, purpose: "", saving: false });
+	Object.assign(reqForm, { open: true, amount: 0, purpose: "", saving: false });
 }
 async function submitRequest() {
-	if (!reqForm.project) return showToast("Pick a project.", "error");
 	if (!(Number(reqForm.amount) > 0)) return showToast("Enter an amount.", "error");
 	if (!reqForm.purpose.trim()) return showToast("Enter a purpose.", "error");
 	reqForm.saving = true;
 	try {
-		await savePettyCash({ project: reqForm.project, amount: reqForm.amount, purpose: reqForm.purpose });
+		await savePettyCash({ amount: reqForm.amount, purpose: reqForm.purpose });
 		reqForm.open = false;
 		res.reload?.();
 		showToast("Petty cash requested.");
@@ -257,9 +253,6 @@ const rowsForTab = computed(() => {
 			<template #cell-purpose="{ row }">
 				<span class="text-xs text-ink-700">{{ (row.purpose || "").slice(0, 60) }}</span>
 			</template>
-			<template #cell-project="{ row }">
-				<span class="text-xs text-ink-500">{{ row.project }}</span>
-			</template>
 			<template #cell-request_date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.request_date) }}</span>
 			</template>
@@ -307,9 +300,6 @@ const rowsForTab = computed(() => {
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-4">Request petty cash</h3>
 				<div class="space-y-3">
-					<DeskField label="Project" required>
-						<DeskLinkPicker v-model="reqForm.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" />
-					</DeskField>
 					<DeskField label="Amount" required><DeskInput v-model.number="reqForm.amount" type="number" min="0" /></DeskField>
 					<DeskField label="Purpose" required><DeskInput v-model="reqForm.purpose" placeholder="What is it for?" /></DeskField>
 				</div>

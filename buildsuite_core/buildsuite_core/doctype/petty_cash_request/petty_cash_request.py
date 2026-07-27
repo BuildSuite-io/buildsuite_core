@@ -9,12 +9,22 @@ from frappe.utils import flt, now_datetime
 
 class PettyCashRequest(Document):
 	def validate(self):
-		# Company is anchored to the project (the accounting dimension the Journal Entry posts
-		# against) — never a stale/default value.
-		if self.project:
-			self.company = frappe.db.get_value("Project", self.project, "company")
 		if not self.requested_by:
 			self.requested_by = frappe.session.user
+		# Only employees hold petty cash — the company is anchored to the requester's
+		# Employee (the account the disbursement Journal Entry posts against), never a
+		# stale project value or the acting user's default. Petty cash is a general float;
+		# project-level spend is tracked separately on Expense Entry.
+		employee = frappe.db.get_value(
+			"Employee", {"user_id": self.requested_by, "status": "Active"}, ["name", "company"], as_dict=True
+		)
+		if not employee:
+			frappe.throw(
+				_("Only employees can request petty cash — no active Employee is linked to {0}.").format(
+					self.requested_by
+				)
+			)
+		self.company = employee.company
 
 	def on_trash(self):
 		if self.status == "Disbursed":

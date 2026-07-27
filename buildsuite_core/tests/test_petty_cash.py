@@ -12,8 +12,33 @@ from buildsuite_core.tests.base import BuildSuiteTestCase
 class TestPettyCash(BuildSuiteTestCase):
 	def setUp(self):
 		super().setUp()
-		self.company = frappe.db.get_single_value("Global Defaults", "default_company") or self.company
+		self._ensure_employee("Administrator")
+		# Petty cash derives company from the requester's Employee, so anchor the whole
+		# test (project, disburse account) to that Employee's company.
+		self.company = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "company")
 		self.project = self._make_project(company=self.company).name
+
+	def _ensure_employee(self, user_id, company=None):
+		existing = frappe.db.get_value("Employee", {"user_id": user_id, "status": "Active"}, "name")
+		if existing:
+			return existing
+		return (
+			frappe.get_doc(
+				{
+					"doctype": "Employee",
+					"first_name": f"PC {user_id}",
+					"employee_name": f"PC {user_id}",
+					"company": company or self.company,
+					"status": "Active",
+					"date_of_joining": "2020-01-01",
+					"date_of_birth": "1990-01-01",
+					"gender": frappe.db.get_value("Gender", {}, "name") or "Male",
+					"user_id": user_id,
+				}
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
 
 	def _cash_account(self):
 		acc = frappe.db.get_value(
@@ -29,16 +54,26 @@ class TestPettyCash(BuildSuiteTestCase):
 		return frappe.get_doc(
 			{
 				"doctype": "Petty Cash Request",
-				"project": self.project,
 				"request_date": "2026-07-20",
 				"amount": amount,
 				"purpose": purpose,
 			}
 		).insert(ignore_permissions=True)
 
-	def test_company_anchored_to_project(self):
+	def test_company_from_employee(self):
+		# Petty cash carries no project; company is anchored to the requester's Employee.
 		req = self._request()
-		self.assertEqual(req.company, frappe.db.get_value("Project", self.project, "company"))
+		emp_company = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "company")
+		self.assertEqual(req.company, emp_company)
+
+	def test_non_employee_cannot_request(self):
+		user = frappe.get_doc(
+			{"doctype": "User", "email": f"noemp-{self._n}@example.com", "first_name": "NoEmp", "send_welcome_email": 0}
+		).insert(ignore_permissions=True).name
+		req = frappe.get_doc(
+			{"doctype": "Petty Cash Request", "request_date": "2026-07-20", "amount": 1000, "purpose": "x", "requested_by": user}
+		)
+		self.assertRaises(frappe.ValidationError, req.insert, ignore_permissions=True)
 
 	def test_disburse_posts_journal_entry(self):
 		req = self._request(amount=15000)
@@ -54,11 +89,10 @@ class TestPettyCash(BuildSuiteTestCase):
 		self.assertEqual(je.docstatus, 1)
 		debit = [a for a in je.accounts if flt(a.debit_in_account_currency) > 0]
 		credit = [a for a in je.accounts if flt(a.credit_in_account_currency) > 0]
-		# Dr Petty Cash 15000 / Cr bank 15000, both carrying the project dimension.
+		# Dr Petty Cash 15000 / Cr bank 15000.
 		self.assertEqual(flt(debit[0].debit_in_account_currency), 15000)
 		self.assertEqual(credit[0].account, bank)
 		self.assertEqual(flt(credit[0].credit_in_account_currency), 15000)
-		self.assertTrue(all(a.project == self.project for a in je.accounts))
 
 	def test_cancel_disbursement_reverses_je(self):
 		req = self._request()

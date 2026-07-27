@@ -25,11 +25,9 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Project",
-   "options": "Project",
-   "reqd": 1
+   "options": "Project"
   },
   {
    "default": "__user",
@@ -68,7 +66,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "project.company",
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -151,6 +148,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "project",
+ "title_field": "requested_by",
  "track_changes": 1
 }
