@@ -194,9 +194,10 @@ const rowsForTab = computed(() => {
 
 <template>
 	<DeskPage title="Petty Cash" :breadcrumbs="breadcrumbs">
-		<template #actions>
-			<button type="button" class="desk-save-btn" @click="openRequest">+ Request</button>
-		</template>
+		<div class="flex items-center justify-between gap-3 mb-4">
+			<div class="text-sm text-ink-600">Advances to site holders. Spend is logged separately under <span class="font-medium">Expenses</span>.</div>
+			<button type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openRequest">+ Request petty cash</button>
+		</div>
 
 		<!-- tabs -->
 		<div class="border-b border-ink-200 flex overflow-x-auto scrollbar-thin mb-4">
