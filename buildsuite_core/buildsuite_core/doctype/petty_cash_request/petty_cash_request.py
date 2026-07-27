@@ -44,6 +44,14 @@ class PettyCashRequest(Document):
 			frappe.throw(_("Pick a valid ledger account."))
 		if acc.company != self.company:
 			frappe.throw(_("Account {0} does not belong to company {1}.").format(paid_from, self.company))
+		if acc.account_type not in ("Bank", "Cash"):
+			frappe.throw(_("Pay from a Bank or Cash account."))
+		# Per PF-02 the disbursement is Dr Petty Cash / Cr the funding source — crediting
+		# Petty Cash itself would be a no-op, so the source can't be the Petty Cash account.
+		from buildsuite_core.utils.petty_cash import get_petty_cash_account
+
+		if paid_from == get_petty_cash_account(self.company):
+			frappe.throw(_("Pay from a bank/cash source, not the Petty Cash account itself."))
 
 		self.paid_from = paid_from
 		self.disbursed_by = frappe.session.user

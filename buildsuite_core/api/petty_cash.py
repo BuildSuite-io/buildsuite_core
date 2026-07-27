@@ -129,10 +129,18 @@ def delete_request(name: str):
 
 @frappe.whitelist()
 def list_cash_bank_accounts(company):
-	"""Cash/Bank ledger accounts to disburse from, for the given company."""
+	"""Cash/Bank ledger accounts to disburse FROM (the funding source), for the given
+	company — excluding the Petty Cash account itself, since crediting Petty Cash on a
+	disbursement (Dr Petty Cash / Cr Petty Cash) would be a no-op."""
+	from buildsuite_core.utils.petty_cash import get_petty_cash_account
+
+	filters = {"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]}
+	petty = get_petty_cash_account(company)
+	if petty:
+		filters["name"] = ["!=", petty]
 	return frappe.get_all(
 		"Account",
-		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
+		filters=filters,
 		fields=["name", "account_type"],
 		order_by="account_type, name",
 	)

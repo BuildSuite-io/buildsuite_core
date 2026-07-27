@@ -41,14 +41,20 @@ class TestPettyCash(BuildSuiteTestCase):
 		)
 
 	def _cash_account(self):
-		acc = frappe.db.get_value(
-			"Account", {"company": self.company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]}, "name"
-		)
+		# A real funding source — a Bank/Cash account that is NOT the Petty Cash account
+		# (disbursing "from" Petty Cash is now rejected).
+		from buildsuite_core.utils.petty_cash import get_petty_cash_account
+
+		petty = get_petty_cash_account(self.company)
+		filters = {"company": self.company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]}
+		if petty:
+			filters["name"] = ["!=", petty]
+		acc = frappe.db.get_value("Account", filters, "name")
 		if acc:
 			return acc
 		from buildsuite_core.utils.subcontract_billing import _ensure_account
 
-		return _ensure_account(self.company, "Cash", "Asset", "Cash", "Current Assets")
+		return _ensure_account(self.company, "Test Bank", "Asset", "Bank", "Bank Accounts")
 
 	def _request(self, amount=15000, purpose="Diesel + site consumables"):
 		return frappe.get_doc(
@@ -124,3 +130,12 @@ class TestPettyCash(BuildSuiteTestCase):
 			self.skipTest("no cross-company cash account")
 		req = self._request()
 		self.assertRaises(frappe.ValidationError, req.disburse, other_acc)
+
+	def test_disburse_rejects_petty_cash_as_source(self):
+		# Cr must be a real funding source — paying "from" Petty Cash would post
+		# Dr Petty Cash / Cr Petty Cash (a no-op).
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		petty = resolve_petty_cash_account(self.company)
+		req = self._request()
+		self.assertRaises(frappe.ValidationError, req.disburse, petty)

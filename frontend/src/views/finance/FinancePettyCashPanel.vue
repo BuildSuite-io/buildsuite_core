@@ -14,12 +14,13 @@ import {
 	undisbursePettyCash,
 	cancelPettyCash,
 	pettyCashHolderBalances,
+	listCashBankAccounts,
 } from "@/data/pettyCashApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -114,9 +115,16 @@ async function submitRequest() {
 }
 
 // --- disburse modal ---
-const disb = reactive({ open: false, row: null, paidFrom: "", saving: false });
-function openDisburse(row) {
-	Object.assign(disb, { open: true, row, paidFrom: "", saving: false });
+const disb = reactive({ open: false, row: null, paidFrom: "", accounts: [], saving: false });
+async function openDisburse(row) {
+	Object.assign(disb, { open: true, row, paidFrom: "", accounts: [], saving: false });
+	try {
+		// The funding source — Bank/Cash accounts EXCLUDING Petty Cash (Cr must be a real
+		// source, never Petty Cash itself, which would make the JE a no-op).
+		disb.accounts = await listCashBankAccounts(row.company);
+	} catch (err) {
+		showToast(err.message || "Failed to load accounts", "error");
+	}
 }
 async function confirmDisburse() {
 	if (!disb.paidFrom) return showToast("Pick the account to pay from.", "error");
@@ -166,14 +174,6 @@ async function onWithdraw(row) {
 	} catch (err) {
 		showToast(err.message || "Withdraw failed", "error");
 	}
-}
-
-function accountFilters(company) {
-	return [
-		["account_type", "in", ["Bank", "Cash"]],
-		["is_group", "=", 0],
-		["company", "=", company],
-	];
 }
 
 const breadcrumbs = [
@@ -314,16 +314,12 @@ const rowsForTab = computed(() => {
 		<div v-if="disb.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="disb.open = false">
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-1">Disburse {{ fmtINR(disb.row?.amount) }}</h3>
-				<p class="text-xs text-ink-500 mb-4">to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the account).</p>
+				<p class="text-xs text-ink-500 mb-4">to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the source account).</p>
 				<DeskField label="Pay from" required>
-					<DeskLinkPicker
-						v-model="disb.paidFrom"
-						doctype="Account"
-						label-field="name"
-						value-field="name"
-						:filters="accountFilters(disb.row?.company)"
-						placeholder="Bank / Cash account…"
-					/>
+					<DeskSelect v-model="disb.paidFrom">
+						<option value="" disabled>Bank / Cash account…</option>
+						<option v-for="a in disb.accounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+					</DeskSelect>
 				</DeskField>
 				<div class="flex justify-end gap-2 mt-5">
 					<button class="desk-btn" @click="disb.open = false">Cancel</button>
