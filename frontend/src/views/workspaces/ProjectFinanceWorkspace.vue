@@ -44,7 +44,7 @@ const canSee = (section) => visibleSections.value.includes(section);
 const noAccess = computed(() => !visibleSections.value.length);
 
 const TRANSACTIONS = [
-	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash", desc: "Request, disburse and track holder balances.", live: true },
+	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash", desc: "Request, disburse and track holder balances." },
 	{ section: "expenses", icon: "receipt", label: "Expenses", desc: "Log site spend and verify claims." },
 	{ section: "invoices", icon: "file-text", label: "Invoices", desc: "Bill customers, receive payments, advances." },
 	{ section: "bills", icon: "banknote", label: "Bills", desc: "Supplier & subcontractor payables." },
@@ -118,11 +118,7 @@ const showOverview = computed(() => canSee("overview"));
 							:label="t.label"
 							:description="t.desc"
 							:to="`/project-finance/${t.section}`"
-						>
-							<template v-if="t.live" #badge>
-								<span class="text-[9px] px-1 py-0.5 bg-success-100 text-success-700 font-medium uppercase tracking-wider" style="border-radius: 2px">Live</span>
-							</template>
-						</WorkspaceShortcut>
+						/>
 					</div>
 				</div>
 

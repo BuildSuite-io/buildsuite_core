@@ -1,22 +1,18 @@
 <script setup>
-// Project Finance › Expenses — LIVE. The signed-in holder logs spend against their
-// petty-cash float as an Expense Entry (draft = pending approval); a finance approver
-// approves it, posting the Journal Entry. Balances + ledger come from the employee
-// petty-cash ledger (buildsuite_core.utils.petty_cash).
+// Project Finance › Expenses — a faithful port of the prototype panel, wired to
+// the live Expense Entry doctype. ERPNext docstatus lifecycle: Draft → Submitted →
+// Cancelled. Submit = accountant verification; only Submitted expenses hit balances
+// & reports. Tabs: To Submit / All Expenses / My Expenses.
 import { computed, reactive, ref } from "vue";
+import FileUploadHandler from "frappe-ui-file-upload-handler";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
-import { useDocTypeList } from "@/composables/useDocTypeList";
-import FileUploadHandler from "frappe-ui-file-upload-handler";
 import {
 	expenseContext,
-	getExpense,
-	expenseLedger,
+	listExpenses,
 	saveExpense,
 	submitExpense,
 	cancelExpense,
-	expenseToReimburse,
-	reimburseExpense,
 } from "@/data/expenseEntryApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -29,172 +25,191 @@ import { fmtDate, fmtINR } from "@/utils/format";
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Expenses" }];
 const confirmDialog = useConfirm();
 
-// --- caller's petty-cash position ---
-const ctx = ref({ employee: null, employee_name: null, can_submit: false, approved: 0, pending: 0, available: 0 });
+const ctx = ref({ employee: null, can_submit: false });
 async function loadContext() {
 	try {
 		ctx.value = await expenseContext();
-	} catch (err) {
-		showToast(err.message || "Failed to load balance", "error");
+	} catch {
+		/* ignore */
 	}
 }
 loadContext();
-const canSubmit = computed(() => !!ctx.value.can_submit);
-const hasEmployee = computed(() => !!ctx.value.employee);
+const canLog = computed(() => !!ctx.value.employee);
+const canVerify = computed(() => !!ctx.value.can_submit);
 
-// --- entries list ---
-const res = useDocTypeList("Expense Entry", {
-	fields: ["name", "date", "project", "employee", "total_amount", "docstatus", "payment_account"],
-	orderBy: "creation desc",
-	pageLength: 0,
-	cache: "buildsuite-expense-entry-list",
-});
-const entries = computed(() => res.data || []);
-function statusLabel(d) {
-	if (d === 2) return "Cancelled";
-	if (d === 1) return "Approved";
-	return "Pending Approval";
+// --- data ---
+const expenses = ref([]);
+const loading = ref(true);
+async function loadExpenses() {
+	loading.value = true;
+	try {
+		expenses.value = await listExpenses();
+	} catch (err) {
+		showToast(err.message || "Failed to load expenses", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+loadExpenses();
+
+function holderName(e) {
+	return e.employee_name || e.employee || "—";
+}
+function projectName(e) {
+	return e.project_name || e.project || "—";
+}
+function sourceChipClass(source) {
+	return source === "Petty Cash" ? "bg-info-50 text-info-700" : "bg-ink-100 text-ink-600";
 }
 
-// Draft = pending a finance approver's verification (the demo's Draft → Submitted).
-const drafts = computed(() => entries.value.filter((e) => e.docstatus === 0));
-const mine = computed(() => entries.value.filter((e) => e.employee === ctx.value.employee));
-
+// --- tabs ---
+const toSubmit = computed(() =>
+	expenses.value.filter((e) => e.status === "Draft").slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")),
+);
+const myExpensesAll = computed(() => expenses.value.filter((e) => e.employee === ctx.value.employee));
 const tabs = computed(() => {
 	const t = [];
-	if (canSubmit.value) {
-		t.push({ id: "verify", label: "To Verify", count: drafts.value.length, alert: true });
-		t.push({ id: "reimburse", label: "To Reimburse", count: reimburseRows.value.length, alert: true });
-		t.push({ id: "all", label: "All", count: entries.value.length });
+	if (canVerify.value) {
+		t.push({ id: "queue", label: "To Submit", count: toSubmit.value.length });
+		t.push({ id: "all", label: "All Expenses" });
 	}
-	t.push({ id: "mine", label: "My Expenses", count: null });
-	t.push({ id: "ledger", label: "Ledger", count: null });
+	t.push({ id: "mine", label: "My Expenses" });
 	return t;
 });
 const tab = ref(null);
-const activeTab = computed(() =>
-	tab.value && tabs.value.some((t) => t.id === tab.value) ? tab.value : tabs.value[0]?.id,
-);
-const tableRows = computed(() => {
-	if (activeTab.value === "verify") return drafts.value;
-	if (activeTab.value === "mine") return mine.value;
-	return entries.value;
+const activeTab = computed(() => (tab.value && tabs.value.some((t) => t.id === tab.value) ? tab.value : tabs.value[0]?.id));
+
+// --- filters (All / My) ---
+const search = ref("");
+const statusFilter = ref("");
+const from = ref("");
+const to = ref("");
+const hasFilters = computed(() => search.value || statusFilter.value || from.value || to.value);
+function clearFilters() {
+	search.value = "";
+	statusFilter.value = "";
+	from.value = "";
+	to.value = "";
+}
+function inPeriod(d) {
+	return (!from.value || d >= from.value) && (!to.value || d <= to.value);
+}
+const allExpenses = computed(() => {
+	const term = search.value.trim().toLowerCase();
+	return expenses.value.filter(
+		(e) =>
+			(!statusFilter.value || e.status === statusFilter.value) &&
+			inPeriod(e.date) &&
+			(!term ||
+				(e.description || "").toLowerCase().includes(term) ||
+				holderName(e).toLowerCase().includes(term) ||
+				projectName(e).toLowerCase().includes(term) ||
+				(e.expense_account || "").toLowerCase().includes(term) ||
+				e.name.toLowerCase().includes(term)),
+	);
 });
-
-// --- ledger ---
-const ledgerRows = ref([]);
-const ledgerLoading = ref(false);
-async function loadLedger() {
-	ledgerLoading.value = true;
-	try {
-		ledgerRows.value = await expenseLedger();
-	} catch (err) {
-		showToast(err.message || "Failed to load ledger", "error");
-	} finally {
-		ledgerLoading.value = false;
-	}
-}
-
-// --- reimbursement queue (approvers) ---
-const reimburseRows = ref([]);
-const reimburseTotal = ref(0);
-async function loadReimburse() {
-	try {
-		const r = await expenseToReimburse();
-		reimburseRows.value = r.rows || [];
-		reimburseTotal.value = r.total || 0;
-	} catch (err) {
-		showToast(err.message || "Failed to load reimbursements", "error");
-	}
-}
-if (canSubmit.value) loadReimburse();
-
-const reimb = reactive({ open: false, row: null, bank: "", saving: false });
-function openReimburse(row) {
-	Object.assign(reimb, { open: true, row, bank: "", saving: false });
-}
-const reimburseAccountFilters = computed(() => [
-	["account_type", "in", ["Bank", "Cash"]],
-	["is_group", "=", 0],
-	["company", "=", reimb.row?.company],
-]);
-async function confirmReimburse() {
-	if (!reimb.bank) return showToast("Pick the account to pay from.", "error");
-	reimb.saving = true;
-	try {
-		await reimburseExpense(reimb.row.name, reimb.bank);
-		reimb.open = false;
-		loadReimburse();
-		res.reload?.();
-		showToast("Reimbursed — Journal Entry posted.");
-	} catch (err) {
-		showToast(err.message || "Reimburse failed", "error");
-	} finally {
-		reimb.saving = false;
-	}
-}
+const myExpenses = computed(() => myExpensesAll.value.filter((e) => inPeriod(e.date)));
 
 // --- detail modal ---
-const detail = reactive({ open: false, loading: false, doc: null });
-async function openDetail(name) {
-	Object.assign(detail, { open: true, loading: true, doc: null });
+const detail = ref(null);
+function openDetail(e) {
+	detail.value = e;
+}
+function closeDetail() {
+	detail.value = null;
+}
+
+// --- docstatus actions ---
+async function refresh() {
+	await loadExpenses();
+	loadContext();
+	if (detail.value) detail.value = expenses.value.find((e) => e.name === detail.value.name) || null;
+}
+async function onSubmit(e) {
+	const ok = await confirmDialog({
+		title: "Submit expense?",
+		message: `Submit "${e.description}" (${fmtINR(e.amount)})? Submitting posts it — it will hit the ${e.source} balance and the reports.`,
+		confirmLabel: "Submit",
+	});
+	if (!ok) return;
 	try {
-		detail.doc = await getExpense(name);
+		await submitExpense(e.name);
+		await refresh();
+		showToast("Submitted — Journal Entry posted.");
 	} catch (err) {
-		showToast(err.message || "Failed to load entry", "error");
-		detail.open = false;
-	} finally {
-		detail.loading = false;
+		showToast(err.message || "Submit failed", "error");
 	}
 }
-function detailApprove() {
-	const d = detail.doc;
-	detail.open = false;
-	onApprove(d);
+async function onCancel(e) {
+	const ok = await confirmDialog({
+		title: "Cancel expense?",
+		message: `Cancel "${e.description}" (${fmtINR(e.amount)})? Its effect on balances and reports is reversed. A cancelled expense can then be deleted.`,
+		confirmLabel: "Cancel expense",
+		cancelLabel: "Keep",
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await cancelExpense(e.name);
+		await refresh();
+		showToast("Cancelled — Journal Entry reversed.");
+	} catch (err) {
+		showToast(err.message || "Cancel failed", "error");
+	}
 }
-function detailCancel() {
-	const d = detail.doc;
-	detail.open = false;
-	onCancel(d);
-}
-function detailReimburse() {
-	const d = detail.doc;
-	detail.open = false;
-	openReimburse(d);
+async function onDelete(e) {
+	const ok = await confirmDialog({
+		title: "Delete expense?",
+		message: `Permanently delete "${e.description}" (${fmtINR(e.amount)})${e.status === "Cancelled" ? " — already cancelled, no balance impact" : ""}?`,
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await cancelExpense(e.name);
+		if (detail.value?.name === e.name) closeDetail();
+		await refresh();
+		showToast("Deleted.");
+	} catch (err) {
+		showToast(err.message || "Delete failed", "error");
+	}
 }
 
-function openTab(t) {
-	tab.value = t;
-	if (t === "ledger" && !ledgerRows.value.length) loadLedger();
-	if (t === "reimburse") loadReimburse();
-}
-
-// --- create modal ---
-// One expense per record (matches the prototype's single-expense form).
+// --- create / edit form modal ---
 const COST_TYPES = ["Material", "Labour", "Plant & Machinery", "Subcontract", "Overhead"];
 const PAID_FROM = [
-	{ value: "petty", label: "Petty Cash float" },
-	{ value: "own", label: "My own pocket (reimburse me)" },
+	{ value: "petty", label: "Petty Cash" },
+	{ value: "own", label: "Own pocket" },
 ];
-const blankForm = () => ({
-	open: false,
-	date: new Date().toISOString().slice(0, 10),
-	amount: 0,
-	description: "",
-	project: "",
-	expense_account: "",
-	cost_type: "Overhead",
-	paid_from: "petty",
-	attachment: "",
-	uploading: false,
-	saving: false,
-});
-const form = reactive(blankForm());
-function openForm() {
-	Object.assign(form, blankForm(), { open: true });
+const modalOpen = ref(false);
+const editingId = ref(null);
+const form = reactive({ date: "", amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", attachment: "", uploading: false, saving: false });
+function resetForm() {
+	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", attachment: "", uploading: false, saving: false });
 }
-async function uploadReceipt(e) {
-	const file = e.target.files?.[0];
+function openNew() {
+	editingId.value = null;
+	resetForm();
+	modalOpen.value = true;
+}
+function openEdit(e) {
+	editingId.value = e.name;
+	resetForm();
+	Object.assign(form, {
+		date: e.date,
+		amount: e.amount,
+		description: e.description,
+		project: e.project,
+		expense_account: e.expense_account || "",
+		cost_type: e.cost_type || "Overhead",
+		paid_from: e.source === "Own pocket" ? "own" : "petty",
+		attachment: e.attachment || "",
+	});
+	closeDetail();
+	modalOpen.value = true;
+}
+async function uploadReceipt(ev) {
+	const file = ev.target.files?.[0];
 	if (!file) return;
 	form.uploading = true;
 	try {
@@ -208,75 +223,30 @@ async function uploadReceipt(e) {
 		showToast("Upload failed.", "error");
 	} finally {
 		form.uploading = false;
-		if (e.target) e.target.value = "";
+		if (ev.target) ev.target.value = "";
 	}
 }
-async function submitForm() {
-	if (!form.description.trim()) return showToast("Enter a description.", "error");
-	if (!(Number(form.amount) > 0)) return showToast("Enter an amount.", "error");
+async function save() {
+	if (!form.description.trim()) return showToast("Description is required.", "error");
+	if (!(Number(form.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
 	if (!form.project) return showToast("Pick a project.", "error");
 	if (!form.expense_account) return showToast("Pick an expense account.", "error");
 	form.saving = true;
 	try {
 		await saveExpense({
+			name: editingId.value || undefined,
 			project: form.project,
 			date: form.date,
 			reimbursable: form.paid_from === "own",
-			rows: [
-				{
-					expense_account: form.expense_account,
-					cost_type: form.cost_type,
-					amount: form.amount,
-					description: form.description,
-					attachment: form.attachment,
-				},
-			],
+			rows: [{ expense_account: form.expense_account, cost_type: form.cost_type, amount: form.amount, description: form.description, attachment: form.attachment }],
 		});
-		form.open = false;
-		res.reload?.();
-		loadContext();
-		showToast("Expense saved — pending approval.");
+		modalOpen.value = false;
+		await refresh();
+		showToast(editingId.value ? "Expense updated." : "Expense saved.");
 	} catch (err) {
 		showToast(err.message || "Failed to save", "error");
 	} finally {
 		form.saving = false;
-	}
-}
-
-// --- actions ---
-async function onApprove(row) {
-	const ok = await confirmDialog({
-		title: "Approve expense entry?",
-		message: `Post ${fmtINR(row.total_amount)} for ${row.name}? This posts a Journal Entry against petty cash.`,
-		confirmLabel: "Approve & post",
-	});
-	if (!ok) return;
-	try {
-		await submitExpense(row.name);
-		res.reload?.();
-		loadContext();
-		if (activeTab.value === "ledger") loadLedger();
-		showToast("Verified — Journal Entry posted.");
-	} catch (err) {
-		showToast(err.message || "Approve failed", "error");
-	}
-}
-async function onCancel(row) {
-	const submitted = row.docstatus === 1;
-	const ok = await confirmDialog({
-		title: submitted ? "Cancel expense entry?" : "Delete draft?",
-		message: submitted ? `Reverse the Journal Entry for ${row.name}?` : `Delete draft ${row.name}?`,
-		confirmLabel: submitted ? "Cancel entry" : "Delete",
-		destructive: true,
-	});
-	if (!ok) return;
-	try {
-		await cancelExpense(row.name);
-		res.reload?.();
-		loadContext();
-		showToast(submitted ? "Entry cancelled." : "Draft deleted.");
-	} catch (err) {
-		showToast(err.message || "Action failed", "error");
 	}
 }
 
@@ -288,190 +258,199 @@ const expenseAccountFilters = [
 
 <template>
 	<DeskPage title="Expenses" :breadcrumbs="breadcrumbs">
-		<template #actions>
-			<button type="button" class="desk-save-btn" :disabled="!hasEmployee" @click="openForm">+ New expense</button>
-		</template>
+		<div class="space-y-4">
+			<div class="flex items-center justify-between gap-3">
+				<div class="text-sm text-ink-600">Log site spend. It hits balances &amp; reports once <span class="font-medium">Submitted</span>.</div>
+				<button v-if="canLog" type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openNew">+ New expense</button>
+			</div>
 
-		<p class="text-sm text-ink-600 mb-4">Log site spend. It hits balances once <span class="font-medium text-ink-700">verified</span>.</p>
-		<div v-if="!hasEmployee" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 mb-4 text-sm text-warning-700 max-w-2xl">
-			Your user account isn't linked to an Employee, so petty-cash spend can't be logged. Ask an administrator to set the Employee's User ID.
-		</div>
+			<div v-if="!canLog" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 text-sm text-warning-700">
+				Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.
+			</div>
 
-		<!-- tabs -->
-		<div class="border-b border-ink-200 flex mb-4 overflow-x-auto scrollbar-thin">
-			<button
-				v-for="t in tabs"
-				:key="t.id"
-				type="button"
-				class="px-3 py-2 text-xs font-medium whitespace-nowrap"
-				:class="activeTab === t.id ? 'text-brand-600' : 'text-ink-600 hover:text-ink-900'"
-				:style="activeTab === t.id ? 'border-bottom:2px solid currentColor;margin-bottom:-1px;' : 'border-bottom:2px solid transparent;margin-bottom:-1px;'"
-				@click="openTab(t.id)"
-			>
-				{{ t.label
-				}}<span v-if="t.count !== null" class="ml-1 tabular-nums" :class="t.alert && t.count > 0 ? 'text-warning-700 font-semibold' : 'text-ink-400'">({{ t.count }})</span>
-			</button>
-		</div>
+			<!-- Tab strip -->
+			<div class="border-b border-ink-200 flex gap-4 text-xs overflow-x-auto overflow-y-hidden">
+				<button
+					v-for="t in tabs"
+					:key="t.id"
+					type="button"
+					class="pb-2 -mb-px border-b-2 transition-colors whitespace-nowrap"
+					:class="activeTab === t.id ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'"
+					@click="tab = t.id"
+				>
+					{{ t.label }}<span v-if="t.count != null" class="ml-1" :class="t.count > 0 ? 'text-warning-700 font-semibold' : 'text-ink-400'">({{ t.count }})</span>
+				</button>
+			</div>
 
-		<!-- entries (verify / all / mine) -->
-		<div v-if="activeTab === 'verify' || activeTab === 'all' || activeTab === 'mine'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-			<table class="w-full text-xs" style="min-width: 720px">
-				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
-					<tr><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">Amount</th><th class="text-left px-3 py-2">Status</th><th></th></tr>
-				</thead>
-				<tbody>
-					<tr v-for="row in tableRows" :key="row.name" class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(row.name)">
-						<td class="px-3 py-2 font-mono text-ink-400 text-[10px]">{{ row.name }}</td>
-						<td class="px-3 py-2 text-ink-500">{{ fmtDate(row.date) }}</td>
-						<td class="px-3 py-2 text-ink-500">{{ row.project }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(row.total_amount) }}</td>
-						<td class="px-3 py-2"><StatusBadge :status="statusLabel(row.docstatus)" /></td>
-						<td class="px-3 py-2 text-right">
-							<div class="flex justify-end gap-2">
-								<button v-if="row.docstatus === 0 && canSubmit" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click.stop="onApprove(row)">Verify</button>
-								<button v-if="row.docstatus !== 2" type="button" class="text-[11px] px-2 py-0.5 border border-ink-200 text-danger-700 rounded" @click.stop="onCancel(row)">{{ row.docstatus === 1 ? "Cancel" : "Delete" }}</button>
-							</div>
-						</td>
-					</tr>
-					<tr v-if="!tableRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">{{ res.loading ? "Loading…" : "Nothing here." }}</td></tr>
-				</tbody>
-			</table>
-		</div>
+			<!-- To Submit queue -->
+			<section v-if="activeTab === 'queue'" class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+				<table v-if="toSubmit.length" class="w-full text-xs">
+					<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
+						<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">By</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="px-4 py-2"></th></tr>
+					</thead>
+					<tbody>
+						<tr v-for="e in toSubmit" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(e)">
+							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
+							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
+							<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
+							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
+							<td class="px-4 py-2.5 text-right"><button type="button" class="text-[11px] px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-md" @click.stop="onSubmit(e)">Submit</button></td>
+						</tr>
+					</tbody>
+				</table>
+				<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "No draft expenses awaiting submission." }}</div>
+			</section>
 
-		<!-- to reimburse (approvers) -->
-		<div v-else-if="activeTab === 'reimburse'" class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-			<table class="w-full text-xs" style="min-width: 720px">
-				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
-					<tr><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Employee</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">Amount</th><th></th></tr>
-				</thead>
-				<tbody>
-					<tr v-for="row in reimburseRows" :key="row.name" class="border-t border-ink-100">
-						<td class="px-3 py-2 font-mono text-ink-400 text-[10px]">{{ row.name }}</td>
-						<td class="px-3 py-2 text-ink-500">{{ fmtDate(row.date) }}</td>
-						<td class="px-3 py-2 text-ink-900">{{ row.employee_name || row.employee }}</td>
-						<td class="px-3 py-2 text-ink-500">{{ row.project }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(row.total_amount) }}</td>
-						<td class="px-3 py-2 text-right"><button type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="openReimburse(row)">Reimburse</button></td>
-					</tr>
-					<tr v-if="reimburseRows.length" class="border-t-2 border-ink-200 font-semibold"><td colspan="4" class="px-3 py-2">Total to reimburse</td><td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(reimburseTotal) }}</td><td></td></tr>
-					<tr v-if="!reimburseRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">Nothing awaiting reimbursement.</td></tr>
-				</tbody>
-			</table>
-		</div>
-
-		<!-- ledger -->
-		<div v-else class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-			<table class="w-full text-xs" style="min-width: 720px">
-				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
-					<tr><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Voucher</th><th class="text-left px-3 py-2">Project</th><th class="text-right px-3 py-2">In</th><th class="text-right px-3 py-2">Out</th><th class="text-right px-3 py-2">Balance</th></tr>
-				</thead>
-				<tbody>
-					<tr v-for="row in ledgerRows" :key="row.name" class="border-t border-ink-100">
-						<td class="px-3 py-2 text-ink-500">{{ row.posting_date }}</td>
-						<td class="px-3 py-2 text-ink-700">{{ row.title }}</td>
-						<td class="px-3 py-2 text-ink-500">{{ row.project || "—" }}</td>
-						<td class="px-3 py-2 text-right tabular-nums text-success-700">{{ row.received ? fmtINR(row.received) : "" }}</td>
-						<td class="px-3 py-2 text-right tabular-nums text-danger-700">{{ row.paid ? fmtINR(row.paid) : "" }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-medium">{{ fmtINR(row.balance) }}</td>
-					</tr>
-					<tr v-if="!ledgerRows.length"><td colspan="6" class="px-3 py-8 text-center text-ink-400 italic">{{ ledgerLoading ? "Loading…" : "No petty-cash movements yet." }}</td></tr>
-				</tbody>
-			</table>
-		</div>
-
-		<!-- create modal — one expense, matching the prototype's New expense form -->
-		<div v-if="form.open" class="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-6 overflow-y-auto" @click.self="form.open = false">
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">New expense</h3>
-				<div class="grid grid-cols-2 gap-3">
-					<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
-					<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
+			<!-- All Expenses -->
+			<template v-else-if="activeTab === 'all'">
+				<div class="flex items-center gap-2 flex-wrap">
+					<input v-model="search" type="text" placeholder="Search description, holder, project, account…" class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full" />
+					<select v-model="statusFilter" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
+						<option value="">All statuses</option>
+						<option value="Draft">Draft</option>
+						<option value="Submitted">Submitted</option>
+						<option value="Cancelled">Cancelled</option>
+					</select>
+					<div class="flex items-center gap-1.5">
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">From</span>
+						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
+						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+					</div>
+					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">Clear filters</button>
+					<span class="text-[11px] text-ink-400 ml-auto">{{ allExpenses.length }} expense{{ allExpenses.length === 1 ? "" : "s" }}</span>
 				</div>
-				<DeskField label="Description" required class="mt-3"><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-				<DeskField label="Project" required class="mt-3"><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" /></DeskField>
-				<div class="grid grid-cols-2 gap-3 mt-3">
-					<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
-					<DeskField label="Cost type"><DeskSelect v-model="form.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></DeskField>
+				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+					<table v-if="allExpenses.length" class="w-full text-xs">
+						<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
+							<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">By</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="text-left px-4 py-2">Status</th></tr>
+						</thead>
+						<tbody>
+							<tr v-for="e in allExpenses" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
+								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
+								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
+								<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
+								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
+								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
+							</tr>
+						</tbody>
+					</table>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">No expenses match.</div>
+				</section>
+			</template>
+
+			<!-- My Expenses -->
+			<template v-else-if="activeTab === 'mine'">
+				<div class="flex items-center gap-2 flex-wrap">
+					<div class="flex items-center gap-1.5">
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">From</span>
+						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
+						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+					</div>
+					<button v-if="from || to" type="button" class="text-[11px] text-danger-600 hover:underline" @click="from = ''; to = ''">Clear</button>
+					<span class="text-[11px] text-ink-400 ml-auto">{{ myExpenses.length }} expense{{ myExpenses.length === 1 ? "" : "s" }}</span>
 				</div>
-				<DeskField label="Paid from" class="mt-3">
-					<DeskSelect v-model="form.paid_from"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
-				</DeskField>
-				<DeskField label="Receipt (optional)" class="mt-3">
-					<label class="inline-flex items-center gap-2 text-xs cursor-pointer px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded-md" :class="form.attachment ? 'text-success-700' : 'text-ink-700'">
-						{{ form.uploading ? "Uploading…" : form.attachment ? "✓ Receipt attached" : "Attach receipt" }}
-						<input type="file" class="hidden" accept="image/*,application/pdf" @change="uploadReceipt($event)" />
-					</label>
-				</DeskField>
-				<p class="text-[11px] text-ink-500 mt-4 mb-4">{{ form.paid_from === "own" ? "Booked to Employee Reimbursements; pay it out from the To Reimburse queue." : "Paid from your Petty Cash float." }} Saved as a draft pending a finance approver.</p>
-				<div class="flex justify-end gap-2">
-					<button class="desk-btn" @click="form.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="form.saving" @click="submitForm">{{ form.saving ? "Saving…" : "Save as draft" }}</button>
+				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+					<table v-if="myExpenses.length" class="w-full text-xs">
+						<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
+							<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">Project</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="text-left px-4 py-2">Status</th></tr>
+						</thead>
+						<tbody>
+							<tr v-for="e in myExpenses" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
+								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
+								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span></td>
+								<td class="px-4 py-2.5 text-ink-500">{{ projectName(e) }}</td>
+								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
+								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
+							</tr>
+						</tbody>
+					</table>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "You haven't logged any expenses." }}</div>
+				</section>
+			</template>
+
+			<!-- Detail modal -->
+			<div v-if="detail" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="closeDetail">
+				<div class="bg-white border border-ink-200 w-full max-w-lg shadow-xl rounded-xl flex flex-col" style="max-height: 88vh" @click.stop>
+					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0">
+						<div class="flex items-center gap-2 min-w-0">
+							<h2 class="text-sm font-semibold text-ink-900 truncate">{{ detail.description }}</h2>
+							<StatusBadge :status="detail.status" size="xs" />
+						</div>
+						<button type="button" class="text-ink-400 hover:text-ink-900 flex-shrink-0" @click="closeDetail">✕</button>
+					</header>
+					<div class="px-4 py-4 overflow-y-auto flex-1 space-y-4">
+						<div class="flex items-center justify-between bg-ink-50 rounded-lg px-4 py-3">
+							<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Amount</div>
+							<div class="text-xl font-semibold text-ink-900 tabular-nums">{{ fmtINR(detail.amount) }}</div>
+						</div>
+						<div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Date</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.date) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Holder</div><div class="text-ink-900 mt-0.5">{{ holderName(detail) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Project</div><div class="text-ink-900 mt-0.5">{{ projectName(detail) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Paid from</div><div class="mt-0.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full" :class="sourceChipClass(detail.source)">{{ detail.source }}</span></div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Expense account</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || detail.cost_type }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Cost type</div><div class="text-ink-900 mt-0.5">{{ detail.cost_type }}</div></div>
+						</div>
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">Receipt</div>
+							<a v-if="detail.attachment" :href="detail.attachment" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline">View receipt</a>
+							<div v-else class="text-xs text-ink-400 italic">No receipt attached.</div>
+						</div>
+						<div v-if="detail.status === 'Cancelled'" class="px-3 py-2 bg-danger-50 border border-danger-200 rounded-md text-[11px] text-danger-700">
+							Cancelled — this expense no longer affects balances or reports. It can be deleted.
+						</div>
+					</div>
+					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-between gap-2 flex-shrink-0">
+						<div class="flex items-center gap-2">
+							<button v-if="detail.status === 'Draft' || (detail.status === 'Cancelled' && canVerify)" type="button" class="text-xs px-2.5 py-1.5 text-danger-600 hover:underline" @click="onDelete(detail)">Delete</button>
+						</div>
+						<div class="flex items-center gap-2">
+							<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="closeDetail">Close</button>
+							<button v-if="detail.status === 'Draft'" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openEdit(detail)">Edit</button>
+							<button v-if="detail.status === 'Draft' && canVerify" type="button" class="text-xs desk-save-btn" @click="onSubmit(detail)">Submit</button>
+							<button v-if="detail.status === 'Submitted' && canVerify" type="button" class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md" @click="onCancel(detail)">Cancel</button>
+						</div>
+					</footer>
 				</div>
 			</div>
-		</div>
 
-		<!-- reimburse modal -->
-		<div v-if="reimb.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="reimb.open = false">
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-1">Reimburse {{ fmtINR(reimb.row?.total_amount) }}</h3>
-				<p class="text-xs text-ink-500 mb-4">to {{ reimb.row?.employee_name || reimb.row?.employee }} · posts a Journal Entry (Dr Employee Reimbursements / Cr the account).</p>
-				<DeskField label="Pay from" required>
-					<DeskLinkPicker v-model="reimb.bank" doctype="Account" label-field="name" value-field="name" :filters="reimburseAccountFilters" placeholder="Bank / Cash account…" />
-				</DeskField>
-				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="reimb.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="reimb.saving" @click="confirmReimburse">{{ reimb.saving ? "Posting…" : "Reimburse" }}</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- detail modal -->
-		<div v-if="detail.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="detail.open = false">
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-				<div class="flex items-center gap-2 px-5 py-3 border-b border-ink-200 sticky top-0 bg-white">
-					<span class="font-mono text-xs text-ink-500">{{ detail.doc?.name || "" }}</span>
-					<StatusBadge v-if="detail.doc" :status="statusLabel(detail.doc.docstatus)" />
-					<span v-if="detail.doc?.reimbursable" class="text-[9px] px-1 py-0.5 bg-info-50 text-info-700 font-medium uppercase tracking-wider" style="border-radius: 2px">{{ detail.doc.reimbursed ? "Reimbursed" : "Out of pocket" }}</span>
-					<button type="button" class="ml-auto text-ink-400 hover:text-ink-900" @click="detail.open = false">✕</button>
-				</div>
-
-				<div v-if="detail.loading" class="px-5 py-10 text-center text-ink-400 text-sm">Loading…</div>
-				<div v-else-if="detail.doc" class="px-5 py-4">
-					<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 text-xs">
-						<div><div class="text-[10px] uppercase tracking-wider text-ink-500">Date</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.doc.date) }}</div></div>
-						<div><div class="text-[10px] uppercase tracking-wider text-ink-500">Project</div><div class="text-ink-900 mt-0.5">{{ detail.doc.project }}</div></div>
-						<div><div class="text-[10px] uppercase tracking-wider text-ink-500">Employee</div><div class="text-ink-900 mt-0.5">{{ detail.doc.employee_name || detail.doc.employee }}</div></div>
-						<div><div class="text-[10px] uppercase tracking-wider text-ink-500">Paid from</div><div class="text-ink-900 mt-0.5">{{ detail.doc.payment_account }}</div></div>
-						<div><div class="text-[10px] uppercase tracking-wider text-ink-500">Total</div><div class="text-ink-900 mt-0.5 tabular-nums font-medium">{{ fmtINR(detail.doc.total_amount) }}</div></div>
-						<div v-if="detail.doc.reimbursed_on"><div class="text-[10px] uppercase tracking-wider text-ink-500">Reimbursed</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.doc.reimbursed_on) }}</div></div>
+			<!-- Create / edit form modal -->
+			<div v-if="modalOpen" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="modalOpen = false">
+				<div class="bg-white border border-ink-200 w-full max-w-lg shadow-xl rounded-xl" @click.stop>
+					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"><h2 class="text-sm font-semibold text-ink-900">{{ editingId ? "Edit expense" : "New expense" }}</h2><button type="button" class="text-ink-400 hover:text-ink-900" @click="modalOpen = false">✕</button></header>
+					<div class="px-4 py-4 space-y-3">
+						<div class="grid grid-cols-2 gap-3">
+							<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
+							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
+						</div>
+						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
+						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" /></DeskField>
+						<div class="grid grid-cols-2 gap-3">
+							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
+							<DeskField label="Cost type"><DeskSelect v-model="form.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></DeskField>
+						</div>
+						<DeskField label="Paid from">
+							<DeskSelect v-model="form.paid_from"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
+						</DeskField>
+						<DeskField label="Receipt (optional)">
+							<label class="inline-flex items-center gap-2 text-xs cursor-pointer px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded-md" :class="form.attachment ? 'text-success-700' : 'text-ink-700'">
+								{{ form.uploading ? "Uploading…" : form.attachment ? "✓ Receipt attached" : "📷 Attach receipt" }}
+								<input type="file" class="hidden" accept="image/*,application/pdf" @change="uploadReceipt($event)" />
+							</label>
+						</DeskField>
 					</div>
-
-					<div class="border border-ink-200 rounded-lg overflow-x-auto mb-3">
-						<table class="w-full text-xs">
-							<thead class="bg-ink-50 text-ink-500 uppercase text-[10px]"><tr><th class="text-left px-3 py-2">Expense account</th><th class="text-left px-3 py-2">Cost type</th><th class="text-left px-3 py-2">Description</th><th class="text-right px-3 py-2">Amount</th><th class="text-center px-3 py-2">Receipt</th></tr></thead>
-							<tbody>
-								<tr v-for="(r, i) in detail.doc.rows" :key="i" class="border-t border-ink-100">
-									<td class="px-3 py-2 text-ink-900">{{ r.expense_account }}</td>
-									<td class="px-3 py-2 text-ink-600">{{ r.cost_type }}</td>
-									<td class="px-3 py-2 text-ink-500">{{ r.description || "—" }}</td>
-									<td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(r.amount) }}</td>
-									<td class="px-3 py-2 text-center"><a v-if="r.attachment" :href="r.attachment" target="_blank" rel="noopener" class="text-brand-700 hover:underline">View</a><span v-else class="text-ink-300">—</span></td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-
-					<div v-if="detail.doc.journal_entry || detail.doc.reimbursement_journal_entry" class="text-[11px] text-ink-500 space-x-3 mb-1">
-						<span v-if="detail.doc.journal_entry">Posting JE: <span class="font-mono text-ink-700">{{ detail.doc.journal_entry }}</span></span>
-						<span v-if="detail.doc.reimbursement_journal_entry">Reimbursement JE: <span class="font-mono text-ink-700">{{ detail.doc.reimbursement_journal_entry }}</span></span>
-					</div>
-				</div>
-
-				<div v-if="detail.doc" class="flex items-center justify-end gap-2 px-5 py-3 border-t border-ink-200 sticky bottom-0 bg-white">
-					<button v-if="detail.doc.docstatus === 0 && canSubmit" type="button" class="text-xs px-3 py-1.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="detailApprove">Verify</button>
-					<button v-if="detail.doc.docstatus === 1 && detail.doc.reimbursable && !detail.doc.reimbursed && canSubmit" type="button" class="text-xs px-3 py-1.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="detailReimburse">Reimburse</button>
-					<button v-if="detail.doc.docstatus !== 2" type="button" class="text-xs px-3 py-1.5 border border-ink-200 text-danger-700 rounded" @click="detailCancel">{{ detail.doc.docstatus === 1 ? "Cancel" : "Delete" }}</button>
-					<button type="button" class="desk-btn" @click="detail.open = false">Close</button>
+					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+						<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="modalOpen = false">Cancel</button>
+						<button type="button" class="text-xs desk-save-btn" :disabled="form.saving" @click="save">{{ form.saving ? "Saving…" : editingId ? "Save" : "Save as draft" }}</button>
+					</footer>
 				</div>
 			</div>
 		</div>

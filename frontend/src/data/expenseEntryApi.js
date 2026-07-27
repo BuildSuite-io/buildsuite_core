@@ -16,6 +16,7 @@ async function call(method, args) {
 }
 
 export const expenseContext = () => call("context", {});
+export const listExpenses = () => call("list_expenses", {});
 export const getExpense = (name) => call("get_expense", { name });
 export const expenseLedger = (filters = {}) => call("ledger", filters);
 export const saveExpense = (payload) => call("save_expense", { payload: JSON.stringify(payload) });
