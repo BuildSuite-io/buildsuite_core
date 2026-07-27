@@ -61,6 +61,15 @@ def resolve_petty_cash_account(company):
 # ---------------------------------------------------------------------------
 
 
+def employee_for_user(user):
+	"""The active Employee linked to a User, or None. Petty Cash Requests are raised
+	by a User (requested_by); the employee ledger (GL Entry.employee) keys on Employee,
+	so we resolve the link to keep issued float and later spend on one ledger."""
+	if not user:
+		return None
+	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+
+
 def post_disbursement_journal_entry(doc):
 	"""Build + submit the disbursement JE and return its name."""
 	amount = flt(doc.amount)
@@ -68,6 +77,9 @@ def post_disbursement_journal_entry(doc):
 		frappe.throw(_("Disbursement amount must be greater than zero."))
 
 	petty = resolve_petty_cash_account(doc.company)
+	# Tag the holder on the Petty Cash (debit) line so the issued float lands in the
+	# same employee ledger the balance / transaction endpoints read.
+	employee = employee_for_user(doc.requested_by)
 
 	je = frappe.new_doc("Journal Entry")
 	je.voucher_type = "Journal Entry"
@@ -79,7 +91,7 @@ def post_disbursement_journal_entry(doc):
 
 	je.append(
 		"accounts",
-		{"account": petty, "debit_in_account_currency": amount, "project": doc.project},
+		{"account": petty, "debit_in_account_currency": amount, "project": doc.project, "employee": employee},
 	)
 	je.append(
 		"accounts",
@@ -170,7 +182,7 @@ def _pending_expense_total(employee, account):
 		FROM `tabExpense Entry Table` eet
 		INNER JOIN `tabExpense Entry` et ON et.name = eet.parent
 		WHERE eet.employee = %(employee)s
-			AND eet.mode_of_payment_account = %(account)s
+			AND eet.payment_account = %(account)s
 			AND et.docstatus = 0
 		""",
 		{"employee": employee, "account": account},

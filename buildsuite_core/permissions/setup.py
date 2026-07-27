@@ -596,9 +596,25 @@ PETTY_CASH_DISBURSE_ROLES = (
 )
 
 
+# Expense Entry (petty-cash / other spend). Site roles raise a draft (which counts
+# as "pending approval"); finance roles submit it, which posts the Journal Entry.
+# So submit/cancel is held by the finance approvers only, mirroring petty cash.
+_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+EXPENSE_ENTRY_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite Director": _FULL_SUB,
+	"BuildSuite PM": _FULL_SUB,
+	"BuildSuite Accountant": _FULL_SUB,
+	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,
+	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
+	"BuildSuite QS": _READ,
+}
+
+
 def setup_petty_cash_permissions():
 	_apply_role_perms("Petty Cash Request", PETTY_CASH_ROLE_PERMS)
-	# The disburse Journal Entry + its account picker read accounting masters.
+	_apply_role_perms("Expense Entry", EXPENSE_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
+	# The disburse / expense Journal Entry + its account picker read accounting masters.
 	_read = {role: _READ for role in PETTY_CASH_DISBURSE_ROLES}
 	for dt in ("Account", "Journal Entry"):
 		_apply_role_perms(dt, _read)
