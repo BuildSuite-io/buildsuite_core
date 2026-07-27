@@ -50,6 +50,41 @@ def context():
 
 
 @frappe.whitelist()
+def get_expense(name):
+	"""Full expense entry (parent + lines) for the detail modal."""
+	doc = frappe.get_doc(DOCTYPE, name)
+	doc.check_permission("read")
+	return {
+		"name": doc.name,
+		"date": str(doc.date) if doc.date else None,
+		"company": doc.company,
+		"project": doc.project,
+		"employee": doc.employee,
+		"employee_name": frappe.db.get_value("Employee", doc.employee, "employee_name") if doc.employee else None,
+		"payment_account": doc.payment_account,
+		"total_amount": doc.total_amount,
+		"docstatus": doc.docstatus,
+		"reimbursable": doc.reimbursable,
+		"reimbursed": doc.reimbursed,
+		"reimbursed_on": str(doc.reimbursed_on) if doc.reimbursed_on else None,
+		"journal_entry": doc.journal_entry,
+		"reimbursement_journal_entry": doc.reimbursement_journal_entry,
+		"description": doc.description,
+		"rows": [
+			{
+				"expense_account": r.expense_account,
+				"cost_type": r.cost_type,
+				"description": r.description,
+				"amount": r.amount,
+				"attachment": r.attachment,
+				"project": r.project,
+			}
+			for r in doc.expense_entry_table
+		],
+	}
+
+
+@frappe.whitelist()
 def ledger(transaction_type=None, project=None, from_date=None, to_date=None):
 	"""Petty-cash transaction ledger for the caller's employee (newest first)."""
 	employee = _current_employee()
@@ -116,6 +151,7 @@ def save_expense(payload):
 				"project": r.get("project") or project,
 				"amount": flt(r.get("amount")),
 				"description": r.get("description"),
+				"attachment": r.get("attachment"),
 			},
 		)
 	doc.flags.ignore_permissions = True
