@@ -50,6 +50,58 @@ def context():
 
 
 @frappe.whitelist()
+def list_expenses():
+	"""Flattened expense records (one per Expense Entry) shaped like the prototype's
+	list: date, description, holder, source, account, cost type, amount, status."""
+	entries = frappe.get_all(
+		DOCTYPE,
+		fields=["name", "date", "project", "employee", "employee_name", "total_amount", "docstatus", "reimbursable", "description"],
+		order_by="date desc, creation desc",
+		limit_page_length=0,
+	)
+	if not entries:
+		return []
+
+	names = [e.name for e in entries]
+	first = {}
+	for r in frappe.get_all(
+		"Expense Entry Table",
+		filters={"parent": ["in", names]},
+		fields=["parent", "expense_account", "cost_type", "attachment", "description"],
+		order_by="idx asc",
+	):
+		first.setdefault(r.parent, r)
+
+	proj = {}
+	pids = list({e.project for e in entries if e.project})
+	if pids:
+		proj = {p.name: p.project_name for p in frappe.get_all("Project", filters={"name": ["in", pids]}, fields=["name", "project_name"])}
+
+	status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
+	out = []
+	for e in entries:
+		fr = first.get(e.name) or {}
+		out.append(
+			{
+				"name": e.name,
+				"date": str(e.date) if e.date else None,
+				"description": fr.get("description") or e.description or e.name,
+				"project": e.project,
+				"project_name": proj.get(e.project) or e.project,
+				"employee": e.employee,
+				"employee_name": e.employee_name or e.employee,
+				"source": "Own pocket" if e.reimbursable else "Petty Cash",
+				"expense_account": fr.get("expense_account"),
+				"cost_type": fr.get("cost_type"),
+				"attachment": fr.get("attachment"),
+				"amount": e.total_amount,
+				"status": status_map.get(e.docstatus, "Draft"),
+			}
+		)
+	return out
+
+
+@frappe.whitelist()
 def get_expense(name):
 	"""Full expense entry (parent + lines) for the detail modal."""
 	doc = frappe.get_doc(DOCTYPE, name)
