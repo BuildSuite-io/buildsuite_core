@@ -1,21 +1,22 @@
 %% Petty Cash Request — live workflow (buildsuite_core)
-%% Request -> Disburse (posts a Journal Entry) -> optionally Reverse.
+%% Imprest model (PF-02). Highlights how the HOLDER is captured on the ledger:
+%% requested_by (User) -> Employee -> stamped on the JE line as the 'employee'
+%% accounting dimension -> propagated to GL Entry natively by ERPNext's get_gl_dict
+%% (the CustomJournalEntry override that used to copy it by hand is now removed).
 flowchart TD
-    start(["Site user / PM needs cash"]) --> req["Raise Petty Cash Request<br/>project · amount · purpose<br/>requested_by, company from project"]
-    req --> S_REQ{{"Status: Requested"}}
+    start(["Employee needs a cash float"]) --> req["Raise Petty Cash Request<br/>amount · purpose (no project)<br/>requested_by = a User"]
+    req --> emp["Resolve holder: employee_for_user(requested_by)<br/>→ active Employee (required)<br/>company = the Employee's company"]
+    emp --> S_REQ{{"Status: Requested"}}
 
-    S_REQ -->|"Requester withdraws<br/>(cancel_request)"| CANC{{"Status: Cancelled"}}
+    S_REQ -->|"Requester withdraws (cancel_request)"| CANC{{"Status: Cancelled"}}
 
-    S_REQ -->|"Approver reviews<br/>Accountant / Director / PM / Admin"| disb["Disburse<br/>pick Bank / Cash account"]
-    disb --> gate{"Account valid?<br/>non-group Bank/Cash in company"}
-    gate -->|"No"| err["Rejected"]
-    gate -->|"Yes"| je1["Post submitted Journal Entry<br/>Dr Petty Cash (employee) / Cr Bank<br/>+ project accounting dimension"]
-    je1 --> S_DIS{{"Status: Disbursed<br/>journal_entry set · float issued"}}
+    S_REQ -->|"Approver disburses — pick a Bank/Cash<br/>source, NOT Petty Cash"| je1["Post submitted Journal Entry (imprest)<br/>Dr Petty Cash · employee = holder  ← dimension on the LINE<br/>Cr Bank (funding source) · no employee"]
 
-    S_DIS -->|"Reverse disbursement<br/>(undisburse)"| rev["Cancel Journal Entry"]
-    rev --> S_REQ
+    je1 --> prop["On submit: ERPNext get_gl_dict(item=line) copies the<br/>'employee' ACCOUNTING DIMENSION from each line → its GL Entry.<br/>Native — replaces the REMOVED CustomJournalEntry override<br/>that used to copy it by hand (a stale build_gl_map copy)."]
+    prop --> S_DIS{{"Status: Disbursed · float issued"}}
+    S_DIS -.->|"Reverse (undisburse) → cancel JE, back to Requested · API/admin only"| S_REQ
 
-    S_DIS --> bal["Holder float increases<br/>feeds reconciled balance:<br/>disbursed - verified spend = in hand"]
+    prop --> rpt["GL Entry.employee → NATIVE Desk reporting:<br/>General Ledger & Financial Statements<br/>filter / group by Employee (the PF-02 audit trail)"]
+    prop --> bal["GL Entry.employee → Vue Balances tab (SQL):<br/>disbursed − verified spend = in hand"]
 
-    %% Spend against the float is recorded separately as an Expense Entry
-    bal -.->|"spend recorded via"| exp["Expense Entry workflow<br/>(see expense-entry-workflow)"]
+    bal -.->|"spend logged separately as"| exp["Expense Entry — Cr Petty Cash on the SAME<br/>'employee' dimension, reducing the balance<br/>(see expense-entry-workflow)"]
