@@ -87,6 +87,7 @@ const WORKSPACES = {
 		icon: "💵",
 		group: "buildsuite",
 	},
+	equipment: { name: "Equipment", to: "/equipment", icon: "🔧", group: "buildsuite" },
 	accounting: { name: "Accounting", to: "/accounting", icon: "📊", group: "erpnext" },
 	buying: { name: "Buying", to: "/buying", icon: "📥", group: "erpnext" },
 	stock: { name: "Stock", to: "/stock", icon: "📦", group: "erpnext" },

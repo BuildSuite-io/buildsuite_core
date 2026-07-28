@@ -213,6 +213,21 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
+	// Equipment — admin only for now (other role perms deferred).
+	equipment: {
+		director: null,
+		pm: null,
+		estimator: null,
+		qs: null,
+		"site-engineer": null,
+		foreman: null,
+		procurement: null,
+		"store-keeper": null,
+		accountant: null,
+		"hr-manager": null,
+		admin: "full",
+		bsa: null,
+	},
 	accounting: {
 		director: "full",
 		pm: "read",
@@ -308,6 +323,7 @@ const BUILDSUITE_WORKSPACES = [
 	"subcontract",
 	"workforce",
 	"project-finance",
+	"equipment",
 ];
 const INHERITED_WORKSPACES = ["accounting", "buying", "stock", "assets", "hr"];
 

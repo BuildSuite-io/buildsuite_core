@@ -51,6 +51,13 @@ export const WORKSPACE_META = {
 		group: "buildsuite",
 		desc: "Petty cash, cost summary, project P&L.",
 	},
+	equipment: {
+		name: "Equipment",
+		icon: "🔧",
+		to: "/equipment",
+		group: "buildsuite",
+		desc: "Plant & machinery register and usage.",
+	},
 	accounting: {
 		name: "Accounting",
 		icon: "📊",

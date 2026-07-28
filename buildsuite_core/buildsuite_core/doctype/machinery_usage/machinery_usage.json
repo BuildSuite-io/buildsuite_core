@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-07-26 22:31:22.176682",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "machine",
+  "date",
+  "rate",
+  "column_break_kehv",
+  "project",
+  "quantity",
+  "fuel_cost",
+  "column_break_oyoq",
+  "task",
+  "unit"
+ ],
+ "fields": [
+  {
+   "fieldname": "machine",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Machine",
+   "options": "Machinery",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Select",
+   "label": "Unit",
+   "options": "Days\nHours"
+  },
+  {
+   "fetch_from": "machine.rate",
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate"
+  },
+  {
+   "fieldname": "fuel_cost",
+   "fieldtype": "Currency",
+   "label": "Fuel cost"
+  },
+  {
+   "fieldname": "column_break_kehv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_oyoq",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-26 22:36:58.714914",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Machinery Usage",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
