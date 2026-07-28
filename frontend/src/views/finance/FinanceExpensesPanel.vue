@@ -291,11 +291,11 @@ async function save() {
 	}
 }
 
-const expenseAccountFilters = [
+const expenseAccountFilters = computed(() => [
 	["root_type", "=", "Expense"],
 	["is_group", "=", 0],
-	...companyFilter,
-];
+	...companyFilter.value,
+]);
 </script>
 
 <template>
