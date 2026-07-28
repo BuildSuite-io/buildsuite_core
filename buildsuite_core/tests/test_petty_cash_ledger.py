@@ -76,7 +76,7 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		req.disburse(self._bank())
 		return req
 
-	def _expense_entry(self, amount, submit=False, paid_from="Petty Cash", cost_type="Overhead"):
+	def _expense_entry(self, amount, submit=False, paid_from="Petty Cash", cost_code_label=None):
 		# PF-04: Petty Cash → Cr the holder's float (holder stamped); Company → Cr a
 		# Bank/Cash account, no holder.
 		if paid_from == "Company":
@@ -85,6 +85,16 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		else:
 			account = self.petty
 			employee = self.employee
+		line = {
+			"employee": employee,
+			"payment_account": account,
+			"expense_account": self._expense_account(),
+			"project": self.project,
+			"amount": amount,
+			"description": "Diesel",
+		}
+		if cost_code_label:
+			line.update({"cost_code_type": "Group", "cost_code_group": "G1", "cost_code_label": cost_code_label})
 		doc = frappe.get_doc(
 			{
 				"doctype": "Expense Entry",
@@ -94,17 +104,7 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 				"employee": employee,
 				"payment_account": account,
 				"paid_from": paid_from,
-				"expense_entry_table": [
-					{
-						"employee": employee,
-						"payment_account": account,
-						"expense_account": self._expense_account(),
-						"cost_type": cost_type,
-						"project": self.project,
-						"amount": amount,
-						"description": "Diesel",
-					}
-				],
+				"expense_entry_table": [line],
 			}
 		).insert(ignore_permissions=True)
 		if submit:
@@ -159,9 +159,11 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 			flt(pc.get_total_balance_include_review(self.employee)),
 		)
 
-	def test_cost_type_stored(self):
-		ee = self._expense_entry(1000, cost_type="Material")
-		self.assertEqual(ee.expense_entry_table[0].cost_type, "Material")
+	def test_cost_code_stored(self):
+		ee = self._expense_entry(1000, cost_code_label="G1 · Substructure")
+		line = ee.expense_entry_table[0]
+		self.assertEqual(line.cost_code_label, "G1 · Substructure")
+		self.assertEqual(line.cost_code_type, "Group")
 
 	def test_holder_required_for_petty_cash(self):
 		# PF-04: petty-cash spend must name the holder whose float it draws down.
@@ -178,7 +180,6 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 					{
 						"payment_account": self.petty,
 						"expense_account": self._expense_account(),
-						"cost_type": "Overhead",
 						"project": self.project,
 						"amount": 500,
 						"description": "No holder",

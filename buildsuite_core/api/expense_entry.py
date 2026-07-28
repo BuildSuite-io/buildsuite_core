@@ -23,6 +23,19 @@ def _current_employee(user=None):
 	return pc.employee_for_user(user or frappe.session.user)
 
 
+def _cost_code_fields(cost_code):
+	"""Flatten the picker's cost-code object → the four stored line fields (same shape as
+	subcontractor lines). Accepts the {type, group_code, item_code, label} object or None."""
+	if not cost_code or not isinstance(cost_code, dict):
+		return {"cost_code_type": "", "cost_code_group": "", "cost_code_item": "", "cost_code_label": ""}
+	return {
+		"cost_code_type": "Item" if cost_code.get("type") == "item" else "Group",
+		"cost_code_group": cost_code.get("group_code") or "",
+		"cost_code_item": cost_code.get("item_code") or "",
+		"cost_code_label": cost_code.get("label") or "",
+	}
+
+
 def _can_submit():
 	from buildsuite_core.permissions.setup import PETTY_CASH_DISBURSE_ROLES
 
@@ -67,7 +80,7 @@ def list_expenses():
 	for r in frappe.get_all(
 		"Expense Entry Table",
 		filters={"parent": ["in", names]},
-		fields=["parent", "expense_account", "cost_type", "attachment", "description"],
+		fields=["parent", "expense_account", "cost_code_label", "attachment", "description"],
 		order_by="idx asc",
 	):
 		first.setdefault(r.parent, r)
@@ -94,7 +107,7 @@ def list_expenses():
 				"source": e.paid_from or "Petty Cash",
 				"payment_account": e.payment_account,
 				"expense_account": fr.get("expense_account"),
-				"cost_type": fr.get("cost_type"),
+				"cost_code": fr.get("cost_code_label"),
 				"attachment": fr.get("attachment"),
 				"amount": e.total_amount,
 				"status": status_map.get(e.docstatus, "Draft"),
@@ -124,7 +137,17 @@ def get_expense(name):
 		"rows": [
 			{
 				"expense_account": r.expense_account,
-				"cost_type": r.cost_type,
+				# Reconstruct the cost-code object the picker binds to (see subcontract lines).
+				"cost_code": (
+					{
+						"type": (r.cost_code_type or "").lower(),
+						"group_code": r.cost_code_group or "",
+						"item_code": r.cost_code_item or None,
+						"label": r.cost_code_label or "",
+					}
+					if r.cost_code_label
+					else None
+				),
 				"description": r.description,
 				"amount": r.amount,
 				"attachment": r.attachment,
@@ -209,7 +232,7 @@ def save_expense(payload):
 				"employee": employee,
 				"payment_account": account,
 				"expense_account": r.get("expense_account"),
-				"cost_type": r.get("cost_type") or "Overhead",
+				**_cost_code_fields(r.get("cost_code")),
 				"project": r.get("project") or project,
 				"amount": flt(r.get("amount")),
 				"description": r.get("description"),
