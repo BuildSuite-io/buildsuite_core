@@ -76,20 +76,27 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		req.disburse(self._bank())
 		return req
 
-	def _expense_entry(self, amount, submit=False, reimbursable=False, cost_type="Overhead"):
-		account = pc.resolve_reimbursements_account(self.company) if reimbursable else self.petty
+	def _expense_entry(self, amount, submit=False, paid_from="Petty Cash", cost_type="Overhead"):
+		# PF-04: Petty Cash → Cr the holder's float (holder stamped); Company → Cr a
+		# Bank/Cash account, no holder.
+		if paid_from == "Company":
+			account = self._bank()
+			employee = None
+		else:
+			account = self.petty
+			employee = self.employee
 		doc = frappe.get_doc(
 			{
 				"doctype": "Expense Entry",
 				"date": "2026-07-21",
 				"company": self.company,
 				"project": self.project,
-				"employee": self.employee,
+				"employee": employee,
 				"payment_account": account,
-				"reimbursable": 1 if reimbursable else 0,
+				"paid_from": paid_from,
 				"expense_entry_table": [
 					{
-						"employee": self.employee,
+						"employee": employee,
 						"payment_account": account,
 						"expense_account": self._expense_account(),
 						"cost_type": cost_type,
@@ -156,21 +163,68 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		ee = self._expense_entry(1000, cost_type="Material")
 		self.assertEqual(ee.expense_entry_table[0].cost_type, "Material")
 
-	def test_own_pocket_expense_does_not_touch_petty_balance(self):
+	def test_holder_required_for_petty_cash(self):
+		# PF-04: petty-cash spend must name the holder whose float it draws down.
+		doc = frappe.get_doc(
+			{
+				"doctype": "Expense Entry",
+				"date": "2026-07-21",
+				"company": self.company,
+				"project": self.project,
+				"employee": None,
+				"payment_account": self.petty,
+				"paid_from": "Petty Cash",
+				"expense_entry_table": [
+					{
+						"payment_account": self.petty,
+						"expense_account": self._expense_account(),
+						"cost_type": "Overhead",
+						"project": self.project,
+						"amount": 500,
+						"description": "No holder",
+					}
+				],
+			}
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert, ignore_permissions=True)
+
+	def test_company_paid_expense_carries_no_holder(self):
 		self._disburse(10000)
-		# Out-of-pocket spend books to Employee Reimbursements, not the petty float.
-		self._expense_entry(2000, submit=True, reimbursable=True)
+		# Company-paid spend Crs a Bank/Cash account, not the holder's float, so the
+		# petty balance is untouched and the credit leg carries no employee.
+		ee = self._expense_entry(2000, submit=True, paid_from="Company")
 		self.assertEqual(flt(pc.get_balance_amount_approved(self.employee)), 10000)
 		mine = [r for r in pc.reconciled_holder_balances(self.company) if r["employee"] == self.employee][0]
 		self.assertEqual(flt(mine["spent"]), 0)
+		# The submitted expense forced the holder off entirely (Company mode).
+		self.assertFalse(ee.employee)
 
-	def test_reimburse_posts_je_and_flags(self):
-		ee = self._expense_entry(2000, submit=True, reimbursable=True)
-		je = ee.reimburse(self._bank())
-		ee.reload()
-		self.assertTrue(ee.reimbursed)
-		self.assertEqual(ee.reimbursement_journal_entry, je)
-		self.assertEqual(frappe.db.get_value("Journal Entry", je, "docstatus"), 1)
-		# Non-reimbursable can't be reimbursed.
-		petty = self._expense_entry(500, submit=True)
-		self.assertRaises(frappe.ValidationError, petty.reimburse, self._bank())
+	def test_statement_combines_disbursement_and_expense(self):
+		from buildsuite_core.api.petty_cash import statement
+
+		self._disburse(10000)
+		self._expense_entry(3000, submit=True, paid_from="Petty Cash")
+		rows = statement(self.employee)
+		# One disbursement (money in) + one petty-cash expense (money out).
+		kinds = sorted(r["kind"] for r in rows)
+		self.assertEqual(kinds, ["Disbursement", "Expense"])
+		disb = next(r for r in rows if r["kind"] == "Disbursement")
+		exp = next(r for r in rows if r["kind"] == "Expense")
+		self.assertEqual(flt(disb["in"]), 10000)
+		self.assertEqual(flt(exp["out"]), 3000)
+		self.assertEqual(exp["status"], "Submitted")
+		# A Company-paid expense never appears on the holder's petty-cash statement.
+		self._expense_entry(500, submit=True, paid_from="Company")
+		refs = [r["ref"] for r in statement(self.employee)]
+		self.assertEqual(len(refs), 2)
+
+	def test_own_pocket_pushes_petty_balance_negative(self):
+		# PF-04: with no float disbursed, petty-cash spend simply drives the holder's
+		# balance negative — the amount owed back to them ("owed to holder").
+		self._expense_entry(2000, submit=True, paid_from="Petty Cash")
+		self.assertEqual(flt(pc.get_balance_amount_approved(self.employee)), -2000)
+		mine = [r for r in pc.reconciled_holder_balances(self.company) if r["employee"] == self.employee][0]
+		self.assertEqual(flt(mine["balance"]), -2000)
+		# A later disbursement settles the negative balance.
+		self._disburse(5000)
+		self.assertEqual(flt(pc.get_balance_amount_approved(self.employee)), 3000)

@@ -1,6 +1,6 @@
 <script setup>
 // Petty Cash — the LIVE part of Project Finance. Request → Disburse (posts a Journal Entry
-// server-side) → reverse. Everything else in the finance workspace is mock data.
+// server-side). Everything else in the finance workspace is mock data.
 
 import { computed, reactive, ref } from "vue";
 import { useSessionStore } from "@/stores/session";
@@ -208,7 +208,10 @@ const rowsForTab = computed(() => {
 						<td class="px-3 py-2 text-ink-900">{{ b.holder }}</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.disbursed) }}</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.spent) }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-semibold" :class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'">{{ fmtINR(b.balance) }}</td>
+						<td class="px-3 py-2 text-right tabular-nums font-semibold" :class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'">
+							<template v-if="b.balance < 0">{{ fmtINR(-b.balance) }} owed to holder</template>
+							<template v-else>{{ fmtINR(b.balance) }}</template>
+						</td>
 					</tr>
 					<tr v-if="!balances.length">
 						<td colspan="4" class="px-3 py-4 text-center text-ink-400 italic">No petty-cash activity yet.</td>
@@ -217,6 +220,7 @@ const rowsForTab = computed(() => {
 			</table>
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
 				Balance in hand = disbursed float − approved expenses (from the Expenses tab).
+				A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.
 			</p>
 		</div>
 

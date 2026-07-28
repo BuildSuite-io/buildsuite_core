@@ -59,7 +59,7 @@ const FINANCE_REPORTS = [
 	{ slug: "pnl", icon: "chart-line", label: "Profit & Loss", desc: "Income vs direct costs and overheads, by project and period." },
 	{ slug: "aged", icon: "clipboard-list", label: "Receivables & Payables", desc: "Aged outstanding — who owes us and who we owe." },
 	{ slug: "position", icon: "wallet", label: "Financial Position", desc: "What we have vs what we owe, and the net position." },
-	{ slug: "petty", icon: "hand-coins", label: "Petty Cash", desc: "Per holder: disbursed, spent, balance, to reimburse." },
+	{ slug: "petty", icon: "hand-coins", label: "Petty Cash", desc: "Per holder: disbursed, spent, balance in hand." },
 	{ slug: "expenses", icon: "receipt", label: "Expense Summary", desc: "By project, cost type, source or person, with receipts." },
 	{ slug: "cashbank", icon: "banknote", label: "Cash & Bank Statement", desc: "Per account: opening, movements, closing." },
 ];

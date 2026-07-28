@@ -154,3 +154,97 @@ def holder_balances(company=None):
 	from buildsuite_core.utils.petty_cash import reconciled_holder_balances
 
 	return reconciled_holder_balances(company)
+
+
+@frappe.whitelist()
+def statement(employee):
+	"""A holder's personal petty-cash statement: disbursements in + petty-cash expenses
+	out, newest first. Cancelled entries are omitted (no balance impact); drafts are
+	included so pending spend is visible. Date/project/account/status filtering is left
+	to the caller — the whole ledger is returned so the report can filter interactively.
+	"""
+	if not employee:
+		return []
+
+	# Whitelisted: without this any signed-in user could read another holder's statement.
+	if not frappe.has_permission("Employee", doc=employee):
+		raise frappe.PermissionError
+
+	rows = []
+
+	# Disbursements — money into the holder's float. The holder raised the request
+	# (requested_by), so resolve the employee's User to find them.
+	user_id = frappe.db.get_value("Employee", employee, "user_id")
+	if user_id:
+		for d in frappe.get_all(
+			DOCTYPE,
+			filters={"requested_by": user_id, "status": "Disbursed"},
+			fields=["name", "project", "request_date", "disbursed_on", "amount", "purpose"],
+		):
+			date = (str(d.disbursed_on)[:10] if d.disbursed_on else None) or (
+				str(d.request_date) if d.request_date else None
+			)
+			rows.append(
+				{
+					"key": f"d-{d.name}",
+					"date": date,
+					"kind": "Disbursement",
+					"description": d.purpose or d.name,
+					"project": d.project,
+					"account": None,
+					"status": "Disbursed",
+					"in": flt(d.amount),
+					"out": 0.0,
+					"ref": d.name,
+				}
+			)
+
+	# Petty-cash expenses — money out of the float (drafts + submitted, never cancelled).
+	entries = frappe.get_all(
+		"Expense Entry",
+		filters={"employee": employee, "paid_from": "Petty Cash", "docstatus": ["<", 2]},
+		fields=["name", "date", "project", "total_amount", "docstatus", "description"],
+	)
+	first = {}
+	if entries:
+		for r in frappe.get_all(
+			"Expense Entry Table",
+			filters={"parent": ["in", [e.name for e in entries]]},
+			fields=["parent", "expense_account", "description"],
+			order_by="idx asc",
+		):
+			first.setdefault(r.parent, r)
+
+	status_map = {0: "Draft", 1: "Submitted"}
+	for e in entries:
+		fr = first.get(e.name) or {}
+		rows.append(
+			{
+				"key": f"e-{e.name}",
+				"date": str(e.date) if e.date else None,
+				"kind": "Expense",
+				"description": fr.get("description") or e.description or e.name,
+				"project": e.project,
+				"account": fr.get("expense_account"),
+				"status": status_map.get(e.docstatus, "Draft"),
+				"in": 0.0,
+				"out": flt(e.total_amount),
+				"ref": e.name,
+			}
+		)
+
+	# Resolve project titles in one query.
+	pids = list({r["project"] for r in rows if r["project"]})
+	pnames = (
+		{
+			p.name: p.project_name
+			for p in frappe.get_all("Project", filters={"name": ["in", pids]}, fields=["name", "project_name"])
+		}
+		if pids
+		else {}
+	)
+	for r in rows:
+		r["project_name"] = pnames.get(r["project"]) or r["project"]
+
+	rows.sort(key=lambda r: (r["date"] or ""), reverse=True)
+	return rows

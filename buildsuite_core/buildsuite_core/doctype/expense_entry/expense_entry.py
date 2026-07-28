@@ -34,6 +34,7 @@ class ExpenseEntry(Document):
 		expense_entry_table: DF.Table[ExpenseEntryTable]
 		journal_entry: DF.Link | None
 		naming_series: DF.Literal["EE-.YY.-"]
+		paid_from: DF.Literal["Petty Cash", "Company"]
 		payment_account: DF.Link
 		payment_account_name: DF.Data | None
 		project: DF.Link
@@ -43,6 +44,13 @@ class ExpenseEntry(Document):
 	def validate(self):
 		if not self.expense_entry_table:
 			frappe.throw(_("At least one expense row is required."))
+
+		# PF-04: holder is mandatory when paid from Petty Cash (drives the per-holder
+		# balance); a Company-paid expense has no holder.
+		if self.paid_from == "Petty Cash" and not self.employee:
+			frappe.throw(_("Holder (Employee) is required when Paid From is Petty Cash."))
+		if self.paid_from == "Company":
+			self.employee = None
 
 		self.total_amount = sum(flt(row.amount) for row in self.expense_entry_table)
 
@@ -61,70 +69,7 @@ class ExpenseEntry(Document):
 
 	def on_cancel(self):
 		self.ignore_linked_doctypes = ("GL Entry", "Stock Ledger Entry")
-		self.cancel_reimbursement_journal_entry()
 		self.cancel_journal_entry()
-
-	# ------------------------------------------------------------------
-	# Reimbursement (own-pocket spend)
-	# ------------------------------------------------------------------
-
-	def reimburse(self, bank_account):
-		"""Pay the employee back for an out-of-pocket (reimbursable) expense.
-
-		The submit JE credited a reimbursements payable (self.payment_account); this
-		clears it: Dr Employee Reimbursements / Cr bank, tagged with the employee.
-		"""
-		if self.docstatus != 1:
-			frappe.throw(_("Only a submitted expense entry can be reimbursed."))
-		if not self.reimbursable:
-			frappe.throw(_("This expense was not marked reimbursable."))
-		if self.reimbursed:
-			frappe.throw(_("This expense has already been reimbursed."))
-		if not bank_account:
-			frappe.throw(_("Choose the account to pay the reimbursement from."))
-		account = frappe.db.get_value(
-			"Account", bank_account, ["is_group", "company", "account_type"], as_dict=True
-		)
-		if not account or account.is_group or account.company != self.company or account.account_type not in ("Bank", "Cash"):
-			frappe.throw(_("Pick a non-group Bank/Cash account in {0}.").format(self.company))
-
-		default_cc = frappe.db.get_value("Company", self.company, "cost_center")
-		je = frappe.new_doc("Journal Entry")
-		je.update(
-			{
-				"voucher_type": "Journal Entry",
-				"company": self.company,
-				"posting_date": frappe.utils.today(),
-				"user_remark": f"Reimbursement for {self.name}",
-				"reference_doctype": self.doctype,
-				"reference_docname": self.name,
-			}
-		)
-		je.append(
-			"accounts",
-			{"account": self.payment_account, "debit_in_account_currency": flt(self.total_amount), "cost_center": self.cost_center or default_cc, "employee": self.employee, "project": self.project},
-		)
-		je.append(
-			"accounts",
-			{"account": bank_account, "credit_in_account_currency": flt(self.total_amount), "cost_center": self.cost_center or default_cc, "project": self.project},
-		)
-		je.flags.ignore_permissions = True
-		je.insert()
-		je.submit()
-
-		self.db_set("reimbursement_journal_entry", je.name)
-		self.db_set("reimbursed", 1)
-		self.db_set("reimbursed_on", frappe.utils.now_datetime())
-		self.add_comment("Info", _("Reimbursed via {0}").format(je.name))
-		return je.name
-
-	def cancel_reimbursement_journal_entry(self):
-		if not self.reimbursement_journal_entry:
-			return
-		if frappe.db.get_value("Journal Entry", self.reimbursement_journal_entry, "docstatus") == 1:
-			je = frappe.get_doc("Journal Entry", self.reimbursement_journal_entry)
-			je.flags.ignore_permissions = True
-			je.cancel()
 
 	# ------------------------------------------------------------------
 	# Journal Entry
@@ -133,19 +78,22 @@ class ExpenseEntry(Document):
 	def create_journal_entry(self):
 		accounting_dimensions = get_accounting_dimensions() or []
 		default_cost_center = frappe.db.get_value("Company", self.company, "cost_center")
+		# PF-04: the holder rides on the CREDIT (Petty Cash) leg only, and only when paid
+		# from petty cash. The expense debit carries project/cost dimensions, not the holder;
+		# a Company-paid credit (Bank/Cash) has no holder.
+		holder = self.employee if self.paid_from == "Petty Cash" else None
 
 		accounts = []
 		for row in self.expense_entry_table:
 			cost_center = row.cost_center or self.cost_center or default_cost_center
 
-			# Debit: expense account
+			# Debit: expense account (project cost — no holder)
 			accounts.append(
-				self.get_account_row(row, row.expense_account, flt(row.amount), 0, cost_center, accounting_dimensions)
+				self.get_account_row(row, row.expense_account, flt(row.amount), 0, cost_center, accounting_dimensions, employee=None)
 			)
-			# Credit: payment account (Petty Cash / Reimbursements). The holder is carried
-			# on the `employee` dimension — ERPNext won't accept a party on these accounts.
+			# Credit: payment account — Petty Cash (holder stamped) or the company's Bank/Cash
 			accounts.append(
-				self.get_account_row(row, row.payment_account, 0, flt(row.amount), cost_center, accounting_dimensions)
+				self.get_account_row(row, row.payment_account, 0, flt(row.amount), cost_center, accounting_dimensions, employee=holder)
 			)
 
 		if not accounts:
@@ -183,7 +131,7 @@ class ExpenseEntry(Document):
 
 		self.db_set("journal_entry", None)
 
-	def get_account_row(self, row, account, debit, credit, cost_center, accounting_dimensions):
+	def get_account_row(self, row, account, debit, credit, cost_center, accounting_dimensions, employee=None):
 		entry = {
 			"account": account,
 			"debit_in_account_currency": debit or 0,
@@ -191,10 +139,15 @@ class ExpenseEntry(Document):
 			"cost_center": cost_center,
 			"project": row.project or self.project,
 			"user_remark": row.description,
-			"employee": row.employee or self.employee,
 		}
+		# The holder is set explicitly (PF-04: Petty Cash credit leg only), so don't let the
+		# generic dimension loop re-stamp `employee` onto the expense debit.
+		if employee:
+			entry["employee"] = employee
 
 		for dimension in accounting_dimensions:
+			if dimension == "employee":
+				continue
 			value = row.get(dimension) or self.get(dimension)
 			if value:
 				entry[dimension] = value
