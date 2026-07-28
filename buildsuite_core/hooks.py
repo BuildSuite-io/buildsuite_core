@@ -163,7 +163,6 @@ has_permission = {
 override_doctype_class = {
 	"Project": "buildsuite_core.overrides.project.BuildSuiteProject",
 	"Task": "buildsuite_core.overrides.task.BuildSuiteTask",
-    "Journal Entry":"buildsuite_core.overrides.journal_entry.CustomJournalEntry"
 }
 
 # Document Events

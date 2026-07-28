@@ -14,12 +14,13 @@ import {
 	undisbursePettyCash,
 	cancelPettyCash,
 	pettyCashHolderBalances,
+	listCashBankAccounts,
 } from "@/data/pettyCashApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -34,7 +35,6 @@ pettyCashCanDisburse()
 const res = useDocTypeList("Petty Cash Request", {
 	fields: [
 		"name",
-		"project",
 		"requested_by",
 		"request_date",
 		"amount",
@@ -69,15 +69,13 @@ const filteredAll = computed(() => {
 		(r) =>
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q) ||
-			(r.project || "").toLowerCase().includes(q),
+			(r.requested_by || "").toLowerCase().includes(q),
 	);
 });
 
 const columns = [
 	{ key: "requested_by", label: "Holder" },
 	{ key: "purpose", label: "Purpose" },
-	{ key: "project", label: "Project" },
 	{ key: "request_date", label: "Date" },
 	{ key: "amount", label: "Amount", align: "right" },
 	{ key: "status", label: "Status" },
@@ -96,17 +94,16 @@ async function loadBalances() {
 loadBalances();
 
 // --- request modal ---
-const reqForm = reactive({ open: false, project: "", amount: 0, purpose: "", saving: false });
+const reqForm = reactive({ open: false, amount: 0, purpose: "", saving: false });
 function openRequest() {
-	Object.assign(reqForm, { open: true, project: "", amount: 0, purpose: "", saving: false });
+	Object.assign(reqForm, { open: true, amount: 0, purpose: "", saving: false });
 }
 async function submitRequest() {
-	if (!reqForm.project) return showToast("Pick a project.", "error");
 	if (!(Number(reqForm.amount) > 0)) return showToast("Enter an amount.", "error");
 	if (!reqForm.purpose.trim()) return showToast("Enter a purpose.", "error");
 	reqForm.saving = true;
 	try {
-		await savePettyCash({ project: reqForm.project, amount: reqForm.amount, purpose: reqForm.purpose });
+		await savePettyCash({ amount: reqForm.amount, purpose: reqForm.purpose });
 		reqForm.open = false;
 		res.reload?.();
 		showToast("Petty cash requested.");
@@ -118,9 +115,16 @@ async function submitRequest() {
 }
 
 // --- disburse modal ---
-const disb = reactive({ open: false, row: null, paidFrom: "", saving: false });
-function openDisburse(row) {
-	Object.assign(disb, { open: true, row, paidFrom: "", saving: false });
+const disb = reactive({ open: false, row: null, paidFrom: "", accounts: [], saving: false });
+async function openDisburse(row) {
+	Object.assign(disb, { open: true, row, paidFrom: "", accounts: [], saving: false });
+	try {
+		// The funding source — Bank/Cash accounts EXCLUDING Petty Cash (Cr must be a real
+		// source, never Petty Cash itself, which would make the JE a no-op).
+		disb.accounts = await listCashBankAccounts(row.company);
+	} catch (err) {
+		showToast(err.message || "Failed to load accounts", "error");
+	}
 }
 async function confirmDisburse() {
 	if (!disb.paidFrom) return showToast("Pick the account to pay from.", "error");
@@ -172,14 +176,6 @@ async function onWithdraw(row) {
 	}
 }
 
-function accountFilters(company) {
-	return [
-		["account_type", "in", ["Bank", "Cash"]],
-		["is_group", "=", 0],
-		["company", "=", company],
-	];
-}
-
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Project Finance", to: "/project-finance" },
@@ -194,9 +190,10 @@ const rowsForTab = computed(() => {
 
 <template>
 	<DeskPage title="Petty Cash" :breadcrumbs="breadcrumbs">
-		<template #actions>
-			<button type="button" class="desk-save-btn" @click="openRequest">+ Request</button>
-		</template>
+		<div class="flex items-center justify-between gap-3 mb-4">
+			<div class="text-sm text-ink-600">Advances to site holders. Spend is logged separately under <span class="font-medium">Expenses</span>.</div>
+			<button type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openRequest">+ Request petty cash</button>
+		</div>
 
 		<!-- tabs -->
 		<div class="border-b border-ink-200 flex overflow-x-auto scrollbar-thin mb-4">
@@ -256,9 +253,6 @@ const rowsForTab = computed(() => {
 			<template #cell-purpose="{ row }">
 				<span class="text-xs text-ink-700">{{ (row.purpose || "").slice(0, 60) }}</span>
 			</template>
-			<template #cell-project="{ row }">
-				<span class="text-xs text-ink-500">{{ row.project }}</span>
-			</template>
 			<template #cell-request_date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.request_date) }}</span>
 			</template>
@@ -306,9 +300,6 @@ const rowsForTab = computed(() => {
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-4">Request petty cash</h3>
 				<div class="space-y-3">
-					<DeskField label="Project" required>
-						<DeskLinkPicker v-model="reqForm.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" />
-					</DeskField>
 					<DeskField label="Amount" required><DeskInput v-model.number="reqForm.amount" type="number" min="0" /></DeskField>
 					<DeskField label="Purpose" required><DeskInput v-model="reqForm.purpose" placeholder="What is it for?" /></DeskField>
 				</div>
@@ -323,16 +314,12 @@ const rowsForTab = computed(() => {
 		<div v-if="disb.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="disb.open = false">
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-1">Disburse {{ fmtINR(disb.row?.amount) }}</h3>
-				<p class="text-xs text-ink-500 mb-4">to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the account).</p>
+				<p class="text-xs text-ink-500 mb-4">to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the source account).</p>
 				<DeskField label="Pay from" required>
-					<DeskLinkPicker
-						v-model="disb.paidFrom"
-						doctype="Account"
-						label-field="name"
-						value-field="name"
-						:filters="accountFilters(disb.row?.company)"
-						placeholder="Bank / Cash account…"
-					/>
+					<DeskSelect v-model="disb.paidFrom">
+						<option value="" disabled>Bank / Cash account…</option>
+						<option v-for="a in disb.accounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+					</DeskSelect>
 				</DeskField>
 				<div class="flex justify-end gap-2 mt-5">
 					<button class="desk-btn" @click="disb.open = false">Cancel</button>

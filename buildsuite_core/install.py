@@ -110,6 +110,26 @@ def seed_master_data():
 
 	seed_subcontract_masters()
 
+	seed_employee_accounting_dimension()
+
+
+def seed_employee_accounting_dimension():
+	"""Register an 'Employee' Accounting Dimension.
+
+	Lets the petty-cash holder (and any accounting posting) be stamped natively as the
+	`employee` dimension on Journal Entry Account / GL Entry — settable on any account
+	(Cash/Bank included, where party_type is disallowed) and groupable in the standard
+	General Ledger / Financial Statements. ERPNext creates the `employee` Link→Employee
+	field on the accounting doctypes on insert; where our (legacy) custom field of the
+	same name already exists it is reused, so existing data is preserved. Optional (not
+	mandatory) on every voucher.
+	"""
+	if frappe.db.exists("Accounting Dimension", {"document_type": "Employee"}):
+		return
+	frappe.get_doc({"doctype": "Accounting Dimension", "document_type": "Employee"}).insert(
+		ignore_permissions=True
+	)
+
 
 def create_item_group():
 	if frappe.db.get_value("Item Group", "Raw Material"):
