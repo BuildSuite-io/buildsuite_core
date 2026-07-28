@@ -199,6 +199,25 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		# The submitted expense forced the holder off entirely (Company mode).
 		self.assertFalse(ee.employee)
 
+	def test_statement_combines_disbursement_and_expense(self):
+		from buildsuite_core.api.petty_cash import statement
+
+		self._disburse(10000)
+		self._expense_entry(3000, submit=True, paid_from="Petty Cash")
+		rows = statement(self.employee)
+		# One disbursement (money in) + one petty-cash expense (money out).
+		kinds = sorted(r["kind"] for r in rows)
+		self.assertEqual(kinds, ["Disbursement", "Expense"])
+		disb = next(r for r in rows if r["kind"] == "Disbursement")
+		exp = next(r for r in rows if r["kind"] == "Expense")
+		self.assertEqual(flt(disb["in"]), 10000)
+		self.assertEqual(flt(exp["out"]), 3000)
+		self.assertEqual(exp["status"], "Submitted")
+		# A Company-paid expense never appears on the holder's petty-cash statement.
+		self._expense_entry(500, submit=True, paid_from="Company")
+		refs = [r["ref"] for r in statement(self.employee)]
+		self.assertEqual(len(refs), 2)
+
 	def test_own_pocket_pushes_petty_balance_negative(self):
 		# PF-04: with no float disbursed, petty-cash spend simply drives the holder's
 		# balance negative — the amount owed back to them ("owed to holder").

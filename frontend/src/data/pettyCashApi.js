@@ -23,3 +23,4 @@ export const cancelPettyCash = (name) => call("cancel_request", { name });
 export const deletePettyCash = (name) => call("delete_request", { name });
 export const listCashBankAccounts = (company) => call("list_cash_bank_accounts", { company });
 export const pettyCashHolderBalances = (company) => call("holder_balances", { company });
+export const pettyCashStatement = (employee) => call("statement", { employee });

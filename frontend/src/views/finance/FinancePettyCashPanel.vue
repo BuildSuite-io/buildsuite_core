@@ -1,6 +1,6 @@
 <script setup>
 // Petty Cash — the LIVE part of Project Finance. Request → Disburse (posts a Journal Entry
-// server-side) → reverse. Everything else in the finance workspace is mock data.
+// server-side). Everything else in the finance workspace is mock data.
 
 import { computed, reactive, ref } from "vue";
 import { useSessionStore } from "@/stores/session";
@@ -11,7 +11,6 @@ import {
 	pettyCashCanDisburse,
 	savePettyCash,
 	disbursePettyCash,
-	undisbursePettyCash,
 	cancelPettyCash,
 	pettyCashHolderBalances,
 	listCashBankAccounts,
@@ -142,23 +141,6 @@ async function confirmDisburse() {
 	}
 }
 
-async function onUndisburse(row) {
-	const ok = await confirmDialog({
-		title: "Reverse disbursement?",
-		message: `Cancel the Journal Entry for ${row.name} and revert it to Requested?`,
-		confirmLabel: "Reverse",
-		destructive: true,
-	});
-	if (!ok) return;
-	try {
-		await undisbursePettyCash(row.name);
-		res.reload?.();
-		loadBalances();
-		showToast("Disbursement reversed.");
-	} catch (err) {
-		showToast(err.message || "Reverse failed", "error");
-	}
-}
 async function onWithdraw(row) {
 	const ok = await confirmDialog({
 		title: "Withdraw request?",
@@ -283,14 +265,6 @@ const rowsForTab = computed(() => {
 						@click.stop="onWithdraw(row)"
 					>
 						Withdraw
-					</button>
-					<button
-						v-if="row.status === 'Disbursed' && canDisburse"
-						type="button"
-						class="text-[11px] px-2 py-0.5 border border-ink-200 text-danger-700 rounded"
-						@click.stop="onUndisburse(row)"
-					>
-						Reverse
 					</button>
 				</div>
 			</template>
