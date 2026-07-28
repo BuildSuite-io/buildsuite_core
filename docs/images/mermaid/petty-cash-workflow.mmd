@@ -1,21 +1,21 @@
 %% Petty Cash Request — live workflow (buildsuite_core)
-%% Request -> Disburse (posts a Journal Entry) -> optionally Reverse.
+%% Imprest model (PF-02): Employee requests -> Approver disburses (posts a Journal
+%% Entry, holder stamped via the 'employee' accounting dimension) -> spend via Expense Entry.
 flowchart TD
-    start(["Site user / PM needs cash"]) --> req["Raise Petty Cash Request<br/>project · amount · purpose<br/>requested_by, company from project"]
+    start(["Employee needs a cash float"]) --> req["Raise Petty Cash Request<br/>amount · purpose (no project)<br/>requested_by must be an active Employee<br/>company = the Employee's company"]
     req --> S_REQ{{"Status: Requested"}}
 
-    S_REQ -->|"Requester withdraws<br/>(cancel_request)"| CANC{{"Status: Cancelled"}}
+    S_REQ -->|"Requester withdraws (cancel_request)"| CANC{{"Status: Cancelled"}}
 
-    S_REQ -->|"Approver reviews<br/>Accountant / Director / PM / Admin"| disb["Disburse<br/>pick Bank / Cash account"]
-    disb --> gate{"Account valid?<br/>non-group Bank/Cash in company"}
-    gate -->|"No"| err["Rejected"]
-    gate -->|"Yes"| je1["Post submitted Journal Entry<br/>Dr Petty Cash (employee) / Cr Bank<br/>+ project accounting dimension"]
-    je1 --> S_DIS{{"Status: Disbursed<br/>journal_entry set · float issued"}}
+    S_REQ -->|"Approver reviews<br/>Accountant / Director / PM / Admin"| disb["Disburse — pick the funding source:<br/>a Bank / Cash account, NOT Petty Cash<br/>(source is credited; Petty Cash would be a no-op)"]
+    disb --> je1["Post submitted Journal Entry (imprest)<br/>Dr Petty Cash — holder on the 'employee' dimension<br/>Cr Bank (the funding source)"]
+    je1 --> S_DIS{{"Status: Disbursed · float issued"}}
+    S_DIS -.->|"Reverse (undisburse) — cancels the JE,<br/>back to Requested · API/admin only"| S_REQ
 
-    S_DIS -->|"Reverse disbursement<br/>(undisburse)"| rev["Cancel Journal Entry"]
-    rev --> S_REQ
+    %% How the dimension flows to the ledger and what it unlocks
+    je1 --> gl["On submit, ERPNext copies the 'employee'<br/>dimension from each JE line to its GL Entry<br/>(the Bank leg carries none)"]
+    gl --> rpt["Native reporting (Desk): General Ledger &<br/>Financial Statements FILTER / GROUP BY Employee<br/>— the PF-02 per-holder audit trail"]
+    gl --> bal["App-derived balance (Vue Balances tab):<br/>reads GL Entry.employee ·<br/>disbursed − verified spend = in hand"]
 
-    S_DIS --> bal["Holder float increases<br/>feeds reconciled balance:<br/>disbursed - verified spend = in hand"]
-
-    %% Spend against the float is recorded separately as an Expense Entry
-    bal -.->|"spend recorded via"| exp["Expense Entry workflow<br/>(see expense-entry-workflow)"]
+    %% Spend reduces the float, on the same dimension
+    bal -.->|"spend logged separately as"| exp["Expense Entry — Cr Petty Cash on the same<br/>'employee' dimension, reducing the holder's balance<br/>(see expense-entry-workflow)"]
