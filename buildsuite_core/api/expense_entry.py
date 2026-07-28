@@ -55,7 +55,7 @@ def list_expenses():
 	list: date, description, holder, source, account, cost type, amount, status."""
 	entries = frappe.get_all(
 		DOCTYPE,
-		fields=["name", "date", "project", "employee", "employee_name", "total_amount", "docstatus", "reimbursable", "description"],
+		fields=["name", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description"],
 		order_by="date desc, creation desc",
 		limit_page_length=0,
 	)
@@ -88,9 +88,11 @@ def list_expenses():
 				"description": fr.get("description") or e.description or e.name,
 				"project": e.project,
 				"project_name": proj.get(e.project) or e.project,
+				"company": e.company,
 				"employee": e.employee,
 				"employee_name": e.employee_name or e.employee,
-				"source": "Own pocket" if e.reimbursable else "Petty Cash",
+				"source": e.paid_from or "Petty Cash",
+				"payment_account": e.payment_account,
 				"expense_account": fr.get("expense_account"),
 				"cost_type": fr.get("cost_type"),
 				"attachment": fr.get("attachment"),
@@ -116,11 +118,8 @@ def get_expense(name):
 		"payment_account": doc.payment_account,
 		"total_amount": doc.total_amount,
 		"docstatus": doc.docstatus,
-		"reimbursable": doc.reimbursable,
-		"reimbursed": doc.reimbursed,
-		"reimbursed_on": str(doc.reimbursed_on) if doc.reimbursed_on else None,
+		"paid_from": doc.paid_from,
 		"journal_entry": doc.journal_entry,
-		"reimbursement_journal_entry": doc.reimbursement_journal_entry,
 		"description": doc.description,
 		"rows": [
 			{
@@ -147,27 +146,38 @@ def ledger(transaction_type=None, project=None, from_date=None, to_date=None):
 
 @frappe.whitelist()
 def save_expense(payload):
-	"""Create or edit a draft Expense Entry paid from the caller's petty cash.
+	"""Create or edit a draft Expense Entry (PF-04).
 
-	rows: [{expense_account, amount, description, project?}]. Employee + payment
-	account are resolved server-side so a holder can only spend their own float.
+	rows: [{expense_account, amount, description, project?}]. `paid_from` is either
+	"petty" (Cr the company Petty Cash account, holder mandatory) or "company" (Cr a
+	Bank/Cash account chosen via `company_account`, no holder).
+
+	Holder rules: an ordinary user can only spend their own float, so the holder is
+	forced to their linked Employee. An approver/accountant may raise against any
+	holder by passing `employee`.
 	"""
 	data = frappe.parse_json(payload)
-	employee = _current_employee()
-	if not employee:
-		frappe.throw(_("No active Employee is linked to your user account."))
 
 	project = data.get("project")
 	if not project:
 		frappe.throw(_("A project is required."))
 	company = frappe.db.get_value("Project", project, "company")
 
-	# Out-of-pocket spend parks in Employee Reimbursements (a payable) so it doesn't
-	# touch the petty-cash float; otherwise it's paid straight from Petty Cash.
-	reimbursable = 1 if data.get("reimbursable") else 0
-	if reimbursable:
-		account = pc.resolve_reimbursements_account(company)
+	paid_from = "Company" if data.get("paid_from") == "company" else "Petty Cash"
+
+	if paid_from == "Company":
+		employee = None
+		account = data.get("company_account")
+		if not account:
+			frappe.throw(_("Choose the company Bank/Cash account to pay from."))
+		if frappe.db.get_value("Account", account, "company") != company:
+			frappe.throw(_("The selected account does not belong to {0}.").format(company))
 	else:
+		# Approvers may record on behalf of any holder; everyone else is pinned to their own.
+		employee = data.get("employee") if _can_submit() else None
+		employee = employee or _current_employee()
+		if not employee:
+			frappe.throw(_("No active Employee is linked to your user account."))
 		account = pc.get_petty_cash_account(company)
 		if not account:
 			frappe.throw(_("Petty Cash account not found for {0}.").format(company))
@@ -191,7 +201,7 @@ def save_expense(payload):
 	doc.project = project
 	doc.employee = employee
 	doc.payment_account = account
-	doc.reimbursable = reimbursable
+	doc.paid_from = paid_from
 	for r in rows:
 		doc.append(
 			"expense_entry_table",
@@ -212,36 +222,23 @@ def save_expense(payload):
 
 
 @frappe.whitelist()
-def to_reimburse():
-	"""Submitted out-of-pocket expenses awaiting reimbursement (approver queue)."""
-	rows = frappe.get_all(
-		DOCTYPE,
-		filters={"docstatus": 1, "reimbursable": 1, "reimbursed": 0},
-		fields=["name", "date", "project", "employee", "employee_name", "company", "total_amount"],
-		order_by="date asc",
-	)
-	return {"rows": rows, "total": sum(flt(r.total_amount) for r in rows)}
+def list_cash_bank_accounts(project=None, company=None):
+	"""Bank/Cash accounts a Company-paid expense can be drawn from (excludes Petty Cash).
 
-
-@frappe.whitelist()
-def reimburse(name, bank_account):
-	"""Pay an employee back for an out-of-pocket expense (posts the reimbursement JE)."""
-	if not _can_submit():
-		frappe.throw(_("You are not authorised to reimburse expenses."), frappe.PermissionError)
-	doc = frappe.get_doc(DOCTYPE, name)
-	je = doc.reimburse(bank_account)
-	return {"name": doc.name, "reimbursement_journal_entry": je}
-
-
-@frappe.whitelist()
-def list_cash_bank_accounts(company):
-	"""Bank/Cash accounts to pay a reimbursement from."""
-	return frappe.get_all(
+	Accepts a project (company is derived from it, matching save_expense) or a company.
+	"""
+	if project and not company:
+		company = frappe.db.get_value("Project", project, "company")
+	if not company:
+		return []
+	petty = pc.get_petty_cash_account(company)
+	accounts = frappe.get_all(
 		"Account",
 		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
 		fields=["name", "account_type"],
 		order_by="account_type, name",
 	)
+	return [a for a in accounts if a.name != petty]
 
 
 @frappe.whitelist()

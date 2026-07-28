@@ -15,6 +15,7 @@
   "cost_center",
   "journal_entry",
   "section_break_0rwm",
+  "paid_from",
   "payment_account",
   "payment_account_name",
   "column_break_oofb",
@@ -26,12 +27,6 @@
   "total_amount",
   "column_break_xz9z",
   "description",
-  "section_break_reimburse",
-  "reimbursable",
-  "reimbursed",
-  "column_break_reimburse",
-  "reimbursed_on",
-  "reimbursement_journal_entry",
   "section_break_smez",
   "amended_from"
  ],
@@ -92,6 +87,15 @@
   {
    "fieldname": "column_break_oofb",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Petty Cash",
+   "fieldname": "paid_from",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Paid From",
+   "options": "Petty Cash\nCompany",
+   "reqd": 1
   },
   {
    "fieldname": "payment_account",
@@ -155,45 +159,6 @@
    "fieldname": "journal_entry",
    "fieldtype": "Link",
    "label": "Journal Entry",
-   "options": "Journal Entry",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_reimburse",
-   "fieldtype": "Section Break",
-   "label": "Reimbursement"
-  },
-  {
-   "default": "0",
-   "description": "Paid by the employee from their own pocket — credits Employee Reimbursements (a payable) instead of Petty Cash, and can be reimbursed later.",
-   "fieldname": "reimbursable",
-   "fieldtype": "Check",
-   "label": "Paid Out of Pocket (Reimbursable)"
-  },
-  {
-   "default": "0",
-   "fieldname": "reimbursed",
-   "fieldtype": "Check",
-   "label": "Reimbursed",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_reimburse",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "reimbursed_on",
-   "fieldtype": "Datetime",
-   "label": "Reimbursed On",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "reimbursement_journal_entry",
-   "fieldtype": "Link",
-   "label": "Reimbursement Journal Entry",
-   "no_copy": 1,
    "options": "Journal Entry",
    "read_only": 1
   }

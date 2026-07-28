@@ -13,6 +13,7 @@ import {
 	saveExpense,
 	submitExpense,
 	cancelExpense,
+	listExpensePayAccounts,
 } from "@/data/expenseEntryApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -179,17 +180,40 @@ async function onDelete(e) {
 const COST_TYPES = ["Material", "Labour", "Plant & Machinery", "Subcontract", "Overhead"];
 const PAID_FROM = [
 	{ value: "petty", label: "Petty Cash" },
-	{ value: "own", label: "Own pocket" },
+	{ value: "company", label: "Company" },
 ];
 const modalOpen = ref(false);
 const editingId = ref(null);
-const form = reactive({ date: "", amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", attachment: "", uploading: false, saving: false });
+const form = reactive({ date: "", amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", company_account: "", attachment: "", uploading: false, saving: false });
 function resetForm() {
-	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", attachment: "", uploading: false, saving: false });
+	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", company_account: "", employee: "", attachment: "", uploading: false, saving: false });
 }
+
+// Company Bank/Cash accounts for the Company-paid source (company derived from the
+// project server-side). Petty-cash spend needs no account: it Crs the holder's float.
+const payAccounts = ref([]);
+async function loadPayAccounts() {
+	if (!form.project) { payAccounts.value = []; return; }
+	try {
+		payAccounts.value = await listExpensePayAccounts(form.project);
+	} catch {
+		payAccounts.value = [];
+	}
+}
+function onPaidFromChange() {
+	if (form.paid_from === "company") loadPayAccounts();
+}
+function onProjectChange() {
+	// Company accounts are per-company; a new project may mean a new company.
+	form.company_account = "";
+	payAccounts.value = [];
+	if (form.paid_from === "company") loadPayAccounts();
+}
+
 function openNew() {
 	editingId.value = null;
 	resetForm();
+	payAccounts.value = [];
 	modalOpen.value = true;
 }
 function openEdit(e) {
@@ -202,10 +226,13 @@ function openEdit(e) {
 		project: e.project,
 		expense_account: e.expense_account || "",
 		cost_type: e.cost_type || "Overhead",
-		paid_from: e.source === "Own pocket" ? "own" : "petty",
+		paid_from: e.source === "Company" ? "company" : "petty",
+		company_account: e.source === "Company" ? e.payment_account || "" : "",
+		employee: e.employee || "",
 		attachment: e.attachment || "",
 	});
 	closeDetail();
+	if (form.paid_from === "company") loadPayAccounts();
 	modalOpen.value = true;
 }
 async function uploadReceipt(ev) {
@@ -231,13 +258,16 @@ async function save() {
 	if (!(Number(form.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
 	if (!form.project) return showToast("Pick a project.", "error");
 	if (!form.expense_account) return showToast("Pick an expense account.", "error");
+	if (form.paid_from === "company" && !form.company_account) return showToast("Pick the company account to pay from.", "error");
 	form.saving = true;
 	try {
 		await saveExpense({
 			name: editingId.value || undefined,
 			project: form.project,
 			date: form.date,
-			reimbursable: form.paid_from === "own",
+			paid_from: form.paid_from,
+			company_account: form.paid_from === "company" ? form.company_account : undefined,
+			employee: canVerify.value && form.paid_from === "petty" ? form.employee || undefined : undefined,
 			rows: [{ expense_account: form.expense_account, cost_type: form.cost_type, amount: form.amount, description: form.description, attachment: form.attachment }],
 		});
 		modalOpen.value = false;
@@ -432,14 +462,28 @@ const expenseAccountFilters = [
 							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 						</div>
 						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" /></DeskField>
+						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" @update:model-value="onProjectChange" /></DeskField>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
 							<DeskField label="Cost type"><DeskSelect v-model="form.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></DeskField>
 						</div>
-						<DeskField label="Paid from">
-							<DeskSelect v-model="form.paid_from"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
+						<div class="grid grid-cols-2 gap-3">
+							<DeskField label="Paid from">
+								<DeskSelect v-model="form.paid_from" @update:model-value="onPaidFromChange"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
+							</DeskField>
+							<DeskField v-if="form.paid_from === 'company'" label="Company account" required>
+								<DeskSelect v-model="form.company_account">
+									<option value="" disabled>Pick an account…</option>
+									<option v-for="a in payAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+								</DeskSelect>
+							</DeskField>
+						</div>
+						<DeskField v-if="canVerify && form.paid_from === 'petty'" label="Holder (petty cash float)">
+							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" placeholder="Defaults to you…" />
 						</DeskField>
+						<p v-if="form.paid_from === 'petty'" class="text-[11px] text-ink-500 -mt-1">
+							Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.
+						</p>
 						<DeskField label="Receipt (optional)">
 							<label class="inline-flex items-center gap-2 text-xs cursor-pointer px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded-md" :class="form.attachment ? 'text-success-700' : 'text-ink-700'">
 								{{ form.uploading ? "Uploading…" : form.attachment ? "✓ Receipt attached" : "📷 Attach receipt" }}
