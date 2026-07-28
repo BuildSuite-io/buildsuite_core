@@ -23,7 +23,13 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+
+// Every account/project/employee picker is scoped to the active (default) company. This is
+// the single-company seam — see useActiveCompany. Empty pre-boot → picker unfiltered, but
+// the server-side company guard still blocks a cross-company save.
+const companyFilter = activeCompanyFilter();
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Expenses" }];
 const confirmDialog = useConfirm();
@@ -288,6 +294,7 @@ async function save() {
 const expenseAccountFilters = [
 	["root_type", "=", "Expense"],
 	["is_group", "=", 0],
+	...companyFilter,
 ];
 </script>
 
@@ -467,7 +474,7 @@ const expenseAccountFilters = [
 							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 						</div>
 						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" @update:model-value="onProjectChange" /></DeskField>
+						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Pick a project…" @update:model-value="onProjectChange" /></DeskField>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
 							<DeskField label="Cost code">
@@ -486,7 +493,7 @@ const expenseAccountFilters = [
 							</DeskField>
 						</div>
 						<DeskField v-if="canVerify && form.paid_from === 'petty'" label="Holder (petty cash float)">
-							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" placeholder="Defaults to you…" />
+							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" :filters="companyFilter" placeholder="Defaults to you…" />
 						</DeskField>
 						<p v-if="form.paid_from === 'petty'" class="text-[11px] text-ink-500 -mt-1">
 							Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.

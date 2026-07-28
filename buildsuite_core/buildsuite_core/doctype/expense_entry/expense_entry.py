@@ -62,7 +62,30 @@ class ExpenseEntry(Document):
 					_("Row #{0}: Both Expense Account and Payment Account are required.").format(idx)
 				)
 
+		self.validate_single_company()
 		self.set_description()
+
+	def validate_single_company(self):
+		"""Every account + the holder must belong to this entry's company, else the Journal
+		Entry is rejected (ERPNext surfaces it as a cryptic multi-currency error). Multi-company
+		is a later version; today all finance posts to one company. The company itself is the
+		project's (see accounting-company-anchored-to-project) — the seam stays, this only
+		enforces consistency within whatever that company is."""
+		for idx, row in enumerate(self.expense_entry_table, start=1):
+			for account in (row.expense_account, row.payment_account):
+				if account and frappe.db.get_value("Account", account, "company") != self.company:
+					frappe.throw(
+						_("Row #{0}: Account {1} does not belong to company {2}.").format(
+							idx, frappe.bold(account), frappe.bold(self.company)
+						)
+					)
+
+		if self.employee and frappe.db.get_value("Employee", self.employee, "company") != self.company:
+			frappe.throw(
+				_("Holder {0} does not belong to company {1}.").format(
+					frappe.bold(self.employee), frappe.bold(self.company)
+				)
+			)
 
 	def on_submit(self):
 		self.create_journal_entry()

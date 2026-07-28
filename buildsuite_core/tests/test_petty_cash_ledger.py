@@ -165,6 +165,32 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		self.assertEqual(line.cost_code_label, "G1 · Substructure")
 		self.assertEqual(line.cost_code_type, "Group")
 
+	def test_cross_company_account_rejected(self):
+		# Single-company guard: an account from another company can't ride on the entry
+		# (would otherwise fail at JE posting as a cryptic multi-currency error).
+		other = next((c for c in ("_Test Company 4", "_Test Company 6", "_Test Company 3") if frappe.db.exists("Company", c) and c != self.company), None)
+		if not other:
+			self.skipTest("no second company to test cross-company rejection")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Expense Entry",
+				"date": "2026-07-21",
+				"company": other,  # accounts below belong to self.company, not `other`
+				"project": self.project,
+				"paid_from": "Company",
+				"expense_entry_table": [
+					{
+						"payment_account": self._bank(),
+						"expense_account": self._expense_account(),
+						"project": self.project,
+						"amount": 100,
+						"description": "Cross-company",
+					}
+				],
+			}
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert, ignore_permissions=True)
+
 	def test_holder_required_for_petty_cash(self):
 		# PF-04: petty-cash spend must name the holder whose float it draws down.
 		doc = frappe.get_doc(
