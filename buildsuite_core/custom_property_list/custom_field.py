@@ -503,27 +503,8 @@ CUSTOM_FIELD = {
             "options": "Project Assigned",
         },
     ],
-    "GL Entry":[
-        {
-            "fieldname": "employee",
-            "fieldtype": "Link",
-            "insert_after": "project",
-            "is_system_generated": 0,
-            "label": "Employee",
-            "options":"Employee",
-            "read_only": 0
-        },
-	],
-    "Journal Entry Account":[
-		{
-			"fieldname": "employee",
-			"fieldtype": "Link",
-			"insert_after": "project",
-			"is_system_generated": 0,
-			"label": "Employee",
-			"options":"Employee",
-			"read_only": 0
-
-		}
-	],
+    # `employee` on GL Entry / Journal Entry Account is now provided by the
+    # "Employee" Accounting Dimension (see install.seed_employee_accounting_dimension),
+    # not a bespoke custom field — so it groups natively in the standard GL / Financial
+    # Statements and is settable on any account (Cash/Bank included).
 }

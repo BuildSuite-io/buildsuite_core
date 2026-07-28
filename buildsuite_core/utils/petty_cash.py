@@ -82,8 +82,9 @@ def resolve_petty_cash_account(company):
 
 def employee_for_user(user):
 	"""The active Employee linked to a User, or None. Petty Cash Requests are raised
-	by a User (requested_by); the employee ledger (GL Entry.employee) keys on Employee,
-	so we resolve the link to keep issued float and later spend on one ledger."""
+	by a User (requested_by); the holder is stamped on the GL via the `employee`
+	Accounting Dimension (see install.seed_employee_accounting_dimension), so we resolve
+	the User -> Employee link to keep issued float and later spend on one ledger."""
 	if not user:
 		return None
 	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
@@ -98,9 +99,10 @@ def post_disbursement_journal_entry(doc):
 	petty = resolve_petty_cash_account(doc.company)
 	# Imprest (custody) treatment: cash moves from the source into the holder's custody —
 	# Dr Petty Cash (Asset/Cash) / Cr source. The Petty Cash balance is total cash out with
-	# employees; per-holder position is derived by the app from the `employee` dimension
-	# (ERPNext won't accept a party on a Cash account, so `employee` is the per-person GL
-	# trail). The holder is mandatory (spec PF-02 rule 1).
+	# employees. The holder is stamped on the Petty Cash leg via the `employee` Accounting
+	# Dimension (party isn't allowed on a Cash account) — ERPNext propagates it to GL Entry
+	# natively, and the balance/transaction endpoints read GL Entry.employee. Holder is
+	# mandatory (spec PF-02 rule 1).
 	employee = employee_for_user(doc.requested_by)
 	if not employee:
 		frappe.throw(_("Only employees hold petty cash — no active Employee is linked to {0}.").format(doc.requested_by))
