@@ -13,7 +13,10 @@
   "column_break_vnem",
   "expense_account",
   "expense_account_name",
-  "cost_type",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
+  "cost_code_label",
   "column_break_ogch",
   "project",
   "project_name",
@@ -68,12 +71,31 @@
    "read_only": 1
   },
   {
-   "default": "Overhead",
-   "fieldname": "cost_type",
+   "fieldname": "cost_code_type",
    "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Cost Type",
-   "options": "Material\nLabour\nPlant & Machinery\nSubcontract\nOverhead"
+   "label": "Cost Code",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_5wop",

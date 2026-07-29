@@ -118,9 +118,9 @@ const disb = reactive({ open: false, row: null, paidFrom: "", accounts: [], savi
 async function openDisburse(row) {
 	Object.assign(disb, { open: true, row, paidFrom: "", accounts: [], saving: false });
 	try {
-		// The funding source — Bank/Cash accounts EXCLUDING Petty Cash (Cr must be a real
-		// source, never Petty Cash itself, which would make the JE a no-op).
-		disb.accounts = await listCashBankAccounts(row.company);
+		// The funding source — Bank/Cash accounts for the active (default) company, EXCLUDING
+		// Petty Cash (Cr must be a real source, never Petty Cash itself, a no-op JE).
+		disb.accounts = await listCashBankAccounts();
 	} catch (err) {
 		showToast(err.message || "Failed to load accounts", "error");
 	}

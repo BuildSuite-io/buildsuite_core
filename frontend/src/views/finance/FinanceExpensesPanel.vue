@@ -10,6 +10,7 @@ import { showToast } from "@/utils/appToast";
 import {
 	expenseContext,
 	listExpenses,
+	getExpense,
 	saveExpense,
 	submitExpense,
 	cancelExpense,
@@ -20,8 +21,15 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+
+// Every account/project/employee picker is scoped to the active (default) company. This is
+// the single-company seam — see useActiveCompany. Empty pre-boot → picker unfiltered, but
+// the server-side company guard still blocks a cross-company save.
+const companyFilter = activeCompanyFilter();
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Expenses" }];
 const confirmDialog = useConfirm();
@@ -177,37 +185,29 @@ async function onDelete(e) {
 }
 
 // --- create / edit form modal ---
-const COST_TYPES = ["Material", "Labour", "Plant & Machinery", "Subcontract", "Overhead"];
 const PAID_FROM = [
 	{ value: "petty", label: "Petty Cash" },
 	{ value: "company", label: "Company" },
 ];
 const modalOpen = ref(false);
 const editingId = ref(null);
-const form = reactive({ date: "", amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", company_account: "", attachment: "", uploading: false, saving: false });
+const form = reactive({ date: "", amount: null, description: "", project: "", expense_account: "", cost_code: null, paid_from: "petty", company_account: "", employee: "", attachment: "", uploading: false, saving: false });
 function resetForm() {
-	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_type: "Overhead", paid_from: "petty", company_account: "", employee: "", attachment: "", uploading: false, saving: false });
+	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_code: null, paid_from: "petty", company_account: "", employee: "", attachment: "", uploading: false, saving: false });
 }
 
-// Company Bank/Cash accounts for the Company-paid source (company derived from the
-// project server-side). Petty-cash spend needs no account: it Crs the holder's float.
+// Bank/Cash accounts for the Company-paid source — the active (default) company, excluding
+// Petty Cash. Petty-cash spend needs no account: it Crs the holder's float.
 const payAccounts = ref([]);
 async function loadPayAccounts() {
-	if (!form.project) { payAccounts.value = []; return; }
 	try {
-		payAccounts.value = await listExpensePayAccounts(form.project);
+		payAccounts.value = await listExpensePayAccounts();
 	} catch {
 		payAccounts.value = [];
 	}
 }
 function onPaidFromChange() {
-	if (form.paid_from === "company") loadPayAccounts();
-}
-function onProjectChange() {
-	// Company accounts are per-company; a new project may mean a new company.
-	form.company_account = "";
-	payAccounts.value = [];
-	if (form.paid_from === "company") loadPayAccounts();
+	if (form.paid_from === "company" && !payAccounts.value.length) loadPayAccounts();
 }
 
 function openNew() {
@@ -216,16 +216,20 @@ function openNew() {
 	payAccounts.value = [];
 	modalOpen.value = true;
 }
-function openEdit(e) {
+async function openEdit(e) {
 	editingId.value = e.name;
 	resetForm();
+	// The list row only carries the cost-code label; fetch the full entry so the picker
+	// binds the { type, group_code, item_code, label } object and edits round-trip.
+	const full = await getExpense(e.name).catch(() => null);
+	const row = full?.rows?.[0] || {};
 	Object.assign(form, {
 		date: e.date,
 		amount: e.amount,
 		description: e.description,
 		project: e.project,
-		expense_account: e.expense_account || "",
-		cost_type: e.cost_type || "Overhead",
+		expense_account: row.expense_account || e.expense_account || "",
+		cost_code: row.cost_code || null,
 		paid_from: e.source === "Company" ? "company" : "petty",
 		company_account: e.source === "Company" ? e.payment_account || "" : "",
 		employee: e.employee || "",
@@ -268,7 +272,7 @@ async function save() {
 			paid_from: form.paid_from,
 			company_account: form.paid_from === "company" ? form.company_account : undefined,
 			employee: canVerify.value && form.paid_from === "petty" ? form.employee || undefined : undefined,
-			rows: [{ expense_account: form.expense_account, cost_type: form.cost_type, amount: form.amount, description: form.description, attachment: form.attachment }],
+			rows: [{ expense_account: form.expense_account, cost_code: form.cost_code, amount: form.amount, description: form.description, attachment: form.attachment }],
 		});
 		modalOpen.value = false;
 		await refresh();
@@ -280,10 +284,11 @@ async function save() {
 	}
 }
 
-const expenseAccountFilters = [
+const expenseAccountFilters = computed(() => [
 	["root_type", "=", "Expense"],
 	["is_group", "=", 0],
-];
+	...companyFilter.value,
+]);
 </script>
 
 <template>
@@ -324,7 +329,7 @@ const expenseAccountFilters = [
 							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 							<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
 							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
-							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
 							<td class="px-4 py-2.5 text-right"><button type="button" class="text-[11px] px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-md" @click.stop="onSubmit(e)">Submit</button></td>
 						</tr>
@@ -363,7 +368,7 @@ const expenseAccountFilters = [
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 								<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
-								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
 								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
 							</tr>
@@ -396,7 +401,7 @@ const expenseAccountFilters = [
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span></td>
 								<td class="px-4 py-2.5 text-ink-500">{{ projectName(e) }}</td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
-								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_type }}</td>
+								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
 								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
 							</tr>
@@ -426,8 +431,8 @@ const expenseAccountFilters = [
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Holder</div><div class="text-ink-900 mt-0.5">{{ holderName(detail) }}</div></div>
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Project</div><div class="text-ink-900 mt-0.5">{{ projectName(detail) }}</div></div>
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Paid from</div><div class="mt-0.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full" :class="sourceChipClass(detail.source)">{{ detail.source }}</span></div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Expense account</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || detail.cost_type }}</div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Cost type</div><div class="text-ink-900 mt-0.5">{{ detail.cost_type }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Expense account</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || "—" }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Cost code</div><div class="text-ink-900 mt-0.5">{{ detail.cost_code || "—" }}</div></div>
 						</div>
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">Receipt</div>
@@ -462,10 +467,12 @@ const expenseAccountFilters = [
 							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 						</div>
 						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" placeholder="Pick a project…" @update:model-value="onProjectChange" /></DeskField>
+						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Pick a project…" /></DeskField>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
-							<DeskField label="Cost type"><DeskSelect v-model="form.cost_type"><option v-for="c in COST_TYPES" :key="c" :value="c">{{ c }}</option></DeskSelect></DeskField>
+							<DeskField label="Cost code">
+								<CostCodePicker v-model="form.cost_code" :project-id="form.project" placeholder="— Pick cost code —" />
+							</DeskField>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField label="Paid from">
@@ -479,7 +486,7 @@ const expenseAccountFilters = [
 							</DeskField>
 						</div>
 						<DeskField v-if="canVerify && form.paid_from === 'petty'" label="Holder (petty cash float)">
-							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" placeholder="Defaults to you…" />
+							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" :filters="companyFilter" placeholder="Defaults to you…" />
 						</DeskField>
 						<p v-if="form.paid_from === 'petty'" class="text-[11px] text-ink-500 -mt-1">
 							Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.
