@@ -160,6 +160,29 @@ def holder_balances(company=None):
 
 
 @frappe.whitelist()
+def disbursement_prefill(request):
+	"""What the Desk Journal Entry form needs to prefill a disbursement from a Petty Cash
+	Request: the company, amount, the Petty Cash account to debit, and the holder to stamp on
+	that leg. Only a Requested request can be disbursed."""
+	from buildsuite_core.utils.petty_cash import employee_for_user, resolve_petty_cash_account
+
+	r = frappe.db.get_value(
+		"Petty Cash Request", request, ["name", "status", "company", "amount", "requested_by", "purpose"], as_dict=True
+	)
+	if not r:
+		return None
+	if r.status != "Requested":
+		frappe.throw(_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(request, r.status))
+	return {
+		"company": r.company,
+		"amount": flt(r.amount),
+		"petty_cash_account": resolve_petty_cash_account(r.company),
+		"employee": employee_for_user(r.requested_by),
+		"remark": f"Petty cash {r.name}: {r.purpose or ''}"[:140],
+	}
+
+
+@frappe.whitelist()
 def statement(employee):
 	"""A holder's personal petty-cash statement: disbursements in + petty-cash expenses
 	out, newest first. Cancelled entries are omitted (no balance impact); drafts are
