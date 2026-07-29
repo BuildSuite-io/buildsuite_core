@@ -64,3 +64,6 @@ export const listWithholdingCategories = () => billCall("list_withholding_catego
 export const recordBillPayment = (args) => billCall("record_payment", args);
 export const listBillPayments = (name) => billCall("list_payments", { name });
 export const makeBillPaymentEntry = (name) => billCall("make_payment_entry", { name });
+// Bank/Cash accounts a bill is paid FROM (default company); Modes of Payment for the modal.
+export const listBillPayAccounts = () => billCall("list_pay_accounts", {});
+export const listPaymentModes = () => billCall("list_payment_modes", {});
