@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "field:machinery_code",
+ "creation": "2026-07-26 12:31:17.175094",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "machinery_code",
+  "section_break_iczz",
+  "machinery_name",
+  "rate",
+  "owner_vendor",
+  "column_break_xfyk",
+  "machinery_type",
+  "rate_unit",
+  "asset",
+  "column_break_ylkv",
+  "ownership",
+  "status",
+  "company"
+ ],
+ "fields": [
+  {
+   "fieldname": "machinery_code",
+   "fieldtype": "Data",
+   "label": "Machinery Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "machinery_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Machinery Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ownership",
+   "fieldtype": "Select",
+   "label": "Ownership",
+   "options": "Owned\nHired"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive"
+  },
+  {
+   "depends_on": "eval:doc.ownership=='Owned'",
+   "fieldname": "asset",
+   "fieldtype": "Link",
+   "label": "Asset",
+   "options": "Asset"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xfyk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ylkv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "machinery_type",
+   "fieldtype": "Link",
+   "label": "Machinery Type",
+   "options": "Machinery Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate_unit",
+   "fieldtype": "Select",
+   "label": "Rate Unit",
+   "options": "Hour\nDay\nMonth"
+  },
+  {
+   "fieldname": "section_break_iczz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "owner_vendor",
+   "fieldtype": "Data",
+   "label": "Owner / Vendor"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-26 22:22:36.482000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Machinery",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
