@@ -23,6 +23,6 @@ export const saveExpense = (payload) => call("save_expense", { payload: JSON.str
 export const submitExpense = (name) => call("submit_expense", { name });
 export const cancelExpense = (name) => call("cancel_expense", { name });
 export const listExpenseAccounts = (company) => call("list_expense_accounts", { company });
-// Company Bank/Cash accounts a Company-paid expense can draw from (excludes Petty Cash).
-// Company is derived from the project, matching save_expense.
-export const listExpensePayAccounts = (project) => call("list_cash_bank_accounts", { project });
+// Bank/Cash accounts a Company-paid expense can draw from — the active (default) company,
+// excluding Petty Cash. See the single-company seam.
+export const listExpensePayAccounts = () => call("list_cash_bank_accounts", {});

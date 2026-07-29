@@ -196,25 +196,18 @@ function resetForm() {
 	Object.assign(form, { date: new Date().toISOString().slice(0, 10), amount: null, description: "", project: "", expense_account: "", cost_code: null, paid_from: "petty", company_account: "", employee: "", attachment: "", uploading: false, saving: false });
 }
 
-// Company Bank/Cash accounts for the Company-paid source (company derived from the
-// project server-side). Petty-cash spend needs no account: it Crs the holder's float.
+// Bank/Cash accounts for the Company-paid source — the active (default) company, excluding
+// Petty Cash. Petty-cash spend needs no account: it Crs the holder's float.
 const payAccounts = ref([]);
 async function loadPayAccounts() {
-	if (!form.project) { payAccounts.value = []; return; }
 	try {
-		payAccounts.value = await listExpensePayAccounts(form.project);
+		payAccounts.value = await listExpensePayAccounts();
 	} catch {
 		payAccounts.value = [];
 	}
 }
 function onPaidFromChange() {
-	if (form.paid_from === "company") loadPayAccounts();
-}
-function onProjectChange() {
-	// Company accounts are per-company; a new project may mean a new company.
-	form.company_account = "";
-	payAccounts.value = [];
-	if (form.paid_from === "company") loadPayAccounts();
+	if (form.paid_from === "company" && !payAccounts.value.length) loadPayAccounts();
 }
 
 function openNew() {
@@ -474,7 +467,7 @@ const expenseAccountFilters = computed(() => [
 							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 						</div>
 						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Pick a project…" @update:model-value="onProjectChange" /></DeskField>
+						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Pick a project…" /></DeskField>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
 							<DeskField label="Cost code">

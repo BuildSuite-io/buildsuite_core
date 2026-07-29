@@ -248,10 +248,14 @@ def save_expense(payload):
 def list_cash_bank_accounts(project=None, company=None):
 	"""Bank/Cash accounts a Company-paid expense can be drawn from (excludes Petty Cash).
 
-	Accepts a project (company is derived from it, matching save_expense) or a company.
+	Scoped to the active (default) company; a project or company can override it (a project's
+	company is used, matching save_expense). See the single-company seam.
 	"""
+	from buildsuite_core.utils.project import default_company
+
 	if project and not company:
 		company = frappe.db.get_value("Project", project, "company")
+	company = company or default_company()
 	if not company:
 		return []
 	petty = pc.get_petty_cash_account(company)
