@@ -19,7 +19,10 @@ import {
 	cancelBill,
 	deleteBill,
 	getTaxTemplateRows,
-	makeBillPaymentEntry,
+	recordBillPayment,
+	listBillPayments,
+	listBillPayAccounts,
+	listPaymentModes,
 } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -181,12 +184,68 @@ async function onSubmit() {
 		busy.value = false;
 	}
 }
-async function onMakePayment() {
+// --- payments: inline, minimalist (no Desk redirect) ---
+const MODE_FALLBACK = ["Cash", "Cheque", "Bank Draft", "Wire Transfer"];
+const payAccounts = ref([]);
+const payModes = ref([]);
+const payments = ref([]);
+
+async function loadPayments() {
+	if (!isSubmitted.value) {
+		payments.value = [];
+		return;
+	}
 	try {
-		const res = await makeBillPaymentEntry(bill.value.name);
-		window.open(`/app/payment-entry/${res.payment_entry}`, "_blank", "noopener");
+		payments.value = await listBillPayments(bill.value.name);
+	} catch {
+		payments.value = [];
+	}
+}
+watch(isSubmitted, loadPayments, { immediate: true });
+
+const pay = ref({ open: false, amount: null, account: "", date: "", mode_of_payment: "", reference_no: "", saving: false });
+async function onMakePayment() {
+	if (!payAccounts.value.length) {
+		try {
+			[payAccounts.value, payModes.value] = await Promise.all([listBillPayAccounts(), listPaymentModes()]);
+		} catch {
+			/* fall back to the built-in modes; accounts stay empty and the field warns */
+		}
+	}
+	if (!payModes.value.length) payModes.value = MODE_FALLBACK;
+	pay.value = {
+		open: true,
+		amount: Number(payment.value.outstanding) || null,
+		account: payAccounts.value.find((a) => a.account_type === "Bank")?.name || payAccounts.value[0]?.name || "",
+		date: new Date().toISOString().slice(0, 10),
+		mode_of_payment: payModes.value[0] || "",
+		reference_no: "",
+		saving: false,
+	};
+}
+async function savePayment() {
+	const amt = Number(pay.value.amount) || 0;
+	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt > Number(payment.value.outstanding) + 0.01) return showToast(`Can't exceed the outstanding ${fmtINR(payment.value.outstanding)}.`, "error");
+	if (!pay.value.account) return showToast("Pick the account to pay from.", "error");
+	pay.value.saving = true;
+	try {
+		await recordBillPayment({
+			name: bill.value.name,
+			amount: amt,
+			date: pay.value.date,
+			mode_of_payment: pay.value.mode_of_payment || undefined,
+			paid_from: pay.value.account,
+			reference_no: pay.value.reference_no || undefined,
+		});
+		pay.value.open = false;
+		await load();
+		await loadPayments();
+		showToast("Payment recorded.");
 	} catch (err) {
-		showToast(err.message || "Failed to start payment", "error");
+		showToast(err.message || "Payment failed", "error");
+	} finally {
+		pay.value.saving = false;
 	}
 }
 async function onCancel() {
@@ -338,6 +397,28 @@ const accountFilters = computed(() => (bill.value?.company ? [["is_group", "=", 
 		<div v-if="isSubmitted && payment.status !== 'Paid'" class="mb-4 text-xs text-ink-600">
 			Outstanding <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(payment.outstanding) }}</span>
 			<span v-if="payment.paid > 0"> · paid {{ fmtINR(payment.paid) }} of {{ fmtINR(payment.invoiced) }}</span>
+		</div>
+		<div v-else-if="isSubmitted && payment.status === 'Paid'" class="mb-4 text-xs text-success-700">
+			Fully paid — {{ fmtINR(payment.paid) }} of {{ fmtINR(payment.invoiced) }}
+		</div>
+
+		<!-- Payments made against this bill -->
+		<div v-if="isSubmitted && payments.length" class="mb-4 bg-white border border-ink-200 rounded-lg overflow-hidden">
+			<div class="bg-ink-50 px-4 py-2 border-b border-ink-200"><h3 class="text-[11px] uppercase tracking-wider font-semibold text-ink-700">Payments</h3></div>
+			<table class="w-full text-xs">
+				<thead class="text-ink-500 uppercase tracking-wider text-[10px]">
+					<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Mode</th><th class="text-left px-4 py-2">Reference</th><th class="text-left px-4 py-2">Entry</th><th class="text-right px-4 py-2">Amount</th></tr>
+				</thead>
+				<tbody>
+					<tr v-for="p in payments" :key="p.payment_entry" class="border-t border-ink-100">
+						<td class="px-4 py-2 text-ink-500 whitespace-nowrap">{{ fmtDate(p.date) }}</td>
+						<td class="px-4 py-2 text-ink-700">{{ p.mode_of_payment || "—" }}</td>
+						<td class="px-4 py-2 text-ink-600">{{ p.reference_no || "—" }}</td>
+						<td class="px-4 py-2"><DeskLink :to="`/app/payment-entry/${p.payment_entry}`" class="font-mono text-ink-700">{{ p.payment_entry }}</DeskLink></td>
+						<td class="px-4 py-2 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(p.amount) }}</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 
 		<!-- Summary strip -->
@@ -613,5 +694,54 @@ const accountFilters = computed(() => (bill.value?.company ? [["is_group", "=", 
 				<div class="text-xs text-ink-400 italic">Invoices, measurement sheets, and site photos go here.</div>
 			</div>
 		</section>
+
+		<!-- Make Payment modal (inline — posts a Payment Entry, no Desk redirect) -->
+		<div v-if="pay.open" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="pay.open = false">
+			<div class="bg-white border border-ink-200 w-full max-w-md shadow-xl rounded-xl" @click.stop>
+				<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between">
+					<h2 class="text-sm font-semibold text-ink-900">Make payment</h2>
+					<button type="button" class="text-ink-400 hover:text-ink-900" @click="pay.open = false">✕</button>
+				</header>
+				<div class="px-4 py-4 space-y-3">
+					<div class="text-sm text-ink-700">
+						Pay <span class="font-medium">{{ bill.subcontractor_name }}</span> against <span class="font-mono text-xs">{{ bill.ra_no || bill.name }}</span>.
+						Outstanding <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(payment.outstanding) }}</span>.
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Amount <span class="text-danger-600">*</span></label>
+							<input v-model.number="pay.amount" type="number" min="0" class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400" />
+						</div>
+						<div>
+							<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Date</label>
+							<input v-model="pay.date" type="date" class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400" />
+						</div>
+					</div>
+					<div>
+						<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Paid from account <span class="text-danger-600">*</span></label>
+						<select v-model="pay.account" class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400">
+							<option value="" disabled>Bank / Cash account…</option>
+							<option v-for="a in payAccounts" :key="a.name" :value="a.name">{{ a.name }} ({{ a.account_type }})</option>
+						</select>
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Mode of payment</label>
+							<select v-model="pay.mode_of_payment" class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400">
+								<option v-for="m in payModes" :key="m" :value="m">{{ m }}</option>
+							</select>
+						</div>
+						<div>
+							<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Reference no. <span class="text-ink-400 normal-case">(optional)</span></label>
+							<input v-model="pay.reference_no" type="text" placeholder="UTR / cheque no." class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400" />
+						</div>
+					</div>
+				</div>
+				<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+					<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="pay.open = false">Cancel</button>
+					<button type="button" class="text-xs desk-save-btn" :disabled="pay.saving" @click="savePayment">{{ pay.saving ? "Recording…" : "Record payment" }}</button>
+				</footer>
+			</div>
+		</div>
 	</DeskPage>
 </template>

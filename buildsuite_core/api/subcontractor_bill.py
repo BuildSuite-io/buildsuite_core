@@ -362,6 +362,12 @@ def record_payment(name, amount=None, date=None, mode_of_payment=None, paid_from
 	pe = get_payment_entry("Purchase Invoice", bill.purchase_invoice)
 	if date:
 		pe.posting_date = date
+	if paid_from:
+		# The funding Bank/Cash account (defaults otherwise to the company's default).
+		if frappe.db.get_value("Account", paid_from, "company") != pe.company:
+			frappe.throw(_("Account {0} does not belong to company {1}.").format(paid_from, pe.company))
+		pe.paid_from = paid_from
+		pe.paid_from_account_currency = frappe.db.get_value("Account", paid_from, "account_currency")
 	if amount:
 		pe.paid_amount = flt(amount)
 		pe.received_amount = flt(amount)
@@ -376,6 +382,30 @@ def record_payment(name, amount=None, date=None, mode_of_payment=None, paid_from
 	pe.insert()
 	pe.submit()
 	return {"payment_entry": pe.name, "payment": _payment_summary(frappe.get_doc(BILL, name))}
+
+
+@frappe.whitelist()
+def list_pay_accounts(company=None):
+	"""Bank/Cash accounts a bill can be paid FROM — the active (default) company, excluding
+	the Petty Cash float. See the single-company seam."""
+	from buildsuite_core.utils.petty_cash import get_petty_cash_account
+	from buildsuite_core.utils.project import default_company
+
+	company = company or default_company()
+	petty = get_petty_cash_account(company)
+	accounts = frappe.get_all(
+		"Account",
+		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
+		fields=["name", "account_type"],
+		order_by="account_type, name",
+	)
+	return [a for a in accounts if a.name != petty]
+
+
+@frappe.whitelist()
+def list_payment_modes():
+	"""Configured Modes of Payment (for the payment modal's select)."""
+	return frappe.get_all("Mode of Payment", fields=["name"], order_by="name", pluck="name")
 
 
 @frappe.whitelist()

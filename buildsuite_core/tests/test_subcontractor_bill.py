@@ -262,3 +262,20 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		res = record_payment(bill.name, amount=50000, date="2026-07-21", mode_of_payment="Cash")
 		self.assertAlmostEqual(res["payment"]["paid"], 50000, places=2)
 		self.assertAlmostEqual(res["payment"]["outstanding"], 40000, places=2)
+
+	def test_record_payment_uses_paid_from_account(self):
+		from buildsuite_core.api.subcontractor_bill import list_pay_accounts, record_payment
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		cash = _ensure_account(self.company, "Cash", "Asset", "Cash", "Current Assets")
+		# list_pay_accounts returns only Bank/Cash accounts for the company.
+		accounts = list_pay_accounts(self.company)
+		self.assertIn(cash, [a["name"] for a in accounts])
+		self.assertTrue(all(a["account_type"] in ("Bank", "Cash") for a in accounts))
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		bill.submit()
+		bill.reload()
+		res = record_payment(bill.name, amount=25000, date="2026-07-21", mode_of_payment="Cash", paid_from=cash)
+		pe = frappe.get_doc("Payment Entry", res["payment_entry"])
+		self.assertEqual(pe.paid_from, cash)
