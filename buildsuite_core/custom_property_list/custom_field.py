@@ -368,14 +368,17 @@ CUSTOM_FIELD = {
 	],
 	"Journal Entry": [
 		{
-			# Back-link to the Petty Cash Request whose disbursement posted this JE.
+			# Links this JE to a Petty Cash Request. The app sets it when disbursing; a Desk
+			# user can also set it by hand to disburse a request directly — on submit the
+			# request flips to Disbursed and the holder is stamped on the Petty Cash leg
+			# (buildsuite_core.utils.petty_cash JE hooks). Editable so the manual path works.
 			"fieldname": "petty_cash_request",
 			"fieldtype": "Link",
 			"label": "Petty Cash Request",
 			"options": "Petty Cash Request",
 			"insert_after": "voucher_type",
-			"read_only": 1,
 			"no_copy": 1,
+			"description": "Disburses the linked Requested petty cash request when this entry is submitted.",
 			"module": "BuildSuite Core",
 		},
 	],

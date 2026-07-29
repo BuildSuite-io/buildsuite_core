@@ -14,7 +14,7 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
-from frappe.utils import flt, formatdate, getdate
+from frappe.utils import flt, formatdate, getdate, now_datetime
 
 PETTY_CASH_ACCOUNT_NAME = "Petty Cash"
 PETTY_CASH_PARENT_ACCOUNT = "Cash In Hand"
@@ -106,6 +106,10 @@ def post_disbursement_journal_entry(doc):
 	)
 
 	je.flags.ignore_permissions = True
+	# The request's disburse() drives the state change itself; tell the JE hooks to stand
+	# down so they don't also flip the request (which would double-save it). The hooks are
+	# for JEs posted by hand in Desk, which have no such orchestration.
+	je.flags.ignore_petty_cash_sync = True
 	je.insert()
 	je.submit()
 	return je.name
@@ -121,7 +125,108 @@ def cancel_disbursement_journal_entry(doc):
 
 	je = frappe.get_doc("Journal Entry", doc.journal_entry)
 	je.flags.ignore_permissions = True
+	je.flags.ignore_petty_cash_sync = True  # cancel_disbursement() reverts the request itself
 	je.cancel()
+
+
+# ---------------------------------------------------------------------------
+# Direct Journal Entry disbursement (Desk, no Vue app)
+# ---------------------------------------------------------------------------
+# Bigger teams often post the disbursement Journal Entry straight in Desk instead of using
+# the app. These hooks make that path behave like the app: link the JE to a Petty Cash
+# Request (the `petty_cash_request` field), and on submit the request flips to Disbursed;
+# on cancel it reverts. The holder is stamped on the Petty Cash leg so the GL / per-holder
+# reconciliation still attributes the float.
+
+
+def _je_funding_account(doc, company):
+	"""The credited Bank/Cash source on a disbursement JE (Dr Petty Cash / Cr source)."""
+	petty = get_petty_cash_account(company)
+	for row in doc.get("accounts") or []:
+		if flt(row.credit_in_account_currency) > 0 and row.account != petty:
+			return row.account
+	return None
+
+
+def stamp_holder_on_petty_cash_je(doc, method=None):
+	"""validate hook: a JE linked to a Petty Cash Request must carry the holder on its Petty
+	Cash line, so the GL and the per-holder reconciliation attribute the float. Auto-fill it
+	from the request's holder when a Desk user left it blank. Idempotent — the app's JE already
+	has it set, so this is a no-op there."""
+	request = doc.get("petty_cash_request")
+	if not request:
+		return
+
+	company, requested_by = frappe.db.get_value(
+		"Petty Cash Request", request, ["company", "requested_by"]
+	) or (None, None)
+	holder = employee_for_user(requested_by)
+	if not holder:
+		return
+
+	petty = get_petty_cash_account(company) if company else None
+	if not petty:
+		return
+	for row in doc.get("accounts") or []:
+		if row.account == petty and not row.get("employee"):
+			row.employee = holder
+
+
+def sync_petty_cash_request_on_je_submit(doc, method=None):
+	"""on_submit hook: submitting a JE linked to a Requested Petty Cash Request disburses it —
+	the same end state as the app's disburse(), for JEs posted by hand in Desk."""
+	if doc.flags.get("ignore_petty_cash_sync"):
+		return
+	request = doc.get("petty_cash_request")
+	if not request:
+		return
+
+	status, company, linked = frappe.db.get_value(
+		"Petty Cash Request", request, ["status", "company", "journal_entry"]
+	)
+	if status == "Disbursed":
+		if linked and linked != doc.name:
+			frappe.throw(_("Petty Cash Request {0} is already disbursed by {1}.").format(request, linked))
+		return
+	if status != "Requested":
+		frappe.throw(
+			_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(request, status)
+		)
+
+	frappe.db.set_value(
+		"Petty Cash Request",
+		request,
+		{
+			"status": "Disbursed",
+			"journal_entry": doc.name,
+			"paid_from": _je_funding_account(doc, company),
+			"disbursed_by": frappe.session.user,
+			"disbursed_on": now_datetime(),
+		},
+	)
+	frappe.get_doc("Petty Cash Request", request).add_comment(
+		"Comment", _("Disbursed via Journal Entry {0}").format(doc.name)
+	)
+
+
+def revert_petty_cash_request_on_je_cancel(doc, method=None):
+	"""on_cancel hook: cancelling a JE that disbursed a request reverts it to Requested."""
+	if doc.flags.get("ignore_petty_cash_sync"):
+		return
+	request = doc.get("petty_cash_request")
+	if not request:
+		return
+	if frappe.db.get_value("Petty Cash Request", request, "status") != "Disbursed":
+		return
+
+	frappe.db.set_value(
+		"Petty Cash Request",
+		request,
+		{"status": "Requested", "journal_entry": None, "paid_from": None, "disbursed_by": None, "disbursed_on": None},
+	)
+	frappe.get_doc("Petty Cash Request", request).add_comment(
+		"Comment", _("Disbursement reversed — Journal Entry {0} cancelled").format(doc.name)
+	)
 
 
 # ---------------------------------------------------------------------------

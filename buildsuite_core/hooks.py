@@ -231,6 +231,14 @@ doc_events = {
 	"Company":{
 		"on_update":"buildsuite_core.utils.petty_cash.create_account",
 	},
+	# Direct-in-Desk petty cash disbursement: a Journal Entry linked to a Petty Cash Request
+	# (the `petty_cash_request` field) disburses it on submit / reverts on cancel, and carries
+	# the holder on its Petty Cash leg — mirroring the Vue app's disburse flow.
+	"Journal Entry": {
+		"validate": "buildsuite_core.utils.petty_cash.stamp_holder_on_petty_cash_je",
+		"on_submit": "buildsuite_core.utils.petty_cash.sync_petty_cash_request_on_je_submit",
+		"on_cancel": "buildsuite_core.utils.petty_cash.revert_petty_cash_request_on_je_cancel",
+	},
 	# Hierarchy date-boundary checks — a child's schedule must sit within its
 	# parent project (and end >= start on the record itself).
 	"Work Package": {"validate": "buildsuite_core.utils.date_bounds.validate_work_package_dates"},
@@ -391,6 +399,7 @@ doctype_js = {
     "Purchase Order": "public/js/purchase_order.js",
     "Purchase Invoice": "public/js/purchase_invoice.js",
     "Purchase Receipt": "public/js/purchase_receipt.js",
+    "Journal Entry": "public/js/journal_entry.js",
 }
 
 doctype_list_js = {"Task": "public/js/task_list.js"}

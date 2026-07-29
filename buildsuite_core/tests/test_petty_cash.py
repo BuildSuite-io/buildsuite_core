@@ -139,3 +139,61 @@ class TestPettyCash(BuildSuiteTestCase):
 		petty = resolve_petty_cash_account(self.company)
 		req = self._request()
 		self.assertRaises(frappe.ValidationError, req.disburse, petty)
+
+	def test_direct_desk_je_disburses_and_stamps_holder(self):
+		# Bigger teams post the disbursement Journal Entry by hand in Desk instead of using
+		# the app. Linking the JE to the request + submitting must disburse it and stamp the
+		# holder on the Petty Cash leg (so the GL/reconciliation attributes the float), even
+		# when the accountant left the employee blank.
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		holder = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name")
+		req = self._request(amount=8000)
+		petty = resolve_petty_cash_account(self.company)
+		bank = self._cash_account()
+
+		je = frappe.new_doc("Journal Entry")
+		je.company = self.company
+		je.posting_date = "2026-07-20"
+		je.petty_cash_request = req.name
+		je.append("accounts", {"account": petty, "debit_in_account_currency": 8000})  # employee left blank
+		je.append("accounts", {"account": bank, "credit_in_account_currency": 8000})
+		je.flags.ignore_permissions = True
+		je.insert()
+		je.submit()
+
+		# Holder auto-stamped on the Petty Cash leg → GL carries the employee dimension.
+		je.reload()
+		petty_line = next(a for a in je.accounts if a.account == petty)
+		self.assertEqual(petty_line.employee, holder)
+		self.assertEqual(
+			frappe.db.get_value("GL Entry", {"voucher_no": je.name, "account": petty, "is_cancelled": 0}, "employee"),
+			holder,
+		)
+
+		# Submitting the JE disbursed the request.
+		req.reload()
+		self.assertEqual(req.status, "Disbursed")
+		self.assertEqual(req.journal_entry, je.name)
+		self.assertEqual(req.paid_from, bank)
+
+		# Cancelling the JE reverts it to Requested.
+		je.cancel()
+		req.reload()
+		self.assertEqual(req.status, "Requested")
+		self.assertFalse(req.journal_entry)
+
+	def test_disbursement_prefill(self):
+		from buildsuite_core.api.petty_cash import disbursement_prefill
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		holder = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name")
+		req = self._request(amount=6000)
+		data = disbursement_prefill(req.name)
+		self.assertEqual(data["company"], self.company)
+		self.assertEqual(flt(data["amount"]), 6000)
+		self.assertEqual(data["petty_cash_account"], resolve_petty_cash_account(self.company))
+		self.assertEqual(data["employee"], holder)
+		# A disbursed request can't be prefilled for another disbursement.
+		req.disburse(self._cash_account())
+		self.assertRaises(frappe.ValidationError, disbursement_prefill, req.name)
