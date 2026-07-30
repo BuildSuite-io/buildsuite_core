@@ -23,6 +23,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -327,7 +328,7 @@ const expenseAccountFilters = computed(() => [
 						<tr v-for="e in toSubmit" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(e)">
 							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
-							<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
+							<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
 							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
 							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
@@ -366,7 +367,7 @@ const expenseAccountFilters = computed(() => [
 							<tr v-for="e in allExpenses" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
-								<td class="px-4 py-2.5 text-ink-700">{{ holderName(e) }}</td>
+								<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
@@ -428,7 +429,7 @@ const expenseAccountFilters = computed(() => [
 						</div>
 						<div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Date</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.date) }}</div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Holder</div><div class="text-ink-900 mt-0.5">{{ holderName(detail) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Holder</div><div class="mt-0.5 flex items-center gap-1.5"><UserAvatar :name="holderName(detail)" size="xs" /><span class="text-ink-900">{{ holderName(detail) }}</span></div></div>
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Project</div><div class="text-ink-900 mt-0.5">{{ projectName(detail) }}</div></div>
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Paid from</div><div class="mt-0.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full" :class="sourceChipClass(detail.source)">{{ detail.source }}</span></div></div>
 							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Expense account</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || "—" }}</div></div>

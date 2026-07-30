@@ -21,6 +21,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
@@ -205,7 +206,7 @@ const rowsForTab = computed(() => {
 				</thead>
 				<tbody>
 					<tr v-for="b in balances" :key="b.employee || b.holder" class="border-t border-ink-100">
-						<td class="px-3 py-2 text-ink-900">{{ b.holder }}</td>
+						<td class="px-3 py-2 text-ink-900"><div class="flex items-center gap-1.5"><UserAvatar :name="b.holder" size="xs" /><span>{{ b.holder }}</span></div></td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.disbursed) }}</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.spent) }}</td>
 						<td class="px-3 py-2 text-right tabular-nums font-semibold" :class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'">
@@ -234,7 +235,7 @@ const rowsForTab = computed(() => {
 			:search-placeholder="tab === 'all' ? 'Search requests…' : ''"
 		>
 			<template #cell-requested_by="{ row }">
-				<span class="text-xs text-ink-900">{{ row.requested_by }}</span>
+				<div class="flex items-center gap-1.5"><UserAvatar :user-id="row.requested_by" size="xs" /><span class="text-xs text-ink-900">{{ row.requested_by }}</span></div>
 			</template>
 			<template #cell-purpose="{ row }">
 				<span class="text-xs text-ink-700">{{ (row.purpose || "").slice(0, 60) }}</span>
