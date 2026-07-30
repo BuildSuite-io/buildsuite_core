@@ -146,9 +146,10 @@ function update_child_readonly(frm) {
 // ---------------------------------------------------------------------
 
 function add_ledger_button(frm) {
-	if (!frm.doc.journal_entry) return;
+	// Only once the expense is submitted and has posted its Journal Entry.
+	if (frm.doc.docstatus !== 1 || !frm.doc.journal_entry) return;
 
-	frm.add_custom_button(__("View Ledger"), () => {
+	frm.add_custom_button(__("Ledger"), () => {
 		frappe.set_route("query-report", "General Ledger", {
 			company: frm.doc.company,
 			voucher_no: frm.doc.journal_entry,
@@ -156,7 +157,7 @@ function add_ledger_button(frm) {
 			to_date: frm.doc.date,
 			group_by: "Group by Voucher (Consolidated)",
 		});
-	});
+	}, __("View"));
 
 	frm.add_custom_button(__("Journal Entry"), () => {
 		frappe.set_route("Form", "Journal Entry", frm.doc.journal_entry);
