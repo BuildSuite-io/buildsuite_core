@@ -477,6 +477,12 @@ const routes = [
 				component: () => import("@/views/finance/FinancePettyCashPanel.vue"),
 			},
 			{
+				path: "project-finance/invoices/:id",
+				name: "finance-invoice",
+				component: () => import("@/views/finance/FinanceInvoiceDetailView.vue"),
+				props: true,
+			},
+			{
 				path: "project-finance/report/:slug",
 				name: "finance-report",
 				component: () => import("@/views/finance/FinanceReportPageView.vue"),

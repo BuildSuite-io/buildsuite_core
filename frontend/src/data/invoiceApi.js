@@ -19,6 +19,8 @@ export const cancelInvoice = (name) => call("cancel_invoice", { name });
 export const deleteInvoice = (name) => call("delete_invoice", { name });
 export const recordInvoiceReceipt = (args) => call("record_receipt", args);
 export const listInvoiceReceipts = (name) => call("list_receipts", { name });
+export const recordCustomerAdvance = (args) => call("record_advance", args);
+export const invoiceAdvancesSummary = () => call("advances_summary", {});
 export const listDepositAccounts = () => call("list_deposit_accounts", {});
 export const listInvoiceTaxTemplates = () => call("list_tax_templates", {});
 export const listInvoicePaymentModes = () => call("list_payment_modes", {});

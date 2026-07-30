@@ -341,6 +341,69 @@ def list_receipts(name):
 
 
 # --------------------------------------------------------------------------- #
+# Customer advances (on-account receipts, no invoice yet)
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def record_advance(customer, amount, date=None, deposit_to=None, mode_of_payment=None, reference_no=None):
+	"""Receive money from a customer BEFORE (or without) an invoice — a submitted on-account
+	Payment Entry whose full amount stays unallocated until a later invoice draws it down."""
+	from erpnext.accounts.party import get_party_account
+
+	if not customer:
+		frappe.throw(_("Customer is required."))
+	amount = flt(amount)
+	if amount <= 0:
+		frappe.throw(_("Enter an amount greater than zero."))
+	if not deposit_to:
+		frappe.throw(_("Choose the Bank/Cash account to deposit into."))
+
+	company = default_company()
+	if frappe.db.get_value("Account", deposit_to, "company") != company:
+		frappe.throw(_("Account {0} does not belong to company {1}.").format(deposit_to, company))
+
+	receivable = get_party_account("Customer", customer, company)
+	pe = frappe.new_doc("Payment Entry")
+	pe.payment_type = "Receive"
+	pe.company = company
+	pe.posting_date = date or nowdate()
+	pe.party_type = "Customer"
+	pe.party = customer
+	pe.party_account = receivable
+	pe.paid_from = receivable
+	pe.paid_from_account_currency = frappe.db.get_value("Account", receivable, "account_currency")
+	pe.paid_to = deposit_to
+	pe.paid_to_account_currency = frappe.db.get_value("Account", deposit_to, "account_currency")
+	pe.paid_amount = amount
+	pe.received_amount = amount
+	if mode_of_payment:
+		pe.mode_of_payment = mode_of_payment
+	if reference_no:
+		pe.reference_no = reference_no
+		pe.reference_date = date or nowdate()
+	pe.flags.ignore_permissions = True
+	pe.set_missing_values()
+	pe.insert()
+	pe.submit()
+	return {"payment_entry": pe.name}
+
+
+@frappe.whitelist()
+def advances_summary(company=None):
+	"""Total unallocated customer advances held for the active (default) company."""
+	company = company or default_company()
+	total = frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(unallocated_amount), 0)
+		FROM `tabPayment Entry`
+		WHERE docstatus = 1 AND payment_type = 'Receive' AND party_type = 'Customer'
+			AND company = %(company)s AND unallocated_amount > 0
+		""",
+		{"company": company},
+	)
+	return {"total": flt(total[0][0]) if total else 0}
+
+
+# --------------------------------------------------------------------------- #
 # Pickers
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()

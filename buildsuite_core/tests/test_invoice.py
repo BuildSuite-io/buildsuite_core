@@ -80,6 +80,20 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertAlmostEqual(rows[0]["outstanding"], 60000, places=2)
 		self.assertEqual(len(list_receipts(name)), 1)
 
+	def test_customer_advance(self):
+		from buildsuite_core.api.invoice import advances_summary, record_advance
+
+		cust = self._customer()
+		cash = self._deposit_account()
+		before = advances_summary(company=self.company)["total"]
+		r = record_advance(cust, amount=15000, date="2026-07-20", deposit_to=cash, mode_of_payment="Cash")
+		pe = frappe.get_doc("Payment Entry", r["payment_entry"])
+		self.assertEqual(pe.payment_type, "Receive")
+		self.assertEqual(pe.party, cust)
+		self.assertEqual(pe.paid_to, cash)
+		self.assertAlmostEqual(flt(pe.unallocated_amount), 15000, places=2)
+		self.assertAlmostEqual(advances_summary(company=self.company)["total"] - before, 15000, places=2)
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 

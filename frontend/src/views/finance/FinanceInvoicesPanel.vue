@@ -3,14 +3,14 @@
 // Sales Invoice: create a draft, submit (posts the receivable), and receive payments (a real
 // Payment Entry into a Bank/Cash account). docstatus lifecycle: Draft → Submitted → Cancelled.
 import { computed, reactive, ref } from "vue";
-import { useConfirm } from "@/composables/useConfirm";
+import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
 	listInvoices,
 	saveInvoice,
-	submitInvoice,
-	deleteInvoice,
 	recordInvoiceReceipt,
+	recordCustomerAdvance,
+	invoiceAdvancesSummary,
 	listDepositAccounts,
 	listInvoiceTaxTemplates,
 	listInvoicePaymentModes,
@@ -25,15 +25,17 @@ import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Invoices" }];
-const confirmDialog = useConfirm();
+const router = useRouter();
 const companyFilter = activeCompanyFilter();
 
 const invoices = ref([]);
+const advancesTotal = ref(0);
 const loading = ref(true);
 async function load() {
 	loading.value = true;
 	try {
 		invoices.value = await listInvoices();
+		invoiceAdvancesSummary().then((r) => (advancesTotal.value = Number(r?.total) || 0)).catch(() => {});
 	} catch (err) {
 		showToast(err.message || "Failed to load invoices", "error");
 	} finally {
@@ -41,6 +43,10 @@ async function load() {
 	}
 }
 load();
+
+function openDetail(inv) {
+	router.push(`/project-finance/invoices/${inv.name}`);
+}
 
 const totalOutstanding = computed(() => invoices.value.reduce((a, i) => a + (Number(i.outstanding) || 0), 0));
 
@@ -129,31 +135,41 @@ async function save() {
 	}
 }
 
-// --- docstatus actions ---
-async function onSubmit(inv) {
-	const ok = await confirmDialog({
-		title: "Submit invoice?",
-		message: `Submit ${inv.name} (${fmtINR(inv.total)})? It posts the receivable and can then be paid.`,
-		confirmLabel: "Submit",
-	});
-	if (!ok) return;
-	try {
-		await submitInvoice(inv.name);
-		await load();
-		showToast("Submitted.");
-	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+// --- record customer advance (on-account receipt) ---
+const adv = reactive({ open: false, customer: "", amount: null, deposit_to: "", date: "", mode_of_payment: "", reference_no: "", saving: false });
+async function openAdvance() {
+	if (!depositAccounts.value.length) {
+		try {
+			[depositAccounts.value, payModes.value] = await Promise.all([listDepositAccounts(), listInvoicePaymentModes()]);
+		} catch {
+			/* fall through */
+		}
 	}
+	Object.assign(adv, {
+		open: true,
+		customer: "",
+		amount: null,
+		deposit_to: depositAccounts.value.find((a) => a.account_type === "Bank")?.name || depositAccounts.value[0]?.name || "",
+		date: new Date().toISOString().slice(0, 10),
+		mode_of_payment: payModes.value[0] || "",
+		reference_no: "",
+		saving: false,
+	});
 }
-async function onDelete(inv) {
-	const ok = await confirmDialog({ title: "Delete draft?", message: `Permanently delete ${inv.name}?`, confirmLabel: "Delete", destructive: true });
-	if (!ok) return;
+async function saveAdvance() {
+	if (!adv.customer) return showToast("Pick a customer.", "error");
+	if (!(Number(adv.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
+	if (!adv.deposit_to) return showToast("Pick the account to deposit into.", "error");
+	adv.saving = true;
 	try {
-		await deleteInvoice(inv.name);
+		await recordCustomerAdvance({ customer: adv.customer, amount: Number(adv.amount), date: adv.date, deposit_to: adv.deposit_to, mode_of_payment: adv.mode_of_payment || undefined, reference_no: adv.reference_no || undefined });
+		adv.open = false;
 		await load();
-		showToast("Deleted.");
+		showToast("Advance recorded.");
 	} catch (err) {
-		showToast(err.message || "Delete failed", "error");
+		showToast(err.message || "Failed to record advance", "error");
+	} finally {
+		adv.saving = false;
 	}
 }
 
@@ -208,13 +224,22 @@ async function saveReceive() {
 
 <template>
 	<DeskPage title="Invoices" :breadcrumbs="breadcrumbs">
-		<template #actions><button type="button" class="desk-save-btn" @click="openNew">+ New invoice</button></template>
+		<template #actions>
+			<div class="flex items-center gap-2">
+				<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openAdvance">Record advance</button>
+				<button type="button" class="desk-save-btn" @click="openNew">+ New invoice</button>
+			</div>
+		</template>
 
 		<div class="space-y-4">
 			<div class="flex items-center gap-4 text-sm">
 				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Outstanding receivable</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(totalOutstanding) }}</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Customer advances</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(advancesTotal) }}</div>
 				</div>
 			</div>
 
@@ -239,7 +264,7 @@ async function saveReceive() {
 						<tr><th class="text-left px-3 py-2">Invoice</th><th class="text-left px-3 py-2">Customer</th><th class="text-left px-3 py-2">Project</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Due</th><th class="text-left px-3 py-2">Aging</th><th class="text-right px-3 py-2">Total</th><th class="text-right px-3 py-2">Outstanding</th><th class="text-left px-3 py-2">Status</th><th class="px-3 py-2"></th></tr>
 					</thead>
 					<tbody>
-						<tr v-for="i in rows" :key="i.name" class="border-t border-ink-100 hover:bg-brand-50/30">
+						<tr v-for="i in rows" :key="i.name" class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(i)">
 							<td class="px-3 py-2 font-mono text-[11px] text-ink-500">{{ i.name }}</td>
 							<td class="px-3 py-2 text-ink-900">{{ i.customer_name }}</td>
 							<td class="px-3 py-2 text-ink-500">{{ i.project_name || "—" }}</td>
@@ -250,9 +275,7 @@ async function saveReceive() {
 							<td class="px-3 py-2 text-right tabular-nums font-medium" :class="i.outstanding > 0.01 ? 'text-ink-900' : 'text-ink-400'">{{ fmtINR(i.outstanding) }}</td>
 							<td class="px-3 py-2"><StatusBadge :status="i.status" size="xs" /></td>
 							<td class="px-3 py-2 text-right whitespace-nowrap">
-								<button v-if="i.docstatus === 0" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="onSubmit(i)">Submit</button>
-								<button v-if="i.docstatus === 0" type="button" class="text-[11px] px-2 py-0.5 ml-1 text-danger-600 hover:underline" @click="onDelete(i)">Delete</button>
-								<button v-if="i.docstatus === 1 && i.outstanding > 0.01" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="openReceive(i)">Receive</button>
+								<button v-if="i.docstatus === 1 && i.outstanding > 0.01" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click.stop="openReceive(i)">Receive</button>
 							</td>
 						</tr>
 					</tbody>
@@ -327,6 +350,32 @@ async function saveReceive() {
 				<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
 					<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="rec.open = false">Cancel</button>
 					<button type="button" class="text-xs desk-save-btn" :disabled="rec.saving" @click="saveReceive">{{ rec.saving ? "Receiving…" : "Record receipt" }}</button>
+				</footer>
+			</div>
+		</div>
+
+		<!-- Record customer advance modal -->
+		<div v-if="adv.open" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="adv.open = false">
+			<div class="bg-white border border-ink-200 w-full max-w-md shadow-xl rounded-xl" @click.stop>
+				<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"><h2 class="text-sm font-semibold text-ink-900">Record customer advance</h2><button type="button" class="text-ink-400 hover:text-ink-900" @click="adv.open = false">✕</button></header>
+				<div class="px-4 py-4 space-y-3">
+					<p class="text-[11px] text-ink-500">Money received before (or without) an invoice — it stays on the customer's account until a later invoice draws it down.</p>
+					<DeskField label="Customer" required><DeskLinkPicker v-model="adv.customer" doctype="Customer" label-field="customer_name" value-field="name" placeholder="Pick a customer…" /></DeskField>
+					<div class="grid grid-cols-2 gap-3">
+						<DeskField label="Amount" required><DeskInput v-model.number="adv.amount" type="number" min="0" placeholder="0" /></DeskField>
+						<DeskField label="Date"><DeskInput v-model="adv.date" type="date" /></DeskField>
+					</div>
+					<DeskField label="Deposit into" required>
+						<DeskSelect v-model="adv.deposit_to"><option value="" disabled>Bank / Cash account…</option><option v-for="a in depositAccounts" :key="a.name" :value="a.name">{{ a.name }} ({{ a.account_type }})</option></DeskSelect>
+					</DeskField>
+					<div class="grid grid-cols-2 gap-3">
+						<DeskField label="Mode of payment"><DeskSelect v-model="adv.mode_of_payment"><option value="">—</option><option v-for="m in payModes" :key="m" :value="m">{{ m }}</option></DeskSelect></DeskField>
+						<DeskField label="Reference no."><DeskInput v-model="adv.reference_no" placeholder="UTR / cheque no." /></DeskField>
+					</div>
+				</div>
+				<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+					<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="adv.open = false">Cancel</button>
+					<button type="button" class="text-xs desk-save-btn" :disabled="adv.saving" @click="saveAdvance">{{ adv.saving ? "Recording…" : "Record advance" }}</button>
 				</footer>
 			</div>
 		</div>
