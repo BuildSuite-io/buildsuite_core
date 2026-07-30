@@ -147,6 +147,7 @@ async function saveReceive() {
 		<template v-if="inv" #actions>
 			<div class="flex items-center gap-2">
 				<button v-if="isDraft" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-danger-600 rounded-md" :disabled="busy" @click="onDelete">Delete</button>
+				<button v-if="isDraft" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="router.push(`/project-finance/invoices/${inv.name}/edit`)">Edit</button>
 				<button v-if="isDraft" type="button" class="text-xs desk-save-btn" :disabled="busy" @click="onSubmit">Submit</button>
 				<button v-if="isSubmitted && payment.outstanding > 0.01" type="button" class="text-xs desk-save-btn" :disabled="busy" @click="openReceive">Receive payment</button>
 				<button v-if="isSubmitted" type="button" class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md" :disabled="busy" @click="onCancel">Cancel</button>

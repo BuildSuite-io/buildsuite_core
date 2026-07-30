@@ -7,12 +7,10 @@ import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
 	listInvoices,
-	saveInvoice,
 	recordInvoiceReceipt,
 	recordCustomerAdvance,
 	invoiceAdvancesSummary,
 	listDepositAccounts,
-	listInvoiceTaxTemplates,
 	listInvoicePaymentModes,
 } from "@/data/invoiceApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -21,12 +19,10 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
-import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Invoices" }];
 const router = useRouter();
-const companyFilter = activeCompanyFilter();
 
 const invoices = ref([]);
 const advancesTotal = ref(0);
@@ -84,55 +80,9 @@ const rows = computed(() => {
 	);
 });
 
-// --- create form ---
-const modalOpen = ref(false);
-const taxTemplates = ref([]);
-const form = reactive({ customer: "", project: "", date: "", due_date: "", taxes_and_charges: "", lines: [], saving: false });
-function newLine() {
-	return { description: "", qty: 1, rate: null };
-}
-async function openNew() {
-	Object.assign(form, {
-		customer: "",
-		project: "",
-		date: new Date().toISOString().slice(0, 10),
-		due_date: "",
-		taxes_and_charges: "",
-		lines: [newLine()],
-		saving: false,
-	});
-	modalOpen.value = true;
-	if (!taxTemplates.value.length) {
-		try {
-			taxTemplates.value = await listInvoiceTaxTemplates();
-		} catch {
-			/* optional */
-		}
-	}
-}
-const formSubtotal = computed(() => form.lines.reduce((a, l) => a + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0));
-async function save() {
-	if (!form.customer) return showToast("Pick a customer.", "error");
-	const lines = form.lines.filter((l) => Number(l.rate) > 0);
-	if (!lines.length) return showToast("Add at least one line with an amount.", "error");
-	form.saving = true;
-	try {
-		await saveInvoice({
-			customer: form.customer,
-			project: form.project || undefined,
-			date: form.date,
-			due_date: form.due_date || undefined,
-			taxes_and_charges: form.taxes_and_charges || undefined,
-			items: lines.map((l) => ({ description: l.description, qty: Number(l.qty) || 1, rate: Number(l.rate) })),
-		});
-		modalOpen.value = false;
-		await load();
-		showToast("Invoice saved as draft.");
-	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
-	} finally {
-		form.saving = false;
-	}
+// --- create: full-page form ---
+function openNew() {
+	router.push("/project-finance/invoices/new");
 }
 
 // --- record customer advance (on-account receipt) ---
@@ -282,51 +232,6 @@ async function saveReceive() {
 				</table>
 				<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "No invoices yet." }}</div>
 			</section>
-		</div>
-
-		<!-- New invoice modal -->
-		<div v-if="modalOpen" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="modalOpen = false">
-			<div class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl" @click.stop>
-				<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"><h2 class="text-sm font-semibold text-ink-900">New invoice</h2><button type="button" class="text-ink-400 hover:text-ink-900" @click="modalOpen = false">✕</button></header>
-				<div class="px-4 py-4 space-y-3">
-					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Customer" required><DeskLinkPicker v-model="form.customer" doctype="Customer" label-field="customer_name" value-field="name" placeholder="Pick a customer…" /></DeskField>
-						<DeskField label="Project"><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Optional…" /></DeskField>
-					</div>
-					<div class="grid grid-cols-3 gap-3">
-						<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
-						<DeskField label="Due date"><DeskInput v-model="form.due_date" type="date" /></DeskField>
-						<DeskField label="Tax"><DeskSelect v-model="form.taxes_and_charges"><option value="">No tax</option><option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.title || t.name }}</option></DeskSelect></DeskField>
-					</div>
-
-					<div class="border border-ink-200 rounded-lg overflow-hidden">
-						<table class="w-full text-xs">
-							<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]"><tr><th class="text-left px-3 py-2">Description</th><th class="text-right px-3 py-2 w-16">Qty</th><th class="text-right px-3 py-2 w-28">Rate</th><th class="text-right px-3 py-2 w-28">Amount</th><th class="w-8"></th></tr></thead>
-							<tbody>
-								<tr v-for="(l, idx) in form.lines" :key="idx" class="border-t border-ink-100">
-									<td class="px-2 py-1"><input v-model="l.description" type="text" placeholder="What is billed?" class="w-full px-1.5 py-1 border border-transparent hover:border-ink-200 focus:border-brand-400 rounded focus:outline-none" /></td>
-									<td class="px-2 py-1"><input v-model.number="l.qty" type="number" min="0" class="w-full text-right px-1.5 py-1 border border-transparent hover:border-ink-200 focus:border-brand-400 rounded focus:outline-none tabular-nums" /></td>
-									<td class="px-2 py-1"><input v-model.number="l.rate" type="number" min="0" placeholder="0" class="w-full text-right px-1.5 py-1 border border-transparent hover:border-ink-200 focus:border-brand-400 rounded focus:outline-none tabular-nums" /></td>
-									<td class="px-3 py-1 text-right tabular-nums text-ink-700">{{ fmtINR((Number(l.qty) || 0) * (Number(l.rate) || 0)) }}</td>
-									<td class="px-2 py-1 text-center"><button v-if="form.lines.length > 1" type="button" class="text-ink-400 hover:text-danger-600" @click="form.lines.splice(idx, 1)">✕</button></td>
-								</tr>
-							</tbody>
-							<tfoot>
-								<tr class="border-t border-ink-200 bg-ink-50/40">
-									<td colspan="3" class="px-3 py-2"><button type="button" class="text-[11px] text-brand-700 hover:underline" @click="form.lines.push(newLine())">+ Add line</button></td>
-									<td class="px-3 py-2 text-right tabular-nums font-semibold text-ink-900">{{ fmtINR(formSubtotal) }}</td>
-									<td></td>
-								</tr>
-							</tfoot>
-						</table>
-					</div>
-					<p class="text-[11px] text-ink-400">Any tax is applied on save; the subtotal above is before tax.</p>
-				</div>
-				<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
-					<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="modalOpen = false">Cancel</button>
-					<button type="button" class="text-xs desk-save-btn" :disabled="form.saving" @click="save">{{ form.saving ? "Saving…" : "Save as draft" }}</button>
-				</footer>
-			</div>
 		</div>
 
 		<!-- Receive payment modal -->
