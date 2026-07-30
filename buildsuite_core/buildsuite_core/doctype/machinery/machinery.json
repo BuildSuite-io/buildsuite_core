@@ -2,12 +2,10 @@
  "actions": [],
  "allow_bulk_edit": 1,
  "allow_rename": 1,
- "autoname": "field:machinery_code",
  "creation": "2026-07-26 12:31:17.175094",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "machinery_code",
   "section_break_iczz",
   "machinery_name",
   "rate",
@@ -22,13 +20,6 @@
   "company"
  ],
  "fields": [
-  {
-   "fieldname": "machinery_code",
-   "fieldtype": "Data",
-   "label": "Machinery Code",
-   "reqd": 1,
-   "unique": 1
-  },
   {
    "fieldname": "machinery_name",
    "fieldtype": "Data",
@@ -101,11 +92,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-26 22:22:36.482000",
+ "modified": "2026-07-30 19:51:17.006494",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Machinery",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

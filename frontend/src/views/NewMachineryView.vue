@@ -7,6 +7,7 @@ import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { createDataAdapter } from "@/data/adapters";
+import { getActiveCompany } from "@/data/companyApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -20,7 +21,6 @@ const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
 
 const form = reactive({
-	machinery_code: "",
 	machinery_name: "",
 	machinery_type: "",
 	ownership: "Owned",
@@ -32,16 +32,21 @@ const form = reactive({
 	company: "",
 });
 const { errors, applyServerErrors, setErrors } = useFormErrors({
-	machinery_code: "machinery_code",
 	machinery_name: "machinery_name",
 	machinery_type: "machinery_type",
 	company: "company",
 });
 const saving = ref(false);
 
+// Prefill the user's default company (editable).
+getActiveCompany()
+	.then((c) => {
+		if (c && !form.company) form.company = c;
+	})
+	.catch(() => {});
+
 function validate() {
 	const e = {};
-	if (!form.machinery_code.trim()) e.machinery_code = "Code is required.";
 	if (!form.machinery_name.trim()) e.machinery_name = "Name is required.";
 	if (!form.machinery_type) e.machinery_type = "Type is required.";
 	if (!form.company) e.company = "Company is required.";
@@ -58,7 +63,6 @@ async function onSave() {
 	saving.value = true;
 	try {
 		const res = await adapter.create("Machinery", {
-			machinery_code: form.machinery_code.trim(),
 			machinery_name: form.machinery_name.trim(),
 			machinery_type: form.machinery_type,
 			ownership: form.ownership,
@@ -98,13 +102,6 @@ const breadcrumbs = [
 			</template>
 
 			<DeskSection title="Machinery" :cols="3">
-				<!-- Code on its own first line -->
-				<div class="md:col-span-2 lg:col-span-3">
-					<DeskField label="Code" required :error="errors.machinery_code">
-						<DeskInput v-model="form.machinery_code" />
-					</DeskField>
-				</div>
-
 				<DeskField label="Name" required :error="errors.machinery_name">
 					<DeskInput v-model="form.machinery_name" />
 				</DeskField>

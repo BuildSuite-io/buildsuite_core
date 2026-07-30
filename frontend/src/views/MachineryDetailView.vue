@@ -24,7 +24,6 @@ const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
 const { errors, applyServerErrors, setErrors } = useFormErrors({
-	machinery_code: "machinery_code",
 	machinery_name: "machinery_name",
 	machinery_type: "machinery_type",
 	company: "company",
@@ -41,7 +40,6 @@ function snapshot() {
 	const d = doc.value;
 	if (!d) return {};
 	return {
-		machinery_code: d.machinery_code || "",
 		machinery_name: d.machinery_name || "",
 		machinery_type: d.machinery_type || "",
 		ownership: d.ownership || "Owned",
@@ -195,9 +193,6 @@ const breadcrumbs = computed(() => [
 		<!-- View mode -->
 		<div v-if="!editing">
 			<DeskSection title="Machinery" :cols="3">
-				<DeskField label="Code"
-					><div class="text-sm font-mono text-ink-900">{{ doc.machinery_code }}</div></DeskField
-				>
 				<DeskField label="Type"
 					><div class="text-sm text-ink-700">{{ doc.machinery_type || "—" }}</div></DeskField
 				>
@@ -258,9 +253,6 @@ const breadcrumbs = computed(() => [
 		<!-- Edit mode -->
 		<div v-else>
 			<DeskSection title="Machinery" :cols="3">
-				<DeskField label="Code" hint="Record ID — cannot be changed">
-					<div class="text-sm font-mono text-ink-500">{{ doc.machinery_code }}</div>
-				</DeskField>
 				<DeskField label="Name" required :error="errors.machinery_name"
 					><DeskInput v-model="form.machinery_name"
 				/></DeskField>
