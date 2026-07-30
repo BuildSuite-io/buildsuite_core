@@ -9,7 +9,6 @@ import {
 	listInvoices,
 	saveInvoice,
 	submitInvoice,
-	cancelInvoice,
 	deleteInvoice,
 	recordInvoiceReceipt,
 	listDepositAccounts,
@@ -146,23 +145,6 @@ async function onSubmit(inv) {
 		showToast(err.message || "Submit failed", "error");
 	}
 }
-async function onCancel(inv) {
-	const ok = await confirmDialog({
-		title: "Cancel invoice?",
-		message: `Cancel ${inv.name}? Its receivable and any allocations are reversed.`,
-		confirmLabel: "Cancel invoice",
-		cancelLabel: "Keep",
-		destructive: true,
-	});
-	if (!ok) return;
-	try {
-		await cancelInvoice(inv.name);
-		await load();
-		showToast("Cancelled.");
-	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
-	}
-}
 async function onDelete(inv) {
 	const ok = await confirmDialog({ title: "Delete draft?", message: `Permanently delete ${inv.name}?`, confirmLabel: "Delete", destructive: true });
 	if (!ok) return;
@@ -271,7 +253,6 @@ async function saveReceive() {
 								<button v-if="i.docstatus === 0" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="onSubmit(i)">Submit</button>
 								<button v-if="i.docstatus === 0" type="button" class="text-[11px] px-2 py-0.5 ml-1 text-danger-600 hover:underline" @click="onDelete(i)">Delete</button>
 								<button v-if="i.docstatus === 1 && i.outstanding > 0.01" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click="openReceive(i)">Receive</button>
-								<button v-if="i.docstatus === 1" type="button" class="text-[11px] px-2 py-0.5 ml-1 border border-warning-300 bg-warning-50 text-warning-700 rounded" @click="onCancel(i)">Cancel</button>
 							</td>
 						</tr>
 					</tbody>
