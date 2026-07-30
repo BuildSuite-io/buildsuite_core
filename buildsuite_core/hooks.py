@@ -400,6 +400,7 @@ doctype_js = {
     "Purchase Invoice": "public/js/purchase_invoice.js",
     "Purchase Receipt": "public/js/purchase_receipt.js",
     "Journal Entry": "public/js/journal_entry.js",
+    "Petty Cash Request": "public/js/petty_cash_request.js",
 }
 
 doctype_list_js = {"Task": "public/js/task_list.js"}
