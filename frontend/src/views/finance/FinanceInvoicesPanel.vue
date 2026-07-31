@@ -1,15 +1,15 @@
 <script setup>
-// Project Finance › Invoices — LIVE over ERPNext Sales Invoice (money in). An invoice IS a
-// Sales Invoice: create a draft, submit (posts the receivable), and receive payments (a real
-// Payment Entry into a Bank/Cash account). docstatus lifecycle: Draft → Submitted → Cancelled.
+// Project Finance › Invoices — LIVE over ERPNext Sales Invoice (money in). The list is the
+// standard DocTypeListView (pagination / sort / filter / search for free); an invoice IS a
+// Sales Invoice. Rows show two status badges — submission (Draft/Submitted/Cancelled) and, for
+// submitted invoices, the payment status (Unpaid/Overdue/Partly Paid/Paid) — both colour-coded.
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
-	listInvoices,
 	recordInvoiceReceipt,
 	recordCustomerAdvance,
-	invoiceAdvancesSummary,
+	invoiceReceivablesSummary,
 	listDepositAccounts,
 	listInvoicePaymentModes,
 } from "@/data/invoiceApi";
@@ -18,83 +18,117 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Invoices" }];
 const router = useRouter();
+const activeCompany = useActiveCompany();
+const baseFilters = computed(() => (activeCompany.value ? [["company", "=", activeCompany.value]] : []));
 
-const invoices = ref([]);
-const advancesTotal = ref(0);
-const loading = ref(true);
-async function load() {
-	loading.value = true;
+// The list is a doctype resource; bump this to force a refresh after receive/advance.
+const listKey = ref(0);
+function refreshList() {
+	listKey.value += 1;
+	loadSummary();
+}
+
+// --- header summary (across all invoices, not just the page) ---
+const summary = reactive({ outstanding: 0, advances: 0 });
+async function loadSummary() {
 	try {
-		invoices.value = await listInvoices();
-		invoiceAdvancesSummary().then((r) => (advancesTotal.value = Number(r?.total) || 0)).catch(() => {});
-	} catch (err) {
-		showToast(err.message || "Failed to load invoices", "error");
-	} finally {
-		loading.value = false;
+		const r = await invoiceReceivablesSummary();
+		summary.outstanding = Number(r?.outstanding) || 0;
+		summary.advances = Number(r?.advances) || 0;
+	} catch {
+		/* ignore */
 	}
 }
-load();
+loadSummary();
 
-function openDetail(inv) {
-	router.push(`/project-finance/invoices/${inv.name}`);
+// --- status derivation from the native Sales Invoice `status` ---
+function submissionOf(s) {
+	if (s === "Draft") return "Draft";
+	if (s === "Cancelled") return "Cancelled";
+	return "Submitted";
 }
-
-const totalOutstanding = computed(() => invoices.value.reduce((a, i) => a + (Number(i.outstanding) || 0), 0));
+function paymentOf(s) {
+	return s === "Draft" || s === "Cancelled" ? null : s; // Unpaid / Overdue / Partly Paid / Paid
+}
+function canReceive(row) {
+	return submissionOf(row.status) === "Submitted" && Number(row.outstanding_amount) > 0.01;
+}
 
 // --- aging (submitted + still owed) ---
-function daysOverdue(due) {
-	if (!due) return 0;
-	return Math.floor((Date.now() - new Date(due).getTime()) / 86400000);
-}
-function aging(inv) {
-	if (inv.docstatus !== 1 || !(Number(inv.outstanding) > 0.01)) return null;
-	const d = daysOverdue(inv.due_date);
+function aging(row) {
+	if (submissionOf(row.status) !== "Submitted" || !(Number(row.outstanding_amount) > 0.01)) return null;
+	if (!row.due_date) return null;
+	const d = Math.floor((Date.now() - new Date(row.due_date).getTime()) / 86400000);
 	if (d <= 0) return { label: "Not due", cls: "bg-ink-100 text-ink-500" };
 	const bucket = d <= 30 ? "0–30" : d <= 60 ? "31–60" : d <= 90 ? "61–90" : "90+";
 	const cls = d <= 30 ? "bg-warning-50 text-warning-700" : "bg-danger-50 text-danger-700";
 	return { label: `${bucket} d`, cls };
 }
 
-// --- filters ---
-const search = ref("");
 const statusFilter = ref("");
-const hasFilters = computed(() => search.value || statusFilter.value);
-function clearFilters() {
-	search.value = "";
-	statusFilter.value = "";
-}
-const rows = computed(() => {
-	const term = search.value.trim().toLowerCase();
-	return invoices.value.filter(
-		(i) =>
-			(!statusFilter.value || i.status === statusFilter.value) &&
-			(!term ||
-				i.name.toLowerCase().includes(term) ||
-				(i.customer_name || "").toLowerCase().includes(term) ||
-				(i.project_name || "").toLowerCase().includes(term)),
-	);
-});
+const filterValues = computed(() => ({ status: statusFilter.value }));
 
-// --- create: full-page form ---
+function openDetail(row) {
+	router.push(`/project-finance/invoices/${row.name}`);
+}
 function openNew() {
 	router.push("/project-finance/invoices/new");
+}
+
+// --- receive payment ---
+const depositAccounts = ref([]);
+const payModes = ref([]);
+async function ensurePayRefs() {
+	if (depositAccounts.value.length) return;
+	try {
+		[depositAccounts.value, payModes.value] = await Promise.all([listDepositAccounts(), listInvoicePaymentModes()]);
+	} catch {
+		/* fall through */
+	}
+}
+const rec = reactive({ open: false, inv: null, amount: null, deposit_to: "", date: "", mode_of_payment: "", reference_no: "", saving: false });
+async function openReceive(row) {
+	await ensurePayRefs();
+	Object.assign(rec, {
+		open: true,
+		inv: { name: row.name, customer_name: row.customer_name, outstanding: Number(row.outstanding_amount) || 0 },
+		amount: Number(row.outstanding_amount) || null,
+		deposit_to: depositAccounts.value.find((a) => a.account_type === "Bank")?.name || depositAccounts.value[0]?.name || "",
+		date: new Date().toISOString().slice(0, 10),
+		mode_of_payment: payModes.value[0] || "",
+		reference_no: "",
+		saving: false,
+	});
+}
+async function saveReceive() {
+	const amt = Number(rec.amount) || 0;
+	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt > Number(rec.inv.outstanding) + 0.01) return showToast(`Can't exceed the outstanding ${fmtINR(rec.inv.outstanding)}.`, "error");
+	if (!rec.deposit_to) return showToast("Pick the account to deposit into.", "error");
+	rec.saving = true;
+	try {
+		await recordInvoiceReceipt({ name: rec.inv.name, amount: amt, date: rec.date, mode_of_payment: rec.mode_of_payment || undefined, deposit_to: rec.deposit_to, reference_no: rec.reference_no || undefined });
+		rec.open = false;
+		refreshList();
+		showToast("Payment received.");
+	} catch (err) {
+		showToast(err.message || "Receipt failed", "error");
+	} finally {
+		rec.saving = false;
+	}
 }
 
 // --- record customer advance (on-account receipt) ---
 const adv = reactive({ open: false, customer: "", amount: null, deposit_to: "", date: "", mode_of_payment: "", reference_no: "", saving: false });
 async function openAdvance() {
-	if (!depositAccounts.value.length) {
-		try {
-			[depositAccounts.value, payModes.value] = await Promise.all([listDepositAccounts(), listInvoicePaymentModes()]);
-		} catch {
-			/* fall through */
-		}
-	}
+	await ensurePayRefs();
 	Object.assign(adv, {
 		open: true,
 		customer: "",
@@ -114,60 +148,12 @@ async function saveAdvance() {
 	try {
 		await recordCustomerAdvance({ customer: adv.customer, amount: Number(adv.amount), date: adv.date, deposit_to: adv.deposit_to, mode_of_payment: adv.mode_of_payment || undefined, reference_no: adv.reference_no || undefined });
 		adv.open = false;
-		await load();
+		refreshList();
 		showToast("Advance recorded.");
 	} catch (err) {
 		showToast(err.message || "Failed to record advance", "error");
 	} finally {
 		adv.saving = false;
-	}
-}
-
-// --- receive payment ---
-const rec = reactive({ open: false, inv: null, amount: null, deposit_to: "", date: "", mode_of_payment: "", reference_no: "", saving: false });
-const depositAccounts = ref([]);
-const payModes = ref([]);
-async function openReceive(inv) {
-	if (!depositAccounts.value.length) {
-		try {
-			[depositAccounts.value, payModes.value] = await Promise.all([listDepositAccounts(), listInvoicePaymentModes()]);
-		} catch {
-			/* fall through */
-		}
-	}
-	Object.assign(rec, {
-		open: true,
-		inv,
-		amount: Number(inv.outstanding) || null,
-		deposit_to: depositAccounts.value.find((a) => a.account_type === "Bank")?.name || depositAccounts.value[0]?.name || "",
-		date: new Date().toISOString().slice(0, 10),
-		mode_of_payment: payModes.value[0] || "",
-		reference_no: "",
-		saving: false,
-	});
-}
-async function saveReceive() {
-	const amt = Number(rec.amount) || 0;
-	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
-	if (amt > Number(rec.inv.outstanding) + 0.01) return showToast(`Can't exceed the outstanding ${fmtINR(rec.inv.outstanding)}.`, "error");
-	if (!rec.deposit_to) return showToast("Pick the account to deposit into.", "error");
-	rec.saving = true;
-	try {
-		await recordInvoiceReceipt({
-			name: rec.inv.name,
-			amount: amt,
-			date: rec.date,
-			mode_of_payment: rec.mode_of_payment || undefined,
-			deposit_to: rec.deposit_to,
-			reference_no: rec.reference_no || undefined,
-		});
-		rec.open = false;
-		await load();
-		showToast("Payment received.");
-	} catch (err) {
-		showToast(err.message || "Receipt failed", "error");
-	} finally {
-		rec.saving = false;
 	}
 }
 </script>
@@ -185,53 +171,75 @@ async function saveReceive() {
 			<div class="flex items-center gap-4 text-sm">
 				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Outstanding receivable</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(totalOutstanding) }}</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.outstanding) }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Customer advances</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(advancesTotal) }}</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.advances) }}</div>
 				</div>
 			</div>
 
-			<!-- filters -->
-			<div class="flex items-center gap-2 flex-wrap">
-				<input v-model="search" type="text" placeholder="Search invoice, customer, project…" class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full" />
-				<select v-model="statusFilter" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
-					<option value="">All statuses</option>
-					<option value="Draft">Draft</option>
-					<option value="Unpaid">Unpaid</option>
-					<option value="Partly Paid">Partly Paid</option>
-					<option value="Paid">Paid</option>
-					<option value="Cancelled">Cancelled</option>
-				</select>
-				<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">Clear filters</button>
-				<span class="text-[11px] text-ink-400 ml-auto">{{ rows.length }} invoice{{ rows.length === 1 ? "" : "s" }}</span>
-			</div>
+			<DocTypeListView
+				v-if="activeCompany"
+				:key="listKey"
+				doctype="Sales Invoice"
+				:field-order="['customer_name', 'project', 'posting_date', 'due_date', 'grand_total', 'outstanding_amount', 'status']"
+				:columns="[
+					{ key: 'name', label: 'Invoice' },
+					{ key: 'customer_name', label: 'Customer' },
+					{ key: 'project', label: 'Project' },
+					{ key: 'posting_date', label: 'Date' },
+					{ key: 'due_date', label: 'Due' },
+					{ key: 'aging', label: 'Aging', fields: ['due_date', 'outstanding_amount', 'status'] },
+					{ key: 'grand_total', label: 'Total', align: 'right' },
+					{ key: 'outstanding_amount', label: 'Outstanding', align: 'right' },
+					{ key: 'status', label: 'Status', fields: ['status', 'outstanding_amount'] },
+					{ key: 'actions', label: '', align: 'right' },
+				]"
+				:search-fields="['name', 'customer_name']"
+				:base-filters="baseFilters"
+				:filter-values="filterValues"
+				:filter-field-map="{ status: 'status' }"
+				cache-key="buildsuite-invoice-list"
+				row-key="name"
+				initial-order-by="posting_date desc"
+				search-placeholder="Search invoice, customer…"
+				empty-message="No invoices yet."
+				@row-click="openDetail"
+			>
+				<template #filter-chips>
+					<DeskSelect v-model="statusFilter" class="!w-40">
+						<option value="">Status: Any</option>
+						<option>Draft</option>
+						<option>Unpaid</option>
+						<option>Overdue</option>
+						<option>Partly Paid</option>
+						<option>Paid</option>
+						<option>Cancelled</option>
+					</DeskSelect>
+				</template>
 
-			<section class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-				<table v-if="rows.length" class="w-full text-xs" style="min-width: 760px">
-					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200">
-						<tr><th class="text-left px-3 py-2">Invoice</th><th class="text-left px-3 py-2">Customer</th><th class="text-left px-3 py-2">Project</th><th class="text-left px-3 py-2">Date</th><th class="text-left px-3 py-2">Due</th><th class="text-left px-3 py-2">Aging</th><th class="text-right px-3 py-2">Total</th><th class="text-right px-3 py-2">Outstanding</th><th class="text-left px-3 py-2">Status</th><th class="px-3 py-2"></th></tr>
-					</thead>
-					<tbody>
-						<tr v-for="i in rows" :key="i.name" class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(i)">
-							<td class="px-3 py-2 font-mono text-[11px] text-ink-500">{{ i.name }}</td>
-							<td class="px-3 py-2 text-ink-900">{{ i.customer_name }}</td>
-							<td class="px-3 py-2 text-ink-500">{{ i.project_name || "—" }}</td>
-							<td class="px-3 py-2 text-ink-500 whitespace-nowrap">{{ fmtDate(i.date) }}</td>
-							<td class="px-3 py-2 text-ink-500 whitespace-nowrap">{{ fmtDate(i.due_date) }}</td>
-							<td class="px-3 py-2"><span v-if="aging(i)" class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="aging(i).cls">{{ aging(i).label }}</span><span v-else class="text-ink-300">—</span></td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-900">{{ fmtINR(i.total) }}</td>
-							<td class="px-3 py-2 text-right tabular-nums font-medium" :class="i.outstanding > 0.01 ? 'text-ink-900' : 'text-ink-400'">{{ fmtINR(i.outstanding) }}</td>
-							<td class="px-3 py-2"><StatusBadge :status="i.status" size="xs" /></td>
-							<td class="px-3 py-2 text-right whitespace-nowrap">
-								<button v-if="i.docstatus === 1 && i.outstanding > 0.01" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click.stop="openReceive(i)">Receive</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "No invoices yet." }}</div>
-			</section>
+				<template #cell-name="{ row }"><span class="font-mono text-[11px] text-ink-500">{{ row.name }}</span></template>
+				<template #cell-customer_name="{ row }"><span class="text-ink-900">{{ row.customer_name }}</span></template>
+				<template #cell-project="{ row }"><span class="text-ink-500">{{ row.project || "—" }}</span></template>
+				<template #cell-posting_date="{ row }"><span class="text-ink-500 whitespace-nowrap">{{ fmtDate(row.posting_date) }}</span></template>
+				<template #cell-due_date="{ row }"><span class="text-ink-500 whitespace-nowrap">{{ fmtDate(row.due_date) }}</span></template>
+				<template #cell-aging="{ row }">
+					<span v-if="aging(row)" class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="aging(row).cls">{{ aging(row).label }}</span>
+					<span v-else class="text-ink-300">—</span>
+				</template>
+				<template #cell-grand_total="{ row }"><span class="tabular-nums text-ink-900">{{ fmtINR(row.grand_total) }}</span></template>
+				<template #cell-outstanding_amount="{ row }"><span class="tabular-nums font-medium" :class="Number(row.outstanding_amount) > 0.01 ? 'text-ink-900' : 'text-ink-400'">{{ fmtINR(row.outstanding_amount) }}</span></template>
+				<template #cell-status="{ row }">
+					<div class="flex items-center gap-1.5">
+						<StatusBadge :status="submissionOf(row.status)" size="xs" />
+						<StatusBadge v-if="paymentOf(row.status)" :status="paymentOf(row.status)" size="xs" />
+					</div>
+				</template>
+				<template #cell-actions="{ row }">
+					<button v-if="canReceive(row)" type="button" class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded" @click.stop="openReceive(row)">Receive</button>
+				</template>
+			</DocTypeListView>
 		</div>
 
 		<!-- Receive payment modal -->

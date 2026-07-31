@@ -21,6 +21,7 @@ export const recordInvoiceReceipt = (args) => call("record_receipt", args);
 export const listInvoiceReceipts = (name) => call("list_receipts", { name });
 export const recordCustomerAdvance = (args) => call("record_advance", args);
 export const invoiceAdvancesSummary = () => call("advances_summary", {});
+export const invoiceReceivablesSummary = () => call("receivables_summary", {});
 export const listDepositAccounts = () => call("list_deposit_accounts", {});
 export const listInvoiceTaxTemplates = () => call("list_tax_templates", {});
 export const getInvoiceTaxTemplateRows = (template) => call("get_tax_template_rows", { template });

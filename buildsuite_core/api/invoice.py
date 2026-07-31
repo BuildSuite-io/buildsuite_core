@@ -414,6 +414,25 @@ def record_advance(customer, amount, date=None, deposit_to=None, mode_of_payment
 
 
 @frappe.whitelist()
+def receivables_summary(company=None):
+	"""Header totals for the Invoices panel — total outstanding receivable (submitted, unpaid
+	Sales Invoices) and total unallocated customer advances — for the active company."""
+	company = company or default_company()
+	outstanding = frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(outstanding_amount), 0)
+		FROM `tabSales Invoice`
+		WHERE docstatus = 1 AND company = %(company)s AND outstanding_amount > 0
+		""",
+		{"company": company},
+	)
+	return {
+		"outstanding": flt(outstanding[0][0]) if outstanding else 0,
+		"advances": advances_summary(company)["total"],
+	}
+
+
+@frappe.whitelist()
 def advances_summary(company=None):
 	"""Total unallocated customer advances held for the active (default) company."""
 	company = company or default_company()
