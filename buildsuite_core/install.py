@@ -60,7 +60,9 @@ def backfill_work_order_company():
 def backfill_bill_company():
 	"""Re-anchor DRAFT Subcontractor Bills whose company drifted from their project's — so the
 	Vue tax/account pickers filter to the right company and the PI can post."""
-	_backfill_project_company("Subcontractor Bill", extra_where="and d.docstatus = 0 and d.project is not null")
+	_backfill_project_company(
+		"Subcontractor Bill", extra_where="and d.docstatus = 0 and d.project is not null"
+	)
 
 
 def drop_legacy_task_type_field():
@@ -112,6 +114,7 @@ def seed_master_data():
 
 	seed_employee_accounting_dimension()
 	seed_invoice_terms()
+	seed_finance_accounts()
 
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
@@ -152,6 +155,68 @@ def seed_invoice_terms():
 		).insert(ignore_permissions=True)
 
 
+# Ledger accounts every BuildSuite finance posting depends on. Users never configure these —
+# the generated documents (petty cash, expense reimbursements, subcontractor retention, plant
+# recovery) post to/from them. Seeded per company; "Petty Cash" is handled separately because it
+# is the imprest float the petty-cash setting points at. (name, root_type, account_type, parent).
+# Retention/Reimbursements/Advances carry a BLANK account_type on purpose: the ERPNext "Payable"
+# type forces a party subledger on every line, but these are held against the company, not a
+# party. Plant Recovery is a contra-expense (credited when internal plant is recovered).
+FINANCE_ACCOUNTS = [
+	("Petty Cash Advances", "Asset", "", "Current Assets"),
+	("Reimbursements Payable", "Liability", "", "Current Liabilities"),
+	("Retention Payable", "Liability", "", "Current Liabilities"),
+	("Plant Recovery", "Expense", "", "Expenses"),
+	("Cash", "Asset", "Cash", "Cash In Hand"),
+	("Bank", "Asset", "Bank", "Bank Accounts"),
+]
+
+
+def seed_company_accounts(company):
+	"""Create the BuildSuite ledger accounts a finance posting depends on, for ONE company.
+	Idempotent — reuses accounts a prior pass (or ERPNext's default CoA) already created."""
+	from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+	from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+	resolve_petty_cash_account(company)  # the "Petty Cash" imprest float (Cash In Hand)
+	for account_name, root_type, account_type, parent_hint in FINANCE_ACCOUNTS:
+		_ensure_account(company, account_name, root_type, account_type, parent_hint)
+
+
+def seed_finance_accounts():
+	"""Seed the finance ledger accounts for EVERY company, then point the petty-cash setting at
+	the default company's Petty Cash float. Idempotent; a company that can't be seeded (e.g. a
+	part-configured Chart of Accounts) is logged and skipped so it never breaks migrate."""
+	for company in frappe.get_all("Company", pluck="name"):
+		try:
+			seed_company_accounts(company)
+		except Exception:
+			frappe.log_error(
+				title=f"BuildSuite: could not seed finance accounts for {company}"[:140],
+				message=frappe.get_traceback(),
+			)
+	_seed_default_petty_cash_account()
+
+
+def _seed_default_petty_cash_account():
+	"""Default the configurable Petty Cash Account (BuildSuite Core Settings) to the default
+	company's seeded 'Petty Cash' ledger — so petty cash and expenses have a float to post
+	to/from out of the box. Respects an account an admin has already chosen."""
+	from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+	from buildsuite_core.utils.project import default_company
+
+	company = default_company()
+	if not company:
+		return
+	settings = frappe.get_single("BuildSuite Core Settings")
+	current = settings.default_petty_cash_account
+	if current and frappe.db.exists("Account", current):
+		return
+	settings.default_petty_cash_account = resolve_petty_cash_account(company)
+	settings.flags.ignore_permissions = True
+	settings.save()
+
+
 def seed_employee_accounting_dimension():
 	"""Register an 'Employee' Accounting Dimension.
 
@@ -176,6 +241,7 @@ def create_item_group():
 	if frappe.db.get_value("Item Group", "Asset"):
 		frappe.rename_doc("Item Group", "Asset", "Assets", force=1, merge=0)
 	frappe.db.commit()
+
 
 def before_migrate():
 	delete_custom_fields(CUSTOM_FIELD)

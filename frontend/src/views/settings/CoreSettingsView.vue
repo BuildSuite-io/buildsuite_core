@@ -9,7 +9,7 @@
 import { ref, watch, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
-import { getCoreSettings, setProjectNaming } from "@/data/coreSettingsApi";
+import { getCoreSettings, setProjectNaming, setPettyCashAccount } from "@/data/coreSettingsApi";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -32,11 +32,18 @@ const PROJECT_ID_MODE = "Project ID";
 const projectNaming = ref(PROJECT_ID_MODE);
 const namingModes = ref([PROJECT_ID_MODE, "Name Series"]);
 
+// Petty Cash Account — the configurable Cash/Bank float that petty cash and expenses post
+// to/from (server-persisted on BuildSuite Core Settings). Loaded like project naming.
+const pettyCashAccount = ref("");
+const pettyCashOptions = ref([]);
+
 onMounted(async () => {
 	try {
 		const res = await getCoreSettings();
 		projectNaming.value = res.project_naming || PROJECT_ID_MODE;
 		namingModes.value = res.project_naming_modes || namingModes.value;
+		pettyCashAccount.value = res.petty_cash_account || "";
+		pettyCashOptions.value = res.petty_cash_options || [];
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -47,13 +54,14 @@ watch(
 	(s) => {
 		if (s) form.value = JSON.parse(JSON.stringify(s));
 	},
-	{ immediate: true, deep: true },
+	{ immediate: true, deep: true }
 );
 
 function startEdit() {
 	form.value = {
 		...JSON.parse(JSON.stringify(store.coreSettings)),
 		naming_mode: projectNaming.value,
+		petty_cash_account: pettyCashAccount.value,
 	};
 	editing.value = true;
 }
@@ -69,6 +77,10 @@ async function saveEdit() {
 		if (form.value.naming_mode && form.value.naming_mode !== projectNaming.value) {
 			await setProjectNaming(form.value.naming_mode);
 			projectNaming.value = form.value.naming_mode;
+		}
+		if (form.value.petty_cash_account !== pettyCashAccount.value) {
+			const res = await setPettyCashAccount(form.value.petty_cash_account || "");
+			pettyCashAccount.value = res.petty_cash_account || "";
 		}
 		editing.value = false;
 	} catch (err) {
@@ -178,6 +190,23 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 						</div>
 						<DeskSelect v-else v-model="form.naming_mode">
 							<option v-for="m in namingModes" :key="m" :value="m">{{ m }}</option>
+						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection title="Accounting">
+					<DeskField
+						label="Petty Cash Account"
+						hint="The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded 'Petty Cash' account; change it to post to a different float."
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ pettyCashAccount || "—" }}
+						</div>
+						<DeskSelect v-else v-model="form.petty_cash_account">
+							<option value="">— None —</option>
+							<option v-for="a in pettyCashOptions" :key="a.name" :value="a.name">
+								{{ a.name }} ({{ a.account_type }})
+							</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>

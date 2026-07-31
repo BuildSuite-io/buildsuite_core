@@ -32,14 +32,57 @@ def _project_series_options():
 	return []
 
 
+def _petty_cash_options(company):
+	"""Cash / Bank ledger accounts of the default company — the candidates the admin can choose
+	as the petty-cash float that petty cash and expenses post to/from."""
+	if not company:
+		return []
+	return frappe.get_all(
+		"Account",
+		filters={"company": company, "is_group": 0, "account_type": ["in", ["Cash", "Bank"]]},
+		fields=["name", "account_type"],
+		order_by="account_type, name",
+	)
+
+
 @frappe.whitelist()
 def get_core_settings():
 	"""The org-wide settings for the admin Settings screen."""
 	_require_admin()
+	from buildsuite_core.utils.project import default_company
+
+	settings = frappe.get_single(SETTINGS)
+	company = default_company()
 	return {
 		"project_naming": project_naming_mode(),
 		"project_naming_modes": NAMING_MODES,
+		"petty_cash_account": settings.default_petty_cash_account,
+		"petty_cash_options": _petty_cash_options(company),
 	}
+
+
+@frappe.whitelist()
+def set_petty_cash_account(account: str | None = None):
+	"""Set the configurable Petty Cash Account — the Cash/Bank float petty cash and expenses
+	post to/from. Must be a ledger Cash/Bank account of the default company."""
+	_require_admin()
+	from buildsuite_core.utils.project import default_company
+
+	account = (account or "").strip() or None
+	if account:
+		acc = frappe.db.get_value("Account", account, ["is_group", "company", "account_type"], as_dict=True)
+		if not acc or acc.is_group:
+			frappe.throw(_("Choose a ledger (non-group) account."))
+		company = default_company()
+		if company and acc.company != company:
+			frappe.throw(_("The petty cash account must belong to {0}.").format(company))
+		if acc.account_type not in ("Cash", "Bank"):
+			frappe.throw(_("The petty cash account must be a Cash or Bank account."))
+	doc = frappe.get_single(SETTINGS)
+	doc.default_petty_cash_account = account
+	doc.flags.ignore_permissions = True
+	doc.save()
+	return {"petty_cash_account": doc.default_petty_cash_account}
 
 
 @frappe.whitelist()
