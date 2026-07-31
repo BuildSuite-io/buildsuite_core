@@ -53,7 +53,8 @@ async function billCall(method, args) {
 }
 
 export const getBill = (name) => billCall("get_bill", { name });
-export const getWoBillContext = (workOrder) => billCall("get_wo_bill_context", { work_order: workOrder });
+export const getWoBillContext = (workOrder) =>
+	billCall("get_wo_bill_context", { work_order: workOrder });
 export const saveBill = (payload) => billCall("save_bill", { payload: JSON.stringify(payload) });
 export const submitBill = (name) => billCall("submit_bill", { name });
 export const cancelBill = (name) => billCall("cancel_bill", { name });
@@ -67,3 +68,6 @@ export const makeBillPaymentEntry = (name) => billCall("make_payment_entry", { n
 // Bank/Cash accounts a bill is paid FROM (default company); Modes of Payment for the modal.
 export const listBillPayAccounts = () => billCall("list_pay_accounts", {});
 export const listPaymentModes = () => billCall("list_payment_modes", {});
+export const availableBillAdvances = (name) => billCall("available_advances", { name });
+export const linkBillAdvance = (args) => billCall("link_advance", args);
+export const unlinkBillAdvance = (args) => billCall("unlink_advance", args);

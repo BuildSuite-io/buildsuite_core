@@ -28,10 +28,30 @@ def _effective_company(doc):
 	return doc.company
 
 
+def _linked_advances_for_bill(doc):
+	"""Advances adjusted against this bill — read through its generated Purchase Invoice, reusing
+	the supplier-bill logic (the subcontractor is the PI's supplier)."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	if not doc.purchase_invoice or not frappe.db.exists("Purchase Invoice", doc.purchase_invoice):
+		return []
+	pi = frappe.get_doc("Purchase Invoice", doc.purchase_invoice)
+	return _sb._linked_advances(pi)
+
+
 def _serialize(doc):
+	advances = _linked_advances_for_bill(doc)
+	adjusted = sum(a["allocated"] for a in advances)
+	pay = _payment_summary(doc)
+	# Advance adjustment settles the payable but is not a cash payment — split it out of "Paid".
+	pay["advance_adjusted"] = adjusted
+	if doc.docstatus == 1:
+		pay["paid"] = max(flt(pay["paid"]) - adjusted, 0)
 	return {
 		"name": doc.name,
 		"is_direct": doc.is_direct,
+		"advance_adjusted": adjusted,
+		"advances": advances,
 		"work_order": doc.work_order,
 		"ra_no": doc.ra_no,
 		"subcontractor": doc.subcontractor,
@@ -94,7 +114,7 @@ def _serialize(doc):
 			}
 			for t in doc.taxes
 		],
-		"payment": _payment_summary(doc),
+		"payment": pay,
 		"actions": _available_actions(doc),
 	}
 
@@ -116,7 +136,10 @@ def _payment_summary(doc):
 	if not doc.purchase_invoice or not frappe.db.exists("Purchase Invoice", doc.purchase_invoice):
 		return {"invoiced": 0, "paid": 0, "outstanding": 0, "status": "Unpaid"}
 	pi = frappe.db.get_value(
-		"Purchase Invoice", doc.purchase_invoice, ["grand_total", "outstanding_amount", "status"], as_dict=True
+		"Purchase Invoice",
+		doc.purchase_invoice,
+		["grand_total", "outstanding_amount", "status"],
+		as_dict=True,
 	)
 	invoiced = flt(pi.grand_total)
 	outstanding = flt(pi.outstanding_amount)
@@ -172,9 +195,7 @@ def get_wo_bill_context(work_order: str):
 				"this_period_amount": tpq * flt(row.rate),
 			}
 		)
-	existing = frappe.get_all(
-		BILL, filters={"work_order": work_order, "docstatus": ["<", 2]}, pluck="ra_no"
-	)
+	existing = frappe.get_all(BILL, filters={"work_order": work_order, "docstatus": ["<", 2]}, pluck="ra_no")
 	return {
 		"work_order": wo.name,
 		"subcontractor": wo.subcontractor,
@@ -252,7 +273,9 @@ def save_bill(payload):
 		doc.retention_percent = flt(data.get("retention_percent"))
 		doc.set("lines", [])
 		for row in data.get("lines") or []:
-			amount = flt(row.get("amount") if row.get("amount") is not None else row.get("this_period_amount"))
+			amount = flt(
+				row.get("amount") if row.get("amount") is not None else row.get("this_period_amount")
+			)
 			if not (row.get("scope") or "").strip() and amount <= 0:
 				continue
 			doc.append(
@@ -410,27 +433,54 @@ def list_payment_modes():
 
 @frappe.whitelist()
 def list_payments(name: str):
-	"""Payment Entries allocated to this bill's PI."""
-	bill = frappe.db.get_value(BILL, name, "purchase_invoice")
-	if not bill:
+	"""Cash payments allocated to this bill's PI — advances are excluded (they show under the
+	bill's Advance Payments instead), reusing the supplier-bill logic."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	pi = frappe.db.get_value(BILL, name, "purchase_invoice")
+	if not pi:
 		return []
-	refs = frappe.get_all(
-		"Payment Entry Reference",
-		filters={"reference_doctype": "Purchase Invoice", "reference_name": bill, "docstatus": 1},
-		fields=["parent", "allocated_amount"],
-	)
-	out = []
-	for r in refs:
-		pe = frappe.db.get_value(
-			"Payment Entry", r.parent, ["posting_date", "mode_of_payment", "reference_no"], as_dict=True
-		)
-		out.append(
-			{
-				"payment_entry": r.parent,
-				"date": str(pe.posting_date) if pe.posting_date else None,
-				"mode_of_payment": pe.mode_of_payment,
-				"reference_no": pe.reference_no,
-				"amount": flt(r.allocated_amount),
-			}
-		)
-	return out
+	return _sb.list_payments(pi)
+
+
+# --------------------------------------------------------------------------- #
+# Adjust a subcontractor advance against the bill — reconciled against the bill's generated
+# Purchase Invoice (the subcontractor is the PI's supplier). Available only after submit, when
+# the PI exists; delegates to the supplier-bill advance logic.
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def available_advances(name: str):
+	"""On-account advances paid to this subcontractor that can be adjusted against the bill."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("read")
+	if not bill.purchase_invoice or not frappe.db.exists("Purchase Invoice", bill.purchase_invoice):
+		return []
+	return _sb.available_advances(bill.purchase_invoice)
+
+
+@frappe.whitelist()
+def link_advance(name: str, payment_entry: str, amount):
+	"""Adjust `amount` of a subcontractor advance against this bill, reducing its outstanding."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("write")
+	if not bill.purchase_invoice:
+		frappe.throw(_("Submit the bill first — advances link to its Purchase Invoice."))
+	_sb.link_advance(bill.purchase_invoice, payment_entry, amount)
+	return {"payment": _serialize(frappe.get_doc(BILL, name))["payment"]}
+
+
+@frappe.whitelist()
+def unlink_advance(name: str, payment_entry: str):
+	"""Reverse an advance adjustment on this bill (native Unreconcile Payment)."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("write")
+	if not bill.purchase_invoice:
+		frappe.throw(_("This bill has no Purchase Invoice."))
+	_sb.unlink_advance(bill.purchase_invoice, payment_entry)
+	return {"payment": _serialize(frappe.get_doc(BILL, name))["payment"]}
