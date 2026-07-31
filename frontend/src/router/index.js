@@ -494,6 +494,23 @@ const routes = [
 				props: true,
 			},
 			{
+				path: "project-finance/supplier-bills/new",
+				name: "finance-supplier-bill-new",
+				component: () => import("@/views/finance/FinanceSupplierBillFormView.vue"),
+			},
+			{
+				path: "project-finance/supplier-bills/:id/edit",
+				name: "finance-supplier-bill-edit",
+				component: () => import("@/views/finance/FinanceSupplierBillFormView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/supplier-bills/:id",
+				name: "finance-supplier-bill",
+				component: () => import("@/views/finance/FinanceSupplierBillDetailView.vue"),
+				props: true,
+			},
+			{
 				path: "project-finance/report/:slug",
 				name: "finance-report",
 				component: () => import("@/views/finance/FinanceReportPageView.vue"),
