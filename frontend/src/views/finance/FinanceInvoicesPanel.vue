@@ -169,14 +169,8 @@ async function saveAdvance() {
 
 		<div class="space-y-4">
 			<div class="flex items-center gap-4 text-sm">
-				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Outstanding receivable</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.outstanding) }}</div>
-				</div>
-				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Customer advances</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.advances) }}</div>
-				</div>
+				<div><span class="text-ink-500">Outstanding</span> <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(summary.outstanding) }}</span></div>
+				<div v-if="summary.advances > 0"><span class="text-ink-500">Advances held</span> <span class="font-semibold text-info-700 tabular-nums">{{ fmtINR(summary.advances) }}</span></div>
 			</div>
 
 			<DocTypeListView
