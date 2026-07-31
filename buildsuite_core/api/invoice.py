@@ -470,10 +470,27 @@ def get_tax_template_rows(template):
 	]
 
 
+def _html_to_text(html):
+	"""Render a Terms & Conditions body (a Text Editor / HTML field) as friendly plain text
+	for the invoice's terms box — block tags become line breaks, remaining tags are stripped.
+	Plain text (no markup) is returned unchanged."""
+	if not html or "<" not in html:
+		return html or ""
+	import html as _html
+	import re
+
+	text = re.sub(r"</(p|div|li|h[1-6]|tr)>", "\n", html, flags=re.I)
+	text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+	text = re.sub(r"<li[^>]*>", "• ", text, flags=re.I)
+	text = re.sub(r"<[^>]+>", "", text)
+	return re.sub(r"\n{3,}", "\n\n", _html.unescape(text)).strip()
+
+
 @frappe.whitelist()
 def get_terms(name):
-	"""The body text of a Terms and Conditions template (imported into the invoice terms box)."""
-	return {"terms": frappe.db.get_value("Terms and Conditions", name, "terms") or ""}
+	"""The body of a Terms and Conditions template as plain text (imported into the invoice
+	terms box). ERPNext stores it as HTML, which is unfriendly to edit — so convert it."""
+	return {"terms": _html_to_text(frappe.db.get_value("Terms and Conditions", name, "terms"))}
 
 
 @frappe.whitelist()

@@ -151,6 +151,16 @@ class TestInvoice(BuildSuiteTestCase):
 			),
 		)
 
+	def test_seed_invoice_terms_and_plain_text(self):
+		from buildsuite_core.api.invoice import _html_to_text
+		from buildsuite_core.install import seed_invoice_terms
+
+		seed_invoice_terms()  # idempotent
+		self.assertTrue(frappe.db.exists("Terms and Conditions", "Standard Sales Invoice"))
+		# HTML terms render as friendly plain text (block tags → newlines, tags stripped).
+		self.assertEqual(_html_to_text("<p>A</p><p>B</p>"), "A\nB")
+		self.assertEqual(_html_to_text("1. Plain\n2. Text"), "1. Plain\n2. Text")
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 
