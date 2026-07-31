@@ -16,7 +16,6 @@ class Machinery(Document):
 
 		asset: DF.Link | None
 		company: DF.Link
-		machinery_code: DF.Data
 		machinery_name: DF.Data
 		machinery_type: DF.Link
 		owner_vendor: DF.Data | None

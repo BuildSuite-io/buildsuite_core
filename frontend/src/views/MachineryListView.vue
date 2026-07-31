@@ -15,7 +15,6 @@ const router = useRouter();
 const machRes = useDocTypeList("Machinery", {
 	fields: [
 		"name",
-		"machinery_code",
 		"machinery_name",
 		"machinery_type",
 		"ownership",
@@ -37,7 +36,6 @@ const rows = computed(() => {
 	if (q)
 		data = data.filter(
 			(m) =>
-				(m.machinery_code || "").toLowerCase().includes(q) ||
 				(m.machinery_name || "").toLowerCase().includes(q) ||
 				(m.machinery_type || "").toLowerCase().includes(q),
 		);
@@ -45,7 +43,6 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "machinery_code", label: "Code" },
 	{ key: "machinery_name", label: "Name" },
 	{ key: "machinery_type", label: "Type" },
 	{ key: "ownership", label: "Ownership" },
@@ -76,16 +73,13 @@ function onRowClick(row) {
 			:rows="rows"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search code, name, type…"
+			search-placeholder="Search name, type…"
 			@row-click="onRowClick"
 		>
-			<template #cell-machinery_code="{ row }">
-				<DeskLink :to="`/machinery/${row.id}`" class="font-mono text-xs" @click.stop
-					>{{ row.machinery_code }}</DeskLink
-				>
-			</template>
 			<template #cell-machinery_name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.machinery_name }}</span>
+				<DeskLink :to="`/machinery/${row.id}`" class="font-medium" @click.stop
+					>{{ row.machinery_name }}</DeskLink
+				>
 			</template>
 			<template #cell-machinery_type="{ row }">
 				<span
