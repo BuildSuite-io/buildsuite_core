@@ -94,6 +94,39 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertAlmostEqual(flt(pe.unallocated_amount), 15000, places=2)
 		self.assertAlmostEqual(advances_summary(company=self.company)["total"] - before, 15000, places=2)
 
+	def test_taxes_and_discount(self):
+		from buildsuite_core.api.invoice import get_invoice, save_invoice
+
+		cust = self._customer()
+		income_tax = frappe.db.get_value("Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name")
+		if not income_tax:
+			from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+			income_tax = _ensure_account(self.company, "Output Tax", "Liability", "Tax", "Duties and Taxes")
+		res = save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "Work", "qty": 1, "rate": 100000}],
+					"taxes": [{"charge_type": "On Net Total", "account_head": income_tax, "rate": 10}],
+					"additional_discount_on": "Net Total",
+					"additional_discount_percentage": 5,
+					"terms": "Payment within 30 days.",
+				}
+			)
+		)
+		si = frappe.get_doc("Sales Invoice", res["name"])
+		# 100000 − 5% = 95000 net; +10% tax = 9500 → 104500.
+		self.assertAlmostEqual(flt(si.grand_total), 104500, places=2)
+		self.assertEqual(len(si.taxes), 1)
+		self.assertEqual(si.apply_discount_on, "Net Total")
+		data = get_invoice(res["name"])
+		self.assertEqual(data["additional_discount_percentage"], 5)
+		self.assertEqual(data["terms"], "Payment within 30 days.")
+		self.assertEqual(len(data["taxes"]), 1)
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 

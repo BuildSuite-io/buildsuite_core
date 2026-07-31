@@ -23,4 +23,6 @@ export const recordCustomerAdvance = (args) => call("record_advance", args);
 export const invoiceAdvancesSummary = () => call("advances_summary", {});
 export const listDepositAccounts = () => call("list_deposit_accounts", {});
 export const listInvoiceTaxTemplates = () => call("list_tax_templates", {});
+export const getInvoiceTaxTemplateRows = (template) => call("get_tax_template_rows", { template });
+export const getInvoiceTerms = (name) => call("get_terms", { name });
 export const listInvoicePaymentModes = () => call("list_payment_modes", {});
