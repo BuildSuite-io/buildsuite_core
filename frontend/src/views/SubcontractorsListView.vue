@@ -28,16 +28,27 @@ const subsRes = useDocTypeList("Supplier", {
 		})),
 });
 
+// Trade filter — the Construction Trade master drives the dropdown.
+const tradesRes = useDocTypeList("Construction Trade", {
+	fields: ["name"],
+	orderBy: "name asc",
+	pageLength: 0,
+	cache: "buildsuite-construction-trades",
+});
+const tradeOptions = computed(() => (tradesRes.data || []).map((t) => t.name));
+const tradeFilter = ref("");
+
 const search = ref("");
 const rows = computed(() => {
 	let data = subsRes.data || [];
+	if (tradeFilter.value) data = data.filter((s) => s.trade === tradeFilter.value);
 	const q = search.value.trim().toLowerCase();
 	if (q)
 		data = data.filter(
 			(s) =>
 				(s.name || "").toLowerCase().includes(q) ||
 				(s.trade || "").toLowerCase().includes(q) ||
-				(s.tax_id || "").toLowerCase().includes(q),
+				(s.tax_id || "").toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -64,6 +75,14 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Subcontractors" :breadcrumbs="breadcrumbs">
 		<template #actions>
+			<select
+				v-model="tradeFilter"
+				class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white text-ink-700 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+				title="Filter by trade"
+			>
+				<option value="">All trades</option>
+				<option v-for="t in tradeOptions" :key="t" :value="t">{{ t }}</option>
+			</select>
 			<RouterLink to="/subcontractors/new" class="desk-save-btn">+ New</RouterLink>
 		</template>
 
