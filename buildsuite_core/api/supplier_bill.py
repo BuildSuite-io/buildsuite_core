@@ -14,6 +14,7 @@ from frappe.utils import flt, nowdate
 from buildsuite_core.utils.project import default_company
 
 PI = "Purchase Invoice"
+PE = "Payment Entry"
 SERVICE_ITEM = "Supplier Charges"
 SERVICE_ITEM_GROUP = "Services"
 
@@ -81,12 +82,78 @@ def _payment_summary(name):
 	return {"invoiced": invoiced, "paid": paid, "outstanding": outstanding, "status": status}
 
 
+def _ref_is_advance(pe_type, paid_amount, unallocated, allocated):
+	"""True when a Payment Entry linked to a bill is a supplier ADVANCE (on-account money adjusted
+	against the bill) rather than a plain payment raised for that one bill. A payment (via
+	record_payment) is a Pay fully consumed 1:1 by the bill; an advance still carries unallocated
+	money or funds more than this allocation."""
+	if pe_type != "Pay":
+		return False
+	return flt(unallocated) > 0.01 or flt(paid_amount) - flt(allocated) > 0.01
+
+
+def _linked_advances(doc):
+	"""Advances adjusted against this bill, one entry per Payment Entry with its TOTAL applied.
+
+	Draft → the native `advances` table. Submitted → the advance Payment Entry's references to
+	this bill, SUMMED per Payment Entry (a partial advance may be reconciled in several steps).
+	A Payment Entry counts as an advance when it was set on the bill before submit (its
+	advances-table row is retained after submit) or when it is an on-account payment reconciled
+	after submit — a plain cash payment is neither."""
+	if doc.docstatus == 0:
+		return [
+			{"payment_entry": a.reference_name, "allocated": flt(a.allocated_amount)}
+			for a in doc.advances
+			if a.reference_type == PE and flt(a.allocated_amount) > 0
+		]
+
+	refs = frappe.get_all(
+		"Payment Entry Reference",
+		filters={"reference_doctype": PI, "reference_name": doc.name, "docstatus": 1},
+		fields=["parent", "allocated_amount"],
+		order_by="creation asc",
+	)
+	totals, order = {}, []
+	for r in refs:
+		if r.parent not in totals:
+			totals[r.parent] = 0
+			order.append(r.parent)
+		totals[r.parent] += flt(r.allocated_amount)
+
+	table_pes = {
+		a.reference_name for a in doc.advances if a.reference_type == PE and flt(a.allocated_amount) > 0
+	}
+	out = []
+	for pe_name in order:
+		total = totals[pe_name]
+		is_advance = pe_name in table_pes
+		if not is_advance:
+			pe = frappe.db.get_value(
+				PE, pe_name, ["payment_type", "paid_amount", "unallocated_amount"], as_dict=True
+			)
+			is_advance = bool(pe) and _ref_is_advance(
+				pe.payment_type, pe.paid_amount, pe.unallocated_amount, total
+			)
+		if is_advance:
+			out.append({"payment_entry": pe_name, "allocated": total})
+	return out
+
+
 def _serialize(doc):
+	advances = _linked_advances(doc)
+	adjusted = sum(a["allocated"] for a in advances)
+	pay = _payment_summary(doc.name)
+	# Advance adjustment settles the payable but is not a cash payment — split it out of "Paid"
+	# so the totals read the way the prototype shows them.
+	pay["advance_adjusted"] = adjusted
+	if doc.docstatus == 1:
+		pay["paid"] = max(flt(pay["paid"]) - adjusted, 0)
 	return {
 		"name": doc.name,
 		"kind": "supplier",
 		"supplier": doc.supplier,
 		"supplier_name": doc.supplier_name,
+		"supplier_gstin": frappe.db.get_value("Supplier", doc.supplier, "tax_id") if doc.supplier else None,
 		"project": doc.project,
 		"project_name": frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None,
 		"company": doc.company,
@@ -104,15 +171,23 @@ def _serialize(doc):
 		"net_total": doc.net_total,
 		"total_taxes_and_charges": doc.total_taxes_and_charges,
 		"grand_total": doc.grand_total,
+		"advance_adjusted": adjusted,
+		"advances": advances,
 		"items": [
 			{"description": r.description, "qty": r.qty, "rate": r.rate, "amount": r.amount}
 			for r in doc.items
 		],
 		"taxes": [
-			{"charge_type": t.charge_type, "account_head": t.account_head, "description": t.description, "rate": t.rate, "tax_amount": t.tax_amount}
+			{
+				"charge_type": t.charge_type,
+				"account_head": t.account_head,
+				"description": t.description,
+				"rate": t.rate,
+				"tax_amount": t.tax_amount,
+			}
 			for t in doc.taxes
 		],
-		"payment": _payment_summary(doc.name),
+		"payment": pay,
 	}
 
 
@@ -142,7 +217,18 @@ def list_payables(company=None):
 	for pi in frappe.get_all(
 		PI,
 		filters=pi_filters,
-		fields=["name", "supplier", "supplier_name", "project", "posting_date", "due_date", "grand_total", "outstanding_amount", "status", "docstatus"],
+		fields=[
+			"name",
+			"supplier",
+			"supplier_name",
+			"project",
+			"posting_date",
+			"due_date",
+			"grand_total",
+			"outstanding_amount",
+			"status",
+			"docstatus",
+		],
 		order_by="posting_date desc, creation desc",
 	):
 		rows.append(
@@ -170,7 +256,9 @@ def list_payables(company=None):
 		grand = flt(sb.net_payable)
 		outstanding = grand
 		if sb.purchase_invoice and frappe.db.exists(PI, sb.purchase_invoice):
-			pi = frappe.db.get_value(PI, sb.purchase_invoice, ["grand_total", "outstanding_amount"], as_dict=True)
+			pi = frappe.db.get_value(
+				PI, sb.purchase_invoice, ["grand_total", "outstanding_amount"], as_dict=True
+			)
 			grand = flt(pi.grand_total)
 			outstanding = flt(pi.outstanding_amount)
 		rows.append(
@@ -395,6 +483,10 @@ def record_payment(name, amount=None, date=None, mode_of_payment=None, pay_from=
 
 @frappe.whitelist()
 def list_payments(name):
+	"""Cash payments allocated to this bill — plain Payment Entries only. Adjusted supplier
+	advances are excluded here; they show under the bill's Advance Payments instead."""
+	doc = frappe.get_doc(PI, name)
+	advance_pes = {a["payment_entry"] for a in _linked_advances(doc)}
 	refs = frappe.get_all(
 		"Payment Entry Reference",
 		filters={"reference_doctype": PI, "reference_name": name, "docstatus": 1},
@@ -402,9 +494,13 @@ def list_payments(name):
 	)
 	out = []
 	for r in refs:
+		if r.parent in advance_pes:
+			continue
 		pe = frappe.db.get_value(
-			"Payment Entry", r.parent, ["posting_date", "mode_of_payment", "reference_no"], as_dict=True
+			PE, r.parent, ["posting_date", "mode_of_payment", "reference_no"], as_dict=True
 		)
+		if not pe:
+			continue
 		out.append(
 			{
 				"payment_entry": r.parent,
@@ -462,6 +558,194 @@ def record_advance(supplier, amount, date=None, pay_from=None, mode_of_payment=N
 
 
 # --------------------------------------------------------------------------- #
+# Adjust a supplier advance against a bill (ERPNext-native)
+#   Draft     → the Purchase Invoice `advances` child table (reconciles on submit).
+#   Submitted → Payment Reconciliation (link) / Unreconcile Payment (unlink).
+# --------------------------------------------------------------------------- #
+def _payable_for(supplier, company):
+	from erpnext.accounts.party import get_party_account
+
+	return get_party_account("Supplier", supplier, company)
+
+
+def _draft_committed(pe_names):
+	"""How much of each Payment Entry is already earmarked on DRAFT bills' advances tables. A
+	draft advance does not reduce the Payment Entry's `unallocated_amount`, so we net it off
+	ourselves — otherwise an advance already linked on a draft keeps showing as fully available
+	and can be linked again and again."""
+	if not pe_names:
+		return {}
+	rows = frappe.get_all(
+		"Purchase Invoice Advance",
+		filters={"reference_type": PE, "reference_name": ["in", list(pe_names)], "docstatus": 0},
+		fields=["reference_name", "allocated_amount"],
+	)
+	out = {}
+	for r in rows:
+		out[r.reference_name] = out.get(r.reference_name, 0) + flt(r.allocated_amount)
+	return out
+
+
+@frappe.whitelist()
+def available_advances(name):
+	"""The bill supplier's on-account advances that can still be adjusted against this bill,
+	oldest first — the Payment Entry's unallocated balance net of anything already earmarked on
+	any draft bill (including this one)."""
+	pi = frappe.get_doc(PI, name)
+	pi.check_permission("read")
+	rows = frappe.get_all(
+		PE,
+		filters={
+			"docstatus": 1,
+			"payment_type": "Pay",
+			"party_type": "Supplier",
+			"party": pi.supplier,
+			"company": pi.company,
+			"unallocated_amount": [">", 0.01],
+		},
+		fields=["name", "posting_date", "unallocated_amount", "mode_of_payment", "reference_no", "paid_from"],
+		order_by="posting_date asc, creation asc",
+	)
+	committed = _draft_committed([r.name for r in rows])
+	out = []
+	for r in rows:
+		remaining = flt(r.unallocated_amount) - flt(committed.get(r.name, 0))
+		if remaining <= 0.01:
+			continue
+		out.append(
+			{
+				"payment_entry": r.name,
+				"date": str(r.posting_date) if r.posting_date else None,
+				"unallocated": remaining,
+				"mode_of_payment": r.mode_of_payment,
+				"reference_no": r.reference_no,
+				"pay_from": r.paid_from,
+			}
+		)
+	return out
+
+
+def _reconcile_advance(pi, pe, amount):
+	"""Allocate `amount` of an unallocated advance Payment Entry against a submitted bill via the
+	native Payment Reconciliation tool (honours a partial allocation)."""
+	pr = frappe.new_doc("Payment Reconciliation")
+	pr.company = pi.company
+	pr.party_type = "Supplier"
+	pr.party = pi.supplier
+	pr.receivable_payable_account = _payable_for(pi.supplier, pi.company)
+	pr.get_unreconciled_entries()
+	inv_d = [i.as_dict() for i in pr.invoices if i.invoice_number == pi.name]
+	pay_d = [p.as_dict() for p in pr.payments if p.reference_name == pe.name]
+	if not inv_d or not pay_d:
+		frappe.throw(_("Could not find the advance or the bill among unreconciled entries."))
+	pr.allocate_entries({"invoices": inv_d, "payments": pay_d})
+	matched = False
+	for a in pr.allocation:
+		if a.reference_name == pe.name and a.invoice_number == pi.name:
+			a.allocated_amount = amount
+			matched = True
+		else:
+			a.allocated_amount = 0
+	pr.set("allocation", [a for a in pr.allocation if flt(a.allocated_amount) > 0])
+	if not matched or not pr.allocation:
+		frappe.throw(_("Allocation could not be prepared."))
+	pr.reconcile()
+
+
+@frappe.whitelist()
+def link_advance(name, payment_entry, amount):
+	"""Adjust `amount` of a supplier advance against this bill, reducing its outstanding."""
+	pi = frappe.get_doc(PI, name)
+	pi.check_permission("write")
+	amount = flt(amount)
+	if amount <= 0:
+		frappe.throw(_("Enter an allocation greater than zero."))
+
+	pe = frappe.get_doc(PE, payment_entry)
+	if pe.docstatus != 1 or pe.payment_type != "Pay" or pe.party != pi.supplier:
+		frappe.throw(_("{0} is not an advance to this supplier.").format(payment_entry))
+	available = flt(pe.unallocated_amount)
+	if amount > available + 0.01:
+		frappe.throw(_("Only {0} is unadjusted on {1}.").format(available, payment_entry))
+
+	if pi.docstatus == 0:
+		existing = next(
+			(a for a in pi.advances if a.reference_type == PE and a.reference_name == payment_entry), None
+		)
+		prior = flt(existing.allocated_amount) if existing else 0
+		other_rows = sum(flt(a.allocated_amount) for a in pi.advances if a is not existing)
+		committed_elsewhere = flt(_draft_committed([payment_entry]).get(payment_entry, 0)) - prior
+		pe_room = available - committed_elsewhere - prior
+		bill_room = flt(pi.grand_total) - other_rows - prior
+		room = min(pe_room, bill_room)
+		if room <= 0.01:
+			frappe.throw(_("This advance is already fully adjusted against the bill."))
+		if amount > room + 0.01:
+			frappe.throw(
+				_("At most {0} more of {1} can be adjusted against this bill.").format(room, payment_entry)
+			)
+		if existing:
+			existing.advance_amount = available
+			existing.allocated_amount = prior + amount
+		else:
+			pi.append(
+				"advances",
+				{
+					"reference_type": PE,
+					"reference_name": payment_entry,
+					"advance_amount": available,
+					"allocated_amount": amount,
+					"remarks": pe.remarks,
+				},
+			)
+		pi.flags.ignore_permissions = True
+		pi.save()
+	elif pi.docstatus == 1:
+		if flt(pi.outstanding_amount) <= 0.01:
+			frappe.throw(_("This bill is already settled."))
+		_reconcile_advance(pi, pe, min(amount, flt(pi.outstanding_amount)))
+	else:
+		frappe.throw(_("A cancelled bill cannot take advances."))
+	return {"payment": _payment_summary(name)}
+
+
+@frappe.whitelist()
+def unlink_advance(name, payment_entry):
+	"""Reverse an advance adjustment — remove the draft `advances` row, or unreconcile the
+	Payment Entry from a submitted bill (native Unreconcile Payment)."""
+	pi = frappe.get_doc(PI, name)
+	pi.check_permission("write")
+	if pi.docstatus == 0:
+		pi.set(
+			"advances",
+			[a for a in pi.advances if not (a.reference_type == PE and a.reference_name == payment_entry)],
+		)
+		pi.flags.ignore_permissions = True
+		pi.save()
+	elif pi.docstatus == 1:
+		from erpnext.accounts.doctype.unreconcile_payment.unreconcile_payment import (
+			create_unreconcile_doc_for_selection,
+		)
+
+		create_unreconcile_doc_for_selection(
+			frappe.as_json(
+				[
+					{
+						"company": pi.company,
+						"voucher_type": PE,
+						"voucher_no": payment_entry,
+						"against_voucher_type": PI,
+						"against_voucher_no": pi.name,
+					}
+				]
+			)
+		)
+	else:
+		frappe.throw(_("Nothing to unlink on a cancelled bill."))
+	return {"payment": _payment_summary(name)}
+
+
+# --------------------------------------------------------------------------- #
 # Pickers
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
@@ -490,7 +774,12 @@ def list_tax_templates(company=None):
 def get_tax_template_rows(template):
 	doc = frappe.get_doc("Purchase Taxes and Charges Template", template)
 	return [
-		{"charge_type": t.charge_type, "account_head": t.account_head, "description": t.description or t.account_head, "rate": t.rate}
+		{
+			"charge_type": t.charge_type,
+			"account_head": t.account_head,
+			"description": t.description or t.account_head,
+			"rate": t.rate,
+		}
 		for t in doc.taxes
 	]
 
