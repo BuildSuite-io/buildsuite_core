@@ -46,7 +46,7 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 				"lines": [{"scope": "Tiling", "uom": "Nos", "qty": qty, "rate": rate}],
 			}
 		).insert(ignore_permissions=True)
-		wo.db_set("status", "Awarded")
+		wo.submit()  # a committed (submitted) WO — bills bill against these
 		return wo.reload()
 
 	def _certified_mb(self, wo, qty):

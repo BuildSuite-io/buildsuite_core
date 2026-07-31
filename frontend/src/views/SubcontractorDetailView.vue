@@ -35,7 +35,7 @@ const doc = computed(() => resource?.doc || null);
 
 // Linked Work Orders for this subcontractor.
 const wosRes = useDocTypeList("Subcontractor Work Order", {
-	fields: ["name", "project", "date", "total_value", "status"],
+	fields: ["name", "project", "date", "total_value", "docstatus"],
 	filters: [["subcontractor", "=", props.id]],
 	orderBy: "date desc",
 	pageLength: 0,
@@ -250,7 +250,14 @@ const breadcrumbs = computed(() => [
 									{{ fmtCompactINR(wo.total_value) }}
 								</td>
 								<td class="px-3 py-2">
-									<StatusBadge :status="wo.status" size="xs" />
+									<StatusBadge
+										:status="
+											{ 0: 'Draft', 1: 'Submitted', 2: 'Cancelled' }[
+												wo.docstatus
+											] || 'Draft'
+										"
+										size="xs"
+									/>
 								</td>
 							</tr>
 						</tbody>

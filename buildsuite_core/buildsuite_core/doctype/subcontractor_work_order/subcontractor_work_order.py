@@ -2,16 +2,53 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
 
 class SubcontractorWorkOrder(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.subcontractor_work_order_line.subcontractor_work_order_line import (
+			SubcontractorWorkOrderLine,
+		)
+
+		amended_from: DF.Link | None
+		company: DF.Link | None
+		date: DF.Date
+		delivery_type: DF.Link | None
+		lines: DF.Table[SubcontractorWorkOrderLine]
+		project: DF.Link
+		retention_percent: DF.Percent
+		subcontractor: DF.Link
+		subcontractor_name: DF.Data | None
+		terms: DF.TextEditor | None
+		terms_template: DF.Link | None
+		total_value: DF.Currency
+	# end: auto-generated types
+
 	def validate(self):
 		self._compute_totals()
 		self._set_company()
-		if not self.status:
-			self.status = "Draft"
+
+	def before_cancel(self):
+		# A committed WO can only be cancelled if nothing has been claimed against it — cancelling
+		# would strand the Measurement Books / Bills that reference it.
+		mbs = frappe.db.count("Measurement Book", {"work_order": self.name, "docstatus": ["<", 2]})
+		bills = frappe.db.count("Subcontractor Bill", {"work_order": self.name, "docstatus": ["<", 2]})
+		if mbs or bills:
+			frappe.throw(
+				_(
+					"Cannot cancel {0}: it has {1} measurement book(s) and {2} bill(s) against it. Remove those first."
+				).format(self.name, mbs, bills)
+			)
 
 	def _compute_totals(self):
 		total = 0.0

@@ -536,22 +536,6 @@ SUBCONTRACT_BILL_ROLE_PERMS = {
 	"BuildSuite Site Engineer": _READ,
 }
 
-# Subcontractor Work Order Approval workflow (status is the workflow state field).
-_WO_CREATE_ROLES = _SUBCONTRACT_FULL_ROLES  # raise + submit a WO
-_WO_APPROVE_ROLES = ("BuildSuite PM", "BuildSuite Director", "BuildSuite Administrator")
-_WO_STATES = ("Draft", "Pending Approval", "Awarded", "In Progress", "Closed")
-_WO_ACTIONS = ("Submit for Approval", "Approve", "Reject", "Start", "Close")
-# (state, action, next_state, roles)
-_WO_TRANSITIONS = (
-	("Draft", "Submit for Approval", "Pending Approval", _WO_CREATE_ROLES),
-	("Pending Approval", "Approve", "Awarded", _WO_APPROVE_ROLES),
-	("Pending Approval", "Reject", "Draft", _WO_APPROVE_ROLES),
-	("Awarded", "Start", "In Progress", _WO_CREATE_ROLES),
-	("Awarded", "Close", "Closed", _WO_APPROVE_ROLES),
-	("In Progress", "Close", "Closed", _WO_APPROVE_ROLES),
-)
-
-
 # Scope Change Order — role matrix (SCO is header-only + status-based, not submittable,
 # so Submit/Cancel don't apply; "full" = CRWD). PM/QS prepare + quantify, Director
 # approves; approval is gated in api/sco.py to BOQ_APPROVE_ROLES (PM / Director / Admin).
@@ -639,62 +623,26 @@ def setup_subcontract_permissions():
 
 def _ensure_workflow_state(name):
 	if not frappe.db.exists("Workflow State", name):
-		frappe.get_doc(
-			{"doctype": "Workflow State", "workflow_state_name": name}
-		).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "Workflow State", "workflow_state_name": name}).insert(
+			ignore_permissions=True
+		)
 
 
 def _ensure_workflow_action(name):
 	if not frappe.db.exists("Workflow Action Master", name):
-		frappe.get_doc(
-			{"doctype": "Workflow Action Master", "workflow_action_name": name}
-		).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "Workflow Action Master", "workflow_action_name": name}).insert(
+			ignore_permissions=True
+		)
 
 
 def setup_subcontractor_wo_workflow():
-	"""Build the Subcontractor Work Order Approval workflow. Draft is editable by any
-	module user (DocPerm gates); later states are locked (edits via the workflow)."""
-	if not frappe.db.exists("DocType", "Subcontractor Work Order"):
-		return
-	for s in _WO_STATES:
-		_ensure_workflow_state(s)
-	for a in _WO_ACTIONS:
-		_ensure_workflow_action(a)
-
-	name = "Subcontractor Work Order Approval"
-	wf = frappe.get_doc("Workflow", name) if frappe.db.exists("Workflow", name) else frappe.new_doc(
-		"Workflow"
-	)
-	wf.workflow_name = name
-	wf.document_type = "Subcontractor Work Order"
-	wf.workflow_state_field = "status"
-	wf.is_active = 1
-	wf.send_email_alert = 0
-	wf.set("states", [])
-	for s in _WO_STATES:
-		wf.append(
-			"states",
-			{
-				"state": s,
-				"doc_status": "0",
-				"allow_edit": WORKFLOW_EDITOR_ROLE if s == "Draft" else "System Manager",
-			},
+	"""The Work Order is now natively submittable (docstatus: Draft → Submitted → Cancelled +
+	Amend), so the old approval Workflow is retired. Delete it idempotently — migrate keeps it
+	gone even if a stale record survives."""
+	if frappe.db.exists("Workflow", "Subcontractor Work Order Approval"):
+		frappe.delete_doc(
+			"Workflow", "Subcontractor Work Order Approval", ignore_permissions=True, force=True
 		)
-	wf.set("transitions", [])
-	for state, action, next_state, roles in _WO_TRANSITIONS:
-		for role in roles:
-			wf.append(
-				"transitions",
-				{
-					"state": state,
-					"action": action,
-					"next_state": next_state,
-					"allowed": role,
-					"allow_self_approval": 1,
-				},
-			)
-	wf.flags.ignore_permissions = True
-	wf.save()
 
 
 def setup_record_permissions():
