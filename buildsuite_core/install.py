@@ -111,6 +111,45 @@ def seed_master_data():
 	seed_subcontract_masters()
 
 	seed_employee_accounting_dimension()
+	seed_invoice_terms()
+
+
+# Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
+INVOICE_TERMS = [
+	(
+		"Standard Sales Invoice",
+		"1. Payment: Payment is due by the due date stated on this invoice. Interest may be charged on overdue amounts as per the contract.\n"
+		"2. Taxes: Amounts are exclusive of taxes unless stated; GST is charged as itemised on this invoice.\n"
+		"3. Disputes: Any discrepancy must be notified in writing within 7 days of receipt of this invoice.\n"
+		"4. Remittance: Payment by account-payee instrument or bank transfer to the account communicated separately, quoting this invoice number.",
+	),
+	(
+		"RA / Milestone Billing",
+		"1. Basis: This invoice is raised against the certified work-done / milestone stated in the line items, as per the contract billing schedule.\n"
+		"2. Certification: Quantities and values are as certified by the client's engineer; recovery of advances and retention (if applicable) is as per contract.\n"
+		"3. Payment: Due by the stated due date. Delays beyond the credit period attract interest as per contract.\n"
+		"4. Taxes: GST as itemised. TDS, if deducted, must be deposited and certificates furnished within statutory timelines.\n"
+		"5. Disputes: Discrepancies must be raised in writing within 7 days; undisputed amounts shall not be withheld.",
+	),
+	(
+		"Advance-adjusted Invoice",
+		"1. Adjustment: This invoice is net of advances received and adjusted as itemised/communicated.\n"
+		"2. Payment: Balance due by the stated due date to the designated bank account, quoting this invoice number.\n"
+		"3. Taxes: GST as itemised on this invoice.\n"
+		"4. Disputes: Any discrepancy must be notified in writing within 7 days of receipt.",
+	),
+]
+
+
+def seed_invoice_terms():
+	"""Seed the standard sales-invoice Terms & Conditions templates (idempotent). Stored as
+	plain text so the invoice's terms box shows friendly text, not raw HTML."""
+	for title, terms in INVOICE_TERMS:
+		if frappe.db.exists("Terms and Conditions", title):
+			continue
+		frappe.get_doc(
+			{"doctype": "Terms and Conditions", "title": title, "selling": 1, "terms": terms}
+		).insert(ignore_permissions=True)
 
 
 def seed_employee_accounting_dimension():

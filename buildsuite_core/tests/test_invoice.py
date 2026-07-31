@@ -94,6 +94,73 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertAlmostEqual(flt(pe.unallocated_amount), 15000, places=2)
 		self.assertAlmostEqual(advances_summary(company=self.company)["total"] - before, 15000, places=2)
 
+	def test_taxes_and_discount(self):
+		from buildsuite_core.api.invoice import get_invoice, save_invoice
+
+		cust = self._customer()
+		income_tax = frappe.db.get_value("Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name")
+		if not income_tax:
+			from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+			income_tax = _ensure_account(self.company, "Output Tax", "Liability", "Tax", "Duties and Taxes")
+		res = save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "Work", "qty": 1, "rate": 100000}],
+					"taxes": [{"charge_type": "On Net Total", "account_head": income_tax, "rate": 10}],
+					"additional_discount_on": "Net Total",
+					"additional_discount_percentage": 5,
+					"terms": "Payment within 30 days.",
+				}
+			)
+		)
+		si = frappe.get_doc("Sales Invoice", res["name"])
+		# 100000 − 5% = 95000 net; +10% tax = 9500 → 104500.
+		self.assertAlmostEqual(flt(si.grand_total), 104500, places=2)
+		self.assertEqual(len(si.taxes), 1)
+		self.assertEqual(si.apply_discount_on, "Net Total")
+		data = get_invoice(res["name"])
+		self.assertEqual(data["additional_discount_percentage"], 5)
+		self.assertEqual(data["terms"], "Payment within 30 days.")
+		self.assertEqual(len(data["taxes"]), 1)
+
+	def test_cross_company_tax_account_rejected(self):
+		from buildsuite_core.api.invoice import save_invoice
+
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		other_acc = frappe.db.get_value("Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name")
+		if not other_acc:
+			self.skipTest("no cross-company account")
+		cust = self._customer()
+		self.assertRaises(
+			frappe.ValidationError,
+			save_invoice,
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "x", "qty": 1, "rate": 1000}],
+					"taxes": [{"charge_type": "On Net Total", "account_head": other_acc, "rate": 5}],
+				}
+			),
+		)
+
+	def test_seed_invoice_terms_and_plain_text(self):
+		from buildsuite_core.api.invoice import _html_to_text
+		from buildsuite_core.install import seed_invoice_terms
+
+		seed_invoice_terms()  # idempotent
+		self.assertTrue(frappe.db.exists("Terms and Conditions", "Standard Sales Invoice"))
+		# HTML terms render as friendly plain text (block tags → newlines, tags stripped).
+		self.assertEqual(_html_to_text("<p>A</p><p>B</p>"), "A\nB")
+		self.assertEqual(_html_to_text("1. Plain\n2. Text"), "1. Plain\n2. Text")
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 

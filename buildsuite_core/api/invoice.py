@@ -92,6 +92,11 @@ def _serialize(doc):
 		"date": str(doc.posting_date) if doc.posting_date else None,
 		"due_date": str(doc.due_date) if doc.due_date else None,
 		"taxes_and_charges": doc.taxes_and_charges,
+		"additional_discount_on": doc.apply_discount_on or "Net Total",
+		"additional_discount_percentage": doc.additional_discount_percentage,
+		"discount_amount": doc.discount_amount,
+		"terms": doc.terms,
+		"tc_name": doc.tc_name,
 		"docstatus": doc.docstatus,
 		"net_total": doc.net_total,
 		"total_taxes_and_charges": doc.total_taxes_and_charges,
@@ -101,7 +106,7 @@ def _serialize(doc):
 			for r in doc.items
 		],
 		"taxes": [
-			{"description": t.description, "rate": t.rate, "tax_amount": t.tax_amount, "account_head": t.account_head}
+			{"charge_type": t.charge_type, "account_head": t.account_head, "description": t.description, "rate": t.rate, "tax_amount": t.tax_amount}
 			for t in doc.taxes
 		],
 		"payment": _payment_summary(doc.name),
@@ -180,7 +185,9 @@ def get_invoice(name):
 @frappe.whitelist()
 def save_invoice(payload):
 	"""Create or edit a DRAFT Sales Invoice. payload: {name?, customer, project?, date,
-	due_date?, taxes_and_charges?, items:[{description, qty, rate}]}."""
+	due_date?, items:[{description, qty, rate}], taxes_and_charges?, taxes:[{charge_type,
+	account_head, rate, description}], additional_discount_on?, additional_discount_percentage?,
+	discount_amount?, terms?, tc_name?}. Taxes/discount follow the Subcontractor Bill pattern."""
 	data = frappe.parse_json(payload)
 
 	customer = data.get("customer")
@@ -230,19 +237,38 @@ def save_invoice(payload):
 			},
 		)
 
-	template = data.get("taxes_and_charges")
-	if template:
-		si.taxes_and_charges = template
-		for t in frappe.get_doc("Sales Taxes and Charges Template", template).taxes:
-			si.append(
-				"taxes",
-				{
-					"charge_type": t.charge_type or "On Net Total",
-					"account_head": t.account_head,
-					"description": t.description or t.account_head,
-					"rate": flt(t.rate),
-				},
-			)
+	# Taxes: the edited rows if the UI sent any, else expand the chosen template (Bill pattern).
+	si.taxes_and_charges = data.get("taxes_and_charges") or None
+	rows = data.get("taxes")
+	if rows is None and si.taxes_and_charges:
+		rows = get_tax_template_rows(si.taxes_and_charges)
+	for t in rows or []:
+		if not t.get("account_head"):
+			continue
+		si.append(
+			"taxes",
+			{
+				"charge_type": t.get("charge_type") or "On Net Total",
+				"account_head": t.get("account_head"),
+				"description": t.get("description") or t.get("account_head"),
+				"rate": flt(t.get("rate")),
+			},
+		)
+
+	# Discount → native SI fields (percentage OR amount, on Net/Grand Total).
+	si.apply_discount_on = data.get("additional_discount_on") or "Net Total"
+	si.additional_discount_percentage = flt(data.get("additional_discount_percentage"))
+	si.discount_amount = flt(data.get("discount_amount"))
+
+	# Terms & conditions.
+	si.tc_name = data.get("tc_name") or None
+	si.terms = data.get("terms") or None
+
+	# Single-company guard: every tax account must belong to this invoice's company (else the
+	# Sales Invoice rejects it with a cryptic row error).
+	for t in si.taxes:
+		if t.account_head and frappe.db.get_value("Account", t.account_head, "company") != company:
+			frappe.throw(_("Tax account {0} does not belong to company {1}.").format(t.account_head, company))
 
 	si.flags.ignore_permissions = True
 	si.set_missing_values()
@@ -388,6 +414,25 @@ def record_advance(customer, amount, date=None, deposit_to=None, mode_of_payment
 
 
 @frappe.whitelist()
+def receivables_summary(company=None):
+	"""Header totals for the Invoices panel — total outstanding receivable (submitted, unpaid
+	Sales Invoices) and total unallocated customer advances — for the active company."""
+	company = company or default_company()
+	outstanding = frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(outstanding_amount), 0)
+		FROM `tabSales Invoice`
+		WHERE docstatus = 1 AND company = %(company)s AND outstanding_amount > 0
+		""",
+		{"company": company},
+	)
+	return {
+		"outstanding": flt(outstanding[0][0]) if outstanding else 0,
+		"advances": advances_summary(company)["total"],
+	}
+
+
+@frappe.whitelist()
 def advances_summary(company=None):
 	"""Total unallocated customer advances held for the active (default) company."""
 	company = company or default_company()
@@ -427,6 +472,44 @@ def list_tax_templates(company=None):
 	return frappe.get_all(
 		"Sales Taxes and Charges Template", filters=filters, fields=["name", "title"], order_by="title asc"
 	)
+
+
+@frappe.whitelist()
+def get_tax_template_rows(template):
+	"""Resolve a Sales tax template's rows into the invoice's tax-table shape (Bill pattern)."""
+	doc = frappe.get_doc("Sales Taxes and Charges Template", template)
+	return [
+		{
+			"charge_type": t.charge_type,
+			"account_head": t.account_head,
+			"description": t.description or t.account_head,
+			"rate": t.rate,
+		}
+		for t in doc.taxes
+	]
+
+
+def _html_to_text(html):
+	"""Render a Terms & Conditions body (a Text Editor / HTML field) as friendly plain text
+	for the invoice's terms box — block tags become line breaks, remaining tags are stripped.
+	Plain text (no markup) is returned unchanged."""
+	if not html or "<" not in html:
+		return html or ""
+	import html as _html
+	import re
+
+	text = re.sub(r"</(p|div|li|h[1-6]|tr)>", "\n", html, flags=re.I)
+	text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+	text = re.sub(r"<li[^>]*>", "• ", text, flags=re.I)
+	text = re.sub(r"<[^>]+>", "", text)
+	return re.sub(r"\n{3,}", "\n\n", _html.unescape(text)).strip()
+
+
+@frappe.whitelist()
+def get_terms(name):
+	"""The body of a Terms and Conditions template as plain text (imported into the invoice
+	terms box). ERPNext stores it as HTML, which is unfriendly to edit — so convert it."""
+	return {"terms": _html_to_text(frappe.db.get_value("Terms and Conditions", name, "terms"))}
 
 
 @frappe.whitelist()
