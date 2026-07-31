@@ -206,9 +206,18 @@ def _pay_status(docstatus, grand, outstanding):
 
 @frappe.whitelist()
 def payables_summary(company=None):
-	"""Header totals for the Bills panel: total outstanding payable + supplier advances held."""
+	"""Header totals for the Bills panel (matches the prototype): outstanding Payable,
+	Retention held (withheld on non-final subcontractor bills), and supplier Advances paid."""
 	company = company or default_company()
 	total = sum(flt(r["outstanding"]) for r in list_payables(company))
+	retention = frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(retention_amount), 0)
+		FROM `tabSubcontractor Bill`
+		WHERE docstatus = 1 AND company = %(company)s AND bill_type != 'Final'
+		""",
+		{"company": company},
+	)
 	advances = frappe.db.sql(
 		"""
 		SELECT COALESCE(SUM(unallocated_amount), 0)
@@ -218,7 +227,11 @@ def payables_summary(company=None):
 		""",
 		{"company": company},
 	)
-	return {"outstanding": total, "advances": flt(advances[0][0]) if advances else 0}
+	return {
+		"outstanding": total,
+		"retention": flt(retention[0][0]) if retention else 0,
+		"advances": flt(advances[0][0]) if advances else 0,
+	}
 
 
 # --------------------------------------------------------------------------- #

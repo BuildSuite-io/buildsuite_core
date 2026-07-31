@@ -27,13 +27,13 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 const router = useRouter();
 
 const payables = ref([]);
-const summary = reactive({ outstanding: 0, advances: 0 });
+const summary = reactive({ outstanding: 0, retention: 0, advances: 0 });
 const loading = ref(true);
 async function load() {
 	loading.value = true;
 	try {
 		payables.value = await listPayables();
-		payablesSummary().then((r) => Object.assign(summary, { outstanding: Number(r?.outstanding) || 0, advances: Number(r?.advances) || 0 })).catch(() => {});
+		payablesSummary().then((r) => Object.assign(summary, { outstanding: Number(r?.outstanding) || 0, retention: Number(r?.retention) || 0, advances: Number(r?.advances) || 0 })).catch(() => {});
 	} catch (err) {
 		showToast(err.message || "Failed to load bills", "error");
 	} finally {
@@ -175,14 +175,9 @@ async function saveAdvance() {
 
 		<div class="space-y-4">
 			<div class="flex items-center gap-4 text-sm">
-				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Outstanding payable</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.outstanding) }}</div>
-				</div>
-				<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Supplier advances</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(summary.advances) }}</div>
-				</div>
+				<div><span class="text-ink-500">Payable</span> <span class="font-semibold text-ink-900 tabular-nums">{{ fmtINR(summary.outstanding) }}</span></div>
+				<div v-if="summary.retention > 0"><span class="text-ink-500">Retention held</span> <span class="font-semibold text-warning-700 tabular-nums">{{ fmtINR(summary.retention) }}</span></div>
+				<div v-if="summary.advances > 0"><span class="text-ink-500">Advances paid</span> <span class="font-semibold text-info-700 tabular-nums">{{ fmtINR(summary.advances) }}</span></div>
 			</div>
 
 			<div class="flex items-center gap-2 flex-wrap">
