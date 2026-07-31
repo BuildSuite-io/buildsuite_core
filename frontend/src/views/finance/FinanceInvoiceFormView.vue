@@ -21,6 +21,9 @@ import { fmtINR } from "@/utils/format";
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
 const companyFilter = activeCompanyFilter();
+// Tax account heads: non-group accounts in the active (default) company only — so a tax
+// template / row can't pull an account from another company (which the Sales Invoice rejects).
+const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
 const isEdit = computed(() => !!props.id);
 
 function blankLine() {
@@ -217,13 +220,13 @@ async function save() {
 							<hr class="desk-divider" />
 							<div class="flex items-center gap-2 mb-2 mt-2">
 								<div class="w-64">
-									<DeskLinkPicker :model-value="form.taxes_and_charges" doctype="Sales Taxes and Charges Template" label-field="title" value-field="name" placeholder="Tax template…" @update:model-value="applyTemplate" />
+									<DeskLinkPicker :model-value="form.taxes_and_charges" doctype="Sales Taxes and Charges Template" label-field="title" value-field="name" :filters="companyFilter" placeholder="Tax template…" @update:model-value="applyTemplate" />
 								</div>
 								<button type="button" class="text-[11px] text-brand-700 hover:underline whitespace-nowrap" @click="addTaxRow">+ Add row</button>
 							</div>
 							<div v-if="form.taxes.length" class="space-y-1.5">
 								<div v-for="(row, idx) in form.taxes" :key="idx" class="flex items-center gap-2">
-									<input v-model="row.account_head" type="text" placeholder="Tax account head" class="w-56 text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+									<div class="w-56"><DeskLinkPicker v-model="row.account_head" doctype="Account" label-field="name" value-field="name" :filters="accountFilters" placeholder="Tax account…" /></div>
 									<input v-model.number="row.rate" type="number" min="0" step="0.5" class="w-16 text-xs px-2 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200" />
 									<span class="text-[10px] text-ink-400">%</span>
 									<button type="button" class="text-ink-400 hover:text-danger-600 text-xs" @click="removeTaxRow(idx)">✕</button>

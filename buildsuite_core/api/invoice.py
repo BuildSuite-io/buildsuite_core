@@ -264,6 +264,12 @@ def save_invoice(payload):
 	si.tc_name = data.get("tc_name") or None
 	si.terms = data.get("terms") or None
 
+	# Single-company guard: every tax account must belong to this invoice's company (else the
+	# Sales Invoice rejects it with a cryptic row error).
+	for t in si.taxes:
+		if t.account_head and frappe.db.get_value("Account", t.account_head, "company") != company:
+			frappe.throw(_("Tax account {0} does not belong to company {1}.").format(t.account_head, company))
+
 	si.flags.ignore_permissions = True
 	si.set_missing_values()
 	si.save()

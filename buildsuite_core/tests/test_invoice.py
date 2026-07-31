@@ -127,6 +127,30 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertEqual(data["terms"], "Payment within 30 days.")
 		self.assertEqual(len(data["taxes"]), 1)
 
+	def test_cross_company_tax_account_rejected(self):
+		from buildsuite_core.api.invoice import save_invoice
+
+		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
+		if not other:
+			self.skipTest("needs a second company")
+		other_acc = frappe.db.get_value("Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name")
+		if not other_acc:
+			self.skipTest("no cross-company account")
+		cust = self._customer()
+		self.assertRaises(
+			frappe.ValidationError,
+			save_invoice,
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "x", "qty": 1, "rate": 1000}],
+					"taxes": [{"charge_type": "On Net Total", "account_head": other_acc, "rate": 5}],
+				}
+			),
+		)
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 
