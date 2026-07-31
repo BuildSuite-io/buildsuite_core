@@ -24,8 +24,10 @@ class TestInvoice(BuildSuiteTestCase):
 				{
 					"doctype": "Customer",
 					"customer_name": f"Cust {self._n}",
-					"customer_group": frappe.db.get_value("Customer Group", {"is_group": 0}, "name") or "All Customer Groups",
-					"territory": frappe.db.get_value("Territory", {"is_group": 0}, "name") or "All Territories",
+					"customer_group": frappe.db.get_value("Customer Group", {"is_group": 0}, "name")
+					or "All Customer Groups",
+					"territory": frappe.db.get_value("Territory", {"is_group": 0}, "name")
+					or "All Territories",
 				}
 			)
 			.insert(ignore_permissions=True)
@@ -98,7 +100,9 @@ class TestInvoice(BuildSuiteTestCase):
 		from buildsuite_core.api.invoice import get_invoice, save_invoice
 
 		cust = self._customer()
-		income_tax = frappe.db.get_value("Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name")
+		income_tax = frappe.db.get_value(
+			"Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name"
+		)
 		if not income_tax:
 			from buildsuite_core.utils.subcontract_billing import _ensure_account
 
@@ -133,7 +137,9 @@ class TestInvoice(BuildSuiteTestCase):
 		other = frappe.db.get_value("Company", {"name": ["!=", self.company]}, "name")
 		if not other:
 			self.skipTest("needs a second company")
-		other_acc = frappe.db.get_value("Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name")
+		other_acc = frappe.db.get_value(
+			"Account", {"company": other, "is_group": 0, "root_type": "Liability"}, "name"
+		)
 		if not other_acc:
 			self.skipTest("no cross-company account")
 		cust = self._customer()
@@ -161,12 +167,188 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertEqual(_html_to_text("<p>A</p><p>B</p>"), "A\nB")
 		self.assertEqual(_html_to_text("1. Plain\n2. Text"), "1. Plain\n2. Text")
 
+	def _draft_invoice(self, cust, rate=50000):
+		from buildsuite_core.api.invoice import save_invoice
+
+		return save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"due_date": "2026-08-20",
+					"items": [{"description": "Work", "qty": 1, "rate": rate}],
+				}
+			)
+		)["name"]
+
+	def test_link_advance_on_draft(self):
+		"""A customer advance adjusted against a DRAFT invoice lands in the native `advances`
+		table, reduces outstanding, and unlinks cleanly."""
+		from buildsuite_core.api.invoice import (
+			available_advances,
+			get_invoice,
+			link_advance,
+			record_advance,
+			unlink_advance,
+		)
+
+		cust = self._customer()
+		cash = self._deposit_account()
+		pe = record_advance(cust, amount=30000, date="2026-07-20", deposit_to=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		name = self._draft_invoice(cust, rate=50000)
+
+		avail = [a for a in available_advances(name) if a["payment_entry"] == pe]
+		self.assertEqual(len(avail), 1)
+		self.assertAlmostEqual(avail[0]["unallocated"], 30000, places=2)
+
+		link_advance(name, pe, 20000)
+		data = get_invoice(name)
+		self.assertEqual(len(data["advances"]), 1)
+		self.assertEqual(data["advances"][0]["payment_entry"], pe)
+		self.assertAlmostEqual(data["advance_adjusted"], 20000, places=2)
+		# The advance settles part of the receivable even before submit.
+		si = frappe.get_doc("Sales Invoice", name)
+		self.assertAlmostEqual(flt(si.outstanding_amount), 30000, places=2)
+
+		unlink_advance(name, pe)
+		self.assertEqual(len(get_invoice(name)["advances"]), 0)
+		self.assertAlmostEqual(
+			flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount")), 30000, places=2
+		)
+
+	def test_draft_advance_caps_and_submits(self):
+		"""An advance adjusted on a draft drops out of 'available' once fully used, cannot be
+		re-linked past its balance, and the draft then submits cleanly (regression: a re-linked
+		advance used to pile up allocated_amount beyond the Payment Entry and block submit)."""
+		from buildsuite_core.api.invoice import (
+			available_advances,
+			get_invoice,
+			link_advance,
+			list_receipts,
+			record_advance,
+			submit_invoice,
+		)
+
+		cust = self._customer()
+		cash = self._deposit_account()
+		pe = record_advance(cust, amount=40000, date="2026-07-20", deposit_to=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		name = self._draft_invoice(cust, rate=200000)
+
+		link_advance(name, pe, 40000)
+		# Fully adjusted → no longer offered as available, and a re-link is rejected.
+		self.assertEqual([a for a in available_advances(name) if a["payment_entry"] == pe], [])
+		self.assertRaises(frappe.ValidationError, link_advance, name, pe, 10000)
+
+		si = frappe.get_doc("Sales Invoice", name)
+		self.assertAlmostEqual(flt(si.advances[0].allocated_amount), 40000, places=2)
+		self.assertLessEqual(flt(si.advances[0].allocated_amount), flt(si.advances[0].advance_amount) + 0.01)
+		submit_invoice(name)  # must not raise "Allocated amount cannot be greater than unadjusted amount"
+		si.reload()
+		self.assertEqual(si.docstatus, 1)
+		self.assertAlmostEqual(flt(si.outstanding_amount), 160000, places=2)
+		# Post-submit the advance is RETAINED as an advance (not reclassified as a cash receipt),
+		# even though it is fully consumed — so the waterfall keeps showing "Advance adjusted".
+		data = get_invoice(name)
+		self.assertAlmostEqual(data["advance_adjusted"], 40000, places=2)
+		self.assertEqual(len(data["advances"]), 1)
+		self.assertAlmostEqual(data["payment"]["received"], 0, places=2)
+		self.assertEqual(len(list_receipts(name)), 0)
+
+	def test_link_advance_on_submitted(self):
+		"""A partial advance adjusted against a SUBMITTED invoice reconciles natively (PE
+		reference), reduces outstanding, is excluded from receipts, and unlinks (unreconcile)."""
+		from buildsuite_core.api.invoice import (
+			get_invoice,
+			link_advance,
+			list_receipts,
+			record_advance,
+			submit_invoice,
+			unlink_advance,
+		)
+
+		cust = self._customer()
+		cash = self._deposit_account()
+		pe = record_advance(cust, amount=100000, date="2026-07-20", deposit_to=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		name = self._draft_invoice(cust, rate=60000)
+		submit_invoice(name)
+
+		link_advance(name, pe, 40000)
+		si = frappe.get_doc("Sales Invoice", name)
+		self.assertAlmostEqual(flt(si.outstanding_amount), 20000, places=2)
+		self.assertAlmostEqual(
+			flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount")), 60000, places=2
+		)
+
+		data = get_invoice(name)
+		self.assertEqual(len(data["advances"]), 1)
+		self.assertAlmostEqual(data["advance_adjusted"], 40000, places=2)
+		self.assertAlmostEqual(data["payment"]["received"], 0, places=2)
+		# The reconciled advance is not counted as a cash receipt.
+		self.assertEqual(len(list_receipts(name)), 0)
+
+		unlink_advance(name, pe)
+		si.reload()
+		self.assertAlmostEqual(flt(si.outstanding_amount), 60000, places=2)
+		self.assertAlmostEqual(
+			flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount")), 100000, places=2
+		)
+		self.assertEqual(len(get_invoice(name)["advances"]), 0)
+
+	def test_same_advance_reconciled_in_multiple_steps(self):
+		"""Adjusting the SAME advance against a submitted invoice several times sums into ONE
+		Advance Payments line (regression: only the first reconciliation used to count; the rest
+		leaked into 'Received')."""
+		from buildsuite_core.api.invoice import (
+			get_invoice,
+			link_advance,
+			list_receipts,
+			record_advance,
+			submit_invoice,
+		)
+
+		cust = self._customer()
+		cash = self._deposit_account()
+		pe = record_advance(cust, amount=70000, date="2026-07-20", deposit_to=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		name = self._draft_invoice(cust, rate=100000)
+		submit_invoice(name)
+
+		link_advance(name, pe, 10000)
+		link_advance(name, pe, 15000)
+		link_advance(name, pe, 6000)  # same advance, three steps → 31000 total
+
+		data = get_invoice(name)
+		adv_rows = [a for a in data["advances"] if a["payment_entry"] == pe]
+		self.assertEqual(len(adv_rows), 1)
+		self.assertAlmostEqual(adv_rows[0]["allocated"], 31000, places=2)
+		self.assertAlmostEqual(data["advance_adjusted"], 31000, places=2)
+		self.assertAlmostEqual(data["payment"]["received"], 0, places=2)
+		self.assertEqual(len(list_receipts(name)), 0)
+		self.assertAlmostEqual(
+			flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount")), 39000, places=2
+		)
+
 	def test_draft_has_no_gl_until_submit(self):
 		from buildsuite_core.api.invoice import save_invoice
 
 		cust = self._customer()
 		res = save_invoice(
-			json.dumps({"customer": cust, "project": self.project, "date": "2026-07-20", "items": [{"description": "x", "qty": 2, "rate": 500}]})
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "x", "qty": 2, "rate": 500}],
+				}
+			)
 		)
 		si = frappe.get_doc("Sales Invoice", res["name"])
 		self.assertEqual(si.docstatus, 0)

@@ -58,7 +58,12 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 				"project": self.project,
 				"date": "2026-07-05",
 				"entries": [
-					{"description": "Tiling work", "work_order_line": line, "quantity": qty, "is_deduction": 0}
+					{
+						"description": "Tiling work",
+						"work_order_line": line,
+						"quantity": qty,
+						"is_deduction": 0,
+					}
 				],
 			}
 		).insert(ignore_permissions=True)
@@ -226,9 +231,7 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		wo = self._work_order(sub, qty=100, rate=85)
 		self._certified_mb(wo, qty=40)
 
-		bill = frappe.get_doc(
-			{"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"}
-		)
+		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"})
 		bill.fetch_lines()
 		bill.insert(ignore_permissions=True)
 		# 40 measured × 85 = 3400 gross; retention 5% = 170.
@@ -263,6 +266,58 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		self.assertAlmostEqual(res["payment"]["paid"], 50000, places=2)
 		self.assertAlmostEqual(res["payment"]["outstanding"], 40000, places=2)
 
+	def test_advance_adjusted_against_bill_pi(self):
+		"""A subcontractor advance links to the bill's generated PI, settles the payable, is
+		excluded from cash payments, and unlinks cleanly."""
+		from buildsuite_core.api import subcontractor_bill as SC
+		from buildsuite_core.api.supplier_bill import record_advance
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		sub = self._subcontractor()
+		cash = _ensure_account(self.company, "Cash", "Asset", "Cash", "Current Assets")
+		bill = self._direct_bill(sub, amount=100000, retention=10)  # net payable 90000
+		bill.submit()
+		bill.reload()
+
+		pe = record_advance(sub.name, amount=40000, date="2026-07-21", pay_from=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		self.assertEqual(len([a for a in SC.available_advances(bill.name) if a["payment_entry"] == pe]), 1)
+
+		SC.link_advance(bill.name, pe, 30000)
+		data = SC.get_bill(bill.name)
+		self.assertEqual(len(data["advances"]), 1)
+		self.assertAlmostEqual(data["advance_adjusted"], 30000, places=2)
+		self.assertAlmostEqual(data["payment"]["paid"], 0, places=2)  # advance is not a cash payment
+		self.assertEqual(len(SC.list_payments(bill.name)), 0)
+		self.assertAlmostEqual(
+			flt(frappe.get_doc("Purchase Invoice", bill.purchase_invoice).outstanding_amount), 60000, places=2
+		)
+
+		SC.unlink_advance(bill.name, pe)
+		self.assertAlmostEqual(
+			flt(frappe.get_doc("Purchase Invoice", bill.purchase_invoice).outstanding_amount), 90000, places=2
+		)
+		self.assertAlmostEqual(
+			flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount")), 40000, places=2
+		)
+		self.assertEqual(len(SC.get_bill(bill.name)["advances"]), 0)
+
+	def test_advance_linking_needs_a_submitted_bill(self):
+		"""A draft bill has no Purchase Invoice, so it offers no advances and rejects a link."""
+		from buildsuite_core.api import subcontractor_bill as SC
+		from buildsuite_core.api.supplier_bill import record_advance
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		sub = self._subcontractor()
+		cash = _ensure_account(self.company, "Cash", "Asset", "Cash", "Current Assets")
+		bill = self._direct_bill(sub, amount=50000, retention=0)  # draft — no PI yet
+		pe = record_advance(sub.name, amount=10000, date="2026-07-21", pay_from=cash, mode_of_payment="Cash")[
+			"payment_entry"
+		]
+		self.assertEqual(SC.available_advances(bill.name), [])
+		self.assertRaises(frappe.ValidationError, SC.link_advance, bill.name, pe, 5000)
+
 	def test_record_payment_uses_paid_from_account(self):
 		from buildsuite_core.api.subcontractor_bill import list_pay_accounts, record_payment
 		from buildsuite_core.utils.subcontract_billing import _ensure_account
@@ -276,6 +331,8 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
 		bill.submit()
 		bill.reload()
-		res = record_payment(bill.name, amount=25000, date="2026-07-21", mode_of_payment="Cash", paid_from=cash)
+		res = record_payment(
+			bill.name, amount=25000, date="2026-07-21", mode_of_payment="Cash", paid_from=cash
+		)
 		pe = frappe.get_doc("Payment Entry", res["payment_entry"])
 		self.assertEqual(pe.paid_from, cash)
