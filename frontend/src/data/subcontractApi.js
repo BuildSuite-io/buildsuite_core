@@ -27,6 +27,10 @@ export const cancelWorkOrder = (name) => call("cancel_work_order", { name });
 export const amendWorkOrder = (name) => call("amend_work_order", { name });
 export const getProjectCostCodes = (project) => call("get_project_cost_codes", { project });
 export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
+// Subcontract actual (submitted bill this-period amounts) by cost-code group — added to the
+// BOQ's task-progress actuals.
+export const getSubcontractActualByCostCode = (project) =>
+	call("subcontract_actual_by_cost_code", { project });
 
 // Measurement Book — site measurements against a Work Order's SOV lines.
 export const getWorkOrderLines = (workOrder) =>

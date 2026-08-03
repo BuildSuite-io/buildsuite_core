@@ -245,6 +245,34 @@ def committed_by_cost_code(project: str):
 
 
 @frappe.whitelist()
+def subcontract_actual_by_cost_code(project: str):
+	"""Sum of SUBMITTED Subcontractor Bill line `this_period_amount` for a project, grouped by
+	cost-code group. Feeds the BOQ 'Actual' — the subcontracted spend billed so far. It is ADDED
+	to (never replaces) the task-progress actuals. Only submitted (docstatus 1) bills count."""
+	if not project:
+		return {}
+	bills = frappe.get_all(
+		"Subcontractor Bill",
+		filters={"project": project, "docstatus": 1},
+		pluck="name",
+	)
+	if not bills:
+		return {}
+	rows = frappe.get_all(
+		"Subcontractor Bill Line",
+		filters={"parent": ["in", bills]},
+		fields=["cost_code_group", "this_period_amount"],
+	)
+	out = {}
+	for r in rows:
+		code = r.cost_code_group or ""
+		if not code:
+			continue
+		out[code] = out.get(code, 0) + (r.this_period_amount or 0)
+	return out
+
+
+@frappe.whitelist()
 def get_project_cost_codes(project: str):
 	"""BOQ groups + items for a project, as pickable cost codes for SOV lines."""
 	if not project:

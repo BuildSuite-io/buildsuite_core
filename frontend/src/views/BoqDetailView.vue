@@ -15,7 +15,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode, getSubcontractActualByCostCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -123,7 +123,7 @@ watch(
 			projectBoqsRes.reload?.();
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 const baseBoq = computed(() => {
 	const bid = boq.value?.baseRevisionId;
@@ -162,7 +162,7 @@ const groups = computed(() =>
 		code: g.code,
 		name: g.group_name,
 		order: g.idx_order,
-	})),
+	}))
 );
 const allItems = computed(() =>
 	rowsOf(itemsRes).map((i) => ({
@@ -181,7 +181,7 @@ const allItems = computed(() =>
 		costHead: i.cost_head,
 		assemblyId: i.assembly,
 		drivingQty: i.driving_qty,
-	})),
+	}))
 );
 const allSubs = computed(() =>
 	rowsOf(subsRes).map((s) => ({
@@ -193,7 +193,7 @@ const allSubs = computed(() =>
 		uom: s.uom,
 		rate: s.rate,
 		amount: s.amount,
-	})),
+	}))
 );
 function boqItemsByGroup(groupId) {
 	return allItems.value.filter((i) => i.groupId === groupId);
@@ -210,7 +210,10 @@ const treeGridStyle =
 
 const totals = computed(() => {
 	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
-	const actual = allItems.value.reduce((a, i) => a + (i.actualAmount || 0), 0);
+	// Task-progress actuals + the subcontracted spend billed (submitted bills), added not replaced.
+	const subcontractActual = Object.values(subcontractActualMap.value).reduce((a, v) => a + v, 0);
+	const actual =
+		allItems.value.reduce((a, i) => a + (i.actualAmount || 0), 0) + subcontractActual;
 	const variance = actual - planned;
 	return {
 		planned,
@@ -330,7 +333,7 @@ function itemExpanded(item) {
 const visibleGroupsList = computed(() =>
 	searching.value
 		? groups.value.filter((g) => filterState.value?.visGroups.has(g.id))
-		: groups.value,
+		: groups.value
 );
 function visibleItemsFor(g) {
 	const items = boqItemsByGroup(g.id);
@@ -370,10 +373,35 @@ watch(
 			committedMap.value = {};
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 function groupCommitted(group) {
 	return committedMap.value[group.code] || 0;
+}
+
+// === Actual (subcontract) — submitted bill this-period amounts by cost-code group ===
+// Added to (never replacing) the task-progress actuals, so a group's Actual reflects both
+// site-progress spend and what has been billed by subcontractors.
+const subcontractActualMap = ref({}); // { cost_code_group: amount }
+watch(
+	() => boq.value?.projectId,
+	async (pid) => {
+		subcontractActualMap.value = {};
+		if (!pid) return;
+		try {
+			subcontractActualMap.value = (await getSubcontractActualByCostCode(pid)) || {};
+		} catch {
+			subcontractActualMap.value = {};
+		}
+	},
+	{ immediate: true }
+);
+function groupSubcontractActual(group) {
+	return subcontractActualMap.value[group.code] || 0;
+}
+// A group's Actual = task-progress actuals on its items + subcontracted spend billed to its code.
+function groupActual(group) {
+	return groupTotals(group.id).actual + groupSubcontractActual(group);
 }
 
 const wpRes = useDocTypeList("Work Package", {
@@ -427,7 +455,7 @@ async function submit() {
 }
 async function approve() {
 	const others = (projectBoqsRes.data || []).filter(
-		(b) => b.name !== boq.value.id && b.revision !== boq.value.revision,
+		(b) => b.name !== boq.value.id && b.revision !== boq.value.revision
 	);
 	void others;
 	const ok = await confirmDialog({
@@ -464,7 +492,7 @@ async function submitRevision() {
 		const name = await boqApi.createRevision(
 			boq.value.id,
 			revisionModal.value.sourceSco.trim() || null,
-			revisionModal.value.title.trim() || null,
+			revisionModal.value.title.trim() || null
 		);
 		revisionModal.value = null;
 		if (name) router.push(`/boq/${name}`);
@@ -511,7 +539,7 @@ function exportCsv() {
 	lines.push(
 		["BOQ", boq.value.id, "Rev", boq.value.revision, "Status", boq.value.status]
 			.map(csvCell)
-			.join(","),
+			.join(",")
 	);
 	lines.push(
 		[
@@ -528,7 +556,7 @@ function exportCsv() {
 			"Cost Head",
 		]
 			.map(csvCell)
-			.join(","),
+			.join(",")
 	);
 	for (const g of groups.value) {
 		lines.push(["Group", g.code, g.name].map(csvCell).join(","));
@@ -548,13 +576,13 @@ function exportCsv() {
 					it.costHead || "",
 				]
 					.map(csvCell)
-					.join(","),
+					.join(",")
 			);
 			for (const si of boqSubItemsByItem(it.id)) {
 				lines.push(
 					["Sub", "↳", si.description, "", si.qtyPerUnit, si.rate, si.amount]
 						.map(csvCell)
-						.join(","),
+						.join(",")
 				);
 			}
 		}
@@ -603,13 +631,13 @@ async function doClone() {
 				to_project: boq.value.projectId,
 				from_work_package: f.fromWorkPackage,
 				to_work_package: f.toWorkPackage,
-			}
+		  }
 		: {
 				from_project: boq.value.projectId,
 				to_project: f.toProject,
 				to_work_package: f.toWorkPackage || null,
 				title: f.title || null,
-			};
+		  };
 	try {
 		const res = await boqApi.cloneBoq(payload);
 		cloneModal.value = false;
@@ -624,7 +652,7 @@ async function doClone() {
 const canSubmit = computed(() => boq.value?.status === "Draft");
 const canApprove = computed(() => boq.value?.status === "Submitted");
 const isLocked = computed(
-	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded",
+	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded"
 );
 const isEditable = computed(() => boq.value?.status === "Draft");
 
@@ -695,7 +723,7 @@ async function deleteGroupConfirm(g) {
 	const msg = items.length
 		? `Delete group "${g.code} — ${g.name}" with ${items.length} item${
 				items.length === 1 ? "" : "s"
-			} and their sub-items?`
+		  } and their sub-items?`
 		: `Delete group "${g.code} — ${g.name}"?`;
 	if (
 		!(await confirmDialog({
@@ -731,7 +759,7 @@ const itemForm = ref({
 // so you can only link records that belong to this BOQ's project.
 const boqProjectId = computed(() => boq.value?.projectId || "");
 const itemPlannedAmountPreview = computed(
-	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0),
+	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
 );
 // Assemblies for the "Source" picker — pick one to auto-fill unit / rate /
 // description (the save handler then auto-explodes the line into sub-items).
@@ -828,7 +856,7 @@ async function saveItem() {
 				} catch (e) {
 					showToast(
 						parseFrappeError(e).summary ?? "Item saved, but explode failed",
-						"error",
+						"error"
 					);
 				}
 			}
@@ -847,7 +875,7 @@ async function deleteItemConfirm(item) {
 	const msg = subs.length
 		? `Delete item "${item.code} — ${item.description}" with ${subs.length} sub-item${
 				subs.length === 1 ? "" : "s"
-			}?`
+		  }?`
 		: `Delete item "${item.code} — ${item.description}"?`;
 	if (
 		!(await confirmDialog({
@@ -882,7 +910,7 @@ const rateMasterOptions = computed(() =>
 		description: r.rate_name,
 		currentRate: r.current_rate,
 		category: r.category,
-	})),
+	}))
 );
 function openAddSubItem(item) {
 	subItemForm.value = { rateMasterId: null, description: "", qtyPerUnit: 0, rate: 0 };
@@ -906,7 +934,7 @@ function onRateMasterPick(rateMasterId) {
 	}
 }
 const subItemAmountPreview = computed(
-	() => (Number(subItemForm.value.qtyPerUnit) || 0) * (Number(subItemForm.value.rate) || 0),
+	() => (Number(subItemForm.value.qtyPerUnit) || 0) * (Number(subItemForm.value.rate) || 0)
 );
 async function saveSubItem() {
 	const f = subItemForm.value;
@@ -957,7 +985,7 @@ async function deleteSubItemConfirm(si) {
 // Primary action dispatcher — Submit when Draft, Approve when Submitted.
 const showPrimary = computed(() => canSubmit.value || canApprove.value);
 const primaryLabel = computed(() =>
-	canSubmit.value ? "Submit for approval" : canApprove.value ? "Approve" : "",
+	canSubmit.value ? "Submit for approval" : canApprove.value ? "Approve" : ""
 );
 function primaryAction() {
 	if (canSubmit.value) submit();
@@ -1216,7 +1244,7 @@ const breadcrumbs = computed(() => {
 					{{
 						filterState?.matchCount
 							? filterState.matchCount +
-								(filterState.matchCount === 1 ? " match" : " matches")
+							  (filterState.matchCount === 1 ? " match" : " matches")
 							: "No matches"
 					}}
 				</span>
@@ -1300,27 +1328,29 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupCommitted(g)) }}
 						</div>
-						<div class="px-3 py-2 text-right tabular-nums text-sm text-ink-700">
-							{{ fmtCompactINR(groupTotals(g.id).actual) }}
+						<div
+							class="px-3 py-2 text-right tabular-nums text-sm text-ink-700"
+							:title="`Task-progress actuals + subcontractor bills submitted against cost code ${g.code}`"
+						>
+							{{ fmtCompactINR(groupActual(g)) }}
 						</div>
 						<div
 							class="px-3 py-2 text-right text-sm tabular-nums font-medium"
 							:class="
 								variancePill(
-									((groupTotals(g.id).actual - groupTotals(g.id).planned) /
+									((groupActual(g) - groupTotals(g.id).planned) /
 										(groupTotals(g.id).planned || 1)) *
-										100,
+										100
 								)
 							"
 						>
 							{{
 								groupTotals(g.id).planned
 									? (
-											((groupTotals(g.id).actual -
-												groupTotals(g.id).planned) /
+											((groupActual(g) - groupTotals(g.id).planned) /
 												groupTotals(g.id).planned) *
 											100
-										).toFixed(1)
+									  ).toFixed(1)
 									: "0.0"
 							}}%
 						</div>
@@ -1467,7 +1497,7 @@ const breadcrumbs = computed(() => {
 										{{ item.plannedAmount > baseAmount(item.code) ? "+" : ""
 										}}{{
 											fmtCompactINR(
-												item.plannedAmount - baseAmount(item.code),
+												item.plannedAmount - baseAmount(item.code)
 											)
 										}}</span
 									>
@@ -1504,13 +1534,13 @@ const breadcrumbs = computed(() => {
 													item.actualAmount > item.plannedAmount
 														? 'bg-danger-500'
 														: item.actualAmount >
-															  item.plannedAmount * 0.9
-															? 'bg-warning-500'
-															: 'bg-success-500'
+														  item.plannedAmount * 0.9
+														? 'bg-warning-500'
+														: 'bg-success-500'
 												"
 												:style="`width: ${Math.min(
 													100,
-													pctOf(item.actualAmount, item.plannedAmount),
+													pctOf(item.actualAmount, item.plannedAmount)
 												).toFixed(1)}%`"
 											></div>
 										</div>
@@ -1522,7 +1552,7 @@ const breadcrumbs = computed(() => {
 										variancePill(
 											((item.actualAmount - item.plannedAmount) /
 												(item.plannedAmount || 1)) *
-												100,
+												100
 										)
 									"
 								>
@@ -1532,7 +1562,7 @@ const breadcrumbs = computed(() => {
 													((item.actualAmount - item.plannedAmount) /
 														item.plannedAmount) *
 													100
-												).toFixed(1)
+											  ).toFixed(1)
 											: "0.0"
 									}}%
 								</div>

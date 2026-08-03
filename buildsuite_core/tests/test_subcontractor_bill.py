@@ -358,6 +358,27 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		record_payment(bill.name, amount=20000, date="2026-07-21", mode_of_payment="Cash", paid_from=cash)
 		self.assertRaises(frappe.ValidationError, cancel_bill, bill.name)
 
+	def test_subcontract_actual_by_cost_code(self):
+		"""Submitted bill this-period amounts roll up to the BOQ 'Actual' by cost-code group;
+		a draft bill does not count."""
+		from buildsuite_core.api.subcontract import subcontract_actual_by_cost_code
+
+		sub = self._subcontractor()
+		bill = frappe.get_doc(
+			{
+				"doctype": "Subcontractor Bill",
+				"is_direct": 1,
+				"subcontractor": sub.name,
+				"project": self.project,
+				"date": "2026-07-20",
+				"retention_percent": 0,
+				"lines": [{"scope": "Groundworks", "cost_code_group": "G1", "this_period_amount": 50000}],
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(subcontract_actual_by_cost_code(self.project).get("G1", 0), 0)  # draft
+		bill.submit()
+		self.assertAlmostEqual(subcontract_actual_by_cost_code(self.project).get("G1"), 50000, places=2)
+
 	def test_bill_requires_a_submitted_work_order(self):
 		# A WO bill can only be raised against a SUBMITTED work order (Phase 2 made WOs submittable).
 		from buildsuite_core.api.subcontract import save_work_order
