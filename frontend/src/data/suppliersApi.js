@@ -1,5 +1,5 @@
-// Thin wrapper around the buildsuite_core.api.customers whitelisted methods.
-// Mirrors data/projectTeamApi.js.
+// Thin wrapper around the buildsuite_core.api.suppliers whitelisted methods
+// (Project Finance › Suppliers master). Mirrors data/customersApi.js.
 
 function serverMessage(data, status) {
 	if (data?._server_messages) {
@@ -15,7 +15,7 @@ function serverMessage(data, status) {
 }
 
 async function call(method, args) {
-	const res = await fetch(`/api/method/buildsuite_core.api.customers.${method}`, {
+	const res = await fetch(`/api/method/buildsuite_core.api.suppliers.${method}`, {
 		method: "POST",
 		credentials: "include",
 		headers: {
@@ -29,30 +29,26 @@ async function call(method, args) {
 	return data.message;
 }
 
-// Inline create from the New Project client picker (name + type only).
-export const createCustomer = (customerName, customerType = "Company") =>
-	call("create_customer", { customer_name: customerName, customer_type: customerType });
+// Every supplier incl. subcontractors (rows carry is_subcontractor + trade).
+export const listSuppliers = () => call("list_suppliers", {});
 
-// --- Project Finance › Customers master ---
-export const listCustomers = () => call("list_customers", {});
-
-// PartyFormModal payload → backend params. Contact person / phone / email persist
-// onto the customer's native Contact.
-export const addCustomer = (p) =>
-	call("create_customer", {
-		customer_name: p.name,
-		customer_type: p.type || "Company",
+// PartyFormModal payload → backend params (regular suppliers only; subcontractors
+// are managed in the Subcontract module). Contact fields persist onto the Contact.
+export const addSupplier = (p) =>
+	call("create_supplier", {
+		supplier_name: p.name,
+		supplier_type: p.type || "Company",
 		gstin: p.gstin || "",
 		contact_person: p.contactPerson || "",
 		phone: p.phone || "",
 		email: p.email || "",
 	});
 
-export const updateCustomer = (id, p) =>
-	call("update_customer", {
+export const updateSupplier = (id, p) =>
+	call("update_supplier", {
 		name: id,
 		new_name: p.name,
-		customer_type: p.type || "",
+		supplier_type: p.type || "",
 		gstin: p.gstin || "",
 		contact_person: p.contactPerson || "",
 		phone: p.phone || "",

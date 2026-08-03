@@ -1,56 +1,175 @@
 <script setup>
-import { computed, reactive, ref } from "vue";
-import { useFinanceMock } from "@/data/financeMock";
+// Project Finance › Customers master. Desk-styled list (DeskList + filter chips +
+// Tax ID). Rows open an edit modal — customers are created AND edited from here,
+// backed by the real Customer master (buildsuite_core.api.customers.*).
+import { ref, computed, onMounted } from "vue";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { listCustomers, addCustomer, updateCustomer } from "@/data/customersApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
-import DeskField from "@/components/desk/DeskField.vue";
-import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import PartyFormModal from "./PartyFormModal.vue";
+import { fmtINR } from "@/utils/format";
 
-const fin = useFinanceMock();
+const store = useDataStore();
+const canManage = computed(() => store.isAdmin);
+
+const TYPE_OPTIONS = ["Company", "Individual", "Partnership"];
+
+const customers = ref([]);
+const loading = ref(true);
+async function load() {
+	loading.value = true;
+	try {
+		customers.value = await listCustomers();
+	} catch (err) {
+		showToast(err.message || "Failed to load customers", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(load);
+
 const search = ref("");
+const typeFilter = ref("");
+
 const rows = computed(() => {
-	const q = search.value.trim().toLowerCase();
-	return fin.customers.filter((c) => !q || c.name.toLowerCase().includes(q) || (c.gstin || "").toLowerCase().includes(q));
+	const t = search.value.trim().toLowerCase();
+	let list = customers.value;
+	if (typeFilter.value) list = list.filter((c) => c.type === typeFilter.value);
+	if (t)
+		list = list.filter(
+			(c) =>
+				(c.name || "").toLowerCase().includes(t) ||
+				(c.contactPerson || "").toLowerCase().includes(t) ||
+				(c.gstin || "").toLowerCase().includes(t)
+		);
+	return list;
 });
+
 const columns = [
 	{ key: "name", label: "Name" },
 	{ key: "type", label: "Type" },
 	{ key: "contactPerson", label: "Contact" },
 	{ key: "phone", label: "Phone" },
-	{ key: "gstin", label: "GST no." },
+	{ key: "gstin", label: "Tax ID" },
+	{ key: "advance", label: "Advance held", align: "right" },
 ];
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Customers" }];
 
-const form = reactive({ open: false, name: "", type: "Company", contactPerson: "", phone: "", email: "", gstin: "" });
-function save() {
-	if (!form.name.trim()) return;
-	fin.addCustomer({ name: form.name.trim(), type: form.type, contactPerson: form.contactPerson, phone: form.phone, email: form.email, gstin: form.gstin });
-	form.open = false;
-	Object.assign(form, { name: "", contactPerson: "", phone: "", email: "", gstin: "" });
+// --- create / edit modal ---
+const modalOpen = ref(false);
+const modalError = ref("");
+const editing = ref(null); // customer record when editing, null for create
+
+function openCreate() {
+	editing.value = null;
+	modalError.value = "";
+	modalOpen.value = true;
 }
+function onRowClick(row) {
+	if (!canManage.value) return;
+	editing.value = row;
+	modalError.value = "";
+	modalOpen.value = true;
+}
+async function onSave(payload) {
+	modalError.value = "";
+	try {
+		if (editing.value) await updateCustomer(editing.value.id, payload);
+		else await addCustomer(payload);
+		modalOpen.value = false;
+		await load();
+	} catch (err) {
+		modalError.value = err.message || "Save failed.";
+	}
+}
+
+const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Customers" }];
 </script>
 
 <template>
 	<DeskPage title="Customers" :breadcrumbs="breadcrumbs">
-		<template #actions><button class="desk-save-btn" @click="form.open = true">+ New</button></template>
-		<DeskList v-model="search" :rows="rows" :columns="columns" row-key="id" search-placeholder="Search customers…">
-			<template #cell-type="{ row }"><span class="text-[11px] px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded">{{ row.type }}</span></template>
-			<template #cell-gstin="{ row }"><span class="font-mono text-xs text-ink-500">{{ row.gstin || "—" }}</span></template>
-		</DeskList>
-		<div v-if="form.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="form.open = false">
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">New customer</h3>
-				<div class="space-y-3">
-					<DeskField label="Name" required><DeskInput v-model="form.name" /></DeskField>
-					<DeskField label="Type"><DeskSelect v-model="form.type"><option>Company</option><option>Individual</option><option>Partnership</option></DeskSelect></DeskField>
-					<DeskField label="Contact person"><DeskInput v-model="form.contactPerson" /></DeskField>
-					<DeskField label="Phone"><DeskInput v-model="form.phone" /></DeskField>
-					<DeskField label="Email"><DeskInput v-model="form.email" /></DeskField>
-					<DeskField label="GST no."><DeskInput v-model="form.gstin" /></DeskField>
-				</div>
-				<div class="flex justify-end gap-2 mt-5"><button class="desk-btn" @click="form.open = false">Cancel</button><button class="desk-save-btn" @click="save">Save</button></div>
+		<div>
+			<div v-if="canManage" class="flex items-center justify-end mb-2">
+				<button type="button" class="desk-save-btn" @click="openCreate">
+					+ New Customer
+				</button>
 			</div>
+
+			<DeskList
+				v-model="search"
+				:rows="rows"
+				:columns="columns"
+				row-key="id"
+				search-placeholder="Search name, contact, tax ID…"
+				@row-click="onRowClick"
+			>
+				<template #filter-chips>
+					<DeskFilterChip
+						v-if="typeFilter"
+						:label="`Type: ${typeFilter}`"
+						@remove="typeFilter = ''"
+					/>
+					<DeskSelect v-else v-model="typeFilter" class="!w-40">
+						<option value="">All types</option>
+						<option v-for="t in TYPE_OPTIONS" :key="t">{{ t }}</option>
+					</DeskSelect>
+				</template>
+
+				<template #cell-name="{ row }">
+					<span class="text-ink-900 font-medium">{{ row.name }}</span>
+				</template>
+				<template #cell-type="{ row }">
+					<span
+						v-if="row.type"
+						class="text-[11px] px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded"
+						>{{ row.type }}</span
+					>
+					<span v-else class="text-ink-400">—</span>
+				</template>
+				<template #cell-contactPerson="{ row }">
+					<span class="text-xs text-ink-700">{{ row.contactPerson || "—" }}</span>
+				</template>
+				<template #cell-phone="{ row }">
+					<span class="text-xs text-ink-500">{{ row.phone || "—" }}</span>
+				</template>
+				<template #cell-gstin="{ row }">
+					<span class="text-xs font-mono text-ink-500">{{ row.gstin || "—" }}</span>
+				</template>
+				<template #cell-advance="{ row }">
+					<span
+						v-if="row.advance > 0"
+						class="text-xs tabular-nums text-info-700 font-medium"
+						>{{ fmtINR(row.advance) }}</span
+					>
+					<span v-else class="text-ink-400">—</span>
+				</template>
+
+				<template #empty>
+					<div class="text-sm text-ink-500">
+						{{ loading ? "Loading customers…" : "No customers yet." }}
+						<template v-if="canManage && !loading">
+							·
+							<button type="button" class="desk-link" @click="openCreate">
+								Add one →
+							</button>
+						</template>
+					</div>
+				</template>
+			</DeskList>
+
+			<PartyFormModal
+				:open="modalOpen"
+				:title="editing ? 'Edit Customer' : 'New Customer'"
+				type-label="Customer type"
+				:type-options="TYPE_OPTIONS"
+				:initial="editing"
+				:server-error="modalError"
+				@save="onSave"
+				@close="modalOpen = false"
+			/>
 		</div>
 	</DeskPage>
 </template>
