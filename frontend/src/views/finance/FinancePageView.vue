@@ -12,12 +12,13 @@ const panels = {
 	payments: defineAsyncComponent(() => import("@/views/finance/FinancePaymentsPanel.vue")),
 	customers: defineAsyncComponent(() => import("@/views/finance/FinanceCustomersPanel.vue")),
 	suppliers: defineAsyncComponent(() => import("@/views/finance/FinanceSuppliersPanel.vue")),
-	subcontractors: defineAsyncComponent(() => import("@/views/finance/FinanceSubcontractorsPanel.vue")),
 };
 const comp = computed(() => panels[props.section] || null);
 </script>
 
 <template>
 	<component :is="comp" v-if="comp" />
-	<div v-else class="max-w-3xl mx-auto px-6 py-16 text-center text-ink-500">Unknown finance section.</div>
+	<div v-else class="max-w-3xl mx-auto px-6 py-16 text-center text-ink-500">
+		Unknown finance section.
+	</div>
 </template>
