@@ -336,3 +336,39 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		)
 		pe = frappe.get_doc("Payment Entry", res["payment_entry"])
 		self.assertEqual(pe.paid_from, cash)
+
+	def test_amend_a_cancelled_bill(self):
+		from buildsuite_core.api.subcontractor_bill import amend_bill, cancel_bill, submit_bill
+
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		submit_bill(bill.name)
+		cancel_bill(bill.name)  # no payments → cancels
+		amended = amend_bill(bill.name)
+		self.assertEqual(amended["docstatus"], 0)
+		self.assertEqual(amended["amended_from"], bill.name)
+		self.assertNotEqual(amended["name"], bill.name)
+
+	def test_cancel_blocked_while_payment_exists(self):
+		from buildsuite_core.api.subcontractor_bill import cancel_bill, record_payment, submit_bill
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		cash = _ensure_account(self.company, "Cash", "Asset", "Cash", "Current Assets")
+		bill = self._direct_bill(self._subcontractor(), amount=100000, retention=10)
+		submit_bill(bill.name)
+		record_payment(bill.name, amount=20000, date="2026-07-21", mode_of_payment="Cash", paid_from=cash)
+		self.assertRaises(frappe.ValidationError, cancel_bill, bill.name)
+
+	def test_bill_requires_a_submitted_work_order(self):
+		# A WO bill can only be raised against a SUBMITTED work order (Phase 2 made WOs submittable).
+		from buildsuite_core.api.subcontract import save_work_order
+
+		sub = self._subcontractor()
+		wo = save_work_order(
+			subcontractor=sub.name,
+			project=self.project,
+			date="2026-07-20",
+			retention_percent=5,
+			lines=frappe.as_json([{"scope": "X", "uom": "Nos", "qty": 10, "rate": 100}]),
+		)["name"]  # a DRAFT work order
+		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo, "date": "2026-07-21"})
+		self.assertRaises(frappe.ValidationError, bill.insert, ignore_permissions=True)

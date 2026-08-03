@@ -59,6 +59,7 @@ export const getWoBillContext = (workOrder) =>
 export const saveBill = (payload) => billCall("save_bill", { payload: JSON.stringify(payload) });
 export const submitBill = (name) => billCall("submit_bill", { name });
 export const cancelBill = (name) => billCall("cancel_bill", { name });
+export const amendBill = (name) => billCall("amend_bill", { name });
 export const deleteBill = (name) => billCall("delete_bill", { name });
 export const listTaxTemplates = (company) => billCall("list_tax_templates", { company });
 export const getTaxTemplateRows = (template) => billCall("get_tax_template_rows", { template });

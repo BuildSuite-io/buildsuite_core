@@ -121,14 +121,14 @@ def _serialize(doc):
 
 def _available_actions(doc):
 	if doc.docstatus == 0:
-		return ["submit", "delete"]
+		return ["edit", "submit", "delete"]
 	if doc.docstatus == 1:
 		acts = []
 		if _payment_summary(doc)["outstanding"] > 0.01:
 			acts.append("pay")
 		acts.append("cancel")
 		return acts
-	return []
+	return ["amend", "delete"]  # cancelled
 
 
 def _payment_summary(doc):
@@ -349,6 +349,23 @@ def delete_bill(name: str):
 		frappe.throw(_("Cancel a submitted bill before deleting it."))
 	frappe.delete_doc(BILL, name)
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def amend_bill(name: str):
+	"""Amend a cancelled bill — a fresh editable Draft copy linked via amended_from; the original
+	stays Cancelled."""
+	src = frappe.get_doc(BILL, name)
+	src.check_permission("amend")
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled bill can be amended."))
+	amended = frappe.copy_doc(src)
+	amended.amended_from = name
+	amended.docstatus = 0
+	amended.purchase_invoice = None  # a fresh Purchase Invoice is generated on resubmit
+	amended.flags.ignore_permissions = True
+	amended.insert()
+	return _serialize(amended)
 
 
 # --------------------------------------------------------------------------- #
