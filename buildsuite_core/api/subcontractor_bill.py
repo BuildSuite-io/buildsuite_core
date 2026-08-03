@@ -164,6 +164,70 @@ def get_bill(name: str):
 
 
 @frappe.whitelist()
+def list_bills(project=None):
+	"""Subcontractor Bills for the list — the workflow state (from docstatus) plus the derived
+	payment status (Unpaid / Partly Paid / Paid) read through each bill's generated Purchase
+	Invoice, so the list can show both badges."""
+	PI = "Purchase Invoice"
+	filters = {}
+	if project:
+		filters["project"] = project
+	bills = frappe.get_all(
+		BILL,
+		filters=filters,
+		fields=[
+			"name",
+			"ra_no",
+			"is_direct",
+			"subcontractor_name",
+			"project",
+			"date",
+			"gross",
+			"retention_amount",
+			"net_payable",
+			"docstatus",
+			"purchase_invoice",
+		],
+		order_by="date desc, creation desc",
+	)
+	pi_names = [b.purchase_invoice for b in bills if b.purchase_invoice]
+	pis = {}
+	if pi_names:
+		for pi in frappe.get_all(
+			PI, filters={"name": ["in", pi_names]}, fields=["name", "grand_total", "outstanding_amount"]
+		):
+			pis[pi.name] = pi
+	out = []
+	for b in bills:
+		pay = None
+		if b.docstatus == 1 and b.purchase_invoice in pis:
+			pi = pis[b.purchase_invoice]
+			grand, outstanding = flt(pi.grand_total), flt(pi.outstanding_amount)
+			if outstanding <= 0.01 and grand > 0:
+				pay = "Paid"
+			elif grand - outstanding > 0.01:
+				pay = "Partly Paid"
+			else:
+				pay = "Unpaid"
+		out.append(
+			{
+				"name": b.name,
+				"ra_no": b.ra_no,
+				"is_direct": b.is_direct,
+				"subcontractor_name": b.subcontractor_name,
+				"project": b.project,
+				"date": str(b.date) if b.date else None,
+				"gross": flt(b.gross),
+				"retention_amount": flt(b.retention_amount),
+				"net_payable": flt(b.net_payable),
+				"status": {0: "Draft", 1: "Submitted", 2: "Cancelled"}.get(b.docstatus, "Draft"),
+				"payment_status": pay,
+			}
+		)
+	return out
+
+
+@frappe.whitelist()
 def get_wo_bill_context(work_order: str):
 	"""Everything the New (Work Order) bill screen needs: WO header, the derived this-period
 	lines (measured − previously billed), and the next RA number."""

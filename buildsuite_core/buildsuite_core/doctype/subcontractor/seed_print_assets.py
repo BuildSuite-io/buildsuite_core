@@ -64,7 +64,7 @@ _WO_PRINT_HTML = """
 		</div>
 		<div class="right">
 			<div class="muted">{{ frappe.utils.format_date(doc.date) }}</div>
-			<div style="margin-top:2px; font-weight:600;">{{ doc.status }}</div>
+			<div style="margin-top:2px; font-weight:600;">{{ {0: "Draft", 1: "Submitted", 2: "Cancelled"}.get(doc.docstatus, "Draft") }}</div>
 		</div>
 	</div>
 
@@ -173,6 +173,8 @@ def _seed_letter_head():
 
 def _seed_wo_print_format():
 	if frappe.db.exists("Print Format", WO_PRINT_FORMAT):
+		# Keep the body in sync on migrate (e.g. WO status now derives from docstatus).
+		frappe.db.set_value("Print Format", WO_PRINT_FORMAT, "html", _WO_PRINT_HTML)
 		return
 	frappe.get_doc(
 		{

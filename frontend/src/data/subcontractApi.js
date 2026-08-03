@@ -58,6 +58,7 @@ async function billCall(method, args) {
 }
 
 export const getBill = (name) => billCall("get_bill", { name });
+export const listBills = (project) => billCall("list_bills", project ? { project } : {});
 export const getWoBillContext = (workOrder) =>
 	billCall("get_wo_bill_context", { work_order: workOrder });
 export const saveBill = (payload) => billCall("save_bill", { payload: JSON.stringify(payload) });

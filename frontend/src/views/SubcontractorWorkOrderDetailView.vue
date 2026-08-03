@@ -10,6 +10,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
 import {
 	getWorkOrder,
 	submitWorkOrder,
@@ -56,6 +57,21 @@ const isDraft = computed(() => wo.value?.status === "Draft");
 const isSubmitted = computed(() => wo.value?.status === "Submitted");
 const isCancelled = computed(() => wo.value?.status === "Cancelled");
 const mbs = computed(() => measurements.value.books || []);
+
+// Bills raised against this WO (state derives from docstatus).
+const billsRes = useDocTypeList("Subcontractor Bill", {
+	fields: ["name", "ra_no", "date", "gross", "net_payable", "docstatus"],
+	filters: [["work_order", "=", props.id]],
+	orderBy: "ra_no asc",
+	pageLength: 0,
+	cache: `buildsuite-wo-bills-${props.id}`,
+});
+const bills = computed(() =>
+	(billsRes.data || []).map((b) => ({
+		...b,
+		status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[b.docstatus] || "Draft",
+	}))
+);
 const measuredByLine = computed(() => measurements.value.measured_by_line || {});
 function lineMeasured(name) {
 	return Number(measuredByLine.value[name] || 0);
@@ -162,6 +178,7 @@ const tab = ref("sov");
 const tabs = computed(() => [
 	{ id: "sov", label: "Schedule of values" },
 	{ id: "measurements", label: "Measurements", count: mbs.value.length },
+	{ id: "bills", label: "Bills", count: bills.value.length },
 	{ id: "terms", label: "Terms" },
 ]);
 </script>
@@ -458,6 +475,64 @@ const tabs = computed(() => [
 			</div>
 			<div v-else class="text-xs text-ink-400 italic">
 				No measurements recorded yet against this WO.
+			</div>
+		</section>
+
+		<!-- Bills raised against this WO -->
+		<section v-if="tab === 'bills'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					Bills ({{ bills.length }})
+				</h3>
+				<button
+					v-if="isSubmitted"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onRaiseBill"
+				>
+					+ Bill progress
+				</button>
+			</div>
+			<div
+				v-if="bills.length"
+				class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+			>
+				<table class="w-full text-xs" style="min-width: 520px">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">Bill</th>
+							<th class="text-left px-3 py-2">Date</th>
+							<th class="text-right px-3 py-2">Gross</th>
+							<th class="text-right px-3 py-2">Net payable</th>
+							<th class="text-left px-3 py-2">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="b in bills"
+							:key="b.name"
+							class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
+							@click="router.push(`/subcontractor-bills/${b.name}`)"
+						>
+							<td class="px-3 py-2">
+								<DeskLink :to="`/subcontractor-bills/${b.name}`" @click.stop
+									>Bill {{ b.ra_no }}</DeskLink
+								>
+							</td>
+							<td class="px-3 py-2 text-ink-500">{{ fmtDate(b.date) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.gross) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
+								{{ fmtINR(b.net_payable) }}
+							</td>
+							<td class="px-3 py-2"><StatusBadge :status="b.status" size="xs" /></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				No bills raised yet against this WO.
 			</div>
 		</section>
 

@@ -2,9 +2,10 @@
 // Subcontractor Bill list — Desk-styled. Each bill generates a Purchase
 // Invoice on submit; the list shows gross / retention / net payable + status.
 
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
-import { useDocTypeList } from "@/composables/useDocTypeList";
+import { listBills } from "@/data/subcontractApi";
+import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -13,24 +14,13 @@ import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
 
-const billsRes = useDocTypeList("Subcontractor Bill", {
-	fields: [
-		"name",
-		"ra_no",
-		"is_direct",
-		"subcontractor_name",
-		"project",
-		"date",
-		"gross",
-		"retention_amount",
-		"net_payable",
-		"status",
-	],
-	orderBy: "date desc",
-	pageLength: 0,
-	cache: "buildsuite-subcontractor-bill-list",
-	transform: (data) =>
-		data.map((b) => ({
+// Loaded via list_bills so each row carries the workflow state AND the derived payment status.
+const allBills = ref([]);
+const loading = ref(true);
+async function load() {
+	loading.value = true;
+	try {
+		allBills.value = (await listBills()).map((b) => ({
 			id: b.name,
 			ra_no: b.ra_no,
 			is_direct: b.is_direct,
@@ -41,19 +31,26 @@ const billsRes = useDocTypeList("Subcontractor Bill", {
 			retention: b.retention_amount,
 			net: b.net_payable,
 			status: b.status,
-		})),
-});
+			payment_status: b.payment_status,
+		}));
+	} catch (err) {
+		showToast(err.message || "Failed to load bills", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(load);
 
 const search = ref("");
 const rows = computed(() => {
-	let data = billsRes.data || [];
+	let data = allBills.value;
 	const q = search.value.trim().toLowerCase();
 	if (q)
 		data = data.filter(
 			(b) =>
 				(b.id || "").toLowerCase().includes(q) ||
 				(b.subcontractor || "").toLowerCase().includes(q) ||
-				(b.project || "").toLowerCase().includes(q),
+				(b.project || "").toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -96,13 +93,17 @@ function onRowClick(row) {
 			@row-click="onRowClick"
 		>
 			<template #cell-id="{ row }">
-				<DeskLink :to="`/subcontractor-bills/${row.id}`" class="font-mono text-xs" @click.stop>{{
-					row.id
-				}}</DeskLink>
+				<DeskLink
+					:to="`/subcontractor-bills/${row.id}`"
+					class="font-mono text-xs"
+					@click.stop
+					>{{ row.id }}</DeskLink
+				>
 			</template>
 			<template #cell-ra_no="{ row }">
 				<span class="text-xs text-ink-700"
-					>Bill {{ row.ra_no }}<span v-if="row.is_direct" class="text-ink-400"> · direct</span></span
+					>Bill {{ row.ra_no
+					}}<span v-if="row.is_direct" class="text-ink-400"> · direct</span></span
 				>
 			</template>
 			<template #cell-subcontractor="{ row }">
@@ -118,18 +119,27 @@ function onRowClick(row) {
 				<span class="text-xs tabular-nums font-medium">{{ fmtINR(row.gross) }}</span>
 			</template>
 			<template #cell-retention="{ row }">
-				<span class="text-xs tabular-nums text-warning-700">{{ fmtINR(row.retention) }}</span>
+				<span class="text-xs tabular-nums text-warning-700">{{
+					fmtINR(row.retention)
+				}}</span>
 			</template>
 			<template #cell-net="{ row }">
 				<span class="text-xs tabular-nums font-medium">{{ fmtINR(row.net) }}</span>
 			</template>
 			<template #cell-status="{ row }">
-				<StatusBadge :status="row.status" />
+				<div class="flex items-center gap-1.5">
+					<StatusBadge :status="row.status" />
+					<StatusBadge
+						v-if="row.payment_status"
+						:status="row.payment_status"
+						size="xs"
+					/>
+				</div>
 			</template>
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ billsRes.loading ? "Loading bills…" : "No subcontractor bills yet." }}
+					{{ loading ? "Loading bills…" : "No subcontractor bills yet." }}
 				</div>
 			</template>
 		</DeskList>
