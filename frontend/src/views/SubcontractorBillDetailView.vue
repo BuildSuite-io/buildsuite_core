@@ -17,6 +17,7 @@ import {
 	saveBill,
 	submitBill,
 	cancelBill,
+	amendBill,
 	deleteBill,
 	getTaxTemplateRows,
 	recordBillPayment,
@@ -65,6 +66,7 @@ watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => bill.value?.docstatus === 0);
 const isSubmitted = computed(() => bill.value?.docstatus === 1);
+const isCancelled = computed(() => bill.value?.docstatus === 2);
 const editable = computed(() => isDraft.value);
 const payment = computed(
 	() => bill.value?.payment || { paid: 0, outstanding: 0, invoiced: 0, status: "Unpaid" }
@@ -403,10 +405,24 @@ async function onCancel() {
 		busy.value = false;
 	}
 }
+async function onAmend() {
+	busy.value = true;
+	try {
+		const res = await amendBill(bill.value.name);
+		showToast("Amended — a fresh draft was created.");
+		router.push(`/subcontractor-bills/${res.name}`);
+	} catch (err) {
+		showToast(err.message || "Amend failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: `Delete Bill ${bill.value.ra_no}?`,
-		message: "This draft bill will be removed permanently.",
+		message: isCancelled.value
+			? "This cancelled bill will be removed permanently."
+			: "This draft bill will be removed permanently.",
 		confirmLabel: "Delete",
 		destructive: true,
 	});
@@ -568,7 +584,18 @@ const accountFilters = computed(() =>
 				</button>
 			</template>
 			<button
-				v-if="isDraft"
+				v-if="isCancelled"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				title="Create a fresh editable draft copy (the original stays cancelled)"
+				@click="onAmend"
+			>
+				Amend
+			</button>
+			<button
+				v-if="!isSubmitted"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"

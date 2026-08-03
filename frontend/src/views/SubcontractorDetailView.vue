@@ -16,7 +16,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import TradePicker from "@/components/TradePicker.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
@@ -35,7 +35,7 @@ const doc = computed(() => resource?.doc || null);
 
 // Linked Work Orders for this subcontractor.
 const wosRes = useDocTypeList("Subcontractor Work Order", {
-	fields: ["name", "project", "date", "total_value", "status"],
+	fields: ["name", "project", "date", "total_value", "docstatus"],
 	filters: [["subcontractor", "=", props.id]],
 	orderBy: "date desc",
 	pageLength: 0,
@@ -62,7 +62,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -104,7 +104,9 @@ async function onDelete() {
 	const ok = await confirmDialog({
 		title: `Delete ${doc.value?.supplier_name}?`,
 		message: n
-			? `${n} work order${n === 1 ? "" : "s"} reference this subcontractor and would be left dangling.`
+			? `${n} work order${
+					n === 1 ? "" : "s"
+			  } reference this subcontractor and would be left dangling.`
 			: "This subcontractor master record will be removed permanently.",
 		confirmLabel: "Delete",
 		destructive: true,
@@ -182,7 +184,9 @@ const breadcrumbs = computed(() => [
 					</div></DeskField
 				>
 				<DeskField label="Trade"
-					><div class="text-sm text-ink-700">{{ doc.custom_trade || "—" }}</div></DeskField
+					><div class="text-sm text-ink-700">
+						{{ doc.custom_trade || "—" }}
+					</div></DeskField
 				>
 				<DeskField label="Status"
 					><StatusBadge :status="doc.disabled ? 'Inactive' : 'Active'"
@@ -246,7 +250,14 @@ const breadcrumbs = computed(() => [
 									{{ fmtCompactINR(wo.total_value) }}
 								</td>
 								<td class="px-3 py-2">
-									<StatusBadge :status="wo.status" size="xs" />
+									<StatusBadge
+										:status="
+											{ 0: 'Draft', 1: 'Submitted', 2: 'Cancelled' }[
+												wo.docstatus
+											] || 'Draft'
+										"
+										size="xs"
+									/>
 								</td>
 							</tr>
 						</tbody>
@@ -265,13 +276,7 @@ const breadcrumbs = computed(() => [
 					><DeskInput v-model="form.subcontractor_name"
 				/></DeskField>
 				<DeskField label="Trade" required :error="errors.trade">
-					<DeskLinkPicker
-						v-model="form.trade"
-						doctype="Construction Trade"
-						label-field="name"
-						value-field="name"
-						placeholder="Pick a trade…"
-					/>
+					<TradePicker v-model="form.trade" :error="errors.trade" />
 				</DeskField>
 				<DeskField label="Status">
 					<DeskSelect v-model="form.status"

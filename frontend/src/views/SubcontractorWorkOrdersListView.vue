@@ -20,11 +20,12 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 		"date",
 		"delivery_type",
 		"total_value",
-		"status",
+		"docstatus",
 	],
 	orderBy: "date desc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-wo-list",
+	// The WO is natively submittable — state is docstatus (Draft/Submitted/Cancelled), not a field.
 	transform: (data) =>
 		data.map((w) => ({
 			id: w.name,
@@ -33,7 +34,7 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 			date: w.date,
 			delivery_type: w.delivery_type,
 			total_value: w.total_value,
-			status: w.status,
+			status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[w.docstatus] || "Draft",
 		})),
 });
 
@@ -46,7 +47,7 @@ const rows = computed(() => {
 			(w) =>
 				(w.id || "").toLowerCase().includes(q) ||
 				(w.subcontractor || "").toLowerCase().includes(q) ||
-				(w.project || "").toLowerCase().includes(q),
+				(w.project || "").toLowerCase().includes(q)
 		);
 	return data;
 });

@@ -10,7 +10,14 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
-import { getWorkOrder, applyWoAction, getWoMeasurements } from "@/data/subcontractApi";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import {
+	getWorkOrder,
+	submitWorkOrder,
+	cancelWorkOrder,
+	amendWorkOrder,
+	getWoMeasurements,
+} from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -47,7 +54,24 @@ async function load() {
 watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => wo.value?.status === "Draft");
+const isSubmitted = computed(() => wo.value?.status === "Submitted");
+const isCancelled = computed(() => wo.value?.status === "Cancelled");
 const mbs = computed(() => measurements.value.books || []);
+
+// Bills raised against this WO (state derives from docstatus).
+const billsRes = useDocTypeList("Subcontractor Bill", {
+	fields: ["name", "ra_no", "date", "gross", "net_payable", "docstatus"],
+	filters: [["work_order", "=", props.id]],
+	orderBy: "ra_no asc",
+	pageLength: 0,
+	cache: `buildsuite-wo-bills-${props.id}`,
+});
+const bills = computed(() =>
+	(billsRes.data || []).map((b) => ({
+		...b,
+		status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[b.docstatus] || "Draft",
+	}))
+);
 const measuredByLine = computed(() => measurements.value.measured_by_line || {});
 function lineMeasured(name) {
 	return Number(measuredByLine.value[name] || 0);
@@ -65,21 +89,59 @@ function onPrint() {
 	router.push(`/subcontractor-work-orders/${wo.value.name}/print`);
 }
 
-async function onAction(action) {
+async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `${action}?`,
-		message: `Apply "${action}" to ${wo.value.name}? This moves the work order to its next approval state.`,
-		confirmLabel: action,
+		title: `Submit ${wo.value.name}?`,
+		message: `Submit this work order for ${fmtINR(
+			wo.value.total_value
+		)}? It becomes committed cost and its schedule of values is locked.`,
+		confirmLabel: "Submit",
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
-		const res = await applyWoAction(wo.value.name, action);
-		wo.value.status = res.status;
+		const res = await submitWorkOrder(wo.value.name);
 		actions.value = res.actions || [];
-		showToast(`Work order is now ${res.status}.`);
+		delete res.actions;
+		wo.value = res;
+		showToast("Work order submitted.");
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || "Submit failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onCancel() {
+	const ok = await confirmDialog({
+		title: `Cancel ${wo.value.name}?`,
+		message:
+			"This cancels the work order. It's blocked if measurement books or bills exist against it.",
+		confirmLabel: "Cancel work order",
+		cancelLabel: "Keep",
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		const res = await cancelWorkOrder(wo.value.name);
+		actions.value = res.actions || [];
+		delete res.actions;
+		wo.value = res;
+		showToast("Work order cancelled.");
+	} catch (err) {
+		showToast(err.message || "Cancel failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onAmend() {
+	busy.value = true;
+	try {
+		const res = await amendWorkOrder(wo.value.name);
+		showToast("Amended — a fresh draft was created.");
+		router.push(`/subcontractor-work-orders/${res.name}`);
+	} catch (err) {
+		showToast(err.message || "Amend failed", "error");
 	} finally {
 		busy.value = false;
 	}
@@ -116,6 +178,7 @@ const tab = ref("sov");
 const tabs = computed(() => [
 	{ id: "sov", label: "Schedule of values" },
 	{ id: "measurements", label: "Measurements", count: mbs.value.length },
+	{ id: "bills", label: "Bills", count: bills.value.length },
 	{ id: "terms", label: "Terms" },
 ]);
 </script>
@@ -139,18 +202,17 @@ const tabs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-for="action in actions"
-				:key="action"
+				v-if="isDraft"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				@click="onAction(action)"
+				@click="onSubmit"
 			>
-				{{ action }}
+				Submit
 			</button>
 			<button
-				v-if="!isDraft && wo.status !== 'Closed'"
+				v-if="isSubmitted"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
 				style="border-radius: 6px"
@@ -160,14 +222,35 @@ const tabs = computed(() => [
 				+ Record measurement
 			</button>
 			<button
-				v-if="!isDraft && wo.status !== 'Closed'"
+				v-if="isSubmitted"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium inline-flex items-center"
 				style="border-radius: 6px"
-				title="Raise a bill against this work order (derives this period from certified Measurement Books)"
+				title="Bill progress against this work order (derives this period from certified Measurement Books)"
 				@click="onRaiseBill"
 			>
-				+ Raise Bill
+				+ Bill progress
+			</button>
+			<button
+				v-if="isSubmitted"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancel"
+			>
+				Cancel
+			</button>
+			<button
+				v-if="isCancelled"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				title="Create a fresh editable draft copy (the original stays cancelled)"
+				@click="onAmend"
+			>
+				Amend
 			</button>
 			<button
 				type="button"
@@ -179,6 +262,7 @@ const tabs = computed(() => [
 				Print / PDF
 			</button>
 			<button
+				v-if="!isSubmitted"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -341,7 +425,7 @@ const tabs = computed(() => [
 					Measurement books ({{ mbs.length }})
 				</h3>
 				<button
-					v-if="!isDraft && wo.status !== 'Closed'"
+					v-if="isSubmitted"
 					type="button"
 					class="text-xs text-brand-700 hover:underline"
 					@click="onRecordMeasurement"
@@ -391,6 +475,64 @@ const tabs = computed(() => [
 			</div>
 			<div v-else class="text-xs text-ink-400 italic">
 				No measurements recorded yet against this WO.
+			</div>
+		</section>
+
+		<!-- Bills raised against this WO -->
+		<section v-if="tab === 'bills'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					Bills ({{ bills.length }})
+				</h3>
+				<button
+					v-if="isSubmitted"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onRaiseBill"
+				>
+					+ Bill progress
+				</button>
+			</div>
+			<div
+				v-if="bills.length"
+				class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+			>
+				<table class="w-full text-xs" style="min-width: 520px">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">Bill</th>
+							<th class="text-left px-3 py-2">Date</th>
+							<th class="text-right px-3 py-2">Gross</th>
+							<th class="text-right px-3 py-2">Net payable</th>
+							<th class="text-left px-3 py-2">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="b in bills"
+							:key="b.name"
+							class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
+							@click="router.push(`/subcontractor-bills/${b.name}`)"
+						>
+							<td class="px-3 py-2">
+								<DeskLink :to="`/subcontractor-bills/${b.name}`" @click.stop
+									>Bill {{ b.ra_no }}</DeskLink
+								>
+							</td>
+							<td class="px-3 py-2 text-ink-500">{{ fmtDate(b.date) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.gross) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
+								{{ fmtINR(b.net_payable) }}
+							</td>
+							<td class="px-3 py-2"><StatusBadge :status="b.status" size="xs" /></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				No bills raised yet against this WO.
 			</div>
 		</section>
 

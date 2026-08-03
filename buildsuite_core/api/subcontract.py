@@ -3,12 +3,22 @@
 
 """Whitelisted endpoints for the Subcontract module — Subcontractor Work Order
 read/save (its SOV child table can't be written reliably via frappe.client), the
-approval-workflow actions, and the BOQ cost-code picker used on SOV lines."""
+submittable lifecycle (submit / cancel / amend), and the BOQ cost-code picker used
+on SOV lines. The Work Order is natively submittable: state is docstatus, not a
+manual status field — Draft (0) → Submitted (1) → Cancelled (2), plus Amend."""
 
 import frappe
-from frappe.model.workflow import apply_workflow, get_transitions
+from frappe import _
 
 WORK_ORDER = "Subcontractor Work Order"
+
+# docstatus → the label the Vue screens show. There is no "Closed" state anymore.
+_WO_STATE = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
+
+
+def _wo_state(doc):
+	return _WO_STATE.get(doc.docstatus, "Draft")
+
 
 _LINE_FIELDS = (
 	"scope",
@@ -23,13 +33,14 @@ _LINE_FIELDS = (
 
 
 def _available_actions(doc):
-	"""De-duplicated workflow actions available to the current user (get_transitions
-	returns one row per matching allowed-role)."""
-	out = []
-	for t in get_transitions(doc):
-		if t.action not in out:
-			out.append(t.action)
-	return out
+	"""Lifecycle actions for the WO's current docstatus (mirrors the prototype):
+	Draft → Edit / Submit / Delete; Submitted → Record measurement / Bill progress /
+	Cancel; Cancelled → Amend / Delete."""
+	if doc.docstatus == 0:
+		return ["edit", "submit", "delete"]
+	if doc.docstatus == 1:
+		return ["record_measurement", "bill_progress", "cancel"]
+	return ["amend", "delete"]
 
 
 def _serialize(doc):
@@ -42,7 +53,9 @@ def _serialize(doc):
 		"date": str(doc.date) if doc.date else None,
 		"delivery_type": doc.delivery_type,
 		"retention_percent": doc.retention_percent,
-		"status": doc.status,
+		"docstatus": doc.docstatus,
+		"status": _wo_state(doc),
+		"amended_from": doc.get("amended_from"),
 		"terms_template": doc.terms_template,
 		"terms": doc.terms,
 		"total_value": doc.total_value,
@@ -84,7 +97,10 @@ def _subcontractor_detail(supplier):
 	detail = {"trade": sup.get("custom_trade"), "tax_id": sup.get("tax_id")}
 	contact = frappe.get_all(
 		"Contact",
-		filters=[["Dynamic Link", "link_doctype", "=", "Supplier"], ["Dynamic Link", "link_name", "=", supplier]],
+		filters=[
+			["Dynamic Link", "link_doctype", "=", "Supplier"],
+			["Dynamic Link", "link_name", "=", supplier],
+		],
 		fields=["name", "first_name", "email_id", "mobile_no", "phone"],
 		limit=1,
 	)
@@ -158,17 +174,42 @@ def save_work_order(
 
 
 @frappe.whitelist()
-def apply_wo_action(work_order: str, action: str):
-	"""Apply an approval-workflow transition (Submit for Approval / Approve / …)."""
-	doc = frappe.get_doc(WORK_ORDER, work_order)
-	doc.check_permission("write")
-	apply_workflow(doc, action)
-	return {"status": doc.status, "actions": _available_actions(doc)}
+def submit_work_order(name: str):
+	"""Submit a draft Work Order — it becomes committed cost (docstatus 1)."""
+	doc = frappe.get_doc(WORK_ORDER, name)
+	doc.check_permission("submit")
+	doc.submit()
+	return get_work_order(name)
+
+
+@frappe.whitelist()
+def cancel_work_order(name: str):
+	"""Cancel a submitted Work Order (blocked by the controller if MBs/Bills reference it)."""
+	doc = frappe.get_doc(WORK_ORDER, name)
+	doc.check_permission("cancel")
+	doc.cancel()
+	return get_work_order(name)
+
+
+@frappe.whitelist()
+def amend_work_order(name: str):
+	"""Amend a cancelled Work Order — a fresh editable Draft copy linked via amended_from; the
+	original stays Cancelled."""
+	src = frappe.get_doc(WORK_ORDER, name)
+	src.check_permission("amend")
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled work order can be amended."))
+	amended = frappe.copy_doc(src)
+	amended.amended_from = name
+	amended.docstatus = 0
+	amended.flags.ignore_permissions = True
+	amended.insert()
+	return get_work_order(amended.name)
 
 
 @frappe.whitelist()
 def get_wo_transitions(name: str):
-	"""Workflow actions available to the current user for this Work Order."""
+	"""Lifecycle actions available for this Work Order (kept for the Vue action bar)."""
 	doc = frappe.get_doc(WORK_ORDER, name)
 	doc.check_permission("read")
 	return _available_actions(doc)
@@ -176,14 +217,15 @@ def get_wo_transitions(name: str):
 
 @frappe.whitelist()
 def committed_by_cost_code(project: str):
-	"""Sum of OPEN (Awarded / In Progress) Subcontractor Work Order line amounts for a
-	project, grouped by cost-code group. Feeds the BOQ 'Committed' column — how much of
-	each BOQ group's scope is already committed to subcontractors."""
+	"""Sum of SUBMITTED Subcontractor Work Order line amounts for a project, grouped by
+	cost-code group. Feeds the BOQ 'Committed' column — how much of each BOQ group's scope is
+	already committed to subcontractors. Only submitted (docstatus 1) WOs count as committed;
+	drafts and cancelled WOs are excluded."""
 	if not project:
 		return {}
 	wos = frappe.get_all(
 		WORK_ORDER,
-		filters={"project": project, "status": ["in", ["Awarded", "In Progress"]]},
+		filters={"project": project, "docstatus": 1},
 		pluck="name",
 	)
 	if not wos:
@@ -203,6 +245,34 @@ def committed_by_cost_code(project: str):
 
 
 @frappe.whitelist()
+def subcontract_actual_by_cost_code(project: str):
+	"""Sum of SUBMITTED Subcontractor Bill line `this_period_amount` for a project, grouped by
+	cost-code group. Feeds the BOQ 'Actual' — the subcontracted spend billed so far. It is ADDED
+	to (never replaces) the task-progress actuals. Only submitted (docstatus 1) bills count."""
+	if not project:
+		return {}
+	bills = frappe.get_all(
+		"Subcontractor Bill",
+		filters={"project": project, "docstatus": 1},
+		pluck="name",
+	)
+	if not bills:
+		return {}
+	rows = frappe.get_all(
+		"Subcontractor Bill Line",
+		filters={"parent": ["in", bills]},
+		fields=["cost_code_group", "this_period_amount"],
+	)
+	out = {}
+	for r in rows:
+		code = r.cost_code_group or ""
+		if not code:
+			continue
+		out[code] = out.get(code, 0) + (r.this_period_amount or 0)
+	return out
+
+
+@frappe.whitelist()
 def get_project_cost_codes(project: str):
 	"""BOQ groups + items for a project, as pickable cost codes for SOV lines."""
 	if not project:
@@ -212,9 +282,7 @@ def get_project_cost_codes(project: str):
 		return []
 
 	# group name by (boq, code) so items can show their group.
-	groups = frappe.get_all(
-		"BOQ Group", filters={"boq": ["in", boqs]}, fields=["name", "code", "group_name"]
-	)
+	groups = frappe.get_all("BOQ Group", filters={"boq": ["in", boqs]}, fields=["name", "code", "group_name"])
 	group_code_by_name = {g.name: g.code for g in groups}
 
 	out = []

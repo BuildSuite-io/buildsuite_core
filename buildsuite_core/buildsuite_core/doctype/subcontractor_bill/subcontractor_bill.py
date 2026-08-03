@@ -38,7 +38,7 @@ class SubcontractorBill(Document):
 	def validate(self):
 		self._sync_from_work_order()
 		if self.work_order and not self.is_direct:
-			self._require_open_work_order()
+			self._require_submitted_work_order()
 		self._assign_ra_no()
 		self._default_expense_account()
 		self._validate_account_companies()
@@ -64,11 +64,13 @@ class SubcontractorBill(Document):
 			company = frappe.db.get_value(doctype, account, "company")
 			return not company or company == self.company
 
-		if self.taxes_and_charges and not _belongs(self.taxes_and_charges, "Purchase Taxes and Charges Template"):
+		if self.taxes_and_charges and not _belongs(
+			self.taxes_and_charges, "Purchase Taxes and Charges Template"
+		):
 			frappe.throw(
-				_("Tax template {0} belongs to a different company — pick one for {1} (this project's company).").format(
-					frappe.bold(self.taxes_and_charges), frappe.bold(self.company)
-				)
+				_(
+					"Tax template {0} belongs to a different company — pick one for {1} (this project's company)."
+				).format(frappe.bold(self.taxes_and_charges), frappe.bold(self.company))
 			)
 		for t in self.taxes:
 			if t.account_head and not _belongs(t.account_head):
@@ -98,6 +100,26 @@ class SubcontractorBill(Document):
 		self.purchase_invoice = generate_purchase_invoice(self)
 		self.db_set("purchase_invoice", self.purchase_invoice)
 		self._sync_status()
+
+	def before_cancel(self):
+		# Cancelling voids the bill and its Purchase Invoice — blocked while payments exist
+		# against it (the Payment Entries must be deleted first).
+		if self.purchase_invoice:
+			pes = frappe.get_all(
+				"Payment Entry Reference",
+				filters={
+					"reference_doctype": "Purchase Invoice",
+					"reference_name": self.purchase_invoice,
+					"docstatus": 1,
+				},
+				pluck="parent",
+			)
+			if pes:
+				frappe.throw(
+					_("Cannot cancel {0}: delete its payment entries first ({1}).").format(
+						self.name, ", ".join(sorted(set(pes)))
+					)
+				)
 
 	def on_cancel(self):
 		self._cancel_purchase_invoice()
@@ -130,14 +152,11 @@ class SubcontractorBill(Document):
 		if self.project:
 			self.company = frappe.db.get_value("Project", self.project, "company")
 
-	def _require_open_work_order(self):
-		status = frappe.db.get_value(WORK_ORDER, self.work_order, "status")
-		if status not in ("Awarded", "In Progress"):
-			frappe.throw(
-				_("A bill can only be raised against an Awarded or In Progress work order (this one is {0}).").format(
-					status or "—"
-				)
-			)
+	def _require_submitted_work_order(self):
+		# The Work Order is natively submittable now — only a SUBMITTED WO is a committed
+		# order you can bill progress against (drafts aren't committed; cancelled are void).
+		if frappe.db.get_value(WORK_ORDER, self.work_order, "docstatus") != 1:
+			frappe.throw(_("A bill can only be raised against a submitted work order."))
 
 	def _assign_ra_no(self):
 		if self.ra_no:
@@ -167,8 +186,11 @@ class SubcontractorBill(Document):
 		)
 		rate = 0
 		for r in rows:
-			if r.from_date and self.date and str(r.from_date) <= str(self.date) and (
-				not r.to_date or str(self.date) <= str(r.to_date)
+			if (
+				r.from_date
+				and self.date
+				and str(r.from_date) <= str(self.date)
+				and (not r.to_date or str(self.date) <= str(r.to_date))
 			):
 				rate = flt(r.tax_withholding_rate)
 				break
@@ -232,7 +254,9 @@ class SubcontractorBill(Document):
 			paid = flt(doc.grand_total) - flt(doc.outstanding_amount)
 			if paid > 0:
 				frappe.throw(
-					_("This bill's Purchase Invoice has payments against it. Cancel the Payment Entries first.")
+					_(
+						"This bill's Purchase Invoice has payments against it. Cancel the Payment Entries first."
+					)
 				)
 			doc.flags.ignore_permissions = True
 			doc.cancel()

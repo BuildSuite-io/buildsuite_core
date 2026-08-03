@@ -16,7 +16,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import TradePicker from "@/components/TradePicker.vue";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
@@ -90,13 +90,7 @@ const breadcrumbs = [
 					<DeskInput v-model="form.subcontractor_name" />
 				</DeskField>
 				<DeskField label="Trade" required :error="errors.trade">
-					<DeskLinkPicker
-						v-model="form.trade"
-						doctype="Construction Trade"
-						label-field="name"
-						value-field="name"
-						placeholder="Pick a trade…"
-					/>
+					<TradePicker v-model="form.trade" :error="errors.trade" />
 				</DeskField>
 				<DeskField label="Status">
 					<DeskSelect v-model="form.status">
@@ -109,8 +103,8 @@ const breadcrumbs = [
 				/></DeskField>
 			</DeskSection>
 			<p class="text-xs text-ink-400 mt-3">
-				Contact person, phone and email are managed on the subcontractor's Supplier record in the
-				accounting desk.
+				Contact person, phone and email are managed on the subcontractor's Supplier record
+				in the accounting desk.
 			</p>
 		</DeskForm>
 	</DeskPage>
