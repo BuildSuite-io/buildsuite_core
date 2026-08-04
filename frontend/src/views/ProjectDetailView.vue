@@ -1454,6 +1454,7 @@ usePageTitle(() => project.value?.name);
 						'planned_start',
 						'planned_end',
 						'task_count',
+						'completed_task_count',
 						'planned_task_count',
 						'workflow_state',
 					]"
@@ -1465,7 +1466,11 @@ usePageTitle(() => project.value?.name);
 						},
 						{ key: 'planned_start', label: 'Start' },
 						{ key: 'planned_end', label: 'End' },
-						{ key: 'planned_task_count', label: 'Tasks' },
+						{
+							key: 'planned_task_count',
+							label: 'Tasks',
+							fields: ['completed_task_count', 'task_count'],
+						},
 						{
 							key: '_status',
 							label: 'Status',
@@ -1475,7 +1480,7 @@ usePageTitle(() => project.value?.name);
 					]"
 					:base-filters="stageBaseFilters"
 					:search-fields="['stage_name', 'name']"
-					cache-key="buildsuite-stage-planning-project-tab"
+					cache-key="buildsuite-stage-planning-project-tab-v2"
 					row-key="name"
 					initial-order-by="planned_start asc"
 					search-placeholder="Search stages…"
@@ -1514,8 +1519,8 @@ usePageTitle(() => project.value?.name);
 					<template #cell-planned_task_count="{ row }">
 						<span
 							class="text-xs text-ink-700 tabular-nums"
-							:title="'Actual tasks in stage / planned task count'"
-							>{{ row.task_count || 0 }} / {{ row.planned_task_count || 0 }}</span
+							:title="'Completed tasks / total tasks in stage'"
+							>{{ row.completed_task_count || 0 }} / {{ row.task_count || 0 }}</span
 						>
 					</template>
 					<template #cell-_status="{ row }">
