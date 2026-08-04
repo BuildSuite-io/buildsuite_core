@@ -33,12 +33,14 @@ def _require_admin():
 
 
 def _report_route(report_name):
-	"""Desk URL for a report, by its type."""
+	"""Route for a report tile. Query/Script Reports render IN-APP via the generic
+	FrappeReport renderer (/reports/view/<name>); Report Builder reports have no in-app
+	renderer, so they still open on the Desk."""
 	meta = frappe.db.get_value("Report", report_name, ["report_type", "ref_doctype"], as_dict=True)
 	if not meta:
 		return None
 	if meta.report_type in ("Query Report", "Script Report"):
-		return f"/app/query-report/{quote(report_name)}"
+		return f"/reports/view/{quote(report_name)}"
 	doctype_route = frappe.scrub(meta.ref_doctype or "").replace("_", "-")
 	return f"/app/{doctype_route}/view/report/{quote(report_name)}"
 

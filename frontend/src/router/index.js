@@ -272,6 +272,12 @@ const routes = [
 				component: () => import("@/views/workspaces/ProjectDashboardView.vue"),
 			},
 			{
+				path: "reports/view/:report",
+				name: "report-view",
+				component: () => import("@/views/ReportView.vue"),
+				props: true,
+			},
+			{
 				path: "reports/:slug",
 				name: "report-stub",
 				component: () => import("@/views/workspaces/ReportStubView.vue"),
