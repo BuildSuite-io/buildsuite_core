@@ -1,16 +1,21 @@
 <script setup>
 // Generic renderer for a Frappe/ERPNext Report (Query or Script) inside the SPA.
-// Runs the report via buildsuite_core.api.report.run_report and renders its typed
-// columns + rows — cell formatting by fieldtype (Currency / Float / Int / Percent /
-// Date / Link), a client-side search, and pagination. Reusable on any workspace's
-// report tiles.
-import { ref, computed, watch } from "vue";
-import { runReport } from "@/data/reportApi";
+//
+// Filters: the report's own filter definitions (the Report Filter child table —
+// Frappe's server-side, JS-free filter source; see frappe query_report.js, which
+// falls back to report_doc.filters when a report has no JS filters) render as a
+// Frappe-style filter bar. Each fieldtype maps to a control (Link / Select / Date /
+// Check / number / data); Apply re-runs the report server-side with the values.
+// A client-side search filters the returned rows (list-style), then pagination.
+// Themed for light + dark.
+import { ref, reactive, computed, watch } from "vue";
+import { runReport, getReportFilters } from "@/data/reportApi";
 import { fmtINR, fmtDate } from "@/utils/format";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 
 const props = defineProps({
 	report: { type: String, required: true },
-	filters: { type: Object, default: () => ({}) },
 	pageSize: { type: Number, default: 50 },
 });
 
@@ -19,13 +24,44 @@ const error = ref("");
 const columns = ref([]);
 const rows = ref([]);
 
+// --- filters (report-defined) ---
+const filterDefs = ref([]);
+const filterValues = reactive({});
 const NUMERIC = new Set(["Currency", "Float", "Int", "Percent"]);
 
-async function load() {
+function seedFilters(defs) {
+	for (const k of Object.keys(filterValues)) delete filterValues[k];
+	for (const f of defs) {
+		filterValues[f.fieldname] =
+			f.fieldtype === "Check" ? Number(f.default) || 0 : f.default ?? "";
+	}
+}
+function selectOptions(f) {
+	return (f.options || "")
+		.split("\n")
+		.map((o) => o.trim())
+		.filter(Boolean);
+}
+const missingRequired = computed(() =>
+	filterDefs.value.filter(
+		(f) =>
+			f.mandatory && (filterValues[f.fieldname] === "" || filterValues[f.fieldname] == null)
+	)
+);
+
+async function runWith() {
+	if (missingRequired.value.length) {
+		error.value = `Set the required filter${
+			missingRequired.value.length > 1 ? "s" : ""
+		}: ${missingRequired.value.map((f) => f.label).join(", ")}.`;
+		rows.value = [];
+		columns.value = [];
+		return;
+	}
 	loading.value = true;
 	error.value = "";
 	try {
-		const res = await runReport(props.report, props.filters);
+		const res = await runReport(props.report, { ...filterValues });
 		columns.value = (res.columns || [])
 			.filter((c) => c && (c.label || c.fieldname))
 			.map((c, i) => ({
@@ -45,9 +81,30 @@ async function load() {
 		loading.value = false;
 	}
 }
-watch(() => [props.report, props.filters], load, { immediate: true, deep: true });
 
-// Rows come back as dicts keyed by fieldname (query reports) or as arrays.
+async function load() {
+	loading.value = true;
+	error.value = "";
+	try {
+		filterDefs.value = (await getReportFilters(props.report)) || [];
+	} catch {
+		filterDefs.value = [];
+	}
+	seedFilters(filterDefs.value);
+	await runWith();
+}
+watch(() => props.report, load, { immediate: true });
+
+function applyFilters() {
+	page.value = 1;
+	runWith();
+}
+function clearFilters() {
+	seedFilters(filterDefs.value);
+	runWith();
+}
+
+// --- cells ---
 function cellRaw(row, col) {
 	if (Array.isArray(row)) return row[col.index];
 	return row?.[col.fieldname];
@@ -75,6 +132,7 @@ function cellText(row, col) {
 	}
 }
 
+// --- client-side search + pagination ---
 const search = ref("");
 const filtered = computed(() => {
 	const q = search.value.trim().toLowerCase();
@@ -86,7 +144,6 @@ const filtered = computed(() => {
 		})
 	);
 });
-
 const page = ref(1);
 const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / props.pageSize)));
 const paged = computed(() => {
@@ -97,17 +154,104 @@ watch(search, () => (page.value = 1));
 function go(delta) {
 	page.value = Math.min(pageCount.value, Math.max(1, page.value + delta));
 }
+
+const inputClass =
+	"text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400";
 </script>
 
 <template>
 	<div>
-		<!-- Toolbar: search + count -->
+		<!-- Report filter bar (report-defined filters) -->
+		<div
+			v-if="filterDefs.length"
+			class="bg-ink-50 border border-ink-200 rounded-lg px-3 py-2.5 mb-3 flex items-end gap-3 flex-wrap"
+		>
+			<div v-for="f in filterDefs" :key="f.fieldname" class="flex flex-col gap-1 min-w-0">
+				<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ f.label }}<span v-if="f.mandatory" class="text-danger-600"> *</span>
+				</label>
+
+				<!-- Link / Dynamic Link -->
+				<div v-if="f.fieldtype === 'Link' || f.fieldtype === 'Dynamic Link'" class="w-52">
+					<DeskLinkPicker
+						v-model="filterValues[f.fieldname]"
+						:doctype="f.options || 'DocType'"
+						label-field="name"
+						value-field="name"
+						:placeholder="`All ${f.label.toLowerCase()}`"
+					/>
+				</div>
+
+				<!-- Select -->
+				<DeskSelect
+					v-else-if="f.fieldtype === 'Select'"
+					v-model="filterValues[f.fieldname]"
+					class="!w-44"
+				>
+					<option value="">All</option>
+					<option v-for="o in selectOptions(f)" :key="o" :value="o">{{ o }}</option>
+				</DeskSelect>
+
+				<!-- Date / Datetime -->
+				<input
+					v-else-if="f.fieldtype === 'Date' || f.fieldtype === 'Datetime'"
+					v-model="filterValues[f.fieldname]"
+					type="date"
+					:class="inputClass"
+				/>
+
+				<!-- Check -->
+				<label
+					v-else-if="f.fieldtype === 'Check'"
+					class="inline-flex items-center gap-1.5 text-xs text-ink-700 h-[30px]"
+				>
+					<input
+						v-model="filterValues[f.fieldname]"
+						type="checkbox"
+						:true-value="1"
+						:false-value="0"
+					/>
+					<span>Yes</span>
+				</label>
+
+				<!-- Int / Float / Currency -->
+				<input
+					v-else-if="NUMERIC.has(f.fieldtype)"
+					v-model.number="filterValues[f.fieldname]"
+					type="number"
+					:class="[inputClass, 'w-28 text-right tabular-nums']"
+				/>
+
+				<!-- Data / fallback -->
+				<input
+					v-else
+					v-model="filterValues[f.fieldname]"
+					type="text"
+					:class="[inputClass, 'w-44']"
+				/>
+			</div>
+
+			<div class="flex items-center gap-2 ml-auto">
+				<button
+					type="button"
+					class="text-[11px] text-ink-500 hover:underline"
+					@click="clearFilters"
+				>
+					Clear
+				</button>
+				<button type="button" class="text-xs desk-save-btn" @click="applyFilters">
+					Apply
+				</button>
+			</div>
+		</div>
+
+		<!-- Search + count -->
 		<div class="flex items-center gap-3 mb-3 flex-wrap">
 			<input
 				v-model="search"
 				type="text"
 				placeholder="Search this report…"
-				class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-64 max-w-full"
+				class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md bg-white text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-64 max-w-full"
 			/>
 			<span v-if="!loading && !error" class="text-[11px] text-ink-400">
 				{{ filtered.length.toLocaleString("en-IN") }} row{{

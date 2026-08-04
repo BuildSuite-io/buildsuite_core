@@ -7,6 +7,45 @@ wrapper over frappe.desk.query_report.run — the generic FrappeReport component
 
 import frappe
 from frappe import _
+from frappe.utils import nowdate
+
+
+def _resolve_default(fieldtype, default):
+	"""Resolve a report filter's stored default. Handles the common tokens Frappe uses
+	(Today for dates, the user's default Company) and leaves plain literals as-is."""
+	default = (default or "").strip()
+	if not default:
+		return ""
+	if fieldtype in ("Date", "Datetime") and default.lower() in ("today", "now"):
+		return nowdate()
+	if default.lower() in ("company", "user_default:company"):
+		return frappe.defaults.get_user_default("Company") or ""
+	# Ignore JS/expression defaults (frappe.*, () => …) — the UI seeds them empty.
+	if default.startswith("frappe.") or "=>" in default or "(" in default:
+		return ""
+	return default
+
+
+@frappe.whitelist()
+def get_report_filters(report):
+	"""The report's own filter definitions (the Report Filter child table — Frappe's
+	server-side, JS-free filter source), for the in-app filter bar. Each: fieldname,
+	label, fieldtype, options, mandatory, default (resolved)."""
+	doc = frappe.get_cached_doc("Report", report)
+	if not doc.is_permitted():
+		frappe.throw(_("You don't have access to Report: {0}").format(report), frappe.PermissionError)
+	return [
+		{
+			"fieldname": f.fieldname,
+			"label": f.label or f.fieldname,
+			"fieldtype": f.fieldtype,
+			"options": f.options,
+			"mandatory": int(f.mandatory or 0),
+			"default": _resolve_default(f.fieldtype, f.default),
+		}
+		for f in (doc.filters or [])
+		if f.fieldname and f.fieldtype not in ("Fold", "Column Break", "Section Break")
+	]
 
 
 @frappe.whitelist()
