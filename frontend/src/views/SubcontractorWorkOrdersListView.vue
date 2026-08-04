@@ -4,6 +4,7 @@
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -11,6 +12,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 
 const router = useRouter();
+const { projectName } = useProjectNames();
 
 const wosRes = useDocTypeList("Subcontractor Work Order", {
 	fields: [
@@ -47,7 +49,8 @@ const rows = computed(() => {
 			(w) =>
 				(w.id || "").toLowerCase().includes(q) ||
 				(w.subcontractor || "").toLowerCase().includes(q) ||
-				(w.project || "").toLowerCase().includes(q)
+				(w.project || "").toLowerCase().includes(q) ||
+				projectName(w.project).toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -101,7 +104,7 @@ function onRowClick(row) {
 				<span class="text-ink-900 font-medium">{{ row.subcontractor }}</span>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-xs text-ink-700">{{ row.project }}</span>
+				<span class="text-xs text-ink-700">{{ projectName(row.project) }}</span>
 			</template>
 			<template #cell-date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.date) }}</span>

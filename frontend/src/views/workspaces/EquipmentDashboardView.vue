@@ -6,12 +6,14 @@ import { RouterLink, useRouter } from "vue-router";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getEquipmentDashboard } from "@/data/equipmentApi";
+import { useProjectNames } from "@/composables/useProjectNames";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
+const { projectName } = useProjectNames();
 
 const today = computed(() =>
-	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
 );
 
 const loading = ref(true);
@@ -121,7 +123,9 @@ const register = computed(() => kpis.value?.register || []);
 								/>
 								<h2 class="text-sm font-semibold text-ink-900">Recent usage</h2>
 							</div>
-							<RouterLink to="/machinery-usage" class="text-xs text-brand-700 hover:underline"
+							<RouterLink
+								to="/machinery-usage"
+								class="text-xs text-brand-700 hover:underline"
 								>View all →</RouterLink
 							>
 						</div>
@@ -133,15 +137,22 @@ const register = computed(() => kpis.value?.register || []);
 								@click="router.push(`/machinery-usage/${u.name}`)"
 							>
 								<div class="flex items-center justify-between">
-									<span class="text-sm text-ink-900 font-medium">{{ u.machine }}</span>
-									<span class="text-sm text-ink-900 tabular-nums">{{ fmtCompactINR(u.total) }}</span>
+									<span class="text-sm text-ink-900 font-medium">{{
+										u.machine
+									}}</span>
+									<span class="text-sm text-ink-900 tabular-nums">{{
+										fmtCompactINR(u.total)
+									}}</span>
 								</div>
 								<div class="text-[11px] text-ink-500 mt-0.5">
-									{{ u.project || "—" }} · {{ fmtDate(u.date) }} · {{ u.quantity }} {{ u.unit }}
+									{{ projectName(u.project) || "—" }} · {{ fmtDate(u.date) }} ·
+									{{ u.quantity }} {{ u.unit }}
 								</div>
 							</li>
 						</ul>
-						<div v-else class="px-4 py-6 text-sm text-ink-400">No usage logged yet.</div>
+						<div v-else class="px-4 py-6 text-sm text-ink-400">
+							No usage logged yet.
+						</div>
 					</div>
 
 					<!-- Register -->
@@ -163,7 +174,9 @@ const register = computed(() => kpis.value?.register || []);
 								/>
 								<h2 class="text-sm font-semibold text-ink-900">Register</h2>
 							</div>
-							<RouterLink to="/machinery" class="text-xs text-brand-700 hover:underline"
+							<RouterLink
+								to="/machinery"
+								class="text-xs text-brand-700 hover:underline"
 								>View all →</RouterLink
 							>
 						</div>
@@ -175,18 +188,26 @@ const register = computed(() => kpis.value?.register || []);
 								@click="router.push(`/machinery/${m.name}`)"
 							>
 								<div class="flex items-center justify-between">
-									<span class="text-sm text-ink-900 font-medium">{{ m.machinery_name }}</span>
-									<span class="text-sm text-ink-700 tabular-nums"
-										>{{ m.rate ? fmtINR(m.rate) + "/" + (m.rate_unit || "—") : "—" }}</span
-									>
+									<span class="text-sm text-ink-900 font-medium">{{
+										m.machinery_name
+									}}</span>
+									<span class="text-sm text-ink-700 tabular-nums">{{
+										m.rate ? fmtINR(m.rate) + "/" + (m.rate_unit || "—") : "—"
+									}}</span>
 								</div>
-								<div class="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1.5">
+								<div
+									class="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1.5"
+								>
 									<StatusBadge :status="m.status" size="xs" />
-									<span>· {{ m.machinery_type || "—" }} · {{ m.ownership }}</span>
+									<span
+										>· {{ m.machinery_type || "—" }} · {{ m.ownership }}</span
+									>
 								</div>
 							</li>
 						</ul>
-						<div v-else class="px-4 py-6 text-sm text-ink-400">No machines registered.</div>
+						<div v-else class="px-4 py-6 text-sm text-ink-400">
+							No machines registered.
+						</div>
 					</div>
 				</div>
 			</template>

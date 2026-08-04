@@ -8,6 +8,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
@@ -24,6 +25,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	subcontractor_name: "subcontractor_name",
 	trade: "trade",
@@ -242,7 +244,9 @@ const breadcrumbs = computed(() => [
 										>{{ wo.name }}</DeskLink
 									>
 								</td>
-								<td class="px-3 py-2 text-ink-700">{{ wo.project }}</td>
+								<td class="px-3 py-2 text-ink-700">
+									{{ projectName(wo.project) }}
+								</td>
 								<td class="px-3 py-2 text-ink-500">{{ fmtDate(wo.date) }}</td>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium"

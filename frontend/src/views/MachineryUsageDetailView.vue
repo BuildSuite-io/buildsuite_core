@@ -7,6 +7,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate } from "@/utils/format";
@@ -23,6 +24,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({ machine: "machine" });
 
 const resource = adapter.read("Machinery Usage", props.id, { fields: ["*"] });
@@ -39,7 +41,7 @@ const machineryOptions = computed(() =>
 		value: m.name,
 		label: m.machinery_name,
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
-	})),
+	}))
 );
 const projectRes = useDocTypeList("Project", {
 	fields: ["name", "project_name"],
@@ -48,7 +50,7 @@ const projectRes = useDocTypeList("Project", {
 	cache: "buildsuite-project-options",
 });
 const projectOptions = computed(() =>
-	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name })),
+	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name }))
 );
 
 const editing = ref(false);
@@ -74,7 +76,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function totalOf(o) {
@@ -179,7 +181,13 @@ const breadcrumbs = computed(() => [
 			>
 				Cancel
 			</button>
-			<button v-if="editing" type="button" class="desk-save-btn" :disabled="saving" @click="saveEdit">
+			<button
+				v-if="editing"
+				type="button"
+				class="desk-save-btn"
+				:disabled="saving"
+				@click="saveEdit"
+			>
 				{{ saving ? "Saving…" : "Save" }}
 			</button>
 		</template>
@@ -191,7 +199,9 @@ const breadcrumbs = computed(() => [
 					<DeskLink :to="`/machinery/${doc.machine}`">{{ doc.machine }}</DeskLink>
 				</DeskField>
 				<DeskField label="Project"
-					><div class="text-sm text-ink-700">{{ doc.project || "—" }}</div></DeskField
+					><div class="text-sm text-ink-700">
+						{{ projectName(doc.project) || "—" }}
+					</div></DeskField
 				>
 				<DeskField label="Task"
 					><div class="text-sm text-ink-700">{{ doc.task || "—" }}</div></DeskField
@@ -205,7 +215,9 @@ const breadcrumbs = computed(() => [
 					</div></DeskField
 				>
 				<DeskField label="Rate"
-					><div class="text-sm text-ink-800 tabular-nums">{{ fmtINR(doc.rate) }}</div></DeskField
+					><div class="text-sm text-ink-800 tabular-nums">
+						{{ fmtINR(doc.rate) }}
+					</div></DeskField
 				>
 				<DeskField label="Fuel cost"
 					><div class="text-sm text-ink-800 tabular-nums">

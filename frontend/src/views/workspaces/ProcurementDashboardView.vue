@@ -4,12 +4,14 @@ import { RouterLink } from "vue-router";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getProcurementDashboard } from "@/data/procurementApi";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { dayjs } from "frappe-ui";
 
 const today = computed(() =>
 	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
 );
 
+const { projectName } = useProjectNames();
 const loading = ref(true);
 const error = ref("");
 const kpis = ref(null);
@@ -35,7 +37,9 @@ function plural(n) {
 // Frappe Desk list URL with filters, e.g. per_received=["<",100].
 function deskUrl(doctype, filters = {}) {
 	const qs = Object.entries(filters)
-		.map(([k, v]) => `${k}=${encodeURIComponent(typeof v === "string" ? v : JSON.stringify(v))}`)
+		.map(
+			([k, v]) => `${k}=${encodeURIComponent(typeof v === "string" ? v : JSON.stringify(v))}`
+		)
 		.join("&");
 	return `/app/${doctype}?${qs}`;
 }
@@ -285,40 +289,40 @@ function grnTone(status) {
 									:href="row.href"
 									class="px-4 py-3 flex items-center gap-3 hover:bg-ink-50 transition-colors"
 								>
-								<span
-									:class="[
-										'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-										toneClasses(row.tone).chip,
-									]"
-								>
-									<svg
-										class="w-4 h-4"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="1.75"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										aria-hidden="true"
-										v-html="getWorkspaceIconPath(row.icon)"
-									/>
-								</span>
-								<div class="flex-1 min-w-0">
-									<div class="text-sm font-medium text-ink-900 truncate">
-										{{ row.label }}
+									<span
+										:class="[
+											'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+											toneClasses(row.tone).chip,
+										]"
+									>
+										<svg
+											class="w-4 h-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.75"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+											v-html="getWorkspaceIconPath(row.icon)"
+										/>
+									</span>
+									<div class="flex-1 min-w-0">
+										<div class="text-sm font-medium text-ink-900 truncate">
+											{{ row.label }}
+										</div>
+										<div class="text-[11px] text-ink-500 truncate mt-0.5">
+											{{ row.sub }}
+										</div>
 									</div>
-									<div class="text-[11px] text-ink-500 truncate mt-0.5">
-										{{ row.sub }}
-									</div>
-								</div>
-								<span
-									:class="[
-										'text-base font-semibold tabular-nums flex-shrink-0',
-										toneClasses(row.tone).count,
-									]"
-									>{{ row.count }}</span
-								>
-								<span class="text-ink-300">›</span>
+									<span
+										:class="[
+											'text-base font-semibold tabular-nums flex-shrink-0',
+											toneClasses(row.tone).count,
+										]"
+										>{{ row.count }}</span
+									>
+									<span class="text-ink-300">›</span>
 								</a>
 							</li>
 						</ul>
@@ -374,7 +378,7 @@ function grnTone(status) {
 										>
 									</div>
 									<div class="text-[11px] text-ink-500 mt-0.5 truncate">
-										{{ grn.project }} · {{ grn.supplier }} ·
+										{{ projectName(grn.project) }} · {{ grn.supplier }} ·
 										{{ fmtDate(grn.posting_date) }} · {{ grn.name }}
 									</div>
 								</div>

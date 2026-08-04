@@ -5,6 +5,7 @@
 import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { listBills } from "@/data/subcontractApi";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -13,6 +14,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const { projectName } = useProjectNames();
 
 // Loaded via list_bills so each row carries the workflow state AND the derived payment status.
 const allBills = ref([]);
@@ -50,7 +52,8 @@ const rows = computed(() => {
 			(b) =>
 				(b.id || "").toLowerCase().includes(q) ||
 				(b.subcontractor || "").toLowerCase().includes(q) ||
-				(b.project || "").toLowerCase().includes(q)
+				(b.project || "").toLowerCase().includes(q) ||
+				projectName(b.project).toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -110,7 +113,7 @@ function onRowClick(row) {
 				<span class="text-xs font-medium text-ink-900">{{ row.subcontractor }}</span>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-xs text-ink-500">{{ row.project }}</span>
+				<span class="text-xs text-ink-500">{{ projectName(row.project) }}</span>
 			</template>
 			<template #cell-date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.date) }}</span>
