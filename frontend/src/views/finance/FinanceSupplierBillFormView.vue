@@ -1,12 +1,22 @@
 <script setup>
 // Project Finance › Bills › Supplier bill form — a full PAGE over ERPNext Purchase Invoice
-// (money out), for create (/project-finance/supplier-bills/new) and edit of a Draft. Item
-// lines (qty × rate), taxes & discount via templates (Bill pattern) + a live waterfall, and
-// terms. Mirrors the customer-invoice form.
+// (money out), for create (/project-finance/supplier-bills/new) and edit of a Draft.
+//   · From Purchase Order — pick a PO with something still to bill; the lines pre-fill from
+//     the PO (item, remaining qty, PO rate) and stay linked so the PO's billed qty tracks.
+//   · Direct — no PO: pick the supplier and enter Item-master lines manually.
+// Item lines carry a real Item (qty × rate), then taxes & discount via templates + a live
+// waterfall, and terms. Mirrors the customer-invoice form.
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
-import { getSupplierBill, saveSupplierBill, getSupplierBillTaxRows, getSupplierBillTerms } from "@/data/supplierBillApi";
+import {
+	getSupplierBill,
+	saveSupplierBill,
+	getSupplierBillTaxRows,
+	getSupplierBillTerms,
+	getPoBillLines,
+	getSupplierBillItemDetails,
+} from "@/data/supplierBillApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -23,11 +33,30 @@ const companyFilter = activeCompanyFilter();
 const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
 const isEdit = computed(() => !!props.id);
 
+// 'po' | 'direct'. Locked once editing (the source can't change on a saved bill).
+const mode = ref("po");
+// Billable POs: submitted, still something to bill. docstatus=2 (Cancelled) is excluded by list.
+const poFilters = computed(() => [
+	["docstatus", "=", 1],
+	["per_billed", "<", 100],
+	...companyFilter.value,
+]);
+
 function blankLine() {
-	return { description: "", qty: 1, rate: null };
+	return {
+		item_code: "",
+		description: "",
+		qty: 1,
+		uom: "",
+		rate: null,
+		purchase_order: "",
+		po_detail: "",
+	};
 }
 const form = reactive({
+	purchase_order: "",
 	supplier: "",
+	supplier_name: "",
 	project: "",
 	bill_no: "",
 	bill_date: "",
@@ -37,13 +66,13 @@ const form = reactive({
 	taxes_and_charges: "",
 	taxes: [],
 	discount_on: "Net Total",
-	discount_type: "%",
+	discount_type: "₹",
 	discount_value: 0,
 	tc_name: "",
 	terms: "",
 });
 const termsOpen = ref(false);
-const errors = reactive({ supplier: "", lines: "" });
+const errors = reactive({ supplier: "", po: "", lines: "" });
 const saving = ref(false);
 const loading = ref(isEdit.value);
 
@@ -54,19 +83,40 @@ if (isEdit.value) {
 				router.replace(`/project-finance/supplier-bills/${props.id}`);
 				return;
 			}
+			const poLinked = (b.items || []).some((l) => l.purchase_order);
+			mode.value = poLinked ? "po" : "direct";
 			Object.assign(form, {
+				purchase_order:
+					(b.items || []).find((l) => l.purchase_order)?.purchase_order || "",
 				supplier: b.supplier,
+				supplier_name: b.supplier_name || "",
 				project: b.project || "",
 				bill_no: b.bill_no || "",
 				bill_date: b.bill_date || "",
 				date: b.date,
 				due_date: b.due_date || "",
-				lines: (b.items || []).map((l) => ({ description: l.description, qty: l.qty ?? 1, rate: l.rate })),
+				lines: (b.items || []).map((l) => ({
+					item_code: l.item_code || "",
+					description: l.description || "",
+					qty: l.qty ?? 1,
+					uom: l.uom || "",
+					rate: l.rate,
+					purchase_order: l.purchase_order || "",
+					po_detail: l.po_detail || "",
+				})),
 				taxes_and_charges: b.taxes_and_charges || "",
-				taxes: (b.taxes || []).map((t) => ({ charge_type: t.charge_type, account_head: t.account_head, description: t.description, rate: t.rate })),
+				taxes: (b.taxes || []).map((t) => ({
+					charge_type: t.charge_type,
+					account_head: t.account_head,
+					description: t.description,
+					rate: t.rate,
+				})),
 				discount_on: b.additional_discount_on || "Net Total",
 				discount_type: Number(b.discount_amount) > 0 ? "₹" : "%",
-				discount_value: Number(b.discount_amount) > 0 ? Number(b.discount_amount) : Number(b.additional_discount_percentage) || 0,
+				discount_value:
+					Number(b.discount_amount) > 0
+						? Number(b.discount_amount)
+						: Number(b.additional_discount_percentage) || 0,
 				tc_name: b.tc_name || "",
 				terms: b.terms || "",
 			});
@@ -75,6 +125,55 @@ if (isEdit.value) {
 		})
 		.catch((err) => showToast(err.message || "Failed to load bill", "error"))
 		.finally(() => (loading.value = false));
+}
+
+// --- From Purchase Order: prefill lines from the PO's unbilled quantities ---
+async function onPickPo(po) {
+	form.purchase_order = po || "";
+	if (!po) return;
+	try {
+		const ctx = await getPoBillLines(po);
+		form.supplier = ctx.supplier || "";
+		form.supplier_name = ctx.supplier_name || "";
+		form.project = ctx.project || "";
+		form.lines = (ctx.lines || []).map((l) => ({
+			item_code: l.item_code || "",
+			description: l.description || "",
+			qty: l.qty ?? 1,
+			uom: l.uom || "",
+			rate: l.rate,
+			purchase_order: l.purchase_order || po,
+			po_detail: l.po_detail || "",
+		}));
+		if (!form.lines.length) form.lines = [blankLine()];
+	} catch (err) {
+		showToast(err.message || "Failed to load PO lines", "error");
+	}
+}
+function switchMode(m) {
+	if (isEdit.value || mode.value === m) return;
+	mode.value = m;
+	form.purchase_order = "";
+	form.lines = [blankLine()];
+	if (m === "direct") {
+		form.supplier = "";
+		form.supplier_name = "";
+		form.project = "";
+	}
+}
+
+// --- Direct-mode Item lines: pick a real Item, default its UOM + rate ---
+async function onPickItem(line) {
+	if (!line.item_code) return;
+	try {
+		const d = await getSupplierBillItemDetails(line.item_code);
+		line.description = d.description || line.description;
+		line.uom = d.uom || line.uom;
+		if (line.rate === null || line.rate === "" || Number(line.rate) === 0)
+			line.rate = d.rate || null;
+	} catch {
+		/* ignore — leave the row for manual entry */
+	}
 }
 
 function lineAmount(l) {
@@ -117,10 +216,16 @@ async function onPickTerms(name) {
 
 const wf = computed(() => {
 	const net = form.lines.reduce((a, l) => a + lineAmount(l), 0);
-	const discBase = (base) => (form.discount_type === "%" ? (base * (Number(form.discount_value) || 0)) / 100 : Number(form.discount_value) || 0);
+	const discBase = (base) =>
+		form.discount_type === "%"
+			? (base * (Number(form.discount_value) || 0)) / 100
+			: Number(form.discount_value) || 0;
 	const netDiscount = form.discount_on === "Net Total" ? discBase(net) : 0;
 	const taxable = Math.max(0, net - netDiscount);
-	const taxRows = form.taxes.map((t) => ({ ...t, amount: (taxable * (Number(t.rate) || 0)) / 100 }));
+	const taxRows = form.taxes.map((t) => ({
+		...t,
+		amount: (taxable * (Number(t.rate) || 0)) / 100,
+	}));
 	const tax = taxRows.reduce((a, r) => a + r.amount, 0);
 	const grandTotal = taxable + tax;
 	const grandDiscount = form.discount_on === "Grand Total" ? discBase(grandTotal) : 0;
@@ -136,11 +241,13 @@ const breadcrumbs = computed(() => [
 
 async function save() {
 	errors.supplier = "";
+	errors.po = "";
 	errors.lines = "";
+	if (mode.value === "po" && !form.purchase_order) errors.po = "Pick a purchase order.";
 	if (!form.supplier) errors.supplier = "Supplier is required.";
-	const lines = form.lines.filter((l) => (l.description || "").trim() && lineAmount(l) > 0);
+	const lines = form.lines.filter((l) => (l.item_code || l.description) && lineAmount(l) > 0);
 	if (!lines.length) errors.lines = "Add at least one item with a quantity and rate.";
-	if (errors.supplier || errors.lines) return;
+	if (errors.supplier || errors.po || errors.lines) return;
 
 	saving.value = true;
 	try {
@@ -152,11 +259,27 @@ async function save() {
 			bill_date: form.bill_date || undefined,
 			date: form.date,
 			due_date: form.due_date || undefined,
-			items: lines.map((l) => ({ description: l.description.trim(), qty: Number(l.qty) || 1, rate: Number(l.rate) })),
+			items: lines.map((l) => ({
+				item_code: l.item_code || undefined,
+				description: (l.description || "").trim(),
+				qty: Number(l.qty) || 1,
+				uom: l.uom || undefined,
+				rate: Number(l.rate),
+				purchase_order: l.purchase_order || undefined,
+				po_detail: l.po_detail || undefined,
+			})),
 			taxes_and_charges: form.taxes_and_charges || undefined,
-			taxes: form.taxes.filter((t) => t.account_head).map((t) => ({ charge_type: t.charge_type, account_head: t.account_head, description: t.description, rate: Number(t.rate) || 0 })),
+			taxes: form.taxes
+				.filter((t) => t.account_head)
+				.map((t) => ({
+					charge_type: t.charge_type,
+					account_head: t.account_head,
+					description: t.description,
+					rate: Number(t.rate) || 0,
+				})),
 			additional_discount_on: form.discount_on,
-			additional_discount_percentage: form.discount_type === "%" ? Number(form.discount_value) || 0 : 0,
+			additional_discount_percentage:
+				form.discount_type === "%" ? Number(form.discount_value) || 0 : 0,
 			discount_amount: form.discount_type === "₹" ? Number(form.discount_value) || 0 : 0,
 			tc_name: form.tc_name || undefined,
 			terms: form.terms || undefined,
@@ -172,41 +295,203 @@ async function save() {
 </script>
 
 <template>
-	<DeskPage :title="isEdit ? `Edit ${id}` : 'New supplier bill'" :breadcrumbs="breadcrumbs" subtitle="A supplier payable — Submit posts it; then pay from a Bank/Cash account.">
+	<DeskPage
+		:title="isEdit ? `Edit ${id}` : 'New supplier bill'"
+		:breadcrumbs="breadcrumbs"
+		subtitle="A supplier payable — Submit posts it; then pay from a Bank/Cash account."
+	>
 		<DeskForm>
 			<template #action-bar>
-				<DeskActionBar :save-label="isEdit ? 'Save bill' : 'Create bill'" :saving="saving" @save="save" @cancel="router.back()" />
+				<DeskActionBar
+					:save-label="isEdit ? 'Save bill' : 'Create bill'"
+					:saving="saving"
+					@save="save"
+					@cancel="router.back()"
+				/>
 			</template>
 
 			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Loading…</div>
 			<template v-else>
-				<DeskSection title="Bill details" :cols="4">
+				<!-- mode toggle (locked while editing — the source can't change) -->
+				<div class="flex items-center gap-2 mb-4">
+					<button
+						type="button"
+						class="text-xs px-3 py-1.5 border rounded-full transition-colors"
+						:class="
+							mode === 'po'
+								? 'bg-brand-600 border-brand-600 text-white'
+								: 'bg-white border-ink-200 text-ink-600 hover:bg-ink-50'
+						"
+						:disabled="isEdit"
+						@click="switchMode('po')"
+					>
+						From Purchase Order
+					</button>
+					<button
+						type="button"
+						class="text-xs px-3 py-1.5 border rounded-full transition-colors"
+						:class="
+							mode === 'direct'
+								? 'bg-brand-600 border-brand-600 text-white'
+								: 'bg-white border-ink-200 text-ink-600 hover:bg-ink-50'
+						"
+						:disabled="isEdit"
+						@click="switchMode('direct')"
+					>
+						Direct
+					</button>
+					<span class="text-[11px] text-ink-400">{{
+						mode === "po"
+							? "Lines pre-fill from the PO's unbilled quantities."
+							: "No purchase order — enter charge lines manually."
+					}}</span>
+				</div>
+
+				<!-- PO mode header -->
+				<DeskSection v-if="mode === 'po'" title="Against purchase order" :cols="2">
+					<DeskField label="Purchase order" required :error="errors.po">
+						<DeskLinkPicker
+							v-if="!isEdit"
+							:model-value="form.purchase_order"
+							doctype="Purchase Order"
+							label-field="name"
+							value-field="name"
+							:filters="poFilters"
+							placeholder="Select a PO with something to bill…"
+							@update:model-value="onPickPo"
+						/>
+						<div v-else class="text-sm text-ink-900 pt-1.5 font-mono">
+							{{ form.purchase_order }}
+						</div>
+					</DeskField>
+					<DeskField v-if="form.supplier" label="Supplier · project">
+						<div class="text-sm text-ink-900 pt-1.5">
+							{{ form.supplier_name || form.supplier
+							}}<span v-if="form.project" class="text-ink-500">
+								· {{ form.project }}</span
+							>
+						</div>
+					</DeskField>
+				</DeskSection>
+
+				<!-- Direct mode header -->
+				<DeskSection v-if="mode === 'direct'" title="Supplier" :cols="2">
 					<DeskField label="Supplier" required :error="errors.supplier">
-						<DeskLinkPicker v-model="form.supplier" doctype="Supplier" label-field="supplier_name" value-field="name" placeholder="Pick a supplier…" />
+						<DeskLinkPicker
+							v-model="form.supplier"
+							doctype="Supplier"
+							label-field="supplier_name"
+							value-field="name"
+							placeholder="Pick a supplier…"
+						/>
 					</DeskField>
-					<DeskField label="Project" hint="Optional — tags the cost to a project.">
-						<DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="None" />
+					<DeskField
+						label="Project"
+						hint="Optional — ties the cost to a project's books."
+					>
+						<DeskLinkPicker
+							v-model="form.project"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							:filters="companyFilter"
+							placeholder="None"
+						/>
 					</DeskField>
-					<DeskField label="Supplier invoice no."><DeskInput v-model="form.bill_no" placeholder="Their reference" /></DeskField>
-					<DeskField label="Supplier invoice date"><DeskInput v-model="form.bill_date" type="date" /></DeskField>
-					<DeskField label="Bill date"><DeskInput v-model="form.date" type="date" /></DeskField>
-					<DeskField label="Due date"><DeskInput v-model="form.due_date" type="date" /></DeskField>
+				</DeskSection>
+
+				<DeskSection title="Bill details" :cols="4">
+					<DeskField label="Supplier invoice no."
+						><DeskInput v-model="form.bill_no" placeholder="Their reference"
+					/></DeskField>
+					<DeskField label="Supplier invoice date"
+						><DeskInput v-model="form.bill_date" type="date"
+					/></DeskField>
+					<DeskField label="Bill date"
+						><DeskInput v-model="form.date" type="date"
+					/></DeskField>
+					<DeskField label="Due date"
+						><DeskInput v-model="form.due_date" type="date"
+					/></DeskField>
 				</DeskSection>
 
 				<DeskSection title="Items" :cols="1">
 					<div>
-						<div class="hidden md:grid grid-cols-[1fr_110px_140px_140px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1">
-							<span>Description</span><span class="text-right">Qty</span><span class="text-right">Rate</span><span class="text-right">Amount</span><span></span>
+						<div
+							class="hidden md:grid grid-cols-[1fr_100px_120px_120px_120px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"
+						>
+							<span>Item</span><span class="text-right">Qty</span><span>UOM</span
+							><span class="text-right">Rate</span
+							><span class="text-right">Amount</span><span></span>
 						</div>
-						<div v-for="(l, idx) in form.lines" :key="idx" class="grid grid-cols-2 md:grid-cols-[1fr_110px_140px_140px_36px] gap-2 items-center mb-2">
-							<DeskInput v-model="l.description" placeholder="e.g. Cement — 100 bags" class="col-span-2 md:col-span-1" />
-							<DeskInput v-model.number="l.qty" type="number" min="0" placeholder="Qty" class="text-right" />
-							<DeskInput v-model.number="l.rate" type="number" min="0" placeholder="Rate" class="text-right" />
-							<div class="text-xs tabular-nums text-ink-700 text-right">{{ fmtINR(lineAmount(l)) }}</div>
-							<button type="button" class="text-ink-400 hover:text-danger-600 text-sm" aria-label="Remove line" @click="removeLine(idx)">✕</button>
+						<div
+							v-for="(l, idx) in form.lines"
+							:key="idx"
+							class="grid grid-cols-2 md:grid-cols-[1fr_100px_120px_120px_120px_36px] gap-2 items-center mb-2"
+						>
+							<div class="col-span-2 md:col-span-1 min-w-0">
+								<span v-if="mode === 'po'" class="text-xs text-ink-900">{{
+									l.description
+								}}</span>
+								<DeskLinkPicker
+									v-else
+									v-model="l.item_code"
+									doctype="Item"
+									label-field="item_name"
+									value-field="name"
+									:search-fields="['item_name', 'item_code', 'name']"
+									placeholder="Pick an item…"
+									@update:model-value="onPickItem(l)"
+								/>
+							</div>
+							<DeskInput
+								v-model.number="l.qty"
+								type="number"
+								min="0"
+								placeholder="Qty"
+								class="text-right"
+							/>
+							<span v-if="mode === 'po'" class="text-xs text-ink-500 truncate">{{
+								l.uom || "—"
+							}}</span>
+							<DeskLinkPicker
+								v-else
+								v-model="l.uom"
+								doctype="UOM"
+								label-field="name"
+								value-field="name"
+								placeholder="UOM"
+							/>
+							<DeskInput
+								v-model.number="l.rate"
+								type="number"
+								min="0"
+								placeholder="Rate"
+								class="text-right"
+							/>
+							<div class="text-xs tabular-nums text-ink-700 text-right">
+								{{ fmtINR(lineAmount(l)) }}
+							</div>
+							<button
+								type="button"
+								class="text-ink-400 hover:text-danger-600 text-sm"
+								aria-label="Remove line"
+								@click="removeLine(idx)"
+							>
+								✕
+							</button>
 						</div>
-						<p v-if="errors.lines" class="text-[11px] text-danger-600 mb-2">{{ errors.lines }}</p>
-						<button type="button" class="text-xs text-brand-700 hover:underline" @click="addLine">+ Add item</button>
+						<p v-if="errors.lines" class="text-[11px] text-danger-600 mb-2">
+							{{ errors.lines }}
+						</p>
+						<button
+							v-if="mode === 'direct'"
+							type="button"
+							class="text-xs text-brand-700 hover:underline"
+							@click="addLine"
+						>
+							+ Add item
+						</button>
 					</div>
 				</DeskSection>
 
@@ -217,55 +502,190 @@ async function save() {
 							<hr class="desk-divider" />
 							<div class="flex items-center gap-2 mb-2 mt-2">
 								<div class="w-64">
-									<DeskLinkPicker :model-value="form.taxes_and_charges" doctype="Purchase Taxes and Charges Template" label-field="title" value-field="name" :filters="companyFilter" placeholder="Tax template…" @update:model-value="applyTemplate" />
+									<DeskLinkPicker
+										:model-value="form.taxes_and_charges"
+										doctype="Purchase Taxes and Charges Template"
+										label-field="title"
+										value-field="name"
+										:filters="companyFilter"
+										placeholder="Tax template…"
+										@update:model-value="applyTemplate"
+									/>
 								</div>
-								<button type="button" class="text-[11px] text-brand-700 hover:underline whitespace-nowrap" @click="addTaxRow">+ Add row</button>
+								<button
+									type="button"
+									class="text-[11px] text-brand-700 hover:underline whitespace-nowrap"
+									@click="addTaxRow"
+								>
+									+ Add row
+								</button>
 							</div>
 							<div v-if="form.taxes.length" class="space-y-1.5">
-								<div v-for="(row, idx) in form.taxes" :key="idx" class="flex items-center gap-2">
-									<div class="w-56"><DeskLinkPicker v-model="row.account_head" doctype="Account" label-field="name" value-field="name" :filters="accountFilters" placeholder="Tax account…" /></div>
-									<input v-model.number="row.rate" type="number" min="0" step="0.5" class="w-16 text-xs px-2 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200" />
+								<div
+									v-for="(row, idx) in form.taxes"
+									:key="idx"
+									class="flex items-center gap-2"
+								>
+									<div class="w-56">
+										<DeskLinkPicker
+											v-model="row.account_head"
+											doctype="Account"
+											label-field="name"
+											value-field="name"
+											:filters="accountFilters"
+											placeholder="Tax account…"
+										/>
+									</div>
+									<input
+										v-model.number="row.rate"
+										type="number"
+										min="0"
+										step="0.5"
+										class="w-16 text-xs px-2 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
+									/>
 									<span class="text-[10px] text-ink-400">%</span>
-									<button type="button" class="text-ink-400 hover:text-danger-600 text-xs" @click="removeTaxRow(idx)">✕</button>
+									<button
+										type="button"
+										class="text-ink-400 hover:text-danger-600 text-xs"
+										@click="removeTaxRow(idx)"
+									>
+										✕
+									</button>
 								</div>
 							</div>
 							<div class="flex items-center gap-2 flex-wrap mt-3">
 								<span class="text-xs text-ink-500">Discount</span>
-								<select v-model="form.discount_on" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
+								<select
+									v-model="form.discount_on"
+									class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
+								>
 									<option value="Net Total">On Net Total</option>
 									<option value="Grand Total">On Grand Total</option>
 								</select>
-								<input v-model.number="form.discount_value" type="number" min="0" class="w-24 text-xs px-2 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200" />
-								<div class="flex rounded-md border border-ink-200 overflow-hidden text-[11px]">
-									<button type="button" class="px-2 py-1" :class="form.discount_type === '₹' ? 'bg-ink-900 text-white' : 'text-ink-600'" @click="form.discount_type = '₹'">₹</button>
-									<button type="button" class="px-2 py-1" :class="form.discount_type === '%' ? 'bg-ink-900 text-white' : 'text-ink-600'" @click="form.discount_type = '%'">%</button>
+								<input
+									v-model.number="form.discount_value"
+									type="number"
+									min="0"
+									class="w-24 text-xs px-2 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
+								/>
+								<div
+									class="flex rounded-md border border-ink-200 overflow-hidden text-[11px]"
+								>
+									<button
+										type="button"
+										class="px-2 py-1"
+										:class="
+											form.discount_type === '₹'
+												? 'bg-ink-900 text-white'
+												: 'text-ink-600'
+										"
+										@click="form.discount_type = '₹'"
+									>
+										₹
+									</button>
+									<button
+										type="button"
+										class="px-2 py-1"
+										:class="
+											form.discount_type === '%'
+												? 'bg-ink-900 text-white'
+												: 'text-ink-600'
+										"
+										@click="form.discount_type = '%'"
+									>
+										%
+									</button>
 								</div>
 							</div>
 						</div>
 
 						<div>
-							<button type="button" class="w-full flex items-center gap-2 text-left" @click="termsOpen = !termsOpen">
+							<button
+								type="button"
+								class="w-full flex items-center gap-2 text-left"
+								@click="termsOpen = !termsOpen"
+							>
 								<h3 class="desk-section-title">Terms &amp; conditions</h3>
-								<span v-if="form.terms && !termsOpen" class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-full">set</span>
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink-400 transition-transform" :class="termsOpen ? 'rotate-90' : ''"><path d="M9 18l6-6-6-6" /></svg>
+								<span
+									v-if="form.terms && !termsOpen"
+									class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-full"
+									>set</span
+								>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									class="text-ink-400 transition-transform"
+									:class="termsOpen ? 'rotate-90' : ''"
+								>
+									<path d="M9 18l6-6-6-6" />
+								</svg>
 							</button>
 							<hr class="desk-divider" />
 							<div v-if="termsOpen" class="mt-2">
 								<div class="w-64 mb-2">
-									<DeskLinkPicker :model-value="form.tc_name" doctype="Terms and Conditions" label-field="name" value-field="name" placeholder="Import from template…" @update:model-value="onPickTerms" />
+									<DeskLinkPicker
+										:model-value="form.tc_name"
+										doctype="Terms and Conditions"
+										label-field="name"
+										value-field="name"
+										placeholder="Import from template…"
+										@update:model-value="onPickTerms"
+									/>
 								</div>
-								<textarea v-model="form.terms" rows="5" placeholder="Terms — import a template above or write your own." class="w-full text-xs px-3 py-2 border border-ink-200 rounded-md leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"></textarea>
+								<textarea
+									v-model="form.terms"
+									rows="5"
+									placeholder="Terms — import a template above or write your own."
+									class="w-full text-xs px-3 py-2 border border-ink-200 rounded-md leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+								></textarea>
 							</div>
 						</div>
 					</div>
 
 					<div class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
-						<div class="flex justify-between text-ink-600"><span>Net total</span><span class="tabular-nums">{{ fmtINR(wf.net) }}</span></div>
-						<div v-if="wf.netDiscount > 0" class="flex justify-between text-ink-600"><span>Discount (on net)</span><span class="tabular-nums text-danger-700">− {{ fmtINR(wf.netDiscount) }}</span></div>
-						<div v-if="wf.taxable !== wf.net" class="flex justify-between text-ink-600"><span>Taxable value</span><span class="tabular-nums">{{ fmtINR(wf.taxable) }}</span></div>
-						<div v-for="(row, idx) in wf.taxRows" :key="idx" class="flex justify-between text-ink-600"><span>{{ row.account_head || "Tax" }} ({{ row.rate }}%)</span><span class="tabular-nums">{{ fmtINR(row.amount) }}</span></div>
-						<div v-if="wf.grandDiscount > 0" class="flex justify-between text-ink-600"><span>Discount (on grand total)</span><span class="tabular-nums text-danger-700">− {{ fmtINR(wf.grandDiscount) }}</span></div>
-						<div class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"><span>Bill total</span><span class="tabular-nums">{{ fmtINR(wf.billTotal) }}</span></div>
+						<div class="flex justify-between text-ink-600">
+							<span>Net total</span
+							><span class="tabular-nums">{{ fmtINR(wf.net) }}</span>
+						</div>
+						<div v-if="wf.netDiscount > 0" class="flex justify-between text-ink-600">
+							<span>Discount (on net)</span
+							><span class="tabular-nums text-danger-700"
+								>− {{ fmtINR(wf.netDiscount) }}</span
+							>
+						</div>
+						<div
+							v-if="wf.taxable !== wf.net"
+							class="flex justify-between text-ink-600"
+						>
+							<span>Taxable value</span
+							><span class="tabular-nums">{{ fmtINR(wf.taxable) }}</span>
+						</div>
+						<div
+							v-for="(row, idx) in wf.taxRows"
+							:key="idx"
+							class="flex justify-between text-ink-600"
+						>
+							<span>{{ row.account_head || "Tax" }} ({{ row.rate }}%)</span
+							><span class="tabular-nums">{{ fmtINR(row.amount) }}</span>
+						</div>
+						<div v-if="wf.grandDiscount > 0" class="flex justify-between text-ink-600">
+							<span>Discount (on grand total)</span
+							><span class="tabular-nums text-danger-700"
+								>− {{ fmtINR(wf.grandDiscount) }}</span
+							>
+						</div>
+						<div
+							class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
+						>
+							<span>Bill total</span
+							><span class="tabular-nums">{{ fmtINR(wf.billTotal) }}</span>
+						</div>
 					</div>
 				</div>
 			</template>

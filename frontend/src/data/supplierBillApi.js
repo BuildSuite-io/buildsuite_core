@@ -32,3 +32,10 @@ export const listBillPayAccounts = () => call("list_pay_accounts", {});
 export const getSupplierBillTaxRows = (template) => call("get_tax_template_rows", { template });
 export const getSupplierBillTerms = (name) => call("get_terms", { name });
 export const listSupplierBillPaymentModes = () => call("list_payment_modes", {});
+// From-Purchase-Order flow: billable POs, PO→bill-line prefill, and Item-master defaults.
+export const listBillablePurchaseOrders = (company) =>
+	call("list_billable_purchase_orders", company ? { company } : {});
+export const getPoBillLines = (purchaseOrder) =>
+	call("get_po_bill_lines", { purchase_order: purchaseOrder });
+export const getSupplierBillItemDetails = (itemCode) =>
+	call("get_item_details", { item_code: itemCode });

@@ -174,7 +174,16 @@ def _serialize(doc):
 		"advance_adjusted": adjusted,
 		"advances": advances,
 		"items": [
-			{"description": r.description, "qty": r.qty, "rate": r.rate, "amount": r.amount}
+			{
+				"item_code": r.item_code,
+				"description": r.description,
+				"qty": r.qty,
+				"uom": r.uom,
+				"rate": r.rate,
+				"amount": r.amount,
+				"purchase_order": r.get("purchase_order"),
+				"po_detail": r.get("po_detail"),
+			}
 			for r in doc.items
 		],
 		"taxes": [
@@ -322,6 +331,80 @@ def payables_summary(company=None):
 	}
 
 
+@frappe.whitelist()
+def list_billable_purchase_orders(company=None):
+	"""Submitted Purchase Orders that still have something to bill (per_billed < 100) — the
+	'From Purchase Order' picker. A supplier bill raised against one pre-fills from its lines."""
+	company = company or default_company()
+	return frappe.get_all(
+		"Purchase Order",
+		filters={
+			"docstatus": 1,
+			"company": company,
+			"status": ["not in", ["Closed", "Cancelled"]],
+			"per_billed": ["<", 100],
+		},
+		fields=[
+			"name",
+			"supplier",
+			"supplier_name",
+			"project",
+			"transaction_date",
+			"grand_total",
+			"per_billed",
+		],
+		order_by="transaction_date desc, name desc",
+	)
+
+
+@frappe.whitelist()
+def get_po_bill_lines(purchase_order):
+	"""Confirm-don't-construct: map a Purchase Order to its unbilled bill lines (item, remaining
+	qty, uom, PO rate) via ERPNext's native mapper, so the covered PO lines flip billed on submit.
+	Returns the supplier + project too, to lock the bill header to the PO."""
+	from erpnext.buying.doctype.purchase_order.mapper import make_purchase_invoice
+
+	po = frappe.get_doc("Purchase Order", purchase_order)
+	po.check_permission("read")
+	mapped = make_purchase_invoice(purchase_order)  # unsaved Purchase Invoice, unbilled qty only
+	lines = [
+		{
+			"item_code": it.item_code,
+			"description": it.item_name or it.description,
+			"qty": flt(it.qty),
+			"uom": it.uom,
+			"rate": flt(it.rate),
+			"purchase_order": it.get("purchase_order") or purchase_order,
+			"po_detail": it.get("po_detail"),
+		}
+		for it in mapped.items
+		if flt(it.qty) > 0
+	]
+	return {
+		"purchase_order": po.name,
+		"supplier": po.supplier,
+		"supplier_name": po.supplier_name,
+		"project": po.project,
+		"lines": lines,
+	}
+
+
+@frappe.whitelist()
+def get_item_details(item_code):
+	"""Item master defaults for a direct bill line — the item name, its stock UOM and a buying
+	rate (Item Price buying list, else last purchase rate) to pre-fill qty × rate."""
+	it = frappe.db.get_value("Item", item_code, ["item_name", "stock_uom", "description"], as_dict=True) or {}
+	rate = frappe.db.get_value("Item Price", {"item_code": item_code, "buying": 1}, "price_list_rate") or 0
+	if not rate:
+		rate = frappe.db.get_value("Item", item_code, "last_purchase_rate") or 0
+	return {
+		"item_name": it.get("item_name"),
+		"uom": it.get("stock_uom"),
+		"rate": flt(rate),
+		"description": it.get("item_name") or it.get("description"),
+	}
+
+
 # --------------------------------------------------------------------------- #
 # Writes
 # --------------------------------------------------------------------------- #
@@ -363,23 +446,32 @@ def save_bill(payload):
 	pi.project = project or None
 	pi.update_stock = 0
 
-	item_code = ensure_bill_item()
+	fallback_item = ensure_bill_item()
 	expense = _expense_account(company)
 	cost_center = frappe.db.get_value("Company", company, "cost_center")
 	for r in items:
 		qty = flt(r.get("qty")) or 1
-		pi.append(
-			"items",
-			{
-				"item_code": item_code,
-				"description": r.get("description") or SERVICE_ITEM,
-				"qty": qty,
-				"rate": flt(r.get("rate")),
-				"expense_account": expense,
-				"cost_center": cost_center,
-				"project": project or None,
-			},
-		)
+		# Real Item when the line carries one (Item picker / PO prefill); else the generic
+		# service item, with the free-text detail on the description (backward compatible).
+		line_item = r.get("item_code") or fallback_item
+		row = {
+			"item_code": line_item,
+			"description": r.get("description")
+			or frappe.db.get_value("Item", line_item, "item_name")
+			or SERVICE_ITEM,
+			"qty": qty,
+			"rate": flt(r.get("rate")),
+			"expense_account": expense,
+			"cost_center": cost_center,
+			"project": project or None,
+		}
+		if r.get("uom"):
+			row["uom"] = r.get("uom")
+		# Link back to the Purchase Order line so ERPNext tracks billed qty on the PO.
+		if r.get("purchase_order") and r.get("po_detail"):
+			row["purchase_order"] = r.get("purchase_order")
+			row["po_detail"] = r.get("po_detail")
+		pi.append("items", row)
 
 	pi.taxes_and_charges = data.get("taxes_and_charges") or None
 	rows = data.get("taxes")
