@@ -362,7 +362,12 @@ def get_po_bill_lines(purchase_order):
 	"""Confirm-don't-construct: map a Purchase Order to its unbilled bill lines (item, remaining
 	qty, uom, PO rate) via ERPNext's native mapper, so the covered PO lines flip billed on submit.
 	Returns the supplier + project too, to lock the bill header to the PO."""
-	from erpnext.buying.doctype.purchase_order.mapper import make_purchase_invoice
+	# ERPNext moved make_purchase_invoice into a `mapper` submodule in newer versions;
+	# older versions keep it in purchase_order.py. Support both.
+	try:
+		from erpnext.buying.doctype.purchase_order.mapper import make_purchase_invoice
+	except ModuleNotFoundError:
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_invoice
 
 	po = frappe.get_doc("Purchase Order", purchase_order)
 	po.check_permission("read")
