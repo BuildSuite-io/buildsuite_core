@@ -92,11 +92,11 @@ watch(
 			loading.value = false;
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 const total = computed(() =>
-	form.value.lines.reduce((a, l) => a + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0),
+	form.value.lines.reduce((a, l) => a + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0)
 );
 
 function lineAmount(line) {
@@ -193,7 +193,7 @@ const breadcrumbs = computed(() => [
 ]);
 const pageTitle = computed(() => (isEdit.value ? `Edit ${editingId.value}` : "New Work Order"));
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create work order",
+	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create work order"
 );
 </script>
 
@@ -305,7 +305,7 @@ const saveLabel = computed(() =>
 										v-model.number="line.qty"
 										type="number"
 										min="0"
-										class="w-20 bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
+										class="w-full bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
 									/>
 								</td>
 								<td class="px-3 py-3" style="min-width: 120px">
@@ -323,7 +323,7 @@ const saveLabel = computed(() =>
 										type="number"
 										min="0"
 										step="0.01"
-										class="w-24 bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
+										class="w-full bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
 									/>
 								</td>
 								<td

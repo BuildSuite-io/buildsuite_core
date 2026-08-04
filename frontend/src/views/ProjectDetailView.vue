@@ -284,10 +284,10 @@ const subprojectIdsKey = computed(() =>
 		.join("|")
 );
 
-const workPackageProjectIds = computed(() => {
-	const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean);
-	return Array.from(new Set(ids));
-});
+// A parent project's tabs show only records owned by that project — NOT aggregated
+// across its subprojects (each subproject owns and shows its own). Aggregating
+// duplicated rows onto the parent, so scope every record tab to the project itself.
+const workPackageProjectIds = computed(() => [resolvedProjectId.value].filter(Boolean));
 const workPackagesResource = ref(null);
 const workPackageFilterKey = computed(() => workPackageProjectIds.value.join("|"));
 
@@ -358,10 +358,8 @@ const workPackages = computed(() => {
 	return [];
 });
 
-const taskProjectIds = computed(() => {
-	const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean);
-	return Array.from(new Set(ids));
-});
+// Own-project scope (see workPackageProjectIds) — not the subproject subtree.
+const taskProjectIds = computed(() => [resolvedProjectId.value].filter(Boolean));
 // Assignee is Frappe-native `_assign` (JSON list); UI is single-assignee.
 function parseAssignee(raw) {
 	try {
@@ -1079,7 +1077,7 @@ usePageTitle(() => project.value?.name);
 	<DeskPage
 		v-if="project"
 		:title="project.name"
-		:subtitle="`${project.id}${project.code ? ` · ${project.code}` : ''}`"
+		:subtitle="project.code && project.code !== project.name ? project.code : ''"
 		:breadcrumbs="breadcrumbs"
 		:status="titleStatuses"
 	>

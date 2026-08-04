@@ -409,7 +409,7 @@ const breadcrumbs = computed(() => [
 								<td class="px-2 py-1">
 									<select
 										v-model="e.work_order_line"
-										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
+										class="w-full bg-transparent text-xs text-ink-900 py-1.5 focus:outline-none"
 										@change="onEntryLineChange(e)"
 									>
 										<option value="">—</option>

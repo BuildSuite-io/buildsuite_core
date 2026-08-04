@@ -66,7 +66,7 @@ const parentResource = parentId
 					name: r?.project_name || r?.name || "",
 					company: r?.company || "",
 				})),
-		})
+	  })
 	: null;
 const fetchedParent = computed(() => firstResourceRow(parentResource));
 
@@ -142,7 +142,7 @@ async function loadDefaultCompany() {
 			(p) => {
 				if (p?.company) form.company = p.company;
 			},
-			{ immediate: true },
+			{ immediate: true }
 		);
 		return;
 	}
@@ -160,7 +160,7 @@ async function loadDefaultCompany() {
 loadDefaultCompany();
 
 const parentProject = computed(
-	() => fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null),
+	() => fetchedParent.value || (form.parentId ? store.projectById(form.parentId) : null)
 );
 
 // The "Allow subprojects" toggle only controls is_group on a top-level project —
@@ -191,7 +191,7 @@ async function loadTemplateForCategory(category) {
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-			},
+			}
 		);
 		const data = await res.json();
 		const summary = data?.message || null;
@@ -200,7 +200,7 @@ async function loadTemplateForCategory(category) {
 		console.warn(
 			"[NewProjectView] Failed to load template summary for category",
 			category,
-			err,
+			err
 		);
 	} finally {
 		templateLoading.value = false;
@@ -209,13 +209,13 @@ async function loadTemplateForCategory(category) {
 
 watch(
 	() => form.type,
-	(category) => loadTemplateForCategory(category),
+	(category) => loadTemplateForCategory(category)
 );
 
 function validate() {
 	const e = {};
 	if (!form.name) e.name = "Project name is required";
-	if (!form.code) e.code = "Project ID is required";
+	// Project ID is optional — when blank, the record ID comes from the naming series.
 	const endErr = endBeforeStartError(form.startDate, form.endDate);
 	if (endErr) e.endDate = endErr;
 	setErrors(e);
@@ -231,11 +231,11 @@ async function save() {
 			form.endDate,
 			b.start,
 			b.end,
-			"parent project",
+			"parent project"
 		);
 		if (boundsErr) {
 			setErrors(
-				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
 			);
 			return;
 		}
@@ -283,7 +283,7 @@ function cancel() {
 }
 
 const subtitle = computed(() =>
-	parentProject.value ? `Subproject under ${parentProject.value.name}` : "Top-level project",
+	parentProject.value ? `Subproject under ${parentProject.value.name}` : "Top-level project"
 );
 
 const breadcrumbs = computed(() => {
@@ -331,14 +331,13 @@ const breadcrumbs = computed(() => {
 					</DeskField>
 					<DeskField
 						label="Project ID"
-						required
 						:error="errors.code"
-						hint="Short unique identifier — used as a code in lists and URLs."
+						hint="Optional. If given, it becomes the project's record ID; otherwise the naming series is used."
 					>
 						<DeskInput
 							v-model="form.code"
 							data-test="field-code"
-							placeholder="e.g. BTP-P2"
+							placeholder="e.g. BTP-P2 (optional)"
 						/>
 					</DeskField>
 					<!-- Shown only when the org's project naming mode is "Name Series":
@@ -512,8 +511,8 @@ const breadcrumbs = computed(() => {
 							parentProject
 								? 'Inherited from the parent project — locked.'
 								: errors.company
-									? ''
-									: 'Defaults to your default company. This is locked after the project is created.'
+								? ''
+								: 'Defaults to your default company. This is locked after the project is created.'
 						"
 					>
 						<DeskLinkPicker

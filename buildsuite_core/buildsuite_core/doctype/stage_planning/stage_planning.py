@@ -105,9 +105,12 @@ def _stage_aggregates(task_names):
 	count = len(task_names)
 	if not count:
 		return 0, 0, 0
-	rows = frappe.get_all("Task", filters={"name": ["in", task_names]}, fields=["progress"])
+	rows = frappe.get_all("Task", filters={"name": ["in", task_names]}, fields=["progress", "task_status"])
 	mean = sum(flt(r.progress) for r in rows) / len(rows) if rows else 0
-	completed = sum(1 for r in rows if flt(r.progress) >= 100)
+	# A task is "done" when its progress reaches 100 OR its status is Completed —
+	# either signal counts, so a Completed task whose progress wasn't synced to 100
+	# (imported / template-loaded rows) still shows in the list's done / total chip.
+	completed = sum(1 for r in rows if flt(r.progress) >= 100 or r.task_status == "Completed")
 	return count, round(mean), completed
 
 

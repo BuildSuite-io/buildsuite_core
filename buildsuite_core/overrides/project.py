@@ -18,10 +18,9 @@ autoname rule), so defining one here takes precedence via override_doctype_class
 """
 
 import frappe
+from erpnext.projects.doctype.project.project import Project as _ERPNextProject
 from frappe import _
 from frappe.model.naming import set_name_by_naming_series
-
-from erpnext.projects.doctype.project.project import Project as _ERPNextProject
 
 PROJECT_ID_MODE = "Project ID"
 NAME_SERIES_MODE = "Name Series"
@@ -42,32 +41,32 @@ def default_project_series():
 	return field.default or (options[0] if options else None)
 
 
-def _name_by_project_id(doc):
-	project_id = (doc.get("custom_project_id") or "").strip()
-	if not project_id:
-		frappe.throw(_("Project ID is required."))
-	doc.name = project_id
-
-
 class BuildSuiteProject(_ERPNextProject):
 	def autoname(self):
-		if project_naming_mode() == NAME_SERIES_MODE:
-			# Use the series chosen on the New Project form; fall back to the default.
-			if not self.naming_series:
-				self.naming_series = default_project_series()
-			if self.naming_series:
-				set_name_by_naming_series(self)
-				return
-		# Project ID mode (also the fallback when no series is available).
-		_name_by_project_id(self)
+		# A Project ID always wins: when one is entered it IS the record name, in
+		# either naming mode. The ID is optional — with none entered, the name comes
+		# from the naming series (the per-project pick, else the doctype default).
+		project_id = (self.get("custom_project_id") or "").strip()
+		if project_id:
+			self.custom_project_id = project_id
+			self.name = project_id
+			return
+
+		self.custom_project_id = None  # keep it NULL (not "") so the unique index holds
+		if not self.naming_series:
+			self.naming_series = default_project_series()
+		if self.naming_series:
+			set_name_by_naming_series(self)
+			return
+		frappe.throw(_("Enter a Project ID or configure a naming series."))
 
 
 def reject_duplicate_project_id(doc, method=None):
-	"""In Project-ID naming mode the record name IS the Project ID, so a duplicate id
-	collides on the primary key and would surface as a raw DB error. Reject it up
-	front with a clean message (Frappe's own unique-field check can't catch it here,
-	since it excludes the row whose name equals the id)."""
-	if not doc.is_new() or project_naming_mode() == NAME_SERIES_MODE:
+	"""When a Project ID is entered it becomes the record name, so a duplicate collides
+	on the primary key and would surface as a raw DB error. Reject it up front with a
+	clean message (Frappe's own unique-field check can't catch it here, since it
+	excludes the row whose name equals the id)."""
+	if not doc.is_new():
 		return
 	project_id = (doc.get("custom_project_id") or "").strip()
 	if project_id and frappe.db.exists("Project", project_id):
