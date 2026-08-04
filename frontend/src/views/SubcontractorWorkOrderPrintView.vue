@@ -32,7 +32,9 @@ const retentionAmount = computed(() => {
 	if (!wo.value) return 0;
 	return ((Number(wo.value.total_value) || 0) * (Number(wo.value.retention_percent) || 0)) / 100;
 });
-const netOfRetention = computed(() => (Number(wo.value?.total_value) || 0) - retentionAmount.value);
+const netOfRetention = computed(
+	() => (Number(wo.value?.total_value) || 0) - retentionAmount.value
+);
 
 function generatedOnLabel() {
 	return new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
@@ -86,7 +88,9 @@ watch(() => props.id, load, { immediate: true });
 						aria-hidden="true"
 					>
 						<polyline points="6 9 6 2 18 2 18 9" />
-						<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+						<path
+							d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+						/>
 						<rect x="6" y="14" width="12" height="8" />
 					</svg>
 					<span>Export PDF</span>
@@ -95,10 +99,7 @@ watch(() => props.id, load, { immediate: true });
 		</header>
 
 		<!-- ===== Document ===== -->
-		<main
-			v-if="wo"
-			class="report-content max-w-4xl mx-auto px-6 py-8 text-ink-900"
-		>
+		<main v-if="wo" class="report-content max-w-4xl mx-auto px-6 py-8 text-ink-900">
 			<!-- Letterhead -->
 			<section
 				class="report-section flex items-start justify-between gap-6 pb-4 mb-6 border-b-2 border-ink-300"
@@ -129,16 +130,24 @@ watch(() => props.id, load, { immediate: true });
 			<!-- Party blocks -->
 			<section class="report-section grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 				<div class="border border-ink-200 rounded-lg p-4">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1.5">Issued by</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1.5">
+						Issued by
+					</div>
 					<div class="text-sm font-semibold">{{ company || "—" }}</div>
-					<div class="text-xs text-ink-400 italic mt-0.5">Address — to be configured</div>
+					<div class="text-xs text-ink-400 italic mt-0.5">
+						Address — to be configured
+					</div>
 				</div>
 				<div class="border border-ink-200 rounded-lg p-4">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1.5">
 						To — Subcontractor
 					</div>
-					<div class="text-sm font-semibold">{{ wo.subcontractor_name || wo.subcontractor || "—" }}</div>
-					<div v-if="sub?.trade" class="text-xs text-ink-600 mt-0.5">{{ sub.trade }}</div>
+					<div class="text-sm font-semibold">
+						{{ wo.subcontractor_name || wo.subcontractor || "—" }}
+					</div>
+					<div v-if="sub?.trade" class="text-xs text-ink-600 mt-0.5">
+						{{ sub.trade }}
+					</div>
 					<div class="text-xs text-ink-600 mt-1 space-y-0.5">
 						<div v-if="sub?.contact_person">Attn: {{ sub.contact_person }}</div>
 						<div v-if="sub?.phone || sub?.email">
@@ -149,7 +158,9 @@ watch(() => props.id, load, { immediate: true });
 						<div v-if="sub?.tax_id || sub?.secondary_tax_id" class="text-ink-500">
 							<span v-if="sub?.tax_id">Tax ID: {{ sub.tax_id }}</span>
 							<span v-if="sub?.tax_id && sub?.secondary_tax_id"> · </span>
-							<span v-if="sub?.secondary_tax_id">Sec. Tax ID: {{ sub.secondary_tax_id }}</span>
+							<span v-if="sub?.secondary_tax_id"
+								>Sec. Tax ID: {{ sub.secondary_tax_id }}</span
+							>
 						</div>
 					</div>
 				</div>
@@ -158,10 +169,13 @@ watch(() => props.id, load, { immediate: true });
 			<!-- Meta strip -->
 			<section class="report-section grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-xs">
 				<div>
-					<div class="text-[10px] uppercase tracking-wider text-ink-500">Against project</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500">
+						Against project
+					</div>
 					<div class="font-medium mt-0.5">{{ wo.project_name || wo.project }}</div>
 					<div class="text-ink-500">
-						{{ proj?.custom_project_id }}<span v-if="proj?.location"> · {{ proj.location }}</span>
+						{{ proj?.custom_project_id
+						}}<span v-if="proj?.location"> · {{ proj.location }}</span>
 					</div>
 				</div>
 				<div>
@@ -169,7 +183,9 @@ watch(() => props.id, load, { immediate: true });
 					<div class="font-medium mt-0.5">{{ proj?.customer || "—" }}</div>
 				</div>
 				<div>
-					<div class="text-[10px] uppercase tracking-wider text-ink-500">Delivery type</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500">
+						Delivery type
+					</div>
 					<div class="font-medium mt-0.5">{{ wo.delivery_type || "—" }}</div>
 				</div>
 				<div>
@@ -203,11 +219,17 @@ watch(() => props.id, load, { immediate: true });
 						>
 							<td class="px-3 py-2 text-ink-500">{{ idx + 1 }}</td>
 							<td class="px-3 py-2">{{ line.scope }}</td>
-							<td class="px-3 py-2 text-ink-600">{{ line.cost_code_label || "—" }}</td>
+							<td class="px-3 py-2 text-ink-600">
+								{{ line.cost_code_label || "—" }}
+							</td>
 							<td class="px-3 py-2 text-right tabular-nums">{{ line.qty }}</td>
 							<td class="px-3 py-2">{{ line.uom }}</td>
-							<td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(line.rate) }}</td>
-							<td class="px-3 py-2 text-right tabular-nums font-medium">{{ fmtINR(line.amount) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums">
+								{{ fmtINR(line.rate) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums font-medium">
+								{{ fmtINR(line.amount) }}
+							</td>
 						</tr>
 					</tbody>
 					<tfoot>
@@ -228,40 +250,34 @@ watch(() => props.id, load, { immediate: true });
 
 			<!-- Totals + terms -->
 			<section class="report-section grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-				<div class="text-xs text-ink-600">
-					<h3 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-1.5">
+				<!-- Terms print only when the WO has them — no heading, no default
+				     boilerplate when the field is empty. -->
+				<div v-if="wo.terms" class="text-xs text-ink-600">
+					<h3
+						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-1.5"
+					>
 						Terms &amp; conditions
 					</h3>
-					<div v-if="wo.terms" class="whitespace-pre-line leading-relaxed">{{ wo.terms }}</div>
-					<ul v-else class="list-disc pl-4 space-y-1 leading-relaxed">
-						<li>
-							Progress billing is measurement-based: certified Measurement Books drive each
-							subcontractor bill.
-						</li>
-						<li>
-							Retention of {{ wo.retention_percent }}% is withheld on each subcontractor bill,
-							released after completion and defect-liability sign-off.
-						</li>
-						<li v-if="wo.delivery_type === 'Labour-only'">
-							Materials are supplied by the site; this order covers labour only.
-						</li>
-						<li v-else>
-							Materials and labour are in the subcontractor's scope (full sub).
-						</li>
-					</ul>
+					<div class="whitespace-pre-line leading-relaxed">{{ wo.terms }}</div>
 				</div>
-				<div class="border border-ink-200 rounded-lg p-4 text-xs self-start">
+				<div
+					class="border border-ink-200 rounded-lg p-4 text-xs self-start md:col-start-2"
+				>
 					<div class="flex justify-between py-1">
 						<span class="text-ink-500">Total order value</span>
 						<span class="tabular-nums font-medium">{{ fmtINR(wo.total_value) }}</span>
 					</div>
 					<div class="flex justify-between py-1">
 						<span class="text-ink-500">Retention ({{ wo.retention_percent }}%)</span>
-						<span class="tabular-nums text-danger-700">− {{ fmtINR(retentionAmount) }}</span>
+						<span class="tabular-nums text-danger-700"
+							>− {{ fmtINR(retentionAmount) }}</span
+						>
 					</div>
 					<div class="flex justify-between py-1.5 border-t border-ink-200 mt-1">
 						<span class="font-semibold">Net of retention</span>
-						<span class="tabular-nums font-semibold">{{ fmtINR(netOfRetention) }}</span>
+						<span class="tabular-nums font-semibold">{{
+							fmtINR(netOfRetention)
+						}}</span>
 					</div>
 				</div>
 			</section>
@@ -289,12 +305,16 @@ watch(() => props.id, load, { immediate: true });
 		</main>
 
 		<!-- Loading / not found -->
-		<main v-else-if="loading" class="max-w-4xl mx-auto px-6 py-16 text-center text-sm text-ink-500">
+		<main
+			v-else-if="loading"
+			class="max-w-4xl mx-auto px-6 py-16 text-center text-sm text-ink-500"
+		>
 			Loading…
 		</main>
 		<main v-else class="max-w-4xl mx-auto px-6 py-16 text-center">
 			<div class="text-sm text-ink-700 mb-2">
-				No work order with id <span class="font-mono">{{ id }}</span>.
+				No work order with id <span class="font-mono">{{ id }}</span
+				>.
 			</div>
 			<button @click="backToWO" class="text-xs text-brand-700 hover:underline">
 				← Back to work order
