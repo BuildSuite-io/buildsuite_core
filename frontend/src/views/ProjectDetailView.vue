@@ -452,11 +452,37 @@ const stageBaseFilters = computed(() => {
 });
 
 // Scope Change Orders tab — backend-backed, scoped to the project + its subprojects.
+// scoCount tracks the live count emitted by the tab's list while it's open; the
+// eager count below shows the tab badge without the user opening the tab first.
 const scoCount = ref(null);
 const scoBaseFilters = computed(() => {
 	const ids = workPackageProjectIds.value;
 	if (!ids.length) return [];
 	return [["project", "in", ids]];
+});
+
+// Eagerly fetch the SCO count (not behind the tab v-if) so the "Scope Changes"
+// badge shows a number on first render — mirrors the attachment-count pattern.
+const scoCountResource = ref(null);
+function loadScoCount() {
+	const ids = workPackageProjectIds.value;
+	if (!ids.length) {
+		scoCountResource.value = null;
+		return;
+	}
+	scoCountResource.value = adapter.list("Scope Change Order", {
+		filters: [["project", "in", ids]],
+		fields: ["name"],
+		pageLength: 500,
+	});
+}
+watch(workPackageProjectIds, loadScoCount, { immediate: true });
+
+const scoCountEager = computed(() => {
+	const raw = scoCountResource.value?.data;
+	if (Array.isArray(raw)) return raw.length;
+	if (Array.isArray(raw?.value)) return raw.value.length;
+	return null;
 });
 
 // Attachment count — fetched eagerly (not behind the tab v-if) so the badge
@@ -974,7 +1000,7 @@ const tabs = computed(() => {
 		{ id: "tasks", label: "Tasks", count: tasks.value.length },
 		{ id: "stage-planning", label: "Stage Planning", count: stageCount.value },
 		{ id: "boq", label: "BOQ", count: boqs.value.length },
-		{ id: "scos", label: "Scope Changes", count: scoCount.value },
+		{ id: "scos", label: "Scope Changes", count: scoCountEager.value ?? scoCount.value },
 		{ id: "attachments", label: "Attachments", count: attachmentCount.value },
 		{ id: "team", label: "Team", count: projectTeam.value.length },
 	];
