@@ -102,20 +102,43 @@ def _projects_in_tree(project):
 
 
 def _assert_no_financial_links(project_names):
+	"""Block deletion when accounting/stock documents reference the project (or a
+	subproject), and name each linked document type with its count so the user knows
+	exactly what to remove or reassign first."""
+	counts = {}  # document type -> number of linked records
 	for doctype, field in _FINANCIAL_LINKS:
 		if not frappe.db.exists("DocType", doctype):
 			continue
-		# Only consider field if it exists on the doctype.
 		meta = frappe.get_meta(doctype)
 		if not meta.has_field(field):
 			continue
-		if frappe.db.exists(doctype, {field: ("in", project_names)}):
-			frappe.throw(
-				_(
-					"Cannot delete: {0} records are linked to this project (or a subproject). "
-					"Remove the accounting/stock entries first."
-				).format(doctype)
+		if meta.istable:
+			# Child table (e.g. Journal Entry Account) — report the parent document
+			# (Journal Entry), counting each parent once.
+			rows = frappe.get_all(
+				doctype, filters={field: ("in", project_names)}, fields=["parenttype", "parent"]
 			)
+			for ptype, _parent in {(r.parenttype, r.parent) for r in rows}:
+				counts[ptype] = counts.get(ptype, 0) + 1
+		else:
+			n = frappe.db.count(doctype, {field: ("in", project_names)})
+			if n:
+				counts[doctype] = counts.get(doctype, 0) + n
+
+	if not counts:
+		return
+
+	# GL Entry is a ledger derivative of the source documents — drop it from the
+	# message when a real document already explains the block.
+	if len(counts) > 1:
+		counts.pop("GL Entry", None)
+
+	linked = ", ".join(f"{dt} ({n})" for dt, n in counts.items())
+	frappe.throw(
+		_(
+			"Cannot delete this project — it has linked records in {0}. Remove or reassign these first."
+		).format(linked)
+	)
 
 
 def cascade_delete_project(doc, method=None):
@@ -261,9 +284,7 @@ def seed_from_template_on_insert(doc, method=None):
 		try:
 			_seed_stages_from_template(doc, template, tasks_by_stage)
 		except Exception:
-			frappe.log_error(
-				frappe.get_traceback(), f'BuildSuite: seed stages for project "{doc.name}"'
-			)
+			frappe.log_error(frappe.get_traceback(), f'BuildSuite: seed stages for project "{doc.name}"')
 
 
 @frappe.whitelist()

@@ -1028,7 +1028,7 @@ const breadcrumbs = computed(() => {
 					:show-save="showPrimary"
 					:save-label="primaryLabel"
 					:show-cancel="false"
-					@save="onPrimary"
+					@save="primaryAction"
 				>
 					<template #left>
 						<span v-if="sourceSco" class="text-xs text-ink-500">
@@ -2144,9 +2144,15 @@ const breadcrumbs = computed(() => {
 							label="Linked SCO"
 							hint="Optional reference to a Scope Change Order this revision addresses."
 						>
-							<DeskInput
+							<DeskLinkPicker
 								v-model="revisionModal.sourceSco"
-								placeholder="e.g. SCO-2026-0007"
+								doctype="Scope Change Order"
+								label-field="title"
+								value-field="name"
+								:search-fields="['title', 'name']"
+								:filters="[['project', '=', boq.projectId]]"
+								order-by="creation desc"
+								placeholder="Search this project's SCOs…"
 							/>
 						</DeskField>
 						<DeskField

@@ -53,6 +53,9 @@ const form = ref({
 	entries: [emptyEntry()],
 });
 const woLines = ref([]); // [{ name, scope, cost_code_*, uom }]
+// Project + Subcontractor surface read-only on the header, derived from the WO.
+const woProjectName = ref("");
+const woSubName = ref("");
 const errors = ref({});
 const saving = ref(false);
 const loading = ref(false);
@@ -71,11 +74,15 @@ function costCodeFromFields(src) {
 async function loadWorkOrder(wo, { autofillFirst = false } = {}) {
 	if (!wo) {
 		woLines.value = [];
+		woProjectName.value = "";
+		woSubName.value = "";
 		return;
 	}
 	try {
 		const doc = await getWorkOrder(wo);
 		form.value.project = doc.project || "";
+		woProjectName.value = doc.project_name || doc.project || "";
+		woSubName.value = doc.subcontractor_name || doc.subcontractor || "";
 		woLines.value = doc.lines || [];
 		// Single-line WO: default the first blank entry to that line.
 		if (
@@ -130,6 +137,8 @@ watch(
 				};
 				if (!form.value.entries.length) form.value.entries = [emptyEntry()];
 				woLines.value = mb.wo_lines || [];
+				woProjectName.value = mb.project_name || mb.project || "";
+				woSubName.value = mb.subcontractor_name || "";
 			} catch (err) {
 				showToast(err.message || "Failed to load measurement book", "error");
 			} finally {
@@ -139,7 +148,7 @@ watch(
 			loadWorkOrder(form.value.work_order, { autofillFirst: true });
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 // In create mode, reloading WO lines when the user changes the WO picker.
@@ -149,15 +158,20 @@ function onWorkOrderChange(wo) {
 }
 
 const woLineOptions = computed(() =>
-	woLines.value.map((l) => ({ value: l.name, label: l.scope || l.name })),
+	woLines.value.map((l) => ({ value: l.name, label: l.scope || l.name }))
 );
 
-// Picking a WO line for an entry defaults its cost code + uom from that line.
+// Changing the WO line on a row recomputes its dependent fields (cost code +
+// UOM) from the newly selected line, so they never stay stale on the old line.
 function onEntryLineChange(entry) {
 	const line = woLines.value.find((l) => l.name === entry.work_order_line);
-	if (!line) return;
-	if (!entry.cost_code) entry.cost_code = costCodeFromFields(line);
-	if (!entry.uom) entry.uom = line.uom || "";
+	if (!line) {
+		entry.cost_code = null;
+		entry.uom = "";
+		return;
+	}
+	entry.cost_code = costCodeFromFields(line);
+	entry.uom = line.uom || "";
 }
 
 function roundQty(n) {
@@ -168,7 +182,7 @@ function derivedQty(e) {
 		(Number(e.nos) || 0) *
 			(Number(e.length) || 0) *
 			(Number(e.breadth) || 0) *
-			(Number(e.depth) || 0),
+			(Number(e.depth) || 0)
 	);
 }
 function previewQty(e) {
@@ -187,7 +201,7 @@ function clearOverride(e) {
 }
 
 const measuredTotal = computed(() =>
-	form.value.entries.reduce((a, e) => a + (e.is_deduction ? -1 : 1) * previewQty(e), 0),
+	form.value.entries.reduce((a, e) => a + (e.is_deduction ? -1 : 1) * previewQty(e), 0)
 );
 
 function addRow() {
@@ -197,10 +211,18 @@ function removeRow(idx) {
 	form.value.entries.splice(idx, 1);
 }
 
+// A complete entry needs Description, WO line and UOM (cost code is optional).
+function entryIncomplete(e) {
+	return !(e.description || "").trim() || !e.work_order_line || !(e.uom || "").trim();
+}
 function validate() {
 	const e = {};
 	if (!form.value.work_order) e.work_order = "Pick a work order.";
-	if (!form.value.entries.length) e.entries = "Add at least one measurement entry.";
+	if (!form.value.entries.length) {
+		e.entries = "Add at least one measurement entry.";
+	} else if (form.value.entries.some(entryIncomplete)) {
+		e.entries = "Each entry needs a description, WO line and UOM.";
+	}
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -256,10 +278,10 @@ function onCancel() {
 }
 
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Measurement Book",
+	isEdit.value ? `Edit ${editingId.value}` : "New Measurement Book"
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create MB",
+	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create MB"
 );
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
@@ -269,7 +291,7 @@ const breadcrumbs = computed(() => [
 		? [
 				{ label: editingId.value, to: `/measurement-books/${editingId.value}` },
 				{ label: "Edit" },
-			]
+		  ]
 		: [{ label: "New" }]),
 ]);
 </script>
@@ -296,6 +318,23 @@ const breadcrumbs = computed(() => [
 						placeholder="Pick a work order…"
 						@update:model-value="onWorkOrderChange"
 					/>
+				</DeskField>
+				<!-- Read-only, derived from the work order. -->
+				<DeskField label="Project" hint="Derived from the work order.">
+					<div
+						class="text-sm pt-1.5"
+						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
+					>
+						{{ form.work_order ? woProjectName || form.project || "—" : "—" }}
+					</div>
+				</DeskField>
+				<DeskField label="Subcontractor" hint="Derived from the work order.">
+					<div
+						class="text-sm pt-1.5"
+						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
+					>
+						{{ form.work_order ? woSubName || "—" : "—" }}
+					</div>
 				</DeskField>
 				<DeskField label="Date" required
 					><DeskInput v-model="form.date" type="date"
@@ -333,15 +372,21 @@ const breadcrumbs = computed(() => [
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
 								<th class="text-left px-2 py-2 w-8">#</th>
-								<th class="text-left px-2 py-2 min-w-[160px]">Description</th>
-								<th class="text-left px-2 py-2 min-w-[130px]">WO line</th>
+								<th class="text-left px-2 py-2 min-w-[160px]">
+									Description <span class="text-danger-600">*</span>
+								</th>
+								<th class="text-left px-2 py-2 min-w-[130px]">
+									WO line <span class="text-danger-600">*</span>
+								</th>
 								<th class="text-left px-2 py-2 min-w-[130px]">Cost code</th>
 								<th class="text-right px-2 py-2 w-14">Nos</th>
 								<th class="text-right px-2 py-2 w-16">L</th>
 								<th class="text-right px-2 py-2 w-16">B</th>
 								<th class="text-right px-2 py-2 w-14">D</th>
 								<th class="text-right px-2 py-2 w-20">Qty</th>
-								<th class="text-left px-2 py-2 w-20">UOM</th>
+								<th class="text-left px-2 py-2 w-20">
+									UOM <span class="text-danger-600">*</span>
+								</th>
 								<th class="text-center px-2 py-2 w-14">Deduct</th>
 								<th class="text-center px-2 py-2 w-8"></th>
 							</tr>

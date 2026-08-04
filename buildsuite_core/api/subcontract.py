@@ -340,10 +340,24 @@ _MB_ENTRY_FIELDS = (
 
 
 def _serialize_mb(doc):
+	# Project name + the WO's subcontractor / delivery type surface on the MB
+	# header (second line + the Project and Work Order summary cards).
+	project_name = frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None
+	wo = (
+		frappe.db.get_value(
+			WORK_ORDER, doc.work_order, ["subcontractor", "subcontractor_name", "delivery_type"], as_dict=True
+		)
+		if doc.work_order
+		else None
+	) or {}
 	return {
 		"name": doc.name,
 		"work_order": doc.work_order,
 		"project": doc.project,
+		"project_name": project_name,
+		"subcontractor": wo.get("subcontractor"),
+		"subcontractor_name": wo.get("subcontractor_name"),
+		"delivery_type": wo.get("delivery_type"),
 		"date": str(doc.date) if doc.date else None,
 		"measured_by": doc.measured_by,
 		"certified_by": doc.certified_by,

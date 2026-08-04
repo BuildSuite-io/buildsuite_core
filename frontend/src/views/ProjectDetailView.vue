@@ -6,7 +6,7 @@ import { usePageTitle } from "@/composables/usePageTitle";
 
 import { ref, computed, watch, nextTick } from "vue";
 import AccessDenied from "@/components/AccessDenied.vue";
-import { isPermissionDenied } from "@/utils/frappeError";
+import { isPermissionDenied, parseFrappeError } from "@/utils/frappeError";
 import { useRouter, useRoute, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
@@ -180,7 +180,7 @@ watch(
 				rows.map((r) => ({ name: r?.name, fullName: r?.full_name || r?.name })),
 		});
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 const pmName = computed(() => {
 	const rows = pmUserResource.value?.data;
@@ -189,7 +189,7 @@ const pmName = computed(() => {
 });
 const resolvedProjectId = computed(() => project.value?.id || props.id);
 const parent = computed(() =>
-	project.value?.parentId ? store.projectById(project.value.parentId) : null,
+	project.value?.parentId ? store.projectById(project.value.parentId) : null
 );
 // Resolve the master (parent) project's display name reliably in remote mode, where the
 // Pinia store may not hold the parent (TASK-116 — surface the master-project link on a subproject).
@@ -201,13 +201,17 @@ watch(
 			? adapter.read("Project", pid, {
 					fields: ["name", "project_name", "project_status", "status"],
 					cache: `buildsuite-project-parent:${pid}`,
-				})
+			  })
 			: null;
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 const parentName = computed(
-	() => parentResource.value?.doc?.project_name || parent.value?.name || project.value?.parentId || "",
+	() =>
+		parentResource.value?.doc?.project_name ||
+		parent.value?.name ||
+		project.value?.parentId ||
+		""
 );
 const parentStatus = computed(() => {
 	const d = parentResource.value?.doc;
@@ -263,7 +267,7 @@ watch(
 	() => {
 		loadSubprojectsResource();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 const subs = computed(() => {
@@ -277,7 +281,7 @@ const subprojectIdsKey = computed(() =>
 	subs.value
 		.map((p) => p.id)
 		.filter(Boolean)
-		.join("|"),
+		.join("|")
 );
 
 const workPackageProjectIds = computed(() => {
@@ -339,7 +343,7 @@ watch(
 	() => {
 		loadWorkPackagesResource();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 watch(subprojectIdsKey, (next, prev) => {
@@ -422,7 +426,7 @@ watch(
 	() => {
 		loadTasksResource();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 watch(subprojectIdsKey, (next, prev) => {
@@ -522,7 +526,12 @@ function loadBoqsResource() {
 					status: b.status,
 					sourceScoId: b.source_sco || "",
 					preparedDate: b.prepared_date,
-					totals: { planned, actual, variance, variancePct: planned ? (variance / planned) * 100 : 0 },
+					totals: {
+						planned,
+						actual,
+						variance,
+						variancePct: planned ? (variance / planned) * 100 : 0,
+					},
 				};
 			});
 		},
@@ -551,7 +560,7 @@ const actualCost = computed(() => {
 });
 const costDeviation = computed(() => actualCost.value - plannedCost.value);
 const costDeviationPct = computed(() =>
-	plannedCost.value ? (costDeviation.value / plannedCost.value) * 100 : 0,
+	plannedCost.value ? (costDeviation.value / plannedCost.value) * 100 : 0
 );
 function deviationColor(pct) {
 	if (Math.abs(pct) < 0.5) return "text-ink-500";
@@ -614,7 +623,7 @@ watch(
 	() => {
 		tab.value = "overview";
 		editing.value = false;
-	},
+	}
 );
 
 // Project team — read from the project's custom_team_members child table
@@ -647,7 +656,7 @@ function colorOf(id) {
 // The Project Team child row only carries user + full_name, so the human-readable
 // role lives on the User's `persona` custom field — same as the prototype shows.
 const teamUserIds = computed(() =>
-	(project.value?.teamMembers || []).map((m) => m.user).filter(Boolean),
+	(project.value?.teamMembers || []).map((m) => m.user).filter(Boolean)
 );
 const teamUsersResource = ref(null);
 watch(
@@ -665,7 +674,7 @@ watch(
 			transform: (rows) => rows.map((r) => ({ name: r?.name, persona: r?.persona || "" })),
 		});
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 const teamPersonaMap = computed(() => {
 	const raw = teamUsersResource.value?.data;
@@ -681,7 +690,7 @@ const projectTeam = computed(() =>
 		role: teamPersonaMap.value[m.user] || "", // the user's persona, e.g. "Project Manager"
 		initials: initialsOf(m.fullName || m.user),
 		color: colorOf(m.user),
-	})),
+	}))
 );
 
 // Users already on the team (+ the PM) — excluded from the add picker.
@@ -763,12 +772,12 @@ async function saveEdit() {
 			editForm.value.endDate,
 			b.start,
 			b.end,
-			"parent project",
+			"parent project"
 		);
 	}
 	if (boundsErr) {
 		setEditErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -827,7 +836,9 @@ async function confirmDelete() {
 		await nextTick();
 		showToast("Project deleted");
 	} catch (err) {
-		showToast("Failed to delete project", "error");
+		// Surface the server's reason (e.g. linked accounting/stock records) instead
+		// of a generic failure, so the user knows exactly what blocks the delete.
+		showToast(parseFrappeError(err).summary || "Failed to delete project", "error");
 		console.error("deleteProject failed:", err);
 	} finally {
 		deleteLoading.value = false;
@@ -857,7 +868,7 @@ async function loadTemplateSummary(type) {
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-			},
+			}
 		);
 		const data = await res.json();
 		const s = data?.message || null;
@@ -889,7 +900,7 @@ async function seedFromTemplate() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			},
+			}
 		);
 		const data = await res.json().catch(() => ({}));
 		if (!res.ok) throw new Error(data?.exception || data?.exc_type || `HTTP ${res.status}`);
@@ -992,7 +1003,7 @@ const breadcrumbs = computed(() => {
 });
 
 const titleStatuses = computed(() =>
-	project.value ? [project.value.status, project.value.priority] : [],
+	project.value ? [project.value.status, project.value.priority] : []
 );
 
 // Schedule-based variance + progress-bar color, same as the list view.
@@ -1093,7 +1104,12 @@ usePageTitle(() => project.value?.name);
 					class="text-sm font-semibold text-ink-900 group-hover:text-brand-700 transition-colors truncate"
 					>{{ parentName }}</span
 				>
-				<StatusBadge v-if="parentStatus" :status="parentStatus" size="xs" class="flex-shrink-0" />
+				<StatusBadge
+					v-if="parentStatus"
+					:status="parentStatus"
+					size="xs"
+					class="flex-shrink-0"
+				/>
 				<span class="ml-auto text-brand-700 text-xs flex-shrink-0">Open parent →</span>
 			</button>
 
@@ -1598,7 +1614,9 @@ usePageTitle(() => project.value?.name);
 						<span class="tabular-nums">{{ fmtCompactINR(row.totals.planned) }}</span>
 					</template>
 					<template #cell-actual="{ row }">
-						<span class="tabular-nums text-ink-700">{{ fmtCompactINR(row.totals.actual) }}</span>
+						<span class="tabular-nums text-ink-700">{{
+							fmtCompactINR(row.totals.actual)
+						}}</span>
 					</template>
 					<template #cell-preparedDate="{ row }">
 						<span class="text-xs text-ink-500">{{ fmtDate(row.preparedDate) }}</span>

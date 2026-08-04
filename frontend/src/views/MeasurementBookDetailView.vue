@@ -119,7 +119,7 @@ const breadcrumbs = computed(() => [
 	<DeskPage
 		v-if="mb"
 		:title="mb.name"
-		:subtitle="`${mb.project} · ${mb.work_order}`"
+		:subtitle="`${mb.project_name || mb.project} · ${mb.subcontractor_name || ''}`"
 		:breadcrumbs="breadcrumbs"
 		:status="mb.status"
 	>
@@ -164,7 +164,15 @@ const breadcrumbs = computed(() => [
 		</template>
 
 		<!-- Summary strip -->
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+		<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					Project
+				</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">
+					{{ mb.project_name || mb.project }}
+				</div>
+			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Work order
@@ -174,7 +182,10 @@ const breadcrumbs = computed(() => [
 						mb.work_order
 					}}</DeskLink>
 				</div>
-				<div class="text-[10px] text-ink-500">{{ mb.project }}</div>
+				<div class="text-[10px] text-ink-500">
+					{{ mb.subcontractor_name || "—"
+					}}{{ mb.delivery_type ? ` · ${mb.delivery_type}` : "" }}
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
