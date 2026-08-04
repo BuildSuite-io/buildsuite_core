@@ -93,11 +93,13 @@ class TestProject(BuildSuiteTestCase):
 		).insert(ignore_permissions=True)
 		self.assertEqual(p.name, f"NMID-{self._n}")
 
-	def test_project_named_by_series_when_mode_is_name_series(self):
-		# Name Series mode: the record name comes from the series chosen on the form
-		# (the project's naming_series), not the entered Project ID.
+	def test_project_named_by_series_when_no_project_id(self):
+		# A Project ID always wins as the record name — in EITHER naming mode. Only
+		# when no Project ID is entered does the record name come from the series.
 		frappe.db.set_single_value("BuildSuite Core Settings", "project_naming", "Name Series")
-		p = frappe.get_doc(
+
+		# Series mode + a Project ID entered → the id IS the record name.
+		with_id = frappe.get_doc(
 			{
 				"doctype": "Project",
 				"project_name": f"NM2 {self._n}",
@@ -106,8 +108,19 @@ class TestProject(BuildSuiteTestCase):
 				"naming_series": "PROJ-.####",
 			}
 		).insert(ignore_permissions=True)
-		self.assertTrue(p.name.startswith("PROJ-"))
-		self.assertNotEqual(p.name, f"NMID2-{self._n}")  # the id is not the record name here
+		self.assertEqual(with_id.name, f"NMID2-{self._n}")
+
+		# No Project ID → the record name comes from the series, and the id is NULL.
+		no_id = frappe.get_doc(
+			{
+				"doctype": "Project",
+				"project_name": f"NM3 {self._n}",
+				"company": self.company,
+				"naming_series": "PROJ-.####",
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(no_id.name.startswith("PROJ-"))
+		self.assertIsNone(no_id.custom_project_id)
 
 	def test_company_locked_after_create(self):
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")
@@ -274,9 +287,7 @@ class TestProject(BuildSuiteTestCase):
 		self.assertEqual(frappe.db.count("Task", {"project": p.name}), 12)
 		self.assertEqual(frappe.db.count("Stage Planning", {"project": p.name}), 6)
 		# every seeded task is linked to its work package
-		self.assertEqual(
-			frappe.db.count("Task", {"project": p.name, "work_package": ("is", "set")}), 12
-		)
+		self.assertEqual(frappe.db.count("Task", {"project": p.name, "work_package": ("is", "set")}), 12)
 
 	def test_project_without_template_creates_empty(self):
 		# PRJ-016 — a project with no project_category (or with the seed flags

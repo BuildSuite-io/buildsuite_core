@@ -284,10 +284,10 @@ const subprojectIdsKey = computed(() =>
 		.join("|")
 );
 
-const workPackageProjectIds = computed(() => {
-	const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean);
-	return Array.from(new Set(ids));
-});
+// A parent project's tabs show only records owned by that project — NOT aggregated
+// across its subprojects (each subproject owns and shows its own). Aggregating
+// duplicated rows onto the parent, so scope every record tab to the project itself.
+const workPackageProjectIds = computed(() => [resolvedProjectId.value].filter(Boolean));
 const workPackagesResource = ref(null);
 const workPackageFilterKey = computed(() => workPackageProjectIds.value.join("|"));
 
@@ -358,10 +358,8 @@ const workPackages = computed(() => {
 	return [];
 });
 
-const taskProjectIds = computed(() => {
-	const ids = [resolvedProjectId.value, ...subs.value.map((p) => p.id)].filter(Boolean);
-	return Array.from(new Set(ids));
-});
+// Own-project scope (see workPackageProjectIds) — not the subproject subtree.
+const taskProjectIds = computed(() => [resolvedProjectId.value].filter(Boolean));
 // Assignee is Frappe-native `_assign` (JSON list); UI is single-assignee.
 function parseAssignee(raw) {
 	try {
@@ -1079,7 +1077,7 @@ usePageTitle(() => project.value?.name);
 	<DeskPage
 		v-if="project"
 		:title="project.name"
-		:subtitle="`${project.id}${project.code ? ` · ${project.code}` : ''}`"
+		:subtitle="project.code && project.code !== project.name ? project.code : ''"
 		:breadcrumbs="breadcrumbs"
 		:status="titleStatuses"
 	>
@@ -1456,6 +1454,7 @@ usePageTitle(() => project.value?.name);
 						'planned_start',
 						'planned_end',
 						'task_count',
+						'completed_task_count',
 						'planned_task_count',
 						'workflow_state',
 					]"
@@ -1467,7 +1466,11 @@ usePageTitle(() => project.value?.name);
 						},
 						{ key: 'planned_start', label: 'Start' },
 						{ key: 'planned_end', label: 'End' },
-						{ key: 'planned_task_count', label: 'Tasks' },
+						{
+							key: 'planned_task_count',
+							label: 'Tasks',
+							fields: ['completed_task_count', 'task_count'],
+						},
 						{
 							key: '_status',
 							label: 'Status',
@@ -1477,7 +1480,7 @@ usePageTitle(() => project.value?.name);
 					]"
 					:base-filters="stageBaseFilters"
 					:search-fields="['stage_name', 'name']"
-					cache-key="buildsuite-stage-planning-project-tab"
+					cache-key="buildsuite-stage-planning-project-tab-v2"
 					row-key="name"
 					initial-order-by="planned_start asc"
 					search-placeholder="Search stages…"
@@ -1516,8 +1519,8 @@ usePageTitle(() => project.value?.name);
 					<template #cell-planned_task_count="{ row }">
 						<span
 							class="text-xs text-ink-700 tabular-nums"
-							:title="'Actual tasks in stage / planned task count'"
-							>{{ row.task_count || 0 }} / {{ row.planned_task_count || 0 }}</span
+							:title="'Completed tasks / total tasks in stage'"
+							>{{ row.completed_task_count || 0 }} / {{ row.task_count || 0 }}</span
 						>
 					</template>
 					<template #cell-_status="{ row }">
