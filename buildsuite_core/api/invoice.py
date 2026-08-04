@@ -757,8 +757,13 @@ def list_tax_templates(company=None):
 	filters = {"disabled": 0}
 	if company:
 		filters["company"] = company
+	# is_default first so a new invoice can pre-select the company's default template
+	# (mirrors the prototype starting each invoice with its default tax pre-filled).
 	return frappe.get_all(
-		"Sales Taxes and Charges Template", filters=filters, fields=["name", "title"], order_by="title asc"
+		"Sales Taxes and Charges Template",
+		filters=filters,
+		fields=["name", "title", "is_default"],
+		order_by="is_default desc, title asc",
 	)
 
 

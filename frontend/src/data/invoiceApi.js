@@ -29,7 +29,8 @@ export const linkInvoiceAdvance = (args) => call("link_advance", args);
 export const unlinkInvoiceAdvance = (args) => call("unlink_advance", args);
 export const invoiceReceivablesSummary = () => call("receivables_summary", {});
 export const listDepositAccounts = () => call("list_deposit_accounts", {});
-export const listInvoiceTaxTemplates = () => call("list_tax_templates", {});
+export const listInvoiceTaxTemplates = (company) =>
+	call("list_tax_templates", company ? { company } : {});
 export const getInvoiceTaxTemplateRows = (template) => call("get_tax_template_rows", { template });
 export const getInvoiceTerms = (name) => call("get_terms", { name });
 export const listInvoicePaymentModes = () => call("list_payment_modes", {});
