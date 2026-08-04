@@ -1,15 +1,18 @@
 <script setup>
-// Generic renderer for a Frappe/ERPNext Report (Query or Script) inside the SPA.
+// Generic, report-agnostic renderer for a Frappe/ERPNext Report (Query or Script).
 //
-// Filters: the report's own filter definitions (the Report Filter child table —
-// Frappe's server-side, JS-free filter source; see frappe query_report.js, which
-// falls back to report_doc.filters when a report has no JS filters) render as a
-// Frappe-style filter bar. Each fieldtype maps to a control (Link / Select / Date /
-// Check / number / data); Apply re-runs the report server-side with the values.
-// A client-side search filters the returned rows (list-style), then pagination.
-// Themed for light + dark.
+// Filters come from the REPORT itself, resolved the way the Desk does (query_report.js):
+// the report's client script is evaluated for its dynamic filters (frappe.query_reports
+// [name].filters) incl. their computed defaults, falling back to the Report Filter child
+// table when the script defines none. So any report's filters render here — the component
+// is agnostic of which workspace links it. Each fieldtype maps to a control (Link /
+// Select / Date / Check / number / data); Apply re-runs the report server-side with the
+// values, seeded from the report's defaults. A client-side search filters the returned
+// rows, then pagination. Themed for light + dark.
 import { ref, reactive, computed, watch } from "vue";
 import { runReport, getReportFilters } from "@/data/reportApi";
+import { evalReportFilters } from "@/utils/reportFilters";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtINR, fmtDate } from "@/utils/format";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -19,6 +22,7 @@ const props = defineProps({
 	pageSize: { type: Number, default: 50 },
 });
 
+const activeCompany = useActiveCompany();
 const loading = ref(true);
 const error = ref("");
 const columns = ref([]);
@@ -86,7 +90,13 @@ async function load() {
 	loading.value = true;
 	error.value = "";
 	try {
-		filterDefs.value = (await getReportFilters(props.report)) || [];
+		// Prefer the report's DYNAMIC (script) filters — read the same way the Desk does —
+		// and fall back to its Report Filter child table, mirroring query_report.js.
+		const cfg = (await getReportFilters(props.report)) || {};
+		const js = evalReportFilters(cfg.script || "", props.report, {
+			company: activeCompany.value,
+		});
+		filterDefs.value = js.length ? js : cfg.filters || [];
 	} catch {
 		filterDefs.value = [];
 	}

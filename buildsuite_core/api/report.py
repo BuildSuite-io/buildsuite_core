@@ -28,13 +28,20 @@ def _resolve_default(fieldtype, default):
 
 @frappe.whitelist()
 def get_report_filters(report):
-	"""The report's own filter definitions (the Report Filter child table — Frappe's
-	server-side, JS-free filter source), for the in-app filter bar. Each: fieldname,
-	label, fieldtype, options, mandatory, default (resolved)."""
+	"""Everything the in-app renderer needs to build a report's filter bar agnostically:
+
+	- `script`: the report's client script (as Frappe's Desk loads it). The renderer evals
+	  it in a small frappe shim to read the report's DYNAMIC filters (frappe.query_reports
+	  [name].filters), including their computed defaults — so ANY Frappe/ERPNext report's
+	  filters are exposed, not just BuildSuite's.
+	- `filters`: the Report Filter child table (Frappe's JS-free filter source), used as the
+	  fallback when a report defines no script filters — mirroring query_report.js.
+	"""
 	doc = frappe.get_cached_doc("Report", report)
 	if not doc.is_permitted():
 		frappe.throw(_("You don't have access to Report: {0}").format(report), frappe.PermissionError)
-	return [
+
+	child = [
 		{
 			"fieldname": f.fieldname,
 			"label": f.label or f.fieldname,
@@ -46,6 +53,16 @@ def get_report_filters(report):
 		for f in (doc.filters or [])
 		if f.fieldname and f.fieldtype not in ("Fold", "Column Break", "Section Break")
 	]
+
+	script = ""
+	try:
+		from frappe.desk.query_report import get_script
+
+		script = (get_script(report) or {}).get("script") or ""
+	except Exception:
+		script = ""
+
+	return {"script": script, "filters": child}
 
 
 @frappe.whitelist()
