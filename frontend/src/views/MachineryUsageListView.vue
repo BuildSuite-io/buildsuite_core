@@ -4,15 +4,27 @@
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { fmtINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 
 const router = useRouter();
+const { projectName } = useProjectNames();
 
 const usageRes = useDocTypeList("Machinery Usage", {
-	fields: ["name", "machine", "project", "task", "date", "quantity", "unit", "rate", "fuel_cost"],
+	fields: [
+		"name",
+		"machine",
+		"project",
+		"task",
+		"date",
+		"quantity",
+		"unit",
+		"rate",
+		"fuel_cost",
+	],
 	orderBy: "date desc",
 	pageLength: 0,
 	cache: "buildsuite-machinery-usage-list",
@@ -31,7 +43,8 @@ const rows = computed(() => {
 		data = data.filter(
 			(u) =>
 				(u.machine || "").toLowerCase().includes(q) ||
-				(u.project || "").toLowerCase().includes(q),
+				(u.project || "").toLowerCase().includes(q) ||
+				projectName(u.project).toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -71,10 +84,12 @@ function onRowClick(row) {
 			@row-click="onRowClick"
 		>
 			<template #cell-machine="{ row }">
-				<DeskLink :to="`/machinery/${row.machine}`" @click.stop>{{ row.machine }}</DeskLink>
+				<DeskLink :to="`/machinery/${row.machine}`" @click.stop>{{
+					row.machine
+				}}</DeskLink>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-ink-700">{{ row.project || "—" }}</span>
+				<span class="text-ink-700">{{ projectName(row.project) || "—" }}</span>
 			</template>
 			<template #cell-task="{ row }">
 				<span class="text-ink-500">{{ row.task || "—" }}</span>
@@ -86,13 +101,18 @@ function onRowClick(row) {
 				<span class="tabular-nums">{{ row.quantity }} {{ row.unit }}</span>
 			</template>
 			<template #cell-total="{ row }">
-				<span class="tabular-nums text-ink-900 font-medium">{{ fmtINR(totalFor(row)) }}</span>
+				<span class="tabular-nums text-ink-900 font-medium">{{
+					fmtINR(totalFor(row))
+				}}</span>
 			</template>
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
 					{{ usageRes.loading ? "Loading usage log…" : "No usage logged yet." }}
-					<RouterLink v-if="!usageRes.loading" to="/machinery-usage/new" class="desk-link"
+					<RouterLink
+						v-if="!usageRes.loading"
+						to="/machinery-usage/new"
+						class="desk-link"
 						>Log usage →</RouterLink
 					>
 				</div>

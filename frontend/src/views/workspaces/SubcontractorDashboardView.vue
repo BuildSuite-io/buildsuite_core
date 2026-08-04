@@ -7,6 +7,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
@@ -15,6 +16,8 @@ const today = computed(() => {
 	const d = new Date();
 	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 });
+
+const { projectName } = useProjectNames();
 
 const wosRes = useDocTypeList("Subcontractor Work Order", {
 	fields: [
@@ -50,13 +53,13 @@ const subs = computed(() => subsRes.data || []);
 const recentMBs = computed(() => (mbsRes.data || []).slice(0, 5));
 
 const openWos = computed(() =>
-	wos.value.filter((w) => w.status === "Awarded" || w.status === "In Progress"),
+	wos.value.filter((w) => w.status === "Awarded" || w.status === "In Progress")
 );
 const openWosValue = computed(() =>
-	openWos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0),
+	openWos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0)
 );
 const totalWoValue = computed(() =>
-	wos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0),
+	wos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0)
 );
 const activeSubs = computed(() => subs.value.filter((s) => !s.disabled).length);
 
@@ -169,7 +172,7 @@ const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 							class="text-[11px] text-ink-500 mt-0.5 truncate flex items-center gap-1.5 flex-wrap"
 						>
 							<StatusBadge :status="wo.status" size="xs" />
-							<span>· {{ wo.project }}</span>
+							<span>· {{ projectName(wo.project) }}</span>
 							<span class="text-ink-400">· {{ fmtDate(wo.date) }}</span>
 							<span v-if="wo.delivery_type" class="text-ink-400"
 								>· {{ wo.delivery_type }}</span
@@ -220,7 +223,7 @@ const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 								<StatusBadge :status="mb.status" size="xs" />
 							</div>
 							<div class="text-[11px] text-ink-500 mt-0.5 truncate">
-								{{ mb.project }} ·
+								{{ projectName(mb.project) }} ·
 								<RouterLink
 									:to="`/subcontractor-work-orders/${mb.work_order}`"
 									class="text-brand-700 hover:underline"

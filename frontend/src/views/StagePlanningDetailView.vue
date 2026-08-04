@@ -14,6 +14,7 @@ import { useSessionStore } from "@/stores/session";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { createDataAdapter } from "@/data/adapters";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
 
@@ -82,6 +83,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const route = useRoute();
 const store = useDataStore();
+const { projectName } = useProjectNames();
 const session = useSessionStore();
 const adapter = createDataAdapter(store);
 
@@ -354,7 +356,7 @@ const userRoles = computed(() => session.access?.roles || []);
 const availableActions = computed(() => {
 	const state = stage.value?.workflowState || "Draft";
 	return (WORKFLOW_ACTIONS[state] || []).filter((a) =>
-		a.roles.some((r) => userRoles.value.includes(r)),
+		a.roles.some((r) => userRoles.value.includes(r))
 	);
 });
 
@@ -485,7 +487,7 @@ async function reviseRejectedStage() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			},
+			}
 		);
 		const data = await response.json().catch(() => ({}));
 		if (!response.ok) {
@@ -537,7 +539,7 @@ async function fetchActivity() {
 			{
 				credentials: "include",
 				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-			},
+			}
 		);
 		const data = await res.json().catch(() => ({}));
 		activityEntries.value = Array.isArray(data?.message) ? data.message : [];
@@ -573,7 +575,7 @@ async function confirmReject() {
 					"X-Frappe-CSRF-Token": window.csrf_token || "",
 				},
 				body: body.toString(),
-			},
+			}
 		);
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
@@ -610,7 +612,7 @@ watch(
 	(s) => {
 		if (s && !editing.value) editForm.value = snapshotStage(s);
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 // Load the activity feed when the stage resolves / changes; auto-enter edit mode
@@ -622,7 +624,7 @@ watch(
 		fetchActivity();
 		if (route.query.edit && canEdit.value && !editing.value) startEdit();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -668,13 +670,11 @@ async function saveEdit() {
 		editForm.value.plannedEnd,
 		b.start,
 		b.end,
-		"project",
+		"project"
 	);
 	if (boundsErr) {
 		setErrors(
-			boundsErr.startsWith("Start")
-				? { plannedStart: boundsErr }
-				: { plannedEnd: boundsErr },
+			boundsErr.startsWith("Start") ? { plannedStart: boundsErr } : { plannedEnd: boundsErr }
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -1069,8 +1069,8 @@ usePageTitle(() => stage.value?.stageName);
 						dependencyCount === 0
 							? "starts independently"
 							: dependencyCount === 1
-								? "stage must complete first"
-								: "stages must complete first"
+							? "stage must complete first"
+							: "stages must complete first"
 					}}
 				</div>
 			</div>
@@ -1108,7 +1108,7 @@ usePageTitle(() => stage.value?.stageName);
 						<DeskLink v-if="project" :to="`/projects/${project.id}`">{{
 							project.name
 						}}</DeskLink>
-						<span v-else class="text-ink-500">{{ stage.project }}</span>
+						<span v-else class="text-ink-500">{{ projectName(stage.project) }}</span>
 					</div>
 				</div>
 				<div>

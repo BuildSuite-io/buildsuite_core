@@ -7,6 +7,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate } from "@/utils/format";
@@ -23,6 +24,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	machinery_name: "machinery_name",
 	machinery_type: "machinery_type",
@@ -56,7 +58,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 const rateDisplay = computed(() => {
@@ -185,7 +187,13 @@ const breadcrumbs = computed(() => [
 			>
 				Cancel
 			</button>
-			<button v-if="editing" type="button" class="desk-save-btn" :disabled="saving" @click="saveEdit">
+			<button
+				v-if="editing"
+				type="button"
+				class="desk-save-btn"
+				:disabled="saving"
+				@click="saveEdit"
+			>
 				{{ saving ? "Saving…" : "Save" }}
 			</button>
 		</template>
@@ -194,22 +202,28 @@ const breadcrumbs = computed(() => [
 		<div v-if="!editing">
 			<DeskSection title="Machinery" :cols="3">
 				<DeskField label="Type"
-					><div class="text-sm text-ink-700">{{ doc.machinery_type || "—" }}</div></DeskField
+					><div class="text-sm text-ink-700">
+						{{ doc.machinery_type || "—" }}
+					</div></DeskField
 				>
 				<DeskField label="Ownership"
 					><div class="text-sm text-ink-800">{{ doc.ownership }}</div></DeskField
 				>
 				<DeskField label="Rate"
-					><div class="text-sm text-ink-800 tabular-nums">{{ rateDisplay }}</div></DeskField
+					><div class="text-sm text-ink-800 tabular-nums">
+						{{ rateDisplay }}
+					</div></DeskField
 				>
 				<DeskField label="Owner / Vendor"
-					><div class="text-sm text-ink-800">{{ doc.owner_vendor || "—" }}</div></DeskField
+					><div class="text-sm text-ink-800">
+						{{ doc.owner_vendor || "—" }}
+					</div></DeskField
 				>
 				<DeskField label="Status"><StatusBadge :status="doc.status" /></DeskField>
 				<DeskField v-if="doc.ownership === 'Owned'" label="Linked asset (ERPNext)">
-					<DeskLink v-if="doc.asset" :href="`/app/asset/${doc.asset}`" target="_blank"
-						>{{ doc.asset }}</DeskLink
-					>
+					<DeskLink v-if="doc.asset" :href="`/app/asset/${doc.asset}`" target="_blank">{{
+						doc.asset
+					}}</DeskLink>
 					<div v-else class="text-sm text-ink-400">— not linked —</div>
 				</DeskField>
 				<DeskField label="Company"
@@ -237,9 +251,13 @@ const breadcrumbs = computed(() => [
 							@click="router.push(`/machinery-usage/${u.name}`)"
 						>
 							<td class="py-1.5 pr-3 text-ink-500">{{ fmtDate(u.date) }}</td>
-							<td class="py-1.5 pr-3 text-ink-700">{{ u.project || "—" }}</td>
+							<td class="py-1.5 pr-3 text-ink-700">
+								{{ projectName(u.project) || "—" }}
+							</td>
 							<td class="py-1.5 pr-3 text-ink-500">{{ u.task || "—" }}</td>
-							<td class="py-1.5 pr-3 text-right tabular-nums">{{ u.quantity }} {{ u.unit }}</td>
+							<td class="py-1.5 pr-3 text-right tabular-nums">
+								{{ u.quantity }} {{ u.unit }}
+							</td>
 							<td class="py-1.5 text-right tabular-nums text-ink-900 font-medium">
 								{{ fmtINR(usageTotal(u)) }}
 							</td>

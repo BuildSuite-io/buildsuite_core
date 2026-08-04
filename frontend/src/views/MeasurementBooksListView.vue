@@ -6,6 +6,7 @@
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useProjectNames } from "@/composables/useProjectNames";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -13,6 +14,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
+const { projectName } = useProjectNames();
 
 const mbRes = useDocTypeList("Measurement Book", {
 	fields: ["name", "project", "work_order", "date", "measured_total", "status"],
@@ -39,7 +41,8 @@ const rows = computed(() => {
 			(m) =>
 				(m.id || "").toLowerCase().includes(q) ||
 				(m.work_order || "").toLowerCase().includes(q) ||
-				(m.project || "").toLowerCase().includes(q),
+				(m.project || "").toLowerCase().includes(q) ||
+				projectName(m.project).toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -87,7 +90,7 @@ function onRowClick(row) {
 				>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-xs text-ink-700">{{ row.project }}</span>
+				<span class="text-xs text-ink-700">{{ projectName(row.project) }}</span>
 			</template>
 			<template #cell-work_order="{ row }">
 				<DeskLink
