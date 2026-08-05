@@ -114,6 +114,7 @@ _FULL = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export":
 _FULL_SUB = {**_FULL, "submit": 1, "cancel": 1, "amend": 1}  # CRWDSX
 _RAISE = {"read": 1, "create": 1, "print": 1}  # CR — raise own records only
 _CRWS = {"read": 1, "write": 1, "create": 1, "submit": 1, "report": 1, "print": 1}  # CRWS
+_CRW = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}  # CRW — edit, no delete
 
 # Assembly + Estimate Template: full for the estimation roles, hidden for the rest.
 ASSEMBLY_TEMPLATE_ROLE_PERMS = {role: _FULL for role in _ESTIMATION_ROLES}
@@ -621,6 +622,109 @@ def setup_subcontract_permissions():
 		_apply_role_perms(dt, _billing_read)
 
 
+# --- M3 — Workforce -----------------------------------------------------------
+# Field Attendance is the muster (submittable): Site Engineer + Foreman submit at
+# site; HR Manager has the same rights for office-side correction; PM full; Director
+# + Accountant read. Estimator / QS / Procurement / Store Keeper have no access.
+FIELD_ATTENDANCE_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite PM": _FULL_SUB,
+	"BuildSuite Site Engineer": _FULL_SUB,
+	"BuildSuite Foreman": _FULL_SUB,
+	"BuildSuite HR Manager": _FULL_SUB,
+	"BuildSuite Director": _READ,
+	"BuildSuite Accountant": _READ,
+}
+# Labour / Overtime Attendance are DERIVED registers — system-written when a Field
+# Attendance is submitted. No role edits them directly (corrections go through cancel
+# + amend on the muster), so every role that can see them is read-only.
+DERIVED_ATTENDANCE_ROLE_PERMS = {
+	role: _READ
+	for role in (
+		"BuildSuite Administrator",
+		"BuildSuite Director",
+		"BuildSuite PM",
+		"BuildSuite QS",
+		"BuildSuite Site Engineer",
+		"BuildSuite Foreman",
+		"BuildSuite Accountant",
+		"BuildSuite HR Manager",
+	)
+}
+
+
+def setup_workforce_permissions():
+	_apply_role_perms("Field Attendance", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
+	for dt in ("Labour Attendance Register", "Overtime Attendance Register"):
+		# These registers historically shipped an over-broad `All` grant (write for every
+		# user). The derived rule is "no role edits directly", so drop any `All` custom
+		# grant before seeding the read-only BuildSuite matrix.
+		frappe.db.delete("Custom DocPerm", {"parent": dt, "role": "All"})
+		_apply_role_perms(dt, DERIVED_ATTENDANCE_ROLE_PERMS)
+
+
+# --- M3 — Equipment -----------------------------------------------------------
+# Machinery (the register) — Procurement + Store Keeper maintain it jointly
+# (Procurement buys/hires, Store Keeper holds custody); PM may edit; Site Engineer +
+# Foreman + Director + Accountant read. Non-submittable master, so CRWD is "full".
+MACHINERY_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Procurement Officer": _FULL,
+	"BuildSuite Store Keeper": _FULL,
+	"BuildSuite PM": _CRW,
+	"BuildSuite Director": _READ,
+	"BuildSuite Site Engineer": _READ,
+	"BuildSuite Foreman": _READ,
+	"BuildSuite Accountant": _READ,
+}
+# Machinery Usage (the plant usage log) — the site records usage (Site Engineer +
+# PM full, Foreman edits, Store Keeper holds custody); Procurement reads it as the
+# basis for hire bills; Director + Accountant read. Non-submittable, so CRWD is full.
+MACHINERY_USAGE_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite PM": _FULL,
+	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Store Keeper": _FULL,
+	"BuildSuite Foreman": _CRW,
+	"BuildSuite Director": _READ,
+	"BuildSuite Procurement Officer": _READ,
+	"BuildSuite Accountant": _READ,
+}
+
+
+def setup_equipment_permissions():
+	_apply_role_perms("Machinery", MACHINERY_ROLE_PERMS)
+	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS)
+
+
+# --- M3 — Project Finance (customer-side money) -------------------------------
+# Sales Invoice (money in) — Director + Accountant raise and submit; PM + QS read
+# for billing context. Native ERPNext doctype: BuildSuite DocPerms overlay ERPNext's
+# own Accounts roles (which keep their native access).
+SALES_INVOICE_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite Director": _FULL_SUB,
+	"BuildSuite Accountant": _FULL_SUB,
+	"BuildSuite PM": _READ,
+	"BuildSuite QS": _READ,
+}
+# Payment Entry (money movement) — Accountant + admin tier create and submit; it is
+# created from the document being settled, never a blank form. Director + PM +
+# Procurement read (Procurement to know what is already paid).
+PAYMENT_ENTRY_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite Accountant": _FULL_SUB,
+	"BuildSuite Director": _READ,
+	"BuildSuite PM": _READ,
+	"BuildSuite Procurement Officer": _READ,
+}
+
+
+def setup_project_finance_permissions():
+	_apply_role_perms("Sales Invoice", SALES_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
+	_apply_role_perms("Payment Entry", PAYMENT_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
+
+
 def _ensure_workflow_state(name):
 	if not frappe.db.exists("Workflow State", name):
 		frappe.get_doc({"doctype": "Workflow State", "workflow_state_name": name}).insert(
@@ -665,6 +769,9 @@ def setup_record_permissions():
 	setup_subcontract_permissions()
 	setup_sco_permissions()
 	setup_petty_cash_permissions()
+	setup_workforce_permissions()
+	setup_equipment_permissions()
+	setup_project_finance_permissions()
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
 	setup_subcontractor_wo_workflow()

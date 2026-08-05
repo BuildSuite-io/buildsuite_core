@@ -2,13 +2,27 @@
 # For license information, please see license.txt
 
 import frappe
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+)
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
-	get_accounting_dimensions,
-)
+from buildsuite_core.utils.petty_cash import employee_for_user
+
+# M3 (Project Finance): a site role may record spend only against petty cash, and only
+# with themselves as the holder — "site roles are confined to their own money". Accounts
+# and the admin tier may record against any holder / any account (corrections, back-dated
+# entries), so holding any of those roles lifts the confinement.
+_SITE_CONFINED_ROLES = {"BuildSuite Site Engineer", "BuildSuite Foreman"}
+_UNRESTRICTED_EXPENSE_ROLES = {
+	"BuildSuite Accountant",
+	"BuildSuite Director",
+	"BuildSuite Administrator",
+	"System Manager",
+	"Administrator",
+}
 
 
 class ExpenseEntry(Document):
@@ -52,6 +66,8 @@ class ExpenseEntry(Document):
 		if self.paid_from == "Company":
 			self.employee = None
 
+		self.enforce_site_confinement()
+
 		self.total_amount = sum(flt(row.amount) for row in self.expense_entry_table)
 
 		for idx, row in enumerate(self.expense_entry_table, start=1):
@@ -64,6 +80,21 @@ class ExpenseEntry(Document):
 
 		self.validate_single_company()
 		self.set_description()
+
+	def enforce_site_confinement(self):
+		"""Confine site roles to petty cash + themselves as holder (M3). Keyed to the
+		acting session user, so an Accountant editing a site user's entry is unrestricted."""
+		if frappe.flags.in_install or frappe.flags.in_migrate:
+			return
+		user = frappe.session.user
+		roles = set(frappe.get_roles(user))
+		if roles & _UNRESTRICTED_EXPENSE_ROLES or not (roles & _SITE_CONFINED_ROLES):
+			return
+		if self.paid_from != "Petty Cash":
+			frappe.throw(_("Site roles may only record Petty Cash expenses."))
+		own = employee_for_user(user)
+		if own and self.employee and self.employee != own:
+			frappe.throw(_("Site roles may only record expenses against themselves as the holder."))
 
 	def validate_single_company(self):
 		"""Every account + the holder must belong to this entry's company, else the Journal
@@ -112,11 +143,27 @@ class ExpenseEntry(Document):
 
 			# Debit: expense account (project cost — no holder)
 			accounts.append(
-				self.get_account_row(row, row.expense_account, flt(row.amount), 0, cost_center, accounting_dimensions, employee=None)
+				self.get_account_row(
+					row,
+					row.expense_account,
+					flt(row.amount),
+					0,
+					cost_center,
+					accounting_dimensions,
+					employee=None,
+				)
 			)
 			# Credit: payment account — Petty Cash (holder stamped) or the company's Bank/Cash
 			accounts.append(
-				self.get_account_row(row, row.payment_account, 0, flt(row.amount), cost_center, accounting_dimensions, employee=holder)
+				self.get_account_row(
+					row,
+					row.payment_account,
+					0,
+					flt(row.amount),
+					cost_center,
+					accounting_dimensions,
+					employee=holder,
+				)
 			)
 
 		if not accounts:
