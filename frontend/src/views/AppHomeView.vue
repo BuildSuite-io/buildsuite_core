@@ -1,12 +1,27 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
+import { useUserNames } from "@/composables/useUserNames";
+import { getHomeDashboard } from "@/data/homeDashboardApi";
 
 const store = useDataStore();
+const session = useSessionStore();
+const { userName: resolveUserName } = useUserNames();
+
+// One live aggregate read backs every metric below (api.home.get_home_dashboard).
+const dash = ref(null);
+onMounted(async () => {
+	try {
+		dash.value = await getHomeDashboard();
+	} catch {
+		dash.value = null; // fall through to the fallback numbers
+	}
+});
+const kpis = computed(() => dash.value?.kpis || {});
 
 const now = new Date();
-const todayISO = now.toISOString().slice(0, 10);
 
 const greeting = computed(() => {
 	const hour = now.getHours();
@@ -15,7 +30,10 @@ const greeting = computed(() => {
 	return "Good evening";
 });
 
-const userName = computed(() => store.user?.name || "Admin User");
+const userName = computed(() => {
+	const id = session.user && session.user !== "Guest" ? session.user : null;
+	return (id && resolveUserName(id)) || store.user?.name || "Admin User";
+});
 
 const roleLabel = computed(() =>
 	store.isAdmin ? "System Manager (Admin)" : store.currentRole?.name || "User"
@@ -38,29 +56,14 @@ const initials = computed(() => {
 	return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
 });
 
-const activeProjectsCount = computed(() => store.activeProjectsCount || 0);
-const openTasksCount = computed(() => store.openTasksCount || 0);
-const usersCount = computed(() => {
-	const ids = new Set((store.team || []).map((u) => u.id));
-	if (store.user?.id) ids.add(store.user.id);
-	return ids.size;
-});
+const activeProjectsCount = computed(() => kpis.value.active_projects);
+const openTasksCount = computed(() => kpis.value.open_tasks);
+const usersCount = computed(() => kpis.value.users);
 const workspacesCount = computed(() => (store.visibleWorkspaces || []).length);
 
-const pendingScosCount = computed(() => store.pendingScosCount || 0);
-const overdueTasksCount = computed(
-	() =>
-		(store.tasks || []).filter(
-			(t) =>
-				t.endDate &&
-				t.endDate < todayISO &&
-				t.status !== "Completed" &&
-				t.status !== "Cancelled"
-		).length
-);
-const progressTodayCount = computed(
-	() => (store.taskProgressEntries || []).filter((e) => e.entryDate === todayISO).length
-);
+const pendingScosCount = computed(() => kpis.value.pending_scos);
+const overdueTasksCount = computed(() => kpis.value.overdue_tasks);
+const progressTodayCount = computed(() => kpis.value.progress_today);
 
 const quickActions = [
 	{ label: "Users", to: "/settings/users", icon: "users" },

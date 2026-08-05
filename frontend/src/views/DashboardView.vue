@@ -4,48 +4,41 @@
 // denser Desk-styled overview accessed via "Browse all workspaces" from a landing, or
 // the legacy `/` redirect.
 
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { useDataStore } from "@/stores";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import { fmtCompactINR } from "@/utils/format";
+import { getHomeDashboard } from "@/data/homeDashboardApi";
 
-const store = useDataStore();
-const rootProjects = computed(() => store.rootProjects);
-const pendingScos = computed(() => store.scos.filter((s) => s.status === "Pending Approval"));
-const inProgressTasks = computed(() =>
-	store.tasks.filter((t) => t.status === "In Progress").slice(0, 6)
-);
+// One live aggregate read backs the whole overview (api.home.get_home_dashboard).
+const dash = ref(null);
+const loading = ref(true);
+onMounted(async () => {
+	try {
+		dash.value = await getHomeDashboard();
+	} finally {
+		loading.value = false;
+	}
+});
+const kpis = computed(() => dash.value?.kpis || {});
+const rootProjects = computed(() => dash.value?.projects || []);
+const pendingScos = computed(() => dash.value?.pending_scos || []);
+const inProgressTasks = computed(() => dash.value?.tasks_in_progress || []);
 
-// Schedule-based progress-bar color, same convention as Projects list.
-const today = new Date();
+// Schedule tone → progress-bar color, resolved server-side (same convention as Projects list).
+const TONE_BAR = { danger: "bg-danger-500", warning: "bg-warning-500", success: "bg-success-500" };
 function progressBarColor(p) {
-	if (!p.startDate || !p.endDate) return "bg-success-500";
-	const start = new Date(p.startDate).getTime();
-	const end = new Date(p.endDate).getTime();
-	const total = end - start;
-	if (total <= 0) return "bg-success-500";
-	const elapsed = Math.max(0, Math.min(total, today.getTime() - start));
-	const expected = (elapsed / total) * 100;
-	if (expected <= 0) return "bg-success-500";
-	const v = ((expected - p.progress) / expected) * 100;
-	if (v > 15) return "bg-danger-500";
-	if (v > 5) return "bg-warning-500";
-	return "bg-success-500";
+	return TONE_BAR[p.tone] || "bg-success-500";
 }
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard" }];
 </script>
 
 <template>
-	<DeskPage
-		title="Dashboard"
-		subtitle="Operations overview · live from local storage"
-		:breadcrumbs="breadcrumbs"
-	>
+	<DeskPage title="Dashboard" subtitle="Operations overview · live" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				to="/tasks/new"
@@ -63,7 +56,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 					Active projects
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">
-					{{ store.activeProjectsCount }}
+					{{ kpis.active_projects ?? "—" }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -71,7 +64,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 					Open tasks
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">
-					{{ store.openTasksCount }}
+					{{ kpis.open_tasks ?? "—" }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -79,7 +72,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 					Pending SCOs
 				</div>
 				<div class="text-base font-semibold text-warning-700 mt-0.5">
-					{{ store.pendingScosCount }}
+					{{ kpis.pending_scos ?? "—" }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
@@ -87,7 +80,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 					Total order book
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5 tabular-nums">
-					{{ fmtCompactINR(store.totalOrderBook) }}
+					{{ fmtCompactINR(kpis.total_order_book || 0) }}
 				</div>
 			</div>
 		</div>
