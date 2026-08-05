@@ -11,7 +11,14 @@ tiles. Idempotent per workspace — a workspace that already has rows is left un
 
 import frappe
 
-# (report_name, ref_doctype, icon, description, query) — the Site Execution reports.
+# Reusable Report Filter rows (Frappe's server-side filter defs the in-app FrappeReport
+# renderer reads). A Query Report's SQL uses them via %(fieldname)s; the "empty ⇒ all"
+# guard (%(x)s = '' OR …) keeps every filter optional.
+_PROJECT = {"fieldname": "project", "label": "Project", "fieldtype": "Link", "options": "Project"}
+_FROM = {"fieldname": "from_date", "label": "From", "fieldtype": "Date"}
+_TO = {"fieldname": "to_date", "label": "To", "fieldtype": "Date"}
+
+# (report_name, ref_doctype, icon, description, query, filters) — the Site Execution reports.
 REPORTS = (
 	(
 		"Project Status Summary",
@@ -21,7 +28,9 @@ REPORTS = (
 		'SELECT name AS "Project:Link/Project:220", project_name AS "Name:Data:220",'
 		' status AS "Status:Data:120", percent_complete AS "Progress:Percent:100",'
 		' expected_end_date AS "End Date:Date:110" FROM `tabProject`'
-		" WHERE is_group = 0 ORDER BY modified DESC",
+		" WHERE is_group = 0 AND (%(project)s = '' OR name = %(project)s)"
+		" ORDER BY modified DESC",
+		(_PROJECT,),
 	),
 	(
 		"Completed Tasks",
@@ -30,7 +39,12 @@ REPORTS = (
 		"Tasks marked completed, most recent first.",
 		'SELECT name AS "Task:Link/Task:220", subject AS "Subject:Data:260",'
 		' project AS "Project:Link/Project:200", modified AS "Completed On:Datetime:160"'
-		" FROM `tabTask` WHERE task_status = 'Completed' ORDER BY modified DESC",
+		" FROM `tabTask` WHERE task_status = 'Completed'"
+		" AND (%(project)s = '' OR project = %(project)s)"
+		" AND (%(from_date)s = '' OR DATE(modified) >= %(from_date)s)"
+		" AND (%(to_date)s = '' OR DATE(modified) <= %(to_date)s)"
+		" ORDER BY modified DESC",
+		(_PROJECT, _FROM, _TO),
 	),
 	(
 		"Pending Progress Entries",
@@ -41,7 +55,9 @@ REPORTS = (
 		' t.project AS "Project:Link/Project:200", t.task_status AS "Status:Data:120"'
 		" FROM `tabTask` t LEFT JOIN `tabTask Progress Entry` tpe ON tpe.task = t.name"
 		" WHERE t.task_status IN ('Yet To Start','In Progress','In Delay')"
-		" AND tpe.name IS NULL GROUP BY t.name ORDER BY t.modified DESC",
+		" AND tpe.name IS NULL AND (%(project)s = '' OR t.project = %(project)s)"
+		" GROUP BY t.name ORDER BY t.modified DESC",
+		(_PROJECT,),
 	),
 	(
 		"Stage Plan vs Actual",
@@ -51,7 +67,9 @@ REPORTS = (
 		'SELECT name AS "Stage Planning:Link/Stage Planning:220", stage_name AS "Stage:Data:180",'
 		' project AS "Project:Link/Project:200", planned_task_count AS "Planned:Int:90",'
 		' task_count AS "Actual:Int:90", mean_progress AS "Progress:Percent:110"'
-		" FROM `tabStage Planning` ORDER BY modified DESC",
+		" FROM `tabStage Planning` WHERE (%(project)s = '' OR project = %(project)s)"
+		" ORDER BY modified DESC",
+		(_PROJECT,),
 	),
 	(
 		"Progress Entries",
@@ -60,7 +78,13 @@ REPORTS = (
 		"Task progress entries logged on site.",
 		'SELECT tpe.name AS "Entry:Link/Task Progress Entry:200", tpe.task AS "Task:Link/Task:220",'
 		' tpe.entry_date AS "Date:Date:110", tpe.cumulative_progress AS "Progress:Percent:110"'
-		" FROM `tabTask Progress Entry` tpe ORDER BY tpe.entry_date DESC",
+		" FROM `tabTask Progress Entry` tpe"
+		" WHERE (%(project)s = '' OR tpe.task IN"
+		"   (SELECT name FROM `tabTask` WHERE project = %(project)s))"
+		" AND (%(from_date)s = '' OR tpe.entry_date >= %(from_date)s)"
+		" AND (%(to_date)s = '' OR tpe.entry_date <= %(to_date)s)"
+		" ORDER BY tpe.entry_date DESC",
+		(_PROJECT, _FROM, _TO),
 	),
 )
 
@@ -115,24 +139,45 @@ _SEED = {
 }
 
 
-def _ensure_report(report_name, ref_doctype, query):
-	if frappe.db.exists("Report", report_name):
-		return
-	doc = frappe.get_doc(
-		{
-			"doctype": "Report",
-			"report_name": report_name,
-			"ref_doctype": ref_doctype,
-			"report_type": "Query Report",
-			"is_standard": "No",
-			"module": "BuildSuite Core",
-			"query": query,
-		}
-	)
-	for role in REPORT_ROLES:
-		if frappe.db.exists("Role", role):
-			doc.append("roles", {"role": role})
-	doc.insert(ignore_permissions=True)
+def _ensure_report(report_name, ref_doctype, query, filters=()):
+	"""Create the report, or sync its query + filter defs if it already exists (so the
+	filter-aware queries + Report Filter rows reach sites seeded before filters existed).
+	Returns True when newly created."""
+	existing = frappe.db.exists("Report", report_name)
+	if existing:
+		doc = frappe.get_doc("Report", report_name)
+	else:
+		doc = frappe.get_doc(
+			{
+				"doctype": "Report",
+				"report_name": report_name,
+				"ref_doctype": ref_doctype,
+				"report_type": "Query Report",
+				"is_standard": "No",
+				"module": "BuildSuite Core",
+			}
+		)
+		for role in REPORT_ROLES:
+			if frappe.db.exists("Role", role):
+				doc.append("roles", {"role": role})
+
+	doc.query = query
+	doc.set("filters", [])
+	for f in filters:
+		doc.append(
+			"filters",
+			{
+				"fieldname": f["fieldname"],
+				"label": f["label"],
+				"fieldtype": f["fieldtype"],
+				"options": f.get("options", ""),
+				"mandatory": f.get("mandatory", 0),
+				"default": f.get("default", ""),
+			},
+		)
+	doc.flags.ignore_permissions = True
+	doc.save()
+	return not existing
 
 
 def _legacy_site_execution_rows():
@@ -155,9 +200,8 @@ def _legacy_site_execution_rows():
 
 def seed_workspace_reports():
 	created = []
-	for report_name, ref_doctype, _icon, _desc, query in REPORTS:
-		if not frappe.db.exists("Report", report_name):
-			_ensure_report(report_name, ref_doctype, query)
+	for report_name, ref_doctype, _icon, _desc, query, filters in REPORTS:
+		if _ensure_report(report_name, ref_doctype, query, filters):
 			created.append(report_name)
 
 	settings = frappe.get_single("Workspace Setting")
@@ -168,8 +212,7 @@ def seed_workspace_reports():
 	if "site-execution" not in existing:
 		legacy = _legacy_site_execution_rows()
 		rows = legacy or [
-			{"report": name, "icon": icon, "description": desc}
-			for name, _ref, icon, desc, _q in REPORTS
+			{"report": name, "icon": icon, "description": desc} for name, _ref, icon, desc, _q in REPORTS
 		]
 		for r in rows:
 			settings.append("reports", {"workspace": "site-execution", **r})

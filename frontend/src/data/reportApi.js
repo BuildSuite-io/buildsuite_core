@@ -16,3 +16,6 @@ async function call(method, args) {
 
 export const runReport = (report, filters) =>
 	call("run_report", { report, filters: filters ? JSON.stringify(filters) : undefined });
+
+// The report's own filter definitions (Report Filter child table) for the filter bar.
+export const getReportFilters = (report) => call("get_report_filters", { report });
