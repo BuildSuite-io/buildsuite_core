@@ -510,4 +510,17 @@ CUSTOM_FIELD = {
 	# "Employee" Accounting Dimension (see install.seed_employee_accounting_dimension),
 	# not a bespoke custom field — so it groups natively in the standard GL / Financial
 	# Statements and is settable on any account (Cash/Bank included).
+	"Account": [
+		{
+			# Opening balance seed for the Bank & Cash Accounts setting (S229). The
+			# current balance shown there is this opening balance ± every recorded
+			# movement (the GL balance), so the opening is stored, not posted.
+			"fieldname": "bs_opening_balance",
+			"fieldtype": "Currency",
+			"label": "Opening Balance (BuildSuite)",
+			"insert_after": "account_number",
+			"options": "account_currency",
+			"module": "BuildSuite Core",
+		},
+	],
 }

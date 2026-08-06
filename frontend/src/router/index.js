@@ -650,6 +650,11 @@ const routes = [
 				component: () => import("@/views/settings/CoreSettingsView.vue"),
 			},
 			{
+				path: "settings/finance-accounts",
+				name: "settings-finance-accounts",
+				component: () => import("@/views/settings/FinanceAccountsView.vue"),
+			},
+			{
 				path: "settings/workspaces",
 				name: "settings-workspaces",
 				component: () => import("@/views/settings/WorkspaceSettingsView.vue"),
