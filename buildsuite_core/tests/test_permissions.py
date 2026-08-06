@@ -290,3 +290,70 @@ class TestPermissions(BuildSuiteTestCase):
 			self.assertEqual(rm.update_rates_from_po(purchase_order="PO-TEST", updates=[]), [])
 		finally:
 			frappe.set_user("Administrator")
+
+	# --- M3 access control (Workforce / Equipment / Project Finance) ----------
+	def test_store_keeper_maintains_machinery(self):
+		# M3-EQP — Store Keeper (with Procurement) maintains the Machinery register: full
+		# CRUD on Machinery + Machinery Usage; the muster (Field Attendance) is hidden.
+		self._as("Store Keeper", "storeeq")
+		try:
+			for dt in ("Machinery", "Machinery Usage"):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "write"), dt)
+			self.assertFalse(frappe.has_permission("Field Attendance", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_site_engineer_equipment_split(self):
+		# M3-EQP — Site Engineer records plant usage (create Machinery Usage) but only
+		# reads the Machinery register (Procurement/Store own it).
+		self._as("Site Engineer", "seeq")
+		try:
+			self.assertTrue(frappe.has_permission("Machinery Usage", "create"))
+			self.assertTrue(frappe.has_permission("Machinery", "read"))
+			self.assertFalse(frappe.has_permission("Machinery", "write"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_derived_attendance_read_only(self):
+		# M3-WF — the derived Labour/Overtime registers are read-only for every role;
+		# they are system-written when the Field Attendance muster is submitted.
+		self._as("Foreman / Supervisor", "fmwf")
+		try:
+			for dt in ("Labour Attendance Register", "Overtime Attendance Register"):
+				self.assertTrue(frappe.has_permission(dt, "read"), dt)
+				self.assertFalse(frappe.has_permission(dt, "write"), dt)
+				self.assertFalse(frappe.has_permission(dt, "create"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_field_attendance_site_submits(self):
+		# M3-WF — Site Engineer submits the muster; Estimator has no access to it.
+		self._as("Site Engineer", "sewf")
+		try:
+			self.assertTrue(frappe.has_permission("Field Attendance", "create"))
+			self.assertTrue(frappe.has_permission("Field Attendance", "submit"))
+		finally:
+			frappe.set_user("Administrator")
+		self._as("Estimator", "estwf")
+		try:
+			self.assertFalse(frappe.has_permission("Field Attendance", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_accountant_finance_vs_pm_read(self):
+		# M3-PF — Accountant raises + submits Sales Invoice and Payment Entry; PM only
+		# reads the invoice (billing context) and cannot create it.
+		self._as("Accountant", "acctpf")
+		try:
+			for dt in ("Sales Invoice", "Payment Entry"):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "submit"), dt)
+		finally:
+			frappe.set_user("Administrator")
+		self._as("Project Manager", "pmpf")
+		try:
+			self.assertTrue(frappe.has_permission("Sales Invoice", "read"))
+			self.assertFalse(frappe.has_permission("Sales Invoice", "create"))
+		finally:
+			frappe.set_user("Administrator")
