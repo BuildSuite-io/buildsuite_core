@@ -93,17 +93,6 @@ const companyMonogram = computed(() => {
 		.join("");
 });
 
-const programmePosition = computed(() => {
-	const v = programme.value.variance ?? 0;
-	if (v >= 0) return { label: "On / ahead of programme", tone: "text-success-700" };
-	return {
-		label: `${programme.value.slip_days} day${
-			programme.value.slip_days === 1 ? "" : "s"
-		} behind`,
-		tone: "text-danger-700",
-	};
-});
-
 function plural(n, one, many) {
 	return n === 1 ? one : many;
 }
@@ -461,11 +450,7 @@ function backToProject() {
 
 			<!-- Executive summary -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Executive summary
-				</h2>
+				<h2 class="rpt-h2">Executive summary</h2>
 				<div
 					class="p-4 bg-brand-50/40 border border-brand-100 rounded-lg text-sm text-ink-800 leading-relaxed"
 				>
@@ -477,67 +462,109 @@ function backToProject() {
 
 			<!-- Programme position -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
+				<h2 class="rpt-h2">
 					{{
 						isClient
 							? "Progress against programme"
 							: "Project progress & schedule position"
 					}}
 				</h2>
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-					<div class="p-3 border border-ink-200 rounded-lg">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500">Actual</div>
-						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
-							{{ programme.actual }}%
+				<div class="card p-4 border border-ink-200 rounded-lg">
+					<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								Actual
+							</div>
+							<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
+								{{ programme.actual }}%
+							</div>
+						</div>
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								Programme
+							</div>
+							<div class="text-xl font-semibold text-ink-500 tabular-nums mt-1">
+								{{ Math.round(programme.expected) }}%
+							</div>
+						</div>
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								Variance
+							</div>
+							<div
+								class="text-xl font-semibold tabular-nums mt-1"
+								:class="
+									programme.variance < 0 ? 'text-danger-700' : 'text-success-700'
+								"
+							>
+								{{ programme.variance > 0 ? "+" : "" }}{{ programme.variance }}%
+							</div>
+						</div>
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">
+								Position
+							</div>
+							<div
+								class="text-xl font-semibold tabular-nums mt-1"
+								:class="
+									programme.slip_days > 0
+										? 'text-danger-700'
+										: 'text-success-700'
+								"
+							>
+								{{
+									programme.slip_days > 0
+										? `${programme.slip_days}d behind`
+										: "On programme"
+								}}
+							</div>
 						</div>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500">
-							Programme
-						</div>
-						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
-							{{ Math.round(programme.expected) }}%
-						</div>
-					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500">
-							Variance
-						</div>
+					<!-- Actual bar with the programme position marked by a tick. -->
+					<div class="relative h-3 bg-ink-100 rounded-full overflow-hidden">
 						<div
-							class="text-xl font-semibold tabular-nums mt-1"
-							:class="programmePosition.tone"
-						>
-							{{ programme.variance > 0 ? "+" : "" }}{{ programme.variance }}%
-						</div>
+							class="h-full rounded-full"
+							:class="programme.slip_days > 0 ? 'bg-warning-500' : 'bg-success-500'"
+							:style="`width:${programme.actual}%`"
+						></div>
+						<span
+							class="absolute top-0 bottom-0 w-0.5 stage-progress-tick"
+							:style="`left:${Math.min(99.5, programme.expected)}%`"
+						></span>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500">
-							Position
-						</div>
-						<div class="text-sm font-semibold mt-1.5" :class="programmePosition.tone">
-							{{ programmePosition.label }}
-						</div>
-						<div
-							v-if="programme.days_left != null"
-							class="text-[10px] text-ink-400 mt-0.5"
+					<div class="flex items-center justify-between text-[11px] text-ink-500 mt-1.5">
+						<span
+							>{{ isClient ? "Contract start" : "Start" }}
+							{{ fmtDate(project.start_date) }}</span
 						>
-							{{ programme.days_left }} days to programme end
-						</div>
+						<span
+							v-if="programme.days_left != null && programme.days_left < 0"
+							class="text-danger-700 font-medium"
+						>
+							{{ -programme.days_left }} days past
+							{{ isClient ? "contract completion" : "end date" }} ·
+							{{ fmtDate(project.end_date) }}
+						</span>
+						<span v-else-if="programme.days_left != null">
+							{{ programme.days_left }} days to
+							{{ isClient ? "contract completion" : "end date" }} ·
+							{{ fmtDate(project.end_date) }}
+						</span>
+						<span v-else>
+							{{ isClient ? "Contract completion" : "End date" }}
+							{{ fmtDate(project.end_date) }}
+						</span>
 					</div>
 				</div>
 			</section>
 
 			<!-- Key metrics -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Key metrics
-				</h2>
+				<h2 class="rpt-h2">Key metrics</h2>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-					<div class="p-3 border border-ink-200 rounded-lg">
+					<div
+						class="card p-3 border border-ink-200 border-l-2 border-l-success-500 rounded-lg"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
 							Tasks completed
 						</div>
@@ -555,7 +582,9 @@ function backToProject() {
 						</div>
 						<div class="text-[10px] text-ink-400 mt-0.5">site updates filed</div>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
+					<div
+						class="card p-3 border border-ink-200 border-l-2 border-l-brand-500 rounded-lg"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
 							Labour-days
 						</div>
@@ -566,7 +595,9 @@ function backToProject() {
 							{{ labour.skilled }} skilled · {{ labour.unskilled }} unskilled
 						</div>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
+					<div
+						class="card p-3 border border-ink-200 border-l-2 border-l-info-500 rounded-lg"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
 							Deliveries received
 						</div>
@@ -587,7 +618,9 @@ function backToProject() {
 							{{ kpis.po_count }} PO{{ kpis.po_count === 1 ? "" : "s" }} placed
 						</div>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
+					<div
+						class="card p-3 border border-ink-200 border-l-2 border-l-warning-500 rounded-lg"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
 							{{ isClient ? "Variations raised" : "Scope changes" }}
 						</div>
@@ -598,7 +631,10 @@ function backToProject() {
 							{{ kpis.scos_approved }} approved · {{ kpis.scos_pending }} pending
 						</div>
 					</div>
-					<div class="p-3 border border-ink-200 rounded-lg">
+					<div
+						class="card p-3 border border-ink-200 rounded-lg border-l-2"
+						:class="kpis.blockers ? 'border-l-danger-500' : 'border-l-ink-200'"
+					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
 							Blockers raised
 						</div>
@@ -624,9 +660,7 @@ function backToProject() {
 
 			<!-- Task activity -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
+				<h2 class="rpt-h2">
 					{{ isClient ? "Work progressed this period" : "Task activity" }}
 				</h2>
 				<div
@@ -674,11 +708,7 @@ function backToProject() {
 
 			<!-- Stage progress -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Stage progress
-				</h2>
+				<h2 class="rpt-h2">Stage progress</h2>
 				<div
 					v-if="[...currentStages, ...otherStages].length"
 					class="grid grid-cols-1 md:grid-cols-2 gap-3"
@@ -703,9 +733,11 @@ function backToProject() {
 							</span>
 						</div>
 						<div v-if="s.pct !== null" class="flex items-center gap-2">
-							<div class="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden">
+							<div
+								class="flex-1 h-2.5 bg-white border border-ink-200 rounded-full overflow-hidden"
+							>
 								<div
-									class="h-full"
+									class="h-full rounded-full"
 									:class="STAGE_BAR[s.state]"
 									:style="`width:${s.pct}%`"
 								></div>
@@ -730,11 +762,7 @@ function backToProject() {
 
 			<!-- Materials (deliveries always; commercial figures internal only) -->
 			<section class="report-section mb-6 page-break-inside-avoid">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Materials
-				</h2>
+				<h2 class="rpt-h2">Materials</h2>
 				<div v-if="!isClient" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
 					<div class="p-3 border border-ink-200 rounded-lg">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -813,11 +841,7 @@ function backToProject() {
 
 			<!-- Variations (client) / Scope changes (internal) -->
 			<section v-if="isClient && variations.items.length" class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Variations
-				</h2>
+				<h2 class="rpt-h2">Variations</h2>
 				<div class="border border-ink-200 rounded-lg overflow-hidden">
 					<table class="w-full text-xs">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
@@ -859,11 +883,7 @@ function backToProject() {
 				v-else-if="!isClient && report.scope_changes.length"
 				class="report-section mb-6"
 			>
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Scope changes
-				</h2>
+				<h2 class="rpt-h2">Scope changes</h2>
 				<div class="border border-ink-200 rounded-lg overflow-hidden">
 					<table class="w-full text-xs">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
@@ -900,11 +920,7 @@ function backToProject() {
 
 			<!-- Delays & constraints -->
 			<section v-if="report.blockers.length" class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Delays &amp; constraints
-				</h2>
+				<h2 class="rpt-h2">Delays &amp; constraints</h2>
 				<ul class="space-y-2">
 					<li
 						v-for="b in report.blockers"
@@ -927,9 +943,7 @@ function backToProject() {
 
 			<!-- Look-ahead -->
 			<section class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
+				<h2 class="rpt-h2">
 					Coming up · {{ fmtDate(lookAhead.start) }} → {{ fmtDate(lookAhead.end) }}
 				</h2>
 				<div
@@ -970,11 +984,7 @@ function backToProject() {
 
 			<!-- Site photographs -->
 			<section v-if="photos.length" class="report-section mb-6">
-				<h2
-					class="text-sm font-semibold text-ink-900 mb-2 uppercase tracking-wider text-[11px]"
-				>
-					Site photographs
-				</h2>
+				<h2 class="rpt-h2">Site photographs</h2>
 				<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
 					<figure
 						v-for="(p, i) in shownPhotos"
