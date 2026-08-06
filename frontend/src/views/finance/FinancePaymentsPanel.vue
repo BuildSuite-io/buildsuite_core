@@ -20,7 +20,10 @@ import { listFinancePayments, cancelFinancePayment } from "@/data/financePayment
 const store = useDataStore();
 const confirmDialog = useConfirm();
 
-const canManage = computed(() => store.isAdmin);
+// Per M3, the Accountant cancels payments alongside the admin tier — mirror the
+// Payment Entry cancel permission the backend enforces (cancel_payment →
+// check_permission("cancel")), so the UI doesn't hide an action the user is allowed.
+const canManage = computed(() => store.isAdmin || store.role === "accountant");
 
 const movements = ref([]);
 const loading = ref(true);
@@ -65,7 +68,7 @@ const hasFilters = computed(
 		from.value ||
 		to.value ||
 		amtMin.value !== "" ||
-		amtMax.value !== ""
+		amtMax.value !== "",
 );
 function clearFilters() {
 	search.value = "";
@@ -91,12 +94,12 @@ function inAmountRange(n) {
 // Distinct accounts + parties across the register — the filter pools.
 const accountOptions = computed(() =>
 	[...new Set(movements.value.map((m) => m.account).filter(Boolean))].sort((a, b) =>
-		a.localeCompare(b)
-	)
+		a.localeCompare(b),
+	),
 );
 const partyOptions = computed(() => {
 	const names = [...new Set(movements.value.map((m) => m.party).filter(Boolean))].sort((a, b) =>
-		a.localeCompare(b)
+		a.localeCompare(b),
 	);
 	return names.map((n) => ({ value: n, label: n }));
 });
@@ -115,14 +118,14 @@ const filtered = computed(() => {
 				m.type.toLowerCase().includes(term) ||
 				(m.party || "").toLowerCase().includes(term) ||
 				(m.account || "").toLowerCase().includes(term) ||
-				(m.ref || "").toLowerCase().includes(term))
+				(m.ref || "").toLowerCase().includes(term)),
 	);
 });
 const totalIn = computed(() =>
-	filtered.value.filter((m) => m.dir === "in").reduce((a, m) => a + m.amount, 0)
+	filtered.value.filter((m) => m.dir === "in").reduce((a, m) => a + m.amount, 0),
 );
 const totalOut = computed(() =>
-	filtered.value.filter((m) => m.dir === "out").reduce((a, m) => a + m.amount, 0)
+	filtered.value.filter((m) => m.dir === "out").reduce((a, m) => a + m.amount, 0),
 );
 
 const CANCEL_NOTE = {
@@ -324,8 +327,8 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						loading
 							? "Loading payments…"
 							: hasFilters
-							? "No transactions match the filters."
-							: "No transactions recorded yet."
+								? "No transactions match the filters."
+								: "No transactions recorded yet."
 					}}
 				</div>
 			</section>
