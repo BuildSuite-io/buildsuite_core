@@ -54,6 +54,15 @@ export const TEAM_COLS = [
 
 export const PROJECT_REPORTS = [
 	{
+		// Progress Report sits at the TOP of the Reports list (S168). It carries its own
+		// route (project-scoped surface) instead of the generic /reports/<slug> stub.
+		slug: "progress-report",
+		routeName: "project-progress-report",
+		icon: "file-text",
+		label: "Daily / Weekly / Monthly progress report",
+		desc: "Exportable PDF with KPIs, task activity, materials, blockers and look-ahead.",
+	},
+	{
 		slug: "project-status-summary",
 		icon: "chart-line",
 		label: "Status summary",

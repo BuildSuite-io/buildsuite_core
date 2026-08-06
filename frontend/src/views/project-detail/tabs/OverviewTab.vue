@@ -18,6 +18,19 @@ const props = defineProps({
 
 const emit = defineEmits(["edit"]);
 
+// Most report tiles are stubs at /reports/<slug>; the Progress Report routes to its own
+// project-scoped surface (S168) carrying the project id + a default period.
+function reportLink(rt) {
+	if (rt.routeName === "project-progress-report") {
+		return {
+			name: "project-progress-report",
+			params: { id: props.project.id },
+			query: { period: "weekly" },
+		};
+	}
+	return `/reports/${rt.slug}`;
+}
+
 const store = useDataStore();
 
 function plannedCost() {
@@ -238,7 +251,7 @@ function deviationColor(pct) {
 							<RouterLink
 								v-for="rt in projectReports"
 								:key="rt.slug"
-								:to="`/reports/${rt.slug}`"
+								:to="reportLink(rt)"
 								class="bg-white border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 p-3 transition-colors group block"
 								style="border-radius: 8px"
 							>

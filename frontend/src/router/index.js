@@ -11,6 +11,7 @@ const PAGE_TITLES = {
 	projects: "Projects",
 	"project-new": "New Project",
 	"project-detail": "Project",
+	"project-progress-report": "Progress Report",
 	"work-packages": "Work Packages",
 	"wp-new": "New Work Package",
 	"wp-detail": "Work Package",
@@ -125,6 +126,12 @@ const routes = [
 				path: "projects/:id",
 				name: "project-detail",
 				component: () => import("@/views/ProjectDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "projects/:id/progress-report",
+				name: "project-progress-report",
+				component: () => import("@/views/ProgressReportView.vue"),
 				props: true,
 			},
 			{
