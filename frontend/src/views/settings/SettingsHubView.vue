@@ -88,6 +88,14 @@ const groups = computed(() => [
 				adminOnly: true,
 			},
 			{
+				slug: "finance-accounts",
+				icon: "wallet",
+				label: "Bank & Cash Accounts",
+				desc: "Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances.",
+				to: "/settings/finance-accounts",
+				adminOnly: true,
+			},
+			{
 				slug: "workspace-setting",
 				icon: "site-execution",
 				label: "Workspace Setting",
@@ -201,7 +209,7 @@ const visibleGroups = computed(() =>
 				return true;
 			}),
 		}))
-		.filter((g) => g.tiles.length),
+		.filter((g) => g.tiles.length)
 );
 
 function onTileClick(tile) {
