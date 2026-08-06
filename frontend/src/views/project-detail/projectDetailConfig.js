@@ -52,15 +52,19 @@ export const TEAM_COLS = [
 	{ key: "flag", label: "" },
 ];
 
+// S270/S271 — Reports grid. The Progress Report is an ACTION (it produces a document),
+// not an analysis, so it's `primary`: colour-distinguished by a brand tint rather than a
+// larger control. Four tiles show by default (filling the two-column grid); the rest sit
+// behind "Show more" (`more: true`). Analytical tiles route to the generic /reports/<slug>
+// stub; the Progress Report carries its own project-scoped route (routeName).
 export const PROJECT_REPORTS = [
 	{
-		// Progress Report sits at the TOP of the Reports list (S168). It carries its own
-		// route (project-scoped surface) instead of the generic /reports/<slug> stub.
 		slug: "progress-report",
 		routeName: "project-progress-report",
 		icon: "file-text",
-		label: "Daily / Weekly / Monthly progress report",
-		desc: "Exportable PDF with KPIs, task activity, materials, blockers and look-ahead.",
+		label: "Progress report",
+		primary: true,
+		desc: "Daily / weekly / monthly document. Client issue by default; internal detail is an option inside.",
 	},
 	{
 		slug: "project-status-summary",
@@ -85,11 +89,13 @@ export const PROJECT_REPORTS = [
 		icon: "file-text",
 		label: "Pending progress",
 		desc: "Tasks silent for 3+ days.",
+		more: true,
 	},
 	{
 		slug: "labour-deployed",
 		icon: "workforce",
 		label: "Labour deployed",
 		desc: "Skilled + unskilled labour by task / week.",
+		more: true,
 	},
 ];

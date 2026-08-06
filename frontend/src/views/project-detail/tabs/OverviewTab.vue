@@ -1,4 +1,5 @@
 <script setup>
+import { ref, computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -30,6 +31,13 @@ function reportLink(rt) {
 	}
 	return `/reports/${rt.slug}`;
 }
+
+// S271 — four tiles show by default (fills the two-column grid); the `more` tiles sit
+// behind Show more.
+const reportsShowMore = ref(false);
+const visibleReports = computed(() =>
+	reportsShowMore.value ? props.projectReports : props.projectReports.filter((r) => !r.more)
+);
 
 const store = useDataStore();
 
@@ -245,19 +253,37 @@ function deviationColor(pct) {
 							v-html="getWorkspaceIconPath('chart-line')"
 						/>
 						<h3 class="text-sm font-semibold text-ink-900">Reports</h3>
+						<span class="text-[11px] text-ink-500 tabular-nums">{{
+							projectReports.length
+						}}</span>
 					</header>
 					<div class="p-4">
+						<!-- S270 — the Progress Report (primary) is an action, distinguished by a
+										 brand tint rather than a larger control. -->
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
 							<RouterLink
-								v-for="rt in projectReports"
+								v-for="rt in visibleReports"
 								:key="rt.slug"
 								:to="reportLink(rt)"
-								class="bg-white border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 p-3 transition-colors group block"
+								class="border p-2.5 flex items-center gap-2.5 transition-colors group"
+								:class="
+									rt.primary
+										? 'bg-brand-50 border-brand-300 hover:bg-brand-100'
+										: 'bg-white border-ink-200 hover:border-brand-400 hover:bg-brand-50'
+								"
 								style="border-radius: 8px"
+								:title="rt.desc"
 							>
-								<div class="flex items-start gap-2.5">
+								<span
+									class="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 transition-colors"
+									:class="
+										rt.primary
+											? 'bg-brand-600 text-white'
+											: 'bg-ink-50 group-hover:bg-brand-50 text-ink-600 group-hover:text-brand-700'
+									"
+								>
 									<svg
-										class="w-5 h-5 text-ink-600 flex-shrink-0 mt-0.5"
+										class="w-4 h-4"
 										viewBox="0 0 24 24"
 										fill="none"
 										stroke="currentColor"
@@ -267,25 +293,31 @@ function deviationColor(pct) {
 										aria-hidden="true"
 										v-html="getWorkspaceIconPath(rt.icon)"
 									/>
-									<div class="flex-1 min-w-0">
-										<div class="flex items-center gap-1.5 flex-wrap">
-											<div
-												class="text-sm font-medium text-ink-900 group-hover:text-brand-700 transition-colors"
-											>
-												{{ rt.label }}
-											</div>
-											<span
-												class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
-												style="border-radius: 2px"
-												>Report</span
-											>
-										</div>
-										<div class="text-[11px] text-ink-500 mt-0.5 leading-snug">
-											{{ rt.desc }}
-										</div>
-									</div>
-								</div>
+								</span>
+								<span
+									class="text-sm font-medium truncate transition-colors"
+									:class="
+										rt.primary
+											? 'text-ink-900'
+											: 'text-ink-900 group-hover:text-brand-700'
+									"
+									>{{ rt.label }}</span
+								>
+								<span
+									v-if="rt.primary"
+									class="ml-auto text-brand-700 text-sm flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
+									>→</span
+								>
 							</RouterLink>
+						</div>
+						<div class="border-t border-ink-100 mt-3 pt-2.5">
+							<button
+								type="button"
+								class="text-xs text-brand-700 hover:underline"
+								@click="reportsShowMore = !reportsShowMore"
+							>
+								{{ reportsShowMore ? "Show less ▴" : "Show more ▾" }}
+							</button>
 						</div>
 					</div>
 				</section>

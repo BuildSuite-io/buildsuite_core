@@ -14,13 +14,45 @@ caller:  period = daily | weekly | monthly, ending on `date` (today if omitted):
 Scoped to the project + its sub-projects, so the rollups capture subproject activity too.
 Derived numbers are computed server-side so the Vue view stays a thin renderer."""
 
+import math
+
 import frappe
-from frappe.utils import add_days, flt, getdate, nowdate
+from frappe.utils import add_days, cint, date_diff, flt, getdate, nowdate
 
 from buildsuite_core.api.project_dashboard import _subprojects
 
 _ACTIVE_TASK_DONE = "Completed"
 _SPANS = {"daily": 1, "weekly": 7, "monthly": 30}
+_AUDIENCES = ("client", "internal")
+_IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".gif")
+
+
+def _programme(actual, start, end, as_of):
+	"""Actual vs where the contract programme says we should be as of `as_of`."""
+	if not start or not end:
+		return {"actual": actual, "expected": 0, "slip_days": 0, "variance": 0, "days_left": None}
+	span = date_diff(end, start)
+	if span <= 0:
+		return {"actual": actual, "expected": 0, "slip_days": 0, "variance": 0, "days_left": None}
+	expected = max(0.0, min(100.0, date_diff(as_of, start) / span * 100.0))
+	slip = math.ceil((expected - actual) / 100.0 * span) if expected > actual else 0
+	return {
+		"actual": round(actual, 1),
+		"expected": round(expected, 1),
+		"slip_days": slip,
+		"variance": round(actual - expected, 1),
+		"days_left": date_diff(end, as_of),
+	}
+
+
+def _stage_state(pct, planned_start, planned_end, as_of):
+	if pct is not None and pct >= 100:
+		return "Complete"
+	if planned_end and getdate(planned_end) < as_of:
+		return "Overdue"
+	if planned_start and getdate(planned_start) > as_of:
+		return "Not started"
+	return "In progress"
 
 
 def _window(period, end):
@@ -34,10 +66,11 @@ def _in(d, start, end):
 
 
 @frappe.whitelist()
-def get_progress_report(project, period="weekly", date=None):
+def get_progress_report(project, period="weekly", date=None, audience="client"):
 	if not project or not frappe.db.exists("Project", project):
 		frappe.throw(frappe._("Project not found."))
 	period = period if period in _SPANS else "weekly"
+	audience = audience if audience in _AUDIENCES else "client"
 	end = getdate(date) if date else getdate(nowdate())
 	start, end = _window(period, end)
 	today = getdate(nowdate())
@@ -52,8 +85,10 @@ def get_progress_report(project, period="weekly", date=None):
 			"project_name",
 			"custom_project_id",
 			"customer",
+			"company",
 			"project_manager",
 			"project_status",
+			"percent_complete",
 			"expected_start_date",
 			"expected_end_date",
 		],
@@ -76,12 +111,29 @@ def get_progress_report(project, period="weekly", date=None):
 	entries = frappe.get_all(
 		"Task Progress Entry",
 		filters={"task": ["in", task_ids]},
-		fields=["name", "task", "entry_date", "skilled", "unskilled", "blocker", "blocker_detail", "owner"],
+		fields=[
+			"name",
+			"task",
+			"entry_date",
+			"cumulative_progress",
+			"skilled",
+			"unskilled",
+			"blocker",
+			"blocker_detail",
+			"owner",
+		],
 		order_by="entry_date desc, creation desc",
 	)
-	latest_entry = {}
+	# entries are newest-first; per task track the latest date + the progress at the
+	# window end (closing) and just before the window (opening) → the period's delta.
+	latest_entry, closing_prog, opening_prog = {}, {}, {}
 	for e in entries:
 		latest_entry.setdefault(e.task, e.entry_date)
+		d = getdate(e.entry_date) if e.entry_date else None
+		if d and d <= end and e.task not in closing_prog:
+			closing_prog[e.task] = flt(e.cumulative_progress)
+		if d and d < start and e.task not in opening_prog:
+			opening_prog[e.task] = flt(e.cumulative_progress)
 
 	entries_in = [e for e in entries if _in(e.entry_date, start, end)]
 	entry_task_ids = {e.task for e in entries_in}
@@ -113,17 +165,21 @@ def get_progress_report(project, period="weekly", date=None):
 	tasks_completed_in = [
 		t for t in tasks if t.task_status == _ACTIVE_TASK_DONE and _in(latest_entry.get(t.name), start, end)
 	]
-	task_activity = [
-		{
-			"id": t.name,
-			"name": t.subject or t.name,
-			"status": t.task_status or "Yet To Start",
-			"progress": flt(t.progress),
-			"last_update": str(latest_entry.get(t.name)) if latest_entry.get(t.name) else None,
-		}
-		for t in tasks
-		if t.name in entry_task_ids
-	]
+	task_activity = sorted(
+		[
+			{
+				"id": t.name,
+				"name": t.subject or t.name,
+				"status": t.task_status or "Yet To Start",
+				"progress": flt(t.progress),
+				"delta": round(closing_prog.get(t.name, flt(t.progress)) - opening_prog.get(t.name, 0.0), 1),
+				"last_update": str(latest_entry.get(t.name)) if latest_entry.get(t.name) else None,
+			}
+			for t in tasks
+			if t.name in entry_task_ids
+		],
+		key=lambda r: (-r["delta"], -r["progress"]),
+	)
 
 	# --- labour + blockers (from period entries) ---
 	skilled = sum(int(e.skilled or 0) for e in entries_in)
@@ -163,27 +219,45 @@ def get_progress_report(project, period="weekly", date=None):
 			"planned_end",
 			"description",
 			"modified",
+			"task_count",
+			"completed_task_count",
+			"mean_progress",
 		],
 	)
-	stages = [
-		{
-			"id": s.name,
-			"name": s.stage_name or s.name,
-			"workflow_state": s.workflow_state or "Draft",
-			"planned_start": str(s.planned_start) if s.planned_start else None,
-			"planned_end": str(s.planned_end) if s.planned_end else None,
-			"description": s.description or "",
-		}
-		for s in stage_rows
-		if (
-			(
-				s.planned_start
-				and s.planned_end
-				and not (getdate(s.planned_end) < start or getdate(s.planned_start) > end)
-			)
-			or _in(s.modified, start, end)
+	stages = []
+	for s in stage_rows:
+		touches = (
+			s.planned_start
+			and s.planned_end
+			and not (getdate(s.planned_end) < start or getdate(s.planned_start) > end)
+		) or _in(s.modified, start, end)
+		if not touches:
+			continue
+		# % complete describes how much WORK is done (mean task progress), not the
+		# plan's approval state — that is what a reader wants beside a stage.
+		pct = round(flt(s.mean_progress)) if s.task_count else None
+		is_current = bool(
+			s.planned_start
+			and s.planned_end
+			and getdate(s.planned_start) <= end <= getdate(s.planned_end)
+			and (pct is None or pct < 100)
 		)
-	]
+		stages.append(
+			{
+				"id": s.name,
+				"name": s.stage_name or s.name,
+				"workflow_state": s.workflow_state or "Draft",
+				"planned_start": str(s.planned_start) if s.planned_start else None,
+				"planned_end": str(s.planned_end) if s.planned_end else None,
+				"description": s.description or "",
+				"pct": pct,
+				"task_count": cint(s.task_count),
+				"done_count": cint(s.completed_task_count),
+				"state": _stage_state(pct, s.planned_start, s.planned_end, end),
+				"is_current": is_current,
+				"days_left": date_diff(s.planned_end, end) if s.planned_end else None,
+			}
+		)
 
 	# --- materials (MR / PO raised, receipts) ---
 	proj_in = {"project": ["in", scope_ids]}
@@ -244,13 +318,66 @@ def get_progress_report(project, period="weekly", date=None):
 	scos_approved = sum(1 for s in sco_in if s.status == "Approved")
 	scos_pending = sum(1 for s in sco_in if s.status == "Pending Approval")
 
-	# --- attachments added on the project(s) in the window ---
-	att_rows = frappe.get_all(
+	# --- attachments + site photographs (image files) in the window ---
+	# Project-level files (drawings, site records) uploaded in the window …
+	proj_files = frappe.get_all(
 		"File",
 		filters={"attached_to_doctype": "Project", "attached_to_name": ["in", scope_ids], "is_folder": 0},
-		fields=["creation"],
+		fields=["file_name", "file_url", "creation", "owner"],
 	)
-	attachments_added = sum(1 for a in att_rows if _in(a.creation, start, end))
+	proj_files = [a for a in proj_files if _in(a.creation, start, end)]
+	attachments_added = len(proj_files)
+
+	# … plus photographs filed against a progress entry inside the window — those are
+	# the site photographs the report is really asking for (captioned by their task).
+	entry_ids = [e.name for e in entries_in] or ["__none__"]
+	entry_task = {e.name: e.task for e in entries_in}
+	tpe_files = frappe.get_all(
+		"File",
+		filters={
+			"attached_to_doctype": "Task Progress Entry",
+			"attached_to_name": ["in", entry_ids],
+			"is_folder": 0,
+		},
+		fields=["file_name", "file_url", "creation", "owner", "attached_to_name"],
+	)
+	photos = []
+	for a in tpe_files:
+		if not (a.file_url or "").lower().endswith(_IMAGE_EXT):
+			continue
+		tid = entry_task.get(a.attached_to_name)
+		photos.append(
+			{
+				"url": a.file_url,
+				"caption": task_name.get(tid, "Site progress"),
+				"taken_on": str(getdate(a.creation)) if a.creation else None,
+				"by": a.owner,
+			}
+		)
+	for a in proj_files:
+		if not (a.file_url or "").lower().endswith(_IMAGE_EXT):
+			continue
+		photos.append(
+			{
+				"url": a.file_url,
+				"caption": a.file_name,
+				"taken_on": str(getdate(a.creation)) if a.creation else None,
+				"by": a.owner,
+			}
+		)
+	photos.sort(key=lambda p: p["taken_on"] or "", reverse=True)
+
+	# --- programme position + variations (client-facing) ---
+	programme = _programme(flt(proj.percent_complete), proj.expected_start_date, proj.expected_end_date, end)
+	variations = [s for s in scope_changes if s["recoverable"]]
+	variations_value = sum(s["impact"] for s in variations if s["status"] == "Approved")
+
+	# --- issuing company (letterhead) ---
+	company_row = (
+		frappe.db.get_value("Company", proj.company, ["company_name", "company_logo"], as_dict=True)
+		if proj.company
+		else None
+	)
 
 	# --- look-ahead: tasks due in the next same-length window ---
 	la_start = add_days(end, 1)
@@ -281,10 +408,16 @@ def get_progress_report(project, period="weekly", date=None):
 			"start_date": str(proj.expected_start_date) if proj.expected_start_date else None,
 			"end_date": str(proj.expected_end_date) if proj.expected_end_date else None,
 		},
+		"company": {
+			"name": (company_row.company_name if company_row else None) or proj.company or "BuildSuite",
+			"logo": company_row.company_logo if company_row else None,
+		},
+		"audience": audience,
 		"period": period,
 		"date": str(end),
 		"window": {"start": str(start), "end": str(end)},
 		"look_ahead": {"start": str(la_start), "end": str(la_end)},
+		"programme": programme,
 		"task_stats": stats,
 		"kpis": {
 			"tasks_completed": len(tasks_completed_in),
@@ -310,6 +443,8 @@ def get_progress_report(project, period="weekly", date=None):
 			"grns": grns,
 		},
 		"scope_changes": scope_changes,
+		"variations": {"items": variations, "value": variations_value},
 		"blockers": blockers,
 		"look_ahead_tasks": look_ahead_tasks,
+		"photos": photos,
 	}

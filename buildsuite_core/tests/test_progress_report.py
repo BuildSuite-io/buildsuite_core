@@ -36,11 +36,18 @@ class TestProgressReport(BuildSuiteTestCase):
 		# The progress entry filed today falls in the window → 1 entry, task touched.
 		self.assertEqual(rep["kpis"]["entries"], 1)
 		self.assertIn(t.name, [r["id"] for r in rep["task_activity"]])
+		# Enriched payload the client report renders.
+		self.assertEqual(rep["audience"], "client")
+		for key in ("programme", "variations", "photos", "company"):
+			self.assertIn(key, rep)
+		for key in ("actual", "expected", "slip_days", "variance", "days_left"):
+			self.assertIn(key, rep["programme"])
 
-	def test_invalid_period_defaults_to_weekly(self):
+	def test_invalid_period_and_audience_default(self):
 		p = self._make_project(company=self.company)
-		rep = pr.get_progress_report(p.name, period="fortnightly")
+		rep = pr.get_progress_report(p.name, period="fortnightly", audience="press")
 		self.assertEqual(rep["period"], "weekly")
+		self.assertEqual(rep["audience"], "client")
 
 	def test_missing_project_throws(self):
 		self.assertRaises(frappe.ValidationError, pr.get_progress_report, project="NOPE-DOES-NOT-EXIST")
