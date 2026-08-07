@@ -15,7 +15,9 @@ class TestPettyCash(BuildSuiteTestCase):
 		self._ensure_employee("Administrator")
 		# Petty cash derives company from the requester's Employee, so anchor the whole
 		# test (project, disburse account) to that Employee's company.
-		self.company = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "company")
+		self.company = frappe.db.get_value(
+			"Employee", {"user_id": "Administrator", "status": "Active"}, "company"
+		)
 		self.project = self._make_project(company=self.company).name
 
 	def _ensure_employee(self, user_id, company=None):
@@ -69,15 +71,32 @@ class TestPettyCash(BuildSuiteTestCase):
 	def test_company_from_employee(self):
 		# Petty cash carries no project; company is anchored to the requester's Employee.
 		req = self._request()
-		emp_company = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "company")
+		emp_company = frappe.db.get_value(
+			"Employee", {"user_id": "Administrator", "status": "Active"}, "company"
+		)
 		self.assertEqual(req.company, emp_company)
 
 	def test_non_employee_cannot_request(self):
-		user = frappe.get_doc(
-			{"doctype": "User", "email": f"noemp-{self._n}@example.com", "first_name": "NoEmp", "send_welcome_email": 0}
-		).insert(ignore_permissions=True).name
+		user = (
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": f"noemp-{self._n}@example.com",
+					"first_name": "NoEmp",
+					"send_welcome_email": 0,
+				}
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
 		req = frappe.get_doc(
-			{"doctype": "Petty Cash Request", "request_date": "2026-07-20", "amount": 1000, "purpose": "x", "requested_by": user}
+			{
+				"doctype": "Petty Cash Request",
+				"request_date": "2026-07-20",
+				"amount": 1000,
+				"purpose": "x",
+				"requested_by": user,
+			}
 		)
 		self.assertRaises(frappe.ValidationError, req.insert, ignore_permissions=True)
 
@@ -97,7 +116,10 @@ class TestPettyCash(BuildSuiteTestCase):
 		credit = [a for a in je.accounts if flt(a.credit_in_account_currency) > 0]
 		# Imprest treatment: Dr Petty Cash 15000 (holder on the `employee` dimension) / Cr bank 15000.
 		self.assertEqual(flt(debit[0].debit_in_account_currency), 15000)
-		self.assertEqual(debit[0].employee, frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name"))
+		self.assertEqual(
+			debit[0].employee,
+			frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name"),
+		)
 		self.assertEqual(credit[0].account, bank)
 		self.assertEqual(flt(credit[0].credit_in_account_currency), 15000)
 
@@ -167,7 +189,9 @@ class TestPettyCash(BuildSuiteTestCase):
 		petty_line = next(a for a in je.accounts if a.account == petty)
 		self.assertEqual(petty_line.employee, holder)
 		self.assertEqual(
-			frappe.db.get_value("GL Entry", {"voucher_no": je.name, "account": petty, "is_cancelled": 0}, "employee"),
+			frappe.db.get_value(
+				"GL Entry", {"voucher_no": je.name, "account": petty, "is_cancelled": 0}, "employee"
+			),
 			holder,
 		)
 
@@ -197,3 +221,56 @@ class TestPettyCash(BuildSuiteTestCase):
 		# A disbursed request can't be prefilled for another disbursement.
 		req.disburse(self._cash_account())
 		self.assertRaises(frappe.ValidationError, disbursement_prefill, req.name)
+
+	def test_direct_issue_creates_disbursed_je(self):
+		# S273 — a direct issue creates the request already Disbursed, with no project, and
+		# posts a submitted "Petty Cash" Journal Entry linked back to it.
+		import json
+
+		from buildsuite_core.api import petty_cash as pc
+
+		bank = self._cash_account()
+		rec = pc.issue_direct(
+			json.dumps(
+				{
+					"requested_by": "Administrator",
+					"amount": 3000,
+					"paid_from": bank,
+					"purpose": "Direct float to a site holder",
+				}
+			)
+		)
+		self.assertEqual(rec["status"], "Disbursed")
+		self.assertTrue(rec["is_direct"])
+		self.assertFalse(rec["project"])
+		self.assertTrue(rec["journal_entry"])
+
+		je = frappe.db.get_value(
+			"Journal Entry",
+			rec["journal_entry"],
+			["docstatus", "voucher_type", "petty_cash_request"],
+			as_dict=True,
+		)
+		self.assertEqual(je.docstatus, 1)
+		self.assertEqual(je.voucher_type, "Petty Cash")
+		self.assertEqual(je.petty_cash_request, rec["name"])
+
+	def test_direct_issue_reversed_is_removed(self):
+		# A direct issue has no request to fall back to — reversing it removes the record.
+		import json
+
+		from buildsuite_core.api import petty_cash as pc
+
+		rec = pc.issue_direct(
+			json.dumps(
+				{
+					"requested_by": "Administrator",
+					"amount": 500,
+					"paid_from": self._cash_account(),
+					"purpose": "reverse me",
+				}
+			)
+		)
+		out = pc.undisburse(rec["name"])
+		self.assertTrue(out.get("deleted"))
+		self.assertFalse(frappe.db.exists("Petty Cash Request", rec["name"]))

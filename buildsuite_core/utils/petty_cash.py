@@ -86,10 +86,17 @@ def post_disbursement_journal_entry(doc):
 	# mandatory (spec PF-02 rule 1).
 	employee = employee_for_user(doc.requested_by)
 	if not employee:
-		frappe.throw(_("Only employees hold petty cash — no active Employee is linked to {0}.").format(doc.requested_by))
+		frappe.throw(
+			_("Only employees hold petty cash — no active Employee is linked to {0}.").format(
+				doc.requested_by
+			)
+		)
 
 	je = frappe.new_doc("Journal Entry")
-	je.voucher_type = "Journal Entry"
+	# Categorise as a Petty Cash entry (Entry Type). This is the JE's own voucher_type
+	# Select — NOT GL Entry.voucher_type (which stays the doctype name "Journal Entry"), so
+	# the petty-cash reconciliation that filters GL on "Journal Entry" is unaffected.
+	je.voucher_type = "Petty Cash"
 	je.company = doc.company
 	je.posting_date = str(doc.request_date) if doc.request_date else None
 	je.user_remark = f"Petty cash {doc.name}: {doc.purpose or ''}"[:140]
@@ -127,6 +134,9 @@ def cancel_disbursement_journal_entry(doc):
 	je.flags.ignore_permissions = True
 	je.flags.ignore_petty_cash_sync = True  # cancel_disbursement() reverts the request itself
 	je.cancel()
+	# Drop the JE→request back-link so a reversed direct issue (which is then deleted) isn't
+	# blocked by the cancelled JE still referencing it.
+	je.db_set("petty_cash_request", None)
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +200,9 @@ def sync_petty_cash_request_on_je_submit(doc, method=None):
 		return
 	if status != "Requested":
 		frappe.throw(
-			_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(request, status)
+			_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(
+				request, status
+			)
 		)
 
 	frappe.db.set_value(
@@ -222,7 +234,13 @@ def revert_petty_cash_request_on_je_cancel(doc, method=None):
 	frappe.db.set_value(
 		"Petty Cash Request",
 		request,
-		{"status": "Requested", "journal_entry": None, "paid_from": None, "disbursed_by": None, "disbursed_on": None},
+		{
+			"status": "Requested",
+			"journal_entry": None,
+			"paid_from": None,
+			"disbursed_by": None,
+			"disbursed_on": None,
+		},
 	)
 	frappe.get_doc("Petty Cash Request", request).add_comment(
 		"Comment", _("Disbursement reversed — Journal Entry {0} cancelled").format(doc.name)
@@ -420,9 +438,7 @@ def _resolve_voucher_targets(gl_entries):
 				if row.reference_doctype and row.reference_docname:
 					references[row.name] = (row.reference_doctype, row.reference_docname)
 
-	return {
-		e.name: references.get(e.voucher_no, (e.voucher_type, e.voucher_no)) for e in gl_entries
-	}
+	return {e.name: references.get(e.voucher_no, (e.voucher_type, e.voucher_no)) for e in gl_entries}
 
 
 def _fetch_display_fields(targets):
@@ -449,9 +465,7 @@ def _fetch_display_fields(targets):
 
 
 @frappe.whitelist()
-def get_transaction_list(
-	employee, transaction_type=None, project=None, from_date=None, to_date=None
-):
+def get_transaction_list(employee, transaction_type=None, project=None, from_date=None, to_date=None):
 	"""Petty cash ledger for an employee, newest first, with a running balance.
 
 	The running balance is accumulated across the employee's full history before the
@@ -551,9 +565,7 @@ def create_account(doc, method=None):
 	Not whitelisted: this is a document event, and exposing it would let any user
 	trigger account creation.
 	"""
-	if frappe.db.exists(
-		"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": doc.name}
-	):
+	if frappe.db.exists("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": doc.name}):
 		return
 
 	parent = frappe.db.get_value(
