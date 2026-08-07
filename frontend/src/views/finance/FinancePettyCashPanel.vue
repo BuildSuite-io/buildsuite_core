@@ -74,7 +74,7 @@ const filteredAll = computed(() => {
 		(r) =>
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q)
+			(r.requested_by || "").toLowerCase().includes(q),
 	);
 });
 
@@ -237,10 +237,11 @@ const rowsForTab = computed(() => {
 				<button
 					v-if="canDisburse"
 					type="button"
-					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md whitespace-nowrap"
+					class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 whitespace-nowrap"
+					style="border-radius: 6px"
 					@click="openDirect"
 				>
-					Direct issue
+					+ Issue directly
 				</button>
 				<button
 					type="button"
