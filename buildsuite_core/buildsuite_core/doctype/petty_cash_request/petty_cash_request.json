@@ -11,6 +11,7 @@
   "column_break_hdr",
   "amount",
   "status",
+  "is_direct",
   "company",
   "purpose_section",
   "purpose",
@@ -64,6 +65,14 @@
    "label": "Status",
    "options": "Requested\nDisbursed\nCancelled",
    "read_only": 1
+  },
+  {
+   "fieldname": "is_direct",
+   "fieldtype": "Check",
+   "label": "Direct Issue",
+   "default": "0",
+   "read_only": 1,
+   "description": "Set when the float was issued directly to a holder, with no request behind it."
   },
   {
    "fieldname": "company",

@@ -11,6 +11,7 @@ import {
 	pettyCashCanDisburse,
 	savePettyCash,
 	disbursePettyCash,
+	issueDirectPettyCash,
 	cancelPettyCash,
 	pettyCashHolderBalances,
 	listCashBankAccounts,
@@ -20,6 +21,7 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
@@ -40,6 +42,7 @@ const res = useDocTypeList("Petty Cash Request", {
 		"amount",
 		"purpose",
 		"status",
+		"is_direct",
 		"company",
 		"paid_from",
 		"disbursed_by",
@@ -53,7 +56,9 @@ const all = computed(() => res.data || []);
 const tab = ref("disburse");
 const search = ref("");
 const tabs = computed(() => [
-	...(canDisburse.value ? [{ id: "disburse", label: "To Disburse", count: requested.value.length }] : []),
+	...(canDisburse.value
+		? [{ id: "disburse", label: "To Disburse", count: requested.value.length }]
+		: []),
 	{ id: "all", label: "All Requests", count: all.value.length },
 	{ id: "balances", label: "Balances", count: null },
 	{ id: "mine", label: "My Requests", count: mine.value.length },
@@ -69,7 +74,7 @@ const filteredAll = computed(() => {
 		(r) =>
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q),
+			(r.requested_by || "").toLowerCase().includes(q)
 	);
 });
 
@@ -111,6 +116,56 @@ async function submitRequest() {
 		showToast(err.message || "Failed to save", "error");
 	} finally {
 		reqForm.saving = false;
+	}
+}
+
+// --- direct issue modal (S273) — float straight to a holder, no request ---
+const direct = reactive({
+	open: false,
+	holder: "",
+	amount: 0,
+	paidFrom: "",
+	purpose: "",
+	accounts: [],
+	saving: false,
+});
+async function openDirect() {
+	Object.assign(direct, {
+		open: true,
+		holder: "",
+		amount: 0,
+		paidFrom: "",
+		purpose: "",
+		accounts: [],
+		saving: false,
+	});
+	try {
+		direct.accounts = await listCashBankAccounts();
+	} catch (err) {
+		showToast(err.message || "Failed to load accounts", "error");
+	}
+}
+async function submitDirect() {
+	if (!direct.holder) return showToast("Pick who is receiving the float.", "error");
+	if (!(Number(direct.amount) > 0)) return showToast("Enter an amount.", "error");
+	if (!direct.paidFrom) return showToast("Pick the account to pay from.", "error");
+	if (!direct.purpose.trim()) return showToast("A short reason is required.", "error");
+	direct.saving = true;
+	try {
+		await issueDirectPettyCash({
+			requested_by: direct.holder,
+			amount: direct.amount,
+			paid_from: direct.paidFrom,
+			purpose: direct.purpose,
+		});
+		direct.open = false;
+		res.reload?.();
+		loadBalances();
+		showToast("Petty cash issued — Journal Entry posted.");
+	} catch (err) {
+		showToast(err.message || "Issue failed", "error");
+	} finally {
+		direct.saving = false;
 	}
 }
 
@@ -174,8 +229,27 @@ const rowsForTab = computed(() => {
 <template>
 	<DeskPage title="Petty Cash" :breadcrumbs="breadcrumbs">
 		<div class="flex items-center justify-between gap-3 mb-4">
-			<div class="text-sm text-ink-600">Advances to site holders. Spend is logged separately under <span class="font-medium">Expenses</span>.</div>
-			<button type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openRequest">+ Request petty cash</button>
+			<div class="text-sm text-ink-600">
+				Advances to site holders. Spend is logged separately under
+				<span class="font-medium">Expenses</span>.
+			</div>
+			<div class="flex items-center gap-2 flex-shrink-0">
+				<button
+					v-if="canDisburse"
+					type="button"
+					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md whitespace-nowrap"
+					@click="openDirect"
+				>
+					Direct issue
+				</button>
+				<button
+					type="button"
+					class="text-xs desk-save-btn whitespace-nowrap"
+					@click="openRequest"
+				>
+					+ Request petty cash
+				</button>
+			</div>
 		</div>
 
 		<!-- tabs -->
@@ -186,15 +260,25 @@ const rowsForTab = computed(() => {
 				type="button"
 				class="px-3 py-2 text-xs font-medium whitespace-nowrap"
 				:class="tab === t.id ? 'text-brand-600' : 'text-ink-600 hover:text-ink-900'"
-				:style="tab === t.id ? 'border-bottom: 2px solid currentColor; margin-bottom: -1px;' : 'border-bottom: 2px solid transparent; margin-bottom: -1px;'"
+				:style="
+					tab === t.id
+						? 'border-bottom: 2px solid currentColor; margin-bottom: -1px;'
+						: 'border-bottom: 2px solid transparent; margin-bottom: -1px;'
+				"
 				@click="tab = t.id"
 			>
-				{{ t.label }}<span v-if="t.count !== null" class="ml-1 text-ink-500 tabular-nums">({{ t.count }})</span>
+				{{ t.label
+				}}<span v-if="t.count !== null" class="ml-1 text-ink-500 tabular-nums"
+					>({{ t.count }})</span
+				>
 			</button>
 		</div>
 
 		<!-- balances — reconciled: disbursed float in − verified spend out = in hand -->
-		<div v-if="tab === 'balances'" class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+		<div
+			v-if="tab === 'balances'"
+			class="bg-white border border-ink-200 rounded-lg overflow-hidden"
+		>
 			<table class="w-full text-xs">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
@@ -205,23 +289,45 @@ const rowsForTab = computed(() => {
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-for="b in balances" :key="b.employee || b.holder" class="border-t border-ink-100">
-						<td class="px-3 py-2 text-ink-900"><div class="flex items-center gap-1.5"><UserAvatar :name="b.holder" size="xs" /><span>{{ b.holder }}</span></div></td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.disbursed) }}</td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(b.spent) }}</td>
-						<td class="px-3 py-2 text-right tabular-nums font-semibold" :class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'">
-							<template v-if="b.balance < 0">{{ fmtINR(-b.balance) }} owed to holder</template>
+					<tr
+						v-for="b in balances"
+						:key="b.employee || b.holder"
+						class="border-t border-ink-100"
+					>
+						<td class="px-3 py-2 text-ink-900">
+							<div class="flex items-center gap-1.5">
+								<UserAvatar :name="b.holder" size="xs" /><span>{{
+									b.holder
+								}}</span>
+							</div>
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+							{{ fmtINR(b.disbursed) }}
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+							{{ fmtINR(b.spent) }}
+						</td>
+						<td
+							class="px-3 py-2 text-right tabular-nums font-semibold"
+							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
+						>
+							<template v-if="b.balance < 0"
+								>{{ fmtINR(-b.balance) }} owed to holder</template
+							>
 							<template v-else>{{ fmtINR(b.balance) }}</template>
 						</td>
 					</tr>
 					<tr v-if="!balances.length">
-						<td colspan="4" class="px-3 py-4 text-center text-ink-400 italic">No petty-cash activity yet.</td>
+						<td colspan="4" class="px-3 py-4 text-center text-ink-400 italic">
+							No petty-cash activity yet.
+						</td>
 					</tr>
 				</tbody>
 			</table>
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				Balance in hand = disbursed float − approved expenses (from the Expenses tab).
-				A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.
+				Balance in hand = disbursed float − approved expenses (from the Expenses tab). A
+				negative balance means the holder fronted their own money — it's owed back to them
+				and cleared on the next disbursement.
 			</p>
 		</div>
 
@@ -235,7 +341,12 @@ const rowsForTab = computed(() => {
 			:search-placeholder="tab === 'all' ? 'Search requests…' : ''"
 		>
 			<template #cell-requested_by="{ row }">
-				<div class="flex items-center gap-1.5"><UserAvatar :user-id="row.requested_by" size="xs" /><span class="text-xs text-ink-900">{{ row.requested_by }}</span></div>
+				<div class="flex items-center gap-1.5">
+					<UserAvatar :user-id="row.requested_by" size="xs" /><span
+						class="text-xs text-ink-900"
+						>{{ row.requested_by }}</span
+					>
+				</div>
 			</template>
 			<template #cell-purpose="{ row }">
 				<span class="text-xs text-ink-700">{{ (row.purpose || "").slice(0, 60) }}</span>
@@ -247,7 +358,15 @@ const rowsForTab = computed(() => {
 				<span class="text-xs tabular-nums font-medium">{{ fmtINR(row.amount) }}</span>
 			</template>
 			<template #cell-status="{ row }">
-				<StatusBadge :status="row.status" />
+				<div class="flex items-center gap-1.5">
+					<StatusBadge :status="row.status" />
+					<span
+						v-if="row.is_direct"
+						class="text-[9px] px-1 py-0.5 rounded bg-info-50 text-info-700 font-medium uppercase tracking-wider"
+						title="Issued directly to the holder, no request behind it"
+						>Direct</span
+					>
+				</div>
 			</template>
 			<template #cell-actions="{ row }">
 				<div class="flex justify-end gap-2">
@@ -270,39 +389,117 @@ const rowsForTab = computed(() => {
 				</div>
 			</template>
 			<template #empty>
-				<div class="text-sm text-ink-500">{{ res.loading ? "Loading…" : "Nothing here." }}</div>
+				<div class="text-sm text-ink-500">
+					{{ res.loading ? "Loading…" : "Nothing here." }}
+				</div>
 			</template>
 		</DeskList>
 
 		<!-- request modal -->
-		<div v-if="reqForm.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="reqForm.open = false">
+		<div
+			v-if="reqForm.open"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+			@click.self="reqForm.open = false"
+		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-4">Request petty cash</h3>
 				<div class="space-y-3">
-					<DeskField label="Amount" required><DeskInput v-model.number="reqForm.amount" type="number" min="0" /></DeskField>
-					<DeskField label="Purpose" required><DeskInput v-model="reqForm.purpose" placeholder="What is it for?" /></DeskField>
+					<DeskField label="Amount" required
+						><DeskInput v-model.number="reqForm.amount" type="number" min="0"
+					/></DeskField>
+					<DeskField label="Purpose" required
+						><DeskInput v-model="reqForm.purpose" placeholder="What is it for?"
+					/></DeskField>
 				</div>
 				<div class="flex justify-end gap-2 mt-5">
 					<button class="desk-btn" @click="reqForm.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="reqForm.saving" @click="submitRequest">{{ reqForm.saving ? "Saving…" : "Request" }}</button>
+					<button
+						class="desk-save-btn"
+						:disabled="reqForm.saving"
+						@click="submitRequest"
+					>
+						{{ reqForm.saving ? "Saving…" : "Request" }}
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- direct issue modal (S273) -->
+		<div
+			v-if="direct.open"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+			@click.self="direct.open = false"
+		>
+			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
+				<h3 class="text-sm font-semibold text-ink-900 mb-1">Direct petty cash issue</h3>
+				<p class="text-xs text-ink-500 mb-4">
+					Hands float straight to a holder — no request. Posts a Journal Entry (Dr Petty
+					Cash / Cr the source). No project; project-level spend attaches on the expense.
+				</p>
+				<div class="space-y-3">
+					<DeskField label="Holder" required>
+						<DeskLinkPicker
+							v-model="direct.holder"
+							doctype="User"
+							label-field="full_name"
+							value-field="name"
+							placeholder="Who is receiving the float?"
+						/>
+					</DeskField>
+					<DeskField label="Amount" required>
+						<DeskInput v-model.number="direct.amount" type="number" min="0" />
+					</DeskField>
+					<DeskField label="Pay from" required>
+						<DeskSelect v-model="direct.paidFrom">
+							<option value="" disabled>Bank / Cash account…</option>
+							<option v-for="a in direct.accounts" :key="a.name" :value="a.name">
+								{{ a.name }}
+							</option>
+						</DeskSelect>
+					</DeskField>
+					<DeskField label="Reason" required>
+						<DeskInput
+							v-model="direct.purpose"
+							placeholder="This record is the only trail"
+						/>
+					</DeskField>
+				</div>
+				<div class="flex justify-end gap-2 mt-5">
+					<button class="desk-btn" @click="direct.open = false">Cancel</button>
+					<button class="desk-save-btn" :disabled="direct.saving" @click="submitDirect">
+						{{ direct.saving ? "Issuing…" : "Issue float" }}
+					</button>
 				</div>
 			</div>
 		</div>
 
 		<!-- disburse modal -->
-		<div v-if="disb.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" @click.self="disb.open = false">
+		<div
+			v-if="disb.open"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+			@click.self="disb.open = false"
+		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-1">Disburse {{ fmtINR(disb.row?.amount) }}</h3>
-				<p class="text-xs text-ink-500 mb-4">to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the source account).</p>
+				<h3 class="text-sm font-semibold text-ink-900 mb-1">
+					Disburse {{ fmtINR(disb.row?.amount) }}
+				</h3>
+				<p class="text-xs text-ink-500 mb-4">
+					to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the
+					source account).
+				</p>
 				<DeskField label="Pay from" required>
 					<DeskSelect v-model="disb.paidFrom">
 						<option value="" disabled>Bank / Cash account…</option>
-						<option v-for="a in disb.accounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+						<option v-for="a in disb.accounts" :key="a.name" :value="a.name">
+							{{ a.name }}
+						</option>
 					</DeskSelect>
 				</DeskField>
 				<div class="flex justify-end gap-2 mt-5">
 					<button class="desk-btn" @click="disb.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="disb.saving" @click="confirmDisburse">{{ disb.saving ? "Posting…" : "Disburse" }}</button>
+					<button class="desk-save-btn" :disabled="disb.saving" @click="confirmDisburse">
+						{{ disb.saving ? "Posting…" : "Disburse" }}
+					</button>
 				</div>
 			</div>
 		</div>

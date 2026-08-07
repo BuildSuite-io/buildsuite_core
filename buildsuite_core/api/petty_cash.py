@@ -34,6 +34,7 @@ def _serialize(doc):
 		"amount": doc.amount,
 		"purpose": doc.purpose,
 		"status": doc.status,
+		"is_direct": bool(doc.is_direct),
 		"company": doc.company,
 		"paid_from": doc.paid_from,
 		"disbursed_by": doc.disbursed_by,
@@ -95,12 +96,46 @@ def disburse(name, paid_from):
 
 
 @frappe.whitelist()
+def issue_direct(payload):
+	"""Issue petty-cash float straight to a holder, with no request behind it (S273). Only
+	the finance approvers may do this. It creates the Petty Cash Request already marked as a
+	direct issue and disburses it in one step — reusing the same account checks + Journal
+	Entry posting (Dr Petty Cash / Cr source) as the request→disburse path. No project: the
+	float is handed to a person; project-level spend attaches later on the Expense Entry."""
+	if not _can_disburse():
+		frappe.throw(_("You are not authorised to issue petty cash."), frappe.PermissionError)
+	data = frappe.parse_json(payload)
+	holder = data.get("requested_by")
+	paid_from = data.get("paid_from")
+	if not holder:
+		frappe.throw(_("Select who is receiving the float."))
+	if not paid_from:
+		frappe.throw(_("Select the cash/bank account the float comes from."))
+
+	doc = frappe.new_doc(DOCTYPE)
+	doc.requested_by = holder  # the holder; company is derived from their Employee in validate
+	doc.amount = flt(data.get("amount"))
+	doc.purpose = data.get("purpose")
+	doc.is_direct = 1
+	doc.flags.ignore_permissions = True
+	doc.insert()  # lands as a Requested record for this holder …
+	doc.disburse(paid_from)  # … then disburse immediately (posts the JE)
+	return _serialize(doc)
+
+
+@frappe.whitelist()
 def undisburse(name: str):
-	"""Reverse a disbursement (cancel the JE, revert to Requested)."""
+	"""Reverse a disbursement (cancel the JE). A request reverts to Requested and goes back
+	to the queue; a DIRECT issue has no request to fall back to, so the record is removed
+	entirely (the JE is reversed either way)."""
 	doc = frappe.get_doc(DOCTYPE, name)
 	if not _can_disburse():
 		frappe.throw(_("You are not authorised to reverse a disbursement."), frappe.PermissionError)
+	is_direct = bool(doc.is_direct)
 	doc.cancel_disbursement()
+	if is_direct:
+		frappe.delete_doc(DOCTYPE, name, ignore_permissions=True)
+		return {"deleted": True, "name": name}
 	return _serialize(doc)
 
 
@@ -167,12 +202,19 @@ def disbursement_prefill(request):
 	from buildsuite_core.utils.petty_cash import employee_for_user, resolve_petty_cash_account
 
 	r = frappe.db.get_value(
-		"Petty Cash Request", request, ["name", "status", "company", "amount", "requested_by", "purpose"], as_dict=True
+		"Petty Cash Request",
+		request,
+		["name", "status", "company", "amount", "requested_by", "purpose"],
+		as_dict=True,
 	)
 	if not r:
 		return None
 	if r.status != "Requested":
-		frappe.throw(_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(request, r.status))
+		frappe.throw(
+			_("Petty Cash Request {0} is {1} — only a Requested one can be disbursed.").format(
+				request, r.status
+			)
+		)
 	return {
 		"company": r.company,
 		"amount": flt(r.amount),
@@ -264,7 +306,9 @@ def statement(employee):
 	pnames = (
 		{
 			p.name: p.project_name
-			for p in frappe.get_all("Project", filters={"name": ["in", pids]}, fields=["name", "project_name"])
+			for p in frappe.get_all(
+				"Project", filters={"name": ["in", pids]}, fields=["name", "project_name"]
+			)
 		}
 		if pids
 		else {}
