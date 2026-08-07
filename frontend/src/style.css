@@ -46,6 +46,15 @@
   .card {
     @apply bg-white border border-ink-200 rounded-lg;
   }
+  /* Report section header — a brand accent tick, caps label and hairline rule
+     that carries the eye across the page (progress report + finance reports). */
+  .rpt-h2 {
+    @apply flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-900 mb-3 pb-1.5 border-b border-ink-200;
+  }
+  .rpt-h2::before {
+    content: "";
+    @apply w-1 h-3 bg-brand-600 rounded-sm flex-shrink-0;
+  }
   .desk-nav-link.active {
     background: #F0FDF4;
     color: #15803D;
