@@ -70,3 +70,26 @@ class TestHomeDashboard(BuildSuiteTestCase):
 		self.assertEqual(scoped, 1)
 		self.assertGreaterEqual(unscoped, 2)
 		self.assertGreater(unscoped, scoped)
+
+	def test_role_aware_snapshot(self):
+		# A QS gets estimation/measurement tiles; the payload carries a snapshot (4), a CTA,
+		# and three alert cards.
+		qs = self._persona_user("Quantity Surveyor", "qs")
+		frappe.set_user(qs)
+		try:
+			dash = get_home_dashboard()
+			self.assertEqual(dash["role"], "qs")
+			labels = [t["label"] for t in dash["snapshot"]]
+			self.assertEqual(len(dash["snapshot"]), 4)
+			for expected in ("Draft BOQs", "Approved BOQs", "MBs to certify"):
+				self.assertIn(expected, labels)
+			self.assertTrue(dash["cta"]["title"])
+			self.assertEqual(len(dash["alerts"]), 3)
+		finally:
+			frappe.set_user("Administrator")
+
+		# Administrator resolves to the org-wide 'admin' snapshot.
+		frappe.set_user("Administrator")
+		admin = get_home_dashboard()
+		self.assertEqual(admin["role"], "admin")
+		self.assertIn("Users", [t["label"] for t in admin["snapshot"]])
