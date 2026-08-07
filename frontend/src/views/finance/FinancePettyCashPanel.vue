@@ -22,6 +22,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
@@ -145,6 +146,9 @@ async function openDirect() {
 		showToast(err.message || "Failed to load accounts", "error");
 	}
 }
+const accountOptions = computed(() =>
+	(direct.accounts || []).map((a) => ({ value: a.name, label: a.name, hint: a.account_type })),
+);
 async function submitDirect() {
 	if (!direct.holder) return showToast("Pick who is receiving the float.", "error");
 	if (!(Number(direct.amount) > 0)) return showToast("Enter an amount.", "error");
@@ -428,49 +432,102 @@ const rowsForTab = computed(() => {
 		<!-- direct issue modal (S273) -->
 		<div
 			v-if="direct.open"
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6"
 			@click.self="direct.open = false"
 		>
-			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-1">Direct petty cash issue</h3>
-				<p class="text-xs text-ink-500 mb-4">
-					Hands float straight to a holder — no request. Posts a Journal Entry (Dr Petty
-					Cash / Cr the source). No project; project-level spend attaches on the expense.
-				</p>
-				<div class="space-y-3">
-					<DeskField label="Holder" required>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-md shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
+				>
+					<h2 class="text-sm font-semibold text-ink-900">Issue petty cash directly</h2>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900"
+						@click="direct.open = false"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-4 space-y-3">
+					<p
+						class="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-md px-2.5 py-2"
+					>
+						No request precedes this — the record you create here is the only trail.
+						Use it when cash genuinely moved before anyone could raise a request.
+					</p>
+					<div>
+						<label
+							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>Issue to <span class="text-danger-600">*</span></label
+						>
 						<DeskLinkPicker
 							v-model="direct.holder"
 							doctype="User"
 							label-field="full_name"
 							value-field="name"
-							placeholder="Who is receiving the float?"
+							placeholder="Pick the holder…"
 						/>
-					</DeskField>
-					<DeskField label="Amount" required>
-						<DeskInput v-model.number="direct.amount" type="number" min="0" />
-					</DeskField>
-					<DeskField label="Pay from" required>
-						<DeskSelect v-model="direct.paidFrom">
-							<option value="" disabled>Bank / Cash account…</option>
-							<option v-for="a in direct.accounts" :key="a.name" :value="a.name">
-								{{ a.name }}
-							</option>
-						</DeskSelect>
-					</DeskField>
-					<DeskField label="Reason" required>
-						<DeskInput
+					</div>
+					<div>
+						<label
+							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>Amount <span class="text-danger-600">*</span></label
+						>
+						<input
+							v-model.number="direct.amount"
+							type="number"
+							min="0"
+							placeholder="0"
+							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+						/>
+					</div>
+					<div>
+						<label
+							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>From account <span class="text-danger-600">*</span></label
+						>
+						<DeskSearchableSelect
+							v-model="direct.paidFrom"
+							:options="accountOptions"
+							placeholder="Pick an account…"
+							search-placeholder="Search accounts…"
+						/>
+					</div>
+					<div>
+						<label
+							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>Reason <span class="text-danger-600">*</span></label
+						>
+						<input
 							v-model="direct.purpose"
-							placeholder="This record is the only trail"
+							type="text"
+							placeholder="What's it for?"
+							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 						/>
-					</DeskField>
+					</div>
 				</div>
-				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="direct.open = false">Cancel</button>
-					<button class="desk-save-btn" :disabled="direct.saving" @click="submitDirect">
+				<footer
+					class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+				>
+					<button
+						type="button"
+						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
+						@click="direct.open = false"
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						class="text-xs desk-save-btn"
+						:disabled="direct.saving"
+						@click="submitDirect"
+					>
 						{{ direct.saving ? "Issuing…" : "Issue float" }}
 					</button>
-				</div>
+				</footer>
 			</div>
 		</div>
 
