@@ -1298,6 +1298,11 @@ const accountFilters = computed(() =>
 							>− {{ fmtINR(advanceAdjusted) }}</span
 						>
 					</div>
+					<div v-if="advanceAdjusted > 0" class="text-[10px] text-ink-400 -mt-0.5">
+						Settles the payable — advance payments linked below{{
+							isSubmitted ? "" : "; reflects in the outstanding"
+						}}.
+					</div>
 					<template v-if="isSubmitted && advanceAdjusted > 0">
 						<div class="flex justify-between py-1">
 							<span class="text-ink-500">Paid</span

@@ -209,6 +209,10 @@
   html.dark .hover\:bg-ink-50:hover  { background-color: #2E2E2E; }
   html.dark .hover\:bg-ink-100:hover { background-color: #333333; }
   html.dark .hover\:bg-brand-50:hover { background-color: rgba(22, 163, 74, 0.16); }
+  /* The /30 opacity variant (used by the Payments register + other tables) is its own
+     class, so the base rule above doesn't cover it. Without this it fell back to Tailwind's
+     bright brand-50, washing out the row on hover and hiding the mono Ref text. */
+  html.dark .hover\:bg-brand-50\/30:hover { background-color: rgba(22, 163, 74, 0.1); }
   html.dark .hover\:bg-brand-50\/40:hover { background-color: rgba(22, 163, 74, 0.1); }
   html.dark .hover\:border-ink-300:hover { border-color: #525252; }
   html.dark .hover\:text-ink-900:hover { color: #F5F5F5; }

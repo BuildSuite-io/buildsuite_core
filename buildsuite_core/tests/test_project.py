@@ -110,7 +110,8 @@ class TestProject(BuildSuiteTestCase):
 		).insert(ignore_permissions=True)
 		self.assertEqual(with_id.name, f"NMID2-{self._n}")
 
-		# No Project ID → the record name comes from the series, and the id is NULL.
+		# No Project ID → the record name comes from the series, and that series name is
+		# surfaced AS the Project ID (so the field isn't left blank in the Vue views).
 		no_id = frappe.get_doc(
 			{
 				"doctype": "Project",
@@ -120,7 +121,7 @@ class TestProject(BuildSuiteTestCase):
 			}
 		).insert(ignore_permissions=True)
 		self.assertTrue(no_id.name.startswith("PROJ-"))
-		self.assertIsNone(no_id.custom_project_id)
+		self.assertEqual(no_id.custom_project_id, no_id.name)
 
 	def test_company_locked_after_create(self):
 		others = frappe.get_all("Company", filters={"name": ("!=", self.company)}, pluck="name")
