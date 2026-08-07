@@ -11,7 +11,11 @@ renderers (mirrors api/project_dashboard.py):
   · pending_scos      — Scope Change Orders awaiting approval (title + cost impact).
   · tasks_in_progress — the Working tasks, with their assignee.
 
-Derived numbers are computed server-side so the payload stays small. Single-company for now."""
+Scoped to the logged-in user: every project/task/SCO count goes through get_list, so the
+Project/Task permission query conditions apply — a team-scoped user (QS, Site Engineer, …)
+sees only their own projects + tasks, matching the Projects list; admins/PMs see the whole
+company. Derived numbers are computed server-side so the payload stays small. Single-company
+for now."""
 
 import json
 
@@ -84,11 +88,17 @@ def get_home_dashboard():
 	company = default_company()
 	today = getdate(nowdate())
 
-	project_ids = frappe.get_all("Project", filters={"company": company}, pluck="name") or ["__none__"]
+	# Use get_list (not get_all/db.count) so the Project/Task permission query conditions
+	# apply: a scoped user (QS, Site Engineer, …) sees only their team's projects + tasks,
+	# matching the Projects list. Admins/PMs are unscoped and still see the whole company.
+	# get_list defaults to a 20-row page, so limit_page_length=0 is required to count all.
+	project_ids = frappe.get_list(
+		"Project", filters={"company": company}, pluck="name", limit_page_length=0
+	) or ["__none__"]
 	proj_in = {"project": ["in", project_ids]}
 
-	# --- active root projects → the list + the order book ---
-	roots = frappe.get_all(
+	# --- active root projects → the list + the order book (team-scoped) ---
+	roots = frappe.get_list(
 		"Project",
 		filters={"company": company, "parent_project": ["in", ["", None]]},
 		fields=[
@@ -104,6 +114,7 @@ def get_home_dashboard():
 			"project_manager",
 		],
 		order_by="modified desc",
+		limit_page_length=0,
 	)
 	boq = _current_boq([p.name for p in roots])
 	customers = {p.customer for p in roots if p.customer}
@@ -149,7 +160,14 @@ def get_home_dashboard():
 		"Task",
 		{**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]},
 	)
-	progress_today = frappe.db.count("Task Progress Entry", {"entry_date": str(today)})
+	progress_today = len(
+		frappe.get_list(
+			"Task Progress Entry",
+			filters={"entry_date": str(today)},
+			pluck="name",
+			limit_page_length=0,
+		)
+	)
 	users = frappe.db.count("User", {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]})
 
 	scos = frappe.get_all(
