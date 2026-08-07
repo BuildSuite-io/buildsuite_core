@@ -364,8 +364,9 @@ const saveLabel = computed(() =>
 				<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">{{ errors.lines }}</p>
 			</section>
 
-			<!-- Terms & conditions -->
-			<DeskSection title="Terms & conditions" :cols="1">
+			<!-- Terms & conditions — extra top margin so the header isn't cramped against
+					 the schedule-of-values table above. -->
+			<DeskSection title="Terms & conditions" :cols="1" class="mt-8">
 				<DeskField
 					label="Import from template"
 					hint="Pick a standard template to fill the box below. You can edit the text after importing."

@@ -52,12 +52,16 @@ class BuildSuiteProject(_ERPNextProject):
 			self.name = project_id
 			return
 
-		self.custom_project_id = None  # keep it NULL (not "") so the unique index holds
 		if not self.naming_series:
 			self.naming_series = default_project_series()
 		if self.naming_series:
 			set_name_by_naming_series(self)
+			# No ID was entered, so surface the series-generated name AS the Project ID —
+			# otherwise the field stays NULL and the Vue views show a blank ID. The name is
+			# the primary key (unique), so this keeps the unique index intact.
+			self.custom_project_id = self.name
 			return
+		self.custom_project_id = None  # keep it NULL (not "") so the unique index holds
 		frappe.throw(_("Enter a Project ID or configure a naming series."))
 
 

@@ -274,10 +274,13 @@ def subcontract_actual_by_cost_code(project: str):
 
 @frappe.whitelist()
 def get_project_cost_codes(project: str):
-	"""BOQ groups + items for a project, as pickable cost codes for SOV lines."""
+	"""BOQ groups + items for a project, as pickable cost codes for SOV lines.
+
+	Only APPROVED BOQs count — a Work Order must not be costed against a draft/submitted
+	(unapproved) BOQ line."""
 	if not project:
 		return []
-	boqs = frappe.get_all("BOQ", filters={"project": project}, pluck="name")
+	boqs = frappe.get_all("BOQ", filters={"project": project, "status": "Approved"}, pluck="name")
 	if not boqs:
 		return []
 
