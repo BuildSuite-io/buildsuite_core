@@ -469,6 +469,28 @@ CUSTOM_FIELD = {
 			"label": "Is Labour",
 		},
 		{
+			"fieldname": "custom_trade",
+			"fieldtype": "Link",
+			"insert_after": "is_labour",
+			"is_system_generated": 0,
+			"label": "Trade",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "Labour Trade",
+		},
+		{
+			"fieldname": "custom_contractor",
+			"description": "Leave blank for directly-employed workers",
+			"fieldtype": "Link",
+			"insert_after": "custom_trade",
+			"is_system_generated": 0,
+			"label": "Contractor",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "Supplier",
+			# Labour contractors only — same narrowing the Subcontract Work Order and
+			# Bill apply to their Supplier links.
+			"link_filters": '[["Supplier","supplier_type","=","Subcontractor"]]',
+		},
+		{
 			"fieldname": "custom_wage",
 			"description": "Daily Wage Amount",
 			"fieldtype": "Currency",
