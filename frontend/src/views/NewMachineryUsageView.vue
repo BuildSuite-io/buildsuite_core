@@ -18,6 +18,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { useProjectOptions } from "@/composables/useProjectOptions";
 
 const router = useRouter();
 const route = useRoute();
@@ -34,17 +35,10 @@ const machineryOptions = computed(() =>
 		value: m.name,
 		label: m.machinery_name,
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
-	})),
+	}))
 );
-const projectRes = useDocTypeList("Project", {
-	fields: ["name", "project_name"],
-	orderBy: "project_name asc",
-	pageLength: 0,
-	cache: "buildsuite-project-options",
-});
-const projectOptions = computed(() =>
-	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name })),
-);
+
+const { projectOptions } = useProjectOptions();
 
 const today = new Date().toISOString().slice(0, 10);
 const form = reactive({
@@ -65,7 +59,7 @@ const saving = ref(false);
 
 // Auto-fill rate + unit from the picked machine (also on ?machine= prefill).
 const selectedMachine = computed(() =>
-	(machineryRes.data || []).find((m) => m.name === form.machine),
+	(machineryRes.data || []).find((m) => m.name === form.machine)
 );
 watch(
 	selectedMachine,
@@ -75,11 +69,11 @@ watch(
 			form.unit = m.rate_unit === "Hour" ? "Hours" : "Days";
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 const total = computed(
-	() => (Number(form.quantity) || 0) * (Number(form.rate) || 0) + (Number(form.fuel_cost) || 0),
+	() => (Number(form.quantity) || 0) * (Number(form.rate) || 0) + (Number(form.fuel_cost) || 0)
 );
 
 function validate() {

@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "CRW-.####",
+ "creation": "2026-08-08 15:14:21.181782",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "crew_name",
+  "trade",
+  "column_break_tlxh",
+  "crew_leader",
+  "company",
+  "section_break_iptk",
+  "members",
+  "members_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "crew_name",
+   "fieldtype": "Data",
+   "label": "Crew Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "crew_leader",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Crew Leader",
+   "link_filters": "[[\"Employee\",\"is_labour\",\"=\",1]]",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "trade",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Trade",
+   "options": "Labour Trade"
+  },
+  {
+   "fieldname": "column_break_tlxh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "section_break_iptk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "Crew Member"
+  },
+  {
+   "fieldname": "members_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Members Count",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-08 15:45:33.210140",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Crew",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "crew_name",
+ "track_changes": 1
+}

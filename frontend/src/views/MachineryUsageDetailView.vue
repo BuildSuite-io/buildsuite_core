@@ -7,7 +7,6 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
-import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate } from "@/utils/format";
@@ -19,12 +18,12 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import { useProjectOptions } from "@/composables/useProjectOptions";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
-const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({ machine: "machine" });
 
 const resource = adapter.read("Machinery Usage", props.id, { fields: ["*"] });
@@ -43,15 +42,9 @@ const machineryOptions = computed(() =>
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
 	}))
 );
-const projectRes = useDocTypeList("Project", {
-	fields: ["name", "project_name"],
-	orderBy: "project_name asc",
-	pageLength: 0,
-	cache: "buildsuite-project-options",
-});
-const projectOptions = computed(() =>
-	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name }))
-);
+
+// One Project fetch for both modes.
+const { projectOptions, projectLabel } = useProjectOptions();
 
 const editing = ref(false);
 const saving = ref(false);
@@ -200,7 +193,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 				<DeskField label="Project"
 					><div class="text-sm text-ink-700">
-						{{ projectName(doc.project) || "—" }}
+						{{ projectLabel(doc.project) || "—" }}
 					</div></DeskField
 				>
 				<DeskField label="Task"
