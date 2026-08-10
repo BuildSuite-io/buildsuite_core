@@ -1,44 +1,50 @@
 <script setup>
+// Role-aware Home. One live aggregate read (api.home.get_home_dashboard) returns the
+// logged-in user's snapshot tiles, primary CTA and alert cards — the same per-role content
+// as the prototype's HomeWorkspaceView. This view is a thin renderer of that payload.
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
 import { useUserNames } from "@/composables/useUserNames";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { fmtCompactINR } from "@/utils/format";
 import { getHomeDashboard } from "@/data/homeDashboardApi";
 
 const store = useDataStore();
 const session = useSessionStore();
 const { userName: resolveUserName } = useUserNames();
 
-// One live aggregate read backs every metric below (api.home.get_home_dashboard).
 const dash = ref(null);
 onMounted(async () => {
 	try {
 		dash.value = await getHomeDashboard();
 	} catch {
-		dash.value = null; // fall through to the fallback numbers
+		dash.value = null;
 	}
 });
-const kpis = computed(() => dash.value?.kpis || {});
+
+const snapshot = computed(() => dash.value?.snapshot || []);
+const alerts = computed(() => dash.value?.alerts || []);
+const cta = computed(() => dash.value?.cta || null);
 
 const now = new Date();
-
 const greeting = computed(() => {
 	const hour = now.getHours();
 	if (hour < 12) return "Good morning";
 	if (hour < 18) return "Good afternoon";
 	return "Good evening";
 });
-
 const userName = computed(() => {
 	const id = session.user && session.user !== "Guest" ? session.user : null;
 	return (id && resolveUserName(id)) || store.user?.name || "Admin User";
 });
-
 const roleLabel = computed(() =>
 	store.isAdmin ? "System Manager (Admin)" : store.currentRole?.name || "User"
 );
-
+const greetingSub = computed(
+	() => dash.value?.greeting_sub || "Here is a snapshot of your work today."
+);
 const dateLabel = computed(() =>
 	new Intl.DateTimeFormat("en-GB", {
 		weekday: "long",
@@ -47,7 +53,6 @@ const dateLabel = computed(() =>
 		year: "numeric",
 	}).format(now)
 );
-
 const initials = computed(() => {
 	const name = userName.value || "A D";
 	const parts = name.split(" ").filter(Boolean);
@@ -56,35 +61,35 @@ const initials = computed(() => {
 	return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
 });
 
-const activeProjectsCount = computed(() => kpis.value.active_projects);
-const openTasksCount = computed(() => kpis.value.open_tasks);
-const usersCount = computed(() => kpis.value.users);
-const workspacesCount = computed(() => (store.visibleWorkspaces || []).length);
-
-const pendingScosCount = computed(() => kpis.value.pending_scos);
-const overdueTasksCount = computed(() => kpis.value.overdue_tasks);
-const progressTodayCount = computed(() => kpis.value.progress_today);
+// tone → icon chip classes (shared by snapshot tiles + alert cards).
+const TONE = {
+	brand: "bg-brand-50 text-brand-700",
+	info: "bg-info-50 text-info-700",
+	success: "bg-success-50 text-success-700",
+	warning: "bg-warning-50 text-warning-700",
+	danger: "bg-danger-50 text-danger-700",
+	muted: "bg-ink-50 text-ink-400",
+};
+function toneClass(t) {
+	return TONE[t] || TONE.brand;
+}
+function tileValue(m) {
+	return m.format === "currency" ? fmtCompactINR(m.value) : m.value;
+}
 
 const quickActions = [
 	{ label: "Users", to: "/settings/users", icon: "users" },
-	{ label: "Companies", to: "/settings/companies", icon: "companies" },
-	{ label: "Project Categories", to: "/settings/project-categories", icon: "project-types" },
-	{
-		label: "Workspace Structure",
-		to: "/settings/workspace-structure",
-		icon: "workspace-structure",
-	},
-	{ label: "All Projects", to: "/projects", icon: "projects" },
-	{ label: "Data Tools", to: "/settings/data", icon: "data-tools" },
+	{ label: "Companies", to: "/settings/companies", icon: "building-2" },
+	{ label: "Project Categories", to: "/settings/project-categories", icon: "tag" },
+	{ label: "Workspace Structure", to: "/settings/workspace-structure", icon: "layout-grid" },
+	{ label: "All Projects", to: "/projects", icon: "clipboard-list" },
+	{ label: "Data Tools", to: "/settings/data", icon: "database" },
 ];
-
-function showCount(value, fallback) {
-	return Number.isFinite(value) ? value : fallback;
-}
 </script>
 
 <template>
 	<div class="px-6 py-8 max-w-6xl mx-auto">
+		<!-- Greeting -->
 		<div class="flex items-start gap-4 mb-6">
 			<div class="inline-flex items-center gap-2">
 				<div
@@ -96,9 +101,7 @@ function showCount(value, fallback) {
 			<div class="flex-1 min-w-0">
 				<div class="text-sm text-ink-500">{{ greeting }},</div>
 				<h1 class="text-2xl font-semibold text-ink-900 mt-0.5">{{ userName }}</h1>
-				<p class="text-sm text-ink-500 mt-1.5">
-					Here is a snapshot of system activity today.
-				</p>
+				<p class="text-sm text-ink-500 mt-1.5">{{ greetingSub }}</p>
 				<div class="text-[11px] text-ink-400 mt-1 flex flex-wrap items-center gap-x-2">
 					<span>{{ roleLabel }}</span>
 					<span class="text-ink-300">·</span>
@@ -107,6 +110,7 @@ function showCount(value, fallback) {
 			</div>
 		</div>
 
+		<!-- Snapshot + CTA -->
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
 			<section
 				class="lg:col-span-2 bg-white border border-ink-200 rounded-lg overflow-hidden"
@@ -124,9 +128,10 @@ function showCount(value, fallback) {
 				</header>
 				<div class="p-5">
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
-						<div>
+						<div v-for="m in snapshot" :key="m.label">
 							<div
-								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3 bg-brand-50 text-brand-700"
+								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3"
+								:class="toneClass(m.tone)"
 							>
 								<svg
 									width="22"
@@ -138,119 +143,19 @@ function showCount(value, fallback) {
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									aria-hidden="true"
-								>
-									<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-									<path
-										d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-									></path>
-									<path d="M12 11h4"></path>
-									<path d="M12 16h4"></path>
-									<path d="M8 11h.01"></path>
-									<path d="M8 16h.01"></path>
-								</svg>
+									v-html="getWorkspaceIconPath(m.slug)"
+								/>
 							</div>
 							<div
-								class="text-3xl font-semibold text-ink-900 tabular-nums leading-none"
+								class="font-semibold text-ink-900 tabular-nums leading-none"
+								:class="m.format === 'currency' ? 'text-2xl' : 'text-3xl'"
 							>
-								{{ showCount(activeProjectsCount, 4) }}
+								{{ tileValue(m) }}
 							</div>
 							<div
 								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-2"
 							>
-								Active projects
-							</div>
-						</div>
-						<div>
-							<div
-								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3 bg-info-50 text-info-700"
-							>
-								<svg
-									width="22"
-									height="22"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.75"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-									<polyline points="22 4 12 14.01 9 11.01"></polyline>
-								</svg>
-							</div>
-							<div
-								class="text-3xl font-semibold text-ink-900 tabular-nums leading-none"
-							>
-								{{ showCount(openTasksCount, 9) }}
-							</div>
-							<div
-								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-2"
-							>
-								Open tasks
-							</div>
-						</div>
-						<div>
-							<div
-								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3 bg-success-50 text-success-700"
-							>
-								<svg
-									width="22"
-									height="22"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.75"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<path d="M14 19a6 6 0 0 0-12 0"></path>
-									<circle cx="8" cy="9" r="4"></circle>
-									<path d="M22 19a6 6 0 0 0-6-6 4 4 0 1 0 0-8"></path>
-								</svg>
-							</div>
-							<div
-								class="text-3xl font-semibold text-ink-900 tabular-nums leading-none"
-							>
-								{{ showCount(usersCount, 7) }}
-							</div>
-							<div
-								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-2"
-							>
-								Users
-							</div>
-						</div>
-						<div>
-							<div
-								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3 bg-warning-50 text-warning-700"
-							>
-								<svg
-									width="22"
-									height="22"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.75"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<rect width="7" height="7" x="3" y="3" rx="1"></rect>
-									<rect width="7" height="7" x="14" y="3" rx="1"></rect>
-									<rect width="7" height="7" x="14" y="14" rx="1"></rect>
-									<rect width="7" height="7" x="3" y="14" rx="1"></rect>
-								</svg>
-							</div>
-							<div
-								class="text-3xl font-semibold text-ink-900 tabular-nums leading-none"
-							>
-								{{ showCount(workspacesCount, 11) }}
-							</div>
-							<div
-								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-2"
-							>
-								Workspaces
+								{{ m.label }}
 							</div>
 						</div>
 					</div>
@@ -258,7 +163,8 @@ function showCount(value, fallback) {
 			</section>
 
 			<RouterLink
-				to="/settings"
+				v-if="cta"
+				:to="cta.to"
 				class="bg-brand-50 hover:bg-brand-100 rounded-lg p-5 flex flex-col justify-between transition-colors group"
 			>
 				<div class="flex items-start gap-3">
@@ -275,37 +181,35 @@ function showCount(value, fallback) {
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							aria-hidden="true"
-						>
-							<path
-								d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-							></path>
-							<circle cx="12" cy="12" r="3"></circle>
-						</svg>
+							v-html="getWorkspaceIconPath(cta.slug)"
+						/>
 					</div>
 					<div class="min-w-0">
 						<h2 class="text-base font-semibold text-ink-900 leading-tight">
-							Settings
+							{{ cta.title }}
 						</h2>
-						<p class="text-xs text-ink-600 mt-1.5 leading-snug">
-							Manage workspaces, users, project types, and data.
-						</p>
+						<p class="text-xs text-ink-600 mt-1.5 leading-snug">{{ cta.sub }}</p>
 					</div>
 				</div>
 				<div
 					class="mt-4 inline-flex items-center gap-1.5 bg-brand-600 group-hover:bg-brand-700 text-white text-xs font-medium px-2.5 py-1.5 rounded-md self-start transition-colors"
 				>
-					Open Settings <span aria-hidden="true">→</span>
+					{{ cta.cta }} <span aria-hidden="true">→</span>
 				</div>
 			</RouterLink>
 		</div>
 
+		<!-- Alert cards -->
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
 			<RouterLink
-				to="/sco"
+				v-for="a in alerts"
+				:key="a.key"
+				:to="a.to"
 				class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group"
 			>
 				<div
-					class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-warning-50 text-warning-700"
+					class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+					:class="toneClass(a.tone)"
 				>
 					<svg
 						width="18"
@@ -317,97 +221,12 @@ function showCount(value, fallback) {
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						aria-hidden="true"
-					>
-						<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-						<path d="M3 3v5h5"></path>
-						<path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
-						<path d="M16 16h5v5"></path>
-					</svg>
+						v-html="getWorkspaceIconPath(a.slug)"
+					/>
 				</div>
 				<div class="flex-1 min-w-0">
-					<div class="text-sm font-semibold text-ink-900">Pending SCOs</div>
-					<div class="text-xs text-ink-500 mt-0.5 truncate">
-						{{ showCount(pendingScosCount, 2) }} awaiting approval
-					</div>
-				</div>
-				<div
-					class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0"
-				>
-					View →
-				</div>
-			</RouterLink>
-
-			<RouterLink
-				to="/tasks"
-				class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group"
-			>
-				<div
-					class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-danger-50 text-danger-700"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.75"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-						<polyline points="22 4 12 14.01 9 11.01"></polyline>
-					</svg>
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="text-sm font-semibold text-ink-900">Overdue tasks</div>
-					<div class="text-xs text-ink-500 mt-0.5 truncate">
-						{{ showCount(overdueTasksCount, 4) }} past their end date
-					</div>
-				</div>
-				<div
-					class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0"
-				>
-					View →
-				</div>
-			</RouterLink>
-
-			<RouterLink
-				to="/progress-entries"
-				class="bg-white border border-ink-200 hover:border-brand-400 rounded-lg p-4 flex items-center gap-3 transition-colors group"
-			>
-				<div
-					class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-ink-50 text-ink-400"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.75"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<path
-							d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-						></path>
-						<polyline points="14 2 14 8 20 8"></polyline>
-						<line x1="16" x2="8" y1="13" y2="13"></line>
-						<line x1="16" x2="8" y1="17" y2="17"></line>
-						<line x1="10" x2="8" y1="9" y2="9"></line>
-					</svg>
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="text-sm font-semibold text-ink-900">Progress today</div>
-					<div class="text-xs text-ink-500 mt-0.5 truncate">
-						{{
-							progressTodayCount
-								? `${progressTodayCount} entries filed`
-								: "No entries filed yet"
-						}}
-					</div>
+					<div class="text-sm font-semibold text-ink-900">{{ a.title }}</div>
+					<div class="text-xs text-ink-500 mt-0.5 truncate">{{ a.sub }}</div>
 				</div>
 				<div
 					class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0"
@@ -417,6 +236,7 @@ function showCount(value, fallback) {
 			</RouterLink>
 		</div>
 
+		<!-- Quick actions -->
 		<div class="mb-6">
 			<h2 class="text-sm font-semibold text-ink-900 mb-3">Quick actions</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -430,7 +250,6 @@ function showCount(value, fallback) {
 						class="w-10 h-10 rounded-lg bg-ink-50 group-hover:bg-brand-50 text-ink-600 group-hover:text-brand-700 flex items-center justify-center flex-shrink-0 transition-colors"
 					>
 						<svg
-							v-if="action.icon === 'users'"
 							width="20"
 							height="20"
 							viewBox="0 0 24 24"
@@ -440,105 +259,8 @@ function showCount(value, fallback) {
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							aria-hidden="true"
-						>
-							<path d="M14 19a6 6 0 0 0-12 0"></path>
-							<circle cx="8" cy="9" r="4"></circle>
-							<path d="M22 19a6 6 0 0 0-6-6 4 4 0 1 0 0-8"></path>
-						</svg>
-						<svg
-							v-else-if="action.icon === 'companies'"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.75"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path>
-							<path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path>
-							<path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path>
-							<path d="M10 6h4"></path>
-							<path d="M10 10h4"></path>
-							<path d="M10 14h4"></path>
-							<path d="M10 18h4"></path>
-						</svg>
-						<svg
-							v-else-if="action.icon === 'project-types'"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.75"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<circle cx="12" cy="12" r="10"></circle>
-							<path d="M12 16v-4"></path>
-							<path d="M12 8h.01"></path>
-						</svg>
-						<svg
-							v-else-if="action.icon === 'workspace-structure'"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.75"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<rect width="7" height="7" x="3" y="3" rx="1"></rect>
-							<rect width="7" height="7" x="14" y="3" rx="1"></rect>
-							<rect width="7" height="7" x="14" y="14" rx="1"></rect>
-							<rect width="7" height="7" x="3" y="14" rx="1"></rect>
-						</svg>
-						<svg
-							v-else-if="action.icon === 'projects'"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.75"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-							<path
-								d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-							></path>
-							<path d="M12 11h4"></path>
-							<path d="M12 16h4"></path>
-							<path d="M8 11h.01"></path>
-							<path d="M8 16h.01"></path>
-						</svg>
-						<svg
-							v-else
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.75"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path
-								d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-							></path>
-							<polyline points="14 2 14 8 20 8"></polyline>
-							<line x1="16" x2="8" y1="13" y2="13"></line>
-							<line x1="16" x2="8" y1="17" y2="17"></line>
-							<line x1="10" x2="8" y1="9" y2="9"></line>
-						</svg>
+							v-html="getWorkspaceIconPath(action.icon)"
+						/>
 					</div>
 					<div class="flex-1 min-w-0">
 						<div
