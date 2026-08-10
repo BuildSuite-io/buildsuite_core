@@ -25,11 +25,24 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const confirmDialog = useConfirm();
+
+// If a site configures an active Frappe Workflow for Sales Invoice, the lifecycle
+// buttons below defer to it: Submit/Cancel are replaced by the workflow's allowed
+// transitions for this user + state. With no workflow, `wfActive` stays false and
+// the plain docstatus buttons render as before.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Sales Invoice");
 
 const inv = ref(null);
 const receipts = ref([]);
@@ -43,6 +56,8 @@ async function load() {
 		// On-account advances from this customer that can still be adjusted (draft or submitted).
 		availableAdvances.value =
 			inv.value.docstatus === 2 ? [] : await availableInvoiceAdvances(props.id);
+		// Probe for a workflow + refresh the available transitions for this state/user.
+		await refreshWorkflow(props.id);
 	} catch (err) {
 		showToast(err.message || "Failed to load invoice", "error");
 	} finally {
@@ -62,9 +77,16 @@ const state = computed(() => {
 const payment = computed(
 	() => inv.value?.payment || { invoiced: 0, received: 0, outstanding: 0, status: "Draft" }
 );
+// Lifecycle label: the workflow state when a workflow governs the doc, else the
+// docstatus-derived label. The payment pill is independent of the workflow.
+const lifecycleLabel = computed(() =>
+	wfActive.value ? wfState.value || state.value : state.value
+);
 const statusPills = computed(() => {
 	if (!inv.value) return [];
-	return isSubmitted.value ? [state.value, payment.value.status] : [state.value];
+	return isSubmitted.value
+		? [lifecycleLabel.value, payment.value.status]
+		: [lifecycleLabel.value];
 });
 
 const breadcrumbs = [
@@ -111,6 +133,19 @@ async function onCancel() {
 		showToast("Cancelled.");
 	} catch (err) {
 		showToast(err.message || "Cancel failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+// Workflow-driven transition (only rendered when an active workflow governs the doctype).
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(inv.value.name, action);
+		await load();
+		showToast(`${action} done.`);
+	} catch (err) {
+		showToast(err.message || "Action failed", "error");
 	} finally {
 		busy.value = false;
 	}
@@ -324,8 +359,9 @@ async function unlinkAdvance(row) {
 				>
 					Edit
 				</button>
+				<!-- Plain docstatus lifecycle (no workflow configured) -->
 				<button
-					v-if="isDraft"
+					v-if="!wfActive && isDraft"
 					type="button"
 					class="text-xs desk-save-btn"
 					:disabled="busy"
@@ -343,13 +379,25 @@ async function unlinkAdvance(row) {
 					Receive payment
 				</button>
 				<button
-					v-if="isSubmitted"
+					v-if="!wfActive && isSubmitted"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md"
 					:disabled="busy"
 					@click="onCancel"
 				>
 					Cancel
+				</button>
+				<!-- Workflow transitions (active workflow) — one button per action the
+				     signed-in user may take from the current state -->
+				<button
+					v-for="t in wfActive ? wfTransitions : []"
+					:key="t.action"
+					type="button"
+					class="text-xs desk-save-btn"
+					:disabled="busy"
+					@click="onWorkflowAction(t.action)"
+				>
+					{{ t.action }}
 				</button>
 			</div>
 		</template>

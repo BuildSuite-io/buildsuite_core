@@ -389,8 +389,20 @@ def save_bill(payload):
 	return _serialize(doc)
 
 
+def _guard_workflow():
+	"""When a site configures an active workflow for Subcontractor Bill, submission and
+	cancellation must flow through it (buildsuite_core.api.workflow.apply_action). The
+	workflow's submit transition still runs on_submit (Purchase Invoice generation); this
+	guard only stops the direct docstatus endpoints from bypassing the state machine."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(BILL):
+		frappe.throw(_("Subcontractor Bill is governed by a workflow — use a workflow action."))
+
+
 @frappe.whitelist()
 def submit_bill(name: str):
+	_guard_workflow()
 	doc = frappe.get_doc(BILL, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -399,6 +411,7 @@ def submit_bill(name: str):
 
 @frappe.whitelist()
 def cancel_bill(name: str):
+	_guard_workflow()
 	doc = frappe.get_doc(BILL, name)
 	doc.check_permission("cancel")
 	doc.cancel()

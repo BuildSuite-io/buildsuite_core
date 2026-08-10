@@ -365,8 +365,21 @@ def save_invoice(payload):
 	return {"name": si.name}
 
 
+def _guard_workflow():
+	"""Once a site configures an active workflow for Sales Invoice, submission and
+	cancellation must flow through it (buildsuite_core.api.workflow.apply_action), not
+	these direct docstatus endpoints — otherwise the workflow_state and docstatus drift
+	apart. The Vue detail view already routes to the workflow when one is active; this is
+	the server-side backstop."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(SI):
+		frappe.throw(_("Sales Invoice is governed by a workflow — use a workflow action."))
+
+
 @frappe.whitelist()
 def submit_invoice(name):
+	_guard_workflow()
 	si = frappe.get_doc(SI, name)
 	si.check_permission("submit")
 	si.flags.ignore_permissions = True
@@ -376,6 +389,7 @@ def submit_invoice(name):
 
 @frappe.whitelist()
 def cancel_invoice(name):
+	_guard_workflow()
 	si = frappe.get_doc(SI, name)
 	si.check_permission("cancel")
 	si.flags.ignore_permissions = True
