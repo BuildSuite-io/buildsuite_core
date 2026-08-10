@@ -21,3 +21,5 @@ buildsuite_core.patches.set_default_rate_master_update_threshold
 buildsuite_core.patches.retire_site_execution_settings
 buildsuite_core.patches.recompute_stage_completed_counts # 2026-08-04
 buildsuite_core.patches.sync_report_filters # 2026-08-04
+
+buildsuite_core.patches.remove_cosmetic_desk_property_setters # 2026-08-10
