@@ -515,3 +515,96 @@ def get_wo_measurements(work_order: str):
 		b["entries_count"] = entry_counts.get(b.name, 0)
 
 	return {"books": books, "measured_by_line": measured_by_line}
+
+
+# ---------------------------------------------------------------------------
+# Subcontractor master CRUD — a subcontractor is a native ERPNext Supplier tagged
+# supplier_type="Subcontractor". Trade + tax id live on the Supplier; contact person /
+# phone / email live on its native Contact (via utils.party). These endpoints own the
+# join so the Vue master screens read/write all of it in one call.
+# ---------------------------------------------------------------------------
+from buildsuite_core.utils.party import primary_contact, upsert_primary_contact  # noqa: E402
+
+SUBCONTRACTOR_TYPE = "Subcontractor"
+
+
+def _serialize_subcontractor(sup):
+	contact = primary_contact("Supplier", sup.name)
+	return {
+		"name": sup.name,
+		"subcontractor_name": sup.supplier_name,
+		"trade": sup.get("custom_trade") or "",
+		"tax_id": sup.get("tax_id") or "",
+		"status": "Inactive" if sup.get("disabled") else "Active",
+		"contact_person": contact["contact_person"],
+		"phone": contact["phone"],
+		"email": contact["email"],
+	}
+
+
+@frappe.whitelist()
+def list_subcontractors():
+	"""All subcontractor Suppliers with their trade, tax id and primary-contact details."""
+	rows = frappe.get_all(
+		"Supplier",
+		filters={"supplier_type": SUBCONTRACTOR_TYPE},
+		fields=["name", "supplier_name", "custom_trade", "tax_id", "disabled"],
+		order_by="supplier_name asc",
+		limit_page_length=0,
+	)
+	return [_serialize_subcontractor(frappe._dict(r)) for r in rows]
+
+
+@frappe.whitelist()
+def get_subcontractor(name: str):
+	sup = frappe.get_doc("Supplier", name)
+	sup.check_permission("read")
+	return _serialize_subcontractor(sup)
+
+
+@frappe.whitelist()
+def create_subcontractor(
+	subcontractor_name: str,
+	trade: str | None = None,
+	tax_id: str | None = None,
+	status: str = "Active",
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
+):
+	doc = frappe.new_doc("Supplier")
+	doc.supplier_name = (subcontractor_name or "").strip()
+	doc.supplier_type = SUBCONTRACTOR_TYPE
+	doc.supplier_group = SUBCONTRACTOR_TYPE
+	doc.custom_trade = trade
+	doc.tax_id = tax_id
+	doc.disabled = 1 if status == "Inactive" else 0
+	doc.insert()
+	upsert_primary_contact("Supplier", doc.name, doc.supplier_name, contact_person, phone, email)
+	return _serialize_subcontractor(doc)
+
+
+@frappe.whitelist()
+def update_subcontractor(
+	name: str,
+	subcontractor_name: str | None = None,
+	trade: str | None = None,
+	tax_id: str | None = None,
+	status: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
+):
+	doc = frappe.get_doc("Supplier", name)
+	doc.check_permission("write")
+	if subcontractor_name is not None:
+		doc.supplier_name = subcontractor_name.strip()
+	if trade is not None:
+		doc.custom_trade = trade
+	if tax_id is not None:
+		doc.tax_id = tax_id
+	if status is not None:
+		doc.disabled = 1 if status == "Inactive" else 0
+	doc.save()
+	upsert_primary_contact("Supplier", doc.name, doc.supplier_name, contact_person, phone, email)
+	return _serialize_subcontractor(doc)

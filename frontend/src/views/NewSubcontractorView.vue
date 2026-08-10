@@ -5,10 +5,9 @@
 
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
-import { createDataAdapter } from "@/data/adapters";
+import { createSubcontractor } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -19,13 +18,15 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import TradePicker from "@/components/TradePicker.vue";
 
 const router = useRouter();
-const adapter = createDataAdapter(useDataStore());
 
 const form = reactive({
 	subcontractor_name: "",
 	trade: "",
 	status: "Active",
 	tax_id: "",
+	contact_person: "",
+	phone: "",
+	email: "",
 });
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	supplier_name: "subcontractor_name",
@@ -49,13 +50,14 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Supplier", {
-			supplier_name: form.subcontractor_name.trim(),
-			supplier_type: "Subcontractor",
-			supplier_group: "Subcontractor",
-			custom_trade: form.trade,
+		const res = await createSubcontractor({
+			subcontractor_name: form.subcontractor_name.trim(),
+			trade: form.trade,
 			tax_id: form.tax_id,
-			disabled: form.status === "Inactive" ? 1 : 0,
+			status: form.status,
+			contact_person: form.contact_person,
+			phone: form.phone,
+			email: form.email,
 		});
 		router.push(`/subcontractors/${res.name}`);
 	} catch (err) {
@@ -102,10 +104,18 @@ const breadcrumbs = [
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
 			</DeskSection>
-			<p class="text-xs text-ink-400 mt-3">
-				Contact person, phone and email are managed on the subcontractor's Supplier record
-				in the accounting desk.
-			</p>
+
+			<DeskSection title="Contact" :cols="3">
+				<DeskField label="Contact person">
+					<DeskInput v-model="form.contact_person" />
+				</DeskField>
+				<DeskField label="Phone number">
+					<DeskInput v-model="form.phone" />
+				</DeskField>
+				<DeskField label="Email id">
+					<DeskInput v-model="form.email" type="email" />
+				</DeskField>
+			</DeskSection>
 		</DeskForm>
 	</DeskPage>
 </template>

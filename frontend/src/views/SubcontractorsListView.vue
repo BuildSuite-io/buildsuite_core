@@ -1,9 +1,10 @@
 <script setup>
 // Subcontractors master list — Desk-styled, mirrors the prototype.
 
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { listSubcontractors } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -11,22 +12,27 @@ import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
 
-// Subcontractors are Suppliers of type "Subcontractor".
-const subsRes = useDocTypeList("Supplier", {
-	fields: ["name", "supplier_name", "custom_trade", "tax_id", "disabled"],
-	filters: [["supplier_type", "=", "Subcontractor"]],
-	orderBy: "supplier_name asc",
-	pageLength: 0,
-	cache: "buildsuite-subcontractor-list",
-	transform: (data) =>
-		data.map((s) => ({
+// Subcontractors are Suppliers of type "Subcontractor"; the API joins each one's
+// primary Contact so contact person + phone come back for the list columns.
+const subs = ref([]);
+const loading = ref(true);
+async function loadSubs() {
+	loading.value = true;
+	try {
+		subs.value = (await listSubcontractors()).map((s) => ({
 			id: s.name,
-			name: s.supplier_name,
-			trade: s.custom_trade,
+			name: s.subcontractor_name,
+			trade: s.trade,
 			tax_id: s.tax_id,
-			status: s.disabled ? "Inactive" : "Active",
-		})),
-});
+			status: s.status,
+			contact: s.contact_person,
+			phone: s.phone,
+		}));
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(loadSubs);
 
 // Trade filter — the Construction Trade master drives the dropdown.
 const tradesRes = useDocTypeList("Construction Trade", {
@@ -40,7 +46,7 @@ const tradeFilter = ref("");
 
 const search = ref("");
 const rows = computed(() => {
-	let data = subsRes.data || [];
+	let data = subs.value;
 	if (tradeFilter.value) data = data.filter((s) => s.trade === tradeFilter.value);
 	const q = search.value.trim().toLowerCase();
 	if (q)
@@ -48,7 +54,9 @@ const rows = computed(() => {
 			(s) =>
 				(s.name || "").toLowerCase().includes(q) ||
 				(s.trade || "").toLowerCase().includes(q) ||
-				(s.tax_id || "").toLowerCase().includes(q)
+				(s.tax_id || "").toLowerCase().includes(q) ||
+				(s.contact || "").toLowerCase().includes(q) ||
+				(s.phone || "").toLowerCase().includes(q)
 		);
 	return data;
 });
@@ -57,6 +65,8 @@ const columns = [
 	{ key: "id", label: "ID" },
 	{ key: "name", label: "Name" },
 	{ key: "trade", label: "Trade" },
+	{ key: "contact", label: "Contact" },
+	{ key: "phone", label: "Phone" },
 	{ key: "tax_id", label: "Tax ID" },
 	{ key: "status", label: "Status" },
 ];
@@ -113,6 +123,16 @@ function onRowClick(row) {
 				>
 				<span v-else class="text-ink-300">—</span>
 			</template>
+			<template #cell-contact="{ row }">
+				<span v-if="row.contact" class="text-xs text-ink-700">{{ row.contact }}</span>
+				<span v-else class="text-ink-300">—</span>
+			</template>
+			<template #cell-phone="{ row }">
+				<span v-if="row.phone" class="text-xs font-mono text-ink-700">{{
+					row.phone
+				}}</span>
+				<span v-else class="text-ink-300">—</span>
+			</template>
 			<template #cell-tax_id="{ row }">
 				<span class="text-xs font-mono text-ink-500">{{ row.tax_id || "—" }}</span>
 			</template>
@@ -122,8 +142,8 @@ function onRowClick(row) {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ subsRes.loading ? "Loading subcontractors…" : "No subcontractors yet." }}
-					<RouterLink v-if="!subsRes.loading" to="/subcontractors/new" class="desk-link"
+					{{ loading ? "Loading subcontractors…" : "No subcontractors yet." }}
+					<RouterLink v-if="!loading" to="/subcontractors/new" class="desk-link"
 						>Add one →</RouterLink
 					>
 				</div>
