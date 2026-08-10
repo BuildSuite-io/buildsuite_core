@@ -26,6 +26,14 @@ export const submitWorkOrder = (name) => call("submit_work_order", { name });
 export const cancelWorkOrder = (name) => call("cancel_work_order", { name });
 export const amendWorkOrder = (name) => call("amend_work_order", { name });
 export const getProjectCostCodes = (project) => call("get_project_cost_codes", { project });
+
+// Subcontractor master CRUD — a Supplier tagged supplier_type="Subcontractor", with its
+// contact person / phone / email joined from the native Contact server-side.
+export const listSubcontractors = () => call("list_subcontractors");
+export const getSubcontractor = (name) => call("get_subcontractor", { name });
+export const createSubcontractor = (payload) => call("create_subcontractor", payload);
+export const updateSubcontractor = (name, payload) =>
+	call("update_subcontractor", { name, ...payload });
 export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
 // Subcontract actual (submitted bill this-period amounts) by cost-code group — added to the
 // BOQ's task-progress actuals.

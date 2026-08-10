@@ -1,6 +1,8 @@
 <script setup>
 // Subcontractor master detail — view / edit / delete + linked Work Orders.
-// Mirrors the prototype's inline view↔edit toggle.
+// Mirrors the prototype's inline view↔edit toggle. Reads/writes through the
+// subcontract API so contact person / phone / email (which live on the native
+// Contact) travel with the trade / tax-id in one call.
 
 import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
@@ -11,6 +13,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
+import { getSubcontractor, updateSubcontractor } from "@/data/subcontractApi";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
@@ -24,16 +27,28 @@ import StatusBadge from "@/components/StatusBadge.vue";
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
-const adapter = createDataAdapter(useDataStore());
+const adapter = createDataAdapter(useDataStore()); // delete only
 const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	subcontractor_name: "subcontractor_name",
 	trade: "trade",
 });
 
-// A subcontractor is a Supplier (supplier_type="Subcontractor").
-const resource = adapter.read("Supplier", props.id, { fields: ["*"] });
-const doc = computed(() => resource?.doc || null);
+// A subcontractor is a Supplier (supplier_type="Subcontractor"); the API joins its
+// primary Contact so { contact_person, phone, email } come back with it.
+const sub = ref(null);
+const loading = ref(true);
+async function load() {
+	loading.value = true;
+	try {
+		sub.value = await getSubcontractor(props.id);
+	} catch (err) {
+		showToast(err.message || "Failed to load subcontractor", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+watch(() => props.id, load, { immediate: true });
 
 // Linked Work Orders for this subcontractor.
 const wosRes = useDocTypeList("Subcontractor Work Order", {
@@ -45,22 +60,47 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 });
 const linkedWOs = computed(() => wosRes.data || []);
 
+// This subcontractor's bills → billed-to-date per work order for the "% Billed" column.
+const billsRes = useDocTypeList("Subcontractor Bill", {
+	fields: ["name", "work_order", "gross", "docstatus"],
+	filters: [["subcontractor", "=", props.id]],
+	orderBy: "modified desc",
+	pageLength: 0,
+	cache: `buildsuite-subcontractor-bills-${props.id}`,
+});
+const billedByWO = computed(() => {
+	const map = {};
+	for (const b of billsRes.data || []) {
+		if (b.docstatus === 2 || !b.work_order) continue; // skip cancelled
+		map[b.work_order] = (map[b.work_order] || 0) + (Number(b.gross) || 0);
+	}
+	return map;
+});
+function woPercentBilled(wo) {
+	const total = Number(wo.total_value) || 0;
+	if (total <= 0) return 0;
+	return Math.min(100, Math.round(((billedByWO.value[wo.name] || 0) / total) * 1000) / 10);
+}
+
 const editing = ref(false);
 const saving = ref(false);
 const form = ref({});
 
 function snapshot() {
-	const d = doc.value;
+	const d = sub.value;
 	if (!d) return {};
 	return {
-		subcontractor_name: d.supplier_name || "",
-		trade: d.custom_trade || "",
-		status: d.disabled ? "Inactive" : "Active",
+		subcontractor_name: d.subcontractor_name || "",
+		trade: d.trade || "",
+		status: d.status || "Active",
 		tax_id: d.tax_id || "",
+		contact_person: d.contact_person || "",
+		phone: d.phone || "",
+		email: d.email || "",
 	};
 }
 watch(
-	doc,
+	sub,
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
@@ -86,13 +126,16 @@ async function saveEdit() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		await adapter.update("Supplier", props.id, {
-			supplier_name: form.value.subcontractor_name.trim(),
-			custom_trade: form.value.trade,
+		await updateSubcontractor(props.id, {
+			subcontractor_name: form.value.subcontractor_name.trim(),
+			trade: form.value.trade,
 			tax_id: form.value.tax_id,
-			disabled: form.value.status === "Inactive" ? 1 : 0,
+			status: form.value.status,
+			contact_person: form.value.contact_person,
+			phone: form.value.phone,
+			email: form.value.email,
 		});
-		await resource?.reload?.();
+		await load();
 		editing.value = false;
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? "Failed to update subcontractor", "error");
@@ -104,7 +147,7 @@ async function saveEdit() {
 async function onDelete() {
 	const n = linkedWOs.value.length;
 	const ok = await confirmDialog({
-		title: `Delete ${doc.value?.supplier_name}?`,
+		title: `Delete ${sub.value?.subcontractor_name}?`,
 		message: n
 			? `${n} work order${
 					n === 1 ? "" : "s"
@@ -126,17 +169,17 @@ const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Subcontract", to: "/subcontract" },
 	{ label: "Subcontractors", to: "/subcontractors" },
-	{ label: doc.value?.subcontractor_name || props.id },
+	{ label: sub.value?.subcontractor_name || props.id },
 ]);
 </script>
 
 <template>
 	<DeskPage
-		v-if="doc"
-		:title="doc.supplier_name"
-		:subtitle="`${doc.name} · ${doc.custom_trade || '—'}`"
+		v-if="sub"
+		:title="sub.subcontractor_name"
+		:subtitle="`${sub.name} · ${sub.trade || '—'}`"
 		:breadcrumbs="breadcrumbs"
-		:status="doc.disabled ? 'Inactive' : 'Active'"
+		:status="sub.status"
 	>
 		<template #actions>
 			<button
@@ -182,27 +225,39 @@ const breadcrumbs = computed(() => [
 			<DeskSection title="Details" :cols="3">
 				<DeskField label="Name"
 					><div class="text-sm text-ink-900">
-						{{ doc.supplier_name }}
+						{{ sub.subcontractor_name }}
 					</div></DeskField
 				>
 				<DeskField label="Trade"
 					><div class="text-sm text-ink-700">
-						{{ doc.custom_trade || "—" }}
+						{{ sub.trade || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Status"
-					><StatusBadge :status="doc.disabled ? 'Inactive' : 'Active'"
-				/></DeskField>
+				<DeskField label="Status"><StatusBadge :status="sub.status" /></DeskField>
 				<DeskField label="Tax ID"
 					><div class="text-sm font-mono text-ink-700">
-						{{ doc.tax_id || "—" }}
+						{{ sub.tax_id || "—" }}
 					</div></DeskField
 				>
 			</DeskSection>
-			<p class="text-xs text-ink-400 mt-2">
-				Contact person, phone and email live on this subcontractor's Supplier record in the
-				accounting desk.
-			</p>
+
+			<DeskSection title="Contact" :cols="3">
+				<DeskField label="Contact person"
+					><div class="text-sm text-ink-900">
+						{{ sub.contact_person || "—" }}
+					</div></DeskField
+				>
+				<DeskField label="Phone number"
+					><div class="text-sm text-ink-700">
+						{{ sub.phone || "—" }}
+					</div></DeskField
+				>
+				<DeskField label="Email id"
+					><div class="text-sm text-ink-700">
+						{{ sub.email || "—" }}
+					</div></DeskField
+				>
+			</DeskSection>
 
 			<!-- Linked Work Orders -->
 			<section class="mt-6">
@@ -211,7 +266,7 @@ const breadcrumbs = computed(() => [
 						Work orders ({{ linkedWOs.length }})
 					</h3>
 					<RouterLink
-						:to="`/subcontractor-work-orders/new?subcontractor=${doc.name}`"
+						:to="`/subcontractor-work-orders/new?subcontractor=${sub.name}`"
 						class="text-xs text-brand-700 hover:underline"
 						>+ Raise new work order</RouterLink
 					>
@@ -227,6 +282,7 @@ const breadcrumbs = computed(() => [
 								<th class="text-left px-3 py-2">Project</th>
 								<th class="text-left px-3 py-2">Date</th>
 								<th class="text-right px-3 py-2">Value</th>
+								<th class="text-right px-3 py-2">% Billed</th>
 								<th class="text-left px-3 py-2">Status</th>
 							</tr>
 						</thead>
@@ -252,6 +308,9 @@ const breadcrumbs = computed(() => [
 									class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium"
 								>
 									{{ fmtCompactINR(wo.total_value) }}
+								</td>
+								<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+									{{ woPercentBilled(wo) }}%
 								</td>
 								<td class="px-3 py-2">
 									<StatusBadge
@@ -291,6 +350,18 @@ const breadcrumbs = computed(() => [
 				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
+			</DeskSection>
+
+			<DeskSection title="Contact" :cols="3">
+				<DeskField label="Contact person">
+					<DeskInput v-model="form.contact_person" />
+				</DeskField>
+				<DeskField label="Phone number">
+					<DeskInput v-model="form.phone" />
+				</DeskField>
+				<DeskField label="Email id">
+					<DeskInput v-model="form.email" type="email" />
+				</DeskField>
 			</DeskSection>
 		</div>
 	</DeskPage>

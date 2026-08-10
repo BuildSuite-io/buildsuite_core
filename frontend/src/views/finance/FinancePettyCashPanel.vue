@@ -75,7 +75,7 @@ const filteredAll = computed(() => {
 		(r) =>
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q),
+			(r.requested_by || "").toLowerCase().includes(q)
 	);
 });
 
@@ -147,7 +147,7 @@ async function openDirect() {
 	}
 }
 const accountOptions = computed(() =>
-	(direct.accounts || []).map((a) => ({ value: a.name, label: a.name, hint: a.account_type })),
+	(direct.accounts || []).map((a) => ({ value: a.name, label: a.name, hint: a.account_type }))
 );
 async function submitDirect() {
 	if (!direct.holder) return showToast("Pick who is receiving the float.", "error");
@@ -202,19 +202,23 @@ async function confirmDisburse() {
 }
 
 async function onWithdraw(row) {
+	const mine = row.requested_by === session.user;
+	const verb = mine ? "Withdraw" : "Cancel";
 	const ok = await confirmDialog({
-		title: "Withdraw request?",
-		message: `Cancel your petty cash request ${row.name}?`,
-		confirmLabel: "Withdraw",
+		title: `${verb} request?`,
+		message: mine
+			? `Cancel your petty cash request ${row.name}?`
+			: `Cancel petty cash request ${row.name} for ${row.requested_by}?`,
+		confirmLabel: verb,
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await cancelPettyCash(row.name);
 		res.reload?.();
-		showToast("Request withdrawn.");
+		showToast(mine ? "Request withdrawn." : "Request cancelled.");
 	} catch (err) {
-		showToast(err.message || "Withdraw failed", "error");
+		showToast(err.message || `${verb} failed`, "error");
 	}
 }
 
@@ -384,12 +388,15 @@ const rowsForTab = computed(() => {
 						Disburse
 					</button>
 					<button
-						v-if="row.status === 'Requested' && row.requested_by === session.user"
+						v-if="
+							row.status === 'Requested' &&
+							(row.requested_by === session.user || canDisburse)
+						"
 						type="button"
 						class="text-[11px] px-2 py-0.5 border border-ink-200 text-ink-600 rounded"
 						@click.stop="onWithdraw(row)"
 					>
-						Withdraw
+						{{ row.requested_by === session.user ? "Withdraw" : "Cancel" }}
 					</button>
 				</div>
 			</template>
