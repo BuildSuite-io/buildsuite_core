@@ -90,6 +90,14 @@ async function onRevert() {
 	}
 }
 
+// Once the MB is certified, its measured quantities can be billed — jump to the new
+// Subcontractor Bill form seeded from this MB's Work Order (it derives the this-period
+// lines from the WO's certified MBs).
+function onCreateBill() {
+	if (!mb.value?.work_order) return;
+	router.push(`/subcontractor-bills/new?work_order=${mb.value.work_order}`);
+}
+
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: `Delete ${mb.value.name}?`,
@@ -152,6 +160,16 @@ const breadcrumbs = computed(() => [
 				@click="onRevert"
 			>
 				Revert to Draft
+			</button>
+			<button
+				v-if="!isDraft && mb.work_order"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				title="Open the new Subcontractor Bill form pre-filled to this Work Order"
+				@click="onCreateBill"
+			>
+				+ Create Subcontractor bill
 			</button>
 			<button
 				type="button"
