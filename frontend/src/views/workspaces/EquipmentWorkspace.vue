@@ -22,16 +22,19 @@ const reports = [
 		label: "Machinery utilisation",
 		icon: "chart-bar",
 		description: "Plant usage + cost by project / task.",
+		to: "/machinery-usage",
 	},
 	{
 		label: "Equipment register",
 		icon: "wrench",
 		description: "Owned + hired plant with rates.",
+		to: "/machinery",
 	},
 	{
 		label: "Fuel & running cost",
 		icon: "chart-line",
 		description: "Fuel logged against usage entries.",
+		prevent: true,
 	},
 ];
 </script>
@@ -108,7 +111,8 @@ const reports = [
 						:icon="r.icon"
 						:label="r.label"
 						:description="r.description"
-						:prevent="true"
+						:to="r.prevent ? null : r.to"
+						:prevent="r.prevent"
 					>
 						<template #badge>
 							<span
