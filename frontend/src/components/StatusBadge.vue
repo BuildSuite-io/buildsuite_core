@@ -56,6 +56,14 @@ const classes = computed(() => {
 		Activity: "bg-ink-100 text-ink-700",
 		Milestone: "bg-warning-100 text-warning-700",
 		Inspection: "bg-info-100 text-info-700",
+		// Attendance — Field Attendance rows and the Labour Register. Without
+		// these an Absent worker and a Present one render as the same grey pill,
+		// which is the whole signal that column carries.
+		Present: "bg-success-50 text-success-700",
+		"Full Day": "bg-success-50 text-success-700",
+		"Half Day": "bg-warning-50 text-warning-700",
+		Absent: "bg-danger-50 text-danger-700",
+		"Overtime Only": "bg-info-50 text-info-700",
 	};
 	// Session 37 — pill shape (rounded-full + bumped horizontal padding) matching
 	// the Frappe Cloud reference. Used on both Desk and Vue pages; both look
