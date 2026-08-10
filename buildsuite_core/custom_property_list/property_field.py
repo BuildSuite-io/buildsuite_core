@@ -298,6 +298,18 @@ def get_property_setters():
 			"value": "1",
 		},
 		{
+			# Hiding a mandatory field with no default trips Frappe's
+			# HiddenAndMandatoryWithoutDefaultError whenever the doctype's fields are
+			# re-validated (e.g. when a Workflow adds its workflow_state custom field).
+			# Match the sibling doctypes (Material Request / Purchase Order / Receipt):
+			# drop the mandatory flag since the series auto-generates the name anyway.
+			"doctype": "Purchase Invoice",
+			"fieldname": "naming_series",
+			"property": "reqd",
+			"property_type": "Check",
+			"value": "0",
+		},
+		{
 			"doctype": "Purchase Invoice",
 			"fieldname": "incoterm",
 			"property": "hidden",
