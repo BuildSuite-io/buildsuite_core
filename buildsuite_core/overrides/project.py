@@ -26,6 +26,11 @@ PROJECT_ID_MODE = "Project ID"
 NAME_SERIES_MODE = "Name Series"
 SETTINGS = "BuildSuite Core Settings"
 
+# Last-resort naming series: used only when no Project ID was entered and no series is
+# configured (neither a per-project pick nor a doctype default). Guarantees a Project can
+# always be created without a manual ID — the generated name doubles as the display ID.
+FALLBACK_SERIES = "PROJ-.#####"
+
 
 def project_naming_mode():
 	return frappe.db.get_single_value(SETTINGS, "project_naming") or PROJECT_ID_MODE
@@ -52,17 +57,15 @@ class BuildSuiteProject(_ERPNextProject):
 			self.name = project_id
 			return
 
-		if not self.naming_series:
-			self.naming_series = default_project_series()
-		if self.naming_series:
-			set_name_by_naming_series(self)
-			# No ID was entered, so surface the series-generated name AS the Project ID —
-			# otherwise the field stays NULL and the Vue views show a blank ID. The name is
-			# the primary key (unique), so this keeps the unique index intact.
-			self.custom_project_id = self.name
-			return
-		self.custom_project_id = None  # keep it NULL (not "") so the unique index holds
-		frappe.throw(_("Enter a Project ID or configure a naming series."))
+		# No ID entered → generate from a series. Prefer the per-project pick, then the
+		# doctype default, then a last-resort fallback so a Project can ALWAYS be created
+		# without a manual ID.
+		self.naming_series = self.naming_series or default_project_series() or FALLBACK_SERIES
+		set_name_by_naming_series(self)
+		# Surface the series-generated name AS the Project ID — otherwise the field stays
+		# NULL and the Vue views show a blank ID. The name is the primary key (unique), so
+		# this keeps the Frappe id and the display Project ID identical.
+		self.custom_project_id = self.name
 
 
 def reject_duplicate_project_id(doc, method=None):
