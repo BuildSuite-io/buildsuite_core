@@ -513,8 +513,20 @@ def save_bill(payload):
 	return {"name": pi.name}
 
 
+def _guard_workflow():
+	"""When a site configures an active workflow for Purchase Invoice, submission and
+	cancellation must flow through it (buildsuite_core.api.workflow.apply_action), not these
+	direct docstatus endpoints — the Vue detail view already routes to the workflow when one
+	is active; this is the server-side backstop against drift."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(PI):
+		frappe.throw(_("Purchase Invoice is governed by a workflow — use a workflow action."))
+
+
 @frappe.whitelist()
 def submit_bill(name):
+	_guard_workflow()
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("submit")
 	pi.flags.ignore_permissions = True
@@ -524,6 +536,7 @@ def submit_bill(name):
 
 @frappe.whitelist()
 def cancel_bill(name):
+	_guard_workflow()
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("cancel")
 	pi.flags.ignore_permissions = True

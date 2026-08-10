@@ -26,11 +26,22 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const confirmDialog = useConfirm();
+
+// Defer to an active Frappe Workflow on Purchase Invoice when one is configured;
+// otherwise the plain docstatus Submit/Cancel buttons render as before.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Purchase Invoice");
 
 const bill = ref(null);
 const payments = ref([]);
@@ -45,6 +56,7 @@ async function load() {
 		// On-account advances to this supplier that can still be adjusted (draft or submitted).
 		availableAdvances.value =
 			bill.value.docstatus === 2 ? [] : await availableSupplierBillAdvances(props.id);
+		await refreshWorkflow(props.id);
 	} catch (err) {
 		showToast(err.message || "Failed to load bill", "error");
 	} finally {
@@ -64,9 +76,14 @@ const state = computed(() => {
 const payment = computed(
 	() => bill.value?.payment || { invoiced: 0, paid: 0, outstanding: 0, status: "Draft" }
 );
+const lifecycleLabel = computed(() =>
+	wfActive.value ? wfState.value || state.value : state.value
+);
 const statusPills = computed(() => {
 	if (!bill.value) return [];
-	return isSubmitted.value ? [state.value, payment.value.status] : [state.value];
+	return isSubmitted.value
+		? [lifecycleLabel.value, payment.value.status]
+		: [lifecycleLabel.value];
 });
 
 const breadcrumbs = [
@@ -113,6 +130,19 @@ async function onCancel() {
 		showToast("Cancelled.");
 	} catch (err) {
 		showToast(err.message || "Cancel failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+// Workflow-driven transition (only rendered when an active workflow governs the doctype).
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(bill.value.name, action);
+		await load();
+		showToast(`${action} done.`);
+	} catch (err) {
+		showToast(err.message || "Action failed", "error");
 	} finally {
 		busy.value = false;
 	}
@@ -329,8 +359,9 @@ async function unlinkAdvance(row) {
 				>
 					Edit
 				</button>
+				<!-- Plain docstatus lifecycle (no workflow configured) -->
 				<button
-					v-if="isDraft"
+					v-if="!wfActive && isDraft"
 					type="button"
 					class="text-xs desk-save-btn"
 					:disabled="busy"
@@ -348,13 +379,24 @@ async function unlinkAdvance(row) {
 					Pay
 				</button>
 				<button
-					v-if="isSubmitted"
+					v-if="!wfActive && isSubmitted"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md"
 					:disabled="busy"
 					@click="onCancel"
 				>
 					Cancel
+				</button>
+				<!-- Workflow transitions (active workflow) -->
+				<button
+					v-for="t in wfActive ? wfTransitions : []"
+					:key="t.action"
+					type="button"
+					class="text-xs desk-save-btn"
+					:disabled="busy"
+					@click="onWorkflowAction(t.action)"
+				>
+					{{ t.action }}
 				</button>
 			</div>
 		</template>

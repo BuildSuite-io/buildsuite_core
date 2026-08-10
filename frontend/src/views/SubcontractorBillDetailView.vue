@@ -32,12 +32,24 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+
+// Defer to an active Frappe Workflow on Subcontractor Bill when configured; the
+// transition's submit still runs on_submit (which generates the Purchase Invoice),
+// so the side effects are preserved. With no workflow, the plain Submit/Cancel show.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Subcontractor Bill");
 
 const bill = ref(null);
 const busy = ref(false);
@@ -58,6 +70,7 @@ async function load() {
 			discType.value = "%";
 			discValue.value = Number(bill.value.additional_discount_percentage) || 0;
 		}
+		await refreshWorkflow(props.id);
 	} catch (err) {
 		showToast(err.message || "Failed to load bill", "error");
 	}
@@ -76,9 +89,14 @@ const taxRatePct = computed(() =>
 	(bill.value?.taxes || []).reduce((a, t) => a + (Number(t.rate) || 0), 0)
 );
 
+const lifecycleLabel = computed(() =>
+	wfActive.value ? wfState.value || bill.value?.status : bill.value?.status
+);
 const statusPills = computed(() => {
 	if (!bill.value) return [];
-	return isSubmitted.value ? [bill.value.status, payment.value.status] : [bill.value.status];
+	return isSubmitted.value
+		? [lifecycleLabel.value, payment.value.status]
+		: [lifecycleLabel.value];
 });
 
 // --- live waterfall (server is authoritative on save) ---
@@ -212,6 +230,23 @@ async function onSubmit() {
 		submitMsg.value = `Purchase Invoice ${bill.value.purchase_invoice} generated — bill submitted.`;
 	} catch (err) {
 		showToast(err.message || "Submit failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+// Workflow-driven transition (only rendered when an active workflow governs the doctype).
+// The transition that submits the doc runs on_submit, so the Purchase Invoice is still generated.
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(bill.value.name, action);
+		await load();
+		if (bill.value?.purchase_invoice) {
+			submitMsg.value = `Purchase Invoice ${bill.value.purchase_invoice} generated.`;
+		}
+		showToast(`${action} done.`);
+	} catch (err) {
+		showToast(err.message || "Action failed", "error");
 	} finally {
 		busy.value = false;
 	}
@@ -553,8 +588,9 @@ const accountFilters = computed(() =>
 			>
 				Edit
 			</button>
+			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
-				v-if="isDraft"
+				v-if="!wfActive && isDraft"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -563,26 +599,37 @@ const accountFilters = computed(() =>
 			>
 				Submit
 			</button>
-			<template v-if="isSubmitted">
-				<button
-					v-if="payment.status !== 'Paid'"
-					type="button"
-					class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
-					style="border-radius: 6px"
-					@click="onMakePayment"
-				>
-					Make Payment
-				</button>
-				<button
-					type="button"
-					class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
-					style="border-radius: 6px"
-					:disabled="busy"
-					@click="onCancel"
-				>
-					Cancel
-				</button>
-			</template>
+			<button
+				v-if="isSubmitted && payment.status !== 'Paid'"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				@click="onMakePayment"
+			>
+				Make Payment
+			</button>
+			<button
+				v-if="!wfActive && isSubmitted"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancel"
+			>
+				Cancel
+			</button>
+			<!-- Workflow transitions (active workflow) -->
+			<button
+				v-for="t in wfActive ? wfTransitions : []"
+				:key="t.action"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onWorkflowAction(t.action)"
+			>
+				{{ t.action }}
+			</button>
 			<button
 				v-if="isCancelled"
 				type="button"
