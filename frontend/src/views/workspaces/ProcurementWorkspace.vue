@@ -14,9 +14,9 @@ const shortcuts = [
 	{ label: "Material Requests", icon: "clipboard-list", href: "/app/material-request" },
 	{ label: "Purchase Orders", icon: "file-text", href: "/app/purchase-order" },
 	{ label: "Purchase Receipts", icon: "check-circle", href: "/app/purchase-receipt" },
-	// Direct supplier bill (money out) — distinct from the subcontractor bill flow. Routes
-	// to the in-app create form (against a PO or a direct Item-line bill).
-	{ label: "Create Supplier Bill", icon: "wallet", to: "/project-finance/supplier-bills/new" },
+	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
+	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
+	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills" },
 	{
 		label: "Material Consumption",
 		icon: "stock",
