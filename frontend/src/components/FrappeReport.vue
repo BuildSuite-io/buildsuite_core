@@ -141,6 +141,48 @@ function summaryTone(card) {
 	return "text-ink-900";
 }
 
+// Some reports (e.g. ERPNext's financial statements) build their filters from a shared
+// JS module we can't evaluate in the shim, so no defs come back — but the deep link
+// carries the filter values. Synthesize editable controls from the URL keys so those
+// reports still get a filter bar. Types are inferred; a handful of well-known keys map
+// to proper Link / Select pickers.
+const KNOWN_LINKS = {
+	company: "Company",
+	cost_center: "Cost Center",
+	project: "Project",
+	warehouse: "Warehouse",
+	customer: "Customer",
+	supplier: "Supplier",
+	item_code: "Item",
+	account: "Account",
+	finance_book: "Finance Book",
+	from_fiscal_year: "Fiscal Year",
+	to_fiscal_year: "Fiscal Year",
+	fiscal_year: "Fiscal Year",
+};
+const KNOWN_SELECTS = {
+	filter_based_on: "Fiscal Year\nDate Range",
+	periodicity: "Monthly\nQuarterly\nHalf-Yearly\nYearly",
+};
+function humanize(k) {
+	return k.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function synthFiltersFromParams(params) {
+	return Object.entries(params).map(([k, v]) => {
+		let fieldtype = "Data";
+		let options = "";
+		if (v === "0" || v === "1") fieldtype = "Check";
+		else if (KNOWN_LINKS[k]) {
+			fieldtype = "Link";
+			options = KNOWN_LINKS[k];
+		} else if (KNOWN_SELECTS[k]) {
+			fieldtype = "Select";
+			options = KNOWN_SELECTS[k];
+		} else if (k.endsWith("_date")) fieldtype = "Date";
+		return { fieldname: k, label: humanize(k), fieldtype, options, mandatory: 0, default: v };
+	});
+}
+
 async function load() {
 	loading.value = true;
 	error.value = "";
@@ -155,10 +197,19 @@ async function load() {
 	} catch {
 		filterDefs.value = [];
 	}
+	// No evaluable defs but the URL carries filters → build editable controls from them.
+	if (!filterDefs.value.length && Object.keys(urlFilters.value).length) {
+		filterDefs.value = synthFiltersFromParams(urlFilters.value);
+	}
 	seedFilters(filterDefs.value);
-	// URL query params win — makes deep-linked report URLs (with filters encoded) render
-	// as shared, and supplies filters for reports whose defs we can't evaluate here.
-	Object.assign(filterValues, urlFilters.value);
+	// URL query params win — deep-linked report URLs render as shared. Coerce to the
+	// control's type so checkboxes/numbers bind cleanly.
+	for (const [k, v] of Object.entries(urlFilters.value)) {
+		const def = filterDefs.value.find((f) => f.fieldname === k);
+		if (def?.fieldtype === "Check") filterValues[k] = v === "1" || v === 1 ? 1 : 0;
+		else if (def && NUMERIC.has(def.fieldtype)) filterValues[k] = Number(v);
+		else filterValues[k] = v;
+	}
 	await runWith();
 }
 watch(() => [props.report, route.fullPath], load, { immediate: true });
