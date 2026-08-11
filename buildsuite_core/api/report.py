@@ -91,4 +91,10 @@ def run_report(report, filters=None):
 		"columns": res.get("columns") or [],
 		"result": res.get("result") or [],
 		"message": res.get("message"),
+		# Extra render payloads a Script Report's execute() can return, so the in-app
+		# renderer can match the Desk: number cards (report_summary), a frappe-charts
+		# spec (chart), and whether to append a totals row.
+		"report_summary": res.get("report_summary") or [],
+		"chart": res.get("chart") or None,
+		"skip_total_row": res.get("skip_total_row") or 0,
 	}
