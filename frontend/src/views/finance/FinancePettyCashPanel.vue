@@ -3,6 +3,7 @@
 // server-side). Everything else in the finance workspace is mock data.
 
 import { computed, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -29,6 +30,13 @@ import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
 const confirmDialog = useConfirm();
+const router = useRouter();
+
+// Balances rows drill into the Petty Cash report with the holder pre-selected.
+function openHolderReport(employee) {
+	if (!employee) return;
+	router.push(`/project-finance/report/petty?holder=${encodeURIComponent(employee)}`);
+}
 
 const canDisburse = ref(false);
 pettyCashCanDisburse()
@@ -79,14 +87,37 @@ const filteredAll = computed(() => {
 	);
 });
 
-const columns = [
-	{ key: "requested_by", label: "Holder" },
-	{ key: "purpose", label: "Purpose" },
-	{ key: "request_date", label: "Date" },
-	{ key: "amount", label: "Amount", align: "right" },
-	{ key: "status", label: "Status" },
-	{ key: "actions", label: "" },
-];
+// Columns are tailored per tab (mirrors the prototype): the All Requests register
+// carries ID + From account; the queue and My Requests are leaner.
+const columns = computed(() => {
+	if (tab.value === "all")
+		return [
+			{ key: "name", label: "ID" },
+			{ key: "requested_by", label: "Holder" },
+			{ key: "purpose", label: "Purpose" },
+			{ key: "request_date", label: "Date" },
+			{ key: "from_account", label: "From account" },
+			{ key: "amount", label: "Amount", align: "right" },
+			{ key: "status", label: "Status" },
+			{ key: "actions", label: "" },
+		];
+	if (tab.value === "mine")
+		return [
+			{ key: "request_date", label: "Date" },
+			{ key: "purpose", label: "Purpose" },
+			{ key: "amount", label: "Amount", align: "right" },
+			{ key: "status", label: "Status" },
+			{ key: "actions", label: "" },
+		];
+	// disburse queue
+	return [
+		{ key: "requested_by", label: "Holder" },
+		{ key: "purpose", label: "Purpose" },
+		{ key: "request_date", label: "Date" },
+		{ key: "amount", label: "Amount", align: "right" },
+		{ key: "actions", label: "" },
+	];
+});
 
 // --- balances ---
 const balances = ref([]);
@@ -293,15 +324,18 @@ const rowsForTab = computed(() => {
 					<tr>
 						<th class="text-left px-3 py-2">Holder</th>
 						<th class="text-right px-3 py-2">Disbursed</th>
-						<th class="text-right px-3 py-2">Verified spend</th>
-						<th class="text-right px-3 py-2">Balance in hand</th>
+						<th class="text-right px-3 py-2">Submitted spend</th>
+						<th class="text-right px-3 py-2">Balance</th>
+						<th class="px-3 py-2"></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr
 						v-for="b in balances"
 						:key="b.employee || b.holder"
-						class="border-t border-ink-100"
+						class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
+						:title="`Open ${b.holder}'s petty-cash report`"
+						@click="openHolderReport(b.employee)"
 					>
 						<td class="px-3 py-2 text-ink-900">
 							<div class="flex items-center gap-1.5">
@@ -325,9 +359,12 @@ const rowsForTab = computed(() => {
 							>
 							<template v-else>{{ fmtINR(b.balance) }}</template>
 						</td>
+						<td class="px-3 py-2 text-right whitespace-nowrap">
+							<span class="text-[11px] text-brand-700">Report →</span>
+						</td>
 					</tr>
 					<tr v-if="!balances.length">
-						<td colspan="4" class="px-3 py-4 text-center text-ink-400 italic">
+						<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
 							No petty-cash activity yet.
 						</td>
 					</tr>
@@ -349,6 +386,14 @@ const rowsForTab = computed(() => {
 			row-key="name"
 			:search-placeholder="tab === 'all' ? 'Search requests…' : ''"
 		>
+			<template #cell-name="{ row }">
+				<span class="font-mono text-ink-400 text-[10px]">{{ row.name }}</span>
+			</template>
+			<template #cell-from_account="{ row }">
+				<span class="text-xs text-ink-500">{{
+					row.status === "Disbursed" ? row.paid_from || "—" : "—"
+				}}</span>
+			</template>
 			<template #cell-requested_by="{ row }">
 				<div class="flex items-center gap-1.5">
 					<UserAvatar :user-id="row.requested_by" size="xs" /><span
