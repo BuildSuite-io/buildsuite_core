@@ -155,7 +155,7 @@ const breadcrumbs = computed(() => [
 			<RouterLink
 				v-if="!editing"
 				:to="`/machinery-usage/new?machine=${doc.name}`"
-				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
 				style="border-radius: 6px"
 			>
 				+ Log usage

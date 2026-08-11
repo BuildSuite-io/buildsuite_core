@@ -26,9 +26,11 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
+import { useUserNames } from "@/composables/useUserNames";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
+const { userName } = useUserNames();
 const confirmDialog = useConfirm();
 const router = useRouter();
 
@@ -64,6 +66,7 @@ const all = computed(() => res.data || []);
 
 const tab = ref("disburse");
 const search = ref("");
+const statusFilter = ref(""); // All Requests tab status dropdown
 const tabs = computed(() => [
 	...(canDisburse.value
 		? [{ id: "disburse", label: "To Disburse", count: requested.value.length }]
@@ -78,13 +81,16 @@ const requested = computed(() => all.value.filter((r) => r.status === "Requested
 const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
 const filteredAll = computed(() => {
 	const q = search.value.trim().toLowerCase();
-	if (!q) return all.value;
-	return all.value.filter(
-		(r) =>
+	return all.value.filter((r) => {
+		if (statusFilter.value && r.status !== statusFilter.value) return false;
+		if (!q) return true;
+		return (
 			(r.name || "").toLowerCase().includes(q) ||
 			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q)
-	);
+			(r.requested_by || "").toLowerCase().includes(q) ||
+			userName(r.requested_by).toLowerCase().includes(q)
+		);
+	});
 });
 
 // Columns are tailored per tab (mirrors the prototype): the All Requests register
@@ -239,7 +245,7 @@ async function onWithdraw(row) {
 		title: `${verb} request?`,
 		message: mine
 			? `Cancel your petty cash request ${row.name}?`
-			: `Cancel petty cash request ${row.name} for ${row.requested_by}?`,
+			: `Cancel petty cash request ${row.name} for ${userName(row.requested_by)}?`,
 		confirmLabel: verb,
 		destructive: true,
 	});
@@ -386,6 +392,17 @@ const rowsForTab = computed(() => {
 			row-key="name"
 			:search-placeholder="tab === 'all' ? 'Search requests…' : ''"
 		>
+			<template v-if="tab === 'all'" #filter-chips>
+				<select
+					v-model="statusFilter"
+					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+				>
+					<option value="">All statuses</option>
+					<option value="Requested">Requested</option>
+					<option value="Disbursed">Disbursed</option>
+					<option value="Cancelled">Cancelled</option>
+				</select>
+			</template>
 			<template #cell-name="{ row }">
 				<span class="font-mono text-ink-400 text-[10px]">{{ row.name }}</span>
 			</template>
@@ -398,7 +415,7 @@ const rowsForTab = computed(() => {
 				<div class="flex items-center gap-1.5">
 					<UserAvatar :user-id="row.requested_by" size="xs" /><span
 						class="text-xs text-ink-900"
-						>{{ row.requested_by }}</span
+						>{{ userName(row.requested_by) }}</span
 					>
 				</div>
 			</template>
@@ -594,8 +611,8 @@ const rowsForTab = computed(() => {
 					Disburse {{ fmtINR(disb.row?.amount) }}
 				</h3>
 				<p class="text-xs text-ink-500 mb-4">
-					to {{ disb.row?.requested_by }} · posts a Journal Entry (Dr Petty Cash / Cr the
-					source account).
+					to {{ userName(disb.row?.requested_by) }} · posts a Journal Entry (Dr Petty
+					Cash / Cr the source account).
 				</p>
 				<DeskField label="Pay from" required>
 					<DeskSelect v-model="disb.paidFrom">

@@ -40,6 +40,27 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 		})),
 });
 
+// Billed-to-date per work order (sum of non-cancelled Subcontractor Bill gross) → % billed.
+const billsRes = useDocTypeList("Subcontractor Bill", {
+	fields: ["name", "work_order", "gross", "docstatus"],
+	orderBy: "modified desc",
+	pageLength: 0,
+	cache: "buildsuite-subcontractor-bills-all",
+});
+const billedByWO = computed(() => {
+	const map = {};
+	for (const b of billsRes.data || []) {
+		if (b.docstatus === 2 || !b.work_order) continue; // skip cancelled
+		map[b.work_order] = (map[b.work_order] || 0) + (Number(b.gross) || 0);
+	}
+	return map;
+});
+function woPercentBilled(row) {
+	const total = Number(row.total_value) || 0;
+	if (total <= 0) return 0;
+	return Math.min(100, Math.round(((billedByWO.value[row.id] || 0) / total) * 1000) / 10);
+}
+
 const search = ref("");
 const rows = computed(() => {
 	let data = wosRes.data || [];
@@ -62,6 +83,7 @@ const columns = [
 	{ key: "date", label: "Date" },
 	{ key: "delivery_type", label: "Type" },
 	{ key: "total_value", label: "Value", align: "right" },
+	{ key: "percent", label: "% Billed", align: "right" },
 	{ key: "status", label: "Status" },
 ];
 
@@ -121,6 +143,9 @@ function onRowClick(row) {
 				<span class="text-xs tabular-nums text-ink-900 font-medium">{{
 					fmtCompactINR(row.total_value)
 				}}</span>
+			</template>
+			<template #cell-percent="{ row }">
+				<span class="text-xs tabular-nums text-ink-700">{{ woPercentBilled(row) }}%</span>
 			</template>
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />

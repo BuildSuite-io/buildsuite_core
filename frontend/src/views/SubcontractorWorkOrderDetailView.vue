@@ -60,7 +60,7 @@ const mbs = computed(() => measurements.value.books || []);
 
 // Bills raised against this WO (state derives from docstatus).
 const billsRes = useDocTypeList("Subcontractor Bill", {
-	fields: ["name", "ra_no", "date", "gross", "net_payable", "docstatus"],
+	fields: ["name", "ra_no", "date", "gross", "retention_amount", "net_payable", "docstatus"],
 	filters: [["work_order", "=", props.id]],
 	orderBy: "ra_no asc",
 	pageLength: 0,
@@ -72,6 +72,21 @@ const bills = computed(() =>
 		status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[b.docstatus] || "Draft",
 	}))
 );
+// Billed-to-date + retention held across this WO's non-cancelled bills.
+const totalBilled = computed(() =>
+	(billsRes.data || []).reduce((a, b) => (b.docstatus === 2 ? a : a + (Number(b.gross) || 0)), 0)
+);
+const totalRetention = computed(() =>
+	(billsRes.data || []).reduce(
+		(a, b) => (b.docstatus === 2 ? a : a + (Number(b.retention_amount) || 0)),
+		0
+	)
+);
+const woPct = computed(() => {
+	const total = Number(wo.value?.total_value) || 0;
+	if (total <= 0) return 0;
+	return Math.min(100, Math.round((totalBilled.value / total) * 1000) / 10);
+});
 const measuredByLine = computed(() => measurements.value.measured_by_line || {});
 function lineMeasured(name) {
 	return Number(measuredByLine.value[name] || 0);
@@ -273,7 +288,7 @@ const tabs = computed(() => [
 		</template>
 
 		<!-- Summary strip -->
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Subcontractor
@@ -299,6 +314,24 @@ const tabs = computed(() => [
 					{{ fmtINR(wo.total_value) }}
 				</div>
 				<div class="text-[10px] text-ink-500">Retention {{ wo.retention_percent }}%</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					Billed to date
+				</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
+					{{ fmtINR(totalBilled) }}
+				</div>
+				<div class="text-[10px] text-ink-700">{{ woPct }}%</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					Retention held
+				</div>
+				<div class="text-base font-semibold text-warning-700 tabular-nums mt-0.5">
+					{{ fmtINR(totalRetention) }}
+				</div>
+				<div class="text-[10px] text-ink-500">Withheld</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">

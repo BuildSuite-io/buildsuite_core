@@ -3,9 +3,10 @@
 // project level; each MB carries a work_order link so you can see which
 // WO it feeds.
 
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { getMeasurementBookEntryCounts } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -32,6 +33,16 @@ const mbRes = useDocTypeList("Measurement Book", {
 		})),
 });
 
+// Entry count per MB (child rows aren't listable client-side by non-admins).
+const entryCounts = ref({});
+onMounted(async () => {
+	try {
+		entryCounts.value = (await getMeasurementBookEntryCounts()) || {};
+	} catch {
+		entryCounts.value = {};
+	}
+});
+
 const search = ref("");
 const rows = computed(() => {
 	let data = mbRes.data || [];
@@ -52,6 +63,7 @@ const columns = [
 	{ key: "project", label: "Project" },
 	{ key: "work_order", label: "Work Order" },
 	{ key: "date", label: "Date" },
+	{ key: "entries", label: "Entries", align: "right" },
 	{ key: "measured", label: "Measured", align: "right" },
 	{ key: "status", label: "Status" },
 ];
@@ -102,6 +114,11 @@ function onRowClick(row) {
 			</template>
 			<template #cell-date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.date) }}</span>
+			</template>
+			<template #cell-entries="{ row }">
+				<span class="text-xs tabular-nums text-ink-700">{{
+					entryCounts[row.id] || 0
+				}}</span>
 			</template>
 			<template #cell-measured="{ row }">
 				<span class="text-xs tabular-nums text-info-700 font-medium">{{
