@@ -30,6 +30,7 @@ export const getProjectCostCodes = (project) => call("get_project_cost_codes", {
 // Subcontractor master CRUD — a Supplier tagged supplier_type="Subcontractor", with its
 // contact person / phone / email joined from the native Contact server-side.
 export const listSubcontractors = () => call("list_subcontractors");
+export const getMeasurementBookEntryCounts = () => call("measurement_book_entry_counts");
 export const getSubcontractor = (name) => call("get_subcontractor", { name });
 export const createSubcontractor = (payload) => call("create_subcontractor", payload);
 export const updateSubcontractor = (name, payload) =>

@@ -17,6 +17,7 @@ import {
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate } from "@/utils/format";
 
 const props = defineProps({ id: String });
@@ -213,11 +214,26 @@ const breadcrumbs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Measured / certified by
+					Measured by
 				</div>
-				<div class="text-sm text-ink-900 mt-0.5 truncate">{{ mb.measured_by || "—" }}</div>
-				<div class="text-[10px] text-ink-500 truncate">
-					Certified: {{ mb.certified_by || "—" }}
+				<div class="text-sm text-ink-900 mt-0.5">
+					<UserAvatar
+						v-if="mb.measured_by"
+						:user-id="mb.measured_by"
+						size="xs"
+						show-name
+					/>
+					<span v-else>—</span>
+				</div>
+				<div class="text-[10px] text-ink-500 mt-1 flex items-center gap-1">
+					<span>Certified by</span>
+					<UserAvatar
+						v-if="mb.certified_by"
+						:user-id="mb.certified_by"
+						size="xs"
+						show-name
+					/>
+					<span v-else>—</span>
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">

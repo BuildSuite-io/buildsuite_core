@@ -608,3 +608,22 @@ def update_subcontractor(
 	doc.save()
 	upsert_primary_contact("Supplier", doc.name, doc.supplier_name, contact_person, phone, email)
 	return _serialize_subcontractor(doc)
+
+
+@frappe.whitelist()
+def measurement_book_entry_counts():
+	"""Entry count per Measurement Book, for the list view's Entries column. Scoped to the
+	MBs the user can read (child rows aren't directly listable by non-admins)."""
+	mbs = frappe.get_list("Measurement Book", pluck="name", limit_page_length=0)
+	if not mbs:
+		return {}
+	rows = frappe.get_all(
+		"Measurement Book Entry",
+		filters={"parenttype": "Measurement Book", "parent": ["in", mbs]},
+		fields=["parent"],
+		limit_page_length=0,
+	)
+	out = {}
+	for r in rows:
+		out[r.parent] = out.get(r.parent, 0) + 1
+	return out
