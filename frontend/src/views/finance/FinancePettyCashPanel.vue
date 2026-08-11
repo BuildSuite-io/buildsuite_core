@@ -14,6 +14,7 @@ import {
 	disbursePettyCash,
 	issueDirectPettyCash,
 	cancelPettyCash,
+	undisbursePettyCash,
 	pettyCashHolderBalances,
 	listCashBankAccounts,
 } from "@/data/pettyCashApi";
@@ -259,6 +260,34 @@ async function onWithdraw(row) {
 	}
 }
 
+// Reverse a disbursement (cancel the JE and drop the holder's float). A direct issue has no
+// request behind it, so reversing removes the record; a disbursed request goes back to the
+// queue. Only petty-cash managers (canDisburse) see this.
+async function onUndisburse(row) {
+	const ok = await confirmDialog({
+		title: "Cancel disbursement?",
+		message: row.is_direct
+			? `Reverse the ${fmtINR(row.amount)} issued to ${userName(
+					row.requested_by
+			  )}? It was issued directly, so the record is removed and their float drops.`
+			: `Reverse the ${fmtINR(row.amount)} disbursed to ${userName(
+					row.requested_by
+			  )}? The request returns to the disburse queue and their float drops.`,
+		confirmLabel: "Cancel disbursement",
+		cancelLabel: "Keep",
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await undisbursePettyCash(row.name);
+		res.reload?.();
+		loadBalances();
+		showToast("Disbursement reversed.");
+	} catch (err) {
+		showToast(err.message || "Reversal failed", "error");
+	}
+}
+
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Project Finance", to: "/project-finance" },
@@ -459,6 +488,14 @@ const rowsForTab = computed(() => {
 						@click.stop="onWithdraw(row)"
 					>
 						{{ row.requested_by === session.user ? "Withdraw" : "Cancel" }}
+					</button>
+					<button
+						v-if="row.status === 'Disbursed' && canDisburse"
+						type="button"
+						class="text-[11px] px-2 py-1 text-danger-600 hover:text-danger-700 hover:underline"
+						@click.stop="onUndisburse(row)"
+					>
+						Cancel
 					</button>
 				</div>
 			</template>
