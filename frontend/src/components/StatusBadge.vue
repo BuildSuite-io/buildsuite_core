@@ -39,6 +39,9 @@ const classes = computed(() => {
 		"Pending Approval": "bg-warning-50 text-warning-700",
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
+		// Petty Cash Request lifecycle.
+		Requested: "bg-warning-50 text-warning-700",
+		Disbursed: "bg-success-50 text-success-700",
 		// Subcontractor Work Order lifecycle + Subcontractor status.
 		Awarded: "bg-info-50 text-info-700",
 		Closed: "bg-ink-100 text-ink-500",
