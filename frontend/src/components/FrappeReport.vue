@@ -10,6 +10,7 @@
 // values, seeded from the report's defaults. A client-side search filters the returned
 // rows, then pagination. Themed for light + dark.
 import { ref, reactive, computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import { runReport, getReportFilters } from "@/data/reportApi";
 import { evalReportFilters } from "@/utils/reportFilters";
 import { useActiveCompany } from "@/composables/useActiveCompany";
@@ -23,10 +24,26 @@ const props = defineProps({
 });
 
 const activeCompany = useActiveCompany();
+const route = useRoute();
 const loading = ref(true);
 const error = ref("");
 const columns = ref([]);
 const rows = ref([]);
+
+// Filter values supplied via the URL query (a deep-linked report view). These override
+// the report's own computed defaults, so a shared link renders exactly what it encodes.
+// This also covers reports whose filters we can't evaluate client-side — e.g. ERPNext's
+// financial statements, whose script pulls filters from erpnext.financial_statements
+// (absent from our shim), so they'd otherwise run with no filters and error.
+const ROUTE_KEYS = new Set(["from", "fromLabel"]);
+const urlFilters = computed(() => {
+	const out = {};
+	for (const [k, v] of Object.entries(route.query || {})) {
+		if (ROUTE_KEYS.has(k)) continue;
+		out[k] = Array.isArray(v) ? v[v.length - 1] : v;
+	}
+	return out;
+});
 
 // --- filters (report-defined) ---
 const filterDefs = ref([]);
@@ -101,9 +118,12 @@ async function load() {
 		filterDefs.value = [];
 	}
 	seedFilters(filterDefs.value);
+	// URL query params win — makes deep-linked report URLs (with filters encoded) render
+	// as shared, and supplies filters for reports whose defs we can't evaluate here.
+	Object.assign(filterValues, urlFilters.value);
 	await runWith();
 }
-watch(() => props.report, load, { immediate: true });
+watch(() => [props.report, route.fullPath], load, { immediate: true });
 
 function applyFilters() {
 	page.value = 1;
