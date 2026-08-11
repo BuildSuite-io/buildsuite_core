@@ -42,6 +42,7 @@ const PAGE_TITLES = {
 	estimation: "Estimation",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
+	items: "Items",
 	equipment: "Equipment",
 	"equipment-dashboard": "Equipment Dashboard",
 	machinery: "Machinery",
@@ -315,6 +316,11 @@ const routes = [
 				path: "procurement-dashboard",
 				name: "procurement-dashboard",
 				component: () => import("@/views/workspaces/ProcurementDashboardView.vue"),
+			},
+			{
+				path: "items",
+				name: "items",
+				component: () => import("@/views/ItemsListView.vue"),
 			},
 			{
 				path: "equipment",
