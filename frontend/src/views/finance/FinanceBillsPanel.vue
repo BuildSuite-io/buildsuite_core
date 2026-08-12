@@ -4,7 +4,7 @@
 // right create screen (supplier bill form here, or the Subcontract module); a row opens the
 // matching detail screen. Rendering differs by kind. The list merges two doctypes, so it's a
 // custom endpoint + table rather than DocTypeListView (which is single-doctype).
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
@@ -56,11 +56,25 @@ load();
 const search = ref("");
 const typeFilter = ref("");
 const statusFilter = ref("");
-const hasFilters = computed(() => search.value || typeFilter.value || statusFilter.value);
+const projectFilter = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const hasFilters = computed(
+	() =>
+		search.value ||
+		typeFilter.value ||
+		statusFilter.value ||
+		projectFilter.value ||
+		fromDate.value ||
+		toDate.value
+);
 function clearFilters() {
 	search.value = "";
 	typeFilter.value = "";
 	statusFilter.value = "";
+	projectFilter.value = "";
+	fromDate.value = "";
+	toDate.value = "";
 }
 const rows = computed(() => {
 	const term = search.value.trim().toLowerCase();
@@ -68,11 +82,27 @@ const rows = computed(() => {
 		(r) =>
 			(!typeFilter.value || r.kind === typeFilter.value) &&
 			(!statusFilter.value || r.status === statusFilter.value) &&
+			(!projectFilter.value || r.project === projectFilter.value) &&
+			(!fromDate.value || (r.date && r.date >= fromDate.value)) &&
+			(!toDate.value || (r.date && r.date <= toDate.value)) &&
 			(!term ||
 				r.name.toLowerCase().includes(term) ||
 				(r.party || "").toLowerCase().includes(term) ||
 				(r.project || "").toLowerCase().includes(term))
 	);
+});
+
+// Client-side pagination over the filtered rows (the list merges two doctypes, so it
+// can't use the single-doctype DocTypeListView).
+const page = ref(1);
+const pageSize = ref(10);
+const totalPages = computed(() => Math.max(1, Math.ceil(rows.value.length / pageSize.value)));
+const pagedRows = computed(() => {
+	const start = (page.value - 1) * pageSize.value;
+	return rows.value.slice(start, start + pageSize.value);
+});
+watch([rows, pageSize], () => {
+	if (page.value > totalPages.value) page.value = 1;
 });
 
 function aging(row) {
@@ -241,20 +271,20 @@ async function saveAdvance() {
 		</template>
 
 		<div class="space-y-4">
-			<div class="flex items-center gap-4 text-sm">
-				<div>
+			<div class="flex items-center gap-6 text-sm">
+				<div class="flex items-center gap-1.5">
 					<span class="text-ink-500">Payable</span>
 					<span class="font-semibold text-ink-900 tabular-nums">{{
 						fmtINR(summary.outstanding)
 					}}</span>
 				</div>
-				<div v-if="summary.retention > 0">
+				<div v-if="summary.retention > 0" class="flex items-center gap-1.5">
 					<span class="text-ink-500">Retention held</span>
 					<span class="font-semibold text-warning-700 tabular-nums">{{
 						fmtINR(summary.retention)
 					}}</span>
 				</div>
-				<div v-if="summary.advances > 0">
+				<div v-if="summary.advances > 0" class="flex items-center gap-1.5">
 					<span class="text-ink-500">Advances paid</span>
 					<span class="font-semibold text-info-700 tabular-nums">{{
 						fmtINR(summary.advances)
@@ -286,6 +316,27 @@ async function saveAdvance() {
 					<option>Partly Paid</option>
 					<option>Paid</option>
 				</select>
+				<div class="w-44">
+					<DeskLinkPicker
+						v-model="projectFilter"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						placeholder="All projects"
+					/>
+				</div>
+				<input
+					v-model="fromDate"
+					type="date"
+					title="From date"
+					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
+				/>
+				<input
+					v-model="toDate"
+					type="date"
+					title="To date"
+					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
+				/>
 				<button
 					v-if="hasFilters"
 					type="button"
@@ -319,7 +370,7 @@ async function saveAdvance() {
 					</thead>
 					<tbody>
 						<tr
-							v-for="r in rows"
+							v-for="r in pagedRows"
 							:key="r.kind + r.name"
 							class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
 							@click="openDetail(r)"
@@ -381,6 +432,38 @@ async function saveAdvance() {
 					{{ loading ? "Loading…" : "No bills yet." }}
 				</div>
 			</section>
+
+			<!-- Pagination -->
+			<div
+				v-if="totalPages > 1"
+				class="flex items-center justify-between text-xs text-ink-500"
+			>
+				<span
+					>Showing {{ (page - 1) * pageSize + 1 }}–{{
+						Math.min(page * pageSize, rows.length)
+					}}
+					of {{ rows.length }}</span
+				>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						class="px-2 py-1 border border-ink-200 rounded-md disabled:opacity-40 hover:bg-ink-50"
+						:disabled="page <= 1"
+						@click="page--"
+					>
+						← Prev
+					</button>
+					<span>Page {{ page }} / {{ totalPages }}</span>
+					<button
+						type="button"
+						class="px-2 py-1 border border-ink-200 rounded-md disabled:opacity-40 hover:bg-ink-50"
+						:disabled="page >= totalPages"
+						@click="page++"
+					>
+						Next →
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<!-- New bill type chooser -->
