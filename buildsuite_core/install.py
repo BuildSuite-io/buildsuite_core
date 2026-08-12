@@ -15,7 +15,6 @@ def after_install():
 	create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
 	make_property_setters()
 	seed_master_data()
-	setup_record_permissions()
 
 
 def after_migrate():
@@ -35,7 +34,6 @@ def after_migrate():
 	backfill_work_order_company()
 	backfill_bill_company()
 	seed_master_data()
-	setup_record_permissions()
 
 
 def _backfill_project_company(doctype, extra_where=""):
