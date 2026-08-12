@@ -168,7 +168,7 @@ const ROW_PAD_Y = (ROW_HEIGHT - BAR_HEIGHT) / 2;
 const SCROLLBAR_CLEARANCE = 16;
 
 const isDarkMode = computed(
-	() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+	() => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
 );
 const diamondBaseFill = computed(() => (isDarkMode.value ? "#F1F5F9" : "#0F172A"));
 const diamondBaseStroke = computed(() => (isDarkMode.value ? "#94A3B8" : "#0F172A"));
@@ -287,7 +287,7 @@ watch(
 	() => route.query.project,
 	(val) => {
 		if ((val || "") !== (selectedProject.value || "")) selectedProject.value = val || "";
-	},
+	}
 );
 watch(selectedProject, loadSchedule, { immediate: true });
 
@@ -312,14 +312,14 @@ const allSorted = computed(() =>
 			);
 		}
 		return (a.name || "").localeCompare(b.name || "");
-	}),
+	})
 );
 // Search filters the rows (client-side); the axis uses the unfiltered set so it doesn't shift.
 const tasks = computed(() => {
 	const q = search.value.trim().toLowerCase();
 	if (!q) return allSorted.value;
 	return allSorted.value.filter(
-		(t) => t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q),
+		(t) => t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)
 	);
 });
 
@@ -363,7 +363,7 @@ const timelineWidth = computed(() => {
 });
 const timelineHeight = computed(() => Math.max(layoutRows.value.length, 1) * ROW_HEIGHT);
 const effectiveBodyHeight = computed(
-	() => Math.max(timelineHeight.value, MIN_BODY_HEIGHT) + SCROLLBAR_CLEARANCE,
+	() => Math.max(timelineHeight.value, MIN_BODY_HEIGHT) + SCROLLBAR_CLEARANCE
 );
 const todayX = computed(() => dateToX(new Date().toISOString().slice(0, 10)));
 
@@ -555,7 +555,7 @@ const groupedRows = computed(() => {
 	return rows;
 });
 const layoutRows = computed(() =>
-	groupedRows.value.map((r, i) => ({ ...r, rowIndex: i, rowY: i * ROW_HEIGHT })),
+	groupedRows.value.map((r, i) => ({ ...r, rowIndex: i, rowY: i * ROW_HEIGHT }))
 );
 
 const summaryBars = computed(() => {
@@ -648,7 +648,7 @@ const barById = computed(() => {
 const dependencies = computed(() => {
 	const visibleIds = new Set(tasks.value.map((t) => t.id));
 	return allDeps.value.filter(
-		(d) => visibleIds.has(d.predecessor) && visibleIds.has(d.successor),
+		(d) => visibleIds.has(d.predecessor) && visibleIds.has(d.successor)
 	);
 });
 function arrowPath(fromX, fromY, toX, toY, type) {
@@ -720,10 +720,10 @@ const subTicks = computed(() => {
 		viewMode.value === "day"
 			? 1
 			: viewMode.value === "week"
-				? 7
-				: viewMode.value === "month"
-					? 30
-					: 90;
+			? 7
+			: viewMode.value === "month"
+			? 30
+			: 90;
 	while (cursor.getTime() < dateRange.value.maxMs) {
 		let label = "";
 		if (viewMode.value === "day") label = String(cursor.getDate());
@@ -832,7 +832,7 @@ function onBarMouseDown(task, e, mode) {
 function onBarMouseMove(e) {
 	if (!draggedBar.value) return;
 	draggedBar.value.deltaDays = Math.round(
-		(e.clientX - draggedBar.value.startClientX) / pxPerDay.value,
+		(e.clientX - draggedBar.value.startClientX) / pxPerDay.value
 	);
 }
 function onBarMouseUp() {
@@ -916,7 +916,7 @@ async function confirmCascade() {
 			ps.rootTaskId,
 			ps.rootAfter.startDate || null,
 			ps.rootAfter.endDate || null,
-			0,
+			0
 		);
 	} catch (err) {
 		flashError(parseFrappeError(err).summary || "Cascade failed.");
@@ -1092,7 +1092,7 @@ async function applyPopover() {
 			d.successor,
 			d.predecessor,
 			d.dependency_type,
-			Number(d.lag) || 0,
+			Number(d.lag) || 0
 		);
 	} catch (err) {
 		if (prev && idx >= 0) {
@@ -1230,7 +1230,9 @@ onBeforeUnmount(() => {
 				:disabled="!undoCount || snapBusy"
 				:title="
 					undoCount
-						? `Undo the last cascade (${undoCount} step${undoCount === 1 ? '' : 's'} available)`
+						? `Undo the last cascade (${undoCount} step${
+								undoCount === 1 ? '' : 's'
+						  } available)`
 						: 'Nothing to undo — undo captures cascading (multi-task) changes'
 				"
 				@click="onUndo"
@@ -1639,8 +1641,8 @@ onBeforeUnmount(() => {
 									r.kind === 'group'
 										? 'bg-ink-50/60 border-b border-ink-200'
 										: idx % 2
-											? 'bg-ink-50/20'
-											: '',
+										? 'bg-ink-50/20'
+										: '',
 								]"
 							></div>
 
@@ -1685,10 +1687,10 @@ onBeforeUnmount(() => {
 									v-if="sb.hasBar && sb.plannedTickX !== null"
 									:style="{
 										position: 'absolute',
-										top: sb.rowY + 'px',
+										top: sb.rowY + SUMMARY_PAD_Y + 'px',
 										left: sb.plannedTickX - 1 + 'px',
 										width: '2px',
-										height: ROW_HEIGHT + 'px',
+										height: SUMMARY_BAR_HEIGHT + 'px',
 									}"
 									class="bg-ink-900 cursor-help"
 									:title="'Stage planned end · ' + fmtShort(sb.group.plannedEnd)"
@@ -1771,8 +1773,8 @@ onBeforeUnmount(() => {
 									>{{
 										canEditTask(b.task)
 											? "Hover and click to place a 1-" +
-												viewMode +
-												" block · drag the edges after to extend"
+											  viewMode +
+											  " block · drag the edges after to extend"
 											: "No timeline set"
 									}}</span
 								>
@@ -1818,15 +1820,15 @@ onBeforeUnmount(() => {
 									b.task.schedule_conflict
 										? b.task.name + ' — ' + b.task.conflict_reason
 										: b.task.name +
-											' · ' +
-											fmtShort(b.task.startDate) +
-											' → ' +
-											fmtShort(b.task.endDate) +
-											' · ' +
-											b.task.progress +
-											'%' +
-											(b.isOverdue ? ' · OVERDUE' : '') +
-											(b.isInspection ? ' · Inspection' : '')
+										  ' · ' +
+										  fmtShort(b.task.startDate) +
+										  ' → ' +
+										  fmtShort(b.task.endDate) +
+										  ' · ' +
+										  b.task.progress +
+										  '%' +
+										  (b.isOverdue ? ' · OVERDUE' : '') +
+										  (b.isInspection ? ' · Inspection' : '')
 								"
 								@mousedown="onBarMouseDown(b.task, $event, 'move')"
 							>
@@ -1898,9 +1900,9 @@ onBeforeUnmount(() => {
 									b.task.schedule_conflict
 										? b.task.name + ' — ' + b.task.conflict_reason
 										: b.task.name +
-											' · Milestone · ' +
-											fmtShort(b.task.endDate) +
-											(b.isOverdue ? ' · OVERDUE' : '')
+										  ' · Milestone · ' +
+										  fmtShort(b.task.endDate) +
+										  (b.isOverdue ? ' · OVERDUE' : '')
 								"
 							>
 								<svg :width="DIAMOND_W" :height="ROW_HEIGHT" class="flex-shrink-0">
@@ -1915,15 +1917,15 @@ onBeforeUnmount(() => {
 											b.task.status === 'Completed'
 												? '#16A34A'
 												: b.task.schedule_conflict
-													? '#DC2626'
-													: diamondBaseFill
+												? '#DC2626'
+												: diamondBaseFill
 										"
 										:stroke="
 											b.task.schedule_conflict
 												? '#7F1D1D'
 												: b.isOverdue
-													? '#D97706'
-													: diamondBaseStroke
+												? '#D97706'
+												: diamondBaseStroke
 										"
 										:stroke-width="
 											b.task.schedule_conflict || b.isOverdue ? '2' : '1'
@@ -1999,7 +2001,7 @@ onBeforeUnmount(() => {
 											Math.max(
 												0,
 												Math.min(timelineWidth, projectBand.endX) -
-													Math.max(0, projectBand.startX),
+													Math.max(0, projectBand.startX)
 											) + 'px',
 										top: '0px',
 										bottom: '0px',
@@ -2337,13 +2339,9 @@ html.dark .schedule-date-input:focus {
    (near-black light / near-white dark). A same-mode halo lifts it off the
    fill in either theme. */
 .gantt-bar-label {
-	text-shadow:
-		0 0 3px rgba(255, 255, 255, 0.85),
-		0 1px 1px rgba(255, 255, 255, 0.55);
+	text-shadow: 0 0 3px rgba(255, 255, 255, 0.85), 0 1px 1px rgba(255, 255, 255, 0.55);
 }
 html.dark .gantt-bar-label {
-	text-shadow:
-		0 0 3px rgba(0, 0, 0, 0.65),
-		0 1px 1px rgba(0, 0, 0, 0.45);
+	text-shadow: 0 0 3px rgba(0, 0, 0, 0.65), 0 1px 1px rgba(0, 0, 0, 0.45);
 }
 </style>
