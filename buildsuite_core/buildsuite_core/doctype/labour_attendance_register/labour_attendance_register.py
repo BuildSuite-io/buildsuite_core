@@ -39,12 +39,13 @@ class LabourAttendanceRegister(Document):
 		self.update_daily_wages()
 
 	def update_daily_wages(self):
+		rate = flt(self.wage_rate)
 
 		if self.status == "Full Day":
-			self.daily_wage_calculated = self.wage_rate
-		if self.status == "Half Day":
-			self.daily_wage_calculated = self.wage_rate/2
-		if self.status == "Absent":
+			self.daily_wage_calculated = rate
+		elif self.status == "Half Day":
+			self.daily_wage_calculated = rate / 2
+		elif self.status == "Absent":
 			self.daily_wage_calculated = 0
 	
 	def validate_status(self):

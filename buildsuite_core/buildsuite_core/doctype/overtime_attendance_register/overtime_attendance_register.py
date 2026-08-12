@@ -91,7 +91,7 @@ class OvertimeAttendanceRegister(Document):
 			)
 		if self.overtime_hours == 0:
 			frappe.throw("Overtime hours cannot be zero!")
-		self.overtime_wage_calculated = self.overtime_rate * self.overtime_hours
+		self.overtime_wage_calculated = flt(self.overtime_rate) * flt(self.overtime_hours)
 	pass
 @frappe.whitelist()
 def update_wage(employee_id, wage):
