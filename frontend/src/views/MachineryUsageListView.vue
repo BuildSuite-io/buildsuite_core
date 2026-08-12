@@ -31,6 +31,31 @@ const usageRes = useDocTypeList("Machinery Usage", {
 	transform: (data) => data.map((u) => ({ id: u.name, ...u })),
 });
 
+// The usage log stores machine + task ids; resolve them to readable names for display.
+const machineryRes = useDocTypeList("Machinery", {
+	fields: ["name", "machinery_name"],
+	pageLength: 0,
+	cache: "buildsuite-machinery-names",
+});
+const machineNameById = computed(() => {
+	const map = {};
+	for (const m of machineryRes.data || []) map[m.name] = m.machinery_name;
+	return map;
+});
+const machineName = (id) => machineNameById.value[id] || id;
+
+const taskRes = useDocTypeList("Task", {
+	fields: ["name", "subject"],
+	pageLength: 0,
+	cache: "buildsuite-task-subjects",
+});
+const taskSubjectById = computed(() => {
+	const map = {};
+	for (const t of taskRes.data || []) map[t.name] = t.subject;
+	return map;
+});
+const taskSubject = (id) => taskSubjectById.value[id] || id;
+
 function totalFor(row) {
 	return (Number(row.quantity) || 0) * (Number(row.rate) || 0) + (Number(row.fuel_cost) || 0);
 }
@@ -42,7 +67,8 @@ const rows = computed(() => {
 	if (q)
 		data = data.filter(
 			(u) =>
-				(u.machine || "").toLowerCase().includes(q) ||
+				machineName(u.machine).toLowerCase().includes(q) ||
+				taskSubject(u.task).toLowerCase().includes(q) ||
 				(u.project || "").toLowerCase().includes(q) ||
 				projectName(u.project).toLowerCase().includes(q)
 		);
@@ -85,14 +111,14 @@ function onRowClick(row) {
 		>
 			<template #cell-machine="{ row }">
 				<DeskLink :to="`/machinery/${row.machine}`" @click.stop>{{
-					row.machine
+					machineName(row.machine)
 				}}</DeskLink>
 			</template>
 			<template #cell-project="{ row }">
 				<span class="text-ink-700">{{ projectName(row.project) || "—" }}</span>
 			</template>
 			<template #cell-task="{ row }">
-				<span class="text-ink-500">{{ row.task || "—" }}</span>
+				<span class="text-ink-500">{{ row.task ? taskSubject(row.task) : "—" }}</span>
 			</template>
 			<template #cell-date="{ row }">
 				<span class="text-ink-500">{{ fmtDate(row.date) }}</span>

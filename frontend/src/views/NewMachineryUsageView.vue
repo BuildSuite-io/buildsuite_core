@@ -34,7 +34,7 @@ const machineryOptions = computed(() =>
 		value: m.name,
 		label: m.machinery_name,
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
-	})),
+	}))
 );
 const projectRes = useDocTypeList("Project", {
 	fields: ["name", "project_name"],
@@ -43,7 +43,7 @@ const projectRes = useDocTypeList("Project", {
 	cache: "buildsuite-project-options",
 });
 const projectOptions = computed(() =>
-	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name })),
+	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name }))
 );
 
 const today = new Date().toISOString().slice(0, 10);
@@ -65,7 +65,7 @@ const saving = ref(false);
 
 // Auto-fill rate + unit from the picked machine (also on ?machine= prefill).
 const selectedMachine = computed(() =>
-	(machineryRes.data || []).find((m) => m.name === form.machine),
+	(machineryRes.data || []).find((m) => m.name === form.machine)
 );
 watch(
 	selectedMachine,
@@ -75,11 +75,20 @@ watch(
 			form.unit = m.rate_unit === "Hour" ? "Hours" : "Days";
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
+);
+
+// Changing the project clears the task — the task picker is scoped to the project, so a
+// stale cross-project task must never linger (the server rejects it too).
+watch(
+	() => form.project,
+	() => {
+		form.task = "";
+	}
 );
 
 const total = computed(
-	() => (Number(form.quantity) || 0) * (Number(form.rate) || 0) + (Number(form.fuel_cost) || 0),
+	() => (Number(form.quantity) || 0) * (Number(form.rate) || 0) + (Number(form.fuel_cost) || 0)
 );
 
 function validate() {

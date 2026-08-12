@@ -78,7 +78,22 @@ function aging(row) {
 }
 
 const statusFilter = ref("");
-const filterValues = computed(() => ({ status: statusFilter.value }));
+const projectFilter = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const filterValues = computed(() => ({
+	status: statusFilter.value,
+	project: projectFilter.value,
+	fromDate: fromDate.value,
+	toDate: toDate.value,
+}));
+// Map filter keys → Sales Invoice fields; the two dates bracket posting_date.
+const filterFieldMap = {
+	status: "status",
+	project: "project",
+	fromDate: { field: "posting_date", op: ">=" },
+	toDate: { field: "posting_date", op: "<=" },
+};
 
 function openDetail(row) {
 	router.push(`/project-finance/invoices/${row.name}`);
@@ -225,14 +240,14 @@ async function saveAdvance() {
 		</template>
 
 		<div class="space-y-4">
-			<div class="flex items-center gap-4 text-sm">
-				<div>
+			<div class="flex items-center gap-6 text-sm">
+				<div class="flex items-center gap-1.5">
 					<span class="text-ink-500">Outstanding</span>
 					<span class="font-semibold text-ink-900 tabular-nums">{{
 						fmtINR(summary.outstanding)
 					}}</span>
 				</div>
-				<div v-if="summary.advances > 0">
+				<div v-if="summary.advances > 0" class="flex items-center gap-1.5">
 					<span class="text-ink-500">Advances held</span>
 					<span class="font-semibold text-info-700 tabular-nums">{{
 						fmtINR(summary.advances)
@@ -272,7 +287,7 @@ async function saveAdvance() {
 				:search-fields="['name', 'customer_name']"
 				:base-filters="baseFilters"
 				:filter-values="filterValues"
-				:filter-field-map="{ status: 'status' }"
+				:filter-field-map="filterFieldMap"
 				cache-key="buildsuite-invoice-list"
 				row-key="name"
 				initial-order-by="posting_date desc"
@@ -290,6 +305,27 @@ async function saveAdvance() {
 						<option>Paid</option>
 						<option>Cancelled</option>
 					</DeskSelect>
+					<div class="w-48">
+						<DeskLinkPicker
+							v-model="projectFilter"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							placeholder="All projects"
+						/>
+					</div>
+					<input
+						v-model="fromDate"
+						type="date"
+						title="From date (posting date)"
+						class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+					/>
+					<input
+						v-model="toDate"
+						type="date"
+						title="To date (posting date)"
+						class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+					/>
 				</template>
 
 				<template #cell-name="{ row }"

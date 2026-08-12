@@ -78,6 +78,14 @@ watch(
 	},
 	{ immediate: true }
 );
+// In edit mode, changing the project clears the task (the picker is scoped to the project,
+// and the server rejects a cross-project task).
+watch(
+	() => form.value.project,
+	(_new, _old) => {
+		if (editing.value) form.value.task = "";
+	}
+);
 
 function totalOf(o) {
 	return (Number(o.quantity) || 0) * (Number(o.rate) || 0) + (Number(o.fuel_cost) || 0);
