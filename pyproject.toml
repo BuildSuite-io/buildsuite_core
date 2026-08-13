@@ -9,6 +9,21 @@ readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # "frappe~=16.0.0" # Installed and managed by bench.
+    # frappe-mcp==0.1.0 itself is installed separately with --no-deps by
+    # .devcontainer/bootstrap.sh / ci.yml: its declared "pydantic~=2.11.7" pin
+    # resolves to pydantic-core==2.33.2, which has no Python 3.14 wheel and
+    # fails to build from source (pyo3-ffi 0.24.1 targets pre-3.14 CPython
+    # internals removed in 3.14). pydantic 2.12+ has full 3.14 wheels and no
+    # breaking API changes vs 2.11 for frappe-mcp's usage, so we pin its real
+    # runtime deps here instead of letting pip resolve frappe-mcp's own bound.
+    "pydantic>=2.12,<3",
+    # frappe-mcp declares "Werkzeug==3.1.3", but frappe itself pins an exact,
+    # different patch (currently 3.1.6) — deliberately NOT pinning Werkzeug
+    # here at all, so frappe's own requirement wins instead of silently
+    # downgrading the framework's Werkzeug under it. frappe-mcp only touches
+    # the stable Request/Response basics, so this is safe across 3.1.x patches.
+    "jsonschema>=4.24,<5",
+    "click>=8.2,<9",
 ]
 
 [build-system]

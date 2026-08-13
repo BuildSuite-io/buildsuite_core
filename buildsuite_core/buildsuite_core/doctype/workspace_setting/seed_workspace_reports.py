@@ -212,7 +212,8 @@ def seed_workspace_reports():
 	if "site-execution" not in existing:
 		legacy = _legacy_site_execution_rows()
 		rows = legacy or [
-			{"report": name, "icon": icon, "description": desc} for name, _ref, icon, desc, _q in REPORTS
+			{"report": name, "icon": icon, "description": desc}
+			for name, _ref, icon, desc, _query, _filters in REPORTS
 		]
 		for r in rows:
 			settings.append("reports", {"workspace": "site-execution", **r})

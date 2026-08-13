@@ -92,6 +92,12 @@ jobs:
         run: |
           bench get-app buildsuite_core $GITHUB_WORKSPACE
           bench setup requirements --dev
+          # frappe-mcp==0.1.0's declared "pydantic~=2.11.7" pin resolves to a
+          # pydantic-core with no Python 3.14 wheel (see pyproject.toml comment,
+          # which pins frappe-mcp's real runtime deps at 3.14-compatible
+          # versions instead) — install it separately with --no-deps so pip
+          # doesn't try to resolve/build against that unsatisfiable-on-3.14 pin.
+          ./env/bin/python -m pip install --quiet --no-deps frappe-mcp==0.1.0
           bench new-site --db-root-password root --admin-password admin test_site
           bench --site test_site install-app buildsuite_core
           bench build
