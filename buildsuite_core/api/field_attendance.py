@@ -178,8 +178,9 @@ def amend_field_attendance(name: str) -> dict:
 	if frappe.db.exists(FIELD_ATTENDANCE, {"amended_from": name}):
 		frappe.throw(_("This sheet is already amended."))
 
-	amended = frappe.copy_doc(src, ignore_no_copy=False)
+	amended = frappe.copy_doc(src)
 	amended.amended_from = name
 	amended.docstatus = 0
+	amended.workflow_state = None
 	amended.insert()
 	return _serialize(amended)
