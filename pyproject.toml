@@ -8,18 +8,34 @@ requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # "frappe~=16.0.0" # Installed and managed by bench.
+    # Third-party PyPI packages only. Frappe apps go in
+    # [tool.bench.frappe-dependencies] below - pip cannot resolve them, which is why the
+    # commented-out "frappe~=16.0.0" here could never have worked.
 ]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
+# REQUIRED by Frappe Cloud. press reads exactly one value:
+#     pyproject["tool"]["bench"]["frappe-dependencies"]["frappe"]
+# from pyproject.toml on the branch selected in the "Add app" dialog. If the section is
+# absent the lookup raises, is suppressed, and the dialog reports
+#     "Could not find compatible Frappe version in pyproject.toml file."
+#
+# The upper bound matters: without it `bench update` will pull a v17 frappe against v16
+# app code. erpnext@version-16 pins ">=16.21.0,<17.0.0"; the looser floor below matches
+# hrms@version-16.
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0,<17.0.0"
+
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]
 # package_name = "~=1.1.0"
 
-# These apt dependencies will be installed from Ubuntu repositories when you host your app on Frappe Cloud
+# Apt packages installed from the Ubuntu repositories when hosted on Frappe Cloud.
+# Note this is a TOP-LEVEL `deploy` table, not under `tool.bench`: press reads
+# pyproject.get("deploy", {}).get("dependencies", {}).get("apt", {}).get("packages", []).
 [deploy.dependencies.apt]
 packages = []
 
