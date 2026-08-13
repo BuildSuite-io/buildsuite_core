@@ -43,6 +43,10 @@ const PAGE_TITLES = {
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
+	"material-consumption": "Material Consumption",
+	"material-consumption-new": "Record Consumption",
+	"material-consumption-detail": "Material Consumption",
+	"material-consumption-edit": "Edit Consumption",
 	equipment: "Equipment",
 	"equipment-dashboard": "Equipment Dashboard",
 	machinery: "Machinery",
@@ -321,6 +325,29 @@ const routes = [
 				path: "items",
 				name: "items",
 				component: () => import("@/views/ItemsListView.vue"),
+			},
+			{
+				path: "material-consumption",
+				name: "material-consumption",
+				component: () => import("@/views/ConsumptionListView.vue"),
+			},
+			// `new` must stay above `:id`, or it is read as a record id.
+			{
+				path: "material-consumption/new",
+				name: "material-consumption-new",
+				component: () => import("@/views/NewConsumptionView.vue"),
+			},
+			{
+				path: "material-consumption/:id/edit",
+				name: "material-consumption-edit",
+				component: () => import("@/views/NewConsumptionView.vue"),
+				props: true,
+			},
+			{
+				path: "material-consumption/:id",
+				name: "material-consumption-detail",
+				component: () => import("@/views/ConsumptionDetailView.vue"),
+				props: true,
 			},
 			{
 				path: "equipment",
