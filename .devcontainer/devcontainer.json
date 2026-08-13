@@ -1,0 +1,29 @@
+{
+  "name": "BuildSuite Core",
+  "dockerComposeFile": "./docker-compose.yml",
+  "service": "frappe",
+  "workspaceFolder": "/workspace/buildsuite_core",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "frappe",
+  "forwardPorts": [8000, 9000, 5173, 6787],
+  "portsAttributes": {
+    "8000": { "label": "Frappe web", "onAutoForward": "notify" },
+    "9000": { "label": "Frappe realtime", "onAutoForward": "silent" },
+    "5173": { "label": "Vite dev server", "onAutoForward": "notify" },
+    "6787": { "label": "Frappe asset watcher", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "bash /workspace/buildsuite_core/.devcontainer/bootstrap.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "vue.volar",
+        "esbenp.prettier-vscode",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

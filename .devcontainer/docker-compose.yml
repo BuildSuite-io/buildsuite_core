@@ -1,0 +1,56 @@
+services:
+  mariadb:
+    image: mariadb:11.8
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeit}
+      MARIADB_AUTO_UPGRADE: 1
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    restart: unless-stopped
+
+  redis-cache:
+    image: redis:alpine
+    restart: unless-stopped
+
+  redis-queue:
+    image: redis:alpine
+    restart: unless-stopped
+
+  frappe:
+    image: frappe/bench:latest
+    environment:
+      SHELL: /bin/bash
+    working_dir: /workspace
+    volumes:
+      - bench-data:/workspace/frappe-bench
+      # Mounted next to (not inside) frappe-bench so `bench init` can create the
+      # bench into an empty directory; bootstrap.sh symlinks it into apps/ after.
+      - ..:/workspace/buildsuite_core:cached
+    ports:
+      - "8000:8000" # Frappe web
+      - "9000:9000" # Frappe realtime (socketio)
+      - "5173:5173" # Vite dev server (frontend/)
+      - "6787:6787" # Frappe asset watcher
+    command: sleep infinity
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+      redis-queue:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  mariadb-data:
+  bench-data:

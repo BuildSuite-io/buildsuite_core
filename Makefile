@@ -11,7 +11,11 @@ APP           := buildsuite_core
 BENCH         := $(abspath $(CURDIR)/../..)
 SEMGREP_RULES := $(CURDIR)/.frappe-semgrep-rules
 
-.PHONY: help setup lint format semgrep test e2e check
+.PHONY: help setup lint format semgrep test e2e check docker-up docker-down docker-shell docker-bootstrap docker-hosts
+
+COMPOSE   := docker compose -f .devcontainer/docker-compose.yml --env-file .devcontainer/.env
+SITE_HOST := $(shell grep -m1 '^SITE_NAME=' .devcontainer/.env 2>/dev/null | cut -d= -f2)
+SITE_HOST := $(if $(SITE_HOST),$(SITE_HOST),bs.local)
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -52,3 +56,22 @@ e2e: ## build the frontend + run Cypress (needs `bench start` running in another
 	cd frontend && yarn build && yarn cypress run
 
 check: lint semgrep test ## the full local gate — lint + semgrep + backend tests
+
+docker-up: ## start the dev containers (mariadb, redis, bench) — see .devcontainer/README.md
+	@test -f .devcontainer/.env || cp .devcontainer/.env.example .devcontainer/.env
+	$(COMPOSE) up -d
+
+docker-down: ## stop the dev containers
+	$(COMPOSE) down
+
+docker-shell: ## shell into the frappe container
+	$(COMPOSE) exec frappe bash
+
+docker-bootstrap: ## first-time setup: bench init + get-app erpnext + new-site (idempotent)
+	$(COMPOSE) exec frappe bash /workspace/buildsuite_core/.devcontainer/bootstrap.sh
+
+docker-hosts: ## add "127.0.0.1 <site>" to /etc/hosts so the browser sends the right Host header (needs sudo)
+	@grep -qE "^[^#]*\b$(SITE_HOST)\b" /etc/hosts \
+		&& echo "$(SITE_HOST) already in /etc/hosts" \
+		|| (echo "127.0.0.1 $(SITE_HOST)" | sudo tee -a /etc/hosts >/dev/null \
+			&& echo "Added '127.0.0.1 $(SITE_HOST)' to /etc/hosts — open http://$(SITE_HOST):8000/core")
