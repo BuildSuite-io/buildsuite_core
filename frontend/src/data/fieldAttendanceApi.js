@@ -24,5 +24,10 @@ export const saveFieldAttendance = (payload) =>
 		employee_list: JSON.stringify(payload.employee_list || []),
 	});
 
+// These refuse while a workflow governs Field Attendance — its transitions take over.
+export const submitFieldAttendance = (name) => call("submit_field_attendance", { name });
+export const cancelFieldAttendance = (name) => call("cancel_field_attendance", { name });
+export const amendFieldAttendance = (name) => call("amend_field_attendance", { name });
+
 // Workers allocated to the project.
 export const getRoster = (project) => call("get_roster", { project });

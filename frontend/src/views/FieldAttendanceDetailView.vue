@@ -6,12 +6,19 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useAttendanceSheet } from "@/composables/useAttendanceSheet";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
-import { getFieldAttendance, saveFieldAttendance } from "@/data/fieldAttendanceApi";
+import {
+	amendFieldAttendance,
+	cancelFieldAttendance,
+	getFieldAttendance,
+	saveFieldAttendance,
+	submitFieldAttendance,
+} from "@/data/fieldAttendanceApi";
 import {
 	ATTENDANCE_STATUSES,
 	DOCSTATUS_LABELS,
@@ -33,6 +40,13 @@ const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
 const { projectLabel } = useProjectOptions();
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Field Attendance");
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	project: "project",
 	date: "date",
@@ -55,6 +69,7 @@ async function load() {
 	loadError.value = null;
 	try {
 		doc.value = await getFieldAttendance(props.id);
+		await refreshWorkflow(props.id);
 	} catch (err) {
 		doc.value = null;
 		loadError.value = err;
@@ -66,7 +81,15 @@ async function load() {
 watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => doc.value?.docstatus === 0);
-const docStatusLabel = computed(() => DOCSTATUS_LABELS[doc.value?.docstatus] || "Draft");
+const isSubmitted = computed(() => doc.value?.docstatus === 1);
+const isCancelled = computed(() => doc.value?.docstatus === 2);
+const busy = ref(false);
+// A workflow owns the status label once active.
+const docStatusLabel = computed(() =>
+	wfActive.value
+		? wfState.value || DOCSTATUS_LABELS[doc.value?.docstatus]
+		: DOCSTATUS_LABELS[doc.value?.docstatus] || "Draft"
+);
 const rows = computed(() => doc.value?.employee_list || []);
 
 const {
@@ -131,6 +154,65 @@ async function saveEdit() {
 	}
 }
 
+async function run(fn, okMsg) {
+	busy.value = true;
+	try {
+		await fn();
+		await load();
+		showToast(okMsg);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? "Action failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onSubmit() {
+	const ok = await confirmDialog({
+		title: `Submit ${props.id}?`,
+		message:
+			"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited.",
+		confirmLabel: "Submit",
+	});
+	if (ok) await run(() => submitFieldAttendance(props.id), "Attendance submitted");
+}
+
+async function onCancelSheet() {
+	const ok = await confirmDialog({
+		title: `Cancel ${props.id}?`,
+		message:
+			"This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy.",
+		confirmLabel: "Cancel sheet",
+		destructive: true,
+	});
+	if (ok) await run(() => cancelFieldAttendance(props.id), "Attendance cancelled");
+}
+
+async function onAmend() {
+	busy.value = true;
+	try {
+		const copy = await amendFieldAttendance(props.id);
+		router.push(`/field-attendance/${copy.name}`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? "Could not amend", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(props.id, action);
+		await load();
+		showToast(`${action} done.`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? "Action failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: `Delete ${props.id}?`,
@@ -190,6 +272,46 @@ const breadcrumbs = computed(() => [
 				Delete
 			</button>
 			<button
+				v-if="!editing && !wfActive && isDraft"
+				type="button"
+				class="desk-save-btn !text-xs"
+				:disabled="busy"
+				@click="onSubmit"
+			>
+				Submit
+			</button>
+			<button
+				v-if="!editing && !wfActive && isSubmitted"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancelSheet"
+			>
+				Cancel
+			</button>
+			<button
+				v-if="!editing && !wfActive && isCancelled"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onAmend"
+			>
+				Amend
+			</button>
+			<button
+				v-for="t in !editing && wfActive ? wfTransitions : []"
+				:key="t.action"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onWorkflowAction(t.action)"
+			>
+				{{ t.action }}
+			</button>
+			<button
 				v-if="editing"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
@@ -247,8 +369,7 @@ const breadcrumbs = computed(() => [
 			<AttendanceEmployeeTable :rows="rows" :statuses="ATTENDANCE_STATUSES" />
 
 			<p v-if="isDraft" class="text-[11px] text-ink-400 mt-3">
-				Submit from Desk to post the attendance and generate the Labour and Overtime
-				registers.
+				Submit to post the attendance and generate the Labour and Overtime registers.
 			</p>
 		</div>
 

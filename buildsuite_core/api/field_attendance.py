@@ -1,9 +1,11 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-"""Whitelisted save + roster for Field Attendance. Draft only — submit is
-deliberately absent because the controller cannot submit an "Overtime Only" row
-or "Half Day" + overtime; both fail on the Overtime register's validation.
+"""Whitelisted save, roster and lifecycle for Field Attendance.
+
+Draft -> Submit -> Cancel -> Amend. Submitting builds the Labour and Overtime
+registers; cancelling reverses them. When a site configures a Frappe Workflow for
+Field Attendance, submit and cancel refuse here and its transitions take over.
 
 Row rates are not accepted; the doctype's validate() stamps them.
 """
@@ -137,3 +139,47 @@ def get_roster(project: str) -> list[dict]:
 		order_by="employee_name asc",
 	)
 	return [{"employee": r.name, "employee_name": r.employee_name or r.name} for r in rows]
+
+
+def _guard_workflow():
+	"""An active workflow owns submit and cancel; stop these endpoints bypassing it."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(FIELD_ATTENDANCE):
+		frappe.throw(_("Field Attendance is governed by a workflow — use a workflow action."))
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_field_attendance(name: str) -> dict:
+	"""Post the sheet. on_submit builds the Labour and Overtime registers — over
+	25 rows that runs in the background, so they may appear a moment later."""
+	_guard_workflow()
+	doc = frappe.get_doc(FIELD_ATTENDANCE, name)
+	doc.submit()
+	return _serialize(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_field_attendance(name: str) -> dict:
+	"""Reverse a posted sheet — its register entries are cancelled with it."""
+	_guard_workflow()
+	doc = frappe.get_doc(FIELD_ATTENDANCE, name)
+	doc.cancel()
+	return _serialize(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def amend_field_attendance(name: str) -> dict:
+	"""A draft copy of a cancelled sheet; the original stays cancelled."""
+	src = frappe.get_doc(FIELD_ATTENDANCE, name)
+	src.check_permission("amend")
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled sheet can be amended."))
+	if frappe.db.exists(FIELD_ATTENDANCE, {"amended_from": name}):
+		frappe.throw(_("This sheet is already amended."))
+
+	amended = frappe.copy_doc(src, ignore_no_copy=False)
+	amended.amended_from = name
+	amended.docstatus = 0
+	amended.insert()
+	return _serialize(amended)
