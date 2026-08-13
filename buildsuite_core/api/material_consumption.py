@@ -3,8 +3,9 @@
 
 """Material Consumption — a Stock Entry of type "Material Issue".
 
-Draft only. Submitting is what moves the stock, and that is driven by a Frappe
-Workflow when a site configures one — see api/workflow.py.
+Draft -> Submit -> Cancel -> Amend. Submitting is what moves the stock. When a
+site configures a Frappe Workflow for Stock Entry, submit and cancel refuse here
+and its transitions take over — see api/workflow.py.
 
 The store is derived from the project, never sent by the client: Warehouse
 carries a `project` link and `create_warehouse_for_project` builds one per
@@ -53,7 +54,7 @@ def get_site_stock(project: str) -> dict:
 @frappe.whitelist()
 def get_material_consumption(name: str) -> dict:
 	"""One entry with its items — a list read would not return child rows."""
-	doc = frappe.get_doc(STOCK_ENTRY, name)
+	doc = _material_issue(name)
 	doc.check_permission("read")  # get_doc does not check; only get_list does
 	return _serialize(doc)
 
@@ -62,7 +63,7 @@ def get_material_consumption(name: str) -> dict:
 def list_material_consumption(start=0, page_length=10, search=None, project=None) -> dict:
 	"""One page of Material Issue entries + total_count for the pager."""
 	filters = {"stock_entry_type": MATERIAL_ISSUE}
-	if project:
+	if project and isinstance(project, str):
 		filters["project"] = project
 	or_filters = [["name", "like", f"%{search}%"], ["remarks", "like", f"%{search}%"]] if search else None
 
@@ -113,10 +114,7 @@ def save_material_consumption(project=None, items=None, cost_code=None, name=Non
 		if not frappe.db.exists(STOCK_ENTRY, name):
 			# A stale id would otherwise create a second entry.
 			frappe.throw(_("Consumption {0} no longer exists.").format(name))
-		doc = frappe.get_doc(STOCK_ENTRY, name)
-		if doc.stock_entry_type != MATERIAL_ISSUE:
-			# Without this, any Stock Entry's project, store and items could be rewritten.
-			frappe.throw(_("{0} is not a Material Issue.").format(name))
+		doc = _material_issue(name)
 		if doc.docstatus != 0:
 			frappe.throw(_("Only a draft can be edited."))
 	else:
@@ -134,8 +132,58 @@ def save_material_consumption(project=None, items=None, cost_code=None, name=Non
 	for row in rows:
 		doc.append("items", {**{k: row.get(k) for k in _ITEM_FIELDS}, "s_warehouse": warehouse})
 
-	doc.save()  # checks write / create permission itself
+	doc.save()
 	return _serialize(doc)
+
+
+def _guard_workflow():
+	"""An active workflow owns submit and cancel; stop these endpoints bypassing it."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(STOCK_ENTRY):
+		frappe.throw(_("Stock Entry is governed by a workflow — use a workflow action."))
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_material_consumption(name: str) -> dict:
+	"""Post the issue. ERPNext rejects it here if the store holds too little."""
+	_guard_workflow()
+	doc = _material_issue(name)
+	doc.submit()
+	return _serialize(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_material_consumption(name: str) -> dict:
+	"""Reverse a posted issue — the quantities go back to the store."""
+	_guard_workflow()
+	doc = _material_issue(name)
+	doc.cancel()
+	return _serialize(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def amend_material_consumption(name: str) -> dict:
+	"""A draft copy of a cancelled issue; the original stays cancelled."""
+	src = _material_issue(name)
+	src.check_permission("amend")
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled entry can be amended."))
+
+	amended = frappe.copy_doc(src)
+	amended.amended_from = name
+	amended.docstatus = 0
+	amended.flags.ignore_permissions = True
+	amended.insert()
+	return _serialize(amended)
+
+
+def _material_issue(name: str):
+	"""Load a Stock Entry, refusing any that is not a Material Issue."""
+	doc = frappe.get_doc(STOCK_ENTRY, name)
+	if doc.stock_entry_type != MATERIAL_ISSUE:
+		frappe.throw(_("{0} is not a Material Issue.").format(name))
+	return doc
 
 
 def _serialize(doc) -> dict:
@@ -147,6 +195,7 @@ def _serialize(doc) -> dict:
 		"purpose": doc.purpose,
 		"owner": doc.owner,
 		"docstatus": doc.docstatus,
+		"amended_from": doc.amended_from,
 		"cost_code_type": doc.get("custom_cost_code_type"),
 		"cost_code_group": doc.get("custom_cost_code_group"),
 		"cost_code_item": doc.get("custom_cost_code_item"),

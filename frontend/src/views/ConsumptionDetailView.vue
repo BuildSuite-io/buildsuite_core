@@ -8,7 +8,12 @@ import { useRouter } from "vue-router";
 import { useConfirm } from "@/composables/useConfirm";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { useProjectOptions } from "@/composables/useProjectOptions";
-import { getMaterialConsumption } from "@/data/materialConsumptionApi";
+import {
+	amendMaterialConsumption,
+	cancelMaterialConsumption,
+	getMaterialConsumption,
+	submitMaterialConsumption,
+} from "@/data/materialConsumptionApi";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { showToast } from "@/utils/appToast";
@@ -40,6 +45,8 @@ const loadError = ref(null);
 
 const accessDenied = computed(() => isPermissionDenied(loadError.value));
 const isDraft = computed(() => doc.value?.docstatus === 0);
+const isSubmitted = computed(() => doc.value?.docstatus === 1);
+const isCancelled = computed(() => doc.value?.docstatus === 2);
 // A workflow owns the status label once active.
 const stateLabel = computed(() =>
 	wfActive.value
@@ -64,6 +71,52 @@ async function load() {
 }
 // Not onMounted — the router reuses this component when only :id changes.
 watch(() => props.id, load, { immediate: true });
+
+async function run(fn, okMsg) {
+	busy.value = true;
+	try {
+		await fn();
+		await load();
+		showToast(okMsg);
+	} catch (err) {
+		showToast(err.message || "Action failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onSubmit() {
+	const ok = await confirmDialog({
+		title: `Submit ${props.id}?`,
+		message:
+			"This posts the issue — the quantities leave site stock. A posted entry is cancelled, not edited.",
+		confirmLabel: "Submit",
+	});
+	if (ok) await run(() => submitMaterialConsumption(props.id), "Consumption submitted");
+}
+
+async function onCancelEntry() {
+	const ok = await confirmDialog({
+		title: `Cancel ${props.id}?`,
+		message:
+			"This reverses the issue — the quantities go back to site stock. Amend afterwards to raise a corrected copy.",
+		confirmLabel: "Cancel entry",
+		destructive: true,
+	});
+	if (ok) await run(() => cancelMaterialConsumption(props.id), "Consumption cancelled");
+}
+
+async function onAmend() {
+	busy.value = true;
+	try {
+		const copy = await amendMaterialConsumption(props.id);
+		router.push(`/material-consumption/${copy.name}/edit`);
+	} catch (err) {
+		showToast(err.message || "Could not amend", "error");
+	} finally {
+		busy.value = false;
+	}
+}
 
 async function onWorkflowAction(action) {
 	busy.value = true;
@@ -122,13 +175,43 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft"
+				v-if="isDraft || isCancelled"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
 				Delete
+			</button>
+
+			<button
+				v-if="!wfActive && isDraft"
+				type="button"
+				class="desk-save-btn !text-xs"
+				:disabled="busy"
+				@click="onSubmit"
+			>
+				Submit
+			</button>
+			<button
+				v-if="!wfActive && isSubmitted"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancelEntry"
+			>
+				Cancel
+			</button>
+			<button
+				v-if="!wfActive && isCancelled"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onAmend"
+			>
+				Amend
 			</button>
 
 			<!-- One button per allowed transition. -->
@@ -146,14 +229,28 @@ const breadcrumbs = computed(() => [
 		</template>
 
 		<div
-			class="mb-4 px-3 py-2 bg-ink-50 border border-ink-200 text-xs text-ink-600"
+			class="mb-4 px-3 py-2 border border-ink-200 text-xs text-ink-600"
+			:class="isCancelled ? 'bg-ink-100' : 'bg-ink-50'"
 			style="border-radius: 6px"
 		>
-			{{
-				isDraft
-					? "Draft — nothing has been deducted from site stock yet."
-					: `This entry is ${stateLabel.toLowerCase()} and can no longer be edited here.`
-			}}
+			<template v-if="isDraft">
+				Draft — nothing has been deducted from site stock yet. Submit to post it.
+			</template>
+			<template v-else-if="isCancelled">
+				This record is <span class="font-semibold">cancelled</span> — the quantities went
+				back to site stock. Click <span class="font-medium">Amend</span> to create a
+				corrected Draft.
+			</template>
+			<template v-else>
+				Posted — the quantities have left site stock. Cancel to reverse it.
+			</template>
+		</div>
+
+		<div v-if="doc.amended_from" class="mb-4 text-xs text-ink-500">
+			Amended from
+			<DeskLink :to="`/material-consumption/${doc.amended_from}`" class="font-mono">
+				{{ doc.amended_from }}
+			</DeskLink>
 		</div>
 
 		<!-- Summary strip -->

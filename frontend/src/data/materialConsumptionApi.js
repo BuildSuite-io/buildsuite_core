@@ -21,6 +21,11 @@ export const listMaterialConsumption = (params) => call("list_material_consumpti
 
 export const getMaterialConsumption = (name) => call("get_material_consumption", { name });
 
+// These refuse while a workflow governs Stock Entry — its transitions take over.
+export const submitMaterialConsumption = (name) => call("submit_material_consumption", { name });
+export const cancelMaterialConsumption = (name) => call("cancel_material_consumption", { name });
+export const amendMaterialConsumption = (name) => call("amend_material_consumption", { name });
+
 export const saveMaterialConsumption = (payload) =>
 	call("save_material_consumption", {
 		...payload,
