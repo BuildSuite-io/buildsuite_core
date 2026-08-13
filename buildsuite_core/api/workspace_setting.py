@@ -54,6 +54,10 @@ def _resolve(row):
 	if not route and report:
 		if not frappe.db.exists("Report", report):
 			return None
+		# Hide the tile if the user can't run the report (the Report's own roles gate it) —
+		# e.g. site roles don't see the finance-restricted Billing / Subcontractor reports.
+		if not frappe.get_cached_doc("Report", report).is_permitted():
+			return None
 		route = _report_route(report)
 		label = label or frappe.db.get_value("Report", report, "report_name") or report
 	if not route:
