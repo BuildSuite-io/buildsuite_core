@@ -318,6 +318,21 @@ const routes = [
 				component: () => import("@/views/workspaces/ProcurementDashboardView.vue"),
 			},
 			{
+				path: "procurement/material-requests",
+				name: "material-requests",
+				component: () => import("@/views/procurement/MaterialRequestsListView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders",
+				name: "purchase-orders",
+				component: () => import("@/views/procurement/PurchaseOrdersListView.vue"),
+			},
+			{
+				path: "procurement/receipts",
+				name: "purchase-receipts",
+				component: () => import("@/views/procurement/PurchaseReceiptsListView.vue"),
+			},
+			{
 				path: "items",
 				name: "items",
 				component: () => import("@/views/ItemsListView.vue"),

@@ -11,9 +11,9 @@ const today = computed(() => {
 });
 
 const shortcuts = [
-	{ label: "Material Requests", icon: "clipboard-list", href: "/app/material-request" },
-	{ label: "Purchase Orders", icon: "file-text", href: "/app/purchase-order" },
-	{ label: "Purchase Receipts", icon: "check-circle", href: "/app/purchase-receipt" },
+	{ label: "Material Requests", icon: "clipboard-list", to: "/procurement/material-requests" },
+	{ label: "Purchase Orders", icon: "file-text", to: "/procurement/purchase-orders" },
+	{ label: "Purchase Receipts", icon: "check-circle", to: "/procurement/receipts" },
 	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
 	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
 	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills" },
