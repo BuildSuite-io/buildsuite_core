@@ -174,11 +174,13 @@ def amend_material_consumption(name: str) -> dict:
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled entry can be amended."))
+	if frappe.db.exists(STOCK_ENTRY, {"amended_from": name}):
+		frappe.throw(_("This entry is already amended."))
 
 	amended = frappe.copy_doc(src)
 	amended.amended_from = name
 	amended.docstatus = 0
-	amended.flags.ignore_permissions = True
+	amended.workflow_state = None
 	amended.insert()
 	return _serialize(amended)
 
