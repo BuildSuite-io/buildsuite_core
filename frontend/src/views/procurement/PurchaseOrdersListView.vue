@@ -1,17 +1,18 @@
 <script setup>
 // Purchase Orders — ERPNext Purchase Order master, in-app list via DocTypeListView
 // (pagination / sort / search for free). Columns show readable names (supplier_name,
-// project → project_name) rather than record ids. Row click / New open the Desk form.
+// project → project_name) not ids, the prototype's status pills + received bar; row
+// click / New open the in-app detail + form.
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtCompactINR } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
@@ -149,17 +150,26 @@ const breadcrumbs = [
 				}}</span>
 			</template>
 			<template #cell-grand_total="{ row }">
-				<span class="tabular-nums text-ink-900 font-medium">{{
-					fmtINR(row.grand_total)
-				}}</span>
+				<span class="tabular-nums text-ink-700">{{ fmtCompactINR(row.grand_total) }}</span>
 			</template>
 			<template #cell-per_received="{ row }">
-				<span class="tabular-nums text-ink-700"
-					>{{ Math.round(row.per_received || 0) }}%</span
-				>
+				<span class="flex items-center gap-1.5 justify-end">
+					<span class="w-14 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+						<span
+							class="block h-full rounded-full"
+							:class="
+								(row.per_received || 0) >= 100 ? 'bg-success-500' : 'bg-info-500'
+							"
+							:style="{ width: Math.min(100, row.per_received || 0) + '%' }"
+						></span>
+					</span>
+					<span class="text-[11px] tabular-nums text-ink-500"
+						>{{ Math.round(row.per_received || 0) }}%</span
+					>
+				</span>
 			</template>
 			<template #cell-status="{ row }">
-				<StatusBadge :status="row.status" size="xs" />
+				<ProcurementStatusPill :status="row.status" />
 			</template>
 		</DocTypeListView>
 	</DeskPage>

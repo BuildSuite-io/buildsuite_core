@@ -8,7 +8,7 @@ import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
@@ -158,7 +158,7 @@ const breadcrumbs = [
 				>
 			</template>
 			<template #cell-status="{ row }">
-				<StatusBadge :status="row.status" size="xs" />
+				<ProcurementStatusPill :status="row.status" />
 			</template>
 		</DocTypeListView>
 	</DeskPage>

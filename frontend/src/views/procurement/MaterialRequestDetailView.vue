@@ -15,7 +15,7 @@ import {
 } from "@/data/procurementApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -132,9 +132,9 @@ const breadcrumbs = computed(() => [
 		:title="mr.name"
 		:subtitle="`${mr.project_name || mr.project} · requested ${fmtDate(mr.transaction_date)}`"
 		:breadcrumbs="breadcrumbs"
-		:status="mr.state"
 	>
 		<template #actions>
+			<ProcurementStatusPill :status="mr.status" class="self-center mr-1" />
 			<button
 				v-if="isDraft"
 				type="button"

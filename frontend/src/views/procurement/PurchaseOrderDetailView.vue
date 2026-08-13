@@ -15,7 +15,7 @@ import {
 } from "@/data/procurementApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: String });
@@ -130,9 +130,9 @@ const breadcrumbs = computed(() => [
 		:title="po.name"
 		:subtitle="`${po.supplier_name || po.supplier} · ${po.project_name || po.project}`"
 		:breadcrumbs="breadcrumbs"
-		:status="po.state"
 	>
 		<template #actions>
+			<ProcurementStatusPill :status="po.status" class="self-center mr-1" />
 			<button
 				v-if="isDraft"
 				type="button"
