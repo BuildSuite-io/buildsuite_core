@@ -17,11 +17,7 @@ const shortcuts = [
 	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
 	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
 	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills" },
-	{
-		label: "Material Consumption",
-		icon: "stock",
-		href: "/app/stock-entry?stock_entry_type=Material Issue",
-	},
+	{ label: "Material Consumption", icon: "stock", to: "/material-consumption" },
 	{ label: "Suppliers", icon: "building-2", href: "/app/supplier" },
 	{ label: "Items", icon: "tag", to: "/items" },
 ];
