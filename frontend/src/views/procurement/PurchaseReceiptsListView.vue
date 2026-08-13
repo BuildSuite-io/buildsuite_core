@@ -3,6 +3,7 @@
 // DocTypeListView. Readable names (supplier_name, project → project_name); row / New open
 // the Desk form.
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
@@ -12,6 +13,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
+const router = useRouter();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
@@ -54,11 +56,11 @@ const filterFieldMap = {
 	toDate: { field: "posting_date", op: "<=" },
 };
 
-function openDesk(row) {
-	window.open(`/app/purchase-receipt/${encodeURIComponent(row.name)}`, "_blank", "noopener");
+function openDetail(row) {
+	router.push(`/procurement/receipts/${row.name}`);
 }
 function openNew() {
-	window.open("/app/purchase-receipt/new", "_blank", "noopener");
+	router.push("/procurement/receipts/new");
 }
 
 const breadcrumbs = [
@@ -90,7 +92,7 @@ const breadcrumbs = [
 			initial-order-by="posting_date desc"
 			search-placeholder="Search receipt, supplier…"
 			empty-message="No purchase receipts yet."
-			@row-click="openDesk"
+			@row-click="openDetail"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">

@@ -1,17 +1,22 @@
 <script setup>
 // Material Requests — ERPNext Material Request master, in-app list via DocTypeListView.
-// Requested-by resolves from the doc owner to a name (not the email). Note: Material
-// Request carries no parent `project` (it lives on the line items), so this list has no
-// project column/filter — unlike PO / Purchase Receipt. Row / New open the Desk form.
+// This app adds a mandatory parent `project` custom field, so the list carries a project
+// column + filter (like PO / Receipt). Requested-by resolves from the doc owner to a name.
+// Row click / New open the in-app detail + form (full CRUD lives in the Vue app now).
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
+import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate } from "@/utils/format";
 
+const router = useRouter();
+const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
 	activeCompany.value ? [["company", "=", activeCompany.value]] : []
@@ -19,6 +24,7 @@ const baseFilters = computed(() =>
 
 const FIELDS = [
 	"name",
+	"project",
 	"material_request_type",
 	"transaction_date",
 	"schedule_date",
@@ -28,7 +34,7 @@ const FIELDS = [
 ];
 const columns = [
 	{ key: "name", label: "MR" },
-	{ key: "material_request_type", label: "Type" },
+	{ key: "project", label: "Project" },
 	{ key: "transaction_date", label: "Date" },
 	{ key: "schedule_date", label: "Required by" },
 	{ key: "owner", label: "Requested by" },
@@ -37,24 +43,27 @@ const columns = [
 ];
 
 const statusFilter = ref("");
+const projectFilter = ref("");
 const fromDate = ref("");
 const toDate = ref("");
 const filterValues = computed(() => ({
 	status: statusFilter.value,
+	project: projectFilter.value,
 	fromDate: fromDate.value,
 	toDate: toDate.value,
 }));
 const filterFieldMap = {
 	status: "status",
+	project: "project",
 	fromDate: { field: "transaction_date", op: ">=" },
 	toDate: { field: "transaction_date", op: "<=" },
 };
 
-function openDesk(row) {
-	window.open(`/app/material-request/${encodeURIComponent(row.name)}`, "_blank", "noopener");
+function openDetail(row) {
+	router.push(`/procurement/material-requests/${row.name}`);
 }
 function openNew() {
-	window.open("/app/material-request/new", "_blank", "noopener");
+	router.push("/procurement/material-requests/new");
 }
 
 const breadcrumbs = [
@@ -86,7 +95,7 @@ const breadcrumbs = [
 			initial-order-by="transaction_date desc"
 			search-placeholder="Search material request…"
 			empty-message="No material requests yet."
-			@row-click="openDesk"
+			@row-click="openDetail"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">
@@ -99,6 +108,15 @@ const breadcrumbs = [
 					<option>Stopped</option>
 					<option>Cancelled</option>
 				</DeskSelect>
+				<div class="w-48">
+					<DeskLinkPicker
+						v-model="projectFilter"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						placeholder="All projects"
+					/>
+				</div>
 				<input
 					v-model="fromDate"
 					type="date"
@@ -116,8 +134,8 @@ const breadcrumbs = [
 			<template #cell-name="{ row }">
 				<span class="font-mono text-[11px] text-ink-600">{{ row.name }}</span>
 			</template>
-			<template #cell-material_request_type="{ row }">
-				<span class="text-ink-700">{{ row.material_request_type || "—" }}</span>
+			<template #cell-project="{ row }">
+				<span class="text-ink-700">{{ projectName(row.project) || "—" }}</span>
 			</template>
 			<template #cell-transaction_date="{ row }">
 				<span class="text-ink-500 whitespace-nowrap">{{

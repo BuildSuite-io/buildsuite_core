@@ -3,6 +3,7 @@
 // (pagination / sort / search for free). Columns show readable names (supplier_name,
 // project → project_name) rather than record ids. Row click / New open the Desk form.
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
@@ -12,6 +13,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
+const router = useRouter();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
@@ -56,11 +58,11 @@ const filterFieldMap = {
 	toDate: { field: "transaction_date", op: "<=" },
 };
 
-function openDesk(row) {
-	window.open(`/app/purchase-order/${encodeURIComponent(row.name)}`, "_blank", "noopener");
+function openDetail(row) {
+	router.push(`/procurement/purchase-orders/${row.name}`);
 }
 function openNew() {
-	window.open("/app/purchase-order/new", "_blank", "noopener");
+	router.push("/procurement/purchase-orders/new");
 }
 
 const breadcrumbs = [
@@ -90,7 +92,7 @@ const breadcrumbs = [
 			initial-order-by="transaction_date desc"
 			search-placeholder="Search PO, supplier…"
 			empty-message="No purchase orders yet."
-			@row-click="openDesk"
+			@row-click="openDetail"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">
