@@ -95,7 +95,12 @@ def list_material_consumption(start=0, page_length=10, search=None, project=None
 
 
 @frappe.whitelist(methods=["POST"])
-def save_material_consumption(project=None, items=None, cost_code=None, name=None) -> dict:
+def save_material_consumption(
+	project: str | None = None,
+	items: str | None = None,
+	cost_code: str | None = None,
+	name: str | None = None,
+) -> dict:
 	"""Create or update a draft Material Issue.
 
 	No posting date is accepted — Stock Entry defaults it to today.
