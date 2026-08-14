@@ -667,6 +667,12 @@ const routes = [
 				props: true,
 			},
 			{
+				path: "project-finance/invoices/:id/print",
+				name: "finance-invoice-print",
+				component: () => import("@/views/finance/FinanceInvoicePrintView.vue"),
+				props: true,
+			},
+			{
 				path: "project-finance/supplier-bills/new",
 				name: "finance-supplier-bill-new",
 				component: () => import("@/views/finance/FinanceSupplierBillFormView.vue"),

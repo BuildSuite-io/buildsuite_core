@@ -68,7 +68,6 @@ watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => inv.value?.docstatus === 0);
 const isSubmitted = computed(() => inv.value?.docstatus === 1);
-const isCancelled = computed(() => inv.value?.docstatus === 2);
 const state = computed(() => {
 	if (!inv.value) return "";
 	if (inv.value.docstatus === 2) return "Cancelled";
@@ -168,14 +167,10 @@ async function onDelete() {
 	}
 }
 function onPrint() {
-	// Render the formatted Sales Invoice as a preview first (no trigger_print, so it
-	// doesn't jump straight to the system print dialog — the user reviews it, then prints).
-	// Cancelled invoices can't be printed (permission), so the button is disabled for them.
-	if (isCancelled.value) return;
-	window.open(
-		`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(inv.value.name)}`,
-		"_blank"
-	);
+	// Route to the in-app print view (a formatted invoice preview inside the SPA, like the
+	// Work Order print) — the user reviews it, then Export PDF runs window.print(). Works
+	// for every state, including cancelled (rendered with a "Cancelled" marker).
+	router.push(`/project-finance/invoices/${inv.value.name}/print`);
 }
 
 // --- receive ---
@@ -331,13 +326,8 @@ async function unlinkAdvance(row) {
 				<StatusBadge v-for="s in statusPills" :key="s" :status="s" size="xs" />
 				<button
 					type="button"
-					class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-					:disabled="isCancelled"
-					:title="
-						isCancelled
-							? 'A cancelled invoice can\'t be printed'
-							: 'Preview and print the invoice'
-					"
+					class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5"
+					title="Preview and print the invoice"
 					@click="onPrint"
 				>
 					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
