@@ -250,6 +250,7 @@ def list_payables(company=None):
 				"due_date": str(pi.due_date) if pi.due_date else None,
 				"total": flt(pi.grand_total),
 				"outstanding": flt(pi.outstanding_amount) if pi.docstatus == 1 else 0,
+				"retention": 0,  # direct supplier bills carry no retention
 				"docstatus": pi.docstatus,
 				"status": _pay_status(pi.docstatus, flt(pi.grand_total), flt(pi.outstanding_amount)),
 			}
@@ -259,7 +260,16 @@ def list_payables(company=None):
 	for sb in frappe.get_all(
 		"Subcontractor Bill",
 		filters={"company": company, "docstatus": 1},
-		fields=["name", "subcontractor_name", "project", "date", "net_payable", "purchase_invoice", "ra_no"],
+		fields=[
+			"name",
+			"subcontractor_name",
+			"project",
+			"date",
+			"net_payable",
+			"retention_amount",
+			"purchase_invoice",
+			"ra_no",
+		],
 		order_by="date desc, creation desc",
 	):
 		grand = flt(sb.net_payable)
@@ -280,6 +290,7 @@ def list_payables(company=None):
 				"due_date": None,
 				"total": grand,
 				"outstanding": outstanding,
+				"retention": flt(sb.retention_amount),
 				"docstatus": 1,
 				"status": _pay_status(1, grand, outstanding),
 			}

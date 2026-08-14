@@ -12,7 +12,7 @@ def get_property_setters():
 				"Credit Card Entry\nDebit Note\nCredit Note\nContra Entry\nExcise Entry\n"
 				"Write Off Entry\nOpening Entry\nDepreciation Entry\nAsset Disposal\n"
 				"Periodic Accounting Entry\nExchange Rate Revaluation\nExchange Gain Or Loss\n"
-				"Deferred Revenue\nDeferred Expense\nPetty Cash"
+				"Deferred Revenue\nDeferred Expense\nPetty Cash Issue"
 			),
 			"property_type": "Text",
 		},

@@ -252,7 +252,7 @@ class TestPettyCash(BuildSuiteTestCase):
 			as_dict=True,
 		)
 		self.assertEqual(je.docstatus, 1)
-		self.assertEqual(je.voucher_type, "Petty Cash")
+		self.assertEqual(je.voucher_type, "Petty Cash Issue")
 		self.assertEqual(je.petty_cash_request, rec["name"])
 
 	def test_direct_issue_reversed_is_removed(self):
