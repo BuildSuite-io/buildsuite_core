@@ -322,6 +322,69 @@ const routes = [
 				component: () => import("@/views/workspaces/ProcurementDashboardView.vue"),
 			},
 			{
+				path: "procurement/material-requests",
+				name: "material-requests",
+				component: () => import("@/views/procurement/MaterialRequestsListView.vue"),
+			},
+			{
+				path: "procurement/material-requests/new",
+				name: "material-request-new",
+				component: () => import("@/views/procurement/NewMaterialRequestView.vue"),
+			},
+			{
+				path: "procurement/material-requests/:id",
+				name: "material-request-detail",
+				component: () => import("@/views/procurement/MaterialRequestDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/material-requests/:id/edit",
+				name: "material-request-edit",
+				component: () => import("@/views/procurement/NewMaterialRequestView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders",
+				name: "purchase-orders",
+				component: () => import("@/views/procurement/PurchaseOrdersListView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders/new",
+				name: "purchase-order-new",
+				component: () => import("@/views/procurement/NewPurchaseOrderView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders/:id",
+				name: "purchase-order-detail",
+				component: () => import("@/views/procurement/PurchaseOrderDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/purchase-orders/:id/edit",
+				name: "purchase-order-edit",
+				component: () => import("@/views/procurement/NewPurchaseOrderView.vue"),
+			},
+			{
+				path: "procurement/receipts",
+				name: "purchase-receipts",
+				component: () => import("@/views/procurement/PurchaseReceiptsListView.vue"),
+			},
+			{
+				path: "procurement/receipts/new",
+				name: "purchase-receipt-new",
+				component: () => import("@/views/procurement/NewPurchaseReceiptView.vue"),
+			},
+			{
+				path: "procurement/receipts/:id",
+				name: "purchase-receipt-detail",
+				component: () => import("@/views/procurement/PurchaseReceiptDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/receipts/:id/edit",
+				name: "purchase-receipt-edit",
+				component: () => import("@/views/procurement/NewPurchaseReceiptView.vue"),
+			},
+			{
 				path: "items",
 				name: "items",
 				component: () => import("@/views/ItemsListView.vue"),

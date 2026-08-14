@@ -61,6 +61,21 @@ function seedFilters(defs) {
 			f.fieldtype === "Check" ? Number(f.default) || 0 : f.default ?? "";
 	}
 }
+// Link filters should show a readable title, not the record id. Map the common report
+// filter doctypes to their title field; unknown doctypes fall back to `name`.
+const TITLE_FIELDS = {
+	Project: "project_name",
+	Customer: "customer_name",
+	Supplier: "supplier_name",
+	Item: "item_name",
+	Employee: "employee_name",
+	"Cost Center": "cost_center_name",
+	Warehouse: "warehouse_name",
+	Task: "subject",
+};
+function labelFieldFor(doctype) {
+	return TITLE_FIELDS[doctype] || "name";
+}
 function selectOptions(f) {
 	return (f.options || "")
 		.split("\n")
@@ -337,7 +352,7 @@ const inputClass =
 					<DeskLinkPicker
 						v-model="filterValues[f.fieldname]"
 						:doctype="f.options || 'DocType'"
-						label-field="name"
+						:label-field="labelFieldFor(f.options)"
 						value-field="name"
 						:placeholder="`All ${f.label.toLowerCase()}`"
 					/>
