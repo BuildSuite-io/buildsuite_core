@@ -93,10 +93,10 @@ def post_disbursement_journal_entry(doc):
 		)
 
 	je = frappe.new_doc("Journal Entry")
-	# Categorise as a Petty Cash entry (Entry Type). This is the JE's own voucher_type
+	# Categorise as a Petty Cash Issue entry (Entry Type). This is the JE's own voucher_type
 	# Select — NOT GL Entry.voucher_type (which stays the doctype name "Journal Entry"), so
 	# the petty-cash reconciliation that filters GL on "Journal Entry" is unaffected.
-	je.voucher_type = "Petty Cash"
+	je.voucher_type = "Petty Cash Issue"
 	je.company = doc.company
 	je.posting_date = str(doc.request_date) if doc.request_date else None
 	je.user_remark = f"Petty cash {doc.name}: {doc.purpose or ''}"[:140]

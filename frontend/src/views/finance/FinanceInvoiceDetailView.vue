@@ -68,6 +68,7 @@ watch(() => props.id, load, { immediate: true });
 
 const isDraft = computed(() => inv.value?.docstatus === 0);
 const isSubmitted = computed(() => inv.value?.docstatus === 1);
+const isCancelled = computed(() => inv.value?.docstatus === 2);
 const state = computed(() => {
 	if (!inv.value) return "";
 	if (inv.value.docstatus === 2) return "Cancelled";
@@ -167,13 +168,11 @@ async function onDelete() {
 	}
 }
 function onPrint() {
-	// Opens ERPNext's native Sales Invoice print view in a new tab.
-	window.open(
-		`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(
-			inv.value.name
-		)}&trigger_print=1`,
-		"_blank"
-	);
+	// Route to the in-app print view (a formatted invoice preview inside the SPA, like the
+	// Work Order print) — the user reviews it, then Export PDF runs window.print(). Cancelled
+	// invoices aren't printable (button disabled); guard the direct call too.
+	if (isCancelled.value) return;
+	router.push(`/project-finance/invoices/${inv.value.name}/print`);
 }
 
 // --- receive ---
@@ -329,7 +328,13 @@ async function unlinkAdvance(row) {
 				<StatusBadge v-for="s in statusPills" :key="s" :status="s" size="xs" />
 				<button
 					type="button"
-					class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5"
+					class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+					:disabled="isCancelled"
+					:title="
+						isCancelled
+							? 'A cancelled invoice can\'t be printed'
+							: 'Preview and print the invoice'
+					"
 					@click="onPrint"
 				>
 					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

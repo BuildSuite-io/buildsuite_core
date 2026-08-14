@@ -414,7 +414,7 @@ CUSTOM_FIELD = {
 			"options": "Petty Cash Request",
 			"insert_after": "voucher_type",
 			"no_copy": 1,
-			"depends_on": "eval:doc.voucher_type=='Petty Cash'",
+			"depends_on": "eval:doc.voucher_type=='Petty Cash Issue'",
 			"description": "Disburses the linked Requested petty cash request when this entry is submitted.",
 			"module": "BuildSuite Core",
 		},

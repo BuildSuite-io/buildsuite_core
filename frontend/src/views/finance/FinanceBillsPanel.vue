@@ -15,12 +15,14 @@ import {
 	listBillPayAccounts,
 	listSupplierBillPaymentModes,
 } from "@/data/supplierBillApi";
+import { listSuppliers } from "@/data/suppliersApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -201,7 +203,30 @@ async function savePay() {
 	}
 }
 
-// --- record supplier advance ---
+// --- record advance (supplier OR subcontractor) ---
+// Subcontractors are Suppliers (supplier_type "Subcontractor"), so both are advanced via
+// a Supplier Payment Entry (party_type Supplier). One grouped dropdown lists both, like
+// the prototype; the party type is implicit in the supplier record.
+const parties = ref([]);
+async function ensureParties() {
+	if (parties.value.length) return;
+	try {
+		parties.value = await listSuppliers();
+	} catch {
+		/* leave empty — the field just shows no options */
+	}
+}
+const advancePartyOptions = computed(() => {
+	const suppliers = [];
+	const subs = [];
+	for (const s of parties.value) {
+		const opt = { value: s.name, label: s.supplier_name || s.name };
+		if (s.supplier_type === "Subcontractor") subs.push({ ...opt, group: "Subcontractors" });
+		else suppliers.push({ ...opt, group: "Suppliers" });
+	}
+	return [...suppliers, ...subs];
+});
+
 const adv = reactive({
 	open: false,
 	supplier: "",
@@ -213,7 +238,7 @@ const adv = reactive({
 	saving: false,
 });
 async function openAdvance() {
-	await ensurePayRefs();
+	await Promise.all([ensurePayRefs(), ensureParties()]);
 	Object.assign(adv, {
 		open: true,
 		supplier: "",
@@ -229,7 +254,7 @@ async function openAdvance() {
 	});
 }
 async function saveAdvance() {
-	if (!adv.supplier) return showToast("Pick a supplier.", "error");
+	if (!adv.supplier) return showToast("Pick a party.", "error");
 	if (!(Number(adv.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
 	if (!adv.pay_from) return showToast("Pick the account to pay from.", "error");
 	adv.saving = true;
@@ -351,7 +376,7 @@ async function saveAdvance() {
 			</div>
 
 			<section class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-				<table v-if="rows.length" class="w-full text-xs" style="min-width: 800px">
+				<table v-if="rows.length" class="w-full text-xs" style="min-width: 880px">
 					<thead
 						class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200"
 					>
@@ -364,6 +389,7 @@ async function saveAdvance() {
 							<th class="text-left px-3 py-2">Aging</th>
 							<th class="text-right px-3 py-2">Total</th>
 							<th class="text-right px-3 py-2">Outstanding</th>
+							<th class="text-right px-3 py-2">Retention</th>
 							<th class="text-left px-3 py-2">Status</th>
 							<th class="px-3 py-2"></th>
 						</tr>
@@ -413,6 +439,12 @@ async function saveAdvance() {
 								:class="r.outstanding > 0.01 ? 'text-ink-900' : 'text-ink-400'"
 							>
 								{{ fmtINR(r.outstanding) }}
+							</td>
+							<td
+								class="px-3 py-2 text-right tabular-nums"
+								:class="r.retention > 0.01 ? 'text-warning-700' : 'text-ink-300'"
+							>
+								{{ r.retention > 0.01 ? fmtINR(r.retention) : "—" }}
 							</td>
 							<td class="px-3 py-2"><StatusBadge :status="r.status" size="xs" /></td>
 							<td class="px-3 py-2 text-right whitespace-nowrap">
@@ -612,7 +644,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Record supplier advance</h2>
+					<h2 class="text-sm font-semibold text-ink-900">Record advance</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -623,17 +655,17 @@ async function saveAdvance() {
 				</header>
 				<div class="px-4 py-4 space-y-3">
 					<p class="text-[11px] text-ink-500">
-						Money paid to a supplier before (or without) a bill — it stays on the
-						supplier's account until a later bill draws it down.
+						Money paid to a supplier or subcontractor before (or without) a bill — it
+						stays on the party's account until a later bill draws it down.
 					</p>
-					<DeskField label="Supplier" required
-						><DeskLinkPicker
+					<DeskField label="Party" required>
+						<DeskSearchableSelect
 							v-model="adv.supplier"
-							doctype="Supplier"
-							label-field="supplier_name"
-							value-field="name"
-							placeholder="Pick a supplier…"
-					/></DeskField>
+							:options="advancePartyOptions"
+							placeholder="Pick a supplier or subcontractor…"
+							search-placeholder="Search parties…"
+						/>
+					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
 						<DeskField label="Amount" required
 							><DeskInput
