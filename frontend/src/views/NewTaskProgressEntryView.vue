@@ -7,6 +7,8 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
+import FileUploadHandler from "frappe-ui-file-upload-handler";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -44,6 +46,59 @@ const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	blocker_detail: "blockerNote",
 });
 const saving = ref(false);
+
+// ----- Attachments -------------------------------------------------------
+// Matches the "File progress" modal (opened from a Task): files are picked here
+// and held locally until save, then uploaded against the new entry via Frappe's
+// native File pipeline (File docs attached_to the Task Progress Entry).
+const pendingAttachments = ref([]); // [{ fileName, mime, size, url, file }]
+const progressFileInput = ref(null);
+// Second input wired with `accept="image/*" capture="environment"` so on mobile
+// it opens the rear camera directly; on desktop it falls back to an image picker.
+const progressCameraInput = ref(null);
+
+function fmtBytes(n) {
+	if (!n) return "0 B";
+	if (n < 1024) return `${n} B`;
+	if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+	return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+function openProgressFilePicker() {
+	if (progressFileInput.value) progressFileInput.value.click();
+}
+function openProgressCamera() {
+	if (progressCameraInput.value) progressCameraInput.value.click();
+}
+function onProgressFilesPicked(ev) {
+	const files = Array.from(ev.target.files || []);
+	for (const f of files) {
+		// Camera capture on iOS sometimes gives an empty filename — synthesize one.
+		const fileName =
+			f.name && f.name.trim()
+				? f.name
+				: `photo-${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`;
+		pendingAttachments.value.push({
+			fileName,
+			mime: f.type || "application/octet-stream",
+			size: f.size,
+			url: URL.createObjectURL(f), // local preview only
+			file: f, // the real File — uploaded via Frappe on save
+		});
+	}
+	// Reset the input so picking the same file twice in a row still fires.
+	if (ev.target) ev.target.value = "";
+}
+function removePendingAttachment(idx) {
+	const att = pendingAttachments.value[idx];
+	if (att?.url) {
+		try {
+			URL.revokeObjectURL(att.url);
+		} catch (_) {
+			/* tolerate non-blob */
+		}
+	}
+	pendingAttachments.value.splice(idx, 1);
+}
 
 // Project → its whole sub-tree (self + every nested sub-project). The Task picker
 // below is scoped with a `project in [...]` filter, so you can only pick a task
@@ -225,6 +280,25 @@ async function save() {
 			blocker: form.blockerFlag ? 1 : 0,
 			blocker_detail: form.blockerNote,
 		});
+
+		// Upload any pending attachments against the new entry via Frappe's native
+		// File pipeline. A failed upload is reported per-file but doesn't unwind the
+		// already-filed entry.
+		for (const f of pendingAttachments.value) {
+			if (!f.file) continue;
+			try {
+				await new FileUploadHandler().upload(f.file, {
+					doctype: "Task Progress Entry",
+					docname: created.name || created.id,
+					private: true,
+				});
+			} catch (uploadErr) {
+				showToast(`Filed entry, but failed to attach ${f.fileName}`, "error");
+				console.error("attachment upload failed:", uploadErr);
+			}
+		}
+		pendingAttachments.value = []; // clear ref without revoking blob URLs
+
 		if (cameFromTaskId) {
 			router.push(`/tasks/${cameFromTaskId}`);
 		} else {
@@ -296,7 +370,9 @@ const breadcrumbs = [
 							:filters="taskFilters"
 							:disabled="!form.projectId"
 							:page-length="20"
-							:placeholder="form.projectId ? '— Select task —' : '— Select a project first —'"
+							:placeholder="
+								form.projectId ? '— Select task —' : '— Select a project first —'
+							"
 						/>
 					</DeskField>
 					<DeskField label="Entry date">
@@ -398,6 +474,107 @@ const breadcrumbs = [
 							/>
 						</DeskField>
 					</div>
+				</DeskSection>
+
+				<DeskSection title="Attachments" :cols="1">
+					<input
+						ref="progressFileInput"
+						type="file"
+						multiple
+						class="hidden"
+						@change="onProgressFilesPicked"
+					/>
+					<input
+						ref="progressCameraInput"
+						type="file"
+						accept="image/*"
+						capture="environment"
+						class="hidden"
+						@change="onProgressFilesPicked"
+					/>
+					<DeskField
+						label="Files"
+						hint="Site photos, QC reports, drawings — picked here and saved with the entry."
+					>
+						<div class="space-y-2 py-1">
+							<ul v-if="pendingAttachments.length" class="space-y-1.5">
+								<li
+									v-for="(att, idx) in pendingAttachments"
+									:key="idx"
+									class="flex items-center gap-2 px-2.5 py-1.5 bg-ink-50 border border-ink-200 text-xs"
+									style="border-radius: 6px"
+								>
+									<img
+										v-if="att.mime?.startsWith('image/') && att.url"
+										:src="att.url"
+										class="w-8 h-8 object-cover flex-shrink-0"
+										style="border-radius: 4px"
+										alt=""
+									/>
+									<svg
+										v-else
+										class="w-4 h-4 text-ink-500"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.8"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+										v-html="getWorkspaceIconPath('paperclip')"
+									/>
+									<span class="flex-1 min-w-0 truncate text-ink-800">{{
+										att.fileName
+									}}</span>
+									<span class="text-[11px] text-ink-500 tabular-nums">{{
+										fmtBytes(att.size)
+									}}</span>
+									<button
+										type="button"
+										class="text-ink-400 hover:text-danger-700 text-base leading-none"
+										aria-label="Remove"
+										@click="removePendingAttachment(idx)"
+									>
+										×
+									</button>
+								</li>
+							</ul>
+							<div class="flex items-center gap-2 flex-wrap">
+								<button
+									type="button"
+									class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1"
+									style="border-radius: 6px"
+									@click="openProgressFilePicker"
+								>
+									<span class="text-sm leading-none">+</span>
+									<span
+										>Attach file{{
+											pendingAttachments.length ? "s" : ""
+										}}</span
+									>
+								</button>
+								<button
+									type="button"
+									class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1.5"
+									style="border-radius: 6px"
+									@click="openProgressCamera"
+								>
+									<svg
+										class="w-3.5 h-3.5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.8"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+										v-html="getWorkspaceIconPath('camera')"
+									/>
+									<span>Capture photo</span>
+								</button>
+							</div>
+						</div>
+					</DeskField>
 				</DeskSection>
 			</div>
 		</DeskForm>
