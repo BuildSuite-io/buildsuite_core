@@ -255,3 +255,24 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		# A later disbursement settles the negative balance.
 		self._disburse(5000)
 		self.assertEqual(flt(pc.get_balance_amount_approved(self.employee)), 3000)
+
+	def test_transaction_list_filters_by_type_project_and_date(self):
+		self._disburse(10000)  # Received row, dated 2026-07-20 (via request_date)
+		self._expense_entry(3000, submit=True)  # Paid row, dated 2026-07-21
+
+		received_only = pc.get_transaction_list(self.employee, transaction_type="Received")
+		self.assertEqual(len(received_only), 1)
+		self.assertTrue(all(r["received"] > 0 for r in received_only))
+
+		paid_only = pc.get_transaction_list(self.employee, transaction_type="Paid")
+		self.assertEqual(len(paid_only), 1)
+		self.assertTrue(all(r["paid"] > 0 for r in paid_only))
+
+		# Date-range filter narrows to just the expense day.
+		ranged = pc.get_transaction_list(self.employee, from_date="2026-07-21", to_date="2026-07-21")
+		self.assertEqual(len(ranged), 1)
+		self.assertTrue(ranged[0]["paid"] > 0)
+
+		# Both rows share self.project in this fixture, so filtering by it keeps both.
+		by_project = pc.get_transaction_list(self.employee, project=self.project)
+		self.assertEqual(len(by_project), 2)

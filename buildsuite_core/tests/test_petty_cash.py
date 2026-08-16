@@ -274,3 +274,219 @@ class TestPettyCash(BuildSuiteTestCase):
 		out = pc.undisburse(rec["name"])
 		self.assertTrue(out.get("deleted"))
 		self.assertFalse(frappe.db.exists("Petty Cash Request", rec["name"]))
+
+	# --- doctype guards not yet covered above ------------------------------
+	def test_delete_disbursed_request_blocked(self):
+		req = self._request()
+		req.disburse(self._cash_account())
+		with self.assertRaises(frappe.ValidationError):
+			frappe.delete_doc("Petty Cash Request", req.name, ignore_permissions=True)
+
+	def test_disburse_rejects_invalid_paid_from(self):
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		req = self._request()
+
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(None)  # no account selected
+
+		group_account = frappe.db.get_value("Account", {"company": self.company, "is_group": 1}, "name")
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(group_account)  # can't pay from a group/summary account
+
+		expense_acct = _ensure_account(
+			self.company, "UAT Non-Cash Expense", "Expense", "Expense Account", "Expenses"
+		)
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(expense_acct)  # wrong account_type (not Bank/Cash)
+
+	def test_cancel_disbursement_requires_disbursed_status(self):
+		req = self._request()  # still Requested — never disbursed
+		with self.assertRaises(frappe.ValidationError):
+			req.cancel_disbursement()
+
+	def test_disburse_rejects_zero_amount(self):
+		req = self._request(amount=0)  # amount=0 passes the mandatory check (not "missing")
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(self._cash_account())
+
+	def test_disburse_rejects_inactive_employee(self):
+		req = self._request()
+		emp = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name")
+		frappe.db.set_value("Employee", emp, "status", "Left")
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(self._cash_account())
+
+	def test_je_submit_sync_guards(self):
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		holder = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name")
+		petty = resolve_petty_cash_account(self.company)
+		bank = self._cash_account()
+
+		# (a) already disbursed by a DIFFERENT JE — submitting a second linked JE must throw.
+		req = self._request(amount=1000)
+		req.disburse(bank)
+		je2 = frappe.new_doc("Journal Entry")
+		je2.company = self.company
+		je2.posting_date = "2026-07-20"
+		je2.petty_cash_request = req.name
+		je2.append("accounts", {"account": petty, "debit_in_account_currency": 1000, "employee": holder})
+		je2.append("accounts", {"account": bank, "credit_in_account_currency": 1000})
+		je2.flags.ignore_permissions = True
+		je2.insert()
+		with self.assertRaises(frappe.ValidationError):
+			je2.submit()
+
+		# (b) linked to a Cancelled request — submitting the JE must throw.
+		req2 = self._request(amount=500)
+		frappe.db.set_value("Petty Cash Request", req2.name, "status", "Cancelled")
+		je3 = frappe.new_doc("Journal Entry")
+		je3.company = self.company
+		je3.posting_date = "2026-07-20"
+		je3.petty_cash_request = req2.name
+		je3.append("accounts", {"account": petty, "debit_in_account_currency": 500, "employee": holder})
+		je3.append("accounts", {"account": bank, "credit_in_account_currency": 500})
+		je3.flags.ignore_permissions = True
+		je3.insert()
+		with self.assertRaises(frappe.ValidationError):
+			je3.submit()
+
+	def test_default_petty_cash_account_override(self):
+		from buildsuite_core.utils.petty_cash import get_petty_cash_account, resolve_petty_cash_account
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		fallback = resolve_petty_cash_account(self.company)  # ensure the normal account exists
+		override = _ensure_account(self.company, "UAT Petty Cash Override", "Asset", "Cash", "Current Assets")
+
+		frappe.db.set_single_value("BuildSuite Core Settings", "default_petty_cash_account", override)
+		self.assertEqual(get_petty_cash_account(self.company), override)
+
+		frappe.db.set_single_value("BuildSuite Core Settings", "default_petty_cash_account", None)
+		self.assertEqual(get_petty_cash_account(self.company), fallback)
+
+	def test_create_account_hook_creates_petty_cash_ledger(self):
+		from buildsuite_core.utils.petty_cash import PETTY_CASH_ACCOUNT_NAME, create_account
+
+		# Already exists for the real company — must be a safe no-op (doesn't duplicate).
+		before = frappe.db.count("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": self.company})
+		create_account(frappe._dict(name=self.company))
+		after = frappe.db.count("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": self.company})
+		self.assertEqual(after, before)
+
+		# No matching parent account for a company that doesn't exist -> logs an error, no throw.
+		create_account(frappe._dict(name="No Such Company XYZ"))  # must not raise
+		self.assertFalse(
+			frappe.db.exists("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": "No Such Company XYZ"})
+		)
+
+	# --- api/petty_cash.py endpoints not yet covered above ------------------
+	def test_save_request_create_and_edit_guard(self):
+		import json
+
+		from buildsuite_core.api.petty_cash import save_request
+
+		created = save_request(json.dumps({"amount": 4000, "purpose": "Site fuel", "project": self.project}))
+		self.assertEqual(created["status"], "Requested")
+		self.assertEqual(flt(created["amount"]), 4000)
+
+		edited = save_request(json.dumps({"name": created["name"], "amount": 4500, "purpose": "Updated"}))
+		self.assertEqual(flt(edited["amount"]), 4500)
+		self.assertEqual(edited["purpose"], "Updated")
+
+		# Once disbursed, it can no longer be edited via save_request.
+		req = frappe.get_doc("Petty Cash Request", created["name"])
+		req.disburse(self._cash_account())
+		with self.assertRaises(frappe.ValidationError):
+			save_request(json.dumps({"name": created["name"], "amount": 9999, "purpose": "nope"}))
+
+	def test_cancel_request_via_api(self):
+		from buildsuite_core.api.petty_cash import cancel_request
+
+		req = self._request()
+		out = cancel_request(req.name)
+		self.assertEqual(out["status"], "Cancelled")
+
+		# Already cancelled — a second cancel must throw.
+		with self.assertRaises(frappe.ValidationError):
+			cancel_request(req.name)
+
+	def test_delete_request_via_api(self):
+		from buildsuite_core.api.petty_cash import delete_request
+
+		req = self._request()
+		out = delete_request(req.name)
+		self.assertTrue(out["ok"])
+		self.assertFalse(frappe.db.exists("Petty Cash Request", req.name))
+
+		req2 = self._request()
+		req2.disburse(self._cash_account())
+		with self.assertRaises(frappe.ValidationError):
+			delete_request(req2.name)
+
+	def test_list_cash_bank_accounts_excludes_petty_cash(self):
+		from buildsuite_core.api.petty_cash import list_cash_bank_accounts
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		petty = resolve_petty_cash_account(self.company)
+		accounts = list_cash_bank_accounts(self.company)
+		names = [a["name"] for a in accounts]
+		self.assertNotIn(petty, names)
+		for a in accounts:
+			self.assertIn(a["account_type"], ("Bank", "Cash"))
+
+	def test_undisburse_via_api_reverts_request(self):
+		from buildsuite_core.api.petty_cash import undisburse
+
+		req = self._request()
+		req.disburse(self._cash_account())
+		out = undisburse(req.name)
+		self.assertFalse(out.get("deleted"))
+		self.assertEqual(out["status"], "Requested")
+		req.reload()
+		self.assertEqual(req.status, "Requested")
+		self.assertFalse(req.journal_entry)
+
+	def test_get_request_serializes_full_shape(self):
+		from buildsuite_core.api.petty_cash import get_request
+
+		req = frappe.get_doc(
+			{
+				"doctype": "Petty Cash Request",
+				"project": self.project,
+				"request_date": "2026-07-20",
+				"amount": 7000,
+				"purpose": "Site fuel",
+			}
+		).insert(ignore_permissions=True)
+		req.disburse(self._cash_account())
+
+		data = get_request(req.name)
+		self.assertEqual(data["project"], self.project)
+		self.assertEqual(data["project_name"], frappe.db.get_value("Project", self.project, "project_name"))
+		self.assertEqual(data["status"], "Disbursed")
+		self.assertTrue(data["is_mine"])  # Administrator raised it and is reading it here
+		self.assertEqual(len(data["activity"]), 1)
+		self.assertIn("Disbursed", data["activity"][0]["text"])
+
+	def test_issue_direct_requires_holder_and_paid_from(self):
+		import json
+
+		from buildsuite_core.api import petty_cash as pc
+
+		with self.assertRaises(frappe.ValidationError):
+			# No requested_by (holder) given.
+			pc.issue_direct(json.dumps({"amount": 1000, "paid_from": self._cash_account(), "purpose": "x"}))
+
+		with self.assertRaises(frappe.ValidationError):
+			# No paid_from account given.
+			pc.issue_direct(json.dumps({"requested_by": "Administrator", "amount": 1000, "purpose": "x"}))
+
+	def test_holder_balances_api_matches_utils(self):
+		from buildsuite_core.api.petty_cash import holder_balances
+		from buildsuite_core.utils.petty_cash import reconciled_holder_balances
+
+		req = self._request(amount=4000)
+		req.disburse(self._cash_account())
+
+		self.assertEqual(holder_balances(self.company), reconciled_holder_balances(self.company))
