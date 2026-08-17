@@ -33,6 +33,34 @@ async function request(method, body) {
 	return payload.message;
 }
 
+// --- BOQ actuals log (buildsuite_core.api.boq_actuals.*) — the cost-code actuals
+// that feed the Actual column + the per-code drill-down. Same request shape, different module.
+const ACTUALS_BASE = "/api/method/buildsuite_core.api.boq_actuals.";
+async function requestActuals(method, body) {
+	const res = await fetch(ACTUALS_BASE + method, {
+		method: "POST",
+		credentials: "include",
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Frappe-CSRF-Token": window.csrf_token || "",
+		},
+		body: JSON.stringify(body || {}),
+	});
+	const payload = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(serverMessage(payload, res.status));
+	return payload.message;
+}
+export const getActualsSummary = (project) => requestActuals("get_actuals_summary", { project });
+export const getActualsForCode = (project, groupCode = null, itemCode = null) =>
+	requestActuals("get_actuals_for_code", {
+		project,
+		group_code: groupCode,
+		item_code: itemCode,
+	});
+export const getActualsLog = (project, filters = {}) =>
+	requestActuals("get_actuals_log", { project, ...filters });
+
 export const submitBoq = (boq) => request("submit_boq", { boq });
 export const approveBoq = (boq) => request("approve_boq", { boq });
 export const explodeItem = (boqItem) => request("explode_item", { boq_item: boqItem });

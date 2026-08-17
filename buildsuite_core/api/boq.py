@@ -39,6 +39,52 @@ def submit_boq(boq):
 	return doc.status
 
 
+def _boq_codes(boq):
+	"""(group_codes, item_codes) present in a BOQ revision — the join keys."""
+	groups = [c for c in frappe.get_all("BOQ Group", filters={"boq": boq}, pluck="code") if c]
+	items = [c for c in frappe.get_all("BOQ Item", filters={"boq": boq}, pluck="code") if c]
+	return groups, items
+
+
+def _validate_codes_for_approval(doc):
+	"""R9 — the requirement that makes the rest true. Cost code is the only join key, so every
+	other rule assumes codes are stable. Block approval if two lines share a code, or if a code
+	that carries actuals in the current Approved revision is absent from this one (quietly
+	renumbered/dropped rather than retired with its code kept)."""
+	groups, items = _boq_codes(doc.name)
+	dupes = sorted({c for c in groups if groups.count(c) > 1} | {c for c in items if items.count(c) > 1})
+	if dupes:
+		frappe.throw(
+			_("Duplicate cost codes in this BOQ: {0}. Every line needs a unique code.").format(
+				", ".join(dupes)
+			)
+		)
+
+	prior = frappe.db.get_value(
+		"BOQ", {"project": doc.project, "status": "Approved", "name": ("!=", doc.name)}, "name"
+	)
+	if not prior:
+		return
+	from buildsuite_core.api.boq_actuals import _actual_entries
+
+	prior_codes = set().union(*[set(x) for x in _boq_codes(prior)])
+	with_actuals = {
+		c
+		for e in _actual_entries(doc.project)
+		for c in (e["group_code"], e["item_code"])
+		if c and c in prior_codes
+	}
+	missing = sorted(with_actuals - (set(groups) | set(items)))
+	if missing:
+		frappe.throw(
+			_(
+				"These cost codes carry actuals in the current Approved revision but are absent "
+				"from this one: {0}. Keep the code (retire the line) or restore it — codes are "
+				"immutable once approved."
+			).format(", ".join(missing))
+		)
+
+
 @frappe.whitelist()
 def approve_boq(boq):
 	"""Approve a Submitted BOQ; supersede any other Approved revision of the same
@@ -48,6 +94,7 @@ def approve_boq(boq):
 	doc = frappe.get_doc("BOQ", boq)
 	if doc.status not in ("Submitted", "Draft"):
 		frappe.throw(_("Only a Draft or Submitted BOQ can be approved."))
+	_validate_codes_for_approval(doc)
 	for other in frappe.get_all(
 		"BOQ",
 		filters={"project": doc.project, "status": "Approved", "name": ("!=", doc.name)},

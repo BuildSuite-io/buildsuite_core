@@ -15,7 +15,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode, getSubcontractActualByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -210,10 +210,9 @@ const treeGridStyle =
 
 const totals = computed(() => {
 	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
-	// Task-progress actuals + the subcontracted spend billed (submitted bills), added not replaced.
-	const subcontractActual = Object.values(subcontractActualMap.value).reduce((a, v) => a + v, 0);
-	const actual =
-		allItems.value.reduce((a, i) => a + (i.actualAmount || 0), 0) + subcontractActual;
+	// Actual = the cost-code actuals log total (Material + Subcontract + Expense), the same
+	// figure the per-group rows and the drill-down reconcile against (R2).
+	const actual = actualsSummary.value.total || 0;
 	const variance = actual - planned;
 	return {
 		planned,
@@ -379,30 +378,104 @@ function groupCommitted(group) {
 	return committedMap.value[group.code] || 0;
 }
 
-// === Actual (subcontract) — submitted bill this-period amounts by cost-code group ===
-// Added to (never replacing) the task-progress actuals, so a group's Actual reflects both
-// site-progress spend and what has been billed by subcontractors.
-const subcontractActualMap = ref({}); // { cost_code_group: amount }
+// === Actual — the cost-code actuals log ===
+// Real spend reaches the BOQ through the cost code (Material Consumption + Subcontractor Bill +
+// Expense Entry), resolved by code against this project. The Actual column and the per-code
+// drill-down both read this one summary, so the row figure and the modal total always reconcile
+// (one calculation path — R2). Derived live from submitted docs, so a cancelled source drops
+// out for free (R3).
+const EMPTY_SUMMARY = { by_group: {}, by_item: {}, total: 0 };
+const actualsSummary = ref({ ...EMPTY_SUMMARY });
 watch(
 	() => boq.value?.projectId,
 	async (pid) => {
-		subcontractActualMap.value = {};
+		actualsSummary.value = { ...EMPTY_SUMMARY };
 		if (!pid) return;
 		try {
-			subcontractActualMap.value = (await getSubcontractActualByCostCode(pid)) || {};
+			actualsSummary.value = (await boqApi.getActualsSummary(pid)) || { ...EMPTY_SUMMARY };
 		} catch {
-			subcontractActualMap.value = {};
+			actualsSummary.value = { ...EMPTY_SUMMARY };
 		}
 	},
 	{ immediate: true }
 );
-function groupSubcontractActual(group) {
-	return subcontractActualMap.value[group.code] || 0;
-}
-// A group's Actual = task-progress actuals on its items + subcontracted spend billed to its code.
 function groupActual(group) {
-	return groupTotals(group.id).actual + groupSubcontractActual(group);
+	return actualsSummary.value.by_group[group.code]?.actual || 0;
 }
+function itemActual(item) {
+	return actualsSummary.value.by_item[item.code]?.actual || 0;
+}
+// Coverage: how much of a group's actual is tracked at item level vs coded to the group only —
+// so a partly coded group is never mistaken for a fully attributed one.
+function groupCoverage(group) {
+	const g = actualsSummary.value.by_group[group.code];
+	if (!g || !g.actual) return null;
+	return { actual: g.actual, itemCoded: g.item_coded, groupCoded: g.group_coded };
+}
+
+// ===== Actuals drill-down (R1) — click a group / item Actual to open the contributing
+// source documents. A group rolls up every line carrying its code (item-coded + group-coded);
+// an item shows only its own lines. Each entry links to the source document it was derived from.
+const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
+async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
+	const pid = boq.value?.projectId;
+	if (!pid || (!groupCode && !itemCode)) return;
+	actualsDrill.value = { title, subtitle, entries: [], total: 0, loading: true };
+	try {
+		const res = await boqApi.getActualsForCode(pid, groupCode, itemCode);
+		actualsDrill.value = {
+			title,
+			subtitle,
+			entries: res.entries || [],
+			total: res.total || 0,
+			loading: false,
+		};
+	} catch (err) {
+		showToast(err.message || "Failed to load actuals", "error");
+		actualsDrill.value = null;
+	}
+}
+function openGroupActuals(group) {
+	if (!groupActual(group)) return;
+	openActualsDrill({
+		groupCode: group.code,
+		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
+		subtitle: "Group actual — contributing documents",
+	});
+}
+function openItemActuals(item) {
+	if (!itemActual(item)) return;
+	openActualsDrill({
+		itemCode: item.code,
+		title: `${item.code} · ${(item.description || "").slice(0, 60)}`,
+		subtitle: "Item actual — contributing documents",
+	});
+}
+function closeActualsDrill() {
+	actualsDrill.value = null;
+}
+// Navigate to the source document an entry was derived from. In-app where a screen exists,
+// else the Desk form in a new tab.
+function openActualSource(e) {
+	if (e.source_doctype === "Subcontractor Bill") {
+		router.push(`/subcontractor-bills/${e.source_name}`);
+	} else if (e.source_doctype === "Stock Entry") {
+		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
+	} else if (e.source_doctype === "Expense Entry") {
+		window.open(
+			`/app/expense-entry/${encodeURIComponent(e.source_name)}`,
+			"_blank",
+			"noopener"
+		);
+	}
+}
+const COST_TYPE_TONE = {
+	Material: "bg-info-50 text-info-700",
+	Subcontract: "bg-brand-50 text-brand-700",
+	Overhead: "bg-warning-50 text-warning-700",
+	Labour: "bg-success-50 text-success-700",
+	Plant: "bg-ink-100 text-ink-700",
+};
 
 const wpRes = useDocTypeList("Work Package", {
 	fields: ["name", "code", "work_package_name"],
@@ -1328,11 +1401,25 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupCommitted(g)) }}
 						</div>
-						<div
-							class="px-3 py-2 text-right tabular-nums text-sm text-ink-700"
-							:title="`Task-progress actuals + subcontractor bills submitted against cost code ${g.code}`"
-						>
-							{{ fmtCompactINR(groupActual(g)) }}
+						<div class="px-3 py-2 text-right text-sm text-ink-700">
+							<button
+								v-if="groupActual(g)"
+								type="button"
+								class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
+								:title="`Actual for ${g.code} — click to see the source documents`"
+								@click.stop="openGroupActuals(g)"
+							>
+								{{ fmtCompactINR(groupActual(g)) }}
+							</button>
+							<span v-else class="text-ink-300">—</span>
+							<div
+								v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
+								class="text-[10px] text-ink-400 leading-tight"
+								:title="'The remainder is coded to the group only, not to items.'"
+							>
+								{{ fmtCompactINR(groupCoverage(g).itemCoded) }} of
+								{{ fmtCompactINR(groupCoverage(g).actual) }} at item level
+							</div>
 						</div>
 						<div
 							class="px-3 py-2 text-right text-sm tabular-nums font-medium"
@@ -1521,9 +1608,18 @@ const breadcrumbs = computed(() => {
 								<div></div>
 								<div class="px-3 py-1.5">
 									<div class="flex flex-col items-end">
-										<span class="tabular-nums text-sm text-ink-700">{{
-											fmtCompactINR(item.actualAmount)
-										}}</span>
+										<button
+											v-if="itemActual(item)"
+											type="button"
+											class="tabular-nums text-sm text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
+											:title="`Actual for ${item.code} — click to see the source documents`"
+											@click.stop="openItemActuals(item)"
+										>
+											{{ fmtCompactINR(itemActual(item)) }}
+										</button>
+										<span v-else class="tabular-nums text-sm text-ink-300"
+											>—</span
+										>
 										<div
 											class="w-full h-1 bg-ink-100 overflow-hidden mt-1"
 											style="border-radius: 2px"
@@ -1531,16 +1627,16 @@ const breadcrumbs = computed(() => {
 											<div
 												class="h-full"
 												:class="
-													item.actualAmount > item.plannedAmount
+													itemActual(item) > item.plannedAmount
 														? 'bg-danger-500'
-														: item.actualAmount >
+														: itemActual(item) >
 														  item.plannedAmount * 0.9
 														? 'bg-warning-500'
 														: 'bg-success-500'
 												"
 												:style="`width: ${Math.min(
 													100,
-													pctOf(item.actualAmount, item.plannedAmount)
+													pctOf(itemActual(item), item.plannedAmount)
 												).toFixed(1)}%`"
 											></div>
 										</div>
@@ -1550,7 +1646,7 @@ const breadcrumbs = computed(() => {
 									class="px-3 py-1.5 text-right tabular-nums text-sm"
 									:class="
 										variancePill(
-											((item.actualAmount - item.plannedAmount) /
+											((itemActual(item) - item.plannedAmount) /
 												(item.plannedAmount || 1)) *
 												100
 										)
@@ -1559,7 +1655,7 @@ const breadcrumbs = computed(() => {
 									{{
 										item.plannedAmount
 											? (
-													((item.actualAmount - item.plannedAmount) /
+													((itemActual(item) - item.plannedAmount) /
 														item.plannedAmount) *
 													100
 											  ).toFixed(1)
@@ -2381,5 +2477,116 @@ const breadcrumbs = computed(() => {
 				</div>
 			</section>
 		</DeskForm>
+
+		<!-- Actuals drill-down (R1) — the source documents behind a group / item Actual -->
+		<div
+			v-if="actualsDrill"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto"
+			@click.self="closeActualsDrill"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-start justify-between gap-3"
+				>
+					<div class="min-w-0">
+						<h2 class="text-sm font-semibold text-ink-900 truncate">
+							{{ actualsDrill.title }}
+						</h2>
+						<p class="text-[11px] text-ink-500">{{ actualsDrill.subtitle }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+						@click="closeActualsDrill"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-3">
+					<div v-if="actualsDrill.loading" class="py-8 text-center text-xs text-ink-400">
+						Loading…
+					</div>
+					<div
+						v-else-if="!actualsDrill.entries.length"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						No source documents yet — this actual is “— pending”.
+					</div>
+					<table v-else class="w-full text-xs">
+						<thead
+							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+						>
+							<tr>
+								<th class="text-left py-2 pr-2">Type</th>
+								<th class="text-left py-2 pr-2">Source document</th>
+								<th class="text-left py-2 pr-2">Party</th>
+								<th class="text-left py-2 pr-2">Date</th>
+								<th class="text-right py-2">Amount</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="(e, i) in actualsDrill.entries"
+								:key="i"
+								class="border-b border-ink-100 last:border-0"
+							>
+								<td class="py-2 pr-2">
+									<span
+										class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+										:class="
+											COST_TYPE_TONE[e.cost_type] ||
+											'bg-ink-100 text-ink-700'
+										"
+										>{{ e.cost_type }}</span
+									>
+								</td>
+								<td class="py-2 pr-2">
+									<button
+										type="button"
+										class="text-brand-700 hover:underline text-left"
+										@click="openActualSource(e)"
+									>
+										{{ e.source_doctype }} ·
+										<span class="font-mono">{{ e.source_name }}</span>
+									</button>
+									<div v-if="e.label" class="text-[10px] text-ink-400 truncate">
+										{{ e.label }}
+									</div>
+								</td>
+								<td class="py-2 pr-2 text-ink-600">{{ e.party || "—" }}</td>
+								<td class="py-2 pr-2 text-ink-500 whitespace-nowrap">
+									{{ e.date ? fmtDate(e.date) : "—" }}
+								</td>
+								<td class="py-2 text-right tabular-nums text-ink-900 font-medium">
+									{{ fmtINR(e.amount) }}
+								</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr class="border-t-2 border-ink-200">
+								<td
+									colspan="4"
+									class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+								>
+									Total actual
+								</td>
+								<td
+									class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+								>
+									{{ fmtINR(actualsDrill.total) }}
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+					<p class="text-[10px] text-ink-400 mt-3">
+						Every rail resolves through the cost code. Cancelling a source removes its
+						entry — the log shows live cost only.
+					</p>
+				</div>
+			</div>
+		</div>
 	</DeskPage>
 </template>
