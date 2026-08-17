@@ -39,6 +39,7 @@ const PAGE_TITLES = {
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",
+	"report-delay-analysis": "Delay Analysis",
 	estimation: "Estimation",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
@@ -299,6 +300,13 @@ const routes = [
 				name: "report-view",
 				component: () => import("@/views/ReportView.vue"),
 				props: true,
+			},
+			{
+				// Bespoke Site Execution report — its own route so the Workspace Setting tile
+				// points at a plain URL rather than a Query Report the flat renderer can't express.
+				path: "reports/delay-analysis",
+				name: "report-delay-analysis",
+				component: () => import("@/views/DelayAnalysisReportView.vue"),
 			},
 			{
 				path: "reports/:slug",
