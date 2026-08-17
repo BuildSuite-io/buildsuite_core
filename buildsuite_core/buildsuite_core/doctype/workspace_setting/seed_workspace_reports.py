@@ -189,6 +189,48 @@ _SEED = {
 			"description": "POs and GRNs grouped by item, with value rollups.",
 		},
 	),
+	# Project Finance — the prototype's six reports, each an in-app Vue view under
+	# /project-finance/report/<slug> (FinanceReportPageView). Route tiles, so admins see
+	# exactly where each goes; the workspace's reports section is already role-gated to the
+	# finance personas in ProjectFinanceWorkspace.
+	"project-finance": (
+		{
+			"label": "Profit & Loss",
+			"icon": "chart-line",
+			"route": "/project-finance/report/pnl",
+			"description": "Income vs direct costs and overheads, by project and period.",
+		},
+		{
+			"label": "Receivables & Payables",
+			"icon": "clipboard-list",
+			"route": "/project-finance/report/aged",
+			"description": "Aged outstanding — who owes us and who we owe.",
+		},
+		{
+			"label": "Financial Position",
+			"icon": "wallet",
+			"route": "/project-finance/report/position",
+			"description": "What we have vs what we owe, and the net position.",
+		},
+		{
+			"label": "Petty Cash",
+			"icon": "hand-coins",
+			"route": "/project-finance/report/petty",
+			"description": "Per holder: disbursed, spent, balance in hand.",
+		},
+		{
+			"label": "Expense Summary",
+			"icon": "receipt",
+			"route": "/project-finance/report/expenses",
+			"description": "By project, cost type, source or person, with receipts.",
+		},
+		{
+			"label": "Cash & Bank Statement",
+			"icon": "banknote",
+			"route": "/project-finance/report/cashbank",
+			"description": "Per account: opening, movements, closing.",
+		},
+	),
 }
 
 
