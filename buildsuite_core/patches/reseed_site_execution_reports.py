@@ -10,10 +10,7 @@ reports."""
 
 import frappe
 
-from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
-	REPORTS,
-	_ensure_report,
-)
+from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import REPORTS
 
 RETIRED = (
 	"Project Status Summary",
@@ -25,11 +22,9 @@ RETIRED = (
 
 
 def execute():
-	# 1) Ensure the four new reports exist (query + filters + roles reconciled).
-	for report_name, ref_doctype, _icon, _desc, query, filters, roles in REPORTS:
-		_ensure_report(report_name, ref_doctype, query, filters, roles)
-
-	# 2) Reset the Site Execution workspace tiles to the new report set (keep other workspaces).
+	# The four reports are now standard Script Reports (buildsuite_core/report/), synced from
+	# their module files — no Query Report creation here. This patch only repoints the tiles.
+	# Reset the Site Execution workspace tiles to the new report set (keep other workspaces).
 	settings = frappe.get_single("Workspace Setting")
 	kept = [
 		{
@@ -46,7 +41,7 @@ def execute():
 	settings.set("reports", [])
 	for row in kept:
 		settings.append("reports", row)
-	for name, _ref, icon, desc, _q, _f, _r in REPORTS:
+	for name, icon, desc in REPORTS:
 		settings.append(
 			"reports",
 			{"workspace": "site-execution", "report": name, "icon": icon, "description": desc},

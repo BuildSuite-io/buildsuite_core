@@ -24,3 +24,4 @@ buildsuite_core.patches.sync_report_filters # 2026-08-04
 
 buildsuite_core.patches.reseed_site_execution_reports # 2026-08-12
 buildsuite_core.patches.rename_petty_cash_entry_type # 2026-08-14
+buildsuite_core.patches.convert_site_execution_reports_to_script # 2026-08-18
