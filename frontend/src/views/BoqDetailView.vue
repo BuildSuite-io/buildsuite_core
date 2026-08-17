@@ -1402,24 +1402,25 @@ const breadcrumbs = computed(() => {
 							{{ fmtCompactINR(groupCommitted(g)) }}
 						</div>
 						<div class="px-3 py-2 text-right text-sm text-ink-700">
-							<button
-								v-if="groupActual(g)"
-								type="button"
-								class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
-								:title="`Actual for ${g.code} — click to see the source documents`"
-								@click.stop="openGroupActuals(g)"
-							>
-								{{ fmtCompactINR(groupActual(g)) }}
-							</button>
+							<span v-if="groupActual(g)" class="relative inline-block group/cov">
+								<button
+									type="button"
+									class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
+									:title="`Actual for ${g.code} — click to see the source documents`"
+									@click.stop="openGroupActuals(g)"
+								>
+									{{ fmtCompactINR(groupActual(g)) }}
+								</button>
+								<!-- Coverage shown on hover only, so it doesn't grow the row height. -->
+								<span
+									v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
+									class="pointer-events-none absolute right-0 bottom-full mb-1 hidden group-hover/cov:block z-30 whitespace-nowrap bg-ink-900 text-white text-[10px] px-2 py-1 rounded shadow-lg"
+								>
+									{{ fmtCompactINR(groupCoverage(g).itemCoded) }} of
+									{{ fmtCompactINR(groupCoverage(g).actual) }} at item level
+								</span>
+							</span>
 							<span v-else class="text-ink-300">—</span>
-							<div
-								v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
-								class="text-[10px] text-ink-400 leading-tight"
-								:title="'The remainder is coded to the group only, not to items.'"
-							>
-								{{ fmtCompactINR(groupCoverage(g).itemCoded) }} of
-								{{ fmtCompactINR(groupCoverage(g).actual) }} at item level
-							</div>
 						</div>
 						<div
 							class="px-3 py-2 text-right text-sm tabular-nums font-medium"
