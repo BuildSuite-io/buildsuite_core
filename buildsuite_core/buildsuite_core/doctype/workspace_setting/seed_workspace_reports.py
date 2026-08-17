@@ -11,6 +11,10 @@ tiles. Idempotent per workspace — a workspace that already has rows is left un
 
 import frappe
 
+# Delay Analysis is served by a bespoke in-app view (not the flat Query Report renderer), so
+# its workspace tile points at this route rather than referencing the Report.
+DELAY_ANALYSIS_ROUTE = "/reports/delay-analysis"
+
 # Reusable Report Filter rows (Frappe's server-side filter defs the in-app FrappeReport
 # renderer reads). A Query Report's SQL uses them via %(fieldname)s; the "empty ⇒ all"
 # guard (%(x)s = '' OR …) keeps every filter optional.
@@ -263,8 +267,12 @@ def seed_workspace_reports():
 	# Site Execution — prefer migrated admin config, else the default report set.
 	if "site-execution" not in existing:
 		legacy = _legacy_site_execution_rows()
+		# Delay Analysis is a bespoke in-app view, not a flat Query Report — tile it as a plain
+		# route so the Workspace Setting reads clearly (a URL, not a report reference).
 		rows = legacy or [
-			{"report": name, "icon": icon, "description": desc}
+			{"label": name, "route": DELAY_ANALYSIS_ROUTE, "icon": icon, "description": desc}
+			if name == "Delay Analysis"
+			else {"report": name, "icon": icon, "description": desc}
 			for name, _ref, icon, desc, _q, _f, _r in REPORTS
 		]
 		for r in rows:
