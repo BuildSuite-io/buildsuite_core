@@ -1,11 +1,16 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
 import { ROLES } from "@/data/roles";
 
 const store = useDataStore();
+const session = useSessionStore();
 const open = ref(false);
 const currentRole = computed(() => store.currentRole);
+// Dev-only affordance: the role switcher impersonates personas, so it's shown only
+// when the Frappe site runs in developer mode (site_config.json developer_mode).
+const visible = computed(() => session.developerMode);
 
 function pickRole(roleId) {
 	store.setRole(roleId);
@@ -14,7 +19,7 @@ function pickRole(roleId) {
 </script>
 
 <template>
-	<div class="relative">
+	<div v-if="visible" class="relative">
 		<!-- Trigger -->
 		<button
 			@click="open = !open"

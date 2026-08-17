@@ -36,8 +36,19 @@ def _has_app_permission(log_denial: bool = True) -> bool:
 @frappe.whitelist(methods=["GET"], allow_guest=True)  # nosemgrep
 def get_access_context():
 	user = frappe.session.user
+	# Site-level developer flag (site_config.json) — the frontend uses it to show
+	# dev-only affordances like the role switcher.
+	developer_mode = bool(frappe.conf.developer_mode)
 	if user == "Guest":
-		return frappe._dict({"allowed": False, "user": user, "roles": [], "reason": "guest"})
+		return frappe._dict(
+			{
+				"allowed": False,
+				"user": user,
+				"roles": [],
+				"reason": "guest",
+				"developer_mode": developer_mode,
+			}
+		)
 
 	roles = list(frappe.get_roles())
 	allowed = _has_app_permission(log_denial=False)
@@ -54,5 +65,6 @@ def get_access_context():
 			"roles": roles,
 			"persona": persona,
 			"reason": reason,
+			"developer_mode": developer_mode,
 		}
 	)

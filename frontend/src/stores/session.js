@@ -6,6 +6,9 @@ export const useSessionStore = defineStore("session", {
 		initialized: false,
 		user: "Guest",
 		authenticated: false,
+		// Site-level developer flag (from get_access_context → site_config.json). Gates
+		// dev-only affordances like the role switcher.
+		developerMode: false,
 		access: {
 			allowed: false,
 			roles: [],
@@ -49,6 +52,7 @@ export const useSessionStore = defineStore("session", {
 				persona: context.persona || null,
 				reason: context.reason || (context.allowed ? "ok" : "missing_role"),
 			};
+			this.developerMode = Boolean(context.developer_mode);
 			this.lastCheckedAt = Date.now();
 			return this.access;
 		},
