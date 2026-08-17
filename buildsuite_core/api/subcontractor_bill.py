@@ -346,6 +346,11 @@ def save_bill(payload):
 				"lines",
 				{
 					"scope": (row.get("scope") or "").strip(),
+					# Persist the full cost code (type + group + item), not just the label —
+					# the BOQ actuals log joins on cost_code_group / cost_code_item.
+					"cost_code_type": row.get("cost_code_type") or "",
+					"cost_code_group": row.get("cost_code_group") or "",
+					"cost_code_item": row.get("cost_code_item") or "",
 					"cost_code_label": row.get("cost_code_label") or row.get("cost_code") or "",
 					"this_period_amount": amount,
 				},

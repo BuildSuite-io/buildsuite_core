@@ -30,6 +30,37 @@ function todayIso() {
 	return new Date().toISOString().slice(0, 10);
 }
 
+// A direct-bill line's cost code is a CostCodePicker object {type, group_code, item_code,
+// label}. Flatten it to the four stored fields on save (the BOQ actuals log joins on
+// cost_code_group / cost_code_item, not the label), and rebuild the object on edit-load.
+function costCodeForSave(cc) {
+	if (cc && typeof cc === "object") {
+		return {
+			cost_code_type: cc.type === "item" ? "Item" : "Group",
+			cost_code_group: cc.group_code || "",
+			cost_code_item: cc.item_code || "",
+			cost_code_label: cc.label || "",
+		};
+	}
+	return {
+		cost_code_type: "",
+		cost_code_group: "",
+		cost_code_item: "",
+		cost_code_label: cc || "",
+	};
+}
+function costCodeFromLine(l) {
+	if (!l.cost_code_type && !l.cost_code_group && !l.cost_code_item) {
+		return l.cost_code_label || null; // legacy line saved with only a label
+	}
+	return {
+		type: (l.cost_code_type || "").toLowerCase(),
+		group_code: l.cost_code_group || "",
+		item_code: l.cost_code_item || null,
+		label: l.cost_code_label || "",
+	};
+}
+
 const mode = ref("wo"); // 'wo' | 'direct'
 const saving = ref(false);
 const errors = ref({});
@@ -80,7 +111,7 @@ watch(
 					lines: bill.is_direct
 						? (bill.lines || []).map((l) => ({
 								scope: l.scope || "",
-								cost_code: l.cost_code_label || null,
+								cost_code: costCodeFromLine(l),
 								amount: l.this_period_amount || 0,
 						  }))
 						: [{ scope: "", cost_code: null, amount: 0 }],
@@ -160,10 +191,7 @@ async function onSave() {
 							.filter((l) => (l.scope || "").trim() || Number(l.amount) > 0)
 							.map((l) => ({
 								scope: l.scope,
-								cost_code:
-									l.cost_code && typeof l.cost_code === "object"
-										? l.cost_code.label
-										: l.cost_code || "",
+								...costCodeForSave(l.cost_code),
 								amount: Number(l.amount) || 0,
 							})),
 				  };
