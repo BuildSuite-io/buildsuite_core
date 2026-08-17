@@ -1,6 +1,9 @@
 // Role system — the 12 standard BuildSuite roles, the workspace visibility matrix,
-// and per-role sidebar ordering. These are the locked constraints from CLAUDE.md §12.1–§12.3.
-// Update CLAUDE.md §12 alongside any change here so the spec and code stay aligned.
+// and per-role sidebar ordering. The visibility + order below are transcribed from the
+// "BuildSuite Core - persona landing, module and workspace access" sheet (Workspaces tab):
+// each persona's access level and sidebar order per workspace. This drives the Vue app's
+// sidebar only; backend role permissions (permissions/*.py) and the Desk /app workspace
+// `roles` fields are enforced/configured separately.
 //
 // Session 34: BSA (BuildSuite Administrator) added as the 12th role. BSA sits
 // alongside System Manager (admin) — they don't replace each other. System
@@ -107,9 +110,11 @@ export const ROLES = [
 ];
 
 // =====================================================================
-// WORKSPACE_VISIBILITY — verbatim encoding of CLAUDE.md §12.3.
-// Keyed by workspace slug, then by role id, value is the access level
-// or null if the workspace is hidden for that role.
+// WORKSPACE_VISIBILITY — transcribed from the persona/workspace access sheet
+// (Workspaces tab). Keyed by workspace slug, then by role id; the value is the
+// access level, or null when the workspace is hidden for that role. Only null vs
+// non-null decides sidebar visibility — the string is also used as a hint badge
+// (see ACCESS_HINTS in DeskShell). "Home" is always shown and isn't listed here.
 //
 //   'full'         — ✓   full access
 //   'read'         — ✓R  read-only
@@ -122,8 +127,6 @@ export const ROLES = [
 //    null          — —   hidden
 // =====================================================================
 export const WORKSPACE_VISIBILITY = {
-	// M2 (Roles & Permissions spec) — Estimator + QS read here (Schedule/Gantt lives
-	// under Site Execution); Foreman create-own; Accountant is now hidden.
 	"site-execution": {
 		director: "full",
 		pm: "full",
@@ -133,15 +136,14 @@ export const WORKSPACE_VISIBILITY = {
 		foreman: "create-own",
 		procurement: null,
 		"store-keeper": null,
-		accountant: null,
+		accountant: "read",
 		"hr-manager": null,
 		admin: "full",
 		bsa: "full",
 	},
-	// M2 — PM now full on Estimation. Procurement Officer hidden (the ruling).
 	estimation: {
 		director: "full",
-		pm: "full",
+		pm: "read",
 		estimator: "full",
 		qs: "full",
 		"site-engineer": null,
@@ -153,14 +155,13 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
-	// M2 — Foreman can raise MRs (like Site Engineer). PM approve-only.
 	procurement: {
 		director: "full",
 		pm: "approve",
 		estimator: null,
 		qs: null,
-		"site-engineer": "mr-only",
-		foreman: "mr-only",
+		"site-engineer": "create-own",
+		foreman: "create-own",
 		procurement: "full",
 		"store-keeper": "full",
 		accountant: "read",
@@ -171,19 +172,19 @@ export const WORKSPACE_VISIBILITY = {
 	subcontract: {
 		director: "full",
 		pm: "approve",
-		estimator: null,
+		estimator: "read",
 		qs: "full",
-		"site-engineer": null,
+		"site-engineer": "read",
 		foreman: null,
-		procurement: null,
+		procurement: "full",
 		"store-keeper": null,
-		accountant: "pay-only",
+		accountant: "read",
 		"hr-manager": null,
 		admin: "full",
 		bsa: "full",
 	},
 	workforce: {
-		director: "full",
+		director: "read",
 		pm: "approve",
 		estimator: null,
 		qs: null,
@@ -191,42 +192,38 @@ export const WORKSPACE_VISIBILITY = {
 		foreman: "full",
 		procurement: null,
 		"store-keeper": null,
-		accountant: "pay-only",
-		"hr-manager": "read",
+		accountant: "read",
+		"hr-manager": "full",
 		admin: "full",
 		bsa: "full",
 	},
-	// 'scope-change' removed in Session 33 — merged into Site Execution. The
-	// SCO list still exists at /app/sco; access is governed by the Site Execution
-	// row above. See CLAUDE.md §10 Session 33 for the rationale + §12.2 revision.
+	equipment: {
+		director: "read",
+		pm: "approve",
+		estimator: null,
+		qs: null,
+		"site-engineer": "full",
+		foreman: "full",
+		procurement: "full",
+		"store-keeper": "full",
+		accountant: "read",
+		"hr-manager": null,
+		admin: "full",
+		bsa: "full",
+	},
 	"project-finance": {
 		director: "full",
 		pm: "full",
-		estimator: null,
+		estimator: "self-service",
 		qs: "read",
-		"site-engineer": null,
-		foreman: null,
-		procurement: null,
-		"store-keeper": null,
+		"site-engineer": "self-service",
+		foreman: "self-service",
+		procurement: "self-service",
+		"store-keeper": "self-service",
 		accountant: "full",
-		"hr-manager": null,
+		"hr-manager": "self-service",
 		admin: "full",
 		bsa: "full",
-	},
-	// Equipment — admin only for now (other role perms deferred).
-	equipment: {
-		director: null,
-		pm: null,
-		estimator: null,
-		qs: null,
-		"site-engineer": null,
-		foreman: null,
-		procurement: null,
-		"store-keeper": null,
-		accountant: null,
-		"hr-manager": null,
-		admin: "full",
-		bsa: null,
 	},
 	accounting: {
 		director: "full",
@@ -242,9 +239,8 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
-	// M2 — Director/PM read-only on the inherited ERPNext Buying surface.
 	buying: {
-		director: "read",
+		director: "full",
 		pm: "read",
 		estimator: null,
 		qs: null,
@@ -257,16 +253,14 @@ export const WORKSPACE_VISIBILITY = {
 		admin: "full",
 		bsa: "full",
 	},
-	// M2 — Procurement now full on Stock; Director read-only; Estimator read;
-	// Site Engineer hidden here (posts issues via Desk, not this workspace).
 	stock: {
-		director: "read",
+		director: "full",
 		pm: "read",
-		estimator: "read",
+		estimator: null,
 		qs: null,
-		"site-engineer": null,
+		"site-engineer": "read",
 		foreman: null,
-		procurement: "full",
+		procurement: "read",
 		"store-keeper": "full",
 		accountant: "read",
 		"hr-manager": null,
@@ -289,7 +283,7 @@ export const WORKSPACE_VISIBILITY = {
 	},
 	hr: {
 		director: "full",
-		pm: "team-only",
+		pm: "read",
 		estimator: "self-service",
 		qs: "self-service",
 		"site-engineer": "self-service",
@@ -322,29 +316,18 @@ const BUILDSUITE_WORKSPACES = [
 	"procurement",
 	"subcontract",
 	"workforce",
-	"project-finance",
 	"equipment",
+	"project-finance",
 ];
 const INHERITED_WORKSPACES = ["accounting", "buying", "stock", "assets", "hr"];
+// Director / Admin / BSA see every workspace, BuildSuite block first then the
+// inherited ERPNext / Frappe HR block, in the CSV's canonical order.
+const FULL_ORDER = [...BUILDSUITE_WORKSPACES, ...INHERITED_WORKSPACES];
 
 export const WORKSPACE_ORDER = {
-	// All 11. Director leads with finance/oversight; Admin and BSA with execution.
-	director: [
-		"project-finance",
-		"site-execution",
-		"estimation",
-		"subcontract",
-		"procurement",
-		"workforce",
-		...INHERITED_WORKSPACES,
-	],
-	admin: [...BUILDSUITE_WORKSPACES, ...INHERITED_WORKSPACES],
-	// BSA (Session 34) — BuildSuite-product admin. Same full-access surface as
-	// Admin per the §12.3 matrix revision. Ordered identically.
-	bsa: [...BUILDSUITE_WORKSPACES, ...INHERITED_WORKSPACES],
-
-	// From §12.3 verbatim, revised Session 33: 'scope-change' dropped (merged
-	// into Site Execution) wherever it appeared.
+	director: FULL_ORDER,
+	admin: FULL_ORDER,
+	bsa: FULL_ORDER,
 	pm: [
 		"site-execution",
 		"procurement",
@@ -352,39 +335,59 @@ export const WORKSPACE_ORDER = {
 		"workforce",
 		"project-finance",
 		"estimation",
-		"assets",
-		"hr",
-	],
-	"site-engineer": ["site-execution", "workforce", "stock", "hr"],
-	foreman: ["workforce", "site-execution", "assets", "hr"],
-
-	// Filled in by frequency of use given visibility.
-	estimator: [
-		"estimation",
-		// Site Execution added Session 33 — Estimator gets read access to reach
-		// SCOs which moved here when Scope Change workspace was merged.
-		"site-execution",
-		"hr",
-	],
-	qs: ["estimation", "subcontract", "site-execution", "project-finance", "hr"],
-	procurement: ["procurement", "buying", "stock", "hr"],
-	"store-keeper": ["stock", "procurement", "buying", "hr"],
-	accountant: [
-		"project-finance",
+		"equipment",
 		"accounting",
+		"buying",
+		"stock",
 		"assets",
-		"subcontract",
-		"workforce",
-		// Site Execution added Session 33 — Accountant gets read access to reach
-		// SCOs (financial impact tracking) which moved into Site Execution when
-		// the Scope Change workspace was merged.
+		"hr",
+	],
+	estimator: ["estimation", "site-execution", "project-finance", "hr", "subcontract"],
+	qs: ["estimation", "subcontract", "site-execution", "project-finance", "hr"],
+	"site-engineer": [
 		"site-execution",
+		"workforce",
+		"equipment",
 		"procurement",
+		"subcontract",
+		"stock",
+		"assets",
+		"hr",
+		"project-finance",
+	],
+	foreman: [
+		"workforce",
+		"site-execution",
+		"equipment",
+		"assets",
+		"hr",
+		"procurement",
+		"project-finance",
+	],
+	procurement: [
+		"procurement",
+		"subcontract",
+		"equipment",
+		"project-finance",
 		"buying",
 		"stock",
 		"hr",
 	],
-	"hr-manager": ["hr", "workforce"],
+	"store-keeper": ["procurement", "equipment", "project-finance", "buying", "stock", "hr"],
+	accountant: [
+		"project-finance",
+		"subcontract",
+		"procurement",
+		"site-execution",
+		"workforce",
+		"equipment",
+		"accounting",
+		"buying",
+		"stock",
+		"assets",
+		"hr",
+	],
+	"hr-manager": ["workforce", "project-finance", "hr"],
 };
 
 // Map a User.persona Select value (the human label, e.g. "Project Manager") to
