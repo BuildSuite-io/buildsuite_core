@@ -26,6 +26,20 @@ def _resolve_default(fieldtype, default):
 	return default
 
 
+def _with_filter_defaults(report, filters):
+	"""Ensure every filter the report DECLARES has a value in `filters`, so a Query Report's
+	`%(fieldname)s` substitution can never KeyError when the client omits an unset optional
+	filter. Frappe strips empty filter values before running, so a report using the
+	`%(x)s = '' OR …` "empty ⇒ all" guard would otherwise blow up on `query % filters` the
+	moment nothing is selected. Only fills MISSING keys — a provided value always wins."""
+	doc = frappe.get_cached_doc("Report", report)
+	for f in doc.filters or []:
+		if not f.fieldname or f.fieldtype in ("Fold", "Column Break", "Section Break"):
+			continue
+		filters.setdefault(f.fieldname, _resolve_default(f.fieldtype, f.default))
+	return filters
+
+
 @frappe.whitelist()
 def get_report_filters(report):
 	"""Everything the in-app renderer needs to build a report's filter bar agnostically:
@@ -80,6 +94,9 @@ def run_report(report, filters=None):
 		frappe.throw(_("Report {0} not found.").format(report))
 	if meta.disabled:
 		frappe.throw(_("Report {0} is disabled.").format(report))
+
+	# Backfill any declared-but-unset filter so a Query Report's %(x)s never KeyErrors.
+	filters = _with_filter_defaults(report, filters)
 
 	from frappe.desk.query_report import run
 
