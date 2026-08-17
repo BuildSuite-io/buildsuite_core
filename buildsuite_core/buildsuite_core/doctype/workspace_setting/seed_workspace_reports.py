@@ -12,11 +12,30 @@ tiles. Idempotent per workspace — a workspace that already has rows is left un
 import frappe
 
 # Reusable Report Filter rows (Frappe's server-side filter defs the in-app FrappeReport
-# renderer reads). A Query Report's SQL uses them via %(fieldname)s; the "empty ⇒ all"
-# guard (%(x)s = '' OR …) keeps every filter optional.
-_PROJECT = {"fieldname": "project", "label": "Project", "fieldtype": "Link", "options": "Project"}
-_FROM = {"fieldname": "from_date", "label": "From", "fieldtype": "Date"}
-_TO = {"fieldname": "to_date", "label": "To", "fieldtype": "Date"}
+# renderer reads). A Query Report's SQL uses them via %(fieldname)s — which requires every
+# referenced filter to be present, so they are all MANDATORY (see below).
+# Project is MANDATORY — these reports are project-scoped (the prototype gates them behind
+# "Pick a project to run this report"), and a required filter is the clean fix for Frappe's
+# Query Report %(x)s substitution: the Desk view won't run until it's set and the in-app
+# renderer blocks on it too, so the SQL never executes with an empty/stripped project.
+_PROJECT = {
+	"fieldname": "project",
+	"label": "Project",
+	"fieldtype": "Link",
+	"options": "Project",
+	"mandatory": 1,
+}
+# The date range is mandatory too, with all-time defaults — a required filter is always sent,
+# so %(from_date)s / %(to_date)s can never be stripped-to-absent and KeyError the substitution.
+# Defaults span all history, so the report still opens on the full picture; narrow as needed.
+_FROM = {
+	"fieldname": "from_date",
+	"label": "From",
+	"fieldtype": "Date",
+	"default": "2000-01-01",
+	"mandatory": 1,
+}
+_TO = {"fieldname": "to_date", "label": "To", "fieldtype": "Date", "default": "Today", "mandatory": 1}
 
 # Role sets for the Site Execution reports (who may RUN each). Restricted reports are
 # also hidden as tiles for users who can't run them — see workspace_setting._resolve.
@@ -39,7 +58,7 @@ _FINANCE_ROLES = (
 )
 
 # --- SQL for the four Site Execution reports. Query Reports: columns are declared inline
-#     as `field AS "Label:Type:Width"`; filters are optional via the `%(x)s = '' OR …` guard. ---
+#     as `field AS "Label:Type:Width"`; every %(x)s filter is mandatory, so it's always bound. ---
 
 _DELAY_SQL = """
 SELECT name AS "Stage:Link/Stage Planning:200", stage_name AS "Stage Name:Data:180",
@@ -47,7 +66,7 @@ SELECT name AS "Stage:Link/Stage Planning:200", stage_name AS "Stage Name:Data:1
 	mean_progress AS "Progress:Percent:100", DATEDIFF(CURDATE(), planned_end) AS "Days Late:Int:90"
 FROM `tabStage Planning`
 WHERE planned_end IS NOT NULL AND planned_end < CURDATE() AND IFNULL(mean_progress, 0) < 100
-	AND (%(project)s = '' OR project = %(project)s)
+	AND project = %(project)s
 ORDER BY DATEDIFF(CURDATE(), planned_end) DESC
 """
 
@@ -61,9 +80,9 @@ SELECT si.project AS "Project:Link/Project:200",
 		WHERE sb.docstatus = 1 AND sb.project = si.project) AS "Retention Held:Currency:130"
 FROM `tabSales Invoice` si
 WHERE si.docstatus = 1 AND si.project IS NOT NULL AND si.project <> ''
-	AND (%(project)s = '' OR si.project = %(project)s)
-	AND (%(from_date)s = '' OR si.posting_date >= %(from_date)s)
-	AND (%(to_date)s = '' OR si.posting_date <= %(to_date)s)
+	AND si.project = %(project)s
+	AND si.posting_date >= %(from_date)s
+	AND si.posting_date <= %(to_date)s
 GROUP BY si.project ORDER BY SUM(si.outstanding_amount) DESC
 """
 
@@ -74,15 +93,15 @@ SELECT subcontractor AS "Subcontractor:Link/Supplier:200", MAX(subcontractor_nam
 	SUM(paid) AS "Paid:Currency:110", SUM(billed) - SUM(paid) AS "Outstanding:Currency:110"
 FROM (
 	SELECT wo.subcontractor, wo.subcontractor_name, wo.total_value AS wo_value, 0 measured, 0 billed, 0 retention, 0 paid
-		FROM `tabSubcontractor Work Order` wo WHERE wo.docstatus = 1 AND (%(project)s = '' OR wo.project = %(project)s)
+		FROM `tabSubcontractor Work Order` wo WHERE wo.docstatus = 1 AND wo.project = %(project)s
 	UNION ALL
 	SELECT wo.subcontractor, wo.subcontractor_name, 0, mb.measured_total, 0, 0, 0
 		FROM `tabMeasurement Book` mb JOIN `tabSubcontractor Work Order` wo ON wo.name = mb.work_order
-		WHERE mb.status = 'Certified' AND (%(project)s = '' OR mb.project = %(project)s)
+		WHERE mb.status = 'Certified' AND mb.project = %(project)s
 	UNION ALL
 	SELECT sb.subcontractor, sb.subcontractor_name, 0, 0, sb.gross, sb.retention_amount,
 		IFNULL((SELECT pi.grand_total - pi.outstanding_amount FROM `tabPurchase Invoice` pi WHERE pi.name = sb.purchase_invoice), 0)
-		FROM `tabSubcontractor Bill` sb WHERE sb.docstatus = 1 AND (%(project)s = '' OR sb.project = %(project)s)
+		FROM `tabSubcontractor Bill` sb WHERE sb.docstatus = 1 AND sb.project = %(project)s
 ) x
 GROUP BY subcontractor HAVING SUM(wo_value) + SUM(billed) > 0 ORDER BY SUM(wo_value) DESC
 """
@@ -94,15 +113,15 @@ SELECT item_code AS "Item:Link/Item:220",
 FROM (
 	SELECT poi.item_code, poi.qty AS ordered, 0 received, 0 consumed
 		FROM `tabPurchase Order Item` poi JOIN `tabPurchase Order` po ON po.name = poi.parent
-		WHERE po.docstatus = 1 AND (%(project)s = '' OR poi.project = %(project)s)
+		WHERE po.docstatus = 1 AND poi.project = %(project)s
 	UNION ALL
 	SELECT pri.item_code, 0, pri.received_qty, 0
 		FROM `tabPurchase Receipt Item` pri JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
-		WHERE pr.docstatus = 1 AND (%(project)s = '' OR pri.project = %(project)s)
+		WHERE pr.docstatus = 1 AND pri.project = %(project)s
 	UNION ALL
 	SELECT sed.item_code, 0, 0, sed.qty
 		FROM `tabStock Entry Detail` sed JOIN `tabStock Entry` se ON se.name = sed.parent
-		WHERE se.docstatus = 1 AND se.stock_entry_type = 'Material Issue' AND (%(project)s = '' OR se.project = %(project)s)
+		WHERE se.docstatus = 1 AND se.stock_entry_type = 'Material Issue' AND se.project = %(project)s
 ) x
 GROUP BY item_code HAVING SUM(ordered) + SUM(received) + SUM(consumed) > 0 ORDER BY item_code
 """
