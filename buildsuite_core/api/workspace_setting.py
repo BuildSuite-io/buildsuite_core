@@ -23,6 +23,7 @@ WORKSPACES = (
 	{"slug": "estimation", "label": "Estimation"},
 	{"slug": "procurement", "label": "Procurement"},
 	{"slug": "subcontract", "label": "Subcontract"},
+	{"slug": "project-finance", "label": "Project Finance"},
 )
 _SLUGS = {w["slug"] for w in WORKSPACES}
 

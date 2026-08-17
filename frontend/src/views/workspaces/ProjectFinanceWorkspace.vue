@@ -5,12 +5,13 @@
 // (site roles see only Petty Cash + Expenses), mirroring the prototype's
 // store.visibleFinanceTabs. Every section is client-side dummy data except Petty
 // Cash, which is live.
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useFinanceMock } from "@/data/financeMock";
 import { useSessionStore } from "@/stores/session";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
@@ -98,48 +99,22 @@ const MASTERS = [
 		desc: "Suppliers & subcontractors.",
 	},
 ];
-const FINANCE_REPORTS = [
-	{
-		slug: "pnl",
-		icon: "chart-line",
-		label: "Profit & Loss",
-		desc: "Income vs direct costs and overheads, by project and period.",
-	},
-	{
-		slug: "aged",
-		icon: "clipboard-list",
-		label: "Receivables & Payables",
-		desc: "Aged outstanding — who owes us and who we owe.",
-	},
-	{
-		slug: "position",
-		icon: "wallet",
-		label: "Financial Position",
-		desc: "What we have vs what we owe, and the net position.",
-	},
-	{
-		slug: "petty",
-		icon: "hand-coins",
-		label: "Petty Cash",
-		desc: "Per holder: disbursed, spent, balance in hand.",
-	},
-	{
-		slug: "expenses",
-		icon: "receipt",
-		label: "Expense Summary",
-		desc: "By project, cost type, source or person, with receipts.",
-	},
-	{
-		slug: "cashbank",
-		icon: "banknote",
-		label: "Cash & Bank Statement",
-		desc: "Per account: opening, movements, closing.",
-	},
-];
+// Report tiles are configured per workspace in Workspace Setting (same as Site Execution /
+// Procurement) — the standard ERPNext finance reports through the in-app renderer plus the
+// BuildSuite-specific Petty Cash / Expense Summary. Each tile is role-gated server-side, so
+// a persona without the Accounts roles simply gets none.
+const reports = ref([]);
+onMounted(async () => {
+	try {
+		reports.value = await getWorkspaceReports("project-finance");
+	} catch {
+		reports.value = [];
+	}
+});
 
 const txTiles = computed(() => TRANSACTIONS.filter((t) => canSee(t.section)));
 const masterTiles = computed(() => MASTERS.filter((t) => canSee(t.section)));
-const showReports = computed(() => canSee("reports"));
+const showReports = computed(() => canSee("reports") && reports.value.length > 0);
 const showOverview = computed(() => canSee("overview"));
 </script>
 
@@ -262,12 +237,13 @@ const showOverview = computed(() => canSee("overview"));
 					<div class="border-t border-ink-200 mb-3"></div>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 						<WorkspaceShortcut
-							v-for="r in FINANCE_REPORTS"
-							:key="r.slug"
+							v-for="(r, i) in reports"
+							:key="i"
 							:icon="r.icon"
 							:label="r.label"
-							:description="r.desc"
-							:to="`/project-finance/report/${r.slug}`"
+							:description="r.description"
+							:to="r.external ? null : r.route"
+							:href="r.external ? r.route : null"
 						>
 							<template #badge>
 								<span
