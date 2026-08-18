@@ -12,11 +12,24 @@ A record's schedule must sit inside its parent's:
 All checks are skipped for any boundary the parent (or the record) leaves blank,
 and each rejection names the conflicting parent boundary so the message is clear.
 Wired via doc_events `validate` in hooks.py, so it guards both create and edit.
+
+The checks fire only on a new record or when the record's own date fields change.
+A re-save that leaves the dates untouched is not re-validated — otherwise pre-existing
+(grandfathered) out-of-range data would block unrelated edits. Notably, editing a Task
+cascades into a Stage Planning re-save (to sync its child rows); that save must not
+re-reject the stage's own, unchanged planned dates.
 """
 
 import frappe
 from frappe import _
 from frappe.utils import formatdate, getdate
+
+
+def _dates_dirty(doc, *fields):
+	"""True for a new record, or when any of the given date fields changed on an edit."""
+	if doc.is_new():
+		return True
+	return any(doc.has_value_changed(f) for f in fields)
 
 
 def _check_end_after_start(start, end):
@@ -58,6 +71,8 @@ def _project_bounds(project):
 
 def validate_project_dates(doc, method=None):
 	"""Project: end >= start, and a sub-project stays within its parent project."""
+	if not _dates_dirty(doc, "expected_start_date", "expected_end_date"):
+		return
 	_check_end_after_start(doc.expected_start_date, doc.expected_end_date)
 	if doc.get("parent_project"):
 		p_start, p_end = _project_bounds(doc.parent_project)
@@ -66,6 +81,8 @@ def validate_project_dates(doc, method=None):
 
 def validate_task_dates(doc, method=None):
 	"""Task: end >= start, and the task stays within its project."""
+	if not _dates_dirty(doc, "exp_start_date", "exp_end_date"):
+		return
 	_check_end_after_start(doc.exp_start_date, doc.exp_end_date)
 	p_start, p_end = _project_bounds(doc.get("project"))
 	_check_within(doc.exp_start_date, doc.exp_end_date, p_start, p_end, _("project"))
@@ -73,6 +90,8 @@ def validate_task_dates(doc, method=None):
 
 def validate_work_package_dates(doc, method=None):
 	"""Work Package: end >= start, and the package stays within its project."""
+	if not _dates_dirty(doc, "start_date", "end_date"):
+		return
 	_check_end_after_start(doc.start_date, doc.end_date)
 	p_start, p_end = _project_bounds(doc.get("project"))
 	_check_within(doc.start_date, doc.end_date, p_start, p_end, _("project"))
@@ -80,6 +99,8 @@ def validate_work_package_dates(doc, method=None):
 
 def validate_stage_planning_dates(doc, method=None):
 	"""Stage Planning: end >= start, and the stage stays within its project."""
+	if not _dates_dirty(doc, "planned_start", "planned_end"):
+		return
 	_check_end_after_start(doc.planned_start, doc.planned_end)
 	p_start, p_end = _project_bounds(doc.get("project"))
 	_check_within(doc.planned_start, doc.planned_end, p_start, p_end, _("project"))
