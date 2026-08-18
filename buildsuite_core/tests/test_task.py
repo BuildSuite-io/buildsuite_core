@@ -4,6 +4,7 @@
 (TSK-006/007) and single-assignee mapping onto Frappe-native _assign."""
 
 import frappe
+from frappe.utils import add_days, today
 
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
@@ -48,6 +49,56 @@ class TestTask(BuildSuiteTestCase):
 			self.assertEqual(t.task_status, status)
 		with self.assertRaises(frappe.ValidationError):
 			self._make_task(p.name, task_status="Not A Real Status")
+
+	def test_edit_to_belated_due_date_flags_in_delay(self):
+		# Saving a not-done task with an end date already in the past marks it In Delay
+		# on edit (parity with the create path and the nightly sweep), not only after the
+		# next cron run.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name, task_status="In Progress")
+		t.exp_end_date = add_days(today(), -3)
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "In Delay")
+		self.assertEqual(t.status, "Overdue")
+
+	def test_edit_passed_start_unstarted_flags_in_delay(self):
+		# A passed start date on unstarted work is late too; a manual In Progress is respected.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name, task_status="Yet To Start")
+		t.exp_start_date = add_days(today(), -2)
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "In Delay")
+
+	def test_moving_due_date_forward_clears_in_delay(self):
+		# The reverse transition: pushing the end date back to the future on an In Delay
+		# task returns it to In Progress.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name, task_status="In Progress")
+		t.exp_end_date = add_days(today(), -3)
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "In Delay")
+		t.exp_end_date = add_days(today(), 5)
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "In Progress")
+
+	def test_completed_late_task_not_flagged_in_delay(self):
+		# A 100%-complete task whose end date has passed settles to Completed, never In Delay.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name, task_status="In Progress")
+		t.exp_end_date = add_days(today(), -3)
+		t.progress = 100
+		t.task_status = "Completed"
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "Completed")
+		self.assertEqual(t.status, "Completed")
+
+	def test_blocked_task_not_auto_flagged_in_delay(self):
+		# Blocked is an explicit manual state; a passed end date must not flip it to In Delay.
+		p = self._make_project(company=self.company)
+		t = self._make_task(p.name, task_status="Blocked")
+		t.exp_end_date = add_days(today(), -3)
+		t.save(ignore_permissions=True)
+		self.assertEqual(t.task_status, "Blocked")
 
 	def test_task_directly_under_project(self):
 		# TSK-002: a task can be created with no work package.

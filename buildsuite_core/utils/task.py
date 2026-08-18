@@ -186,17 +186,22 @@ def update_task_status(doc, method=None):
 	elif status_changed and doc.task_status == "Yet To Start":
 		doc.progress = 0
 
-	# Set task status to In Delay automatically
-	# if doc.task_status != "Completed":
-	#     if doc.exp_end_date and getdate(doc.exp_end_date) < current_date:
-	#         doc.task_status = "In Delay"
+	# Auto-flag In Delay on edit, mirroring the create path (update_task_status_insert)
+	# and the nightly sweep (update_delayed_tasks) so all three agree: a passed end date,
+	# or a passed start on unstarted work, means the task is late. Completed/Blocked are
+	# left untouched, and the start-date rule respects a manual In Progress. A 100%-complete
+	# task is settled to Completed by the progress check below, so a late-but-done task is
+	# never shown as In Delay.
+	if doc.task_status not in ["Completed", "Blocked"]:
+		if doc.exp_end_date and getdate(doc.exp_end_date) < current_date:
+			doc.task_status = "In Delay"
 
-	#     elif (
-	#         doc.exp_start_date
-	#         and getdate(doc.exp_start_date) < current_date
-	#         and doc.task_status not in ["Completed", "In Progress"]
-	#     ):
-	#         doc.task_status = "In Delay"
+		elif (
+			doc.exp_start_date
+			and getdate(doc.exp_start_date) < current_date
+			and doc.task_status not in ["Completed", "In Progress"]
+		):
+			doc.task_status = "In Delay"
 
 	# Sync ERPNext status field
 	if doc.progress == 100:
@@ -298,9 +303,7 @@ def _recompute_project_progress(project):
 	values = {"percent_complete": pct, "percent_complete_method": "Manual"}
 	if frappe.db.get_value("Project", project, "project_status") == "New" and (
 		pct > 0
-		or frappe.db.exists(
-			"Task", {"project": project, "task_status": ["not in", ["", "Yet To Start"]]}
-		)
+		or frappe.db.exists("Task", {"project": project, "task_status": ["not in", ["", "Yet To Start"]]})
 	):
 		values["project_status"] = "Ongoing"
 		values["status"] = "Open"
