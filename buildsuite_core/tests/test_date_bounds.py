@@ -66,6 +66,24 @@ class TestDateBounds(BuildSuiteTestCase):
 		p = self._dated_project(start=None, end=None)
 		self._new_task(p.name, P_START, P_END).insert(ignore_permissions=True)  # no throw
 
+	def test_unchanged_dates_not_revalidated(self):
+		# A record whose dates already sit out of range (e.g. its project was later
+		# shortened) must still be saveable when the dates are left untouched — the
+		# check fires only on a real date edit. Mirrors a Task edit cascading into a
+		# Stage Planning re-save, which must not re-reject the stage's own dates.
+		p = self._dated_project()
+		task = self._new_task(p.name, P_START, P_END)
+		task.insert(ignore_permissions=True)
+		frappe.db.set_value("Project", p.name, "expected_end_date", add_days(P_END, -30))
+		task.reload()
+		task.subject = "UAT re-save"  # non-date edit; dates now out of range but unchanged
+		task.save(ignore_permissions=True)  # no throw
+		# Guard: actually moving the end date out of range is still rejected.
+		task.reload()
+		task.exp_end_date = add_days(P_END, 5)
+		with self.assertRaises(frappe.ValidationError):
+			task.save(ignore_permissions=True)
+
 	# --- Work Package ----------------------------------------------------
 	def test_work_package_out_of_bounds_rejected(self):
 		p = self._dated_project()
