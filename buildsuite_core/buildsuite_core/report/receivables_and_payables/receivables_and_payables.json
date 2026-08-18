@@ -1,0 +1,46 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2026-08-18 00:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "side",
+   "fieldtype": "Select",
+   "label": "Side",
+   "options": "\nReceivable\nPayable"
+  },
+  {
+   "fieldname": "bucket",
+   "fieldtype": "Select",
+   "label": "Aging bucket",
+   "options": "\nCurrent\n1-30\n31-60\n61-90\n90+"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Data",
+   "label": "Party"
+  }
+ ],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2026-08-18 00:00:00.000000",
+ "module": "BuildSuite Core",
+ "name": "Receivables and Payables",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Sales Invoice",
+ "report_name": "Receivables and Payables",
+ "report_type": "Script Report",
+ "roles": [
+  {"role": "System Manager"},
+  {"role": "BuildSuite Administrator"},
+  {"role": "BuildSuite Director"},
+  {"role": "BuildSuite PM"},
+  {"role": "BuildSuite QS"},
+  {"role": "BuildSuite Accountant"}
+ ]
+}

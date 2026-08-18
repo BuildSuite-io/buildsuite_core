@@ -193,41 +193,45 @@ _SEED = {
 	# /project-finance/report/<slug> (FinanceReportPageView). Route tiles, so admins see
 	# exactly where each goes; the workspace's reports section is already role-gated to the
 	# finance personas in ProjectFinanceWorkspace.
+	# Project Finance — Profit & Loss / Petty Cash / Expense Summary / Cash & Bank ride the
+	# ERPNext reports (Desk query-report route; P&L can't render through the in-app renderer
+	# — its date filters are JS-driven and don't flow through). Receivables & Payables and
+	# Financial Position are bespoke Script Reports (buildsuite_core/report/) shown in-app.
 	"project-finance": (
 		{
 			"label": "Profit & Loss",
 			"icon": "chart-line",
-			"route": "/project-finance/report/pnl",
+			"route": "/app/query-report/Profit and Loss Statement",
 			"description": "Income vs direct costs and overheads, by project and period.",
 		},
 		{
 			"label": "Receivables & Payables",
 			"icon": "clipboard-list",
-			"route": "/project-finance/report/aged",
+			"report": "Receivables and Payables",
 			"description": "Aged outstanding — who owes us and who we owe.",
 		},
 		{
 			"label": "Financial Position",
 			"icon": "wallet",
-			"route": "/project-finance/report/position",
+			"report": "Financial Position",
 			"description": "What we have vs what we owe, and the net position.",
 		},
 		{
 			"label": "Petty Cash",
 			"icon": "hand-coins",
-			"route": "/project-finance/report/petty",
-			"description": "Per holder: disbursed, spent, balance in hand.",
+			"route": "/app/query-report/General Ledger",
+			"description": "Petty cash ledger — filter to the Petty Cash account, per holder.",
 		},
 		{
 			"label": "Expense Summary",
 			"icon": "receipt",
-			"route": "/project-finance/report/expenses",
-			"description": "By project, cost type, source or person, with receipts.",
+			"route": "/app/query-report/General Ledger",
+			"description": "Ledger of expense accounts — filter by project or account.",
 		},
 		{
 			"label": "Cash & Bank Statement",
 			"icon": "banknote",
-			"route": "/project-finance/report/cashbank",
+			"route": "/app/query-report/General Ledger",
 			"description": "Per account: opening, movements, closing.",
 		},
 	),
