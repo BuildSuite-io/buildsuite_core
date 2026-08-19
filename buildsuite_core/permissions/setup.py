@@ -371,6 +371,22 @@ def _apply_role_perms(doctype, role_perms, ptypes=_PTYPES):
 			)
 
 
+def _upgrade_role_perms(doctype, role_perms, ptypes=_PTYPES):
+	"""Raise perms for specific roles WITHOUT revoking anyone else — layer write/delete on top
+	of a read mirror. Customer and Employee are readable by many roles (link pickers), but only
+	some may write/delete them; _apply_role_perms would revoke every unlisted role's read, so
+	use this to upgrade the writers while the mirror keeps the readers."""
+	if not frappe.db.exists("DocType", doctype):
+		return
+	from frappe.permissions import add_permission, update_permission_property
+
+	for role, perms in role_perms.items():
+		_ensure_role(role)
+		add_permission(doctype, role, 0)
+		for ptype in ptypes:
+			update_permission_property(doctype, role, 0, ptype, perms.get(ptype, 0), validate=False)
+
+
 def setup_project_permissions():
 	_apply_role_perms("Project", PROJECT_ROLE_PERMS)
 
@@ -536,6 +552,16 @@ SUBCONTRACT_BILL_ROLE_PERMS = {
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
 }
+# Subcontractor Work Order — the commitment document is natively submittable (Draft →
+# Submitted → Cancelled + Amend), so the full roles get CRWDSX, not just CRWD. QS prepares
+# and submits alongside PM / Procurement / Director; Estimator / Site Engineer / Accountant
+# read. (Matches the M3 matrix; the old grant gave CRWD only, so no one could submit/cancel.)
+SUBCONTRACT_WO_ROLE_PERMS = {
+	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
+	"BuildSuite Estimator": _READ,
+	"BuildSuite Site Engineer": _READ,
+	"BuildSuite Accountant": _READ,
+}
 
 # Scope Change Order — role matrix (SCO is header-only + status-based, not submittable,
 # so Submit/Cancel don't apply; "full" = CRWD). PM/QS prepare + quantify, Director
@@ -609,7 +635,7 @@ def setup_subcontract_permissions():
 	# Subcontractors are native Suppliers (supplier_type="Subcontractor") — grant the
 	# BuildSuite roles CRUD on Supplier so the Vue "Subcontractor" screens work.
 	_apply_role_perms("Supplier", SUBCONTRACT_ROLE_PERMS)
-	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_ROLE_PERMS)
+	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_WO_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS)
@@ -653,8 +679,36 @@ DERIVED_ATTENDANCE_ROLE_PERMS = {
 }
 
 
+# Worker master — the standard Employee doctype (BuildSuite has no separate Field Employee
+# doctype). HR owns it; PM + admin tier full; Site Engineer edits (no delete); Director +
+# Accountant + Foreman read. Employee is a linked-master read mirror already (every Project
+# role reads it for owner/assignee pickers), so this only UPGRADES the writers — it must not
+# revoke the pickers' read, hence _upgrade_role_perms.
+EMPLOYEE_WRITE_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite PM": _FULL,
+	"BuildSuite HR Manager": _FULL,
+	"BuildSuite Site Engineer": _CRW,
+}
+# Crew — standalone labour-grouping master (not tied to a project). Foreman maintains
+# membership day to day (edit, no delete); Site Engineer + PM + HR + admin tier full;
+# Director reads. Crew Member is a child table and inherits Crew's perms.
+CREW_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Director": _READ,
+	"BuildSuite PM": _FULL,
+	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Foreman": _CRW,
+	"BuildSuite HR Manager": _FULL,
+}
+
+
 def setup_workforce_permissions():
 	_apply_role_perms("Field Attendance", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
+	# Worker master + Crew (the M3 matrix missed both — Crew had no BuildSuite grant at all,
+	# and Employee was read-only via the picker mirror, so HR/PM/admin couldn't maintain it).
+	_upgrade_role_perms("Employee", EMPLOYEE_WRITE_ROLE_PERMS)
+	_apply_role_perms("Crew", CREW_ROLE_PERMS)
 	for dt in ("Labour Attendance Register", "Overtime Attendance Register"):
 		# These registers historically shipped an over-broad `All` grant (write for every
 		# user). The derived rule is "no role edits directly", so drop any `All` custom
@@ -692,9 +746,21 @@ MACHINERY_USAGE_ROLE_PERMS = {
 }
 
 
+# Machinery Type — the master the Machinery register's `machinery_type` picker resolves.
+# Everyone who can see a machine reads its type; Procurement / Store Keeper / admin maintain
+# the list. Without this the type dropdown is empty for every role (it had no grant at all).
+MACHINERY_TYPE_ROLE_PERMS = {
+	**{role: _READ for role in MACHINERY_ROLE_PERMS},
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Procurement Officer": _FULL,
+	"BuildSuite Store Keeper": _FULL,
+}
+
+
 def setup_equipment_permissions():
 	_apply_role_perms("Machinery", MACHINERY_ROLE_PERMS)
 	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS)
+	_apply_role_perms("Machinery Type", MACHINERY_TYPE_ROLE_PERMS)
 
 
 # --- M3 — Project Finance (customer-side money) -------------------------------
@@ -720,9 +786,23 @@ PAYMENT_ENTRY_ROLE_PERMS = {
 }
 
 
+# Customer — the commercial master. Director + Accountant + admin tier maintain it fully
+# (incl. delete); PM edits (no delete). It's a linked-master read mirror (every Project role
+# reads it for the client picker), so upgrade only the writers without revoking pickers' read.
+CUSTOMER_WRITE_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Director": _FULL,
+	"BuildSuite Accountant": _FULL,
+	"BuildSuite PM": _CRW,
+}
+
+
 def setup_project_finance_permissions():
 	_apply_role_perms("Sales Invoice", SALES_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Payment Entry", PAYMENT_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
+	# Customer was read-only for everyone via the picker mirror, so even admins couldn't
+	# delete it. Upgrade the commercial writers on top of that mirror.
+	_upgrade_role_perms("Customer", CUSTOMER_WRITE_ROLE_PERMS)
 
 
 def _ensure_workflow_state(name):
