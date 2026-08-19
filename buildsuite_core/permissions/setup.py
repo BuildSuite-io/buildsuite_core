@@ -346,6 +346,22 @@ def _ensure_role(role_name):
 		).insert(ignore_permissions=True)
 
 
+def _grant_system_manager(doctype):
+	"""Re-grant System Manager full access on `doctype`.
+
+	System Manager is Frappe's native super-admin, but a doctype's *Custom* DocPerms COMPLETELY
+	override its standard perms — so the moment we add any BuildSuite Custom DocPerm, SM loses
+	its native grant unless we re-add it here. Give SM the full set (CRWD, plus submit/cancel/
+	amend on submittable doctypes), matching the M-series matrices where SM is full everywhere.
+	Idempotent — safe to call from every _apply/_upgrade pass over the same doctype."""
+	from frappe.permissions import add_permission, update_permission_property
+
+	ptypes = _SUBMIT_PTYPES if frappe.db.get_value("DocType", doctype, "is_submittable") else _PTYPES
+	add_permission(doctype, "System Manager", 0)
+	for ptype in ptypes:
+		update_permission_property(doctype, "System Manager", 0, ptype, 1, validate=False)
+
+
 def _apply_role_perms(doctype, role_perms, ptypes=_PTYPES):
 	if not frappe.db.exists("DocType", doctype):
 		return
@@ -356,6 +372,8 @@ def _apply_role_perms(doctype, role_perms, ptypes=_PTYPES):
 	# mirror), so removing a role from a matrix actually revokes its access.
 	for role in set(BUILDSUITE_ROLES) - set(role_perms):
 		frappe.db.delete("Custom DocPerm", {"parent": doctype, "role": role})
+
+	_grant_system_manager(doctype)
 
 	for role, perms in role_perms.items():
 		_ensure_role(role)
@@ -380,6 +398,7 @@ def _upgrade_role_perms(doctype, role_perms, ptypes=_PTYPES):
 		return
 	from frappe.permissions import add_permission, update_permission_property
 
+	_grant_system_manager(doctype)
 	for role, perms in role_perms.items():
 		_ensure_role(role)
 		add_permission(doctype, role, 0)

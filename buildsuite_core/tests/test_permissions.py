@@ -303,6 +303,42 @@ class TestPermissions(BuildSuiteTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_system_manager_retains_full_access(self):
+		# A doctype's Custom DocPerms COMPLETELY override its standard perms, so adding any
+		# BuildSuite grant would strip System Manager (the native super-admin) unless it is
+		# re-granted. It must stay full — create + delete (+ submit on submittable doctypes) —
+		# on every doctype the matrices touch.
+		email = f"smtest-{self._n}@example.com"
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": "SM",
+				"send_welcome_email": 0,
+				"user_type": "System User",
+				"roles": [{"role": "System Manager"}],
+			}
+		).insert(ignore_permissions=True)
+		frappe.set_user(email)
+		try:
+			for dt in (
+				"Customer",
+				"Supplier",
+				"Sales Invoice",
+				"Payment Entry",
+				"Subcontractor Work Order",
+				"Subcontractor Bill",
+				"Expense Entry",
+				"Employee",
+				"Crew",
+			):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "delete"), dt)
+			for dt in ("Sales Invoice", "Subcontractor Work Order", "Subcontractor Bill"):
+				self.assertTrue(frappe.has_permission(dt, "submit"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
 	def test_rate_update_guard_rejects_non_governance(self):
 		# PERM-013 — the PO-submit rate-update endpoint rejects a non-governance role
 		# and accepts the empowered Procurement Officer.
