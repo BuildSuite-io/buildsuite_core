@@ -60,6 +60,8 @@ def _serialize(doc):
 		"project_name": frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None,
 		"company": _effective_company(doc),
 		"date": str(doc.date) if doc.date else None,
+		"supplier_invoice_no": doc.supplier_invoice_no,
+		"supplier_invoice_date": str(doc.supplier_invoice_date) if doc.supplier_invoice_date else None,
 		"bill_type": doc.bill_type,
 		"retention_percent": doc.retention_percent,
 		"status": doc.status,
@@ -328,6 +330,8 @@ def save_bill(payload):
 
 	doc.is_direct = 1 if data.get("is_direct") else 0
 	doc.date = data.get("date")
+	doc.supplier_invoice_no = (data.get("supplier_invoice_no") or "").strip() or None
+	doc.supplier_invoice_date = data.get("supplier_invoice_date") or None
 	doc.bill_type = data.get("bill_type") or "Normal"
 
 	if doc.is_direct:

@@ -92,6 +92,17 @@ def _ref_is_advance(pe_type, paid_amount, unallocated, allocated):
 	return flt(unallocated) > 0.01 or flt(paid_amount) - flt(allocated) > 0.01
 
 
+def _pe_meta(pe_name):
+	"""Display fields for an advance's Payment Entry — when it was paid, from which account and
+	the entry's total — so the bill's Advance Payments table can show them (matches the prototype)."""
+	row = frappe.db.get_value(PE, pe_name, ["posting_date", "paid_from", "paid_amount"], as_dict=True) or {}
+	return {
+		"paid_on": row.get("posting_date"),
+		"paid_from": row.get("paid_from"),
+		"advance_amount": flt(row.get("paid_amount")),
+	}
+
+
 def _linked_advances(doc):
 	"""Advances adjusted against this bill, one entry per Payment Entry with its TOTAL applied.
 
@@ -102,7 +113,11 @@ def _linked_advances(doc):
 	after submit — a plain cash payment is neither."""
 	if doc.docstatus == 0:
 		return [
-			{"payment_entry": a.reference_name, "allocated": flt(a.allocated_amount)}
+			{
+				"payment_entry": a.reference_name,
+				"allocated": flt(a.allocated_amount),
+				**_pe_meta(a.reference_name),
+			}
 			for a in doc.advances
 			if a.reference_type == PE and flt(a.allocated_amount) > 0
 		]
@@ -135,7 +150,7 @@ def _linked_advances(doc):
 				pe.payment_type, pe.paid_amount, pe.unallocated_amount, total
 			)
 		if is_advance:
-			out.append({"payment_entry": pe_name, "allocated": total})
+			out.append({"payment_entry": pe_name, "allocated": total, **_pe_meta(pe_name)})
 	return out
 
 

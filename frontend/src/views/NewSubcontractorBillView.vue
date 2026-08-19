@@ -70,6 +70,8 @@ const form = ref({
 	subcontractor: "",
 	project: "",
 	date: todayIso(),
+	supplier_invoice_no: "",
+	supplier_invoice_date: "",
 	retention_percent: 5,
 	lines: [{ scope: "", cost_code: null, amount: 0 }],
 });
@@ -107,6 +109,8 @@ watch(
 					subcontractor: bill.subcontractor || "",
 					project: bill.project || "",
 					date: bill.date || todayIso(),
+					supplier_invoice_no: bill.supplier_invoice_no || "",
+					supplier_invoice_date: bill.supplier_invoice_date || "",
 					retention_percent: bill.retention_percent ?? 0,
 					lines: bill.is_direct
 						? (bill.lines || []).map((l) => ({
@@ -178,6 +182,8 @@ async function onSave() {
 						is_direct: 0,
 						work_order: form.value.work_order,
 						date: form.value.date,
+						supplier_invoice_no: form.value.supplier_invoice_no,
+						supplier_invoice_date: form.value.supplier_invoice_date || undefined,
 						retention_percent: form.value.retention_percent,
 				  }
 				: {
@@ -186,6 +192,8 @@ async function onSave() {
 						subcontractor: form.value.subcontractor,
 						project: form.value.project,
 						date: form.value.date,
+						supplier_invoice_no: form.value.supplier_invoice_no,
+						supplier_invoice_date: form.value.supplier_invoice_date || undefined,
 						retention_percent: form.value.retention_percent,
 						lines: form.value.lines
 							.filter((l) => (l.scope || "").trim() || Number(l.amount) > 0)
@@ -282,6 +290,14 @@ const breadcrumbs = computed(() => [
 					</DeskField>
 					<DeskField label="Date" required
 						><DeskInput v-model="form.date" type="date"
+					/></DeskField>
+					<DeskField label="Subcontractor Invoice No"
+						><DeskInput
+							v-model="form.supplier_invoice_no"
+							placeholder="e.g. SI-2026-0042"
+					/></DeskField>
+					<DeskField label="Subcontractor Invoice Date"
+						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
 					<DeskField label="Retention (%)">
 						<DeskInput
@@ -425,6 +441,14 @@ const breadcrumbs = computed(() => [
 					</DeskField>
 					<DeskField label="Date" required
 						><DeskInput v-model="form.date" type="date"
+					/></DeskField>
+					<DeskField label="Subcontractor Invoice No"
+						><DeskInput
+							v-model="form.supplier_invoice_no"
+							placeholder="e.g. SI-2026-0042"
+					/></DeskField>
+					<DeskField label="Subcontractor Invoice Date"
+						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
 					<DeskField label="Retention (%)">
 						<DeskInput

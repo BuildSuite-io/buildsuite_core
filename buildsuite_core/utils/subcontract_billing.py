@@ -57,9 +57,7 @@ def _ensure_account(company, account_name, root_type, account_type, parent_hint)
 	full_name = f"{account_name} - {abbr}"
 	if frappe.db.exists("Account", full_name):
 		return full_name
-	existing = frappe.db.get_value(
-		"Account", {"account_name": account_name, "company": company}, "name"
-	)
+	existing = frappe.db.get_value("Account", {"account_name": account_name, "company": company}, "name")
 	if existing:
 		return existing
 
@@ -168,8 +166,10 @@ def generate_purchase_invoice(bill):
 	bill_date = str(bill.date) if bill.date else None
 	pi.set_posting_time = 1
 	pi.posting_date = bill_date
-	pi.bill_no = bill.name
-	pi.bill_date = bill_date
+	# The supplier's own invoice reference (optional) carries to the PI's bill no/date; fall
+	# back to our bill name/date when the subcontractor didn't give a separate invoice number.
+	pi.bill_no = bill.get("supplier_invoice_no") or bill.name
+	pi.bill_date = str(bill.supplier_invoice_date) if bill.get("supplier_invoice_date") else bill_date
 	pi.project = bill.project
 	pi.update_stock = 0
 	if frappe.get_meta("Purchase Invoice").has_field("subcontractor_bill"):
