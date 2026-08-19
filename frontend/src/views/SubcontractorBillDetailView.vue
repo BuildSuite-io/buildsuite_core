@@ -207,10 +207,6 @@ async function saveBilling() {
 function onEdit() {
 	router.push(`/subcontractor-bills/${bill.value.name}/edit`);
 }
-function onOpenAccounting() {
-	if (bill.value.purchase_invoice)
-		window.open(`/app/purchase-invoice/${bill.value.purchase_invoice}`, "_blank", "noopener");
-}
 async function onSubmit() {
 	if (wf.value.gross <= 0) {
 		showToast("Nothing to bill — add a line with an amount.", "error");
@@ -339,6 +335,11 @@ async function savePayment() {
 const availableAdvances = ref([]);
 const linkedAdvances = computed(() => bill.value?.advances || []);
 const advanceAdjusted = computed(() => Number(bill.value?.advance_adjusted) || 0);
+function advAccountName(account) {
+	// Accounts are named "<Name> - <CompanyAbbr>"; show just the name for a cleaner table.
+	if (!account) return "—";
+	return account.replace(/ - [A-Z0-9]+$/, "") || account;
+}
 const unlinkedTotal = computed(() =>
 	availableAdvances.value.reduce((a, x) => a + Number(x.unallocated || 0), 0)
 );
@@ -569,16 +570,6 @@ const accountFilters = computed(() =>
 	>
 		<template #actions>
 			<button
-				v-if="bill.purchase_invoice"
-				type="button"
-				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-				style="border-radius: 6px"
-				title="Open the generated Purchase Invoice in the Accounting desk"
-				@click="onOpenAccounting"
-			>
-				Open in Accounting →
-			</button>
-			<button
 				v-if="isDraft"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
@@ -759,68 +750,6 @@ const accountFilters = computed(() =>
 			</table>
 		</div>
 
-		<!-- Advance Payments (subcontractor advances adjusted against the bill's PI) -->
-		<div
-			v-if="isSubmitted && (linkedAdvances.length || availableAdvances.length)"
-			class="mb-4 bg-white border border-ink-200 rounded-lg overflow-hidden"
-		>
-			<div
-				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between gap-3"
-			>
-				<h3 class="text-[11px] uppercase tracking-wider font-semibold text-ink-700">
-					Advance Payments
-				</h3>
-				<button
-					v-if="availableAdvances.length"
-					type="button"
-					class="text-xs text-brand-700 hover:underline"
-					@click="openLinkAdvance"
-				>
-					+ Link advance
-				</button>
-			</div>
-			<template v-if="linkedAdvances.length">
-				<div
-					v-for="row in linkedAdvances"
-					:key="row.payment_entry"
-					class="flex items-center justify-between px-4 py-2.5 border-t border-ink-100 text-sm gap-2"
-				>
-					<DeskLink
-						:to="`/app/payment-entry/${row.payment_entry}`"
-						class="font-mono text-xs text-ink-900 min-w-0 truncate"
-						>{{ row.payment_entry }}</DeskLink
-					>
-					<span class="flex items-center gap-2 flex-shrink-0">
-						<span class="tabular-nums text-info-700 font-medium">{{
-							fmtINR(row.allocated)
-						}}</span>
-						<button
-							type="button"
-							class="text-ink-400 hover:text-danger-600 text-xs"
-							:title="`Unlink ${row.payment_entry}`"
-							@click="unlinkAdvance(row)"
-						>
-							✕
-						</button>
-					</span>
-				</div>
-				<div
-					class="px-4 py-2 border-t border-ink-100 flex items-center justify-between text-[11px]"
-				>
-					<span class="uppercase tracking-wider text-ink-500 font-medium"
-						>Total advance adjusted</span
-					>
-					<span class="tabular-nums font-semibold text-ink-900">{{
-						fmtINR(advanceAdjusted)
-					}}</span>
-				</div>
-			</template>
-			<div v-else class="px-4 py-3 text-xs text-ink-400 italic border-t border-ink-100">
-				No advances linked yet — {{ bill.subcontractor_name }} has
-				{{ fmtINR(unlinkedTotal) }} unallocated.
-			</div>
-		</div>
-
 		<!-- Summary strip -->
 		<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
@@ -840,6 +769,18 @@ const accountFilters = computed(() =>
 					Date
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5">{{ fmtDate(bill.date) }}</div>
+				<div
+					v-if="bill.supplier_invoice_no || bill.supplier_invoice_date"
+					class="text-[10px] text-ink-500 mt-0.5"
+				>
+					Subcontractor inv:
+					<span class="text-ink-700 font-medium">{{
+						bill.supplier_invoice_no || "—"
+					}}</span>
+					<template v-if="bill.supplier_invoice_date">
+						· {{ fmtDate(bill.supplier_invoice_date) }}</template
+					>
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -1378,6 +1319,90 @@ const accountFilters = computed(() =>
 						</div>
 					</template>
 				</div>
+			</div>
+		</section>
+
+		<!-- Advance Payments — the subcontractor's on-account advances adjusted against this
+		     bill's PI. Below the totals (matches the prototype); available after submit. -->
+		<section
+			v-if="isSubmitted && (linkedAdvances.length || availableAdvances.length)"
+			class="mt-6 bg-white border border-ink-200 rounded-lg overflow-hidden"
+		>
+			<div
+				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between gap-3"
+			>
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					Advance Payments
+				</h3>
+				<button
+					v-if="availableAdvances.length"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="openLinkAdvance"
+				>
+					+ Link advance
+				</button>
+			</div>
+			<table v-if="linkedAdvances.length" class="w-full text-xs">
+				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
+					<tr>
+						<th class="text-left px-3 py-2">Advance</th>
+						<th class="text-left px-3 py-2 w-28">Paid on</th>
+						<th class="text-left px-3 py-2 w-44">Paid from</th>
+						<th class="text-right px-3 py-2 w-32">Advance amount</th>
+						<th class="text-right px-3 py-2 w-32">Recovered here</th>
+						<th class="w-8"></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr
+						v-for="row in linkedAdvances"
+						:key="row.payment_entry"
+						class="border-t border-ink-100"
+					>
+						<td class="px-3 py-2 font-mono text-ink-900">{{ row.payment_entry }}</td>
+						<td class="px-3 py-2 text-ink-600">
+							{{ row.paid_on ? fmtDate(row.paid_on) : "—" }}
+						</td>
+						<td class="px-3 py-2 text-ink-600">{{ advAccountName(row.paid_from) }}</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-500">
+							{{ row.advance_amount ? fmtINR(row.advance_amount) : "—" }}
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-info-700 font-medium">
+							{{ fmtINR(row.allocated) }}
+						</td>
+						<td class="px-2 py-2 text-center">
+							<button
+								type="button"
+								class="text-ink-400 hover:text-danger-600"
+								:title="`Unlink ${row.payment_entry}`"
+								@click="unlinkAdvance(row)"
+							>
+								✕
+							</button>
+						</td>
+					</tr>
+				</tbody>
+				<tfoot>
+					<tr class="border-t border-ink-200 bg-ink-50">
+						<td
+							colspan="4"
+							class="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-700"
+						>
+							Total advance recovered
+						</td>
+						<td
+							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+						>
+							{{ fmtINR(advanceAdjusted) }}
+						</td>
+						<td></td>
+					</tr>
+				</tfoot>
+			</table>
+			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">
+				No advances linked yet — {{ bill.subcontractor_name }} has
+				{{ fmtINR(unlinkedTotal) }} unallocated.
 			</div>
 		</section>
 

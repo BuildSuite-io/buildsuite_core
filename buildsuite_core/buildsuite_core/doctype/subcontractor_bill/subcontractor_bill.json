@@ -13,6 +13,8 @@
   "project",
   "column_break_hdr",
   "date",
+  "supplier_invoice_no",
+  "supplier_invoice_date",
   "bill_type",
   "retention_percent",
   "status",
@@ -106,6 +108,17 @@
    "in_list_view": 1,
    "label": "Date",
    "reqd": 1
+  },
+  {
+   "description": "The subcontractor's own invoice / bill number — carries to the Purchase Invoice.",
+   "fieldname": "supplier_invoice_no",
+   "fieldtype": "Data",
+   "label": "Subcontractor Invoice No"
+  },
+  {
+   "fieldname": "supplier_invoice_date",
+   "fieldtype": "Date",
+   "label": "Subcontractor Invoice Date"
   },
   {
    "default": "Normal",
