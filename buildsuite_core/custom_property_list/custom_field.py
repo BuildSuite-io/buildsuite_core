@@ -1,4 +1,21 @@
 CUSTOM_FIELD = {
+	# Marks a Payment Entry as a BuildSuite on-account ADVANCE (from record_advance / linked
+	# via the bill's Advance Payments). A fully-consumed advance is otherwise indistinguishable
+	# from a plain receipt, so the classification (api.invoice / api.supplier_bill _linked_advances)
+	# reads this flag to keep advances out of the Payments/Receipts list.
+	"Payment Entry": [
+		{
+			"fieldname": "custom_is_bs_advance",
+			"fieldtype": "Check",
+			"label": "BuildSuite Advance",
+			"insert_after": "unallocated_amount",
+			"read_only": 1,
+			"hidden": 1,
+			"print_hide": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Project": [
 		{
 			"fieldname": "custom_project_id",
