@@ -269,6 +269,40 @@ class TestPermissions(BuildSuiteTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_admin_can_submit_subcontractor_work_order(self):
+		# M3 — the Work Order is submittable; the admin tier (and the subcontract full
+		# roles) must have submit/cancel/amend, not just CRWD.
+		self._as("BuildSuite Administrator", "basub")
+		try:
+			for ptype in ("create", "write", "delete", "submit", "cancel", "amend"):
+				self.assertTrue(frappe.has_permission("Subcontractor Work Order", ptype), ptype)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_admin_full_on_m3_masters(self):
+		# M3 — the admin tier gets full CRWD on the worker/crew/equipment/commercial
+		# masters that the matrix had left read-only (Employee, Customer) or ungranted
+		# (Crew, Machinery Type).
+		self._as("BuildSuite Administrator", "bamaster")
+		try:
+			for dt in ("Employee", "Crew", "Machinery Type", "Customer"):
+				self.assertTrue(frappe.has_permission(dt, "create"), dt)
+				self.assertTrue(frappe.has_permission(dt, "write"), dt)
+				self.assertTrue(frappe.has_permission(dt, "delete"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_master_upgrade_preserves_picker_read(self):
+		# The Employee/Customer write upgrade must not revoke the link-picker read that
+		# other roles rely on — QS still reads both even though it cannot write them.
+		self._as("Quantity Surveyor", "qspick")
+		try:
+			for dt in ("Employee", "Customer"):
+				self.assertTrue(frappe.has_permission(dt, "read"), dt)
+				self.assertFalse(frappe.has_permission(dt, "delete"), dt)
+		finally:
+			frappe.set_user("Administrator")
+
 	def test_rate_update_guard_rejects_non_governance(self):
 		# PERM-013 — the PO-submit rate-update endpoint rejects a non-governance role
 		# and accepts the empowered Procurement Officer.
