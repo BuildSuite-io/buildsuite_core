@@ -129,10 +129,17 @@ def _linked_advances(doc):
 		is_advance = pe_name in table_pes
 		if not is_advance:
 			pe = frappe.db.get_value(
-				PE, pe_name, ["payment_type", "paid_amount", "unallocated_amount"], as_dict=True
+				PE,
+				pe_name,
+				["payment_type", "paid_amount", "unallocated_amount", "custom_is_bs_advance"],
+				as_dict=True,
 			)
-			is_advance = bool(pe) and _ref_is_advance(
-				pe.payment_type, pe.paid_amount, pe.unallocated_amount, total
+			# The durable flag (set when the advance was recorded / linked) is authoritative;
+			# fall back to the unallocated-leftover heuristic for legacy entries without it —
+			# without the flag a fully-consumed advance is indistinguishable from a receipt.
+			is_advance = bool(pe) and (
+				pe.custom_is_bs_advance
+				or _ref_is_advance(pe.payment_type, pe.paid_amount, pe.unallocated_amount, total)
 			)
 		if is_advance:
 			out.append({"payment_entry": pe_name, "allocated": total})
@@ -671,6 +678,7 @@ def record_advance(supplier, amount, date=None, pay_from=None, mode_of_payment=N
 	if reference_no:
 		pe.reference_no = reference_no
 		pe.reference_date = date or nowdate()
+	pe.custom_is_bs_advance = 1  # durable marker — a fully-consumed advance must never read as a payment
 	pe.flags.ignore_permissions = True
 	pe.set_missing_values()
 	pe.insert()
@@ -785,6 +793,10 @@ def link_advance(name, payment_entry, amount):
 	pe = frappe.get_doc(PE, payment_entry)
 	if pe.docstatus != 1 or pe.payment_type != "Pay" or pe.party != pi.supplier:
 		frappe.throw(_("{0} is not an advance to this supplier.").format(payment_entry))
+	# On-account advance being adjusted — flag it durably so it always reads as an advance
+	# (not a payment), even once fully consumed, and to backfill entries made before this flag.
+	if not pe.get("custom_is_bs_advance"):
+		frappe.db.set_value(PE, payment_entry, "custom_is_bs_advance", 1, update_modified=False)
 	available = flt(pe.unallocated_amount)
 	if amount > available + 0.01:
 		frappe.throw(_("Only {0} is unadjusted on {1}.").format(available, payment_entry))
