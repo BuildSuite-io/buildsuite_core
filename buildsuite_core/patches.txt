@@ -29,3 +29,4 @@ buildsuite_core.patches.convert_site_execution_reports_to_script # 2026-08-18
 buildsuite_core.patches.reseed_subcontract_reports # 2026-08-18
 buildsuite_core.patches.reseed_project_finance_reports # 2026-08-18
 buildsuite_core.patches.reseed_project_finance_bespoke # 2026-08-20
+buildsuite_core.patches.reseed_project_finance_bespoke_views # 2026-08-20

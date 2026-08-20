@@ -79,32 +79,12 @@ _SEED = {
 }
 
 
-def _pf_gl_route(company, from_date, to_date, account=None, group_by_account=False):
-	"""An IN-APP General Ledger route (/reports/view/…, the generic renderer) scoped to the
-	company + period, optionally one account or grouped by account. In-app (not a Desk /app/…
-	link) so it stays in the SPA — a Desk link bounces users without desk access to home, and
-	GL/P&L refuse to render without a from/to date."""
-	from urllib.parse import quote
-
-	parts = []
-	if company:
-		parts.append(f"company={quote(company)}")
-	parts.append(f"from_date={from_date}")
-	parts.append(f"to_date={to_date}")
-	if account:
-		parts.append(f"account={quote(account)}")
-	if group_by_account:
-		parts.append(f"group_by={quote('Group by Account')}")
-	return "/reports/view/" + quote("General Ledger") + "?" + "&".join(parts)
-
-
 def _project_finance_tiles():
-	"""Project Finance tiles, computed per-site. Receivables & Payables and Financial Position
-	are bespoke in-app Vue views (real data, prototype layout). Profit & Loss / Petty Cash /
-	Expense Summary / Cash & Bank are ERPNext reports shown through the IN-APP renderer,
-	pre-filled with this site's company, a period and the relevant account so they open
-	populated. Dates are baked at seed time (rolling last-12-months) and refresh on re-seed; the
-	in-app filter bar lets a user change them."""
+	"""Project Finance tiles, computed per-site. Receivables & Payables, Financial Position,
+	Petty Cash, Expense Summary and Cash & Bank are all bespoke in-app Vue views (real data,
+	prototype layout). Only Profit & Loss stays an ERPNext report, shown through the IN-APP
+	renderer pre-filled with this site's company and a rolling last-12-months period so it opens
+	populated; the in-app filter bar lets a user change the dates."""
 	from urllib.parse import quote
 
 	from frappe.utils import add_years, nowdate
@@ -115,22 +95,6 @@ def _project_finance_tiles():
 	to_date = nowdate()
 	from_date = add_years(to_date, -1)
 
-	def _first_account(account_type, contains=None):
-		names = (
-			frappe.get_all(
-				"Account",
-				filters={"company": company, "account_type": account_type, "is_group": 0},
-				pluck="name",
-			)
-			if company
-			else []
-		)
-		if contains:
-			names = [n for n in names if contains in n]
-		return names[0] if names else None
-
-	petty = _first_account("Cash", contains="Petty")
-	bank = _first_account("Bank")
 	pnl_parts = []
 	if company:
 		pnl_parts.append(f"company={quote(company)}")
@@ -163,19 +127,19 @@ def _project_finance_tiles():
 		{
 			"label": "Petty Cash",
 			"icon": "hand-coins",
-			"route": _pf_gl_route(company, from_date, to_date, account=petty),
+			"route": "/project-finance/report/petty",
 			"description": "Petty cash ledger — the Petty Cash account, per holder.",
 		},
 		{
 			"label": "Expense Summary",
 			"icon": "receipt",
-			"route": _pf_gl_route(company, from_date, to_date, group_by_account=True),
-			"description": "Ledger grouped by account — read the expense accounts.",
+			"route": "/project-finance/report/expenses",
+			"description": "Submitted expenses grouped by project, account, cost code, source or person.",
 		},
 		{
 			"label": "Cash & Bank Statement",
 			"icon": "banknote",
-			"route": _pf_gl_route(company, from_date, to_date, account=bank),
+			"route": "/project-finance/report/cashbank",
 			"description": "Per account: opening, movements, closing.",
 		},
 	)
@@ -226,7 +190,7 @@ def seed_workspace_reports():
 			settings.append("reports", {"workspace": slug, **row})
 		changed = True
 
-	# Project Finance — computed per-site (bespoke in-app views + pre-filtered ERPNext reports).
+	# Project Finance — computed per-site (bespoke in-app views + the pre-filtered ERPNext P&L).
 	if "project-finance" not in existing:
 		for row in _project_finance_tiles():
 			settings.append("reports", {"workspace": "project-finance", **row})

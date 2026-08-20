@@ -16,3 +16,6 @@ async function call(method, args) {
 
 export const getReceivablesPayables = () => call("receivables_and_payables", {});
 export const getFinancialPosition = () => call("financial_position", {});
+export const getCashBankAccounts = () => call("cash_bank_accounts", {});
+export const getCashBankStatement = (account, from_date, to_date) =>
+	call("cash_bank_statement", { account, from_date, to_date });

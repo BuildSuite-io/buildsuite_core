@@ -175,3 +175,96 @@ def financial_position(company=None):
 		"toReimburse": to_reimburse,
 	}
 	return {"have": have, "owe": owe, "net": sum(have.values()) - sum(owe.values())}
+
+
+def _cash_bank_accounts(company):
+	"""Bank + Cash accounts a statement can be drawn for, excluding Petty Cash (that's its own
+	imprest report). Ordered Bank first, then by name."""
+	accounts = frappe.get_all(
+		"Account",
+		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
+		fields=["name", "account_name", "account_type"],
+		order_by="account_type, account_name",
+	)
+	return [a for a in accounts if "Petty" not in a.name]
+
+
+@frappe.whitelist()
+def cash_bank_accounts(company=None):
+	"""The Bank/Cash accounts the Cash & Bank statement picker offers (single-company seam)."""
+	company = company or default_company()
+	return _cash_bank_accounts(company)
+
+
+@frappe.whitelist()
+def cash_bank_statement(account=None, from_date=None, to_date=None, company=None):
+	"""A running-balance statement for one Bank/Cash account, from its GL. Cash/Bank are asset
+	accounts, so a debit is money in and a credit is money out. The opening balance folds in
+	everything posted before `from_date` (0 when no period is set — the statement runs from the
+	beginning of the ledger), so the running balance is always correct even when rows are
+	clipped to a period."""
+	company = company or default_company()
+	if not account:
+		accts = _cash_bank_accounts(company)
+		account = accts[0]["name"] if accts else None
+	if not account:
+		return {"account": None, "opening": 0, "movements": [], "totalIn": 0, "totalOut": 0, "closing": 0}
+
+	acc = frappe.db.get_value("Account", account, ["name", "account_name", "account_type"], as_dict=True)
+
+	opening = 0.0
+	if from_date:
+		opening = flt(
+			frappe.db.sql(
+				"""SELECT IFNULL(SUM(debit - credit), 0) FROM `tabGL Entry`
+				WHERE is_cancelled = 0 AND company = %s AND account = %s AND posting_date < %s""",
+				(company, account, from_date),
+			)[0][0]
+		)
+
+	conds = "is_cancelled = 0 AND company = %s AND account = %s"
+	params = [company, account]
+	if from_date:
+		conds += " AND posting_date >= %s"
+		params.append(from_date)
+	if to_date:
+		conds += " AND posting_date <= %s"
+		params.append(to_date)
+	rows = frappe.db.sql(
+		f"""SELECT posting_date, voucher_type, voucher_no, against, debit, credit, party_type, party, remarks
+		FROM `tabGL Entry` WHERE {conds}
+		ORDER BY posting_date, creation""",
+		params,
+		as_dict=True,
+	)
+
+	movements = []
+	bal = opening
+	total_in = total_out = 0.0
+	for r in rows:
+		money_in = flt(r.debit)
+		money_out = flt(r.credit)
+		bal += money_in - money_out
+		total_in += money_in
+		total_out += money_out
+		who = r.party or r.against
+		movements.append(
+			{
+				"date": str(r.posting_date),
+				"label": f"{r.voucher_type} · {who}" if who else r.voucher_type,
+				"ref": r.voucher_no,
+				"voucher_type": r.voucher_type,
+				"in": money_in,
+				"out": money_out,
+				"balance": flt(bal),
+			}
+		)
+
+	return {
+		"account": acc,
+		"opening": flt(opening),
+		"movements": movements,
+		"totalIn": flt(total_in),
+		"totalOut": flt(total_out),
+		"closing": flt(bal),
+	}
