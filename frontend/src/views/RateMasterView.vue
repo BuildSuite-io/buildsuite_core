@@ -6,6 +6,7 @@ import { createDataAdapter } from "@/data/adapters";
 import { listRateMasters } from "@/data/rateMasterApi";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { parseFrappeError } from "@/utils/frappeError";
 import { showToast } from "@/utils/appToast";
 import { fmtINR, fmtDate } from "@/utils/format";
@@ -24,6 +25,7 @@ const router = useRouter();
 const store = useDataStore();
 const adapter = createDataAdapter(store);
 const confirmDialog = useConfirm();
+const { canCreate } = usePermissions();
 const { selectOptions } = useDoctypeMeta("Construction Rate Master");
 
 const breadcrumbs = [
@@ -257,7 +259,7 @@ watch(
 		if (id) openRate(id);
 		else rateRes.value = null;
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function closeDrawer() {
@@ -303,7 +305,14 @@ async function removeRate() {
 <template>
 	<DeskPage title="Construction Rate Master" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn" @click="startAdd">+ New rate</button>
+			<button
+				v-if="canCreate('rateMaster')"
+				type="button"
+				class="desk-save-btn"
+				@click="startAdd"
+			>
+				+ New rate
+			</button>
 		</template>
 
 		<!-- KPI cards -->
@@ -332,8 +341,21 @@ async function removeRate() {
 			:current-page="page"
 			:page-size="pageSize"
 			@row-click="onRowClick"
-			@page-change="(p) => { if (p !== page) { page = p; reload(); } }"
-			@page-size-change="(s) => { pageSize = s; page = 1; reload(); }"
+			@page-change="
+				(p) => {
+					if (p !== page) {
+						page = p;
+						reload();
+					}
+				}
+			"
+			@page-size-change="
+				(s) => {
+					pageSize = s;
+					page = 1;
+					reload();
+				}
+			"
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
@@ -574,7 +596,9 @@ async function removeRate() {
 									<td class="px-3 py-1.5">
 										<DeskLink
 											v-if="h.purchaseOrder"
-											:href="`/app/purchase-order/${encodeURIComponent(h.purchaseOrder)}`"
+											:href="`/app/purchase-order/${encodeURIComponent(
+												h.purchaseOrder
+											)}`"
 											target="_blank"
 											class="font-mono"
 										>

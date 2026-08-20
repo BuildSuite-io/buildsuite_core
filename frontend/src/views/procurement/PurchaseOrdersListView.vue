@@ -13,8 +13,10 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
+import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
@@ -76,7 +78,14 @@ const breadcrumbs = [
 <template>
 	<DeskPage title="Purchase Orders" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn !text-xs" @click="openNew">+ New PO</button>
+			<button
+				v-if="canCreate('purchaseOrder')"
+				type="button"
+				class="desk-save-btn !text-xs"
+				@click="openNew"
+			>
+				+ New PO
+			</button>
 		</template>
 
 		<DocTypeListView

@@ -4,6 +4,7 @@
 import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { usePermissions } from "@/composables/usePermissions";
 import { listSubcontractors } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -11,6 +12,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 // Subcontractors are Suppliers of type "Subcontractor"; the API joins each one's
 // primary Contact so contact person + phone come back for the list columns.
@@ -93,7 +95,12 @@ function onRowClick(row) {
 				<option value="">All trades</option>
 				<option v-for="t in tradeOptions" :key="t" :value="t">{{ t }}</option>
 			</select>
-			<RouterLink to="/subcontractors/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink
+				v-if="canCreate('subcontractor')"
+				to="/subcontractors/new"
+				class="desk-save-btn"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DeskList
@@ -143,7 +150,10 @@ function onRowClick(row) {
 			<template #empty>
 				<div class="text-sm text-ink-500">
 					{{ loading ? "Loading subcontractors…" : "No subcontractors yet." }}
-					<RouterLink v-if="!loading" to="/subcontractors/new" class="desk-link"
+					<RouterLink
+						v-if="!loading && canCreate('subcontractor')"
+						to="/subcontractors/new"
+						class="desk-link"
 						>Add one →</RouterLink
 					>
 				</div>

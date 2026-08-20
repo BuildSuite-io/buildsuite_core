@@ -9,7 +9,10 @@ import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
+
+const { canCreate } = usePermissions();
 
 const ITEM_FIELDS = [
 	"name",
@@ -59,7 +62,12 @@ function openEdit(row) {
 <template>
 	<DeskPage title="Item" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn !text-xs" @click="openNew">
+			<button
+				v-if="canCreate('item')"
+				type="button"
+				class="desk-save-btn !text-xs"
+				@click="openNew"
+			>
 				+ New Item
 			</button>
 		</template>

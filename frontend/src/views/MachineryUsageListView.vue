@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -12,6 +13,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
+const { canCreate } = usePermissions();
 
 const usageRes = useDocTypeList("Machinery Usage", {
 	fields: [
@@ -98,7 +100,12 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Machinery Usage Log" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/machinery-usage/new" class="desk-save-btn">+ Log usage</RouterLink>
+			<RouterLink
+				v-if="canCreate('machineryUsage')"
+				to="/machinery-usage/new"
+				class="desk-save-btn"
+				>+ Log usage</RouterLink
+			>
 		</template>
 
 		<DeskList

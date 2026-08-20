@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { usePermissions } from "@/composables/usePermissions";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -13,6 +14,7 @@ import { fmtDate, fmtCompactINR } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
+const { canCreate } = usePermissions();
 
 const wosRes = useDocTypeList("Subcontractor Work Order", {
 	fields: [
@@ -101,7 +103,10 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Work Orders" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/subcontractor-work-orders/new" class="desk-save-btn"
+			<RouterLink
+				v-if="canCreate('subcontractorWorkOrder')"
+				to="/subcontractor-work-orders/new"
+				class="desk-save-btn"
 				>+ New</RouterLink
 			>
 		</template>

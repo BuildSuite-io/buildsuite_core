@@ -12,11 +12,13 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
+import { usePermissions } from "@/composables/usePermissions";
 import { DOCSTATUS_LABELS } from "@/utils/workforceForms";
 import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
 const { projectOptions, projectLabel } = useProjectOptions();
+const { canCreate } = usePermissions();
 
 const projectFilter = ref("");
 const filterValues = computed(() => ({ project: projectFilter.value }));
@@ -43,7 +45,11 @@ const breadcrumbs = [
 <template>
 	<DeskPage title="Field Attendance" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/field-attendance/new" class="desk-save-btn !text-xs">
+			<RouterLink
+				v-if="canCreate('fieldAttendance')"
+				to="/field-attendance/new"
+				class="desk-save-btn !text-xs"
+			>
 				+ New
 			</RouterLink>
 		</template>

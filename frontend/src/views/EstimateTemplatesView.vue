@@ -6,8 +6,10 @@ import { fmtINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 function onRowClick(row) {
 	router.push(`/estimate-template/${row.id}`);
@@ -54,7 +56,7 @@ const rows = computed(() => {
 		data = data.filter(
 			(t) =>
 				(t.code || "").toLowerCase().includes(q) ||
-				(t.name || "").toLowerCase().includes(q),
+				(t.name || "").toLowerCase().includes(q)
 		);
 	}
 	return data;
@@ -75,7 +77,12 @@ const columns = [
 	<DeskPage title="Estimate Template" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<DeskLink to="/assembly" class="text-xs">View Assemblies →</DeskLink>
-			<RouterLink to="/estimate-template/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink
+				v-if="canCreate('estimateTemplate')"
+				to="/estimate-template/new"
+				class="desk-save-btn"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DeskList
