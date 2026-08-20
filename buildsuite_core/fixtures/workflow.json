@@ -1,102 +1,222 @@
 [
-    {
-        "doctype": "Workflow",
-        "name": "Stage Planning Approval",
-        "workflow_name": "Stage Planning Approval",
-        "document_type": "Stage Planning",
-        "is_active": 1,
-        "override_status": 0,
-        "send_email_alert": 0,
-        "workflow_state_field": "workflow_state",
-        "states": [
-            {
-                "state": "Draft",
-                "doc_status": "0",
-                "allow_edit": "Projects User",
-                "is_optional_state": 0
-            },
-            {
-                "state": "Pending Approval",
-                "doc_status": "0",
-                "allow_edit": "Projects Manager",
-                "is_optional_state": 0
-            },
-            {
-                "state": "Approved",
-                "doc_status": "0",
-                "allow_edit": "System Manager",
-                "is_optional_state": 0
-            },
-            {
-                "state": "Rejected",
-                "doc_status": "0",
-                "allow_edit": "Projects User",
-                "is_optional_state": 0
-            },
-            {
-                "state": "Cancelled",
-                "doc_status": "0",
-                "allow_edit": "System Manager",
-                "is_optional_state": 1
-            }
-        ],
-        "transitions": [
-            {
-                "state": "Draft",
-                "action": "Submit for Approval",
-                "next_state": "Pending Approval",
-                "allowed": "Projects User",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Draft",
-                "action": "Submit for Approval",
-                "next_state": "Pending Approval",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Pending Approval",
-                "action": "Approve",
-                "next_state": "Approved",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Pending Approval",
-                "action": "Reject",
-                "next_state": "Rejected",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Approved",
-                "action": "Revise",
-                "next_state": "Draft",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Approved",
-                "action": "Revise",
-                "next_state": "Draft",
-                "allowed": "System Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Approved",
-                "action": "Cancel",
-                "next_state": "Cancelled",
-                "allowed": "Projects Manager",
-                "allow_self_approval": 1
-            },
-            {
-                "state": "Approved",
-                "action": "Cancel",
-                "next_state": "Cancelled",
-                "allowed": "System Manager",
-                "allow_self_approval": 1
-            }
-        ]
-    }
+ {
+  "doctype": "Workflow",
+  "name": "Stage Planning Approval",
+  "workflow_name": "Stage Planning Approval",
+  "document_type": "Stage Planning",
+  "is_active": 1,
+  "override_status": 0,
+  "send_email_alert": 0,
+  "workflow_state_field": "workflow_state",
+  "states": [
+   {
+    "state": "Draft",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Pending Approval",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Approved",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Rejected",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Cancelled",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 1
+   }
+  ],
+  "transitions": [
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Site Engineer",
+    "allow_self_approval": 1,
+    "condition": "doc.owner == frappe.session.user"
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Foreman",
+    "allow_self_approval": 1,
+    "condition": "doc.owner == frappe.session.user"
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   }
+  ]
+ }
 ]
