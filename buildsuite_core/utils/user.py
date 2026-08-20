@@ -14,8 +14,13 @@ legitimate flow, so manual additions must never be silently reverted.
 The only roles ever removed are the ones the *previous* persona granted that the
 new persona no longer grants, and only when the persona actually CHANGES — so
 switching persona doesn't leave the old persona's roles piled on, while a plain
-save (persona unchanged) strips nothing. Protected native roles (System Manager,
-Administrator) are never stripped.
+save (persona unchanged) strips nothing. A role a persona GRANTS is stripped when
+you leave that persona even if it is System Manager (the "System Manager (Admin)"
+persona grants it) — otherwise switching an admin down to a field persona would
+silently leave platform-admin rights behind. Only two things are always kept: the
+Frappe-internal roles (Administrator, All, Guest), and any role added MANUALLY on
+top of a persona (a manual add is never in the previous persona's grant set, so it
+is never eligible for stripping).
 
 Delete needs no handler: Frappe cascades the Has Role child rows when the User is
 deleted.
@@ -25,8 +30,12 @@ import frappe
 
 from buildsuite_core.permissions.setup import WORKFLOW_EDITOR_ROLE
 
-# Native roles this hook must never revoke, even on a persona switch.
-PROTECTED_ROLES = {"System Manager", "Administrator", "All", "Guest"}
+# Frappe-internal roles this hook must never revoke on a persona switch. System Manager is
+# deliberately NOT here: the "System Manager (Admin)" persona grants it, so leaving that persona
+# must be able to strip it — like any other persona-granted role. A System Manager role added
+# MANUALLY on top of a field persona still survives (only the previous persona's own grants are
+# ever eligible for stripping), so this set only needs Frappe's own housekeeping roles.
+PROTECTED_ROLES = {"Administrator", "All", "Guest"}
 
 
 def _persona_roles(persona):
