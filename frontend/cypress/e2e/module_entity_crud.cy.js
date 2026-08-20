@@ -5,12 +5,10 @@
 // can still open the list. Expected create/read sets mirror the backend role matrix in
 // buildsuite_core/permissions/setup.py.
 //
-// IMPORTANT — scope note: unlike the 6 PERSONA_CAPS views, these list views do NOT gate their
-// "+ New" button (no usePermissions / canCreate) — it is shown to every persona that reaches
-// the route. So this spec asserts the POSITIVE (authorised personas are enabled); it does not
-// assert the negative (button hidden from read-only personas) because the UI does not currently
-// enforce that. Closing that gap = extending PERSONA_CAPS + usePermissions to these entities;
-// once done, flip the read-only personas to a "New must be hidden" assertion.
+// These list views are gated through usePermissions().canCreate (PERSONA_CAPS now covers these
+// entities), so the spec asserts BOTH directions: create-capable personas see "+ New", and
+// read-only personas do NOT (while still being able to open the list). Before the caps were
+// wired the read-only negative failed for every entity — that delta is the gap this closes.
 //
 // Requires the persona test users:
 //   bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_users
@@ -328,18 +326,20 @@ describe("Create enablement — authorised personas reach each entity's + New", 
 	});
 });
 
-describe("Read enablement — read-only personas can open each entity's list", () => {
+describe("Read-only personas: list opens, but no + New", () => {
 	PERSONAS.forEach((persona) => {
 		// entities the persona may read but not create (incl. the read-only registers)
 		const mine = ENTITIES.filter(
 			(e) => e.read.includes(persona) && !e.create.includes(persona)
 		);
 		if (!mine.length) return;
-		it(`${persona}: can open its ${mine.length} read-only lists`, () => {
+		it(`${persona}: opens ${mine.length} read-only lists with no create affordance`, () => {
 			cy.loginAs(persona);
 			mine.forEach((e) => {
 				cy.visitApp(e.route);
-				cy.dt("page-title").should("be.visible");
+				cy.dt("page-title").should("be.visible"); // read: the list is reachable
+				// create: the "+ New" affordance must be gated away (null = register, none to check)
+				if (e.newText) cy.dt("page-actions").should("not.contain", e.newText);
 			});
 		});
 	});
