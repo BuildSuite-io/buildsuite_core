@@ -822,6 +822,47 @@ def setup_project_finance_permissions():
 	# Customer was read-only for everyone via the picker mirror, so even admins couldn't
 	# delete it. Upgrade the commercial writers on top of that mirror.
 	_upgrade_role_perms("Customer", CUSTOMER_WRITE_ROLE_PERMS)
+	setup_project_finance_report_access()
+
+
+# The Project Finance workspace opens ERPNext's General Ledger + Profit and Loss Statement
+# through the in-app renderer. run_report gates on BOTH the report's own roles (Accounts User/
+# Manager/Auditor) and report permission on the ref doctype (GL Entry) — neither of which the
+# BuildSuite finance personas have, so the reports 403 for them. Grant both.
+_PF_ERPNEXT_REPORTS = ("General Ledger", "Profit and Loss Statement")
+_PF_REPORT_ROLES = (
+	"BuildSuite Administrator",
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite QS",
+	"BuildSuite Accountant",
+)
+
+
+def setup_project_finance_report_access():
+	"""Let the BuildSuite finance personas run the ERPNext reports the Project Finance tiles use.
+	Re-applied every after_migrate: ERPNext's standard-report sync rewrites the report roles, so
+	this self-heals."""
+	# Report roles — standard reports can't be doc.save()d (developer-mode guard), so add the
+	# Has Role child rows directly.
+	for report in _PF_ERPNEXT_REPORTS:
+		if not frappe.db.exists("Report", report):
+			continue
+		for role in _PF_REPORT_ROLES:
+			if frappe.db.exists("Role", role) and not frappe.db.exists(
+				"Has Role", {"parenttype": "Report", "parent": report, "role": role}
+			):
+				frappe.get_doc(
+					{
+						"doctype": "Has Role",
+						"parenttype": "Report",
+						"parentfield": "roles",
+						"parent": report,
+						"role": role,
+					}
+				).insert(ignore_permissions=True)
+	# Read + report on GL Entry (the reports' ref doctype), layered on ERPNext's own perms.
+	_upgrade_role_perms("GL Entry", {role: _READ for role in _PF_REPORT_ROLES})
 
 
 def _ensure_workflow_state(name):

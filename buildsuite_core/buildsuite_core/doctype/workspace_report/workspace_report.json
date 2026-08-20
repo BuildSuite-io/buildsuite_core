@@ -38,7 +38,7 @@
   {
    "description": "Explicit destination: an in-app path (e.g. /subcontractor-work-orders) or a Desk URL (e.g. /app/query-report/Stock Balance). Overrides Report.",
    "fieldname": "route",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Route"
   },
   {

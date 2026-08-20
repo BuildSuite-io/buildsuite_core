@@ -79,33 +79,41 @@ _SEED = {
 }
 
 
-def _pf_gl_route(company, account=None, group_by_account=False):
-	"""A General Ledger Desk route, scoped to the company and (optionally) one account or grouped
-	by account, so the tile opens to something useful instead of a blank GL prompt."""
+def _pf_gl_route(company, from_date, to_date, account=None, group_by_account=False):
+	"""An IN-APP General Ledger route (/reports/view/…, the generic renderer) scoped to the
+	company + period, optionally one account or grouped by account. In-app (not a Desk /app/…
+	link) so it stays in the SPA — a Desk link bounces users without desk access to home, and
+	GL/P&L refuse to render without a from/to date."""
 	from urllib.parse import quote
 
 	parts = []
 	if company:
 		parts.append(f"company={quote(company)}")
+	parts.append(f"from_date={from_date}")
+	parts.append(f"to_date={to_date}")
 	if account:
 		parts.append(f"account={quote(account)}")
 	if group_by_account:
 		parts.append(f"group_by={quote('Group by Account')}")
-	base = "/app/query-report/General Ledger"
-	return base + ("?" + "&".join(parts) if parts else "")
+	return "/reports/view/" + quote("General Ledger") + "?" + "&".join(parts)
 
 
 def _project_finance_tiles():
 	"""Project Finance tiles, computed per-site. Receivables & Payables and Financial Position
 	are bespoke in-app Vue views (real data, prototype layout). Profit & Loss / Petty Cash /
-	Expense Summary / Cash & Bank ride ERPNext Desk reports, pre-filtered to this site's company
-	and the relevant account so they open populated (a bare General Ledger needs a mandatory
-	account and lands blank)."""
+	Expense Summary / Cash & Bank are ERPNext reports shown through the IN-APP renderer,
+	pre-filled with this site's company, a period and the relevant account so they open
+	populated. Dates are baked at seed time (rolling last-12-months) and refresh on re-seed; the
+	in-app filter bar lets a user change them."""
 	from urllib.parse import quote
+
+	from frappe.utils import add_years, nowdate
 
 	from buildsuite_core.utils.project import default_company
 
 	company = default_company()
+	to_date = nowdate()
+	from_date = add_years(to_date, -1)
 
 	def _first_account(account_type, contains=None):
 		names = (
@@ -123,9 +131,16 @@ def _project_finance_tiles():
 
 	petty = _first_account("Cash", contains="Petty")
 	bank = _first_account("Bank")
-	pnl_route = "/app/query-report/Profit and Loss Statement" + (
-		f"?company={quote(company)}" if company else ""
-	)
+	pnl_parts = []
+	if company:
+		pnl_parts.append(f"company={quote(company)}")
+	pnl_parts += [
+		f"filter_based_on={quote('Date Range')}",
+		f"period_start_date={from_date}",
+		f"period_end_date={to_date}",
+		"periodicity=Yearly",
+	]
+	pnl_route = "/reports/view/" + quote("Profit and Loss Statement") + "?" + "&".join(pnl_parts)
 	return (
 		{
 			"label": "Profit & Loss",
@@ -148,19 +163,19 @@ def _project_finance_tiles():
 		{
 			"label": "Petty Cash",
 			"icon": "hand-coins",
-			"route": _pf_gl_route(company, account=petty),
+			"route": _pf_gl_route(company, from_date, to_date, account=petty),
 			"description": "Petty cash ledger — the Petty Cash account, per holder.",
 		},
 		{
 			"label": "Expense Summary",
 			"icon": "receipt",
-			"route": _pf_gl_route(company, group_by_account=True),
+			"route": _pf_gl_route(company, from_date, to_date, group_by_account=True),
 			"description": "Ledger grouped by account — read the expense accounts.",
 		},
 		{
 			"label": "Cash & Bank Statement",
 			"icon": "banknote",
-			"route": _pf_gl_route(company, account=bank),
+			"route": _pf_gl_route(company, from_date, to_date, account=bank),
 			"description": "Per account: opening, movements, closing.",
 		},
 	)

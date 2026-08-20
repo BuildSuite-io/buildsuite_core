@@ -87,6 +87,28 @@ def _gl_balance(company, accounts):
 	)
 
 
+def _petty_split(company):
+	"""Petty cash split by holder (the `employee` GL dimension): holders in credit hold cash
+	(an asset — "petty cash with holders"), holders who overspent their float are owed the
+	excess (a liability — "to reimburse"). Falls back to the net account balance if the holder
+	dimension isn't present."""
+	accounts = _account_names(company, "Cash", contains="Petty")
+	if not accounts:
+		return 0.0, 0.0
+	if not frappe.db.has_column("GL Entry", "employee"):
+		bal = _gl_balance(company, accounts)
+		return (bal if bal > 0 else 0.0), (-bal if bal < 0 else 0.0)
+	rows = frappe.db.sql(
+		"""SELECT IFNULL(SUM(debit - credit), 0) AS bal FROM `tabGL Entry`
+		WHERE is_cancelled = 0 AND company = %s AND account IN %s GROUP BY employee""",
+		(company, tuple(accounts)),
+		as_dict=True,
+	)
+	held = flt(sum(r.bal for r in rows if r.bal > 0))
+	reimburse = flt(sum(-r.bal for r in rows if r.bal < 0))
+	return held, reimburse
+
+
 @frappe.whitelist()
 def financial_position(company=None):
 	"""What we have (bank, cash, petty cash out with holders, customers owe) vs what we owe
@@ -104,9 +126,27 @@ def financial_position(company=None):
 
 	bank = _gl_balance(company, _account_names(company, "Bank"))
 	cash = _gl_balance(company, _account_names(company, "Cash", excludes=["Petty"]))
-	petty = _gl_balance(company, _account_names(company, "Cash", contains="Petty"))
+	petty_out, to_reimburse = _petty_split(company)
 	customers_owe = doc_sum("Sales Invoice", "outstanding_amount")
 	retention = doc_sum("Subcontractor Bill", "retention_amount")
+
+	# Advances = the still-unallocated portion of a party's advance Payment Entries: money we
+	# paid suppliers ahead (an asset) / customers paid us ahead (a liability), not yet drawn
+	# down against an invoice.
+	advances_paid = flt(
+		frappe.db.sql(
+			"""SELECT IFNULL(SUM(unallocated_amount), 0) FROM `tabPayment Entry`
+			WHERE docstatus = 1 AND payment_type = 'Pay' AND party_type = 'Supplier' AND company = %s""",
+			(company,),
+		)[0][0]
+	)
+	advances_received = flt(
+		frappe.db.sql(
+			"""SELECT IFNULL(SUM(unallocated_amount), 0) FROM `tabPayment Entry`
+			WHERE docstatus = 1 AND payment_type = 'Receive' AND party_type = 'Customer' AND company = %s""",
+			(company,),
+		)[0][0]
+	)
 
 	# Split open payables into supplier vs subcontractor by the supplier's group.
 	pay_rows = frappe.db.sql(
@@ -123,15 +163,15 @@ def financial_position(company=None):
 	have = {
 		"bank": bank,
 		"cash": cash,
-		"pettyCashOut": petty,
+		"pettyCashOut": petty_out,
 		"customersOwe": customers_owe,
-		"advancesPaid": 0,
+		"advancesPaid": advances_paid,
 	}
 	owe = {
 		"suppliers": suppliers,
 		"subcontractors": subcontractors,
 		"retention": retention,
-		"advancesReceived": 0,
-		"toReimburse": 0,
+		"advancesReceived": advances_received,
+		"toReimburse": to_reimburse,
 	}
 	return {"have": have, "owe": owe, "net": sum(have.values()) - sum(owe.values())}
