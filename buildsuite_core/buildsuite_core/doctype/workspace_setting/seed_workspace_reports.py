@@ -76,49 +76,73 @@ _SEED = {
 			"description": "POs and GRNs grouped by item, with value rollups.",
 		},
 	),
-	# Project Finance — Profit & Loss / Petty Cash / Expense Summary / Cash & Bank ride the
-	# ERPNext reports (Desk query-report route; P&L can't render through the in-app renderer
-	# — its date filters are JS-driven and don't flow through). Receivables & Payables and
-	# Financial Position are bespoke Script Reports (buildsuite_core/report/) shown in-app.
-	"project-finance": (
+}
+
+
+def _project_finance_tiles():
+	"""Project Finance tiles, computed per-site. Receivables & Payables, Financial Position,
+	Petty Cash, Expense Summary and Cash & Bank are all bespoke in-app Vue views (real data,
+	prototype layout). Only Profit & Loss stays an ERPNext report, shown through the IN-APP
+	renderer pre-filled with this site's company and a rolling last-12-months period so it opens
+	populated; the in-app filter bar lets a user change the dates."""
+	from urllib.parse import quote
+
+	from frappe.utils import add_years, nowdate
+
+	from buildsuite_core.utils.project import default_company
+
+	company = default_company()
+	to_date = nowdate()
+	from_date = add_years(to_date, -1)
+
+	pnl_parts = []
+	if company:
+		pnl_parts.append(f"company={quote(company)}")
+	pnl_parts += [
+		f"filter_based_on={quote('Date Range')}",
+		f"period_start_date={from_date}",
+		f"period_end_date={to_date}",
+		"periodicity=Yearly",
+	]
+	pnl_route = "/reports/view/" + quote("Profit and Loss Statement") + "?" + "&".join(pnl_parts)
+	return (
 		{
 			"label": "Profit & Loss",
 			"icon": "chart-line",
-			"route": "/app/query-report/Profit and Loss Statement",
+			"route": pnl_route,
 			"description": "Income vs direct costs and overheads, by project and period.",
 		},
 		{
 			"label": "Receivables & Payables",
 			"icon": "clipboard-list",
-			"report": "Receivables and Payables",
+			"route": "/project-finance/report/aged",
 			"description": "Aged outstanding — who owes us and who we owe.",
 		},
 		{
 			"label": "Financial Position",
 			"icon": "wallet",
-			"report": "Financial Position",
+			"route": "/project-finance/report/position",
 			"description": "What we have vs what we owe, and the net position.",
 		},
 		{
 			"label": "Petty Cash",
 			"icon": "hand-coins",
-			"route": "/app/query-report/General Ledger",
-			"description": "Petty cash ledger — filter to the Petty Cash account, per holder.",
+			"route": "/project-finance/report/petty",
+			"description": "Petty cash ledger — the Petty Cash account, per holder.",
 		},
 		{
 			"label": "Expense Summary",
 			"icon": "receipt",
-			"route": "/app/query-report/General Ledger",
-			"description": "Ledger of expense accounts — filter by project or account.",
+			"route": "/project-finance/report/expenses",
+			"description": "Submitted expenses grouped by project, account, cost code, source or person.",
 		},
 		{
 			"label": "Cash & Bank Statement",
 			"icon": "banknote",
-			"route": "/app/query-report/General Ledger",
+			"route": "/project-finance/report/cashbank",
 			"description": "Per account: opening, movements, closing.",
 		},
-	),
-}
+	)
 
 
 def _legacy_site_execution_rows():
@@ -158,12 +182,18 @@ def seed_workspace_reports():
 			settings.append("reports", {"workspace": "site-execution", **r})
 		changed = True
 
-	# Subcontract + Procurement + Project Finance — their former hardcoded tiles.
+	# Subcontract + Procurement — their former hardcoded tiles.
 	for slug, rows in _SEED.items():
 		if slug in existing:
 			continue
 		for row in rows:
 			settings.append("reports", {"workspace": slug, **row})
+		changed = True
+
+	# Project Finance — computed per-site (bespoke in-app views + the pre-filtered ERPNext P&L).
+	if "project-finance" not in existing:
+		for row in _project_finance_tiles():
+			settings.append("reports", {"workspace": "project-finance", **row})
 		changed = True
 
 	if changed:
