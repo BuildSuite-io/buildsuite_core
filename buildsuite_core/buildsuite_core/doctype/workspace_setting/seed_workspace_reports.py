@@ -76,49 +76,94 @@ _SEED = {
 			"description": "POs and GRNs grouped by item, with value rollups.",
 		},
 	),
-	# Project Finance — Profit & Loss / Petty Cash / Expense Summary / Cash & Bank ride the
-	# ERPNext reports (Desk query-report route; P&L can't render through the in-app renderer
-	# — its date filters are JS-driven and don't flow through). Receivables & Payables and
-	# Financial Position are bespoke Script Reports (buildsuite_core/report/) shown in-app.
-	"project-finance": (
+}
+
+
+def _pf_gl_route(company, account=None, group_by_account=False):
+	"""A General Ledger Desk route, scoped to the company and (optionally) one account or grouped
+	by account, so the tile opens to something useful instead of a blank GL prompt."""
+	from urllib.parse import quote
+
+	parts = []
+	if company:
+		parts.append(f"company={quote(company)}")
+	if account:
+		parts.append(f"account={quote(account)}")
+	if group_by_account:
+		parts.append(f"group_by={quote('Group by Account')}")
+	base = "/app/query-report/General Ledger"
+	return base + ("?" + "&".join(parts) if parts else "")
+
+
+def _project_finance_tiles():
+	"""Project Finance tiles, computed per-site. Receivables & Payables and Financial Position
+	are bespoke in-app Vue views (real data, prototype layout). Profit & Loss / Petty Cash /
+	Expense Summary / Cash & Bank ride ERPNext Desk reports, pre-filtered to this site's company
+	and the relevant account so they open populated (a bare General Ledger needs a mandatory
+	account and lands blank)."""
+	from urllib.parse import quote
+
+	from buildsuite_core.utils.project import default_company
+
+	company = default_company()
+
+	def _first_account(account_type, contains=None):
+		names = (
+			frappe.get_all(
+				"Account",
+				filters={"company": company, "account_type": account_type, "is_group": 0},
+				pluck="name",
+			)
+			if company
+			else []
+		)
+		if contains:
+			names = [n for n in names if contains in n]
+		return names[0] if names else None
+
+	petty = _first_account("Cash", contains="Petty")
+	bank = _first_account("Bank")
+	pnl_route = "/app/query-report/Profit and Loss Statement" + (
+		f"?company={quote(company)}" if company else ""
+	)
+	return (
 		{
 			"label": "Profit & Loss",
 			"icon": "chart-line",
-			"route": "/app/query-report/Profit and Loss Statement",
+			"route": pnl_route,
 			"description": "Income vs direct costs and overheads, by project and period.",
 		},
 		{
 			"label": "Receivables & Payables",
 			"icon": "clipboard-list",
-			"report": "Receivables and Payables",
+			"route": "/project-finance/report/aged",
 			"description": "Aged outstanding — who owes us and who we owe.",
 		},
 		{
 			"label": "Financial Position",
 			"icon": "wallet",
-			"report": "Financial Position",
+			"route": "/project-finance/report/position",
 			"description": "What we have vs what we owe, and the net position.",
 		},
 		{
 			"label": "Petty Cash",
 			"icon": "hand-coins",
-			"route": "/app/query-report/General Ledger",
-			"description": "Petty cash ledger — filter to the Petty Cash account, per holder.",
+			"route": _pf_gl_route(company, account=petty),
+			"description": "Petty cash ledger — the Petty Cash account, per holder.",
 		},
 		{
 			"label": "Expense Summary",
 			"icon": "receipt",
-			"route": "/app/query-report/General Ledger",
-			"description": "Ledger of expense accounts — filter by project or account.",
+			"route": _pf_gl_route(company, group_by_account=True),
+			"description": "Ledger grouped by account — read the expense accounts.",
 		},
 		{
 			"label": "Cash & Bank Statement",
 			"icon": "banknote",
-			"route": "/app/query-report/General Ledger",
+			"route": _pf_gl_route(company, account=bank),
 			"description": "Per account: opening, movements, closing.",
 		},
-	),
-}
+	)
 
 
 def _legacy_site_execution_rows():
@@ -158,12 +203,18 @@ def seed_workspace_reports():
 			settings.append("reports", {"workspace": "site-execution", **r})
 		changed = True
 
-	# Subcontract + Procurement + Project Finance — their former hardcoded tiles.
+	# Subcontract + Procurement — their former hardcoded tiles.
 	for slug, rows in _SEED.items():
 		if slug in existing:
 			continue
 		for row in rows:
 			settings.append("reports", {"workspace": slug, **row})
+		changed = True
+
+	# Project Finance — computed per-site (bespoke in-app views + pre-filtered ERPNext reports).
+	if "project-finance" not in existing:
+		for row in _project_finance_tiles():
+			settings.append("reports", {"workspace": "project-finance", **row})
 		changed = True
 
 	if changed:
