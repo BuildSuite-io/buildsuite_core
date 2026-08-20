@@ -4,14 +4,23 @@
 // cy.visitApp('/projects') so specs stay route-agnostic (track `bench change-app-route`).
 import { appUrl } from "../../src/utils/appRoute";
 
-// Persona id -> { user, password }. Provisioned idempotently by
-// buildsuite_core.api.cypress_setup.ensure_cypress_users (see the plan / README).
-// Password defaults to the Cypress adminPassword config.
+// Persona id -> test-user email. Provisioned idempotently by
+// buildsuite_core.api.cypress_setup.ensure_cypress_users (keep this map in sync with
+// CYPRESS_USERS there and PERSONA_CAPS in src/data/roles.js). Password defaults to the
+// Cypress adminPassword config.
 const PERSONA_USERS = {
-	admin: "cypress-admin@buildsuite.test",
+	director: "cypress-director@buildsuite.test",
 	pm: "cypress-pm@buildsuite.test",
 	estimator: "cypress-estimator@buildsuite.test",
+	qs: "cypress-qs@buildsuite.test",
+	"site-engineer": "cypress-site-engineer@buildsuite.test",
+	foreman: "cypress-foreman@buildsuite.test",
 	procurement: "cypress-procurement@buildsuite.test",
+	"store-keeper": "cypress-store-keeper@buildsuite.test",
+	accountant: "cypress-accountant@buildsuite.test",
+	"hr-manager": "cypress-hr-manager@buildsuite.test",
+	admin: "cypress-admin@buildsuite.test",
+	bsa: "cypress-bsa@buildsuite.test",
 };
 
 // --- auth --------------------------------------------------------------------
