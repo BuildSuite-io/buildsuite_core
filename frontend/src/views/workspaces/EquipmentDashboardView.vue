@@ -138,7 +138,7 @@ const register = computed(() => kpis.value?.register || []);
 							>
 								<div class="flex items-center justify-between">
 									<span class="text-sm text-ink-900 font-medium">{{
-										u.machine
+										u.machine_name || u.machine
 									}}</span>
 									<span class="text-sm text-ink-900 tabular-nums">{{
 										fmtCompactINR(u.total)
