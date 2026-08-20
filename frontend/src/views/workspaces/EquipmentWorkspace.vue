@@ -1,7 +1,7 @@
 <script setup>
-// Equipment (plant & machinery) workspace landing — mirrors the demo. The
-// Machinery / Machinery Usage shortcuts and the Equipment Dashboard tile navigate;
-// the report tiles are static stubs (not wired in the Frappe app yet).
+// Equipment (plant & machinery) workspace landing — mirrors the demo. The Machinery /
+// Machinery Usage shortcuts and the Equipment Dashboard tile navigate; the two report tiles
+// open the Machinery Utilisation (usage log) and Equipment Register (machinery) reports.
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
@@ -17,6 +17,8 @@ const shortcuts = [
 	{ label: "Machinery Usage", icon: "clipboard-list", to: "/machinery-usage" },
 ];
 
+// Fuel & running cost was dropped (prototype S314): fuel is captured per usage entry and
+// already carried in the utilisation total, so a separate report would only re-slice one column.
 const reports = [
 	{
 		label: "Machinery utilisation",
@@ -29,12 +31,6 @@ const reports = [
 		icon: "wrench",
 		description: "Owned + hired plant with rates.",
 		to: "/machinery",
-	},
-	{
-		label: "Fuel & running cost",
-		icon: "chart-line",
-		description: "Fuel logged against usage entries.",
-		prevent: true,
 	},
 ];
 </script>
@@ -70,7 +66,9 @@ const reports = [
 					</div>
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2">
-							<div class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors">
+							<div
+								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors"
+							>
 								Equipment Dashboard
 							</div>
 							<span
@@ -83,7 +81,11 @@ const reports = [
 							Plant register, utilisation and equipment cost at a glance.
 						</div>
 					</div>
-					<div class="text-brand-400 group-hover:text-brand-600 transition-colors text-xl">→</div>
+					<div
+						class="text-brand-400 group-hover:text-brand-600 transition-colors text-xl"
+					>
+						→
+					</div>
 				</div>
 			</RouterLink>
 
