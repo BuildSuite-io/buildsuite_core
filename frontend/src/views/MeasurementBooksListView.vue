@@ -8,6 +8,7 @@ import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { getMeasurementBookEntryCounts } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { usePermissions } from "@/composables/usePermissions";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -16,6 +17,7 @@ import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
+const { canCreate } = usePermissions();
 
 const mbRes = useDocTypeList("Measurement Book", {
 	fields: ["name", "project", "work_order", "date", "measured_total", "status"],
@@ -82,7 +84,12 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Measurement Books" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/measurement-books/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink
+				v-if="canCreate('measurementBook')"
+				to="/measurement-books/new"
+				class="desk-save-btn"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DeskList

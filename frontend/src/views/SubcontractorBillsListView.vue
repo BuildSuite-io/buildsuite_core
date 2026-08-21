@@ -6,6 +6,7 @@ import { computed, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { listBills } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -15,6 +16,7 @@ import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
+const { canCreate } = usePermissions();
 
 // Loaded via list_bills so each row carries the workflow state AND the derived payment status.
 const allBills = ref([]);
@@ -84,7 +86,12 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Subcontractor Bills" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/subcontractor-bills/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink
+				v-if="canCreate('subcontractorBill')"
+				to="/subcontractor-bills/new"
+				class="desk-save-btn"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DeskList

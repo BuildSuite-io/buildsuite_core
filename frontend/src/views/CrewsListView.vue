@@ -8,9 +8,11 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
+import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
 const { workerName } = useFieldEmployeeOptions();
+const { canCreate } = usePermissions();
 
 function onRowClick(row) {
 	router.push(`/crews/${row.name}`);
@@ -33,7 +35,9 @@ const breadcrumbs = [
 <template>
 	<DeskPage title="Crew" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/crews/new" class="desk-save-btn !text-xs">+ New</RouterLink>
+			<RouterLink v-if="canCreate('crew')" to="/crews/new" class="desk-save-btn !text-xs"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DocTypeListView

@@ -13,10 +13,12 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { getMachineryUsageReport } from "@/data/equipmentApi";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 const all = ref([]);
 const loading = ref(true);
@@ -98,7 +100,7 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Machinery Usage Log" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/machinery-usage/new" class="desk-save-btn">+ Log usage</RouterLink>
+			<RouterLink v-if="canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-save-btn">+ Log usage</RouterLink>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -182,7 +184,7 @@ function onRowClick(row) {
 				<template #empty>
 					<div class="text-sm text-ink-500">
 						{{ loading ? "Loading usage log…" : "No usage logged yet." }}
-						<RouterLink v-if="!loading" to="/machinery-usage/new" class="desk-link"
+						<RouterLink v-if="!loading && canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-link"
 							>Log usage →</RouterLink
 						>
 					</div>

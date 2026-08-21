@@ -14,12 +14,22 @@ or with a custom password (matching Cypress `adminPassword` / CYPRESS_ADMIN_PWD)
 import frappe
 
 # persona id (Cypress `loginAs`) -> (email, full_name, User.persona value).
-# The persona values must match a Persona record name (see the Persona master).
+# The persona id matches PERSONA_CAPS / the role slug in frontend/src/data/roles.js and
+# PERSONA_USERS in frontend/cypress/support/commands.js (keep the three in sync). The
+# persona value must match a Persona record name (see the Persona master / seed_personas).
 CYPRESS_USERS = {
-	"admin": ("cypress-admin@buildsuite.test", "Cypress Admin", "BuildSuite Administrator"),
+	"director": ("cypress-director@buildsuite.test", "Cypress Director", "Director / Owner"),
 	"pm": ("cypress-pm@buildsuite.test", "Cypress PM", "Project Manager"),
 	"estimator": ("cypress-estimator@buildsuite.test", "Cypress Estimator", "Estimator"),
+	"qs": ("cypress-qs@buildsuite.test", "Cypress QS", "Quantity Surveyor"),
+	"site-engineer": ("cypress-site-engineer@buildsuite.test", "Cypress Site Engineer", "Site Engineer"),
+	"foreman": ("cypress-foreman@buildsuite.test", "Cypress Foreman", "Foreman / Supervisor"),
 	"procurement": ("cypress-procurement@buildsuite.test", "Cypress Procurement", "Procurement Officer"),
+	"store-keeper": ("cypress-store-keeper@buildsuite.test", "Cypress Store Keeper", "Store Keeper"),
+	"accountant": ("cypress-accountant@buildsuite.test", "Cypress Accountant", "Accountant"),
+	"hr-manager": ("cypress-hr-manager@buildsuite.test", "Cypress HR Manager", "HR Manager"),
+	"admin": ("cypress-admin@buildsuite.test", "Cypress Admin", "System Manager (Admin)"),
+	"bsa": ("cypress-bsa@buildsuite.test", "Cypress BSA", "BuildSuite Administrator"),
 }
 
 

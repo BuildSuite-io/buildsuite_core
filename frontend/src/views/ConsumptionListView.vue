@@ -11,12 +11,14 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
+import { usePermissions } from "@/composables/usePermissions";
 import { listMaterialConsumption } from "@/data/materialConsumptionApi";
 import { showToast } from "@/utils/appToast";
 import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
 const { projectOptions, projectLabel } = useProjectOptions();
+const { canCreate } = usePermissions();
 
 const DOCSTATUS_LABELS = { 0: "Draft", 1: "Submitted", 2: "Cancelled" };
 
@@ -89,7 +91,11 @@ const breadcrumbs = [
 <template>
 	<DeskPage title="Material Consumption" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/material-consumption/new" class="desk-save-btn !text-xs">
+			<RouterLink
+				v-if="canCreate('materialConsumption')"
+				to="/material-consumption/new"
+				class="desk-save-btn !text-xs"
+			>
 				+ Record consumption
 			</RouterLink>
 		</template>

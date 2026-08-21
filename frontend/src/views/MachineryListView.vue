@@ -12,10 +12,12 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { getMachineryRegister } from "@/data/equipmentApi";
 import { fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 const all = ref([]);
 const loading = ref(true);
@@ -83,7 +85,7 @@ function onRowClick(row) {
 <template>
 	<DeskPage title="Machinery Register" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink to="/machinery/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink v-if="canCreate('machinery')" to="/machinery/new" class="desk-save-btn">+ New</RouterLink>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -167,7 +169,7 @@ function onRowClick(row) {
 				<template #empty>
 					<div class="text-sm text-ink-500">
 						{{ loading ? "Loading machinery…" : "No machinery yet." }}
-						<RouterLink v-if="!loading" to="/machinery/new" class="desk-link"
+						<RouterLink v-if="!loading && canCreate('machinery')" to="/machinery/new" class="desk-link"
 							>Add one →</RouterLink
 						>
 					</div>

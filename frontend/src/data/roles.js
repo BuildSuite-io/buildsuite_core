@@ -547,3 +547,197 @@ export const PERSONA_CAPS = {
 		sco: _NONE,
 	},
 };
+
+// ---------------------------------------------------------------------------
+// Module entities (procurement / subcontract / estimation / workforce / equipment).
+// Their list views gate the "+ New" button through usePermissions().canCreate too, so
+// the create affordance follows the persona — not just the six core PERSONA_CAPS
+// entities. The create/read persona sets mirror the backend role matrix in
+// buildsuite_core/permissions/setup.py. Kept as a compact table and merged into
+// PERSONA_CAPS below (one entry per persona) so there is a single source of truth.
+// e/d follow create here — these are list-level create gates; detail-page edit/delete
+// affordances are record-scoped and handled on the detail views.
+// ---------------------------------------------------------------------------
+const _ALL_PERSONAS = Object.keys(PERSONA_CAPS);
+const _MODULE_ACCESS = {
+	// Procurement
+	materialRequest: {
+		create: ["pm", "site-engineer", "foreman", "procurement", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"site-engineer",
+			"foreman",
+			"procurement",
+			"store-keeper",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	purchaseOrder: {
+		create: ["procurement", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
+	},
+	purchaseReceipt: {
+		create: ["procurement", "store-keeper", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
+	},
+	materialConsumption: {
+		create: ["site-engineer", "procurement", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"site-engineer",
+			"procurement",
+			"store-keeper",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	item: {
+		create: ["procurement", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"estimator",
+			"qs",
+			"procurement",
+			"store-keeper",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	// Estimation
+	boq: {
+		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+	},
+	assembly: {
+		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+	},
+	estimateTemplate: {
+		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+	},
+	rateMaster: {
+		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
+		read: ["director", "pm", "estimator", "qs", "procurement", "admin", "bsa"],
+	},
+	// Subcontract
+	subcontractor: {
+		create: ["procurement", "pm", "director", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"site-engineer",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	subcontractorWorkOrder: {
+		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"estimator",
+			"site-engineer",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	measurementBook: {
+		create: ["procurement", "pm", "director", "qs", "site-engineer", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"site-engineer",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	subcontractorBill: {
+		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"site-engineer",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	// Workforce
+	fieldEmployee: {
+		create: ["pm", "site-engineer", "hr-manager", "admin", "bsa"],
+		read: _ALL_PERSONAS, // Employee is a linked-master read mirror — every persona reads it
+	},
+	crew: {
+		create: ["pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
+		read: ["director", "pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
+	},
+	fieldAttendance: {
+		create: ["pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"site-engineer",
+			"foreman",
+			"hr-manager",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	// Equipment
+	machinery: {
+		create: ["pm", "procurement", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"site-engineer",
+			"foreman",
+			"procurement",
+			"store-keeper",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	machineryUsage: {
+		create: ["pm", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"site-engineer",
+			"foreman",
+			"procurement",
+			"store-keeper",
+			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+};
+
+for (const [entity, { create, read }] of Object.entries(_MODULE_ACCESS)) {
+	for (const persona of _ALL_PERSONAS) {
+		const c = create.includes(persona);
+		const r = c || read.includes(persona);
+		PERSONA_CAPS[persona][entity] = { c, r, e: c, d: c };
+	}
+}

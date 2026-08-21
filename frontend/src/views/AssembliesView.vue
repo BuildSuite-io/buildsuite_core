@@ -8,8 +8,10 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 
 function onRowClick(row) {
 	router.push(`/assembly/${row.id}`);
@@ -58,7 +60,7 @@ const rows = computed(() => {
 		data = data.filter(
 			(a) =>
 				(a.code || "").toLowerCase().includes(q) ||
-				(a.name || "").toLowerCase().includes(q),
+				(a.name || "").toLowerCase().includes(q)
 		);
 	}
 	return data;
@@ -78,7 +80,9 @@ const columns = [
 	<DeskPage title="Assembly" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<DeskLink to="/rate-master" class="text-xs">View Rate Master →</DeskLink>
-			<RouterLink to="/assembly/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink v-if="canCreate('assembly')" to="/assembly/new" class="desk-save-btn"
+				>+ New</RouterLink
+			>
 		</template>
 
 		<DeskList

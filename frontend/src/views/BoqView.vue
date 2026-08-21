@@ -18,10 +18,12 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtCompactINR, fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
 
 const search = ref("");
 const projectFilter = ref("");
@@ -182,7 +184,9 @@ const subtitle = computed(
 				style="border-radius: 2px"
 				>₹ Rate Master</DeskLink
 			>
-			<button type="button" class="desk-save-btn" @click="openNew">+ New BOQ</button>
+			<button v-if="canCreate('boq')" type="button" class="desk-save-btn" @click="openNew">
+				+ New BOQ
+			</button>
 		</template>
 
 		<!-- KPI strip -->

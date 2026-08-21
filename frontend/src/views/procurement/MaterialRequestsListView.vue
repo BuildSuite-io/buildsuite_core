@@ -14,8 +14,10 @@ import UserAvatar from "@/components/UserAvatar.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate } from "@/utils/format";
+import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
@@ -76,7 +78,12 @@ const breadcrumbs = [
 <template>
 	<DeskPage title="Material Requests" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button type="button" class="desk-save-btn !text-xs" @click="openNew">
+			<button
+				v-if="canCreate('materialRequest')"
+				type="button"
+				class="desk-save-btn !text-xs"
+				@click="openNew"
+			>
 				+ New Request
 			</button>
 		</template>
