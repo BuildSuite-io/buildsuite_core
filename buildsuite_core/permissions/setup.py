@@ -925,15 +925,21 @@ def setup_child_table_read_access():
 	(e.g. HR Manager reads Crew but not its `trade` → Labour Trade). Mirroring read to those
 	referenced doctypes closes that class of gap. Read only (never write/delete), layered on top
 	of existing perms, system doctypes excluded — idempotent."""
+	# Parents = doctypes with a REAL perm-map grant, identified by print=1 (every perm shorthand
+	# — _READ/_FULL/_RAISE/… — carries it). This deliberately excludes the mirror's OWN grants
+	# (which set only read=1), so a re-run doesn't treat mirror-granted masters as parents and
+	# fan out second-order — that's what keeps after_migrate fast.
 	grants = frappe.get_all(
 		"Custom DocPerm",
-		filters={"read": 1, "permlevel": 0, "role": ["in", list(BUILDSUITE_ROLES)]},
+		filters={"read": 1, "print": 1, "permlevel": 0, "role": ["in", list(BUILDSUITE_ROLES)]},
 		fields=["parent as doctype", "role"],
 	)
 	roles_by_parent = {}
 	for g in grants:
 		roles_by_parent.setdefault(g.doctype, set()).add(g.role)
 
+	# desired[ref] = the roles that should be able to read `ref` (a child table or link target).
+	desired = {}
 	for parent, roles in roles_by_parent.items():
 		if not frappe.db.exists("DocType", parent):
 			continue
@@ -944,12 +950,29 @@ def setup_child_table_read_access():
 			for df in meta.get_link_fields()
 			if df.options and df.options not in _READ_MIRROR_DENYLIST
 		}
-		read_only = {role: {"read": 1} for role in roles}
 		for ref in referenced:
-			if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
-				continue
-			# ptypes=("read",) — grant read without disturbing any other permission on the target.
-			_upgrade_role_perms(ref, read_only, ptypes=("read",))
+			desired.setdefault(ref, set()).update(roles)
+	if not desired:
+		return
+
+	# Everything already read-granted on those refs, in ONE query — so a steady-state re-run
+	# (after_migrate) does zero writes and stays fast enough to run on every migrate.
+	have = {}
+	for row in frappe.get_all(
+		"Custom DocPerm",
+		filters={"parent": ["in", list(desired)], "permlevel": 0, "read": 1},
+		fields=["parent as doctype", "role"],
+	):
+		have.setdefault(row.doctype, set()).add(row.role)
+
+	for ref, roles in desired.items():
+		missing = roles - have.get(ref, set())
+		if not missing:
+			continue
+		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
+			continue
+		# ptypes=("read",) — grant read without disturbing any other permission on the target.
+		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
 
 
 def setup_record_permissions():

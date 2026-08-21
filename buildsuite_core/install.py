@@ -5,7 +5,7 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 
 from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
-from buildsuite_core.permissions.setup import setup_record_permissions
+from buildsuite_core.permissions.setup import setup_child_table_read_access, setup_record_permissions
 from buildsuite_core.utils.project import backfill_project_status
 from buildsuite_core.utils.task import backfill_native_task_type, backfill_task_status
 
@@ -34,6 +34,12 @@ def after_migrate():
 	backfill_work_order_company()
 	backfill_bill_company()
 	seed_master_data()
+	# Self-heal the reference read-mirror on EVERY migrate. It's purely additive + idempotent
+	# (grants only the missing reads, never revokes), so running it LAST — after all patches and
+	# fixture syncs this migrate — guarantees the child-table / link-target reads survive any
+	# authoritative perm re-apply (e.g. a subcontract patch resetting Supplier's role list) that
+	# ran earlier. This removes the "must remember to run the mirror last by hand" footgun.
+	setup_child_table_read_access()
 
 
 def _backfill_project_company(doctype, extra_where=""):
