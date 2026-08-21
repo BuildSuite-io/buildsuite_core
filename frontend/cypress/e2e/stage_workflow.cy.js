@@ -29,12 +29,14 @@ describe("Stage Planning approval workflow", () => {
 		cy.loginAs("pm"); // PM can submit + approve (self-approval allowed)
 		createDraftStage(Date.now());
 
-		// Submit + Approve apply the workflow directly on click (no confirm dialog) —
+		// Submit + Approve each open a ConfirmDialog (confirmAccept) before applying —
 		// the new state badge is the gate.
 		cy.dt("page-actions").contains("Submit for Approval").click();
+		cy.confirmAccept(); // Submit now asks for confirmation (ConfirmDialog)
 		cy.contains("Pending Approval").should("be.visible");
 
 		cy.dt("page-actions").contains("Approve").click();
+		cy.confirmAccept(); // Approve now asks for confirmation (ConfirmDialog)
 		cy.contains("Approved").should("be.visible");
 	});
 
@@ -43,6 +45,7 @@ describe("Stage Planning approval workflow", () => {
 		createDraftStage(Date.now() + 1);
 
 		cy.dt("page-actions").contains("Submit for Approval").click();
+		cy.confirmAccept(); // Submit now asks for confirmation (ConfirmDialog)
 		cy.contains("Pending Approval").should("be.visible");
 
 		// Reject opens a reason modal (not a confirm dialog).
@@ -59,8 +62,10 @@ describe("Stage Planning approval workflow", () => {
 		createDraftStage(Date.now() + 2);
 
 		cy.dt("page-actions").contains("Submit for Approval").click();
+		cy.confirmAccept(); // Submit now asks for confirmation (ConfirmDialog)
 		cy.contains("Pending Approval").should("be.visible");
 		cy.dt("page-actions").contains("Approve").click();
+		cy.confirmAccept(); // Approve now asks for confirmation (ConfirmDialog)
 		cy.contains("Approved").should("be.visible");
 
 		cy.dt("page-actions").should("not.contain", "Edit");
@@ -75,8 +80,10 @@ describe("Stage Planning approval workflow", () => {
 		createDraftStage(Date.now() + 3);
 
 		cy.dt("page-actions").contains("Submit for Approval").click();
+		cy.confirmAccept(); // Submit now asks for confirmation (ConfirmDialog)
 		cy.contains("Pending Approval").should("be.visible");
 		cy.dt("page-actions").contains("Approve").click();
+		cy.confirmAccept(); // Approve now asks for confirmation (ConfirmDialog)
 		cy.contains("Approved").should("be.visible");
 
 		cy.dt("stage-activity").within(() => {
@@ -92,6 +99,7 @@ describe("Stage Planning approval workflow", () => {
 		createDraftStage(Date.now() + 4);
 
 		cy.dt("page-actions").contains("Submit for Approval").click();
+		cy.confirmAccept(); // Submit now asks for confirmation (ConfirmDialog)
 		cy.contains("Pending Approval").should("be.visible");
 		cy.dt("page-actions").contains("Reject").click();
 		cy.dt("reject-reason-input").type("Cypress: revise flow");
@@ -102,6 +110,7 @@ describe("Stage Planning approval workflow", () => {
 		// different stage that is back in Draft.
 		cy.location("pathname").then((rejectedPath) => {
 			cy.dt("page-actions").contains("Revise").click();
+			cy.confirmAccept(); // Revise (clone) now asks for confirmation (ConfirmDialog)
 			cy.location("pathname", { timeout: 30000 })
 				.should("match", /\/stage-plannings\/.+/)
 				.and("not.eq", rejectedPath);

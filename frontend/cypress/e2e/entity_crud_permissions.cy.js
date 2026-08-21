@@ -20,7 +20,7 @@ const ENTITIES = [
 	{ key: "task", route: "/tasks", newText: "New" },
 	{ key: "taskProgressEntry", route: "/progress-entries", newText: "New Entry" },
 	{ key: "stagePlanning", route: "/stage-plannings", newText: "New Stage" },
-	{ key: "sco", route: "/sco", newText: "New" },
+	{ key: "sco", route: "/sco", newText: "Raise SCO" },
 ];
 
 const PERSONAS = Object.keys(PERSONA_CAPS);
