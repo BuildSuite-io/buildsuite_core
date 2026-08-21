@@ -564,12 +564,15 @@ MEASUREMENT_BOOK_ROLE_PERMS = {
 	"BuildSuite Accountant": _READ,
 }
 # Subcontractor Bill (RA Bill) — submittable. The QS + subcontract full roles raise and
-# submit progress bills; the Accountant + Site Engineer read them.
+# submit progress bills; the Accountant + Site Engineer + Estimator read them. Every role that
+# can read a Work Order reads Bills too — the WO list shows a "% billed" column sourced from
+# them, so a WO reader without Bill read would 403 the whole list.
 _BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
+	"BuildSuite Estimator": _READ,
 }
 # Subcontractor Work Order — the commitment document is natively submittable (Draft →
 # Submitted → Cancelled + Amend), so the full roles get CRWDSX, not just CRWD. QS prepares
@@ -889,6 +892,89 @@ def setup_subcontractor_wo_workflow():
 		)
 
 
+# Core/system doctypes never auto-granted by the read mirror, even if a BuildSuite doctype
+# links to them — read here would be an over-grant, not a display convenience.
+_READ_MIRROR_DENYLIST = {
+	"User",
+	"Role",
+	"DocType",
+	"DocField",
+	"DocPerm",
+	"Custom DocPerm",
+	"Custom Field",
+	"Property Setter",
+	"Workflow",
+	"Print Format",
+	"Report",
+	"Page",
+	"File",
+	"Server Script",
+	"Client Script",
+	"Webhook",
+	"Email Account",
+}
+
+
+def setup_child_table_read_access():
+	"""Grant each BuildSuite role read on the doctypes REFERENCED by every parent it can read —
+	the parent's child (Table) doctypes AND its Link-field targets.
+
+	Custom DocPerms completely override standard perms, so a role granted read on a parent has
+	NO grant on the child tables or linked masters that parent's list/detail views render (line
+	items, a `trade` → Labour Trade column, a filter dropdown, …) — and the fetch then 403s
+	(e.g. HR Manager reads Crew but not its `trade` → Labour Trade). Mirroring read to those
+	referenced doctypes closes that class of gap. Read only (never write/delete), layered on top
+	of existing perms, system doctypes excluded — idempotent."""
+	# Parents = doctypes with a REAL perm-map grant, identified by print=1 (every perm shorthand
+	# — _READ/_FULL/_RAISE/… — carries it). This deliberately excludes the mirror's OWN grants
+	# (which set only read=1), so a re-run doesn't treat mirror-granted masters as parents and
+	# fan out second-order — that's what keeps after_migrate fast.
+	grants = frappe.get_all(
+		"Custom DocPerm",
+		filters={"read": 1, "print": 1, "permlevel": 0, "role": ["in", list(BUILDSUITE_ROLES)]},
+		fields=["parent as doctype", "role"],
+	)
+	roles_by_parent = {}
+	for g in grants:
+		roles_by_parent.setdefault(g.doctype, set()).add(g.role)
+
+	# desired[ref] = the roles that should be able to read `ref` (a child table or link target).
+	desired = {}
+	for parent, roles in roles_by_parent.items():
+		if not frappe.db.exists("DocType", parent):
+			continue
+		meta = frappe.get_meta(parent)
+		referenced = {df.options for df in meta.get_table_fields() if df.options}
+		referenced |= {
+			df.options
+			for df in meta.get_link_fields()
+			if df.options and df.options not in _READ_MIRROR_DENYLIST
+		}
+		for ref in referenced:
+			desired.setdefault(ref, set()).update(roles)
+	if not desired:
+		return
+
+	# Everything already read-granted on those refs, in ONE query — so a steady-state re-run
+	# (after_migrate) does zero writes and stays fast enough to run on every migrate.
+	have = {}
+	for row in frappe.get_all(
+		"Custom DocPerm",
+		filters={"parent": ["in", list(desired)], "permlevel": 0, "read": 1},
+		fields=["parent as doctype", "role"],
+	):
+		have.setdefault(row.doctype, set()).add(row.role)
+
+	for ref, roles in desired.items():
+		missing = roles - have.get(ref, set())
+		if not missing:
+			continue
+		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
+			continue
+		# ptypes=("read",) — grant read without disturbing any other permission on the target.
+		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
+
+
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
 	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import seed_personas
@@ -915,6 +1001,9 @@ def setup_record_permissions():
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
 	setup_subcontractor_wo_workflow()
+	# Mirror read to child tables of everything the BuildSuite roles can read (must run AFTER
+	# all the parent grants above are in place).
+	setup_child_table_read_access()
 	# Personas map to the roles ensured above — seed them once the roles exist.
 	seed_personas()
 	# Per-workspace report tiles (Query Reports + the Workspace Setting table).

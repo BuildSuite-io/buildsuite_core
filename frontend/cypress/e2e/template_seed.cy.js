@@ -20,7 +20,8 @@ describe("Re-seed Stage Planning from template", () => {
 
 		cy.dt("field-name").type(`Cypress Reseed ${stamp}`);
 		cy.dt("field-code").type(`CYR-${stamp}`);
-		cy.fillLink("pick-project-type", "Commercial");
+		// Template seeding is keyed by the Project CATEGORY, not the native Project Type.
+		cy.fillLink("pick-project-category", "Commercial");
 		cy.fillLink("pick-company");
 
 		// Opt OUT of create-time seeding so the project lands with zero stages.
@@ -54,7 +55,8 @@ describe("Project Type seed modes", () => {
 
 		cy.dt("field-name").type(`Cypress TasksOnly ${stamp}`);
 		cy.dt("field-code").type(`CYT-${stamp}`);
-		cy.fillLink("pick-project-type", "Commercial");
+		// Template seeding is keyed by the Project CATEGORY, not the native Project Type.
+		cy.fillLink("pick-project-category", "Commercial");
 		cy.fillLink("pick-company");
 
 		// tasks-only mode: stages OFF, tasks ON. (The "Import default tasks" toggle
@@ -69,8 +71,8 @@ describe("Project Type seed modes", () => {
 		cy.contains("button", "Stage Planning").click();
 		cy.contains("No stages planned yet.").should("be.visible");
 
-		// ...but tasks were imported (the tab header shows a non-zero count).
+		// ...but tasks were imported — the Tasks tab opens onto a non-empty list.
 		cy.contains("button", "Tasks").click();
-		cy.contains(/[1-9]\d* tasks/).should("be.visible");
+		cy.dt("desk-list").find("[data-test-row]").should("have.length.at.least", 1);
 	});
 });

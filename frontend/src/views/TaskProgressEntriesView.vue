@@ -66,6 +66,9 @@ const entriesResource = adapter.list("Task Progress Entry", {
 			creation: row?.creation || null,
 		}));
 	},
+	// Don't fetch (and 403) when the persona has no Task Progress Entry read — the
+	// template shows the restricted notice instead. Mirrors the StagePlanningsView gate.
+	auto: canRead("taskProgressEntry"),
 });
 function toArray(data) {
 	if (Array.isArray(data)) return data;
