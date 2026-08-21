@@ -71,7 +71,8 @@ describe("Project Type seed modes", () => {
 		cy.contains("button", "Stage Planning").click();
 		cy.contains("No stages planned yet.").should("be.visible");
 
-		// ...but tasks were imported (the Tasks tab shows a non-zero count).
-		cy.contains(/Tasks \([1-9]\d*\)/, { timeout: 30000 }).should("be.visible");
+		// ...but tasks were imported — the Tasks tab opens onto a non-empty list.
+		cy.contains("button", "Tasks").click();
+		cy.dt("desk-list").find("[data-test-row]").should("have.length.at.least", 1);
 	});
 });

@@ -564,12 +564,15 @@ MEASUREMENT_BOOK_ROLE_PERMS = {
 	"BuildSuite Accountant": _READ,
 }
 # Subcontractor Bill (RA Bill) — submittable. The QS + subcontract full roles raise and
-# submit progress bills; the Accountant + Site Engineer read them.
+# submit progress bills; the Accountant + Site Engineer + Estimator read them. Every role that
+# can read a Work Order reads Bills too — the WO list shows a "% billed" column sourced from
+# them, so a WO reader without Bill read would 403 the whole list.
 _BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
+	"BuildSuite Estimator": _READ,
 }
 # Subcontractor Work Order — the commitment document is natively submittable (Draft →
 # Submitted → Cancelled + Amend), so the full roles get CRWDSX, not just CRWD. QS prepares

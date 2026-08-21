@@ -10,9 +10,16 @@ on install; this applies the same grant to already-migrated sites."""
 
 import frappe
 
-from buildsuite_core.permissions.setup import setup_child_table_read_access
+from buildsuite_core.permissions.setup import (
+	setup_child_table_read_access,
+	setup_subcontract_permissions,
+)
 
 
 def execute():
+	# Re-apply subcontract perms first (adds Estimator read on Subcontractor Bill — the WO list
+	# shows a "% billed" column, so a WO reader without Bill read 403s the whole list), then the
+	# reference read-mirror on top.
+	setup_subcontract_permissions()
 	setup_child_table_read_access()
 	frappe.clear_cache()
