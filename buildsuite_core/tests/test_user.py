@@ -62,8 +62,11 @@ class TestUserPersona(BuildSuiteTestCase):
 		self.assertIn("BuildSuite Estimator", roles)
 		self.assertNotIn("BuildSuite PM", roles)  # stale managed role dropped
 
-	def test_system_manager_is_never_revoked_by_persona(self):
-		# A persona may grant System Manager, but switching persona must not strip it.
+	def test_manually_added_system_manager_survives_persona_switch(self):
+		# System Manager added MANUALLY (not granted by the persona) must survive a
+		# persona switch — only the previous persona's own grants are ever stripped.
+		# (A persona that GRANTS System Manager — the admin persona — is the opposite
+		# case, covered in test_permission_matrix: leaving it DOES strip the role.)
 		u = self._make_user("Project Manager")
 		u.append("roles", {"role": "System Manager"})
 		u.persona = "Estimator"
@@ -85,9 +88,7 @@ class TestUserPersona(BuildSuiteTestCase):
 		# link picker queries — they can only be assigned from the Frappe desk.
 		for name in ("System Manager (Admin)", "BuildSuite Administrator"):
 			self.assertEqual(frappe.db.get_value("Persona", name, "backend_only"), 1)
-		assignable = frappe.get_all(
-			"Persona", filters={"enabled": 1, "backend_only": 0}, pluck="name"
-		)
+		assignable = frappe.get_all("Persona", filters={"enabled": 1, "backend_only": 0}, pluck="name")
 		self.assertNotIn("BuildSuite Administrator", assignable)
 		self.assertNotIn("System Manager (Admin)", assignable)
 		self.assertIn("Project Manager", assignable)
@@ -101,9 +102,7 @@ class TestUserPersona(BuildSuiteTestCase):
 		)
 
 		frappe.db.set_value("Persona", "BuildSuite Administrator", "enabled", 0)
-		self.assertNotIn(
-			"BuildSuite Administrator", [p["name"] for p in list_personas()]
-		)
+		self.assertNotIn("BuildSuite Administrator", [p["name"] for p in list_personas()])
 		repair_default_personas()
 		self.assertEqual(frappe.db.get_value("Persona", "BuildSuite Administrator", "enabled"), 1)
 		self.assertIn("BuildSuite Administrator", [p["name"] for p in list_personas()])

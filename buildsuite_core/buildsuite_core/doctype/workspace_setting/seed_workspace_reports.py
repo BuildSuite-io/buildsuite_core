@@ -58,22 +58,40 @@ _SEED = {
 	),
 	"procurement": (
 		{
-			"label": "Stock Balance",
-			"icon": "chart-bar",
-			"route": "/app/query-report/Stock Balance",
-			"description": "Item-wise on-hand quantity across warehouses.",
-		},
-		{
-			"label": "Stock Ledger",
-			"icon": "file-text",
-			"route": "/app/query-report/Stock Ledger",
-			"description": "Every stock movement — receipts, issues, transfers.",
-		},
-		{
-			"label": "Item-wise Purchase Register",
+			"label": "Requests waiting to be ordered",
 			"icon": "clipboard-list",
-			"route": "/app/query-report/Item-wise Purchase Register",
-			"description": "POs and GRNs grouped by item, with value rollups.",
+			"route": "/procurement/report/requests-to-order",
+			"description": "Asked for by site, not yet on an order.",
+		},
+		{
+			"label": "Delivery follow-up",
+			"icon": "chart-line",
+			"route": "/procurement/report/delivery-followup",
+			"description": "Open orders by the date they were needed, and what is late.",
+		},
+		{
+			"label": "Material at site",
+			"icon": "package",
+			"route": "/procurement/report/site-stock",
+			"description": "Received minus consumed, per item, at each project store.",
+		},
+		{
+			"label": "Purchase rate vs estimate",
+			"icon": "chart-bar",
+			"route": "/procurement/report/rate-check",
+			"description": "What you are paying against the QS rate in the Rate Master.",
+		},
+		{
+			"label": "Purchase register",
+			"icon": "file-text",
+			"route": "/procurement/report/purchase-register",
+			"description": "Every order line — supplier, item, quantity, rate.",
+		},
+		{
+			"label": "Consumption by cost code",
+			"icon": "hard-hat",
+			"route": "/procurement/report/consumption-by-cost-code",
+			"description": "Material issued to site, against the cost code it was booked to.",
 		},
 	),
 }

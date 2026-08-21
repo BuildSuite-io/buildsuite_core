@@ -698,6 +698,12 @@ const routes = [
 				props: true,
 			},
 			{
+				path: "procurement/report/:slug",
+				name: "procurement-report",
+				component: () => import("@/views/procurement/reports/ProcurementReportView.vue"),
+				props: true,
+			},
+			{
 				path: "project-finance/report/:slug",
 				name: "finance-report",
 				component: () => import("@/views/finance/FinanceReportPageView.vue"),

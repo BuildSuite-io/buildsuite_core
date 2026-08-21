@@ -30,3 +30,5 @@ buildsuite_core.patches.reseed_subcontract_reports # 2026-08-18
 buildsuite_core.patches.reseed_project_finance_reports # 2026-08-18
 buildsuite_core.patches.reseed_project_finance_bespoke # 2026-08-20
 buildsuite_core.patches.reseed_project_finance_bespoke_views # 2026-08-20
+buildsuite_core.patches.fix_stage_planning_workflow_roles # 2026-08-20
+buildsuite_core.patches.reseed_procurement_bespoke_reports # 2026-08-20

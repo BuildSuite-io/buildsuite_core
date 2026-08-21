@@ -12,3 +12,5 @@ async function call(method) {
 }
 
 export const getEquipmentDashboard = () => call("get_dashboard");
+export const getMachineryUsageReport = () => call("machinery_usage_report");
+export const getMachineryRegister = () => call("machinery_register");
