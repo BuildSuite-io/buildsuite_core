@@ -27,7 +27,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2026-08-18 00:00:00.000000",
+ "modified": "2026-08-20 00:00:00.000000",
  "module": "BuildSuite Core",
  "name": "Material Status",
  "owner": "Administrator",
@@ -36,12 +36,32 @@
  "report_name": "Material Status",
  "report_type": "Script Report",
  "roles": [
-  {"role": "System Manager"},
-  {"role": "BuildSuite Administrator"},
-  {"role": "BuildSuite Director"},
-  {"role": "BuildSuite PM"},
-  {"role": "BuildSuite QS"},
-  {"role": "BuildSuite Site Engineer"},
-  {"role": "BuildSuite Foreman"}
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "BuildSuite Administrator"
+  },
+  {
+   "role": "BuildSuite Director"
+  },
+  {
+   "role": "BuildSuite PM"
+  },
+  {
+   "role": "BuildSuite QS"
+  },
+  {
+   "role": "BuildSuite Site Engineer"
+  },
+  {
+   "role": "BuildSuite Foreman"
+  },
+  {
+   "role": "BuildSuite Procurement Officer"
+  },
+  {
+   "role": "BuildSuite Store Keeper"
+  }
  ]
 }
