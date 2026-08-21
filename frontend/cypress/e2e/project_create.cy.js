@@ -16,10 +16,16 @@ describe("Create project from template", () => {
 
 		cy.dt("field-name").type(`Cypress Project ${stamp}`);
 		cy.dt("field-code").type(`CYP-${stamp}`);
-		cy.fillLink("pick-project-type", "Commercial");
+		// Template seeding is keyed by the Project CATEGORY (pick-project-category), not the
+		// native ERPNext Project Type. The Commercial category has a template.
+		cy.fillLink("pick-project-category", "Commercial");
 		// Company is required on Project (§14) and the field renders on this
 		// multi-company site — pick any valid Company.
 		cy.fillLink("pick-company");
+
+		// Wait for the template preview to confirm the category registered — its
+		// "Seed default stages" toggle is on by default, so stages seed on insert.
+		cy.contains("Seed default stages").should("be.visible");
 
 		cy.dt("save-btn").click();
 
