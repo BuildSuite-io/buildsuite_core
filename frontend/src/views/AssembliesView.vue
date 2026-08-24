@@ -1,20 +1,19 @@
 <script setup>
 import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
-import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useRouter, RouterLink } from "vue-router";
 import { fmtINR } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
 const { canCreate } = usePermissions();
 
 function onRowClick(row) {
-	router.push(`/assembly/${row.id}`);
+	router.push(`/assembly/${row.name}`);
 }
 
 const breadcrumbs = [
@@ -23,57 +22,29 @@ const breadcrumbs = [
 	{ label: "Assembly" },
 ];
 
-const assembliesRes = useDocTypeList("Assembly", {
-	fields: [
-		"name",
-		"assembly_code",
-		"assembly_name",
-		"category",
-		"uom",
-		"rate_per_unit",
-		"component_count",
-		"notes",
-	],
-	orderBy: "creation desc",
-	pageLength: 0,
-	cache: "buildsuite-assembly-list",
-	transform: (data) =>
-		data.map((a) => ({
-			id: a.name,
-			code: a.assembly_code,
-			name: a.assembly_name,
-			category: a.category,
-			unit: a.uom,
-			ratePerUnit: a.rate_per_unit,
-			componentCount: a.component_count,
-			notes: a.notes,
-		})),
-});
-
-const search = ref("");
-const categoryFilter = ref("");
-const rows = computed(() => {
-	let data = assembliesRes.data || [];
-	if (categoryFilter.value) data = data.filter((a) => a.category === categoryFilter.value);
-	const q = search.value.trim().toLowerCase();
-	if (q) {
-		data = data.filter(
-			(a) =>
-				(a.code || "").toLowerCase().includes(q) ||
-				(a.name || "").toLowerCase().includes(q)
-		);
-	}
-	return data;
-});
+const FIELDS = [
+	"name",
+	"assembly_code",
+	"assembly_name",
+	"category",
+	"uom",
+	"rate_per_unit",
+	"component_count",
+	"notes",
+];
 
 const columns = [
-	{ key: "code", label: "Code" },
-	{ key: "name", label: "Name" },
+	{ key: "assembly_code", label: "Code" },
+	{ key: "assembly_name", label: "Name" },
 	{ key: "category", label: "Category" },
-	{ key: "unit", label: "Unit" },
-	{ key: "componentCount", label: "Components", align: "right" },
-	{ key: "ratePerUnit", label: "Rate / unit", align: "right" },
+	{ key: "uom", label: "Unit" },
+	{ key: "component_count", label: "Components", align: "right" },
+	{ key: "rate_per_unit", label: "Rate / unit", align: "right" },
 ];
+
+const categoryFilter = ref("");
+const filterValues = computed(() => ({ category: categoryFilter.value }));
+const filterFieldMap = { category: "category" };
 </script>
 
 <template>
@@ -85,12 +56,17 @@ const columns = [
 			>
 		</template>
 
-		<DeskList
-			v-model="search"
-			:rows="rows"
+		<DocTypeListView
+			doctype="Assembly"
+			:field-order="FIELDS"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['assembly_code', 'assembly_name']"
+			:filter-values="filterValues"
+			:filter-field-map="filterFieldMap"
+			cache-key="buildsuite-assembly-list"
+			row-key="name"
 			search-placeholder="Search by code or name…"
+			empty-message="No assemblies match your filters."
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -111,13 +87,13 @@ const columns = [
 				/>
 			</template>
 
-			<template #cell-code="{ row }">
-				<DeskLink :to="`/assembly/${row.id}`" class="font-mono text-xs" @click.stop>{{
-					row.code
+			<template #cell-assembly_code="{ row }">
+				<DeskLink :to="`/assembly/${row.name}`" class="font-mono text-xs" @click.stop>{{
+					row.assembly_code
 				}}</DeskLink>
 			</template>
-			<template #cell-name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.name }}</span>
+			<template #cell-assembly_name="{ row }">
+				<span class="text-ink-900 font-medium">{{ row.assembly_name }}</span>
 				<div v-if="row.notes" class="text-[11px] text-ink-500 truncate">
 					{{ row.notes }}
 				</div>
@@ -131,29 +107,19 @@ const columns = [
 				>
 				<span v-else class="text-ink-300">—</span>
 			</template>
-			<template #cell-unit="{ row }">
-				<span class="text-ink-600 text-xs">{{ row.unit }}</span>
+			<template #cell-uom="{ row }">
+				<span class="text-ink-600 text-xs">{{ row.uom }}</span>
 			</template>
-			<template #cell-componentCount="{ row }">
+			<template #cell-component_count="{ row }">
 				<span class="text-xs text-ink-700 tabular-nums">{{
-					row.componentCount || 0
+					row.component_count || 0
 				}}</span>
 			</template>
-			<template #cell-ratePerUnit="{ row }">
+			<template #cell-rate_per_unit="{ row }">
 				<span class="text-sm font-medium text-ink-900 tabular-nums">{{
-					fmtINR(row.ratePerUnit)
+					fmtINR(row.rate_per_unit)
 				}}</span>
 			</template>
-
-			<template #empty>
-				<div class="text-sm text-ink-500">
-					{{
-						assembliesRes.loading
-							? "Loading assemblies…"
-							: "No assemblies match your filters."
-					}}
-				</div>
-			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>

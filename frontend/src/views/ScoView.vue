@@ -8,86 +8,64 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { usePermissions } from "@/composables/usePermissions";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 
 const router = useRouter();
 const { canCreate } = usePermissions();
 
-const scosRes = useDocTypeList("Scope Change Order", {
-	fields: [
-		"name",
-		"project",
-		"project_name",
-		"title",
-		"type",
-		"impact",
-		"recoverable",
-		"status",
-		"raised_by",
-		"raised_date",
-	],
+// KPI strip aggregates the whole register — a lightweight full fetch kept alongside
+// the paginated list (which only holds the current page).
+const kpiRes = useDocTypeList("Scope Change Order", {
+	fields: ["name", "impact", "recoverable", "status"],
 	orderBy: "creation desc",
 	pageLength: 0,
-	cache: "buildsuite-sco-list",
-	transform: (data) =>
-		data.map((s) => ({
-			id: s.name,
-			project: s.project,
-			projectName: s.project_name,
-			title: s.title,
-			type: s.type,
-			impact: s.impact,
-			recoverable: s.recoverable,
-			status: s.status,
-			raisedBy: s.raised_by,
-			raisedDate: s.raised_date,
-		})),
+	cache: "buildsuite-sco-kpis",
 });
-
-const all = computed(() => scosRes.data || []);
-const search = ref("");
-const statusFilter = ref("");
-
-const items = computed(() => {
-	let data = all.value;
-	if (statusFilter.value) data = data.filter((s) => s.status === statusFilter.value);
-	const q = search.value.trim().toLowerCase();
-	if (q)
-		data = data.filter(
-			(s) =>
-				(s.title || "").toLowerCase().includes(q) ||
-				(s.id || "").toLowerCase().includes(q),
-		);
-	return data;
-});
-
+const all = computed(() => kpiRes.data || []);
 const pendingCount = computed(
-	() => all.value.filter((s) => s.status === "Pending Approval").length,
+	() => all.value.filter((s) => s.status === "Pending Approval").length
 );
 const totalImpact = computed(() => all.value.reduce((a, s) => a + (Number(s.impact) || 0), 0));
 const recoverableTotal = computed(() =>
-	all.value.filter((s) => s.recoverable).reduce((a, s) => a + (Number(s.impact) || 0), 0),
+	all.value.filter((s) => s.recoverable).reduce((a, s) => a + (Number(s.impact) || 0), 0)
 );
 
+const statusFilter = ref("");
+const filterValues = computed(() => ({ status: statusFilter.value }));
+const filterFieldMap = { status: "status" };
+
+const FIELDS = [
+	"name",
+	"project",
+	"project_name",
+	"title",
+	"type",
+	"impact",
+	"recoverable",
+	"status",
+	"raised_by",
+	"raised_date",
+];
+
 const columns = [
-	{ key: "id", label: "ID" },
+	{ key: "name", label: "ID" },
 	{ key: "title", label: "Title" },
 	{ key: "project", label: "Project" },
 	{ key: "type", label: "Type" },
 	{ key: "impact", label: "Impact", align: "right" },
 	{ key: "recoverable", label: "Recoverable" },
 	{ key: "status", label: "Status" },
-	{ key: "raisedDate", label: "Date" },
+	{ key: "raised_date", label: "Date" },
 ];
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Scope Change Orders" }];
 
 function onRowClick(row) {
-	router.push(`/sco/${row.id}`);
+	router.push(`/sco/${row.name}`);
 }
 </script>
 
@@ -136,12 +114,17 @@ function onRowClick(row) {
 			</div>
 		</div>
 
-		<DeskList
-			v-model="search"
-			:rows="items"
+		<DocTypeListView
+			doctype="Scope Change Order"
+			:field-order="FIELDS"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['name', 'title']"
+			:filter-values="filterValues"
+			:filter-field-map="filterFieldMap"
+			cache-key="buildsuite-sco-list"
+			row-key="name"
 			search-placeholder="Search SCO id or title…"
+			empty-message="No scope change orders yet."
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -159,16 +142,16 @@ function onRowClick(row) {
 				/>
 			</template>
 
-			<template #cell-id="{ row }">
-				<DeskLink :to="`/sco/${row.id}`" class="font-mono text-xs" @click.stop>{{
-					row.id
+			<template #cell-name="{ row }">
+				<DeskLink :to="`/sco/${row.name}`" class="font-mono text-xs" @click.stop>{{
+					row.name
 				}}</DeskLink>
 			</template>
 			<template #cell-title="{ row }">
 				<span class="text-ink-900 font-medium text-sm">{{ row.title }}</span>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-ink-700 text-xs">{{ row.projectName || row.project }}</span>
+				<span class="text-ink-700 text-xs">{{ row.project_name || row.project }}</span>
 			</template>
 			<template #cell-type="{ row }">
 				<span class="text-ink-700 text-xs">{{ row.type }}</span>
@@ -197,19 +180,9 @@ function onRowClick(row) {
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
 			</template>
-			<template #cell-raisedDate="{ row }">
-				<span class="text-xs text-ink-500">{{ fmtDate(row.raisedDate) }}</span>
+			<template #cell-raised_date="{ row }">
+				<span class="text-xs text-ink-500">{{ fmtDate(row.raised_date) }}</span>
 			</template>
-
-			<template #empty>
-				<div class="text-sm text-ink-500">
-					{{
-						scosRes.loading
-							? "Loading scope change orders…"
-							: "No scope change orders yet."
-					}}
-				</div>
-			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>

@@ -1,18 +1,16 @@
 <script setup>
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
-import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useRouter, RouterLink } from "vue-router";
 import { fmtINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
 const { canCreate } = usePermissions();
 
 function onRowClick(row) {
-	router.push(`/estimate-template/${row.id}`);
+	router.push(`/estimate-template/${row.name}`);
 }
 
 const breadcrumbs = [
@@ -21,54 +19,24 @@ const breadcrumbs = [
 	{ label: "Estimate Template" },
 ];
 
-const templatesRes = useDocTypeList("Estimate Template", {
-	fields: [
-		"name",
-		"template_code",
-		"template_name",
-		"project_category",
-		"enabled",
-		"row_count",
-		"estimated_total",
-		"modified",
-	],
-	orderBy: "creation desc",
-	pageLength: 0,
-	cache: "buildsuite-estimate-template-list",
-	transform: (data) =>
-		data.map((t) => ({
-			id: t.name,
-			code: t.template_code,
-			name: t.template_name,
-			projectType: t.project_category,
-			rows: t.row_count,
-			estimated: t.estimated_total,
-			updated: t.modified,
-			enabled: t.enabled,
-		})),
-});
-
-const search = ref("");
-const rows = computed(() => {
-	let data = templatesRes.data || [];
-	const q = search.value.trim().toLowerCase();
-	if (q) {
-		data = data.filter(
-			(t) =>
-				(t.code || "").toLowerCase().includes(q) ||
-				(t.name || "").toLowerCase().includes(q)
-		);
-	}
-	return data;
-});
+const FIELDS = [
+	"name",
+	"template_code",
+	"template_name",
+	"project_category",
+	"enabled",
+	"row_count",
+	"estimated_total",
+	"modified",
+];
 
 const columns = [
-	{ key: "code", label: "Code" },
-	{ key: "name", label: "Name" },
-	{ key: "projectType", label: "Project Category" },
-	{ key: "rows", label: "Rows", align: "right" },
-	{ key: "estimated", label: "Estimated", align: "right" },
-	{ key: "updated", label: "Updated" },
+	{ key: "template_code", label: "Code" },
+	{ key: "template_name", label: "Name" },
+	{ key: "project_category", label: "Project Category" },
+	{ key: "row_count", label: "Rows", align: "right" },
+	{ key: "estimated_total", label: "Estimated", align: "right" },
+	{ key: "modified", label: "Updated" },
 	{ key: "enabled", label: "Status" },
 ];
 </script>
@@ -85,45 +53,48 @@ const columns = [
 			>
 		</template>
 
-		<DeskList
-			v-model="search"
-			:rows="rows"
+		<DocTypeListView
+			doctype="Estimate Template"
+			:field-order="FIELDS"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['template_code', 'template_name']"
+			cache-key="buildsuite-estimate-template-list"
+			row-key="name"
 			search-placeholder="Search by code or name…"
+			empty-message="No estimate templates yet."
 			@row-click="onRowClick"
 		>
-			<template #cell-code="{ row }">
+			<template #cell-template_code="{ row }">
 				<DeskLink
-					:to="`/estimate-template/${row.id}`"
+					:to="`/estimate-template/${row.name}`"
 					class="font-mono text-xs"
 					@click.stop
-					>{{ row.code }}</DeskLink
+					>{{ row.template_code }}</DeskLink
 				>
 			</template>
-			<template #cell-name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.name }}</span>
+			<template #cell-template_name="{ row }">
+				<span class="text-ink-900 font-medium">{{ row.template_name }}</span>
 			</template>
-			<template #cell-projectType="{ row }">
+			<template #cell-project_category="{ row }">
 				<span
-					v-if="row.projectType"
+					v-if="row.project_category"
 					class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-700 font-medium"
 					style="border-radius: 9999px"
-					>{{ row.projectType }}</span
+					>{{ row.project_category }}</span
 				>
 				<span v-else class="text-ink-300">Any</span>
 			</template>
-			<template #cell-rows="{ row }">
-				<span class="text-xs text-ink-700 tabular-nums">{{ row.rows || 0 }}</span>
+			<template #cell-row_count="{ row }">
+				<span class="text-xs text-ink-700 tabular-nums">{{ row.row_count || 0 }}</span>
 			</template>
-			<template #cell-estimated="{ row }">
+			<template #cell-estimated_total="{ row }">
 				<span class="text-sm font-medium text-ink-900 tabular-nums">{{
-					fmtINR(row.estimated)
+					fmtINR(row.estimated_total)
 				}}</span>
 			</template>
-			<template #cell-updated="{ row }">
+			<template #cell-modified="{ row }">
 				<span class="text-xs text-ink-500 whitespace-nowrap">{{
-					fmtDate(row.updated)
+					fmtDate(row.modified)
 				}}</span>
 			</template>
 			<template #cell-enabled="{ row }">
@@ -140,14 +111,6 @@ const columns = [
 					>Disabled</span
 				>
 			</template>
-
-			<template #empty>
-				<div class="text-sm text-ink-500">
-					{{
-						templatesRes.loading ? "Loading templates…" : "No estimate templates yet."
-					}}
-				</div>
-			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>

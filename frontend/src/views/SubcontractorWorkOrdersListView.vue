@@ -1,48 +1,23 @@
 <script setup>
 // Subcontractor Work Order list — Desk-styled, mirrors the prototype.
 
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { usePermissions } from "@/composables/usePermissions";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
 const { canCreate } = usePermissions();
 
-const wosRes = useDocTypeList("Subcontractor Work Order", {
-	fields: [
-		"name",
-		"subcontractor_name",
-		"project",
-		"date",
-		"delivery_type",
-		"total_value",
-		"docstatus",
-	],
-	orderBy: "date desc",
-	pageLength: 0,
-	cache: "buildsuite-subcontractor-wo-list",
-	// The WO is natively submittable — state is docstatus (Draft/Submitted/Cancelled), not a field.
-	transform: (data) =>
-		data.map((w) => ({
-			id: w.name,
-			subcontractor: w.subcontractor_name,
-			project: w.project,
-			date: w.date,
-			delivery_type: w.delivery_type,
-			total_value: w.total_value,
-			status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[w.docstatus] || "Draft",
-		})),
-});
-
 // Billed-to-date per work order (sum of non-cancelled Subcontractor Bill gross) → % billed.
+// Kept as a lightweight full fetch feeding the derived "% Billed" cell.
 const billsRes = useDocTypeList("Subcontractor Bill", {
 	fields: ["name", "work_order", "gross", "docstatus"],
 	orderBy: "modified desc",
@@ -60,27 +35,26 @@ const billedByWO = computed(() => {
 function woPercentBilled(row) {
 	const total = Number(row.total_value) || 0;
 	if (total <= 0) return 0;
-	return Math.min(100, Math.round(((billedByWO.value[row.id] || 0) / total) * 1000) / 10);
+	return Math.min(100, Math.round(((billedByWO.value[row.name] || 0) / total) * 1000) / 10);
 }
 
-const search = ref("");
-const rows = computed(() => {
-	let data = wosRes.data || [];
-	const q = search.value.trim().toLowerCase();
-	if (q)
-		data = data.filter(
-			(w) =>
-				(w.id || "").toLowerCase().includes(q) ||
-				(w.subcontractor || "").toLowerCase().includes(q) ||
-				(w.project || "").toLowerCase().includes(q) ||
-				projectName(w.project).toLowerCase().includes(q)
-		);
-	return data;
-});
+function woStatus(row) {
+	return { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[row.docstatus] || "Draft";
+}
+
+const FIELDS = [
+	"name",
+	"subcontractor_name",
+	"project",
+	"date",
+	"delivery_type",
+	"total_value",
+	"docstatus",
+];
 
 const columns = [
-	{ key: "id", label: "WO ID" },
-	{ key: "subcontractor", label: "Subcontractor" },
+	{ key: "name", label: "WO ID" },
+	{ key: "subcontractor_name", label: "Subcontractor" },
 	{ key: "project", label: "Project" },
 	{ key: "date", label: "Date" },
 	{ key: "delivery_type", label: "Type" },
@@ -96,7 +70,7 @@ const breadcrumbs = [
 ];
 
 function onRowClick(row) {
-	router.push(`/subcontractor-work-orders/${row.id}`);
+	router.push(`/subcontractor-work-orders/${row.name}`);
 }
 </script>
 
@@ -111,24 +85,27 @@ function onRowClick(row) {
 			>
 		</template>
 
-		<DeskList
-			v-model="search"
-			:rows="rows"
+		<DocTypeListView
+			doctype="Subcontractor Work Order"
+			:field-order="FIELDS"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['name', 'subcontractor_name', 'project']"
+			cache-key="buildsuite-subcontractor-wo-list"
+			row-key="name"
 			search-placeholder="Search WO, subcontractor, project…"
+			empty-message="No work orders raised yet."
 			@row-click="onRowClick"
 		>
-			<template #cell-id="{ row }">
+			<template #cell-name="{ row }">
 				<DeskLink
-					:to="`/subcontractor-work-orders/${row.id}`"
+					:to="`/subcontractor-work-orders/${row.name}`"
 					class="font-mono text-xs"
 					@click.stop
-					>{{ row.id }}</DeskLink
+					>{{ row.name }}</DeskLink
 				>
 			</template>
-			<template #cell-subcontractor="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.subcontractor }}</span>
+			<template #cell-subcontractor_name="{ row }">
+				<span class="text-ink-900 font-medium">{{ row.subcontractor_name }}</span>
 			</template>
 			<template #cell-project="{ row }">
 				<span class="text-xs text-ink-700">{{ projectName(row.project) }}</span>
@@ -153,14 +130,8 @@ function onRowClick(row) {
 				<span class="text-xs tabular-nums text-ink-700">{{ woPercentBilled(row) }}%</span>
 			</template>
 			<template #cell-status="{ row }">
-				<StatusBadge :status="row.status" />
+				<StatusBadge :status="woStatus(row)" />
 			</template>
-
-			<template #empty>
-				<div class="text-sm text-ink-500">
-					{{ wosRes.loading ? "Loading work orders…" : "No work orders raised yet." }}
-				</div>
-			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>
