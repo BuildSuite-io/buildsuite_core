@@ -632,7 +632,7 @@ const _MODULE_ACCESS = {
 		// Site Engineer has no Subcontractors screen (per the Site Engineer ruling). Its bare
 		// read on Supplier survives at the backend via the read-mirror (the Work Order it can
 		// read links to Supplier), but that only resolves the WO's supplier name — no screen.
-		create: ["procurement", "pm", "director", "admin", "bsa"],
+		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
 		read: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
 	},
 	subcontractorWorkOrder: {
@@ -778,7 +778,7 @@ const _MODULE_ACCESS = {
 	},
 	expense: {
 		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
-		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "admin", "bsa"],
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "qs", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",

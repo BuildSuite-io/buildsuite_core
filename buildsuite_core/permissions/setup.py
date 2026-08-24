@@ -552,6 +552,7 @@ SUBCONTRACT_ROLE_PERMS = {
 	**{role: _FULL for role in _SUBCONTRACT_FULL_ROLES},
 	**{role: _READ for role in _SUBCONTRACT_READ_ROLES},
 	"BuildSuite PM": _CRW,  # PM maintains subcontractors (edit) but does not delete them
+	"BuildSuite QS": _FULL,  # QS maintains subcontractors fully (per the QS ruling), not read-only
 }
 # Trade / Delivery Type masters — read for everyone in the module, write for
 # procurement + admins (they're resolved by the WO link pickers).
@@ -662,7 +663,7 @@ EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
 	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance approves/submits
 	"BuildSuite Procurement Officer": _RAISE,  # raises expense entries (create + read)
-	"BuildSuite QS": _READ,
+	"BuildSuite QS": _RAISE,  # raises expense entries (create + read), per the QS ruling
 }
 
 

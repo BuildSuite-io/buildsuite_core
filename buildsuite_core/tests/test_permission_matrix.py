@@ -345,6 +345,17 @@ PERSONA_CRUD_MATRIX = {
 	# grants a bare read on those targets (to resolve the WO/Bill's party + invoice). A hard "no
 	# access" therefore can't be asserted at the DocPerm layer; the Subcontractors / Supplier-Bill
 	# SCREENS are hidden at the Vue layer (roles.js) instead.
+	"Quantity Surveyor": {
+		"Supplier": "crwd",  # full — QS maintains subcontractors (per the QS ruling)
+		"Subcontractor Work Order": "crwdsx",  # full
+		"Subcontractor Bill": "crwdsx",  # full — QS raises + submits progress bills
+		"Measurement Book": "crwd",  # full — QS records + certifies measurements
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Expense Entry": "cr",  # raises expenses — create + read
+		"Sales Invoice": "r",  # read-only (billing context, not raising)
+		"Project": "r",  # must read Project or the project-field selector is empty
+	},
 	"Site Engineer": {
 		"Measurement Book": "cr",  # raise only — create + read, no edit/delete/certify
 		"Payment Entry": "",  # advances — no access
@@ -423,3 +434,6 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_site_engineer_matrix(self):
 		self._assert_persona_matrix("Site Engineer", PERSONA_CRUD_MATRIX["Site Engineer"])
+
+	def test_qs_matrix(self):
+		self._assert_persona_matrix("Quantity Surveyor", PERSONA_CRUD_MATRIX["Quantity Surveyor"])
