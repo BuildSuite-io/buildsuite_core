@@ -563,8 +563,13 @@ SUBCONTRACT_MASTER_ROLE_PERMS = {
 # Measurement Book — the QS + Site Engineer record and certify site measurements,
 # so they get full CRUD here (they only read the WO/Subcontractor masters). The
 # Director is oversight-only on the MB (per the Director/Owner ruling): read, not
-# data entry — so it's pulled out of the full roles down to _READ below.
-_MB_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS", "BuildSuite Site Engineer")
+# data entry — so it's pulled out of the full roles down to _READ below. The
+# Procurement Officer has NO MB access at all (per the Procurement ruling), so it is
+# excluded from the full roles here and gets no grant (revoked by _apply_role_perms).
+_MB_FULL_ROLES = tuple(r for r in _SUBCONTRACT_FULL_ROLES if r != "BuildSuite Procurement Officer") + (
+	"BuildSuite QS",
+	"BuildSuite Site Engineer",
+)
 MEASUREMENT_BOOK_ROLE_PERMS = {
 	**{role: _FULL for role in _MB_FULL_ROLES},
 	"BuildSuite Director": _READ,  # oversight only — read, never edit
@@ -581,7 +586,8 @@ _BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
 	"BuildSuite Director": _READ,  # oversight only — read, never raise/submit a bill
-	"BuildSuite PM": _CRW,  # PM prepares bills (create/edit) but the QS/Procurement submit them
+	"BuildSuite PM": _CRW,  # PM prepares bills (create/edit) but the QS submits them
+	"BuildSuite Procurement Officer": _CRW,  # prepares bills (create/edit); QS submits, so no S/X
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
 	"BuildSuite Estimator": _READ,
@@ -632,6 +638,7 @@ PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Site Engineer": _PETTY_CASH_SITE,
 	"BuildSuite Foreman": _PETTY_CASH_SITE,
 	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read); no edit/disburse
+	"BuildSuite Procurement Officer": _RAISE,  # raises petty-cash requests (create + read)
 	"BuildSuite QS": _READ,
 }
 PETTY_CASH_DISBURSE_ROLES = (
@@ -654,6 +661,7 @@ EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,
 	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
 	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance approves/submits
+	"BuildSuite Procurement Officer": _RAISE,  # raises expense entries (create + read)
 	"BuildSuite QS": _READ,
 }
 

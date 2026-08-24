@@ -329,6 +329,17 @@ PERSONA_CRUD_MATRIX = {
 		"Petty Cash Request": "cr",  # raises requests — create + read only
 		"Expense Entry": "cr",  # raises expenses — create + read only
 	},
+	"Procurement Officer": {
+		"Subcontractor Work Order": "crwdsx",  # full — Procurement owns the commitment doc
+		"Measurement Book": "",  # no access at all
+		"Subcontractor Bill": "crw",  # prepares bills; QS submits, so no D/S/X
+		"Machinery": "crwd",  # register — full (buys/hires plant)
+		"Machinery Usage": "r",  # read-only (usage is the basis for hire bills)
+		"Supplier": "crwd",  # full — maintains the subcontractor/supplier master
+		"Petty Cash Request": "cr",  # raises requests — create + read only
+		"Expense Entry": "cr",  # raises expenses — create + read only
+		"Payment Entry": "r",  # advances/payments — read-only
+	},
 }
 
 
@@ -388,3 +399,6 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_store_keeper_matrix(self):
 		self._assert_persona_matrix("Store Keeper", PERSONA_CRUD_MATRIX["Store Keeper"])
+
+	def test_procurement_officer_matrix(self):
+		self._assert_persona_matrix("Procurement Officer", PERSONA_CRUD_MATRIX["Procurement Officer"])

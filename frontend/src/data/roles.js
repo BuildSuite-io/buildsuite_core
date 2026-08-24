@@ -656,17 +656,9 @@ const _MODULE_ACCESS = {
 		],
 	},
 	measurementBook: {
-		create: ["procurement", "pm", "qs", "site-engineer", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
+		// Procurement Officer has no MB access (per the Procurement ruling); Director is read-only
+		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
+		read: ["pm", "director", "qs", "site-engineer", "accountant", "admin", "bsa"],
 	},
 	subcontractorBill: {
 		create: ["procurement", "pm", "qs", "admin", "bsa"],  // Director is read-only on bills
@@ -772,7 +764,7 @@ const _MODULE_ACCESS = {
 	},
 	pettyCash: {
 		// Petty Cash Request (PETTY_CASH_ROLE_PERMS)
-		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -780,6 +772,7 @@ const _MODULE_ACCESS = {
 			"site-engineer",
 			"foreman",
 			"store-keeper",
+			"procurement",
 			"qs",
 			"admin",
 			"bsa",
@@ -787,7 +780,7 @@ const _MODULE_ACCESS = {
 	},
 	expense: {
 		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
-		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -795,6 +788,7 @@ const _MODULE_ACCESS = {
 			"site-engineer",
 			"foreman",
 			"store-keeper",
+			"procurement",
 			"qs",
 			"admin",
 			"bsa",
