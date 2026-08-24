@@ -560,18 +560,18 @@ SUBCONTRACT_MASTER_ROLE_PERMS = {
 	"BuildSuite Procurement Officer": _FULL,
 	"BuildSuite Administrator": _FULL,
 }
-# Measurement Book — the QS + Site Engineer record and certify site measurements,
-# so they get full CRUD here (they only read the WO/Subcontractor masters). The
-# Director is oversight-only on the MB (per the Director/Owner ruling): read, not
-# data entry — so it's pulled out of the full roles down to _READ below. The
-# Procurement Officer has NO MB access at all (per the Procurement ruling), so it is
-# excluded from the full roles here and gets no grant (revoked by _apply_role_perms).
+# Measurement Book — the QS records + certifies site measurements (full CRUD). The
+# Site Engineer only RAISES measurement books (create + read; no edit/delete/certify,
+# per the Site Engineer ruling), so it's create-only below, not full. The Director is
+# oversight-only (read, per the Director/Owner ruling). The Procurement Officer has NO
+# MB access at all (per the Procurement ruling), so it is excluded from the full roles
+# and gets no grant (revoked by _apply_role_perms).
 _MB_FULL_ROLES = tuple(r for r in _SUBCONTRACT_FULL_ROLES if r != "BuildSuite Procurement Officer") + (
 	"BuildSuite QS",
-	"BuildSuite Site Engineer",
 )
 MEASUREMENT_BOOK_ROLE_PERMS = {
 	**{role: _FULL for role in _MB_FULL_ROLES},
+	"BuildSuite Site Engineer": _RAISE,  # raise only — create + read, never edit/delete/certify
 	"BuildSuite Director": _READ,  # oversight only — read, never edit
 	"BuildSuite Accountant": _READ,
 }

@@ -340,6 +340,24 @@ PERSONA_CRUD_MATRIX = {
 		"Expense Entry": "cr",  # raises expenses — create + read only
 		"Payment Entry": "r",  # advances/payments — read-only
 	},
+	# Supplier + Purchase Invoice are intentionally OMITTED for the Site Engineer: it reads the
+	# Subcontractor Work Order / Bill, which Link to Supplier / Purchase Invoice, so the read-mirror
+	# grants a bare read on those targets (to resolve the WO/Bill's party + invoice). A hard "no
+	# access" therefore can't be asserted at the DocPerm layer; the Subcontractors / Supplier-Bill
+	# SCREENS are hidden at the Vue layer (roles.js) instead.
+	"Site Engineer": {
+		"Measurement Book": "cr",  # raise only — create + read, no edit/delete/certify
+		"Payment Entry": "",  # advances — no access
+		"Employee": "crw",  # Field Employee — create + edit, no delete
+		"Crew": "crwd",  # full
+		"Field Attendance": "crwdsx",  # the muster — full
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Machinery": "r",  # register — read-only
+		"Machinery Usage": "crwd",  # usage log — full (not submittable, so the ruling's S/X are N/A)
+		"Expense Entry": "crw",  # raise + edit own draft; satisfies the "create + read" ruling
+		"Project": "r",  # must read Project or the project-field selector is empty
+	},
 }
 
 
@@ -402,3 +420,6 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_procurement_officer_matrix(self):
 		self._assert_persona_matrix("Procurement Officer", PERSONA_CRUD_MATRIX["Procurement Officer"])
+
+	def test_site_engineer_matrix(self):
+		self._assert_persona_matrix("Site Engineer", PERSONA_CRUD_MATRIX["Site Engineer"])

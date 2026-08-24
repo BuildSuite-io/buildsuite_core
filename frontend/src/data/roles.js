@@ -629,17 +629,11 @@ const _MODULE_ACCESS = {
 	},
 	// Subcontract
 	subcontractor: {
+		// Site Engineer has no Subcontractors screen (per the Site Engineer ruling). Its bare
+		// read on Supplier survives at the backend via the read-mirror (the Work Order it can
+		// read links to Supplier), but that only resolves the WO's supplier name — no screen.
 		create: ["procurement", "pm", "director", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
+		read: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
 	},
 	subcontractorWorkOrder: {
 		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
@@ -656,8 +650,12 @@ const _MODULE_ACCESS = {
 		],
 	},
 	measurementBook: {
-		// Procurement Officer has no MB access (per the Procurement ruling); Director is read-only
+		// Procurement Officer has no MB access (per the Procurement ruling); Director is read-only.
+		// Site Engineer RAISES books (create) but does NOT edit/delete/certify them (edit/del below
+		// exclude it), so the detail view's Edit/Certify/Delete buttons hide for the Site Engineer.
 		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
+		edit: ["pm", "qs", "admin", "bsa"],
+		del: ["pm", "qs", "admin", "bsa"],
 		read: ["pm", "director", "qs", "site-engineer", "accountant", "admin", "bsa"],
 	},
 	subcontractorBill: {
@@ -796,10 +794,20 @@ const _MODULE_ACCESS = {
 	},
 };
 
-for (const [entity, { create, read }] of Object.entries(_MODULE_ACCESS)) {
+// edit/del default to the create set (the common case: whoever can create can edit +
+// delete). Provide them explicitly only when they diverge — e.g. a role that may CREATE
+// a record but not EDIT or DELETE it (Site Engineer raises a Measurement Book but the QS
+// edits/certifies it). read defaults to (create ∪ read).
+for (const [entity, access] of Object.entries(_MODULE_ACCESS)) {
+	const { create, read, edit = create, del = create } = access;
 	for (const persona of _ALL_PERSONAS) {
 		const c = create.includes(persona);
 		const r = c || read.includes(persona);
-		PERSONA_CAPS[persona][entity] = { c, r, e: c, d: c };
+		PERSONA_CAPS[persona][entity] = {
+			c,
+			r,
+			e: edit.includes(persona),
+			d: del.includes(persona),
+		};
 	}
 }

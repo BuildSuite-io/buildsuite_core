@@ -18,12 +18,16 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+// The Site Engineer only raises MBs (create + read); edit/certify/delete are QS/PM actions.
+// canEdit/canDelete resolve the persona's measurementBook caps (see roles.js).
+const { canEdit, canDelete, canCreate } = usePermissions();
 
 const mb = ref(null);
 const woLines = ref([]);
@@ -134,7 +138,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -143,7 +147,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-success-200 bg-success-50 hover:bg-success-100 text-success-700 font-medium"
 				style="border-radius: 6px"
@@ -153,7 +157,7 @@ const breadcrumbs = computed(() => [
 				Certify
 			</button>
 			<button
-				v-if="!isDraft"
+				v-if="!isDraft && canEdit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -163,7 +167,7 @@ const breadcrumbs = computed(() => [
 				Revert to Draft
 			</button>
 			<button
-				v-if="!isDraft && mb.work_order"
+				v-if="!isDraft && mb.work_order && canCreate('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -173,6 +177,7 @@ const breadcrumbs = computed(() => [
 				+ Create Subcontractor bill
 			</button>
 			<button
+				v-if="canDelete('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
