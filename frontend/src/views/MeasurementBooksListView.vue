@@ -3,37 +3,20 @@
 // project level; each MB carries a work_order link so you can see which
 // WO it feeds.
 
-import { computed, ref, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
-import { useDocTypeList } from "@/composables/useDocTypeList";
 import { getMeasurementBookEntryCounts } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { usePermissions } from "@/composables/usePermissions";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
 const { canCreate } = usePermissions();
-
-const mbRes = useDocTypeList("Measurement Book", {
-	fields: ["name", "project", "work_order", "date", "measured_total", "status"],
-	orderBy: "date desc",
-	pageLength: 0,
-	cache: "buildsuite-measurement-book-list",
-	transform: (data) =>
-		data.map((m) => ({
-			id: m.name,
-			project: m.project,
-			work_order: m.work_order,
-			date: m.date,
-			measured: m.measured_total,
-			status: m.status,
-		})),
-});
 
 // Entry count per MB (child rows aren't listable client-side by non-admins).
 const entryCounts = ref({});
@@ -45,28 +28,15 @@ onMounted(async () => {
 	}
 });
 
-const search = ref("");
-const rows = computed(() => {
-	let data = mbRes.data || [];
-	const q = search.value.trim().toLowerCase();
-	if (q)
-		data = data.filter(
-			(m) =>
-				(m.id || "").toLowerCase().includes(q) ||
-				(m.work_order || "").toLowerCase().includes(q) ||
-				(m.project || "").toLowerCase().includes(q) ||
-				projectName(m.project).toLowerCase().includes(q)
-		);
-	return data;
-});
+const FIELDS = ["name", "project", "work_order", "date", "measured_total", "status"];
 
 const columns = [
-	{ key: "id", label: "MB ID" },
+	{ key: "name", label: "MB ID" },
 	{ key: "project", label: "Project" },
 	{ key: "work_order", label: "Work Order" },
 	{ key: "date", label: "Date" },
 	{ key: "entries", label: "Entries", align: "right" },
-	{ key: "measured", label: "Measured", align: "right" },
+	{ key: "measured_total", label: "Measured", align: "right" },
 	{ key: "status", label: "Status" },
 ];
 
@@ -77,7 +47,7 @@ const breadcrumbs = [
 ];
 
 function onRowClick(row) {
-	router.push(`/measurement-books/${row.id}`);
+	router.push(`/measurement-books/${row.name}`);
 }
 </script>
 
@@ -92,20 +62,23 @@ function onRowClick(row) {
 			>
 		</template>
 
-		<DeskList
-			v-model="search"
-			:rows="rows"
+		<DocTypeListView
+			doctype="Measurement Book"
+			:field-order="FIELDS"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['name', 'work_order', 'project']"
+			cache-key="buildsuite-measurement-book-list"
+			row-key="name"
 			search-placeholder="Search MB, WO, project…"
+			empty-message="No measurement books recorded yet."
 			@row-click="onRowClick"
 		>
-			<template #cell-id="{ row }">
+			<template #cell-name="{ row }">
 				<DeskLink
-					:to="`/measurement-books/${row.id}`"
+					:to="`/measurement-books/${row.name}`"
 					class="font-mono text-xs"
 					@click.stop
-					>{{ row.id }}</DeskLink
+					>{{ row.name }}</DeskLink
 				>
 			</template>
 			<template #cell-project="{ row }">
@@ -124,27 +97,17 @@ function onRowClick(row) {
 			</template>
 			<template #cell-entries="{ row }">
 				<span class="text-xs tabular-nums text-ink-700">{{
-					entryCounts[row.id] || 0
+					entryCounts[row.name] || 0
 				}}</span>
 			</template>
-			<template #cell-measured="{ row }">
+			<template #cell-measured_total="{ row }">
 				<span class="text-xs tabular-nums text-info-700 font-medium">{{
-					Number(row.measured || 0).toLocaleString("en-IN")
+					Number(row.measured_total || 0).toLocaleString("en-IN")
 				}}</span>
 			</template>
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
 			</template>
-
-			<template #empty>
-				<div class="text-sm text-ink-500">
-					{{
-						mbRes.loading
-							? "Loading measurement books…"
-							: "No measurement books recorded yet."
-					}}
-				</div>
-			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>

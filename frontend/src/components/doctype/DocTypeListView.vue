@@ -245,9 +245,11 @@ const parsedDefaultOrder = computed(() => {
 		return { field, direction: direction.toLowerCase() === "asc" ? "asc" : "desc" };
 	}
 
-	const field = meta.value?.sort_field || "modified";
-	const direction = (meta.value?.sort_order || "desc").toLowerCase() === "asc" ? "asc" : "desc";
-	return { field, direction };
+	// Default to `modified desc` so the most recently updated record is always on top —
+	// regardless of the doctype's own meta sort_field (which can be creation, a name, etc.).
+	// Every doctype has `modified`, so this is always valid; a view wanting a different
+	// default passes `initialOrderBy` explicitly.
+	return { field: "modified", direction: "desc" };
 });
 
 watch(
