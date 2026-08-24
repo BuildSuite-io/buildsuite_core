@@ -22,10 +22,12 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Invoices" }];
 const router = useRouter();
+const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
 const baseFilters = computed(() =>
@@ -229,13 +231,14 @@ async function saveAdvance() {
 		<template #actions>
 			<div class="flex items-center gap-2">
 				<button
+					v-if="canCreate('advance')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="openAdvance"
 				>
 					Record advance
 				</button>
-				<button type="button" class="desk-save-btn" @click="openNew">+ New invoice</button>
+				<button v-if="canCreate('salesInvoice')" type="button" class="desk-save-btn" @click="openNew">+ New invoice</button>
 			</div>
 		</template>
 

@@ -656,7 +656,7 @@ const _MODULE_ACCESS = {
 		],
 	},
 	measurementBook: {
-		create: ["procurement", "pm", "director", "qs", "site-engineer", "admin", "bsa"],
+		create: ["procurement", "pm", "qs", "site-engineer", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -669,7 +669,7 @@ const _MODULE_ACCESS = {
 		],
 	},
 	subcontractorBill: {
-		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
+		create: ["procurement", "pm", "qs", "admin", "bsa"],  // Director is read-only on bills
 		read: [
 			"procurement",
 			"pm",
@@ -728,6 +728,74 @@ const _MODULE_ACCESS = {
 			"procurement",
 			"store-keeper",
 			"accountant",
+			"admin",
+			"bsa",
+		],
+	},
+	// Project Finance — the create/read sets mirror the backend perm maps in
+	// buildsuite_core/permissions/setup.py, so the finance panels' "+ New" buttons
+	// show only for personas whose DocPerm would actually allow the insert.
+	supplier: {
+		// Supplier (SUBCONTRACT_ROLE_PERMS) — same doctype the Suppliers panel creates
+		create: ["procurement", "pm", "director", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"site-engineer",
+			"accountant",
+			"store-keeper",
+			"admin",
+			"bsa",
+		],
+	},
+	customer: {
+		// Customer (CUSTOMER_WRITE_ROLE_PERMS); read is the linked-master mirror = everyone
+		create: ["director", "pm", "accountant", "admin", "bsa"],
+		read: _ALL_PERSONAS,
+	},
+	supplierBill: {
+		// Purchase Invoice (PURCHASE_INVOICE_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
+	},
+	salesInvoice: {
+		// Sales Invoice (SALES_INVOICE_ROLE_PERMS)
+		create: ["director", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "qs", "accountant", "admin", "bsa"],
+	},
+	advance: {
+		// Payment Entry (PAYMENT_ENTRY_ROLE_PERMS) — supplier/customer advances + payments
+		create: ["accountant", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "accountant", "admin", "bsa"],
+	},
+	pettyCash: {
+		// Petty Cash Request (PETTY_CASH_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"accountant",
+			"site-engineer",
+			"foreman",
+			"store-keeper",
+			"qs",
+			"admin",
+			"bsa",
+		],
+	},
+	expense: {
+		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"accountant",
+			"site-engineer",
+			"foreman",
+			"store-keeper",
+			"qs",
 			"admin",
 			"bsa",
 		],

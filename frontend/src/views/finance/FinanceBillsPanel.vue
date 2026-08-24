@@ -24,10 +24,15 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Bills" }];
 const router = useRouter();
+const { canCreate } = usePermissions();
+// "+ New bill" opens a chooser for a Supplier bill (Purchase Invoice) or a Subcontractor
+// bill; show the entry point only if the persona can create at least one of them.
+const canNewBill = computed(() => canCreate("supplierBill") || canCreate("subcontractorBill"));
 const { projectName } = useProjectNames();
 
 const payables = ref([]);
@@ -283,13 +288,14 @@ async function saveAdvance() {
 		<template #actions>
 			<div class="flex items-center gap-2">
 				<button
+					v-if="canCreate('advance')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="openAdvance"
 				>
 					Record advance
 				</button>
-				<button type="button" class="desk-save-btn" @click="newOpen = true">
+				<button v-if="canNewBill" type="button" class="desk-save-btn" @click="newOpen = true">
 					+ New bill
 				</button>
 			</div>
@@ -522,6 +528,7 @@ async function saveAdvance() {
 				</header>
 				<div class="px-4 py-4 space-y-2">
 					<button
+						v-if="canCreate('supplierBill')"
 						type="button"
 						class="w-full text-left border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 rounded-lg px-4 py-3 transition-colors"
 						@click="newSupplierBill"
@@ -533,6 +540,7 @@ async function saveAdvance() {
 						</div>
 					</button>
 					<button
+						v-if="canCreate('subcontractorBill')"
 						type="button"
 						class="w-full text-left border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 rounded-lg px-4 py-3 transition-colors"
 						@click="newSubcontractorBill"
