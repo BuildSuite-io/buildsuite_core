@@ -162,7 +162,7 @@ PURCHASE_INVOICE_ROLE_PERMS = {
 	# Supplier Bill — the Director/Owner owns supplier invoicing end to end, so full CRWDSX
 	# (not read-only): raise, edit, submit, cancel + amend a supplier invoice.
 	"BuildSuite Director": _FULL_SUB,
-	"BuildSuite PM": _READ,
+	"BuildSuite PM": _CRW,  # PM raises + edits supplier bills; the Accountant submits/cancels them
 	"BuildSuite Procurement Officer": _READ,
 	"BuildSuite Accountant": _FULL_SUB,  # Accountant owns invoicing
 }
@@ -550,6 +550,7 @@ _SUBCONTRACT_READ_ROLES = ("BuildSuite QS", "BuildSuite Site Engineer", "BuildSu
 SUBCONTRACT_ROLE_PERMS = {
 	**{role: _FULL for role in _SUBCONTRACT_FULL_ROLES},
 	**{role: _READ for role in _SUBCONTRACT_READ_ROLES},
+	"BuildSuite PM": _CRW,  # PM maintains subcontractors (edit) but does not delete them
 }
 # Trade / Delivery Type masters — read for everyone in the module, write for
 # procurement + admins (they're resolved by the WO link pickers).
@@ -579,6 +580,7 @@ _BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
 	"BuildSuite Director": _READ,  # oversight only — read, never raise/submit a bill
+	"BuildSuite PM": _CRW,  # PM prepares bills (create/edit) but the QS/Procurement submit them
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
 	"BuildSuite Estimator": _READ,

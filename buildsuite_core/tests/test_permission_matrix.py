@@ -304,6 +304,22 @@ PERSONA_CRUD_MATRIX = {
 		"Machinery Usage": "crw",  # not submittable — CRW is full; the ruling's S is N/A
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
+	"Project Manager": {
+		"Supplier": "crw",  # Subcontractor — maintain, but no delete
+		"Subcontractor Work Order": "crwdsx",  # full — PM owns the commitment doc
+		"Subcontractor Bill": "crw",  # prepare bills; QS/Procurement submit, so no D/S/X
+		"Purchase Invoice": "crw",  # Supplier Bill — raise + edit; Accountant submits
+		"Payment Entry": "r",  # Supplier / Customer advances — read-only
+		"Sales Invoice": "r",  # read-only (billing context, not raising)
+		"Employee": "crwd",  # Field Employee — full master maintenance
+		"Field Attendance": "crwdsx",  # full
+		"Crew": "crwd",  # full
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Machinery": "crw",  # register — maintain, no delete
+		"Machinery Type": "r",  # must read the type master or the selector is empty
+		"Customer": "crw",  # maintain, no delete
+	},
 }
 
 
@@ -357,3 +373,6 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_foreman_matrix(self):
 		self._assert_persona_matrix("Foreman / Supervisor", PERSONA_CRUD_MATRIX["Foreman / Supervisor"])
+
+	def test_pm_matrix(self):
+		self._assert_persona_matrix("Project Manager", PERSONA_CRUD_MATRIX["Project Manager"])
