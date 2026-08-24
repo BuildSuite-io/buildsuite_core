@@ -320,6 +320,15 @@ PERSONA_CRUD_MATRIX = {
 		"Machinery Type": "r",  # must read the type master or the selector is empty
 		"Customer": "crw",  # maintain, no delete
 	},
+	"Store Keeper": {
+		"Supplier": "r",  # read-only (granted via the read-mirror, not a bespoke map)
+		"Purchase Invoice": "r",  # Supplier Bill — read-only, no create
+		"Payment Entry": "",  # advances — no access at all
+		"Machinery": "crwd",  # register — full custody maintenance
+		"Project": "r",  # must read Project or the project-field selector is empty
+		"Petty Cash Request": "cr",  # raises requests — create + read only
+		"Expense Entry": "cr",  # raises expenses — create + read only
+	},
 }
 
 
@@ -376,3 +385,6 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_pm_matrix(self):
 		self._assert_persona_matrix("Project Manager", PERSONA_CRUD_MATRIX["Project Manager"])
+
+	def test_store_keeper_matrix(self):
+		self._assert_persona_matrix("Store Keeper", PERSONA_CRUD_MATRIX["Store Keeper"])

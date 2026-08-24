@@ -164,6 +164,7 @@ PURCHASE_INVOICE_ROLE_PERMS = {
 	"BuildSuite Director": _FULL_SUB,
 	"BuildSuite PM": _CRW,  # PM raises + edits supplier bills; the Accountant submits/cancels them
 	"BuildSuite Procurement Officer": _READ,
+	"BuildSuite Store Keeper": _READ,  # reads supplier bills (custody/receipt context), never edits
 	"BuildSuite Accountant": _FULL_SUB,  # Accountant owns invoicing
 }
 STOCK_ENTRY_ROLE_PERMS = {
@@ -630,6 +631,7 @@ PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Accountant": _FULL,
 	"BuildSuite Site Engineer": _PETTY_CASH_SITE,
 	"BuildSuite Foreman": _PETTY_CASH_SITE,
+	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read); no edit/disburse
 	"BuildSuite QS": _READ,
 }
 PETTY_CASH_DISBURSE_ROLES = (
@@ -651,6 +653,7 @@ EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Accountant": _FULL_SUB,
 	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,
 	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
+	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance approves/submits
 	"BuildSuite QS": _READ,
 }
 
