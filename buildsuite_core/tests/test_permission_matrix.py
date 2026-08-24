@@ -249,3 +249,89 @@ class TestReportAccessMatrix(_PersonaBase):
 						expected,
 						f"{persona} {'should' if expected else 'should NOT'} be able to run {report!r}",
 					)
+
+
+# --- Director / Owner CRUD matrix --------------------------------------------
+# The permission letters, mapped to the Frappe DocPerm ptypes they represent. "X"
+# is cancel+amend (they always move together on a submittable doctype).
+_LETTER_PTYPES = {
+	"c": ("create",),
+	"r": ("read",),
+	"w": ("write",),
+	"d": ("delete",),
+	"s": ("submit",),
+	"x": ("cancel", "amend"),
+}
+# The full ptype universe to check, by submittability: on a submittable doctype we
+# assert all of CRWDSX; on a plain master, only CRWD (submit/cancel/amend don't exist).
+_SUB_UNIVERSE = "crwdsx"
+_NONSUB_UNIVERSE = "crwd"
+
+# The Director/Owner permission matrix, transcribed from the ruling. Each doctype maps
+# to the letters the Director SHOULD hold; every other letter in that doctype's universe
+# must be DENIED. This encodes both the grants and the non-grants, so an over-grant
+# (Measurement Book / Subcontractor Bill regaining write) or a lost grant (Purchase
+# Invoice / Supplier Bill losing submit) both fail the test.
+#   Petty Cash Request is a plain master (not submittable), so its "full" is CRWD — the
+#   ruling's "S/X" don't exist for it. Payment Entry backs the Supplier/Customer
+#   "advances" (there is no Advance doctype); the Director is read-only there.
+DIRECTOR_MATRIX = {
+	"Subcontractor Work Order": "crwdsx",
+	"Measurement Book": "r",
+	"Subcontractor Bill": "r",
+	"Purchase Invoice": "crwdsx",  # Supplier Bill
+	"Payment Entry": "r",  # Supplier / Customer advances
+	"Sales Invoice": "crwdsx",
+	"Employee": "r",  # Field Employee
+	"Crew": "r",
+	"Field Attendance": "r",
+	"Machinery": "r",
+	"Machinery Usage": "r",
+	"Customer": "crwd",
+	"Supplier": "crwd",
+	"Expense Entry": "crwdsx",
+	"Petty Cash Request": "crwd",
+}
+
+
+class TestDirectorPermissionMatrix(_PersonaBase):
+	"""The Director/Owner DocPerm matrix, asserted end to end: re-apply the authoritative
+	setup (so the test reflects the CURRENT perm maps, not whatever the site drifted to),
+	then check a Director user's effective has_permission per ptype per doctype."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		# Re-converge every matrix to the code — same call the resync patch runs — so the
+		# assertions test the maps, independent of the site's migration history.
+		from buildsuite_core.permissions.setup import setup_record_permissions
+
+		setup_record_permissions()
+		frappe.clear_cache()
+
+	def _allowed(self, email, doctype, ptype):
+		return bool(frappe.has_permission(doctype, ptype=ptype, user=email))
+
+	def test_director_matrix(self):
+		email = self._make_user("Director / Owner")
+		# Sanity: the persona granted exactly the Director role (no stray System Manager
+		# that would mask a missing grant behind super-admin access).
+		roles = self._roles(email)
+		self.assertIn("BuildSuite Director", roles)
+		self.assertNotIn("System Manager", roles)
+
+		for doctype, expected in DIRECTOR_MATRIX.items():
+			if not frappe.db.exists("DocType", doctype):
+				self.skipTest(f"DocType {doctype!r} not installed on this site")
+			submittable = frappe.db.get_value("DocType", doctype, "is_submittable")
+			universe = _SUB_UNIVERSE if submittable else _NONSUB_UNIVERSE
+			for letter in universe:
+				should = letter in expected
+				for ptype in _LETTER_PTYPES[letter]:
+					with self.subTest(doctype=doctype, ptype=ptype):
+						self.assertEqual(
+							self._allowed(email, doctype, ptype),
+							should,
+							f"Director {'should' if should else 'should NOT'} have "
+							f"{ptype!r} on {doctype!r} (wanted {expected!r})",
+						)

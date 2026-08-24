@@ -159,7 +159,9 @@ PURCHASE_RECEIPT_ROLE_PERMS = {
 }
 PURCHASE_INVOICE_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
-	"BuildSuite Director": _READ,
+	# Supplier Bill — the Director/Owner owns supplier invoicing end to end, so full CRWDSX
+	# (not read-only): raise, edit, submit, cancel + amend a supplier invoice.
+	"BuildSuite Director": _FULL_SUB,
 	"BuildSuite PM": _READ,
 	"BuildSuite Procurement Officer": _READ,
 	"BuildSuite Accountant": _FULL_SUB,  # Accountant owns invoicing
@@ -557,19 +559,26 @@ SUBCONTRACT_MASTER_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 }
 # Measurement Book — the QS + Site Engineer record and certify site measurements,
-# so they get full CRUD here (they only read the WO/Subcontractor masters).
+# so they get full CRUD here (they only read the WO/Subcontractor masters). The
+# Director is oversight-only on the MB (per the Director/Owner ruling): read, not
+# data entry — so it's pulled out of the full roles down to _READ below.
 _MB_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS", "BuildSuite Site Engineer")
 MEASUREMENT_BOOK_ROLE_PERMS = {
 	**{role: _FULL for role in _MB_FULL_ROLES},
+	"BuildSuite Director": _READ,  # oversight only — read, never edit
 	"BuildSuite Accountant": _READ,
 }
 # Subcontractor Bill (RA Bill) — submittable. The QS + subcontract full roles raise and
 # submit progress bills; the Accountant + Site Engineer + Estimator read them. Every role that
 # can read a Work Order reads Bills too — the WO list shows a "% billed" column sourced from
 # them, so a WO reader without Bill read would 403 the whole list.
+# NOTE: `_BILL_FULL_ROLES` is shared with the Work Order matrix (where the Director stays
+# full CRWDSX). On the Bill, the Director is oversight-only — the explicit `_READ` below wins
+# over the `_FULL_SUB` spread, so the Director reads bills but never raises/submits them.
 _BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
+	"BuildSuite Director": _READ,  # oversight only — read, never raise/submit a bill
 	"BuildSuite Accountant": _READ,
 	"BuildSuite Site Engineer": _READ,
 	"BuildSuite Estimator": _READ,
