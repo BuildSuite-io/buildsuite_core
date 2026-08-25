@@ -34,3 +34,4 @@ buildsuite_core.patches.fix_stage_planning_workflow_roles # 2026-08-20
 buildsuite_core.patches.reseed_procurement_bespoke_reports # 2026-08-20
 buildsuite_core.patches.grant_child_table_read_access # 2026-08-21
 buildsuite_core.patches.resync_director_permission_matrix # 2026-08-24
+buildsuite_core.patches.repoint_pnl_to_bespoke # 2026-08-25
