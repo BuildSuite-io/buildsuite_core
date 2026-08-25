@@ -55,8 +55,16 @@ export const TEAM_COLS = [
 // S270/S271 — Reports grid. The Progress Report is an ACTION (it produces a document),
 // not an analysis, so it's `primary`: colour-distinguished by a brand tint rather than a
 // larger control. Four tiles show by default (filling the two-column grid); the rest sit
-// behind "Show more" (`more: true`). Analytical tiles route to the generic /reports/<slug>
-// stub; the Progress Report carries its own project-scoped route (routeName).
+// behind "Show more" (`more: true`).
+//
+// The Progress Report is the one BuildSuite-native report (its own project-scoped route via
+// `routeName`). Every other tile just LINKS to the real report in its owning workspace,
+// carrying `?project=<id>` — OverviewTab.reportLink() injects the project from the current
+// record. `to` is a project-independent route location; the project query is added there.
+// The report pages consume it: the Frappe report renderer (report-view) seeds filter values
+// from the URL query, Delay Analysis reads route.query.project, and the finance P&L is
+// project-scoped. cost-vs-budget has no report yet, so it falls through to the /reports/<slug>
+// stub (still project-carrying).
 export const PROJECT_REPORTS = [
 	{
 		slug: "progress-report",
@@ -67,35 +75,47 @@ export const PROJECT_REPORTS = [
 		desc: "Daily / weekly / monthly document. Client issue by default; internal detail is an option inside.",
 	},
 	{
-		slug: "project-status-summary",
-		icon: "chart-line",
-		label: "Status summary",
-		desc: "Status, progress and schedule variance.",
+		slug: "project-pnl-report",
+		icon: "wallet",
+		label: "Project P&L",
+		to: { name: "finance-report", params: { slug: "pnl" } },
+		desc: "Income vs direct costs and overheads, from posted invoices, bills and verified expenses.",
 	},
 	{
-		slug: "stage-vs-actual",
+		slug: "cost-vs-budget",
+		icon: "chart-bar",
+		label: "Cost vs budget by cost code",
+		desc: "Planned, committed, actual and variance per cost code, grouped by cost type.",
+	},
+	{
+		slug: "delay-analysis",
 		icon: "calendar",
-		label: "Stage plan vs actual",
-		desc: "Planned vs completed task counts per stage.",
+		label: "Delay analysis",
+		to: { name: "report-delay-analysis" },
+		desc: "Stages slipping, by how much, and what sits downstream — plan vs actual, pending progress and the weekly completion trend.",
 	},
 	{
-		slug: "task-completion-by-week",
-		icon: "chart-line",
-		label: "Task completion by week",
-		desc: "Weekly completion burn for this project.",
-	},
-	{
-		slug: "pending-progress-entries",
-		icon: "file-text",
-		label: "Pending progress",
-		desc: "Tasks silent for 3+ days.",
+		slug: "billing-collection",
+		icon: "banknote",
+		label: "Billing and collection",
+		to: { name: "report-view", params: { report: "Billing and Collection" } },
 		more: true,
+		desc: "Invoiced, received, overdue and retention held by the client.",
 	},
 	{
-		slug: "labour-deployed",
-		icon: "workforce",
-		label: "Labour deployed",
-		desc: "Skilled + unskilled labour by task / week.",
+		slug: "subcontractor-position",
+		icon: "subcontract",
+		label: "Subcontractor position",
+		to: { name: "report-view", params: { report: "Subcontractor Position" } },
 		more: true,
+		desc: "Per subcontractor: WO value, measured to date, measured not billed, billed, paid, retention, outstanding.",
+	},
+	{
+		slug: "material-status",
+		icon: "stock",
+		label: "Material status",
+		to: { name: "report-view", params: { report: "Material Status" } },
+		more: true,
+		desc: "Ordered → received → consumed → at site by item, with overdue deliveries flagged.",
 	},
 ];
