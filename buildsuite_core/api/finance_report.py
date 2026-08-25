@@ -177,6 +177,101 @@ def financial_position(company=None):
 	return {"have": have, "owe": owe, "net": sum(have.values()) - sum(owe.values())}
 
 
+def _direct_expense_range(company):
+	"""lft/rgt of the standard `Direct Expenses` group, used to split expense leaves into
+	cost-of-sales (Direct) vs overhead (Indirect) the way ERPNext's P&L does. Returns None
+	when the CoA has no such group — then everything falls under Indirect."""
+	row = frappe.db.get_value(
+		"Account",
+		{"company": company, "account_name": "Direct Expenses", "is_group": 1},
+		["lft", "rgt"],
+		as_dict=True,
+	)
+	return (row.lft, row.rgt) if row else None
+
+
+@frappe.whitelist()
+def profit_and_loss(project=None, from_date=None, to_date=None, company=None):
+	"""Our own account-tree Profit & Loss for the Project Finance workspace — computed from the
+	posted GL so it's a real P&L, but ours (labels + layout), not the stock ERPNext financial
+	statement. Income and expense ledger accounts, scoped to an optional project + period, with
+	the ERPNext Direct/Indirect (cost-of-sales vs overhead) split and per-account vouchers for
+	drill-down. Single-company (finance seam)."""
+	company = company or default_company()
+
+	conds = "gle.is_cancelled = 0 AND gle.company = %s AND acc.root_type IN ('Income', 'Expense')"
+	params = [company]
+	if project:
+		conds += " AND gle.project = %s"
+		params.append(project)
+	if from_date:
+		conds += " AND gle.posting_date >= %s"
+		params.append(from_date)
+	if to_date:
+		conds += " AND gle.posting_date <= %s"
+		params.append(to_date)
+
+	rows = frappe.db.sql(
+		f"""SELECT gle.account, acc.root_type, acc.lft,
+			gle.voucher_type, gle.voucher_no, gle.party, gle.against, gle.posting_date,
+			gle.debit, gle.credit
+		FROM `tabGL Entry` gle JOIN `tabAccount` acc ON acc.name = gle.account
+		WHERE {conds}
+		ORDER BY gle.posting_date, gle.creation""",
+		params,
+		as_dict=True,
+	)
+
+	drng = _direct_expense_range(company)
+	# account -> {root_type, lft, amount, docs[]}. Income is credit-positive, expense debit-positive.
+	accounts = {}
+	for r in rows:
+		income = r.root_type == "Income"
+		amt = flt(r.credit - r.debit) if income else flt(r.debit - r.credit)
+		a = accounts.setdefault(r.account, {"root_type": r.root_type, "lft": r.lft, "amount": 0.0, "docs": []})
+		a["amount"] += amt
+		who = r.party or r.against or r.voucher_type
+		a["docs"].append(
+			{
+				"label": who,
+				"sub": f"{r.voucher_no} · {r.posting_date}",
+				"amount": amt,
+			}
+		)
+
+	def is_direct(meta):
+		return bool(drng) and drng[0] <= meta["lft"] <= drng[1]
+
+	def pack(items):
+		out = [
+			{"name": name, "amount": flt(m["amount"]), "docs": m["docs"]}
+			for name, m in items
+			if abs(flt(m["amount"])) > 0.005
+		]
+		return sorted(out, key=lambda x: x["amount"], reverse=True)
+
+	income = pack((n, m) for n, m in accounts.items() if m["root_type"] == "Income")
+	direct = pack((n, m) for n, m in accounts.items() if m["root_type"] == "Expense" and is_direct(m))
+	indirect = pack((n, m) for n, m in accounts.items() if m["root_type"] == "Expense" and not is_direct(m))
+
+	income_total = flt(sum(a["amount"] for a in income))
+	direct_total = flt(sum(a["amount"] for a in direct))
+	indirect_total = flt(sum(a["amount"] for a in indirect))
+	expense_total = flt(direct_total + indirect_total)
+	return {
+		"income": income,
+		"directExpenses": direct,
+		"indirectExpenses": indirect,
+		"totals": {
+			"income": income_total,
+			"direct": direct_total,
+			"indirect": indirect_total,
+			"expense": expense_total,
+			"profit": flt(income_total - expense_total),
+		},
+	}
+
+
 def _cash_bank_accounts(company):
 	"""Bank + Cash accounts a statement can be drawn for, excluding Petty Cash (that's its own
 	imprest report). Ordered Bank first, then by name."""

@@ -19,3 +19,5 @@ export const getFinancialPosition = () => call("financial_position", {});
 export const getCashBankAccounts = () => call("cash_bank_accounts", {});
 export const getCashBankStatement = (account, from_date, to_date) =>
 	call("cash_bank_statement", { account, from_date, to_date });
+export const getProfitAndLoss = ({ project, from_date, to_date } = {}) =>
+	call("profit_and_loss", { project, from_date, to_date });
