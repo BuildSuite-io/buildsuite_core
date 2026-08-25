@@ -113,6 +113,12 @@ const ACCESS_HINTS = {
 const navGroups = computed(() => {
 	const HOME_ITEM = { slug: "home", name: "Home", to: "/home", group: "buildsuite", hint: null };
 	const buildsuiteItems = [HOME_ITEM];
+	// Insights — ask-a-question reporting. First layer is leadership-only (Director /
+	// PM / Administrator); it's a standalone feature, not a workspace, so it's pinned
+	// here rather than driven off the workspace-visibility matrix.
+	if (["director", "pm", "admin", "bsa"].includes(store.role)) {
+		buildsuiteItems.push({ slug: "insights", name: "Insights", to: "/insights", icon: "💡", group: "buildsuite", hint: null });
+	}
 	const erpnextItems = [];
 	const otherBuildsuiteItems = [];
 	for (const slug of store.visibleWorkspaces) {

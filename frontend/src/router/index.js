@@ -296,6 +296,12 @@ const routes = [
 				component: () => import("@/views/workspaces/ProjectDashboardView.vue"),
 			},
 			{
+				// Insights — ask-a-question reporting. Leadership-gated in the view.
+				path: "insights",
+				name: "insights",
+				component: () => import("@/views/InsightsView.vue"),
+			},
+			{
 				path: "reports/view/:report",
 				name: "report-view",
 				component: () => import("@/views/ReportView.vue"),
