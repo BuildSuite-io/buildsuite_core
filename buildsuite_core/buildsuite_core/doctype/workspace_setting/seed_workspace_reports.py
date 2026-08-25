@@ -98,36 +98,15 @@ _SEED = {
 
 
 def _project_finance_tiles():
-	"""Project Finance tiles, computed per-site. Receivables & Payables, Financial Position,
-	Petty Cash, Expense Summary and Cash & Bank are all bespoke in-app Vue views (real data,
-	prototype layout). Only Profit & Loss stays an ERPNext report, shown through the IN-APP
-	renderer pre-filled with this site's company and a rolling last-12-months period so it opens
-	populated; the in-app filter bar lets a user change the dates."""
-	from urllib.parse import quote
-
-	from frappe.utils import add_years, nowdate
-
-	from buildsuite_core.utils.project import default_company
-
-	company = default_company()
-	to_date = nowdate()
-	from_date = add_years(to_date, -1)
-
-	pnl_parts = []
-	if company:
-		pnl_parts.append(f"company={quote(company)}")
-	pnl_parts += [
-		f"filter_based_on={quote('Date Range')}",
-		f"period_start_date={from_date}",
-		f"period_end_date={to_date}",
-		"periodicity=Yearly",
-	]
-	pnl_route = "/reports/view/" + quote("Profit and Loss Statement") + "?" + "&".join(pnl_parts)
+	"""Project Finance tiles — all six are bespoke in-app Vue views (real data via
+	api.finance_report / api.expense_entry, prototype layout). Profit & Loss is now our own
+	account-tree P&L (api.finance_report.profit_and_loss), not the stock ERPNext report, so the
+	whole workspace uses our variant; its own filter bar carries project + period."""
 	return (
 		{
 			"label": "Profit & Loss",
 			"icon": "chart-line",
-			"route": pnl_route,
+			"route": "/project-finance/report/pnl",
 			"description": "Income vs direct costs and overheads, by project and period.",
 		},
 		{
