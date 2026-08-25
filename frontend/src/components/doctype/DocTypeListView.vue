@@ -101,6 +101,19 @@ const configuredColumns = computed(() => {
 	return props.columns.filter((column) => column?.key);
 });
 
+// Standard/system fields aren't in a doctype's `fields` meta, so the validity filter below
+// would silently drop them — including `docstatus`, which a status column derives its state
+// from (drop it and every row reads as Draft). Keep them permitted.
+const STANDARD_FIELDS = new Set([
+	"name",
+	"owner",
+	"creation",
+	"modified",
+	"modified_by",
+	"docstatus",
+	"idx",
+]);
+
 const resolvedFields = computed(() => {
 	const candidates = configuredColumns.value
 		? configuredColumns.value.flatMap((column) => {
@@ -110,7 +123,7 @@ const resolvedFields = computed(() => {
 		: props.fieldOrder;
 
 	const valid = meta.value
-		? candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname))
+		? candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname) || STANDARD_FIELDS.has(fieldname))
 		: candidates;
 	const withName = valid.includes("name") ? valid : ["name", ...valid];
 	return Array.from(new Set(withName));

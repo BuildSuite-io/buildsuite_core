@@ -57,6 +57,11 @@ const FIELDS = [
 	"docstatus",
 ];
 
+// DocTypeListView fetches each column's `fields` (falling back to its `key`), so DERIVED
+// columns must name the real fields they read — otherwise their key is queried as a field:
+// "percent" 417s (no such field) and "status" (a stale, unqueryable legacy column) would too,
+// while `docstatus` — which drives the real status — never gets fetched, so every row reads
+// as Draft. `percent` is computed from total_value + the bills fetch; `status` from docstatus.
 const columns = computed(() => [
 	{ key: "name", label: "WO ID" },
 	{ key: "subcontractor_name", label: "Subcontractor" },
@@ -65,8 +70,10 @@ const columns = computed(() => [
 	{ key: "delivery_type", label: "Type" },
 	{ key: "total_value", label: "Value", align: "right" },
 	// "% Billed" is hidden for personas that can't read Subcontractor Bills (no bill fetch).
-	...(canReadBills.value ? [{ key: "percent", label: "% Billed", align: "right" }] : []),
-	{ key: "status", label: "Status" },
+	...(canReadBills.value
+		? [{ key: "percent", label: "% Billed", align: "right", fields: ["total_value"] }]
+		: []),
+	{ key: "status", label: "Status", fields: ["docstatus"] },
 ]);
 
 const breadcrumbs = [
