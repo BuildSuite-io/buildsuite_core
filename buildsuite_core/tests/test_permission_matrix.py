@@ -369,6 +369,52 @@ PERSONA_CRUD_MATRIX = {
 		"Expense Entry": "crw",  # raise + edit own draft; satisfies the "create + read" ruling
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
+	"Estimator": {
+		"Supplier": "r",  # read-only
+		"Subcontractor Work Order": "r",  # read-only
+		"Measurement Book": "r",  # read-only
+		"Subcontractor Bill": "",  # no access at all
+		"Sales Invoice": "r",  # read-only (billing context)
+		"Payment Entry": "r",  # customer advances — read-only
+		"Petty Cash Request": "cr",  # create + read
+		"Expense Entry": "cr",  # create + read
+		"Project": "r",
+	},
+	# Customer + Supplier are OMITTED for HR Manager: both survive as a bare read via the
+	# linked-master read-mirror (HR reads Project/Employee), so a hard "no access" can't be
+	# asserted at the DocPerm layer — the Customer/Supplier SCREENS are hidden at the Vue layer.
+	"HR Manager": {
+		"Employee": "crwd",  # Field Employee — full
+		"Crew": "crwd",  # full
+		"Labour Attendance Register": "r",  # read-only
+		"Overtime Attendance Register": "r",  # read-only
+		"Petty Cash Request": "cr",  # create + read
+		"Expense Entry": "cr",  # create + read
+		"Payment Entry": "",  # advances — no access
+		"Sales Invoice": "",  # no access
+		"Purchase Invoice": "",  # supplier bill — no access
+		"Machinery": "",  # equipment — no access
+		"Subcontractor Work Order": "",  # subcontract — no access
+	},
+	"Accountant": {
+		"Supplier": "crwd",  # full — maintains subcontractors
+		"Subcontractor Work Order": "r",  # read-only
+		"Measurement Book": "r",  # read-only
+		"Subcontractor Bill": "crwdsx",  # full — owns bill posting
+		"Purchase Invoice": "crwdsx",  # Supplier Bill — full
+		"Customer": "crwd",  # full
+		"Sales Invoice": "crwdsx",  # full
+		"Payment Entry": "crwdsx",  # full (customer/supplier advances + payments)
+		"Petty Cash Request": "crwd",  # full (not submittable, so S/X are N/A)
+		"Expense Entry": "crwdsx",  # full
+		"Employee": "r",  # Field Employee — read-only
+		"Field Attendance": "r",  # read-only
+		"Crew": "",  # no access
+		"Machinery": "r",  # read-only
+		"Machinery Usage": "r",  # read-only
+		"Machinery Type": "r",  # read (selector)
+		"Project": "r",
+	},
 }
 
 
@@ -437,3 +483,12 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_qs_matrix(self):
 		self._assert_persona_matrix("Quantity Surveyor", PERSONA_CRUD_MATRIX["Quantity Surveyor"])
+
+	def test_estimator_matrix(self):
+		self._assert_persona_matrix("Estimator", PERSONA_CRUD_MATRIX["Estimator"])
+
+	def test_hr_manager_matrix(self):
+		self._assert_persona_matrix("HR Manager", PERSONA_CRUD_MATRIX["HR Manager"])
+
+	def test_accountant_matrix(self):
+		self._assert_persona_matrix("Accountant", PERSONA_CRUD_MATRIX["Accountant"])

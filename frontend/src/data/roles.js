@@ -632,8 +632,9 @@ const _MODULE_ACCESS = {
 		// Site Engineer has no Subcontractors screen (per the Site Engineer ruling). Its bare
 		// read on Supplier survives at the backend via the read-mirror (the Work Order it can
 		// read links to Supplier), but that only resolves the WO's supplier name — no screen.
-		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
-		read: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		// Accountant + QS maintain subcontractors fully; Estimator is read-only.
+		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		read: ["procurement", "pm", "director", "qs", "accountant", "estimator", "admin", "bsa"],
 	},
 	subcontractorWorkOrder: {
 		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
@@ -656,10 +657,11 @@ const _MODULE_ACCESS = {
 		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
 		edit: ["pm", "qs", "admin", "bsa"],
 		del: ["pm", "qs", "admin", "bsa"],
-		read: ["pm", "director", "qs", "site-engineer", "accountant", "admin", "bsa"],
+		read: ["pm", "director", "qs", "site-engineer", "estimator", "accountant", "admin", "bsa"],
 	},
 	subcontractorBill: {
-		create: ["procurement", "pm", "qs", "admin", "bsa"],  // Director is read-only on bills
+		// Director is read-only; Estimator has no bill access (omitted). Accountant is full.
+		create: ["procurement", "pm", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -727,7 +729,7 @@ const _MODULE_ACCESS = {
 	// show only for personas whose DocPerm would actually allow the insert.
 	supplier: {
 		// Supplier (SUBCONTRACT_ROLE_PERMS) — same doctype the Suppliers panel creates
-		create: ["procurement", "pm", "director", "admin", "bsa"],
+		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -736,14 +738,16 @@ const _MODULE_ACCESS = {
 			"site-engineer",
 			"accountant",
 			"store-keeper",
+			"estimator",
 			"admin",
 			"bsa",
 		],
 	},
 	customer: {
-		// Customer (CUSTOMER_WRITE_ROLE_PERMS); read is the linked-master mirror = everyone
+		// Customer (CUSTOMER_WRITE_ROLE_PERMS); read is the linked-master mirror = every persona
+		// EXCEPT HR Manager, which has no Customer screen (per the HR ruling).
 		create: ["director", "pm", "accountant", "admin", "bsa"],
-		read: _ALL_PERSONAS,
+		read: _ALL_PERSONAS.filter((p) => p !== "hr-manager"),
 	},
 	supplierBill: {
 		// Purchase Invoice (PURCHASE_INVOICE_ROLE_PERMS)
@@ -753,16 +757,16 @@ const _MODULE_ACCESS = {
 	salesInvoice: {
 		// Sales Invoice (SALES_INVOICE_ROLE_PERMS)
 		create: ["director", "accountant", "admin", "bsa"],
-		read: ["director", "pm", "qs", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "qs", "accountant", "estimator", "admin", "bsa"],
 	},
 	advance: {
 		// Payment Entry (PAYMENT_ENTRY_ROLE_PERMS) — supplier/customer advances + payments
 		create: ["accountant", "admin", "bsa"],
-		read: ["director", "pm", "procurement", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "accountant", "estimator", "admin", "bsa"],
 	},
 	pettyCash: {
 		// Petty Cash Request (PETTY_CASH_ROLE_PERMS)
-		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "admin", "bsa"],
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "estimator", "hr-manager", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -771,6 +775,8 @@ const _MODULE_ACCESS = {
 			"foreman",
 			"store-keeper",
 			"procurement",
+			"estimator",
+			"hr-manager",
 			"qs",
 			"admin",
 			"bsa",
@@ -778,7 +784,7 @@ const _MODULE_ACCESS = {
 	},
 	expense: {
 		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
-		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "qs", "admin", "bsa"],
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "qs", "estimator", "hr-manager", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -788,6 +794,8 @@ const _MODULE_ACCESS = {
 			"store-keeper",
 			"procurement",
 			"qs",
+			"estimator",
+			"hr-manager",
 			"admin",
 			"bsa",
 		],

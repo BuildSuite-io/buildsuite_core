@@ -553,6 +553,8 @@ SUBCONTRACT_ROLE_PERMS = {
 	**{role: _READ for role in _SUBCONTRACT_READ_ROLES},
 	"BuildSuite PM": _CRW,  # PM maintains subcontractors (edit) but does not delete them
 	"BuildSuite QS": _FULL,  # QS maintains subcontractors fully (per the QS ruling), not read-only
+	"BuildSuite Accountant": _FULL,  # Accountant maintains subcontractors fully (per the Accountant ruling)
+	"BuildSuite Estimator": _READ,  # Estimator reads subcontractors (per the Estimator ruling)
 }
 # Trade / Delivery Type masters — read for everyone in the module, write for
 # procurement + admins (they're resolved by the WO link pickers).
@@ -574,6 +576,7 @@ MEASUREMENT_BOOK_ROLE_PERMS = {
 	**{role: _FULL for role in _MB_FULL_ROLES},
 	"BuildSuite Site Engineer": _RAISE,  # raise only — create + read, never edit/delete/certify
 	"BuildSuite Director": _READ,  # oversight only — read, never edit
+	"BuildSuite Estimator": _READ,  # read-only (per the Estimator ruling)
 	"BuildSuite Accountant": _READ,
 }
 # Subcontractor Bill (RA Bill) — submittable. The QS + subcontract full roles raise and
@@ -589,9 +592,10 @@ SUBCONTRACT_BILL_ROLE_PERMS = {
 	"BuildSuite Director": _READ,  # oversight only — read, never raise/submit a bill
 	"BuildSuite PM": _CRW,  # PM prepares bills (create/edit) but the QS submits them
 	"BuildSuite Procurement Officer": _CRW,  # prepares bills (create/edit); QS submits, so no S/X
-	"BuildSuite Accountant": _READ,
+	"BuildSuite Accountant": _FULL_SUB,  # Accountant owns bill posting fully (per the Accountant ruling)
 	"BuildSuite Site Engineer": _READ,
-	"BuildSuite Estimator": _READ,
+	# Estimator has NO Subcontractor Bill access (per the Estimator ruling) — omitted, so
+	# _apply_role_perms revokes any prior grant.
 }
 # Subcontractor Work Order — the commitment document is natively submittable (Draft →
 # Submitted → Cancelled + Amend), so the full roles get CRWDSX, not just CRWD. QS prepares
@@ -640,6 +644,8 @@ PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Foreman": _PETTY_CASH_SITE,
 	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read); no edit/disburse
 	"BuildSuite Procurement Officer": _RAISE,  # raises petty-cash requests (create + read)
+	"BuildSuite Estimator": _RAISE,  # raises petty-cash requests (create + read)
+	"BuildSuite HR Manager": _RAISE,  # raises petty-cash requests (create + read)
 	"BuildSuite QS": _READ,
 }
 PETTY_CASH_DISBURSE_ROLES = (
@@ -664,6 +670,8 @@ EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance approves/submits
 	"BuildSuite Procurement Officer": _RAISE,  # raises expense entries (create + read)
 	"BuildSuite QS": _RAISE,  # raises expense entries (create + read), per the QS ruling
+	"BuildSuite Estimator": _RAISE,  # raises expense entries (create + read)
+	"BuildSuite HR Manager": _RAISE,  # raises expense entries (create + read)
 }
 
 
@@ -818,6 +826,7 @@ SALES_INVOICE_ROLE_PERMS = {
 	"BuildSuite Accountant": _FULL_SUB,
 	"BuildSuite PM": _READ,
 	"BuildSuite QS": _READ,
+	"BuildSuite Estimator": _READ,  # read-only billing context (per the Estimator ruling)
 }
 # Payment Entry (money movement) — Accountant + admin tier create and submit; it is
 # created from the document being settled, never a blank form. Director + PM +
@@ -828,6 +837,7 @@ PAYMENT_ENTRY_ROLE_PERMS = {
 	"BuildSuite Director": _READ,
 	"BuildSuite PM": _READ,
 	"BuildSuite Procurement Officer": _READ,
+	"BuildSuite Estimator": _READ,  # read-only (customer advances context, per the Estimator ruling)
 }
 
 
