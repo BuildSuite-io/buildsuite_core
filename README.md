@@ -4,170 +4,111 @@
 
 # BuildSuite Core
 
-A construction operating system built on Frappe
+**Construction operations for Frappe/ERPNext v16 — open source, MIT licensed.**
 
 </div>
 
-## Introduction
+BuildSuite Core adds the things a contractor actually runs on top of ERPNext: a project spine with work packages and stage plans, estimation with a rate library, subcontract measurement and billing, site labour attendance, plant logging, and the money surfaces that tie them together.
 
-BuildSuite Core is an open-source Frappe application for construction and infrastructure project delivery — modeling recursive project hierarchies, work package and task execution, stage planning, and role-based site governance.
+It is built on the principle that construction software should not re-implement accounting. **BuildSuite owns the documents that capture construction reality; ERPNext owns the ledger.**
 
-## How to Install
+> **Beta.** All planned modules are shipped and installable. Interfaces are stable enough to build against, but this is a beta — expect rough edges, and please report them.
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+## Screenshots
+
+**Project overview** — the spine: work packages, tasks, live progress roll-up, and project-scoped reports.
+
+![Project overview](docs/screenshots/project-overview.png)
+
+**BOQ tree** — revisions, groups and items, with assemblies exploded into their own components, units and rates.
+
+![BOQ tree](docs/screenshots/boq-tree.png)
+
+**Subcontractor bill** — measured against a schedule of values, with the retention / advance / net-payable waterfall, generating a Purchase Invoice on submit.
+
+![Subcontractor bill](docs/screenshots/subcontractor-bill.png)
+
+## What's in it
+
+| Module | What it does |
+| --- | --- |
+| **Site Execution** | Projects, sub-projects, work packages, tasks, progress entries with automatic roll-up, stage plans seeded from project templates |
+| **Schedule** | Gantt with task types, FS/SS/FF dependencies with lag, flag-only and cascade rescheduling, cycle detection, stage slip |
+| **Scope Change** | Scope change orders against a project, with cost impact and approval |
+| **Estimation** | BOQ tree with revisions, assemblies with snapshot explosion, estimate templates, rate master with rate history, cost-code picker |
+| **Procurement** | Material requests, purchase orders, goods receipts, consumption, supplier bills — full submit, cancel and amend lifecycle |
+| **Subcontract** | Work orders with a schedule of values, measurement books with cumulative tracking, subcontractor bills that generate purchase invoices |
+| **Workforce** | Field employees, crews, bulk daily muster generating labour attendance and overtime registers |
+| **Equipment** | Machinery register, plant usage logs, hired and owned costing paths |
+| **Project Finance** | Petty cash loop, expense entries with a verification gate, invoices, bills, payments, advances |
+| **Reporting** | Project P&L, cost vs budget by cost code, delay analysis, billing and collection, subcontractor position, material status |
+
+## Design principles
+
+These are the decisions that shape the codebase. They're worth reading before contributing.
+
+- **Thin instrument over canonical document.** BuildSuite documents capture construction reality — free-text subcontract lines, site measurement, daily musters. On submit they generate the standard ERPNext document that does the accounting. A subcontractor bill generates a Purchase Invoice; a petty cash disbursement generates a Payment Entry; an expense generates a Journal Entry. We never re-implement the ledger, which is why a customer can grow from the Vue app into full Desk accounting with no migration.
+- **Cost codes, not per-item tracking.** Every cost-bearing line carries a cost code — either a BOQ group or a BOQ item. Costs roll up, never down. `cost_type` is derived from the document and the code, never stored on a transaction line, so it cannot drift.
+- **HR-free core.** The Workforce module installs and runs on a site with no `hrms` present. It owns its own worker identity, crew and worker-type model, and does not link to Employee or Employment Type.
+- **Company is asked once.** A user picks a company on the project. Every document below derives it, hidden and read-only. Single-company customers never meet the field; multi-company customers get record-level scoping through Frappe's own user permissions. Shared masters — rate master, task types — carry no company at all.
+- **Advances settle, they don't deduct.** Linking an advance to a bill or invoice reduces outstanding, like a payment. It never changes a posted total. That is what makes linking a submitted document legitimate.
+- **Derived records are never edited.** Labour attendance and overtime registers are written by submitting a muster. Corrections go through cancel and amend on the source, so the registers can never disagree with what produced them.
+
+## Requirements
+
+- Frappe Framework v16
+- ERPNext v16
+- MariaDB 10.6+, Redis, Node 18+, Python 3.11+ (per Frappe v16's own requirements)
+
+For Indian GST, install [India Compliance](https://github.com/resilient-tech/india-compliance) alongside. BuildSuite generates standard Purchase Invoices, so they reconcile against GSTR-2B in the normal way.
+
+## Installation
 
 ```bash
-# Fetch the app into your bench
-bench get-app https://github.com/BuildSuite-io/buildsuite_core.git
-bench setup requirements
-
-# Install the app into your site
-bench --site [your.site.name] install-app buildsuite_core
-
-# Run migrations
-bench --site [your.site.name] migrate
-
-# Build frontend assets (Vue bundle)
-bench build --app buildsuite_core
-
-# Restart bench
-bench restart
+# from your bench directory
+bench get-app https://github.com/BuildSuite-io/buildsuite_core
+bench --site <your-site> install-app buildsuite_core
+bench --site <your-site> migrate
+bench build
 ```
 
-### Prerequisites
+Then open your site and follow the setup wizard. It seeds the construction chart of accounts, the finance accounts, GST tax templates and cost heads — you should not need to configure accounts by hand.
 
-- A working Frappe Framework v16 bench.
-- ERPNext installed on the target site (BuildSuite Core extends the standard ERPNext Company DocType with custom fields).
+## First project in five minutes
 
-### Dependencies
+1. **Create a project.** Pick a project type — the stage plan seeds itself from the template.
+2. **Add a work package and a few tasks.** File a progress entry; watch the parent task and stage roll up on their own.
+3. **Build a BOQ.** Add a group, then items. Explode an assembly and the components arrive with their own units and rates.
+4. **Raise a material request,** turn it into a purchase order, receive it, and consume it against a task. The cost lands on the cost code.
+5. **Open the project P&L.** Everything you just did is in it.
 
-- Frappe
-- ERPNext
+## Not in this release
 
-## What We Covered
+Being explicit about the edges:
 
-### What Ships as UI in M1
+- Client-facing RA / progress billing and client-side retention — separate track
+- Credit and debit notes, payment reminders — fast-follow
+- GST returns, bank reconciliation, fixed assets and depreciation — use Desk; these are ERPNext's own, and we don't wrap them
+- Timesheet — lives in the private Workforce app, not core
+- Journal entry UI — deliberately never. A manual JV is a Desk moment.
 
-As a first step, we have integrated the **Site Execution Workspace**, bringing Projects, Sub-Projects, Work Packages, Tasks, Task Progress Entries, Stage Planning, and Team-based access together under one role-based workspace — excluding Scheduler, BOQ, and Scope Change Order, which are planned for a later milestone.
+## Reporting issues
 
-The home page currently shows a greeting and role-based shortcuts, but the page itself is still a placeholder and not yet wired to live data — full integration is planned for the next milestone.
-
-### Core Execution Engine
-
-- **Project** — the top-level container for a construction or infrastructure job.
-- **Sub-Project** — a Project can contain child Projects, nested to any depth. Deleting a Project deletes its sub-tree too.
-- **Work Package** — groups Tasks under a Project or Sub-Project, if any.
-- **Task** — Types: Activity, Milestone, or Inspection.
-- **Task Progress Entry** — logs field progress; the parent Task's progress and status update automatically.
-- **Stage Planning** — the schedule layer, auto-created from project templates.
-- **Attachments** — on Projects (using Frappe's built-in file support).
-- **Team** — assigns users to a Project, controlling who has access to it.
-
-> To set clear expectations, any reports currently visible within the Site Execution workspace — including those under Project Overview or surfaced elsewhere in the module — are placeholder displays only and have not yet been built out as part of this milestone's scope; full reporting functionality is planned for a later milestone.
-
-### Project Templates
-
-Three ready-made templates — **Commercial**, **Residential**, **Infrastructure**. Picking one auto-creates the default schedule (Stage Planning) for that project. A UI for building custom templates is not part of this milestone.
-
-### Settings
-
-Within Settings, only the user list and details have been implemented so far, giving administrators a central place to view and manage the users who have access to the system.
-
-### Multi-Company Support
-
-Projects belong to a Company. If you run a single company, you won't even see this field. If you run multiple companies, users only see data for the companies they're allowed to access.
-
-### Roles & Permissions
-
-Twelve user roles, including a top-level BuildSuite Administrator role. Permissions control what each role can see and do — for example, a Project Manager only sees their own projects.
-
-- **Director / Owner** — full visibility across every workspace; company leadership view.
-- **Project Manager (PM)** — owns assigned projects end-to-end; approves spend in Procurement, Subcontract, and Workforce; full Site Execution and Project Finance access.
-- **Estimator** — owns the Estimation workspace (BOQ, Rate Master); read-only on Site Execution.
-- **Quantity Surveyor (QS)** — full access to Estimation and Subcontract (measurement and billing); read-only on Project Finance.
-- **Site Engineer** — handles on-site execution; full Site Execution and Workforce access; can raise Material Requests.
-- **Foreman / Supervisor** — logs field-level task progress and crew assignments; create-only on Site Execution.
-- **Procurement Officer** — manages the Procurement workspace end-to-end (Material Requests, supplier follow-up, GRN).
-- **Store Keeper** — manages Stock; read-only on Procurement and Buying.
-- **Accountant** — owns Project Finance and Accounting; pay-only access on Subcontract and Workforce.
-- **HR Manager** — owns the HR workspace; self-service access elsewhere.
-- **System Manager (Admin)** — full technical administrator access across the entire site.
-- **BuildSuite Administrator** — the customer's top-level BuildSuite product owner, sitting above System Manager.
+Please open an issue with your Frappe and ERPNext versions, the module, and what you expected versus what happened. Screenshots help. If it involves accounting, the resulting GL entries help more.
 
 ## Contributing
 
-### Prerequisites
+Contributions are welcome. A few things worth knowing:
 
-This is a Frappe **v16** app. You need a bench with this app installed plus a test
-site (the examples below use `bs.local`). Runtimes are pinned by Frappe v16:
-**Python 3.14** and **Node ≥ 24**.
-
-### Frontend
-
-The Vue 3 SPA lives in [`frontend/`](frontend/) and is served by Frappe at `/core`.
-See [`frontend/README.md`](frontend/README.md) for dev / build / test, and
-[`frontend/DEVELOPER_GUIDE.md`](frontend/DEVELOPER_GUIDE.md) for the frontend
-architecture and feature-building patterns (data adapter, Desk primitives,
-permissions, routing).
-
-### Local dev gate
-
-All checks that CI runs are mirrored by a `Makefile` so you can run them before
-pushing. From the app directory (`apps/buildsuite_core`):
-
-```bash
-make setup     # one-time: install pre-commit + semgrep (isolated) and wire the git hook
-make check     # the full gate: lint + semgrep + backend tests
-make lint      # ruff (lint + format + import sort), prettier, eslint
-make semgrep   # Frappe semgrep rules + python correctness rules
-make test      # bench run-tests --app buildsuite_core   (override: make test SITE=mysite)
-make e2e       # build the frontend + run Cypress  (see note below)
-```
-
-> **Install pre-commit in isolation — never `pip install pre-commit` inside the
-> bench venv.** pre-commit pulls in `virtualenv`, which requires a newer
-> `filelock` than Frappe's pin (`~=3.20.1`), and the two cannot coexist. Use
-> [`pipx`](https://pipx.pypa.io/) (what `make setup` does) or a dedicated venv.
-
-Once `pre-commit install` has run, **ruff / prettier / eslint run automatically on
-every commit** against your staged files. To run them manually: `pre-commit run
---all-files` (or `make lint`). Configured tools: `ruff`, `eslint`, `prettier`.
-
-### Running the tests
-
-```bash
-# backend (Frappe test runner)
-bench --site bs.local set-config allow_tests true
-bench --site bs.local run-tests --app buildsuite_core
-
-# frontend e2e (Cypress, real backend) — needs `bench start` running and the
-# persona test users provisioned first:
-bench --site bs.local execute buildsuite_core.api.cypress_setup.ensure_cypress_users
-cd frontend && yarn test          # headless;  yarn test:open for the GUI runner
-```
-
-`make test` / `make e2e` wrap the above. The Cypress suite points at the Frappe
-server (default `http://localhost:8001`; override with `CYPRESS_BASE_URL`) and
-needs the frontend **built** (`yarn build`) so Frappe serves the current bundle.
-
-### Commit conventions
-
-Single-sentence, semantic commit messages (`fix:`, `test:`, `chore:`, `docs:`),
-split per area of change.
-
-## CI
-
-GitHub Actions workflows (`.github/workflows/`):
-
-- **CI** (`ci.yml`) — spins up a fresh bench, installs this app, and runs the
-  backend test suite. Triggers on pushes to `develop` / `main` / `version-16` and
-  on every pull request.
-- **Linters** (`linter.yml`) — runs the pre-commit hooks, the
-  [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules), and
-  [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
-
-Running `make check` locally reproduces the CI gate before you push.
+- Read the design principles above first. Most review comments trace back to one of them.
+- Generated documents must be **idempotent** (one source, one target, re-submit never duplicates) and **atomic** (generation failure rolls back the submit).
+- Anything cost-bearing carries `project` and `cost_code`. `cost_type` is derived.
+- New behaviour needs a test. The suite runs in CI.
 
 ## License
 
-mit
+MIT. See [LICENSE](LICENSE).
+
+## Acknowledgements
+
+Built with support from the Frappe Incubator programme, on Frappe Framework and ERPNext.
