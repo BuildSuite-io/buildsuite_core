@@ -28,9 +28,11 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useUserNames } from "@/composables/useUserNames";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
+const { canCreate } = usePermissions();
 const { userName } = useUserNames();
 const confirmDialog = useConfirm();
 const router = useRouter();
@@ -318,6 +320,7 @@ const rowsForTab = computed(() => {
 					+ Issue directly
 				</button>
 				<button
+					v-if="canCreate('pettyCash')"
 					type="button"
 					class="text-xs desk-save-btn whitespace-nowrap"
 					@click="openRequest"

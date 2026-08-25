@@ -10,10 +10,12 @@ import { useRouter } from "vue-router";
 import { useFinanceMock } from "@/data/financeMock";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
 
 const fin = useFinanceMock();
 const router = useRouter();
+const { canCreate } = usePermissions();
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Overview" }];
 
 function go(section) {
@@ -92,11 +94,15 @@ const topPayables = computed(() =>
 const recentMovements = computed(() => fin.allPayments.slice(0, 5));
 
 const quickActions = [
-	{ key: "new-expense", section: "expenses", icon: "receipt", label: "New Expense" },
-	{ key: "req-petty", section: "petty-cash", icon: "hand-coins", label: "Request Petty Cash" },
-	{ key: "new-invoice", section: "invoices", icon: "file-text", label: "New Invoice" },
-	{ key: "new-bill", section: "bills", icon: "banknote", label: "New Bill" },
+	{ key: "new-expense", section: "expenses", icon: "receipt", label: "New Expense", caps: ["expense"] },
+	{ key: "req-petty", section: "petty-cash", icon: "hand-coins", label: "Request Petty Cash", caps: ["pettyCash"] },
+	{ key: "new-invoice", section: "invoices", icon: "file-text", label: "New Invoice", caps: ["salesInvoice"] },
+	{ key: "new-bill", section: "bills", icon: "banknote", label: "New Bill", caps: ["supplierBill", "subcontractorBill"] },
 ];
+// Only surface a quick action the persona can actually act on (its create capability).
+const visibleQuickActions = computed(() =>
+	quickActions.filter((qa) => qa.caps.some((c) => canCreate(c)))
+);
 
 const toneDot = {
 	danger: "bg-danger-500",
@@ -316,7 +322,10 @@ const toneDot = {
 				</section>
 
 				<!-- Quick actions -->
-				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+				<section
+					v-if="visibleQuickActions.length"
+					class="bg-white border border-ink-200 rounded-lg overflow-hidden"
+				>
 					<div class="px-4 py-2.5 bg-ink-50 border-b border-ink-200">
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
 							Quick actions
@@ -324,7 +333,7 @@ const toneDot = {
 					</div>
 					<div class="p-3 grid grid-cols-2 gap-2">
 						<button
-							v-for="qa in quickActions"
+							v-for="qa in visibleQuickActions"
 							:key="qa.key"
 							type="button"
 							class="border border-ink-200 hover:border-brand-400 hover:shadow-sm p-2.5 rounded-lg text-left transition-all group flex items-center gap-2"

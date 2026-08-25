@@ -629,17 +629,12 @@ const _MODULE_ACCESS = {
 	},
 	// Subcontract
 	subcontractor: {
-		create: ["procurement", "pm", "director", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
+		// Site Engineer has no Subcontractors screen (per the Site Engineer ruling). Its bare
+		// read on Supplier survives at the backend via the read-mirror (the Work Order it can
+		// read links to Supplier), but that only resolves the WO's supplier name — no screen.
+		// Accountant + QS maintain subcontractors fully; Estimator is read-only.
+		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		read: ["procurement", "pm", "director", "qs", "accountant", "estimator", "admin", "bsa"],
 	},
 	subcontractorWorkOrder: {
 		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
@@ -656,20 +651,17 @@ const _MODULE_ACCESS = {
 		],
 	},
 	measurementBook: {
-		create: ["procurement", "pm", "director", "qs", "site-engineer", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
+		// Procurement Officer has no MB access (per the Procurement ruling); Director is read-only.
+		// Site Engineer RAISES books (create) but does NOT edit/delete/certify them (edit/del below
+		// exclude it), so the detail view's Edit/Certify/Delete buttons hide for the Site Engineer.
+		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
+		edit: ["pm", "qs", "admin", "bsa"],
+		del: ["pm", "qs", "admin", "bsa"],
+		read: ["pm", "director", "qs", "site-engineer", "estimator", "accountant", "admin", "bsa"],
 	},
 	subcontractorBill: {
-		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
+		// Director is read-only; Estimator has no bill access (omitted). Accountant is full.
+		create: ["procurement", "pm", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -732,12 +724,98 @@ const _MODULE_ACCESS = {
 			"bsa",
 		],
 	},
+	// Project Finance — the create/read sets mirror the backend perm maps in
+	// buildsuite_core/permissions/setup.py, so the finance panels' "+ New" buttons
+	// show only for personas whose DocPerm would actually allow the insert.
+	supplier: {
+		// Supplier (SUBCONTRACT_ROLE_PERMS) — same doctype the Suppliers panel creates
+		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		read: [
+			"procurement",
+			"pm",
+			"director",
+			"qs",
+			"site-engineer",
+			"accountant",
+			"store-keeper",
+			"estimator",
+			"admin",
+			"bsa",
+		],
+	},
+	customer: {
+		// Customer (CUSTOMER_WRITE_ROLE_PERMS); read is the linked-master mirror = every persona
+		// EXCEPT HR Manager, which has no Customer screen (per the HR ruling).
+		create: ["director", "pm", "accountant", "admin", "bsa"],
+		read: _ALL_PERSONAS.filter((p) => p !== "hr-manager"),
+	},
+	supplierBill: {
+		// Purchase Invoice (PURCHASE_INVOICE_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
+	},
+	salesInvoice: {
+		// Sales Invoice (SALES_INVOICE_ROLE_PERMS)
+		create: ["director", "accountant", "admin", "bsa"],
+		read: ["director", "pm", "qs", "accountant", "estimator", "admin", "bsa"],
+	},
+	advance: {
+		// Payment Entry (PAYMENT_ENTRY_ROLE_PERMS) — supplier/customer advances + payments
+		create: ["accountant", "admin", "bsa"],
+		read: ["director", "pm", "procurement", "accountant", "estimator", "admin", "bsa"],
+	},
+	pettyCash: {
+		// Petty Cash Request (PETTY_CASH_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "estimator", "hr-manager", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"accountant",
+			"site-engineer",
+			"foreman",
+			"store-keeper",
+			"procurement",
+			"estimator",
+			"hr-manager",
+			"qs",
+			"admin",
+			"bsa",
+		],
+	},
+	expense: {
+		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
+		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "qs", "estimator", "hr-manager", "admin", "bsa"],
+		read: [
+			"director",
+			"pm",
+			"accountant",
+			"site-engineer",
+			"foreman",
+			"store-keeper",
+			"procurement",
+			"qs",
+			"estimator",
+			"hr-manager",
+			"admin",
+			"bsa",
+		],
+	},
 };
 
-for (const [entity, { create, read }] of Object.entries(_MODULE_ACCESS)) {
+// edit/del default to the create set (the common case: whoever can create can edit +
+// delete). Provide them explicitly only when they diverge — e.g. a role that may CREATE
+// a record but not EDIT or DELETE it (Site Engineer raises a Measurement Book but the QS
+// edits/certifies it). read defaults to (create ∪ read).
+for (const [entity, access] of Object.entries(_MODULE_ACCESS)) {
+	const { create, read, edit = create, del = create } = access;
 	for (const persona of _ALL_PERSONAS) {
 		const c = create.includes(persona);
 		const r = c || read.includes(persona);
-		PERSONA_CAPS[persona][entity] = { c, r, e: c, d: c };
+		PERSONA_CAPS[persona][entity] = {
+			c,
+			r,
+			e: edit.includes(persona),
+			d: del.includes(persona),
+		};
 	}
 }

@@ -14,7 +14,11 @@ import { fmtDate, fmtCompactINR } from "@/utils/format";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
-const { canCreate } = usePermissions();
+const { canCreate, canRead } = usePermissions();
+
+// The "% Billed" column is sourced from Subcontractor Bills. A persona without Bill read
+// (e.g. Estimator) neither fetches them (which would 403) nor sees the column.
+const canReadBills = computed(() => canRead("subcontractorBill"));
 
 // Billed-to-date per work order (sum of non-cancelled Subcontractor Bill gross) → % billed.
 // Kept as a lightweight full fetch feeding the derived "% Billed" cell.
@@ -23,6 +27,7 @@ const billsRes = useDocTypeList("Subcontractor Bill", {
 	orderBy: "modified desc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-bills-all",
+	auto: canReadBills.value, // skip the fetch (and its 403) when the persona can't read bills
 });
 const billedByWO = computed(() => {
 	const map = {};
@@ -52,16 +57,17 @@ const FIELDS = [
 	"docstatus",
 ];
 
-const columns = [
+const columns = computed(() => [
 	{ key: "name", label: "WO ID" },
 	{ key: "subcontractor_name", label: "Subcontractor" },
 	{ key: "project", label: "Project" },
 	{ key: "date", label: "Date" },
 	{ key: "delivery_type", label: "Type" },
 	{ key: "total_value", label: "Value", align: "right" },
-	{ key: "percent", label: "% Billed", align: "right" },
+	// "% Billed" is hidden for personas that can't read Subcontractor Bills (no bill fetch).
+	...(canReadBills.value ? [{ key: "percent", label: "% Billed", align: "right" }] : []),
 	{ key: "status", label: "Status" },
-];
+]);
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },

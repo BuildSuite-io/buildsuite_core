@@ -25,7 +25,10 @@ import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
+
+const { canCreate } = usePermissions();
 
 // Every account/project/employee picker is scoped to the active (default) company. This is
 // the single-company seam — see useActiveCompany. Empty pre-boot → picker unfiltered, but
@@ -297,10 +300,10 @@ const expenseAccountFilters = computed(() => [
 		<div class="space-y-4">
 			<div class="flex items-center justify-between gap-3">
 				<div class="text-sm text-ink-600">Log site spend. It hits balances &amp; reports once <span class="font-medium">Submitted</span>.</div>
-				<button v-if="canLog" type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openNew">+ New expense</button>
+				<button v-if="canCreate('expense') && canLog" type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openNew">+ New expense</button>
 			</div>
 
-			<div v-if="!canLog" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 text-sm text-warning-700">
+			<div v-if="canCreate('expense') && !canLog" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 text-sm text-warning-700">
 				Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.
 			</div>
 

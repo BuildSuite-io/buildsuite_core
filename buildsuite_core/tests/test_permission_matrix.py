@@ -249,3 +249,246 @@ class TestReportAccessMatrix(_PersonaBase):
 						expected,
 						f"{persona} {'should' if expected else 'should NOT'} be able to run {report!r}",
 					)
+
+
+# --- Per-persona CRUD matrix -------------------------------------------------
+# The permission letters, mapped to the Frappe DocPerm ptypes they represent. "X"
+# is cancel+amend (they always move together on a submittable doctype).
+_LETTER_PTYPES = {
+	"c": ("create",),
+	"r": ("read",),
+	"w": ("write",),
+	"d": ("delete",),
+	"s": ("submit",),
+	"x": ("cancel", "amend"),
+}
+# The full ptype universe to check, by submittability: on a submittable doctype we
+# assert all of CRWDSX; on a plain master, only CRWD (submit/cancel/amend don't exist).
+_SUB_UNIVERSE = "crwdsx"
+_NONSUB_UNIVERSE = "crwd"
+
+# Per-persona permission matrices, transcribed from the persona rulings. Each doctype maps
+# to the letters the persona SHOULD hold; every OTHER letter in that doctype's universe must
+# be DENIED. So both an over-grant (a read-only doctype regaining write) and a lost grant (a
+# full doctype losing submit) fail the test. An empty string = NO access (every ptype denied,
+# read included) — e.g. the Foreman must not even see Supplier Bill.
+#   Submittability caveats: Petty Cash Request and Machinery Usage are plain masters (not
+#   submittable), so their "full" is CRWD — a ruling's "S/X" simply don't exist for them.
+#   Payment Entry backs the Supplier/Customer "advances" (there is no Advance doctype).
+PERSONA_CRUD_MATRIX = {
+	"Director / Owner": {
+		"Subcontractor Work Order": "crwdsx",
+		"Measurement Book": "r",
+		"Subcontractor Bill": "r",
+		"Purchase Invoice": "crwdsx",  # Supplier Bill
+		"Payment Entry": "r",  # Supplier / Customer advances
+		"Sales Invoice": "crwdsx",
+		"Employee": "r",  # Field Employee
+		"Crew": "r",
+		"Field Attendance": "r",
+		"Machinery": "r",
+		"Machinery Usage": "r",
+		"Customer": "crwd",
+		"Supplier": "crwd",
+		"Expense Entry": "crwdsx",
+		"Petty Cash Request": "crwd",
+	},
+	"Foreman / Supervisor": {
+		"Purchase Invoice": "",  # Supplier Bill — no access at all (not even read)
+		"Employee": "r",  # Field Employee — read-only
+		"Crew": "crw",  # maintain membership; no delete
+		"Field Attendance": "crwdsx",  # the muster — full
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Machinery": "r",
+		"Machinery Usage": "crw",  # not submittable — CRW is full; the ruling's S is N/A
+		"Project": "r",  # must read Project or the project-field selector is empty
+	},
+	"Project Manager": {
+		"Supplier": "crw",  # Subcontractor — maintain, but no delete
+		"Subcontractor Work Order": "crwdsx",  # full — PM owns the commitment doc
+		"Subcontractor Bill": "crw",  # prepare bills; QS/Procurement submit, so no D/S/X
+		"Purchase Invoice": "crw",  # Supplier Bill — raise + edit; Accountant submits
+		"Payment Entry": "r",  # Supplier / Customer advances — read-only
+		"Sales Invoice": "r",  # read-only (billing context, not raising)
+		"Employee": "crwd",  # Field Employee — full master maintenance
+		"Field Attendance": "crwdsx",  # full
+		"Crew": "crwd",  # full
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Machinery": "crw",  # register — maintain, no delete
+		"Machinery Type": "r",  # must read the type master or the selector is empty
+		"Customer": "crw",  # maintain, no delete
+	},
+	"Store Keeper": {
+		"Supplier": "r",  # read-only (granted via the read-mirror, not a bespoke map)
+		"Purchase Invoice": "r",  # Supplier Bill — read-only, no create
+		"Payment Entry": "",  # advances — no access at all
+		"Machinery": "crwd",  # register — full custody maintenance
+		"Project": "r",  # must read Project or the project-field selector is empty
+		"Petty Cash Request": "cr",  # raises requests — create + read only
+		"Expense Entry": "cr",  # raises expenses — create + read only
+	},
+	"Procurement Officer": {
+		"Subcontractor Work Order": "crwdsx",  # full — Procurement owns the commitment doc
+		"Measurement Book": "",  # no access at all
+		"Subcontractor Bill": "crw",  # prepares bills; QS submits, so no D/S/X
+		"Machinery": "crwd",  # register — full (buys/hires plant)
+		"Machinery Usage": "r",  # read-only (usage is the basis for hire bills)
+		"Supplier": "crwd",  # full — maintains the subcontractor/supplier master
+		"Petty Cash Request": "cr",  # raises requests — create + read only
+		"Expense Entry": "cr",  # raises expenses — create + read only
+		"Payment Entry": "r",  # advances/payments — read-only
+	},
+	# Supplier + Purchase Invoice are intentionally OMITTED for the Site Engineer: it reads the
+	# Subcontractor Work Order / Bill, which Link to Supplier / Purchase Invoice, so the read-mirror
+	# grants a bare read on those targets (to resolve the WO/Bill's party + invoice). A hard "no
+	# access" therefore can't be asserted at the DocPerm layer; the Subcontractors / Supplier-Bill
+	# SCREENS are hidden at the Vue layer (roles.js) instead.
+	"Quantity Surveyor": {
+		"Supplier": "crwd",  # full — QS maintains subcontractors (per the QS ruling)
+		"Subcontractor Work Order": "crwdsx",  # full
+		"Subcontractor Bill": "crwdsx",  # full — QS raises + submits progress bills
+		"Measurement Book": "crwd",  # full — QS records + certifies measurements
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Expense Entry": "cr",  # raises expenses — create + read
+		"Sales Invoice": "r",  # read-only (billing context, not raising)
+		"Project": "r",  # must read Project or the project-field selector is empty
+	},
+	"Site Engineer": {
+		"Measurement Book": "cr",  # raise only — create + read, no edit/delete/certify
+		"Payment Entry": "",  # advances — no access
+		"Employee": "crw",  # Field Employee — create + edit, no delete
+		"Crew": "crwd",  # full
+		"Field Attendance": "crwdsx",  # the muster — full
+		"Labour Attendance Register": "r",  # derived register — read-only
+		"Overtime Attendance Register": "r",  # derived register — read-only
+		"Machinery": "r",  # register — read-only
+		"Machinery Usage": "crwd",  # usage log — full (not submittable, so the ruling's S/X are N/A)
+		"Expense Entry": "crw",  # raise + edit own draft; satisfies the "create + read" ruling
+		"Project": "r",  # must read Project or the project-field selector is empty
+	},
+	"Estimator": {
+		"Supplier": "r",  # read-only
+		"Subcontractor Work Order": "r",  # read-only
+		"Measurement Book": "r",  # read-only
+		"Subcontractor Bill": "",  # no access at all
+		"Sales Invoice": "r",  # read-only (billing context)
+		"Payment Entry": "r",  # customer advances — read-only
+		"Petty Cash Request": "cr",  # create + read
+		"Expense Entry": "cr",  # create + read
+		"Project": "r",
+	},
+	# Customer + Supplier are OMITTED for HR Manager: both survive as a bare read via the
+	# linked-master read-mirror (HR reads Project/Employee), so a hard "no access" can't be
+	# asserted at the DocPerm layer — the Customer/Supplier SCREENS are hidden at the Vue layer.
+	"HR Manager": {
+		"Employee": "crwd",  # Field Employee — full
+		"Crew": "crwd",  # full
+		"Labour Attendance Register": "r",  # read-only
+		"Overtime Attendance Register": "r",  # read-only
+		"Petty Cash Request": "cr",  # create + read
+		"Expense Entry": "cr",  # create + read
+		"Payment Entry": "",  # advances — no access
+		"Sales Invoice": "",  # no access
+		"Purchase Invoice": "",  # supplier bill — no access
+		"Machinery": "",  # equipment — no access
+		"Subcontractor Work Order": "",  # subcontract — no access
+	},
+	"Accountant": {
+		"Supplier": "crwd",  # full — maintains subcontractors
+		"Subcontractor Work Order": "r",  # read-only
+		"Measurement Book": "r",  # read-only
+		"Subcontractor Bill": "crwdsx",  # full — owns bill posting
+		"Purchase Invoice": "crwdsx",  # Supplier Bill — full
+		"Customer": "crwd",  # full
+		"Sales Invoice": "crwdsx",  # full
+		"Payment Entry": "crwdsx",  # full (customer/supplier advances + payments)
+		"Petty Cash Request": "crwd",  # full (not submittable, so S/X are N/A)
+		"Expense Entry": "crwdsx",  # full
+		"Employee": "r",  # Field Employee — read-only
+		"Field Attendance": "r",  # read-only
+		"Crew": "",  # no access
+		"Machinery": "r",  # read-only
+		"Machinery Usage": "r",  # read-only
+		"Machinery Type": "r",  # read (selector)
+		"Project": "r",
+	},
+}
+
+
+class TestPersonaCrudMatrix(_PersonaBase):
+	"""Per-persona DocPerm matrices, asserted end to end: re-apply the authoritative setup
+	(so the test reflects the CURRENT perm maps, not whatever the site drifted to), then check
+	each persona user's effective has_permission per ptype per doctype."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		# Re-converge every matrix to the code — same call the resync patch runs — so the
+		# assertions test the maps, independent of the site's migration history. Commit it
+		# (it's idempotent site config, not test data) so it survives the per-test rollback
+		# and both persona tests see the same applied perms.
+		from buildsuite_core.permissions.setup import setup_record_permissions
+
+		setup_record_permissions()
+		frappe.db.commit()
+		frappe.clear_cache()
+
+	def _allowed(self, email, doctype, ptype):
+		return bool(frappe.has_permission(doctype, ptype=ptype, user=email))
+
+	def _assert_persona_matrix(self, persona, matrix):
+		email = self._make_user(persona)
+		# Sanity: the persona granted exactly its managed role (no stray System Manager that
+		# would mask a missing grant behind super-admin access).
+		roles = self._roles(email)
+		self.assertIn(PERSONA_ROLE[persona], roles)
+		self.assertNotIn("System Manager", roles)
+
+		for doctype, expected in matrix.items():
+			if not frappe.db.exists("DocType", doctype):
+				self.skipTest(f"DocType {doctype!r} not installed on this site")
+			submittable = frappe.db.get_value("DocType", doctype, "is_submittable")
+			universe = _SUB_UNIVERSE if submittable else _NONSUB_UNIVERSE
+			for letter in universe:
+				should = letter in expected
+				for ptype in _LETTER_PTYPES[letter]:
+					with self.subTest(persona=persona, doctype=doctype, ptype=ptype):
+						self.assertEqual(
+							self._allowed(email, doctype, ptype),
+							should,
+							f"{persona} {'should' if should else 'should NOT'} have "
+							f"{ptype!r} on {doctype!r} (wanted {expected or 'no access'!r})",
+						)
+
+	def test_director_matrix(self):
+		self._assert_persona_matrix("Director / Owner", PERSONA_CRUD_MATRIX["Director / Owner"])
+
+	def test_foreman_matrix(self):
+		self._assert_persona_matrix("Foreman / Supervisor", PERSONA_CRUD_MATRIX["Foreman / Supervisor"])
+
+	def test_pm_matrix(self):
+		self._assert_persona_matrix("Project Manager", PERSONA_CRUD_MATRIX["Project Manager"])
+
+	def test_store_keeper_matrix(self):
+		self._assert_persona_matrix("Store Keeper", PERSONA_CRUD_MATRIX["Store Keeper"])
+
+	def test_procurement_officer_matrix(self):
+		self._assert_persona_matrix("Procurement Officer", PERSONA_CRUD_MATRIX["Procurement Officer"])
+
+	def test_site_engineer_matrix(self):
+		self._assert_persona_matrix("Site Engineer", PERSONA_CRUD_MATRIX["Site Engineer"])
+
+	def test_qs_matrix(self):
+		self._assert_persona_matrix("Quantity Surveyor", PERSONA_CRUD_MATRIX["Quantity Surveyor"])
+
+	def test_estimator_matrix(self):
+		self._assert_persona_matrix("Estimator", PERSONA_CRUD_MATRIX["Estimator"])
+
+	def test_hr_manager_matrix(self):
+		self._assert_persona_matrix("HR Manager", PERSONA_CRUD_MATRIX["HR Manager"])
+
+	def test_accountant_matrix(self):
+		self._assert_persona_matrix("Accountant", PERSONA_CRUD_MATRIX["Accountant"])

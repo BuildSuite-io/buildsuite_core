@@ -11,10 +11,14 @@ import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import PartyFormModal from "./PartyFormModal.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const store = useDataStore();
-const canManage = computed(() => store.isAdmin);
+const { canCreate } = usePermissions();
+// Customers are created AND edited from this panel; the create and write role-sets
+// coincide (Director / PM / Accountant / admin tier), so one capability gates both.
+const canManage = computed(() => canCreate("customer"));
 
 const TYPE_OPTIONS = ["Company", "Individual", "Partnership"];
 
