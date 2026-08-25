@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
@@ -21,6 +21,15 @@ const searchOpen = ref(false);
 const sidebarOpen = ref(false);
 function closeSidebar() {
 	sidebarOpen.value = false;
+}
+
+// Desktop-only rail collapse (lg+). Below lg the sidebar is a full-width drawer,
+// so collapse never applies there — every collapsed style is `lg:`-prefixed.
+// Persisted so the choice survives navigation + reload.
+const collapsed = ref(localStorage.getItem("bs-nav-collapsed") === "1");
+watch(collapsed, (v) => localStorage.setItem("bs-nav-collapsed", v ? "1" : "0"));
+function toggleCollapse() {
+	collapsed.value = !collapsed.value;
 }
 function toggleTheme() {
 	store.toggleTheme();
@@ -180,8 +189,11 @@ const navGroups = computed(() => {
 
 		<!-- Sidebar — sticky on lg+; slide-in drawer below that breakpoint. -->
 		<aside
-			class="w-60 bg-white border-r border-ink-200 flex flex-col flex-shrink-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 fixed inset-y-0 left-0 z-50 transform transition-transform duration-200"
-			:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+			class="w-60 bg-white border-r border-ink-200 flex flex-col flex-shrink-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 fixed inset-y-0 left-0 z-50 transform transition-all duration-200"
+			:class="[
+				sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+				collapsed ? 'lg:w-16' : 'lg:w-60',
+			]"
 		>
 			<!-- App-branding dropdown (prototype S149): Go to Desktop / Logout.
            The "Core" badge moved into the dropdown sub-line. -->
@@ -189,17 +201,19 @@ const navGroups = computed(() => {
 				<button
 					type="button"
 					class="w-full h-full flex items-center justify-between text-left hover:bg-ink-50 pl-3 pr-2"
-					:class="appMenuOpen ? 'bg-ink-50' : ''"
+					:class="[appMenuOpen ? 'bg-ink-50' : '', collapsed ? 'lg:justify-center lg:px-0' : '']"
 					title="BuildSuite"
 					@click="toggleAppMenu"
 				>
 					<span class="flex items-center gap-2">
 						<LogoIcon :size="26" />
-						<span class="font-semibold text-ink-900 text-sm">BuildSuite</span>
+						<span class="font-semibold text-ink-900 text-sm" :class="collapsed ? 'lg:hidden' : ''"
+							>BuildSuite</span
+						>
 					</span>
 					<svg
 						class="w-4 h-4 text-ink-400 transition-transform"
-						:class="appMenuOpen ? 'rotate-180' : ''"
+						:class="[appMenuOpen ? 'rotate-180' : '', collapsed ? 'lg:hidden' : '']"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -265,12 +279,14 @@ const navGroups = computed(() => {
 				</div>
 			</div>
 
-			<div class="px-3 py-2">
+			<div class="px-3 py-2" :class="collapsed ? 'lg:px-2' : ''">
 				<button
 					@click="searchOpen = true"
 					class="w-full px-2.5 py-1.5 text-xs bg-ink-50 text-ink-600 rounded flex items-center gap-2 hover:bg-ink-100"
+					:class="collapsed ? 'lg:justify-center lg:px-0' : ''"
+					:title="collapsed ? 'Search (⌘K)' : ''"
 				>
-					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -278,9 +294,10 @@ const navGroups = computed(() => {
 							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 						/>
 					</svg>
-					Search or jump to...
+					<span :class="collapsed ? 'lg:hidden' : ''">Search or jump to...</span>
 					<span
 						class="ml-auto text-[10px] text-ink-400 font-mono bg-white px-1.5 py-0.5 rounded border border-ink-200"
+						:class="collapsed ? 'lg:hidden' : ''"
 						>⌘K</span
 					>
 				</button>
@@ -293,7 +310,7 @@ const navGroups = computed(() => {
 					class="mb-1"
 					:class="group.topSeparator ? 'mt-4 pt-3 border-t border-ink-100' : 'mt-2'"
 				>
-					<div class="px-2 py-1.5">
+					<div class="px-2 py-1.5" :class="collapsed ? 'lg:hidden' : ''">
 						<div
 							class="font-semibold uppercase tracking-wider"
 							:class="
@@ -316,7 +333,11 @@ const navGroups = computed(() => {
 						:key="item.to"
 						:to="item.to"
 						class="desk-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-ink-50"
-						:class="group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700'"
+						:class="[
+							group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700',
+							collapsed ? 'lg:justify-center' : '',
+						]"
+						:title="collapsed ? item.name : ''"
 						active-class="active"
 						@click="closeSidebar"
 					>
@@ -336,16 +357,40 @@ const navGroups = computed(() => {
 								v-html="getWorkspaceIconPath(item.slug)"
 							/>
 						</span>
-						<span class="flex-1 truncate">{{ item.name }}</span>
+						<span class="flex-1 truncate" :class="collapsed ? 'lg:hidden' : ''">{{ item.name }}</span>
 						<span
 							v-if="item.hint"
 							:title="item.hint.title"
 							class="text-[9px] font-medium text-ink-400 border border-ink-200 rounded px-1 leading-4 flex-shrink-0"
+							:class="collapsed ? 'lg:hidden' : ''"
 							>{{ item.hint.label }}</span
 						>
 					</RouterLink>
 				</div>
 			</nav>
+
+			<!-- Collapse toggle — desktop only (below lg the sidebar is a drawer). -->
+			<button
+				type="button"
+				class="hidden lg:flex items-center gap-2 mx-2 mb-1 px-2 py-1.5 rounded text-xs text-ink-500 hover:bg-ink-50"
+				:class="collapsed ? 'lg:justify-center lg:mx-1' : ''"
+				:title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+				@click="toggleCollapse"
+			>
+				<svg
+					class="w-4 h-4 flex-shrink-0 transition-transform"
+					:class="collapsed ? 'rotate-180' : ''"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.75"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M15 18l-6-6 6-6" />
+				</svg>
+				<span :class="collapsed ? 'lg:hidden' : ''">Collapse</span>
+			</button>
 
 			<!-- Profile entry (prototype S149) — replaces the footer Settings link.
            Settings is still reachable from the topbar gear. No flow wired yet. -->
@@ -353,11 +398,12 @@ const navGroups = computed(() => {
 				<button
 					type="button"
 					class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-ink-700 hover:bg-ink-50 rounded"
-					title="Profile"
+					:class="collapsed ? 'lg:justify-center' : ''"
+					:title="collapsed ? profileName : 'Profile'"
 					@click="closeSidebar"
 				>
 					<UserAvatar :user-id="profileUser" size="sm" />
-					<div class="flex-1 min-w-0 text-left">
+					<div class="flex-1 min-w-0 text-left" :class="collapsed ? 'lg:hidden' : ''">
 						<div class="truncate font-medium text-ink-900">{{ profileName }}</div>
 						<div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>
 					</div>
