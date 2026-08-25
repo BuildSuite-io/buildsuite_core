@@ -19,17 +19,24 @@ const props = defineProps({
 
 const emit = defineEmits(["edit"]);
 
-// Most report tiles are stubs at /reports/<slug>; the Progress Report routes to its own
-// project-scoped surface (S168) carrying the project id + a default period.
+// The Progress Report is the one in-app report (its own project-scoped route). Every other
+// tile links to the report in its owning workspace with `?project=<id>` so the report opens
+// pre-filtered to this project — the report-view renderer seeds filters from the URL query,
+// Delay Analysis reads route.query.project, and the finance P&L is project-scoped. Tiles with
+// no report yet (cost-vs-budget) fall through to the /reports/<slug> stub, still project-carrying.
 function reportLink(rt) {
+	const project = props.project?.id;
 	if (rt.routeName === "project-progress-report") {
 		return {
 			name: "project-progress-report",
-			params: { id: props.project.id },
+			params: { id: project },
 			query: { period: "weekly" },
 		};
 	}
-	return `/reports/${rt.slug}`;
+	if (rt.to) {
+		return { ...rt.to, query: { ...(rt.to.query || {}), project } };
+	}
+	return { path: `/reports/${rt.slug}`, query: { project } };
 }
 
 // S271 — four tiles show by default (fills the two-column grid); the `more` tiles sit
