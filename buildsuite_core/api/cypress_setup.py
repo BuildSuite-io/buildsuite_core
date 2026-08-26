@@ -138,3 +138,59 @@ def ensure_cypress_bills():
 		"draft": frappe.db.get_value("Subcontractor Bill", {"docstatus": 0}, "name"),
 		"submitted": frappe.db.get_value("Subcontractor Bill", {"docstatus": 1}, "name"),
 	}
+
+
+@frappe.whitelist()
+def ensure_cypress_records():
+	"""Return existing record names (reusing demo data) for the comprehensive detail-page
+	action-gating e2e (detail_action_gating.cy.js). One key per entity, matching the manifest
+	in that spec. A submittable doctype returns a `draft` (docstatus 0) + `submitted`
+	(docstatus 1) slot; a master returns a single `one` slot. Any slot with no record comes
+	back None so the spec skips it rather than fail. Read-only; dev/test only.
+
+	Shape, e.g.:
+	    {"purchaseOrder": {"draft": "...", "submitted": "..."},
+	     "machinery": {"one": "..."}, ...}
+	"""
+	if not (frappe.conf.developer_mode or frappe.flags.in_test):
+		frappe.throw(frappe._("ensure_cypress_records is only available in developer / test mode"))
+
+	def one(doctype, filters=None):
+		return frappe.db.get_value(doctype, filters or {}, "name")
+
+	def draft_submitted(doctype, base=None):
+		base = dict(base or {})
+		return {
+			"draft": one(doctype, {**base, "docstatus": 0}),
+			"submitted": one(doctype, {**base, "docstatus": 1}),
+		}
+
+	return {
+		# Subcontract
+		"subcontractorWorkOrder": draft_submitted("Subcontractor Work Order"),
+		# A Draft measurement book so its Edit/Certify buttons render (Certify hides once
+		# certified); None → the spec skips rather than open a certified book with no Edit.
+		"measurementBook": {"one": one("Measurement Book", {"status": "Draft"})},
+		"subcontractor": {"one": one("Supplier", {"supplier_group": "Subcontractor"})},
+		# Procurement
+		"materialRequest": draft_submitted("Material Request"),
+		"purchaseOrder": draft_submitted("Purchase Order"),
+		"purchaseReceipt": draft_submitted("Purchase Receipt"),
+		# Material Consumption is a Stock Entry of type "Material Issue".
+		"materialConsumption": draft_submitted("Stock Entry", {"stock_entry_type": "Material Issue"}),
+		# Equipment
+		"machinery": {"one": one("Machinery")},
+		"machineryUsage": {"one": one("Machinery Usage")},
+		# Estimation
+		"boq": {"one": one("BOQ")},
+		"assembly": {"one": one("Assembly")},
+		"estimateTemplate": {"one": one("Estimate Template")},
+		"rateMaster": {"one": one("Construction Rate Master")},
+		# Workforce
+		"fieldEmployee": {"one": one("Employee", {"is_labour": 1})},
+		"crew": {"one": one("Crew")},
+		"fieldAttendance": draft_submitted("Field Attendance"),
+		# Project Finance
+		"salesInvoice": draft_submitted("Sales Invoice"),
+		"supplierBill": draft_submitted("Purchase Invoice"),
+	}
