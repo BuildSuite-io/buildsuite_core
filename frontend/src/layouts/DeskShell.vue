@@ -116,6 +116,37 @@ const ACCESS_HINTS = {
 	"mr-only": { label: "MR", title: "Material-request raise only" },
 };
 
+// ERPNext-inherited workspaces link OUT to the real Frappe desk (full-page nav), not to
+// SPA routes — the SPA doesn't reimplement Accounting/Buying/Stock/Assets/HR, so their nav
+// rows open the actual ERPNext workspaces. Routes match the standard ERPNext workspace slugs.
+const ERPNEXT_DESK_ROUTES = {
+	accounting: "accounting",
+	buying: "buying",
+	stock: "stock",
+	assets: "assets",
+	hr: "hr",
+};
+function deskWorkspaceUrl(slug) {
+	return `${getDeskUrl()}/${ERPNEXT_DESK_ROUTES[slug] || slug}`;
+}
+
+// Per-session collapse for the ERPNext nav group — closed by default. A construction user
+// works in the BuildSuite group all day and drops into ERPNext occasionally, so its rows are
+// hidden until asked for. State lives on the layout (survives navigation) and resets on
+// reload, keeping "closed by default" true every time the app opens.
+const collapsedGroups = ref({ erpnext: true });
+function toggleGroup(key) {
+	collapsedGroups.value = { ...collapsedGroups.value, [key]: !collapsedGroups.value[key] };
+}
+function groupCollapsed(group) {
+	return !!(group.collapsible && collapsedGroups.value[group.key]);
+}
+// Group-collapse applies only in the expanded sidebar; the icon rail always shows every item
+// (there is no group header there to reopen a collapsed group).
+function renderItems(group) {
+	return groupCollapsed(group) && !collapsed.value ? [] : group.items;
+}
+
 // Sidebar groups for the active role.
 // Home is synthesized as the first BuildSuite item and Site Execution is pinned
 // second when visible because it is the highest-frequency workspace.
@@ -137,8 +168,12 @@ const navGroups = computed(() => {
 		const access = store.workspaceAccess(slug);
 		const hint = access && access !== "full" ? ACCESS_HINTS[access] : null;
 		const item = { slug, ...meta, hint };
-		if (meta.group === "buildsuite") otherBuildsuiteItems.push(item);
-		else erpnextItems.push(item);
+		if (meta.group === "buildsuite") {
+			otherBuildsuiteItems.push(item);
+		} else {
+			// Link to the real ERPNext desk workspace (full-page nav), not the SPA route.
+			erpnextItems.push({ ...item, external: true, href: deskWorkspaceUrl(slug) });
+		}
 	}
 
 	if (store.visibleWorkspaces.includes("site-execution")) {
@@ -166,6 +201,8 @@ const navGroups = computed(() => {
 			key: "erpnext",
 			title: "ERPNext",
 			muted: true,
+			// Collapsible, closed by default — the inherited workspaces are occasional-use.
+			collapsible: true,
 			// Only render the top-border separator when there's a BuildSuite group above it;
 			// otherwise it looks like an orphan rule at the top of the nav.
 			topSeparator: groups.length > 0,
@@ -310,8 +347,19 @@ const navGroups = computed(() => {
 					class="mb-1"
 					:class="group.topSeparator ? 'mt-4 pt-3 border-t border-ink-100' : 'mt-2'"
 				>
-					<div class="px-2 py-1.5" :class="collapsed ? 'lg:hidden' : ''">
-						<div
+					<!-- A collapsible group's label is the toggle; a fixed one stays a plain label
+					     so it doesn't invite a click that does nothing. -->
+					<component
+						:is="group.collapsible ? 'button' : 'div'"
+						:type="group.collapsible ? 'button' : null"
+						class="px-2 py-1.5 w-full text-left"
+						:class="[
+							group.collapsible ? 'flex items-center gap-1.5 rounded hover:bg-ink-50' : '',
+							collapsed ? 'lg:hidden' : '',
+						]"
+						@click="group.collapsible ? toggleGroup(group.key) : null"
+					>
+						<span
 							class="font-semibold uppercase tracking-wider"
 							:class="
 								group.muted
@@ -320,25 +368,39 @@ const navGroups = computed(() => {
 							"
 						>
 							{{ group.title }}
-						</div>
-						<div
-							v-if="group.caption"
-							class="text-[9px] text-ink-400 font-normal normal-case tracking-normal mt-0.5"
+						</span>
+						<span
+							v-if="group.collapsible"
+							class="text-[9px] text-ink-300 tabular-nums"
+							>{{ group.items.length }}</span
 						>
-							{{ group.caption }}
-						</div>
-					</div>
-					<RouterLink
-						v-for="item in group.items"
-						:key="item.to"
-						:to="item.to"
+						<svg
+							v-if="group.collapsible"
+							class="w-3 h-3 text-ink-300 ml-auto flex-shrink-0 transition-transform"
+							:class="groupCollapsed(group) ? '-rotate-90' : ''"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</component>
+					<!-- BuildSuite items are SPA routes (RouterLink); ERPNext items link out to the
+					     real Frappe desk (<a href> → full-page nav). Collapsed groups render no items. -->
+					<component
+						:is="item.external ? 'a' : 'RouterLink'"
+						v-for="item in renderItems(group)"
+						:key="item.slug || item.to"
+						v-bind="item.external ? { href: item.href } : { to: item.to, activeClass: 'active' }"
 						class="desk-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-ink-50"
 						:class="[
 							group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700',
 							collapsed ? 'lg:justify-center' : '',
 						]"
 						:title="collapsed ? item.name : ''"
-						active-class="active"
 						@click="closeSidebar"
 					>
 						<span
@@ -365,7 +427,7 @@ const navGroups = computed(() => {
 							:class="collapsed ? 'lg:hidden' : ''"
 							>{{ item.hint.label }}</span
 						>
-					</RouterLink>
+					</component>
 				</div>
 			</nav>
 
