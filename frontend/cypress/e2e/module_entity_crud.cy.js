@@ -117,14 +117,16 @@ const ENTITIES = [
 		key: "Subcontractor",
 		route: "/subcontractors",
 		newText: "New",
-		create: ["procurement", "pm", "director", "admin", "bsa"],
+		// QS + Accountant maintain subcontractors fully; Estimator is read-only. Site Engineer
+		// has backend read (WO read-mirror) but no Subcontractors screen, so it's not listed here.
+		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
 			"director",
 			"qs",
-			"site-engineer",
 			"accountant",
+			"estimator",
 			"admin",
 			"bsa",
 		],
@@ -150,13 +152,15 @@ const ENTITIES = [
 		key: "Measurement Book",
 		route: "/measurement-books",
 		newText: "New",
-		create: ["procurement", "pm", "director", "qs", "site-engineer", "admin", "bsa"],
+		// Procurement has NO MB access; Director is oversight-only (read). Site Engineer RAISES
+		// (create+read) but never edits/certifies; QS + PM are full. Estimator + Accountant read.
+		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
 		read: [
-			"procurement",
 			"pm",
 			"director",
 			"qs",
 			"site-engineer",
+			"estimator",
 			"accountant",
 			"admin",
 			"bsa",
@@ -166,7 +170,9 @@ const ENTITIES = [
 		key: "Subcontractor Bill",
 		route: "/subcontractor-bills",
 		newText: "New",
-		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
+		// Director is oversight-only (read, never raises a bill); Estimator has no bill access.
+		// Procurement + PM prepare bills, QS + Accountant raise/submit. Site Engineer reads.
+		create: ["procurement", "pm", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
