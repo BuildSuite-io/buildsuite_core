@@ -6,6 +6,9 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { usePermissions } from "@/composables/usePermissions";
+
+const { canEdit } = usePermissions();
 
 const props = defineProps({
 	project: { type: Object, required: true },
@@ -390,6 +393,7 @@ function deviationColor(pct) {
 						/>
 						<h3 class="text-sm font-semibold text-ink-900">Project details</h3>
 						<button
+							v-if="canEdit('project')"
 							type="button"
 							class="ml-auto text-[11px] text-brand-700 hover:text-brand-800 font-medium"
 							@click="emit('edit')"

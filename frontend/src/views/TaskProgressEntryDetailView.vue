@@ -731,6 +731,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 									</div>
 									<div class="px-1 py-2 flex justify-center">
 										<button
+											v-if="canEditEntry"
 											type="button"
 											class="text-xs px-1 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 text-danger-700"
 											style="border-radius: 4px"
@@ -750,6 +751,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 								@change="onAttachFilesPicked"
 							/>
 							<button
+								v-if="canEditEntry"
 								type="button"
 								class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 								style="border-radius: 6px"

@@ -7,6 +7,7 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useWorkflow } from "@/composables/useWorkflow";
+import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useAttendanceSheet } from "@/composables/useAttendanceSheet";
@@ -40,6 +41,7 @@ const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
 const { projectLabel } = useProjectOptions();
+const { canEdit, canDelete, canSubmit, canCreate } = usePermissions();
 const {
 	active: wfActive,
 	state: wfState,
@@ -254,7 +256,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="!editing && isDraft"
+				v-if="!editing && isDraft && canEdit('fieldAttendance')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -263,7 +265,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="!editing && isDraft"
+				v-if="!editing && isDraft && canDelete('fieldAttendance')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -272,7 +274,7 @@ const breadcrumbs = computed(() => [
 				Delete
 			</button>
 			<button
-				v-if="!editing && !wfActive && isDraft"
+				v-if="!editing && !wfActive && isDraft && canSubmit('fieldAttendance')"
 				type="button"
 				class="desk-save-btn !text-xs"
 				:disabled="busy"
@@ -281,7 +283,7 @@ const breadcrumbs = computed(() => [
 				Submit
 			</button>
 			<button
-				v-if="!editing && !wfActive && isSubmitted"
+				v-if="!editing && !wfActive && isSubmitted && canSubmit('fieldAttendance')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -291,7 +293,7 @@ const breadcrumbs = computed(() => [
 				Cancel
 			</button>
 			<button
-				v-if="!editing && !wfActive && isCancelled"
+				v-if="!editing && !wfActive && isCancelled && canCreate('fieldAttendance')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"

@@ -389,7 +389,7 @@ async function saveAdvance() {
 				</template>
 				<template #cell-actions="{ row }">
 					<button
-						v-if="canReceive(row)"
+						v-if="canReceive(row) && canCreate('advance')"
 						type="button"
 						class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded"
 						@click.stop="openReceive(row)"

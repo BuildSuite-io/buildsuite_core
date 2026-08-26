@@ -5,6 +5,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
@@ -27,6 +28,7 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 	uom: "uom",
 });
 const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete } = usePermissions();
 
 const resource = adapter.read("Assembly", props.id, { fields: ["*"] });
 const doc = computed(() => resource?.doc || null);
@@ -229,6 +231,7 @@ async function removeComponent(index) {
 	>
 		<template #actions>
 			<button
+				v-if="canEdit('assembly')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -237,6 +240,7 @@ async function removeComponent(index) {
 				Edit
 			</button>
 			<button
+				v-if="canDelete('assembly')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -287,7 +291,7 @@ async function removeComponent(index) {
 					· linked to Rate Master · coefficient × rate
 				</div>
 				<button
-					v-if="!addingRow"
+					v-if="!addingRow && canEdit('assembly')"
 					type="button"
 					class="desk-save-btn"
 					:disabled="savingComponents"
@@ -347,6 +351,7 @@ async function removeComponent(index) {
 					</div>
 					<div class="px-2 py-1 text-right">
 						<button
+							v-if="canEdit('assembly')"
 							type="button"
 							class="text-ink-400 hover:text-danger-700 text-base leading-none"
 							title="Remove"
@@ -404,6 +409,7 @@ async function removeComponent(index) {
 					</div>
 					<div class="px-2 py-2 flex items-center gap-1 justify-end">
 						<button
+							v-if="canEdit('assembly')"
 							type="button"
 							class="desk-save-btn !px-2 !py-1 !text-[11px]"
 							:disabled="savingComponents"
@@ -528,6 +534,7 @@ async function removeComponent(index) {
 							Cancel
 						</button>
 						<button
+							v-if="canEdit('assembly')"
 							type="button"
 							class="desk-save-btn"
 							:disabled="saving"

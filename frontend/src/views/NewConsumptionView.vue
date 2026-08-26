@@ -19,12 +19,17 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
 const { projectOptions } = useProjectOptions();
+const { canEdit, canCreate } = usePermissions();
 
 const editing = computed(() => !!props.id);
+const canSaveForm = computed(() =>
+	editing.value ? canEdit("materialConsumption") : canCreate("materialConsumption")
+);
 const form = reactive({ project: "", cost_code: null, lines: [] });
 const saving = ref(false);
 const warehouse = ref("");
@@ -171,7 +176,14 @@ const breadcrumbs = computed(() => [
 		subtitle="Issues site material out of stock. Cost-code it against the BOQ if you want it costed."
 		:breadcrumbs="breadcrumbs"
 	>
-		<DeskForm>
+		<div
+			v-if="!canSaveForm"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to {{ editing ? "edit this" : "record a" }} consumption.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="

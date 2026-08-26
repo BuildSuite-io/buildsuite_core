@@ -27,7 +27,7 @@ const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
 // The Site Engineer only raises MBs (create + read); edit/certify/delete are QS/PM actions.
 // canEdit/canDelete resolve the persona's measurementBook caps (see roles.js).
-const { canEdit, canDelete, canCreate } = usePermissions();
+const { canEdit, canDelete, canCreate, canSubmit } = usePermissions();
 
 const mb = ref(null);
 const woLines = ref([]);
@@ -147,7 +147,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft && canEdit('measurementBook')"
+				v-if="isDraft && canSubmit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-success-200 bg-success-50 hover:bg-success-100 text-success-700 font-medium"
 				style="border-radius: 6px"
@@ -157,7 +157,7 @@ const breadcrumbs = computed(() => [
 				Certify
 			</button>
 			<button
-				v-if="!isDraft && canEdit('measurementBook')"
+				v-if="!isDraft && canSubmit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"

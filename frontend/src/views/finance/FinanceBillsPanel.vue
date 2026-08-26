@@ -455,7 +455,11 @@ async function saveAdvance() {
 							<td class="px-3 py-2"><StatusBadge :status="r.status" size="xs" /></td>
 							<td class="px-3 py-2 text-right whitespace-nowrap">
 								<button
-									v-if="r.kind === 'supplier' && r.outstanding > 0.01"
+									v-if="
+										r.kind === 'supplier' &&
+										r.outstanding > 0.01 &&
+										canCreate('advance')
+									"
 									type="button"
 									class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded"
 									@click.stop="openPay(r)"

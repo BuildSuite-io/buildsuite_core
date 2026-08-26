@@ -7,6 +7,7 @@ import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useActiveCompany } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { saveCrew } from "@/data/crewApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -16,6 +17,7 @@ import CrewMembersTable from "@/components/CrewMembersTable.vue";
 import { validateCrew } from "@/utils/workforceForms";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 const activeCompany = useActiveCompany();
 
 const form = reactive({
@@ -73,7 +75,14 @@ const breadcrumbs = [
 
 <template>
 	<DeskPage title="New Crew" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canCreate('crew')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to create a crew.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Creating…' : 'Create crew'"

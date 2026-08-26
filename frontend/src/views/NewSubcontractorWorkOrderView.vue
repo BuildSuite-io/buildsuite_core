@@ -10,6 +10,7 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
+import { usePermissions } from "@/composables/usePermissions";
 import { getWorkOrder, saveWorkOrder } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -24,9 +25,14 @@ import { fmtINR } from "@/utils/format";
 
 const route = useRoute();
 const router = useRouter();
+const { canCreate, canEdit } = usePermissions();
 
 const editingId = computed(() => route.params.id || null);
 const isEdit = computed(() => !!editingId.value);
+// Edit mode needs edit rights; create mode needs create rights.
+const canSaveForm = computed(() =>
+	isEdit.value ? canEdit("subcontractorWorkOrder") : canCreate("subcontractorWorkOrder")
+);
 
 function emptyLine() {
 	return { scope: "", cost_code: null, uom: "", qty: 0, rate: 0 };
@@ -199,7 +205,14 @@ const saveLabel = computed(() =>
 
 <template>
 	<DeskPage :title="pageTitle" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canSaveForm"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to {{ isEdit ? "edit this" : "create a" }} work order.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saveLabel"

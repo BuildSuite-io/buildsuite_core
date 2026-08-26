@@ -7,6 +7,7 @@ import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { fmtINR } from "@/utils/format";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -23,6 +24,7 @@ const emit = defineEmits(["close", "saved"]);
 
 const adapter = createDataAdapter(useDataStore());
 const confirmDialog = useConfirm();
+const { canEdit, canDelete, canCreate } = usePermissions();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	item_code: "item_code",
 	item_group: "item_group",
@@ -44,6 +46,7 @@ function blank() {
 const saving = ref(false);
 const form = ref(blank());
 const editing = computed(() => !!props.item?.name);
+const canSaveForm = computed(() => (editing.value ? canEdit("item") : canCreate("item")));
 
 // Same options block and cache key as the estimation views — frappe-ui dedupes
 // on the key, so this adds no request.
@@ -290,7 +293,7 @@ async function onDelete() {
 					class="px-5 py-3 border-t border-ink-200 flex items-center justify-between gap-2"
 				>
 					<button
-						v-if="editing"
+						v-if="editing && canDelete('item')"
 						type="button"
 						class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 						style="border-radius: 6px"
@@ -312,7 +315,7 @@ async function onDelete() {
 						<button
 							type="button"
 							class="desk-save-btn !text-xs"
-							:disabled="saving"
+							:disabled="saving || !canSaveForm"
 							@click="save"
 						>
 							{{ saving ? "Saving…" : editing ? "Save changes" : "Create item" }}

@@ -28,7 +28,7 @@ import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
-const { canCreate } = usePermissions();
+const { canCreate, canEdit, canDelete } = usePermissions();
 
 // Every account/project/employee picker is scoped to the active (default) company. This is
 // the single-company seam — see useActiveCompany. Empty pre-boot → picker unfiltered, but
@@ -449,11 +449,11 @@ const expenseAccountFilters = computed(() => [
 					</div>
 					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-between gap-2 flex-shrink-0">
 						<div class="flex items-center gap-2">
-							<button v-if="detail.status === 'Draft' || (detail.status === 'Cancelled' && canVerify)" type="button" class="text-xs px-2.5 py-1.5 text-danger-600 hover:underline" @click="onDelete(detail)">Delete</button>
+							<button v-if="(detail.status === 'Draft' || (detail.status === 'Cancelled' && canVerify)) && canDelete('expense')" type="button" class="text-xs px-2.5 py-1.5 text-danger-600 hover:underline" @click="onDelete(detail)">Delete</button>
 						</div>
 						<div class="flex items-center gap-2">
 							<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="closeDetail">Close</button>
-							<button v-if="detail.status === 'Draft'" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openEdit(detail)">Edit</button>
+							<button v-if="detail.status === 'Draft' && canEdit('expense')" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openEdit(detail)">Edit</button>
 							<button v-if="detail.status === 'Draft' && canVerify" type="button" class="text-xs desk-save-btn" @click="onSubmit(detail)">Submit</button>
 							<button v-if="detail.status === 'Submitted' && canVerify" type="button" class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md" @click="onCancel(detail)">Cancel</button>
 						</div>

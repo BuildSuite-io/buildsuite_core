@@ -27,7 +27,7 @@ import { fmtDate, fmtINR } from "@/utils/format";
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
-const { canCreate } = usePermissions();
+const { canCreate, canEdit, canDelete, canSubmit } = usePermissions();
 // These buttons create OTHER entities from the WO, so each follows that entity's create
 // rights — not the WO's. A WO-full persona that is read-only on Measurement Book / on
 // Subcontractor Bill (e.g. Director/Owner) can open + submit the WO but must not see the
@@ -216,7 +216,7 @@ const tabs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('subcontractorWorkOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -225,7 +225,7 @@ const tabs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canSubmit('subcontractorWorkOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -255,7 +255,7 @@ const tabs = computed(() => [
 				+ Bill progress
 			</button>
 			<button
-				v-if="isSubmitted"
+				v-if="isSubmitted && canSubmit('subcontractorWorkOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -265,7 +265,7 @@ const tabs = computed(() => [
 				Cancel
 			</button>
 			<button
-				v-if="isCancelled"
+				v-if="isCancelled && canCreate('subcontractorWorkOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -285,7 +285,7 @@ const tabs = computed(() => [
 				Print / PDF
 			</button>
 			<button
-				v-if="!isSubmitted"
+				v-if="!isSubmitted && canDelete('subcontractorWorkOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -584,7 +584,7 @@ const tabs = computed(() => [
 					Terms &amp; conditions
 				</h3>
 				<button
-					v-if="isDraft"
+					v-if="isDraft && canEdit('subcontractorWorkOrder')"
 					type="button"
 					class="text-xs text-brand-700 hover:underline"
 					@click="onEdit"

@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
 import { getActiveCompany } from "@/data/companyApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -19,6 +20,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
 
 const form = reactive({
 	machinery_name: "",
@@ -91,7 +93,14 @@ const breadcrumbs = [
 
 <template>
 	<DeskPage title="New Machinery" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canCreate('machinery')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to create machinery.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Creating…' : 'Create machinery'"

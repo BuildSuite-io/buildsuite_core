@@ -8,6 +8,7 @@ import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useActiveCompany } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { saveFieldEmployee } from "@/data/fieldEmployeeApi";
 import { validateFieldEmployee } from "@/utils/workforceForms";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -17,6 +18,7 @@ import FieldEmployeeFormFields from "@/components/FieldEmployeeFormFields.vue";
 import AllocatedProjectsTable from "@/components/AllocatedProjectsTable.vue";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 // `company` is mandatory on Employee and has no doctype default, so pre-fill it
 // with the site's default company. The user can still pick a different one.
 const activeCompany = useActiveCompany();
@@ -90,7 +92,14 @@ const breadcrumbs = [
 
 <template>
 	<DeskPage title="New Field Employee" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canCreate('fieldEmployee')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to create a field employee.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Creating…' : 'Create'"

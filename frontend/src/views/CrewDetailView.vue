@@ -10,6 +10,7 @@ import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { createDataAdapter } from "@/data/adapters";
+import { usePermissions } from "@/composables/usePermissions";
 import { saveCrew } from "@/data/crewApi";
 import { validateCrew } from "@/utils/workforceForms";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -24,6 +25,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete } = usePermissions();
 const { workerName } = useFieldEmployeeOptions();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	crew_name: "crew_name",
@@ -136,7 +138,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="!editing"
+				v-if="!editing && canEdit('crew')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -145,7 +147,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="!editing"
+				v-if="!editing && canDelete('crew')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"

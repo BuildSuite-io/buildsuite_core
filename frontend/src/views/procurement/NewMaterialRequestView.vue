@@ -15,13 +15,18 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const route = useRoute();
 const router = useRouter();
+const { canEdit, canCreate } = usePermissions();
 
 const editingId = computed(() => route.params.id || null);
 const isEdit = computed(() => !!editingId.value);
+const canSaveForm = computed(() =>
+	isEdit.value ? canEdit("materialRequest") : canCreate("materialRequest")
+);
 
 function emptyLine() {
 	return { item_code: "", description: "", qty: null, uom: "", rate: null };
@@ -138,7 +143,14 @@ const saveLabel = computed(() =>
 
 <template>
 	<DeskPage :title="pageTitle" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canSaveForm"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to {{ isEdit ? "edit this" : "create a" }} material request.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saveLabel"

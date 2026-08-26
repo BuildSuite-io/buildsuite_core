@@ -8,6 +8,7 @@ import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
@@ -27,6 +28,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
+const { canEdit, canDelete, canCreate } = usePermissions();
 const adapter = createDataAdapter(useDataStore()); // delete only
 const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
@@ -183,7 +185,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="!editing"
+				v-if="!editing && canEdit('subcontractor')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -192,7 +194,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="!editing"
+				v-if="!editing && canDelete('subcontractor')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -210,7 +212,7 @@ const breadcrumbs = computed(() => [
 				Cancel
 			</button>
 			<button
-				v-if="editing"
+				v-if="editing && canEdit('subcontractor')"
 				type="button"
 				class="desk-save-btn"
 				:disabled="saving"
@@ -266,6 +268,7 @@ const breadcrumbs = computed(() => [
 						Work orders ({{ linkedWOs.length }})
 					</h3>
 					<RouterLink
+						v-if="canCreate('subcontractorWorkOrder')"
 						:to="`/subcontractor-work-orders/new?subcontractor=${sub.name}`"
 						class="text-xs text-brand-700 hover:underline"
 						>+ Raise new work order</RouterLink

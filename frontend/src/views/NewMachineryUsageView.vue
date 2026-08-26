@@ -6,6 +6,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR } from "@/utils/format";
@@ -22,6 +23,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 const router = useRouter();
 const route = useRoute();
 const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
 
 const machineryRes = useDocTypeList("Machinery", {
 	fields: ["name", "machinery_name", "machinery_type", "ownership", "rate", "rate_unit"],
@@ -135,7 +137,14 @@ const breadcrumbs = [
 
 <template>
 	<DeskPage title="Log Machinery Usage" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canCreate('machineryUsage')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to log machinery usage.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Saving…' : 'Log usage'"

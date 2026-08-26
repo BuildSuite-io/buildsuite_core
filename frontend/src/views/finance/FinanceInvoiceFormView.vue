@@ -22,16 +22,21 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter, useActiveCompany } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
 const companyFilter = activeCompanyFilter();
 const activeCompany = useActiveCompany();
+const { canEdit, canCreate } = usePermissions();
 // Tax account heads: non-group accounts in the active (default) company only — so a tax
 // template / row can't pull an account from another company (which the Sales Invoice rejects).
 const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
 const isEdit = computed(() => !!props.id);
+const canSaveInvoice = computed(() =>
+	isEdit.value ? canEdit("salesInvoice") : canCreate("salesInvoice")
+);
 
 function blankLine() {
 	return { description: "", qty: 1, rate: null };
@@ -227,7 +232,14 @@ async function save() {
 		:breadcrumbs="breadcrumbs"
 		subtitle="Bills the customer — Submit posts it as a receivable."
 	>
-		<DeskForm>
+		<div
+			v-if="!canSaveInvoice"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to {{ isEdit ? "edit this invoice" : "create an invoice" }}.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="isEdit ? 'Save invoice' : 'Create invoice'"
