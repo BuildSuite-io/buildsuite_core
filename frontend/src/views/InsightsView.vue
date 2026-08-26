@@ -16,6 +16,7 @@ import { fmtINR, fmtCompactINR } from "@/utils/format";
 import { useInsightsData } from "@/composables/useInsightsData";
 import {
 	VIZ,
+	SUGGESTIONS,
 	availableDatasets,
 	availablePresets,
 	parsePrompt,
@@ -53,7 +54,6 @@ function setNotice(msg, tone = "info") {
 
 const PRESETS = computed(() => availablePresets(ctx.value));
 const datasetNames = computed(() => availableDatasets(ctx.value).map(([, d]) => d.label.toLowerCase()));
-const SUGGESTIONS = ["Subcontractor bill value by subcontractor", "Purchase order value by supplier, top 5", "Tasks by status as a pie", "Stages by approval state"];
 
 function ask() {
 	const text = prompt.value.trim();
