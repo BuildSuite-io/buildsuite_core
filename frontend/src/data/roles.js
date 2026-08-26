@@ -661,7 +661,12 @@ const _MODULE_ACCESS = {
 	},
 	subcontractorBill: {
 		// Director is read-only; Estimator has no bill access (omitted). Accountant is full.
+		// PM + Procurement RAISE and prepare bills (create + write) but the QS + Accountant
+		// DELETE and SUBMIT them (backend _CRW vs _FULL_SUB) — so del + submit are narrower
+		// than create, and edit defaults to create (everyone who raises may also write).
 		create: ["procurement", "pm", "qs", "accountant", "admin", "bsa"],
+		del: ["qs", "accountant", "admin", "bsa"],
+		submit: ["qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -807,7 +812,11 @@ const _MODULE_ACCESS = {
 // a record but not EDIT or DELETE it (Site Engineer raises a Measurement Book but the QS
 // edits/certifies it). read defaults to (create ∪ read).
 for (const [entity, access] of Object.entries(_MODULE_ACCESS)) {
-	const { create, read, edit = create, del = create } = access;
+	// submit defaults to del (both are the "full control" set on a submittable doctype);
+	// provide it explicitly when a role may CREATE/EDIT but not SUBMIT (e.g. PM prepares a
+	// bill, the QS submits it). Non-submittable entities never render a submit button, so
+	// the default is harmless there.
+	const { create, read, edit = create, del = create, submit = del } = access;
 	for (const persona of _ALL_PERSONAS) {
 		const c = create.includes(persona);
 		const r = c || read.includes(persona);
@@ -816,6 +825,7 @@ for (const [entity, access] of Object.entries(_MODULE_ACCESS)) {
 			r,
 			e: edit.includes(persona),
 			d: del.includes(persona),
+			x: submit.includes(persona),
 		};
 	}
 }

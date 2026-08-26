@@ -123,3 +123,18 @@ def ensure_cypress_work_order():
 	except Exception:
 		frappe.db.rollback()
 		return None
+
+
+@frappe.whitelist()
+def ensure_cypress_bills():
+	"""Return one draft + one submitted Subcontractor Bill name, for the detail-page action-gating
+	e2e (Edit/Submit/Delete on a draft, Cancel on a submitted one). Reuses existing bills — the demo
+	carries many — and returns None for a slot that has no record so the spec skips that half rather
+	than fail. Read-only; dev/test only."""
+	if not (frappe.conf.developer_mode or frappe.flags.in_test):
+		frappe.throw(frappe._("ensure_cypress_bills is only available in developer / test mode"))
+
+	return {
+		"draft": frappe.db.get_value("Subcontractor Bill", {"docstatus": 0}, "name"),
+		"submitted": frappe.db.get_value("Subcontractor Bill", {"docstatus": 1}, "name"),
+	}

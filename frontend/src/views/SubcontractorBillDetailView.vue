@@ -33,11 +33,15 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
+// Gate the lifecycle actions by the persona's capability, not just docstatus — otherwise a
+// read-only viewer (e.g. Director) sees Edit/Submit/Delete that the backend then 403s.
+const { canEdit, canDelete, canSubmit, canCreate } = usePermissions();
 const adapter = createDataAdapter(useDataStore());
 
 // Defer to an active Frappe Workflow on Subcontractor Bill when configured; the
@@ -570,7 +574,7 @@ const accountFilters = computed(() =>
 	>
 		<template #actions>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -581,7 +585,7 @@ const accountFilters = computed(() =>
 			</button>
 			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
-				v-if="!wfActive && isDraft"
+				v-if="!wfActive && isDraft && canSubmit('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -591,7 +595,7 @@ const accountFilters = computed(() =>
 				Submit
 			</button>
 			<button
-				v-if="isSubmitted && payment.status !== 'Paid'"
+				v-if="isSubmitted && payment.status !== 'Paid' && canCreate('advance')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -600,7 +604,7 @@ const accountFilters = computed(() =>
 				Make Payment
 			</button>
 			<button
-				v-if="!wfActive && isSubmitted"
+				v-if="!wfActive && isSubmitted && canSubmit('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -622,7 +626,7 @@ const accountFilters = computed(() =>
 				{{ t.action }}
 			</button>
 			<button
-				v-if="isCancelled"
+				v-if="isCancelled && canCreate('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -633,7 +637,7 @@ const accountFilters = computed(() =>
 				Amend
 			</button>
 			<button
-				v-if="!isSubmitted"
+				v-if="!isSubmitted && canDelete('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
