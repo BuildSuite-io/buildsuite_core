@@ -55,6 +55,9 @@ export function usePermissions() {
 		// list-level affordances; prefer the record-aware variants on detail pages.
 		canEdit: (doctype) => cap(doctype, "e") !== false,
 		canDelete: (doctype) => cap(doctype, "d") !== false,
+		// Submit/cancel a submittable doctype (backend S/X). Distinct from create: a role may
+		// raise a draft but not submit it. Unconditional persona capability, like create.
+		canSubmit: (doctype) => cap(doctype, "x") === true,
 		// Precise (record in hand) — own-scope resolves against the creator.
 		canEditRecord,
 		canDeleteRecord,

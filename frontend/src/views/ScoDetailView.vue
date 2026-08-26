@@ -27,7 +27,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const session = useSessionStore();
 const confirmDialog = useConfirm();
-const { canEditRecord, canDeleteRecord } = usePermissions();
+const { canEditRecord, canDeleteRecord, canCreate } = usePermissions();
 const adapter = createDataAdapter(useDataStore());
 const { errors, applyServerErrors, setErrors } = useFormErrors({ title: "title" });
 
@@ -251,7 +251,12 @@ const breadcrumbs = computed(() => [
 					Reject
 				</button>
 				<button
-					v-if="isApproved && !sco.boq_revision && canEditRecord('sco', sco)"
+					v-if="
+						isApproved &&
+						!sco.boq_revision &&
+						canEditRecord('sco', sco) &&
+						canCreate('boq')
+					"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 					style="border-radius: 6px"

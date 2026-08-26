@@ -11,6 +11,7 @@ import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { createDataAdapter } from "@/data/adapters";
+import { usePermissions } from "@/composables/usePermissions";
 import { saveFieldEmployee } from "@/data/fieldEmployeeApi";
 import { fmtINR, fmtDate } from "@/utils/format";
 import { validateFieldEmployee } from "@/utils/workforceForms";
@@ -27,6 +28,7 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete } = usePermissions();
 const { contractorName } = useContractorOptions();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	first_name: "first_name",
@@ -143,7 +145,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="!editing"
+				v-if="!editing && canEdit('fieldEmployee')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -152,7 +154,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="!editing"
+				v-if="!editing && canDelete('fieldEmployee')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"

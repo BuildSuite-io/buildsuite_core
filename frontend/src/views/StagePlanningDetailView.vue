@@ -15,6 +15,7 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { createDataAdapter } from "@/data/adapters";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { usePermissions } from "@/composables/usePermissions";
 import { outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
 
@@ -365,6 +366,10 @@ const canEdit = computed(() => {
 	const editRoles = STATE_EDIT_ROLES[state] || [];
 	return editRoles.some((r) => userRoles.value.includes(r));
 });
+
+// DocPerm capability gate (separate from the workflow/role gate above) — used to
+// AND the persona's edit permission into the task-list controls.
+const { canEdit: canEditPerm } = usePermissions();
 
 const canDelete = computed(() => {
 	const state = stage.value?.workflowState || "Draft";
@@ -1157,7 +1162,7 @@ usePageTitle(() => stage.value?.stageName);
 						>Locked — stage is approved</span
 					>
 					<button
-						v-else
+						v-else-if="canEditPerm('stagePlanning')"
 						type="button"
 						class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:hover:bg-ink-700"
 						style="border-radius: 6px"
@@ -1214,7 +1219,7 @@ usePageTitle(() => stage.value?.stageName);
 									max="100"
 									step="1"
 									class="!text-xs !text-right !py-1"
-									:disabled="tasksLocked"
+									:disabled="tasksLocked || !canEditPerm('stagePlanning')"
 									@update:model-value="onPlannedQtyChange(row, $event)"
 								/>
 								<span class="text-[11px] text-ink-500">%</span>

@@ -12,6 +12,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
@@ -34,6 +35,14 @@ const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
 const confirmDialog = useConfirm();
+// Gate BOQ mutations by the persona's capability, not just docstatus. `canSubmit` is
+// aliased to canSubmitCap to avoid colliding with the local draft-status computed below.
+const {
+	canEdit,
+	canDelete,
+	canCreate,
+	canSubmit: canSubmitCap,
+} = usePermissions();
 
 // === Data load: BOQ header + the three child levels ===
 const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
@@ -1056,7 +1065,9 @@ async function deleteSubItemConfirm(si) {
 }
 
 // Primary action dispatcher — Submit when Draft, Approve when Submitted.
-const showPrimary = computed(() => canSubmit.value || canApprove.value);
+const showPrimary = computed(
+	() => (canSubmit.value || canApprove.value) && canSubmitCap("boq")
+);
 const primaryLabel = computed(() =>
 	canSubmit.value ? "Submit for approval" : canApprove.value ? "Approve" : ""
 );
@@ -1129,6 +1140,7 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
+							v-if="canEdit('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px"
@@ -1138,6 +1150,7 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
+							v-if="canCreate('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px"
@@ -1156,7 +1169,7 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
-							v-if="isEditable"
+							v-if="isEditable && canEdit('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px"
@@ -1166,6 +1179,7 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
+							v-if="canCreate('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px"
@@ -1175,7 +1189,7 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
-							v-if="!isLocked"
+							v-if="!isLocked && canDelete('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 							style="border-radius: 2px; color: #b91c1c"
@@ -1327,13 +1341,18 @@ const breadcrumbs = computed(() => {
 				<div class="ml-auto flex items-center gap-2">
 					<span v-if="!isEditable" class="text-[11px] text-ink-400 italic">
 						{{ boq.status }} — read-only · use
-						<button type="button" @click="createRevision" class="desk-link">
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							@click="createRevision"
+							class="desk-link"
+						>
 							+ Revision
 						</button>
 						to make changes
 					</span>
 					<button
-						v-if="isEditable"
+						v-if="isEditable && canEdit('boq')"
 						type="button"
 						class="desk-save-btn"
 						@click="openAddGroup"
@@ -1448,7 +1467,7 @@ const breadcrumbs = computed(() => {
 
 						<!-- Edit / Delete (hover-visible, only when BOQ is Draft) -->
 						<div
-							v-if="isEditable"
+							v-if="isEditable && canEdit('boq')"
 							class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm"
 							style="border-radius: 2px"
 						>
@@ -1504,7 +1523,7 @@ const breadcrumbs = computed(() => {
 							>
 								<!-- Edit / Delete (hover-visible, only when BOQ is Draft) -->
 								<div
-									v-if="isEditable"
+									v-if="isEditable && canEdit('boq')"
 									class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
 									style="border-radius: 2px"
 								>
@@ -1749,7 +1768,7 @@ const breadcrumbs = computed(() => {
 
 									<!-- Edit / Delete (hover-visible) -->
 									<div
-										v-if="isEditable"
+										v-if="isEditable && canEdit('boq')"
 										class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
 										style="border-radius: 2px"
 									>
@@ -1815,7 +1834,7 @@ const breadcrumbs = computed(() => {
 
 								<!-- Inline "+ Add Sub-item" affordance (hidden while searching) -->
 								<div
-									v-if="isEditable && !searching"
+									v-if="isEditable && !searching && canEdit('boq')"
 									class="grid items-center border-b border-dashed border-ink-200 bg-ink-50/40 cursor-pointer hover:bg-brand-50"
 									:style="treeGridStyle"
 									@click="openAddSubItem(item)"
@@ -1843,7 +1862,7 @@ const breadcrumbs = computed(() => {
 
 						<!-- Inline "+ Add Item" affordance — at the bottom of the expanded group (hidden while searching) -->
 						<div
-							v-if="isEditable && !searching"
+							v-if="isEditable && !searching && canEdit('boq')"
 							class="grid items-center border-b border-dashed border-ink-200 cursor-pointer hover:bg-brand-50"
 							:style="treeGridStyle"
 							@click="openAddItem(g.id)"
@@ -1870,7 +1889,7 @@ const breadcrumbs = computed(() => {
 				<div v-if="!groups.length" class="px-4 py-12 text-center text-sm text-ink-400">
 					This BOQ has no groups yet.
 					<button
-						v-if="isEditable"
+						v-if="isEditable && canEdit('boq')"
 						type="button"
 						class="desk-link ml-1"
 						@click="openAddGroup"
@@ -1939,7 +1958,7 @@ const breadcrumbs = computed(() => {
 						>
 							Cancel
 						</button>
-						<button type="button" @click="saveGroup" class="desk-save-btn">
+						<button v-if="canEdit('boq')" type="button" @click="saveGroup" class="desk-save-btn">
 							{{ groupModal.mode === "add" ? "Create group" : "Save changes" }}
 						</button>
 					</div>
@@ -2093,7 +2112,7 @@ const breadcrumbs = computed(() => {
 						>
 							Cancel
 						</button>
-						<button type="button" @click="saveItem" class="desk-save-btn">
+						<button v-if="canEdit('boq')" type="button" @click="saveItem" class="desk-save-btn">
 							{{ itemModal.mode === "add" ? "Create item" : "Save changes" }}
 						</button>
 					</div>
@@ -2199,7 +2218,7 @@ const breadcrumbs = computed(() => {
 						>
 							Cancel
 						</button>
-						<button type="button" @click="saveSubItem" class="desk-save-btn">
+						<button v-if="canEdit('boq')" type="button" @click="saveSubItem" class="desk-save-btn">
 							{{ subItemModal.mode === "add" ? "Create sub-item" : "Save changes" }}
 						</button>
 					</div>
@@ -2282,6 +2301,7 @@ const breadcrumbs = computed(() => {
 							Cancel
 						</button>
 						<button
+							v-if="canCreate('boq')"
 							type="button"
 							class="desk-save-btn"
 							:disabled="revisionTitleConflict"
@@ -2340,7 +2360,12 @@ const breadcrumbs = computed(() => {
 						>
 							Cancel
 						</button>
-						<button type="button" @click="doImport" class="desk-save-btn">
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							@click="doImport"
+							class="desk-save-btn"
+						>
 							Import
 						</button>
 					</div>
@@ -2423,7 +2448,14 @@ const breadcrumbs = computed(() => {
 						>
 							Cancel
 						</button>
-						<button type="button" @click="doClone" class="desk-save-btn">Clone</button>
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							@click="doClone"
+							class="desk-save-btn"
+						>
+							Clone
+						</button>
 					</div>
 				</div>
 			</div>

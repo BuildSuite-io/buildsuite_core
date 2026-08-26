@@ -9,6 +9,7 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useAttendanceSheet } from "@/composables/useAttendanceSheet";
+import { usePermissions } from "@/composables/usePermissions";
 import { saveFieldAttendance } from "@/data/fieldAttendanceApi";
 import { ATTENDANCE_STATUSES, validateFieldAttendance } from "@/utils/workforceForms";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -20,6 +21,7 @@ import AttendanceEmployeeTable from "@/components/AttendanceEmployeeTable.vue";
 import AttendanceBulkSelectModal from "@/components/AttendanceBulkSelectModal.vue";
 
 const router = useRouter();
+const { canCreate } = usePermissions();
 const { projectLabel } = useProjectOptions();
 
 const form = reactive({
@@ -85,7 +87,14 @@ const breadcrumbs = [
 
 <template>
 	<DeskPage title="New Field Attendance" :breadcrumbs="breadcrumbs">
-		<DeskForm>
+		<div
+			v-if="!canCreate('fieldAttendance')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to create a field attendance sheet.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="saving ? 'Creating…' : 'Create'"

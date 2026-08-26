@@ -25,7 +25,7 @@ const router = useRouter();
 const store = useDataStore();
 const adapter = createDataAdapter(store);
 const confirmDialog = useConfirm();
-const { canCreate } = usePermissions();
+const { canCreate, canEdit, canDelete } = usePermissions();
 const { selectOptions } = useDoctypeMeta("Construction Rate Master");
 
 const breadcrumbs = [
@@ -507,7 +507,13 @@ async function removeRate() {
 					>
 						Cancel
 					</button>
-					<button type="button" :disabled="saving" @click="save" class="desk-save-btn">
+					<button
+						v-if="editing === 'new' ? canCreate('rateMaster') : canEdit('rateMaster')"
+						type="button"
+						:disabled="saving"
+						@click="save"
+						class="desk-save-btn"
+					>
 						{{
 							saving ? "Saving…" : editing === "new" ? "Create rate" : "Save changes"
 						}}
@@ -638,6 +644,7 @@ async function removeRate() {
 						</div>
 						<div class="flex items-center gap-2 flex-shrink-0">
 							<button
+								v-if="canDelete('rateMaster')"
 								type="button"
 								class="text-xs px-2 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 								style="border-radius: 6px"
@@ -645,7 +652,12 @@ async function removeRate() {
 							>
 								Delete
 							</button>
-							<button type="button" class="desk-save-btn" @click="editRate">
+							<button
+								v-if="canEdit('rateMaster')"
+								type="button"
+								class="desk-save-btn"
+								@click="editRate"
+							>
 								Edit
 							</button>
 						</div>

@@ -23,11 +23,13 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import AccessDenied from "@/components/AccessDenied.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete, canSubmit, canCreate } = usePermissions();
 const { projectLabel } = useProjectOptions();
 const {
 	active: wfActive,
@@ -166,7 +168,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('materialConsumption')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -175,7 +177,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft || isCancelled"
+				v-if="(isDraft || isCancelled) && canDelete('materialConsumption')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -185,7 +187,7 @@ const breadcrumbs = computed(() => [
 			</button>
 
 			<button
-				v-if="!wfActive && isDraft"
+				v-if="!wfActive && isDraft && canSubmit('materialConsumption')"
 				type="button"
 				class="desk-save-btn !text-xs"
 				:disabled="busy"
@@ -194,7 +196,7 @@ const breadcrumbs = computed(() => [
 				Submit
 			</button>
 			<button
-				v-if="!wfActive && isSubmitted"
+				v-if="!wfActive && isSubmitted && canSubmit('materialConsumption')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -204,7 +206,7 @@ const breadcrumbs = computed(() => [
 				Cancel
 			</button>
 			<button
-				v-if="!wfActive && isCancelled"
+				v-if="!wfActive && isCancelled && canCreate('materialConsumption')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"

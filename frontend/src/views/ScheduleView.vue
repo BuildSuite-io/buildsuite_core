@@ -1279,6 +1279,7 @@ onBeforeUnmount(() => {
 							@keydown.enter="onSaveRevision"
 						/>
 						<button
+							v-if="canEditAny"
 							class="text-xs px-2.5 py-1 rounded bg-ink-900 text-white hover:bg-ink-800 disabled:opacity-50"
 							:disabled="snapBusy || !newRevisionLabel.trim()"
 							@click="onSaveRevision"
@@ -1308,6 +1309,7 @@ onBeforeUnmount(() => {
 								</div>
 							</div>
 							<button
+								v-if="canEditAny"
 								class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded"
 								:disabled="snapBusy"
 								@click="onRestoreRevision(rev)"
@@ -1315,6 +1317,7 @@ onBeforeUnmount(() => {
 								Restore
 							</button>
 							<button
+								v-if="canEditAny"
 								class="text-[11px] px-1.5 py-0.5 text-ink-400 hover:text-danger-600"
 								title="Delete revision"
 								@click="onDeleteRevision(rev)"

@@ -1551,6 +1551,7 @@ usePageTitle(() => project.value?.name);
 							</div>
 							<div v-if="templateSummary" class="flex items-center gap-2 flex-wrap">
 								<button
+									v-if="canCreate('stagePlanning')"
 									type="button"
 									class="desk-save-btn"
 									@click="seedFromTemplate"
@@ -1558,6 +1559,7 @@ usePageTitle(() => project.value?.name);
 									+ Seed from {{ project.type }} template
 								</button>
 								<RouterLink
+									v-if="canCreate('stagePlanning')"
 									:to="{
 										name: 'stage-planning-new',
 										query: { projectId: project.id },
@@ -1573,6 +1575,7 @@ usePageTitle(() => project.value?.name);
 							</div>
 							<div v-else class="flex items-center gap-2 flex-wrap">
 								<RouterLink
+									v-if="canCreate('stagePlanning')"
 									:to="{
 										name: 'stage-planning-new',
 										query: { projectId: project.id },
@@ -1693,7 +1696,7 @@ usePageTitle(() => project.value?.name);
 				>
 					<template #actions>
 						<RouterLink
-							v-if="canCreate('project')"
+							v-if="canCreate('sco')"
 							:to="`/sco/new?project=${resolvedProjectId}`"
 							class="desk-save-btn"
 							>+ Raise SCO</RouterLink

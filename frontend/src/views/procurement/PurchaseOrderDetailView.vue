@@ -16,11 +16,13 @@ import {
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
+const { canEdit, canSubmit, canCreate, canDelete } = usePermissions();
 
 const po = ref(null);
 const loading = ref(true);
@@ -134,7 +136,7 @@ const breadcrumbs = computed(() => [
 		<template #actions>
 			<ProcurementStatusPill :status="po.status" class="self-center mr-1" />
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canEdit('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -143,7 +145,7 @@ const breadcrumbs = computed(() => [
 				Edit
 			</button>
 			<button
-				v-if="isDraft"
+				v-if="isDraft && canSubmit('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -153,7 +155,7 @@ const breadcrumbs = computed(() => [
 				Submit
 			</button>
 			<button
-				v-if="canReceive"
+				v-if="canReceive && canCreate('purchaseReceipt')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -163,7 +165,7 @@ const breadcrumbs = computed(() => [
 				+ Create Receipt
 			</button>
 			<button
-				v-if="isSubmitted"
+				v-if="isSubmitted && canSubmit('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -173,7 +175,7 @@ const breadcrumbs = computed(() => [
 				Cancel
 			</button>
 			<button
-				v-if="isCancelled"
+				v-if="isCancelled && canCreate('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -184,7 +186,7 @@ const breadcrumbs = computed(() => [
 				Amend
 			</button>
 			<button
-				v-if="!isSubmitted"
+				v-if="!isSubmitted && canDelete('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"

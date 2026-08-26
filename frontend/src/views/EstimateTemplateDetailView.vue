@@ -6,6 +6,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -29,6 +30,7 @@ const router = useRouter();
 const confirmDialog = useConfirm();
 const { errors, applyServerErrors, setErrors } = useFormErrors({ template_name: "templateName" });
 const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete } = usePermissions();
 
 const groupKeyOf = (row) => (row?.group_name || "").trim().toLowerCase();
 
@@ -444,6 +446,7 @@ async function removeRow(name) {
 	>
 		<template #actions>
 			<button
+				v-if="canEdit('estimateTemplate')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -452,6 +455,7 @@ async function removeRow(name) {
 				Edit
 			</button>
 			<button
+				v-if="canDelete('estimateTemplate')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -495,7 +499,7 @@ async function removeRow(name) {
 					BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.
 				</div>
 				<button
-					v-if="!addingGroup"
+					v-if="!addingGroup && canEdit('estimateTemplate')"
 					type="button"
 					class="desk-save-btn !text-xs flex-shrink-0"
 					:disabled="savingRows"
@@ -526,6 +530,7 @@ async function removeRow(name) {
 					Cancel
 				</button>
 				<button
+					v-if="canEdit('estimateTemplate')"
 					type="button"
 					class="desk-save-btn !text-xs"
 					:disabled="savingRows"
@@ -579,6 +584,7 @@ async function removeRow(name) {
 										Cancel
 									</button>
 									<button
+										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="desk-save-btn !text-xs"
 										:disabled="savingRows"
@@ -619,6 +625,7 @@ async function removeRow(name) {
 							>
 								<template v-if="group.real && editingGroupKey !== group.key">
 									<button
+										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-brand-700 disabled:opacity-40"
 										title="Rename group"
@@ -643,6 +650,7 @@ async function removeRow(name) {
 										</svg>
 									</button>
 									<button
+										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-danger-700 disabled:opacity-40"
 										title="Delete group"
@@ -737,6 +745,7 @@ async function removeRow(name) {
 								</div>
 								<div class="px-2 py-1 text-right">
 									<button
+										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-danger-700 text-base leading-none"
 										title="Remove"
@@ -816,6 +825,7 @@ async function removeRow(name) {
 										Cancel
 									</button>
 									<button
+										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="desk-save-btn !text-xs"
 										:disabled="savingRows"
@@ -828,6 +838,7 @@ async function removeRow(name) {
 
 							<div v-else class="border-t border-ink-100 px-3 py-1.5 bg-white">
 								<button
+									v-if="canEdit('estimateTemplate')"
 									type="button"
 									class="text-[11px] text-ink-500 hover:text-brand-700"
 									@click="startAddRow(group)"
@@ -875,7 +886,12 @@ async function removeRow(name) {
 				<div class="text-xs text-ink-500 mb-3">
 					Create a group first, then map items under it — same as a BOQ.
 				</div>
-				<button type="button" class="desk-save-btn !text-xs" @click="startAddGroup">
+				<button
+					v-if="canEdit('estimateTemplate')"
+					type="button"
+					class="desk-save-btn !text-xs"
+					@click="startAddGroup"
+				>
 					+ Add group
 				</button>
 			</div>
@@ -960,6 +976,7 @@ async function removeRow(name) {
 							Cancel
 						</button>
 						<button
+							v-if="canEdit('estimateTemplate')"
 							type="button"
 							class="desk-save-btn"
 							:disabled="saving"

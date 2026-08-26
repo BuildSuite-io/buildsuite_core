@@ -26,11 +26,13 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const confirmDialog = useConfirm();
+const { canEdit, canDelete, canSubmit, canCreate } = usePermissions();
 
 // If a site configures an active Frappe Workflow for Sales Invoice, the lifecycle
 // buttons below defer to it: Submit/Cancel are replaced by the workflow's allowed
@@ -348,7 +350,7 @@ async function unlinkAdvance(row) {
 					Print / PDF
 				</button>
 				<button
-					v-if="isDraft"
+					v-if="isDraft && canDelete('salesInvoice')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-danger-600 rounded-md"
 					:disabled="busy"
@@ -357,7 +359,7 @@ async function unlinkAdvance(row) {
 					Delete
 				</button>
 				<button
-					v-if="isDraft"
+					v-if="isDraft && canEdit('salesInvoice')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="router.push(`/project-finance/invoices/${inv.name}/edit`)"
@@ -366,7 +368,7 @@ async function unlinkAdvance(row) {
 				</button>
 				<!-- Plain docstatus lifecycle (no workflow configured) -->
 				<button
-					v-if="!wfActive && isDraft"
+					v-if="!wfActive && isDraft && canSubmit('salesInvoice')"
 					type="button"
 					class="text-xs desk-save-btn"
 					:disabled="busy"
@@ -375,7 +377,7 @@ async function unlinkAdvance(row) {
 					Submit
 				</button>
 				<button
-					v-if="isSubmitted && payment.outstanding > 0.01"
+					v-if="isSubmitted && payment.outstanding > 0.01 && canCreate('advance')"
 					type="button"
 					class="text-xs desk-save-btn"
 					:disabled="busy"
@@ -384,7 +386,7 @@ async function unlinkAdvance(row) {
 					Receive payment
 				</button>
 				<button
-					v-if="!wfActive && isSubmitted"
+					v-if="!wfActive && isSubmitted && canSubmit('salesInvoice')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md"
 					:disabled="busy"
@@ -436,7 +438,12 @@ async function unlinkAdvance(row) {
 
 			<!-- unlinked-advance suggestion -->
 			<div
-				v-if="canLink && availableAdvances.length && remainingOutstanding > 0.01"
+				v-if="
+					canLink &&
+					availableAdvances.length &&
+					remainingOutstanding > 0.01 &&
+					canCreate('advance')
+				"
 				class="px-4 py-2.5 bg-info-50 border border-info-200 rounded-md text-xs text-ink-700 flex items-center justify-between gap-3 flex-wrap"
 			>
 				<span>
@@ -592,7 +599,7 @@ async function unlinkAdvance(row) {
 								>Advance Payments</span
 							>
 							<button
-								v-if="canLink && availableAdvances.length"
+								v-if="canLink && availableAdvances.length && canCreate('advance')"
 								type="button"
 								class="text-xs text-brand-700 hover:underline"
 								@click="openLinkAdvance"
@@ -616,7 +623,7 @@ async function unlinkAdvance(row) {
 										fmtINR(row.allocated)
 									}}</span>
 									<button
-										v-if="canLink"
+										v-if="canLink && canCreate('advance')"
 										type="button"
 										class="text-ink-400 hover:text-danger-600 text-xs"
 										:title="`Unlink ${row.payment_entry}`"
@@ -849,6 +856,7 @@ async function unlinkAdvance(row) {
 									class="flex-1 text-sm px-2.5 py-1.5 border border-ink-200 rounded-md text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 								/>
 								<button
+									v-if="canCreate('advance')"
 									type="button"
 									class="text-xs px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-md flex-shrink-0 disabled:opacity-60"
 									:disabled="adv.saving === a.payment_entry"

@@ -25,6 +25,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, default: "" } });
@@ -32,6 +33,10 @@ const router = useRouter();
 const companyFilter = activeCompanyFilter();
 const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
 const isEdit = computed(() => !!props.id);
+const { canEdit, canCreate } = usePermissions();
+const canSaveBill = computed(() =>
+	isEdit.value ? canEdit("supplierBill") : canCreate("supplierBill")
+);
 
 // 'po' | 'direct'. Locked once editing (the source can't change on a saved bill).
 const mode = ref("po");
@@ -300,7 +305,14 @@ async function save() {
 		:breadcrumbs="breadcrumbs"
 		subtitle="A supplier payable — Submit posts it; then pay from a Bank/Cash account."
 	>
-		<DeskForm>
+		<div
+			v-if="!canSaveBill"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			You don't have permission to {{ isEdit ? "edit this bill" : "create a supplier bill" }}.
+		</div>
+		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:save-label="isEdit ? 'Save bill' : 'Create bill'"

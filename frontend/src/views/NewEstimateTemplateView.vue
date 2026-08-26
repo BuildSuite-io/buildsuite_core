@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
+import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
@@ -17,6 +18,7 @@ import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
 const router = useRouter()
 const store = useDataStore()
 const adapter = createDataAdapter(store)
+const { canCreate } = usePermissions()
 
 const form = reactive({ templateCode: '', templateName: '', projectType: '', description: '' })
 const { errors, applyServerErrors, setErrors } = useFormErrors({
@@ -66,7 +68,14 @@ const breadcrumbs = [
 <template>
   <DeskPage title="New Estimate Template" subtitle="A reusable BOQ skeleton — add rows after creating"
     :breadcrumbs="breadcrumbs">
-    <DeskForm>
+    <div
+      v-if="!canCreate('estimateTemplate')"
+      class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+      style="border-radius: 6px"
+    >
+      You don't have permission to create an estimate template.
+    </div>
+    <DeskForm v-else>
       <template #action-bar>
         <DeskActionBar :save-label="saving ? 'Creating…' : 'Create template'" :saving="saving" @save="onSave"
           @cancel="onCancel" />
