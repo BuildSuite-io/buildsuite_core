@@ -74,3 +74,52 @@ def ensure_cypress_users(password: str = "Cypress-Suite-2026!"):
 	# explicit commit persists the provisioned users.
 	frappe.db.commit()  # nosemgrep
 	return summary
+
+
+@frappe.whitelist()
+def ensure_cypress_work_order():
+	"""Return the name of a SUBMITTED Subcontractor Work Order, for detail-page e2e tests that
+	need a real record (e.g. the cross-entity create-button gating spec). Reuses any existing
+	submitted WO; otherwise provisions one (demo project + subcontractor + a line, then submit).
+	Idempotent. Returns the WO name, or None if it couldn't provision one (spec skips)."""
+	if not (frappe.conf.developer_mode or frappe.flags.in_test):
+		frappe.throw(frappe._("ensure_cypress_work_order is only available in developer / test mode"))
+
+	existing = frappe.db.get_value("Subcontractor Work Order", {"docstatus": 1}, "name")
+	if existing:
+		return existing
+
+	try:
+		from buildsuite_core.api import subcontract as sc
+
+		company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
+			"Company", {}, "name"
+		)
+		project = frappe.db.get_value("Project", {"company": company}, "name")
+		if not project:
+			project = frappe.get_doc(
+				{"doctype": "Project", "project_name": "Cypress WO Project", "company": company}
+			).insert(ignore_permissions=True).name
+		sub = frappe.db.get_value("Supplier", {"supplier_group": "Subcontractor"}, "name")
+		if not sub:
+			grp = frappe.db.get_value("Supplier Group", {"supplier_group_name": "Subcontractor"}, "name")
+			sub = frappe.get_doc(
+				{
+					"doctype": "Supplier",
+					"supplier_name": "Cypress Subcontractor",
+					"supplier_group": grp or "Subcontractor",
+				}
+			).insert(ignore_permissions=True).name
+
+		out = sc.save_work_order(
+			subcontractor=sub,
+			project=project,
+			lines=frappe.as_json([{"scope": "Tiling", "uom": "Nos", "qty": 10, "rate": 100}]),
+		)
+		doc = frappe.get_doc("Subcontractor Work Order", out["name"])
+		doc.submit()
+		frappe.db.commit()  # nosemgrep
+		return doc.name
+	except Exception:
+		frappe.db.rollback()
+		return None
