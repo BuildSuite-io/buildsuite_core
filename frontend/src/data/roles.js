@@ -562,7 +562,12 @@ const _ALL_PERSONAS = Object.keys(PERSONA_CAPS);
 const _MODULE_ACCESS = {
 	// Procurement
 	materialRequest: {
+		// Site Engineer + Foreman RAISE only (create+read, no write/delete/submit); PM authors +
+		// submits (_CRWS, no delete); Procurement is full (backend MATERIAL_REQUEST_ROLE_PERMS).
 		create: ["pm", "site-engineer", "foreman", "procurement", "admin", "bsa"],
+		edit: ["pm", "procurement", "admin", "bsa"],
+		del: ["procurement", "admin", "bsa"],
+		submit: ["pm", "procurement", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -584,7 +589,11 @@ const _MODULE_ACCESS = {
 		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
 	},
 	materialConsumption: {
+		// Stock Entry (Material Issue). Site Engineer posts + submits (_CRWS, no delete);
+		// Procurement + Store Keeper are full (backend STOCK_ENTRY_ROLE_PERMS).
 		create: ["site-engineer", "procurement", "store-keeper", "admin", "bsa"],
+		del: ["procurement", "store-keeper", "admin", "bsa"],
+		submit: ["site-engineer", "procurement", "store-keeper", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -755,8 +764,11 @@ const _MODULE_ACCESS = {
 		read: _ALL_PERSONAS.filter((p) => p !== "hr-manager"),
 	},
 	supplierBill: {
-		// Purchase Invoice (PURCHASE_INVOICE_ROLE_PERMS)
+		// Purchase Invoice (PURCHASE_INVOICE_ROLE_PERMS). Director + Accountant own invoicing
+		// (_FULL_SUB); PM raises + edits (_CRW) but the Accountant deletes/submits.
 		create: ["director", "pm", "accountant", "admin", "bsa"],
+		del: ["director", "accountant", "admin", "bsa"],
+		submit: ["director", "accountant", "admin", "bsa"],
 		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
 	},
 	salesInvoice: {
@@ -788,8 +800,13 @@ const _MODULE_ACCESS = {
 		],
 	},
 	expense: {
-		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS)
+		// Expense Entry (EXPENSE_ENTRY_ROLE_PERMS). Director/PM/Accountant own it (_FULL_SUB);
+		// Site Engineer + Foreman create+edit drafts (no delete/submit); Store Keeper/Procurement/
+		// QS/Estimator/HR RAISE only (create+read, no write/delete/submit). Finance submits.
 		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "qs", "estimator", "hr-manager", "admin", "bsa"],
+		edit: ["director", "pm", "accountant", "site-engineer", "foreman", "admin", "bsa"],
+		del: ["director", "pm", "accountant", "admin", "bsa"],
+		submit: ["director", "pm", "accountant", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
