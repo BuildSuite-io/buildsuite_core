@@ -115,6 +115,10 @@ _FULL_SUB = {**_FULL, "submit": 1, "cancel": 1, "amend": 1}  # CRWDSX
 _RAISE = {"read": 1, "create": 1, "print": 1}  # CR — raise own records only
 _CRWS = {"read": 1, "write": 1, "create": 1, "submit": 1, "report": 1, "print": 1}  # CRWS
 _CRW = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}  # CRW — edit, no delete
+# Select-only: the role may resolve the doctype in a LINK-FIELD PICKER (frappe.get_list honours
+# `select` — verified) but cannot list / report / export it. Used for reference masters a persona
+# only ever picks, never opens a screen for. Applied with _SELECT_PTYPES so read is cleared.
+_SELECT = {"select": 1, "print": 1}  # S — pick in a link field, no read
 
 # Assembly + Estimate Template: full for the estimation roles, hidden for the rest.
 ASSEMBLY_TEMPLATE_ROLE_PERMS = {role: _FULL for role in _ESTIMATION_ROLES}
@@ -336,6 +340,9 @@ _PTYPES = ("read", "write", "create", "delete", "report", "export", "print")
 # Submittable doctypes (Material Request, Purchase Order, Stock Entry, …) also carry
 # the transition ptypes.
 _SUBMIT_PTYPES = _PTYPES + ("submit", "cancel", "amend")
+# Picker-only reference masters carry `select` too — include it so a _SELECT grant sets select=1
+# AND clears read/report/export/print (which are in _PTYPES).
+_SELECT_PTYPES = _PTYPES + ("select",)
 
 
 def _ensure_role(role_name):
@@ -447,7 +454,8 @@ def setup_estimation_master_permissions():
 	for doctype in ("Assembly", "Estimate Template"):
 		_apply_role_perms(doctype, ASSEMBLY_TEMPLATE_ROLE_PERMS)
 	_apply_role_perms("Construction Rate Master", RATE_MASTER_ROLE_PERMS)
-	_apply_role_perms("UOM", {role: _READ for role in _UOM_READ_ROLES})
+	# UOM is a pure link-picker target (unit dropdown on BOQ / Rate Master) — select, not read.
+	_apply_role_perms("UOM", {role: _SELECT for role in _UOM_READ_ROLES}, _SELECT_PTYPES)
 
 
 def setup_purchase_stock_permissions():
@@ -556,10 +564,10 @@ SUBCONTRACT_ROLE_PERMS = {
 	"BuildSuite Accountant": _FULL,  # Accountant maintains subcontractors fully (per the Accountant ruling)
 	"BuildSuite Estimator": _READ,  # Estimator reads subcontractors (per the Estimator ruling)
 }
-# Trade / Delivery Type masters — read for everyone in the module, write for
-# procurement + admins (they're resolved by the WO link pickers).
+# Trade / Delivery Type masters — pure WO link-picker targets (no screen), so everyone in the
+# module only SELECTs them; Procurement + admins maintain the master (full CRWD).
 SUBCONTRACT_MASTER_ROLE_PERMS = {
-	**{role: _READ for role in _SUBCONTRACT_FULL_ROLES + _SUBCONTRACT_READ_ROLES},
+	**{role: _SELECT for role in _SUBCONTRACT_FULL_ROLES + _SUBCONTRACT_READ_ROLES},
 	"BuildSuite Procurement Officer": _FULL,
 	"BuildSuite Administrator": _FULL,
 }
@@ -691,14 +699,18 @@ def setup_subcontract_permissions():
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_WO_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)
-	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS)
-	_apply_role_perms("Subcontract Delivery Type", SUBCONTRACT_MASTER_ROLE_PERMS)
+	_apply_role_perms("Construction Trade", SUBCONTRACT_MASTER_ROLE_PERMS, _SELECT_PTYPES)
+	_apply_role_perms("Subcontract Delivery Type", SUBCONTRACT_MASTER_ROLE_PERMS, _SELECT_PTYPES)
 	# The bill's billing pickers (expense account, tax template, withholding category) read
 	# ERPNext's accounting masters — grant the finance-facing BuildSuite roles read so the
 	# Vue dropdowns populate for non-admin personas.
-	_billing_read = {role: _READ for role in _BILL_FULL_ROLES + ("BuildSuite Accountant",)}
-	for dt in ("Account", "Purchase Taxes and Charges Template", "Tax Category", "Tax Withholding Category"):
-		_apply_role_perms(dt, _billing_read)
+	_billing_roles = _BILL_FULL_ROLES + ("BuildSuite Accountant",)
+	# Account keeps read (it has a Finance Accounts screen + the disburse/JE context reads it).
+	_apply_role_perms("Account", {role: _READ for role in _billing_roles})
+	# The tax-template masters are pure billing-picker targets (no screen) — select, not read.
+	_billing_select = {role: _SELECT for role in _billing_roles}
+	for dt in ("Purchase Taxes and Charges Template", "Tax Category", "Tax Withholding Category"):
+		_apply_role_perms(dt, _billing_select, _SELECT_PTYPES)
 
 
 # --- M3 — Workforce -----------------------------------------------------------

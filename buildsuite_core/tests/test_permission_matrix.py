@@ -492,3 +492,63 @@ class TestPersonaCrudMatrix(_PersonaBase):
 
 	def test_accountant_matrix(self):
 		self._assert_persona_matrix("Accountant", PERSONA_CRUD_MATRIX["Accountant"])
+
+
+class TestPickerSelectPermissions(_PersonaBase):
+	"""Picker-only reference masters grant `select` (link-field resolution), not `read`.
+
+	The picker (frappe.get_list) honours `select`, so dropdowns keep populating, but the persona
+	can no longer list / report / export the master. Masters with their own screen (Account) keep
+	read; masters that maintain the master (Procurement on Trade) keep full CRWD."""
+
+	def setUp(self):
+		super().setUp()
+		from buildsuite_core.permissions.setup import (
+			setup_estimation_master_permissions,
+			setup_subcontract_permissions,
+		)
+
+		setup_estimation_master_permissions()
+		setup_subcontract_permissions()
+		frappe.clear_cache()
+
+	def test_uom_is_select_only_for_estimation(self):
+		email = self._make_user("Estimator")
+		frappe.set_user(email)
+		try:
+			self.assertFalse(frappe.has_permission("UOM", "read"))
+			self.assertTrue(frappe.has_permission("UOM", "select"))
+			frappe.get_list("UOM", fields=["name"], limit_page_length=1)  # picker: no PermissionError
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_trade_masters_select_only_for_read_roles(self):
+		email = self._make_user("Quantity Surveyor")
+		frappe.set_user(email)
+		try:
+			for dt in ("Construction Trade", "Subcontract Delivery Type"):
+				self.assertFalse(frappe.has_permission(dt, "read"), dt)
+				self.assertTrue(frappe.has_permission(dt, "select"), dt)
+				frappe.get_list(dt, fields=["name"], limit_page_length=1)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_procurement_keeps_full_on_trade(self):
+		email = self._make_user("Procurement Officer")
+		frappe.set_user(email)
+		try:
+			self.assertTrue(frappe.has_permission("Construction Trade", "read"))
+			self.assertTrue(frappe.has_permission("Construction Trade", "write"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_tax_templates_select_but_account_keeps_read(self):
+		email = self._make_user("Project Manager")  # a billing-picker role
+		frappe.set_user(email)
+		try:
+			self.assertFalse(frappe.has_permission("Purchase Taxes and Charges Template", "read"))
+			self.assertTrue(frappe.has_permission("Purchase Taxes and Charges Template", "select"))
+			# Account keeps read — it has a Finance Accounts screen + the disburse/JE context reads it.
+			self.assertTrue(frappe.has_permission("Account", "read"))
+		finally:
+			frappe.set_user("Administrator")
