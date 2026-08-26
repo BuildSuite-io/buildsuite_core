@@ -101,10 +101,6 @@ const TABS = [
 	["trend", "Weekly trend"],
 ];
 
-function printReport() {
-	window.print();
-}
-
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Site Execution", to: "/site-execution" },
@@ -113,18 +109,7 @@ const breadcrumbs = [
 </script>
 
 <template>
-	<DeskPage title="Delay Analysis" :breadcrumbs="breadcrumbs">
-		<template #actions>
-			<button
-				type="button"
-				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-				style="border-radius: 6px"
-				@click="printReport"
-			>
-				Print
-			</button>
-		</template>
-
+	<DeskPage title="Delay Analysis" :breadcrumbs="breadcrumbs" printable>
 		<p class="text-xs text-ink-500 mb-3">
 			Stages slipping, what sits downstream, silent tasks and the weekly completion trend.
 		</p>

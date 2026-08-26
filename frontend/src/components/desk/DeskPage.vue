@@ -20,7 +20,17 @@ const props = defineProps({
 	// Accepts a single status string OR an array of status strings (each rendered as a
 	// StatusBadge inline with the title — useful for status + priority pairs).
 	status: { type: [String, Array], default: "" },
+	// Puts a Print / PDF button in the actions row and marks the page as a print
+	// root, so the shared @media print rules in style.css hide the desk chrome and
+	// scale the type down. Kept on the primitive rather than pasted into each report
+	// so every report surface prints the same way and none are silently missing it.
+	printable: { type: Boolean, default: false },
 });
+
+// window is not in template scope, so this cannot be an inline handler.
+function printPage() {
+	window.print();
+}
 
 const statusList = computed(() => {
 	if (!props.status) return [];
@@ -29,7 +39,7 @@ const statusList = computed(() => {
 </script>
 
 <template>
-	<div class="desk-page">
+	<div class="desk-page" :class="printable ? 'report-root report-content' : ''">
 		<nav
 			v-if="breadcrumbs.length"
 			class="text-[11px] text-ink-500 flex items-center gap-1.5 flex-wrap mb-1.5"
@@ -55,8 +65,36 @@ const statusList = computed(() => {
 				</div>
 				<p v-if="subtitle" class="text-xs text-ink-500 mt-0.5">{{ subtitle }}</p>
 			</div>
-			<div data-test="page-actions" class="flex items-center gap-2 flex-shrink-0">
+			<div
+				data-test="page-actions"
+				class="flex items-center gap-2 flex-shrink-0 print:hidden"
+			>
 				<slot name="actions" />
+				<button
+					v-if="printable"
+					type="button"
+					class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 flex items-center gap-1.5"
+					style="border-radius: 6px"
+					title="Print, or save as PDF from the print dialog"
+					@click="printPage"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="w-3.5 h-3.5 text-ink-400"
+					>
+						<path d="M6 9V2h12v7" />
+						<path
+							d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+						/>
+						<path d="M6 14h12v8H6z" />
+					</svg>
+					Print
+				</button>
 			</div>
 		</div>
 

@@ -133,7 +133,7 @@ function toggle(k) {
 </script>
 
 <template>
-	<DeskPage title="Expense Summary" :breadcrumbs="breadcrumbs">
+	<DeskPage title="Expense Summary" :breadcrumbs="breadcrumbs" printable>
 		<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">Loading…</div>
 		<div v-else-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
 		<div v-else class="space-y-4">

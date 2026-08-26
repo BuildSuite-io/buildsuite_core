@@ -152,7 +152,7 @@ function exportCsv() {
 </script>
 
 <template>
-	<DeskPage title="Petty Cash Statement" :breadcrumbs="breadcrumbs">
+	<DeskPage title="Petty Cash Statement" :breadcrumbs="breadcrumbs" printable>
 		<div class="space-y-4">
 			<!-- Holder picker -->
 			<div class="flex items-end gap-3 flex-wrap">
