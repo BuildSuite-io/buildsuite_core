@@ -58,46 +58,18 @@ const visibleSections = computed(() => {
 const canSee = (section) => visibleSections.value.includes(section);
 const noAccess = computed(() => !visibleSections.value.length);
 
+// Per the prototype's Site Execution rule (S50), DocType shortcut tiles render WITHOUT a
+// description — only the Reports group below carries subtext.
 const TRANSACTIONS = [
-	{
-		section: "petty-cash",
-		icon: "hand-coins",
-		label: "Petty Cash",
-		desc: "Request, disburse and track holder balances.",
-	},
-	{
-		section: "expenses",
-		icon: "receipt",
-		label: "Expenses",
-		desc: "Log site spend and verify claims.",
-	},
-	{
-		section: "invoices",
-		icon: "file-text",
-		label: "Invoices",
-		desc: "Bill customers, receive payments, advances.",
-	},
-	{
-		section: "bills",
-		icon: "banknote",
-		label: "Bills",
-		desc: "Supplier & subcontractor payables.",
-	},
-	{
-		section: "payments",
-		icon: "refresh-ccw",
-		label: "Payments",
-		desc: "Every money movement — review or cancel transactions.",
-	},
+	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash" },
+	{ section: "expenses", icon: "receipt", label: "Expenses" },
+	{ section: "invoices", icon: "file-text", label: "Invoices" },
+	{ section: "bills", icon: "banknote", label: "Bills" },
+	{ section: "payments", icon: "refresh-ccw", label: "Payments" },
 ];
 const MASTERS = [
-	{ section: "customers", icon: "users-round", label: "Customers", desc: "Customer master." },
-	{
-		section: "suppliers",
-		icon: "building-2",
-		label: "Suppliers",
-		desc: "Suppliers & subcontractors.",
-	},
+	{ section: "customers", icon: "users-round", label: "Customers" },
+	{ section: "suppliers", icon: "building-2", label: "Suppliers" },
 ];
 // Report tiles are configured per workspace in Workspace Setting (same as Site Execution /
 // Procurement) — the standard ERPNext finance reports through the in-app renderer plus the
@@ -201,7 +173,6 @@ const showOverview = computed(() => canSee("overview"));
 							:key="t.section"
 							:icon="t.icon"
 							:label="t.label"
-							:description="t.desc"
 							:to="`/project-finance/${t.section}`"
 						/>
 					</div>
@@ -221,7 +192,6 @@ const showOverview = computed(() => canSee("overview"));
 							:key="t.section"
 							:icon="t.icon"
 							:label="t.label"
-							:description="t.desc"
 							:to="`/project-finance/${t.section}`"
 						/>
 					</div>
