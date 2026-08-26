@@ -22,7 +22,7 @@ const breadcrumbs = computed(() => {
 </script>
 
 <template>
-	<DeskPage :title="report" subtitle="Report" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="report" subtitle="Report" :breadcrumbs="breadcrumbs" printable>
 		<FrappeReport :report="report" />
 	</DeskPage>
 </template>

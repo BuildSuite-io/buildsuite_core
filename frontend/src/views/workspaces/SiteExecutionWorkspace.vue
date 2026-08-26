@@ -41,24 +41,6 @@ const today = computed(() => {
 	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 });
 
-// Short descriptions for each shortcut tile, keyed by route_path. Kept as a
-// local map (not on the Workspace Structure Settings DocType schema yet) per
-// the same exploratory-mockup framing that owns the Reports group below — a
-// schema migration to add `description` to the WSST child table is straight-
-// forward but out of scope for this UX tweak.
-const SHORTCUT_DESCRIPTIONS = {
-	"/projects": "Plan, track, and manage construction projects.",
-	"/work-packages": "Cost-and-control boundaries within a project.",
-	"/tasks": "Day-to-day execution items with progress tracking.",
-	"/stage-plannings": "Time-phased delivery stages and dependencies.",
-	"/progress-entries": "Daily task progress, labour, and blockers.",
-	"/sco": "Scope change orders and BOQ revision tie-ins.",
-	"/schedule": "Gantt view across projects and stages.",
-};
-function descriptionFor(routePath) {
-	return SHORTCUT_DESCRIPTIONS[routePath] || "";
-}
-
 // --- Session 35 additive: Project Dashboard tile -------------------------
 // "Owner" roles that should see the portfolio dashboard tile. Hardcoded
 // here per the exploratory-visualisation framing; production would put this
@@ -169,13 +151,14 @@ onMounted(async () => {
 				v-if="shortcuts.length"
 				class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
 			>
+				<!-- Per the prototype (S50), DocType shortcut tiles render WITHOUT a
+				     description — only the Reports group below carries subtext. -->
 				<WorkspaceShortcut
 					v-for="sc in shortcuts"
 					:key="sc.id"
 					:to="sc.route_path"
 					:icon="sc.icon"
 					:label="sc.label"
-					:description="descriptionFor(sc.route_path)"
 				/>
 			</div>
 

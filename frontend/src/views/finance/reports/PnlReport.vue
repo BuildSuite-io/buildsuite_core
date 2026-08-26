@@ -146,7 +146,7 @@ function indentStyle(level) {
 </script>
 
 <template>
-	<DeskPage title="Profit &amp; Loss" :breadcrumbs="breadcrumbs">
+	<DeskPage title="Profit &amp; Loss" :breadcrumbs="breadcrumbs" printable>
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
 		<div v-else>
 			<ReportFilters :active="anyFilter" :shown="leafCount" noun="accounts" @clear="clearFilters">

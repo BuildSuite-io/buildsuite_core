@@ -295,6 +295,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 		:title="meta ? meta.title : 'Report not found'"
 		:subtitle="meta ? meta.desc : `No report registered for '${slug}'`"
 		:breadcrumbs="breadcrumbs"
+		:printable="!!meta"
 	>
 		<div
 			v-if="!meta"

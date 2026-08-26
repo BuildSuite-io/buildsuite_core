@@ -66,7 +66,7 @@ const closing = computed(() => statement.value?.closing || 0);
 </script>
 
 <template>
-	<DeskPage title="Cash & Bank Statement" :breadcrumbs="breadcrumbs">
+	<DeskPage title="Cash & Bank Statement" :breadcrumbs="breadcrumbs" printable>
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
 		<div v-else class="space-y-4">
 			<ReportFilters
