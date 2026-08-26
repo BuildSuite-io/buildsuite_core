@@ -38,6 +38,7 @@ export const deleteMaterialRequest = (name) => docCall("delete_material_request"
 
 // Purchase Order
 export const getPurchaseOrder = (name) => docCall("get_purchase_order", { name });
+export const getPoPrintData = (name) => docCall("get_po_print_data", { name });
 export const getMrForPo = (materialRequest) =>
 	docCall("get_mr_for_po", { material_request: materialRequest });
 export const savePurchaseOrder = (payload) =>
