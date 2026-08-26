@@ -315,6 +315,13 @@ const routes = [
 				component: () => import("@/views/DelayAnalysisReportView.vue"),
 			},
 			{
+				// Bespoke project cost-control report — Planned/Committed/Actual/Variance per BOQ
+				// cost code. Launched from the project overview with ?project=<id>.
+				path: "reports/cost-vs-budget",
+				name: "report-cost-vs-budget",
+				component: () => import("@/views/CostVsBudgetReportView.vue"),
+			},
+			{
 				path: "reports/:slug",
 				name: "report-stub",
 				component: () => import("@/views/workspaces/ReportStubView.vue"),

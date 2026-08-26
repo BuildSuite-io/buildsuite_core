@@ -62,9 +62,9 @@ export const TEAM_COLS = [
 // carrying `?project=<id>` — OverviewTab.reportLink() injects the project from the current
 // record. `to` is a project-independent route location; the project query is added there.
 // The report pages consume it: the Frappe report renderer (report-view) seeds filter values
-// from the URL query, Delay Analysis reads route.query.project, and the finance P&L is
-// project-scoped. cost-vs-budget has no report yet, so it falls through to the /reports/<slug>
-// stub (still project-carrying).
+// from the URL query, while Delay Analysis and Cost vs Budget read route.query.project and the
+// finance P&L is project-scoped. A tile with neither `to` nor `routeName` falls through to the
+// /reports/<slug> stub (still project-carrying).
 export const PROJECT_REPORTS = [
 	{
 		slug: "progress-report",
@@ -85,6 +85,7 @@ export const PROJECT_REPORTS = [
 		slug: "cost-vs-budget",
 		icon: "chart-bar",
 		label: "Cost vs budget by cost code",
+		to: { name: "report-cost-vs-budget" },
 		desc: "Planned, committed, actual and variance per cost code, grouped by cost type.",
 	},
 	{
