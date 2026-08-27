@@ -6,9 +6,13 @@ fields the denser Desk overview (`/dashboard`) still renders.
 
 One aggregate read. It resolves the logged-in user's role (their Persona) and returns that
 role's four snapshot tiles, a primary CTA, and three alert cards — the same per-role content
-as the prototype's HomeWorkspaceView. All project/task/SCO reads go through get_list, so the
-permission query conditions apply: a team-scoped user (QS, Site Engineer, …) sees only their
-own projects/tasks; admins/PMs see the whole company. Single-company for now."""
+as the prototype's HomeWorkspaceView. The *project* rows go through get_list, so the permission
+query conditions apply (a team-scoped user sees only their own projects; admins/PMs see the
+whole company). Every aggregate metric, by contrast, is an elevated, exception-safe count/sum
+(`_count`/`_sum`) gated by which tiles the role gets — NOT by the caller's doctype permissions.
+Keep it that way: a permission-respecting get_list on a metric doctype hard-throws for any
+persona lacking read on it and 500s the whole landing page (it did, for Task Progress Entry).
+Single-company for now."""
 
 import json
 
@@ -323,11 +327,7 @@ def get_home_dashboard():
 	overdue_tasks = _count(
 		"Task", {**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]}
 	)
-	progress_today = len(
-		frappe.get_list(
-			"Task Progress Entry", filters={"entry_date": str(today)}, pluck="name", limit_page_length=0
-		)
-	)
+	progress_today = _count("Task Progress Entry", {"entry_date": str(today)})
 	users = _count("User", {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]})
 	stage_pending = _count("Stage Planning", {**proj_in, "workflow_state": "Pending Approval"})
 	pending_scos_ct = _count("Scope Change Order", {**proj_in, "status": "Pending Approval"})
@@ -366,14 +366,7 @@ def get_home_dashboard():
 	my_open = _my()
 	my_overdue = _my({"exp_end_date": ["<", str(today)]})
 	my_due_week = _my({"exp_end_date": ["between", [str(today), str(add_days(today, 7))]]})
-	my_progress_today = len(
-		frappe.get_list(
-			"Task Progress Entry",
-			filters={"entry_date": str(today), "owner": user},
-			pluck="name",
-			limit_page_length=0,
-		)
-	)
+	my_progress_today = _count("Task Progress Entry", {"entry_date": str(today), "owner": user})
 
 	# --- lazily-computed heavier metrics (only used by some roles) ---
 	def boqs():
