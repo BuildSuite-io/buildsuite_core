@@ -116,10 +116,6 @@ watch(projectId, (id) => {
 });
 load(projectId.value);
 
-function printReport() {
-	window.print();
-}
-
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Cost vs Budget by Cost Code" },
@@ -127,18 +123,7 @@ const breadcrumbs = [
 </script>
 
 <template>
-	<DeskPage title="Cost vs Budget by Cost Code" :breadcrumbs="breadcrumbs">
-		<template #actions>
-			<button
-				type="button"
-				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-				style="border-radius: 6px"
-				@click="printReport"
-			>
-				Print
-			</button>
-		</template>
-
+	<DeskPage title="Cost vs Budget by Cost Code" :breadcrumbs="breadcrumbs" printable>
 		<p class="text-xs text-ink-500 mb-3">
 			Planned, committed, actual and variance per cost code, grouped by cost type.
 		</p>

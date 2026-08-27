@@ -11,6 +11,7 @@
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import StatusBadge from "@/components/StatusBadge.vue";
+import PrintLetterhead from "@/components/PrintLetterhead.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getProgressReport } from "@/data/progressReportApi";
 
@@ -81,17 +82,6 @@ const periodLabel = computed(
 			period.value
 		])
 );
-
-// Company monogram — up to two words, so "Acme Commercial Pvt Ltd" reads AC.
-const companyMonogram = computed(() => {
-	const name = company.value.name || "BuildSuite";
-	return name
-		.split(/\s+/)
-		.filter((w) => !/^(pvt|private|ltd|limited|llp|inc|co|and|&)$/i.test(w))
-		.slice(0, 2)
-		.map((w) => w[0]?.toUpperCase() || "")
-		.join("");
-});
 
 function plural(n, one, many) {
 	return n === 1 ? one : many;
@@ -369,32 +359,8 @@ function backToProject() {
 				</span>
 			</div>
 
-			<!-- Letterhead (client) -->
-			<section
-				v-if="isClient"
-				class="report-section mb-6 pb-4 border-b-2 border-ink-900 flex items-center gap-3"
-			>
-				<img
-					v-if="company.logo"
-					:src="company.logo"
-					:alt="company.name"
-					class="h-11 w-auto object-contain flex-shrink-0"
-				/>
-				<div
-					v-else
-					class="h-11 w-11 rounded-lg bg-brand-600 text-white flex items-center justify-center font-semibold text-base flex-shrink-0"
-				>
-					{{ companyMonogram }}
-				</div>
-				<div>
-					<div class="text-lg font-semibold text-ink-900 leading-tight">
-						{{ company.name }}
-					</div>
-					<div class="text-[11px] text-ink-500 mt-0.5">
-						Registered office address · GSTIN · Contact
-					</div>
-				</div>
-			</section>
+			<!-- Letterhead (client) — shared BuildSuite Standard band -->
+			<PrintLetterhead v-if="isClient" />
 
 			<!-- Cover header -->
 			<section class="report-section mb-6 pb-4 border-b border-ink-200">

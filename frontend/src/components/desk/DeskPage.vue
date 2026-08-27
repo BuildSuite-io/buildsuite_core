@@ -12,6 +12,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import StatusBadge from "@/components/StatusBadge.vue";
+import PrintLetterhead from "@/components/PrintLetterhead.vue";
 
 const props = defineProps({
 	title: { type: String, required: true },
@@ -40,6 +41,9 @@ const statusList = computed(() => {
 
 <template>
 	<div class="desk-page" :class="printable ? 'report-root report-content' : ''">
+		<!-- Shared branding band — print-only, so the on-screen report stays a plain
+		     app table but the printed/PDF output carries the Letter Head. -->
+		<PrintLetterhead v-if="printable" class="hidden print:block" />
 		<nav
 			v-if="breadcrumbs.length"
 			class="text-[11px] text-ink-500 flex items-center gap-1.5 flex-wrap mb-1.5"
