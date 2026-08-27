@@ -16,6 +16,8 @@ async function call(method, args) {
 }
 
 export const getCoreSettings = () => call("get_core_settings");
+// The shared branding band (Letter Head) every print surface renders — one source of truth.
+export const getLetterHead = () => call("get_letter_head");
 // Petty Cash Account — the configurable Cash/Bank float petty cash and expenses post to/from.
 export const setPettyCashAccount = (account) => call("set_petty_cash_account", { account });
 export const setProjectNaming = (projectNaming) =>

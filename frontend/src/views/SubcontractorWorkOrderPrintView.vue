@@ -15,6 +15,7 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { getWoPrintData } from "@/data/subcontractApi";
 import { showToast } from "@/utils/appToast";
+import PrintLetterhead from "@/components/PrintLetterhead.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtINR, fmtDate } from "@/utils/format";
 
@@ -100,25 +101,11 @@ watch(() => props.id, load, { immediate: true });
 
 		<!-- ===== Document ===== -->
 		<main v-if="wo" class="report-content max-w-4xl mx-auto px-6 py-8 text-ink-900">
-			<!-- Letterhead -->
+			<!-- Letterhead (shared BuildSuite Standard band) + doc identity -->
 			<section
 				class="report-section flex items-start justify-between gap-6 pb-4 mb-6 border-b-2 border-ink-300"
 			>
-				<div class="min-w-0">
-					<div class="flex items-center gap-3">
-						<div
-							class="w-12 h-12 rounded border border-dashed border-ink-300 flex items-center justify-center text-[9px] text-ink-400 flex-shrink-0"
-						>
-							LOGO
-						</div>
-						<div class="min-w-0">
-							<div class="text-lg font-semibold truncate">{{ company || "—" }}</div>
-							<div class="text-[11px] text-ink-400 italic">
-								Registered address · GSTIN — to be configured (Letter Head)
-							</div>
-						</div>
-					</div>
-				</div>
+				<PrintLetterhead inline class="flex-1" />
 				<div class="text-right flex-shrink-0">
 					<div class="text-xl font-bold tracking-wide">WORK ORDER</div>
 					<div class="text-sm font-medium text-ink-700 mt-0.5">{{ wo.name }}</div>

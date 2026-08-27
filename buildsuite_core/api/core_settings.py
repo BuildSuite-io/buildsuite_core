@@ -62,6 +62,24 @@ def get_core_settings():
 
 
 @frappe.whitelist()
+def get_letter_head():
+	"""The branding band every printed surface (docs + reports) renders. Resolves the
+	default Letter Head, falling back to the seeded 'BuildSuite Standard'. Read-only and
+	available to any authenticated user, so all print views share one source of truth."""
+	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (
+		LETTER_HEAD,
+	)
+
+	name = (
+		frappe.db.get_value("Letter Head", {"is_default": 1, "disabled": 0}, "name")
+		or (LETTER_HEAD if frappe.db.exists("Letter Head", LETTER_HEAD) else None)
+	)
+	if not name:
+		return None
+	return {"name": name, "content": frappe.db.get_value("Letter Head", name, "content")}
+
+
+@frappe.whitelist()
 def set_petty_cash_account(account: str | None = None):
 	"""Set the configurable Petty Cash Account — the Cash/Bank float petty cash and expenses
 	post to/from. Must be a ledger Cash/Bank account of the default company."""

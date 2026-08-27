@@ -6,19 +6,43 @@ branding) and the Subcontractor Work Order Print Format (Jinja). Kept split per 
 Frappe convention — the letter head carries generic branding, and the work-order
 identity (number, date, status) lives in the print-format body. Idempotent."""
 
+import base64
+
 import frappe
 
 LETTER_HEAD = "BuildSuite Standard"
 WO_PRINT_FORMAT = "Subcontractor Work Order"
 PO_PRINT_FORMAT = "Purchase Order"
 
-_LETTER_HEAD_HTML = """
+# The one branding record every printed surface renders (docs + reports, via the
+# frontend get_letter_head() endpoint and the server print engine). Editing this
+# record later re-flows the new branding everywhere. GSTIN is fictional demo data.
+
+
+def _logo_data_uri():
+	"""Embed the logo as a data URI so it renders identically in the browser
+	(report v-html + window.print) and in wkhtmltopdf server-PDF — no URL to resolve."""
+	path = frappe.get_app_path("buildsuite_core", "public", "images", "buildsuite-logo.png")
+	try:
+		with open(path, "rb") as fh:
+			return "data:image/png;base64," + base64.b64encode(fh.read()).decode("ascii")
+	except OSError:
+		return ""
+
+
+def _letter_head_html():
+	logo = _logo_data_uri()
+	logo_el = (
+		f'<img src="{logo}" alt="BuildSuite" style="width:48px; height:48px; border-radius:8px; object-fit:contain; flex-shrink:0;" />'
+		if logo
+		else '<div style="width:48px; height:48px; border:1px dashed #cbd5e1; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#94a3b8;">LOGO</div>'
+	)
+	return f"""
 <div style="display:flex; align-items:center; gap:12px; padding:4px 0;">
-	<div style="width:44px; height:44px; border:1px dashed #cbd5e1; border-radius:6px;
-		display:flex; align-items:center; justify-content:center; font-size:9px; color:#94a3b8;">LOGO</div>
+	{logo_el}
 	<div>
-		<div style="font-size:16px; font-weight:600; color:#0f172a;">BuildSuite</div>
-		<div style="font-size:11px; color:#94a3b8; font-style:italic;">Construction OS — registered address &middot; GSTIN to be configured</div>
+		<div style="font-size:18px; font-weight:600; color:#0f172a;">BuildSuite</div>
+		<div style="font-size:11px; color:#64748b;">Registered office address, City &middot; GSTIN 1234567</div>
 	</div>
 </div>
 """
@@ -289,14 +313,17 @@ def seed_print_assets():
 
 
 def _seed_letter_head():
+	html = _letter_head_html()
 	if frappe.db.exists("Letter Head", LETTER_HEAD):
+		# Keep the branding in sync on migrate (logo + GSTIN now populated).
+		frappe.db.set_value("Letter Head", LETTER_HEAD, "content", html)
 		return
 	frappe.get_doc(
 		{
 			"doctype": "Letter Head",
 			"letter_head_name": LETTER_HEAD,
 			"source": "HTML",
-			"content": _LETTER_HEAD_HTML,
+			"content": html,
 			"is_default": 1,
 			"disabled": 0,
 		}
