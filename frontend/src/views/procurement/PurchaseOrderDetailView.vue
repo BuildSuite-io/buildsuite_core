@@ -49,14 +49,9 @@ function onEdit() {
 	router.push(`/procurement/purchase-orders/${po.value.name}/edit`);
 }
 function onPrint() {
-	// Opens ERPNext's native print view in a new tab, applying the seeded
-	// "Purchase Order" Print Format + "BuildSuite Standard" letter head.
-	window.open(
-		`/printview?doctype=Purchase%20Order&name=${encodeURIComponent(
-			po.value.name
-		)}&format=Purchase%20Order&letterhead=BuildSuite%20Standard&trigger_print=1`,
-		"_blank"
-	);
+	// In-app print view (mirrors the Work Order workflow) — no new tab. The Vue
+	// page is the visual twin of the seeded Frappe "Purchase Order" Print Format.
+	router.push(`/procurement/purchase-orders/${po.value.name}/print`);
 }
 function onCreateReceipt() {
 	router.push(`/procurement/receipts/new?po=${po.value.name}`);

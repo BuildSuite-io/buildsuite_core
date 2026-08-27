@@ -385,6 +385,12 @@ const routes = [
 				component: () => import("@/views/procurement/NewPurchaseOrderView.vue"),
 			},
 			{
+				path: "procurement/purchase-orders/:id/print",
+				name: "purchase-order-print",
+				component: () => import("@/views/procurement/PurchaseOrderPrintView.vue"),
+				props: true,
+			},
+			{
 				path: "procurement/receipts",
 				name: "purchase-receipts",
 				component: () => import("@/views/procurement/PurchaseReceiptsListView.vue"),

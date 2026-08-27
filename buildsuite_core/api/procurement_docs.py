@@ -260,6 +260,51 @@ def get_purchase_order(name):
 	return out
 
 
+def _supplier_detail(supplier):
+	"""Party block for the PO print view — tax id on the Supplier, contact
+	person/phone/email on its native Contact (mirrors _subcontractor_detail)."""
+	if not supplier or not frappe.db.exists("Supplier", supplier):
+		return None
+	detail = {"tax_id": frappe.db.get_value("Supplier", supplier, "tax_id")}
+	contact = frappe.get_all(
+		"Contact",
+		filters=[
+			["Dynamic Link", "link_doctype", "=", "Supplier"],
+			["Dynamic Link", "link_name", "=", supplier],
+		],
+		fields=["first_name", "email_id", "mobile_no", "phone"],
+		limit=1,
+	)
+	if contact:
+		c = contact[0]
+		detail["contact_person"] = c.first_name
+		detail["email"] = c.email_id
+		detail["phone"] = c.mobile_no or c.phone
+	return detail
+
+
+@frappe.whitelist()
+def get_po_print_data(name):
+	"""A Purchase Order enriched with the party/project detail the in-app print view
+	needs (supplier contact + tax id, project code/location). Single fetch so the Vue
+	print page mirrors the seeded Frappe Print Format from one payload."""
+	doc = frappe.get_doc(PURCHASE_ORDER, name)
+	doc.check_permission("read")
+	out = _serialize_po(doc)
+	out["supplier_detail"] = _supplier_detail(doc.supplier)
+	out["project_detail"] = (
+		frappe.db.get_value(
+			"Project",
+			doc.project,
+			["custom_project_id", "customer", "location"],
+			as_dict=True,
+		)
+		if doc.project
+		else None
+	)
+	return out
+
+
 @frappe.whitelist()
 def get_mr_for_po(material_request):
 	"""Prefill payload for a PO raised from an approved Material Request — the
