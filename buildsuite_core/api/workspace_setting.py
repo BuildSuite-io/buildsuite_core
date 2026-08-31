@@ -1,13 +1,17 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-"""Whitelisted read/write for per-workspace **report-style shortcut** tiles
-(Workspace Setting Single). Each live BuildSuite workspace renders an ordered list
-of report tiles; admins configure them per workspace in the Workspace Setting screen.
+"""Whitelisted read/write for the per-workspace shortcut tiles (Workspace Setting Single).
+Two parallel groups, both tagged by workspace slug and configured in the Workspace Setting
+screen:
 
-A tile's destination is either an explicit `route` (an in-app path like
-`/subcontractor-work-orders`, or a Desk URL like `/app/query-report/Stock Balance`)
-or a linked Frappe `Report` (whose Desk route + name are derived when `route` is blank)."""
+- **Reports** — a tile's destination is an explicit `route` (an in-app path like
+  `/subcontractor-work-orders`, or a Desk URL like `/app/query-report/Stock Balance`) or a
+  linked Frappe `Report` (whose Desk route + name are derived when `route` is blank).
+- **Records** — a tile points at an admin-curated DocType; it opens the generic /records
+  list + add/edit form for that DocType. The list config (columns/search/sort) is derived
+  from the DocType's own Frappe meta. The configured DocTypes form an allowlist that gates
+  the generic list/form config endpoints (Frappe permissions still gate each record)."""
 
 from urllib.parse import quote
 
@@ -92,7 +96,7 @@ def get_workspace_reports(workspace):
 
 @frappe.whitelist()
 def get_workspace_settings():
-	"""Every live workspace + its configured report rows, for the admin screen."""
+	"""Every live workspace + its configured report and doctype rows, for the admin screen."""
 	_require_admin()
 	settings = frappe.get_single(SETTINGS)
 	by_ws = {w["slug"]: [] for w in WORKSPACES}
@@ -107,7 +111,18 @@ def get_workspace_settings():
 					"description": row.description or "",
 				}
 			)
-	return {"workspaces": list(WORKSPACES), "reports": by_ws}
+	by_dt = {w["slug"]: [] for w in WORKSPACES}
+	for row in settings.doctypes:
+		if row.workspace in by_dt:
+			by_dt[row.workspace].append(
+				{
+					"label": row.label or "",
+					"doctype": row.document_type or "",
+					"icon": row.icon or "",
+					"description": row.description or "",
+				}
+			)
+	return {"workspaces": list(WORKSPACES), "reports": by_ws, "doctypes": by_dt}
 
 
 @frappe.whitelist()
@@ -154,3 +169,149 @@ def set_workspace_reports(workspace, reports=None):
 	settings.flags.ignore_permissions = True
 	settings.save()
 	return get_workspace_settings()
+
+
+# --------------------------------------------------------------------------- #
+# DocType shortcut tiles — the generic /records list + form for admin-curated
+# DocTypes. Parallel to the report tiles above.
+# --------------------------------------------------------------------------- #
+# List fieldtypes that never belong as a list column even if flagged in_list_view.
+_NON_LIST_FIELDTYPES = {"Table", "Table MultiSelect", "Section Break", "Column Break", "HTML", "Button"}
+
+
+def _resolve_doctype(row):
+	"""A stored doctype row → a renderable tile, or None. Hidden if the DocType is gone
+	or the user can't read it (so a tile never leaks a DocType a persona has no access to)."""
+	dt = (row.get("document_type") or "").strip()
+	if not dt or not frappe.db.exists("DocType", dt):
+		return None
+	if not frappe.has_permission(dt, "read"):
+		return None
+	return {
+		"label": (row.get("label") or "").strip() or dt,
+		"doctype": dt,
+		"route": f"/records/{quote(dt)}",
+		"icon": (row.get("icon") or "file-text").strip() or "file-text",
+		"description": (row.get("description") or "").strip(),
+	}
+
+
+def _allowed_doctypes():
+	"""The allowlist: every DocType an admin has added to any workspace's Records group.
+	The generic list/form config endpoints serve only these — the routes can't be turned
+	into an open browser of arbitrary DocTypes (Frappe perms still gate each row too)."""
+	settings = frappe.get_single(SETTINGS)
+	return {r.document_type for r in settings.doctypes if r.document_type}
+
+
+def _require_allowed(doctype):
+	if doctype not in _allowed_doctypes():
+		frappe.throw(
+			_("{0} is not available here.").format(doctype or "DocType"), frappe.PermissionError
+		)
+
+
+@frappe.whitelist()
+def get_workspace_doctypes(workspace):
+	"""Ordered, renderable DocType tiles for a workspace. Any signed-in user."""
+	if workspace not in _SLUGS:
+		return []
+	settings = frappe.get_single(SETTINGS)
+	out = []
+	for row in settings.doctypes:
+		if row.workspace != workspace:
+			continue
+		tile = _resolve_doctype(row.as_dict())
+		if tile:
+			out.append(tile)
+	return out
+
+
+@frappe.whitelist()
+def set_workspace_doctypes(workspace, doctypes=None):
+	"""Replace one workspace's DocType rows (order preserved), leaving other workspaces'
+	rows untouched. Admin only."""
+	_require_admin()
+	if workspace not in _SLUGS:
+		frappe.throw(_("Unknown workspace: {0}").format(workspace))
+	doctypes = frappe.parse_json(doctypes) or []
+	settings = frappe.get_single(SETTINGS)
+
+	kept = [r for r in settings.doctypes if r.workspace != workspace]
+	settings.set("doctypes", [])
+	for r in kept:
+		settings.append(
+			"doctypes",
+			{
+				"workspace": r.workspace,
+				"label": r.label,
+				"document_type": r.document_type,
+				"icon": r.icon,
+				"description": r.description,
+			},
+		)
+	for row in doctypes:
+		dt = (row.get("doctype") or "").strip()
+		if not dt:
+			continue
+		settings.append(
+			"doctypes",
+			{
+				"workspace": workspace,
+				"label": (row.get("label") or "").strip(),
+				"document_type": dt,
+				"icon": (row.get("icon") or "").strip(),
+				"description": (row.get("description") or "").strip(),
+			},
+		)
+	settings.flags.ignore_permissions = True
+	settings.save()
+	return get_workspace_settings()
+
+
+@frappe.whitelist()
+def get_doctype_list_config(doctype):
+	"""The DocTypeListView props for an allow-listed DocType, derived from its Frappe meta:
+	columns from in_list_view fields, search from search_fields, order from sort_field."""
+	_require_allowed(doctype)
+	meta = frappe.get_meta(doctype)
+
+	list_fields = [
+		df.fieldname
+		for df in meta.fields
+		if df.in_list_view and df.fieldtype not in _NON_LIST_FIELDTYPES
+	]
+	if meta.title_field and meta.title_field not in list_fields:
+		list_fields.insert(0, meta.title_field)
+	field_order = ["name"] + [f for f in list_fields if f != "name"]
+
+	search = [s.strip() for s in (meta.search_fields or "").split(",") if s.strip()]
+	search_fields = ["name"] + [s for s in search if s != "name"]
+	if meta.title_field and meta.title_field not in search_fields:
+		search_fields.append(meta.title_field)
+
+	order_by = f"{meta.sort_field or 'modified'} {(meta.sort_order or 'desc').lower()}"
+
+	return {
+		"doctype": doctype,
+		"label": doctype,
+		"fieldOrder": field_order,
+		"searchFields": search_fields,
+		"initialOrderBy": order_by,
+		"titleField": meta.title_field or "name",
+		"isSubmittable": bool(meta.is_submittable),
+	}
+
+
+@frappe.whitelist()
+def get_doctype_permissions(doctype):
+	"""The current user's action permissions on an allow-listed DocType — for gating the
+	New / Save / Delete buttons. Server-side enforcement is unchanged; this is UI only."""
+	_require_allowed(doctype)
+	return {
+		"read": bool(frappe.has_permission(doctype, "read")),
+		"write": bool(frappe.has_permission(doctype, "write")),
+		"create": bool(frappe.has_permission(doctype, "create")),
+		"delete": bool(frappe.has_permission(doctype, "delete")),
+		"submit": bool(frappe.has_permission(doctype, "submit")),
+	}

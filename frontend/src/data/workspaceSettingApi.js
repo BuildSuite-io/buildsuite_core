@@ -24,3 +24,18 @@ export const getWorkspaceSettings = () => call("get_workspace_settings");
 // Replace one workspace's rows (order preserved). Admin only.
 export const setWorkspaceReports = (workspace, reports) =>
 	call("set_workspace_reports", { workspace, reports: JSON.stringify(reports || []) });
+
+// --- DocType shortcut tiles (the generic /records list + form) ---
+
+// Ordered, renderable DocType tiles for a workspace (any signed-in user).
+export const getWorkspaceDoctypes = (workspace) => call("get_workspace_doctypes", { workspace });
+
+// Replace one workspace's DocType rows (order preserved). Admin only.
+export const setWorkspaceDoctypes = (workspace, doctypes) =>
+	call("set_workspace_doctypes", { workspace, doctypes: JSON.stringify(doctypes || []) });
+
+// DocTypeListView props derived from a DocType's Frappe meta (allow-listed only).
+export const getDoctypeListConfig = (doctype) => call("get_doctype_list_config", { doctype });
+
+// The current user's action permissions on a DocType, for gating New / Save / Delete.
+export const getDoctypePermissions = (doctype) => call("get_doctype_permissions", { doctype });

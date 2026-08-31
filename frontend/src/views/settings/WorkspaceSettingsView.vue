@@ -8,7 +8,11 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
-import { getWorkspaceSettings, setWorkspaceReports } from "@/data/workspaceSettingApi";
+import {
+	getWorkspaceSettings,
+	setWorkspaceReports,
+	setWorkspaceDoctypes,
+} from "@/data/workspaceSettingApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -20,23 +24,33 @@ const store = useDataStore();
 const router = useRouter();
 
 const workspaces = ref([]); // [{ slug, label }]
-const byWorkspace = ref({}); // { slug: [row, …] }
+const byWorkspace = ref({}); // { slug: [report row, …] }
+const docByWorkspace = ref({}); // { slug: [doctype row, …] }
 const activeSlug = ref("");
 const saving = ref(false);
 const loading = ref(true);
 
 const rows = computed(() => byWorkspace.value[activeSlug.value] || []);
+const docRows = computed(() => docByWorkspace.value[activeSlug.value] || []);
+
+// Rebuild the per-workspace report + doctype maps from an authoritative response.
+function hydrate(res) {
+	const rmap = {};
+	const dmap = {};
+	for (const w of workspaces.value) {
+		rmap[w.slug] = (res?.reports?.[w.slug] || []).map((r) => ({ ...r }));
+		dmap[w.slug] = (res?.doctypes?.[w.slug] || []).map((r) => ({ ...r }));
+	}
+	byWorkspace.value = rmap;
+	docByWorkspace.value = dmap;
+}
 
 async function load() {
 	loading.value = true;
 	try {
 		const res = await getWorkspaceSettings();
 		workspaces.value = res?.workspaces || [];
-		const map = {};
-		for (const w of workspaces.value) {
-			map[w.slug] = (res?.reports?.[w.slug] || []).map((r) => ({ ...r }));
-		}
-		byWorkspace.value = map;
+		hydrate(res);
 		if (!activeSlug.value && workspaces.value.length)
 			activeSlug.value = workspaces.value[0].slug;
 	} catch (err) {
@@ -46,36 +60,42 @@ async function load() {
 	}
 }
 
+function move(arr, i, delta) {
+	const j = i + delta;
+	if (j < 0 || j >= arr.length) return;
+	const [row] = arr.splice(i, 1);
+	arr.splice(j, 0, row);
+}
+
 function addReport() {
 	rows.value.push({ label: "", report: "", route: "", icon: "file-text", description: "" });
 }
 function removeReport(i) {
 	rows.value.splice(i, 1);
 }
-function move(i, delta) {
-	const j = i + delta;
-	if (j < 0 || j >= rows.value.length) return;
-	const [row] = rows.value.splice(i, 1);
-	rows.value.splice(j, 0, row);
+function addRecord() {
+	docRows.value.push({ label: "", doctype: "", icon: "file-text", description: "" });
+}
+function removeRecord(i) {
+	docRows.value.splice(i, 1);
 }
 
 async function save() {
 	if (saving.value) return;
-	const bad = rows.value.find((r) => !r.report && !(r.route || "").trim());
-	if (bad) {
-		showToast("Every row needs a report or a route.", "error");
+	if (rows.value.find((r) => !r.report && !(r.route || "").trim())) {
+		showToast("Every report row needs a report or a route.", "error");
+		return;
+	}
+	if (docRows.value.find((r) => !(r.doctype || "").trim())) {
+		showToast("Every record row needs a DocType.", "error");
 		return;
 	}
 	saving.value = true;
 	try {
-		const res = await setWorkspaceReports(activeSlug.value, rows.value);
-		// re-hydrate all workspaces from the authoritative response
-		const map = {};
-		for (const w of workspaces.value) {
-			map[w.slug] = (res?.reports?.[w.slug] || []).map((r) => ({ ...r }));
-		}
-		byWorkspace.value = map;
-		showToast(`${activeLabel.value} reports saved`);
+		await setWorkspaceReports(activeSlug.value, rows.value);
+		const res = await setWorkspaceDoctypes(activeSlug.value, docRows.value);
+		hydrate(res); // final response carries both maps
+		showToast(`${activeLabel.value} saved`);
 	} catch (err) {
 		showToast(err.message || "Failed to save", "error");
 	} finally {
@@ -111,7 +131,7 @@ onMounted(() => {
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Saving…' : `Save ${activeLabel} reports`"
+					:save-label="saving ? 'Saving…' : `Save ${activeLabel}`"
 					:saving="saving"
 					@save="save"
 					@cancel="load"
@@ -205,7 +225,7 @@ onMounted(() => {
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === 0"
 											title="Move up"
-											@click="move(i, -1)"
+											@click="move(rows, i, -1)"
 										>
 											↑
 										</button>
@@ -213,7 +233,7 @@ onMounted(() => {
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === rows.length - 1"
 											title="Move down"
-											@click="move(i, 1)"
+											@click="move(rows, i, 1)"
 										>
 											↓
 										</button>
@@ -236,6 +256,97 @@ onMounted(() => {
 					</div>
 					<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addReport">
 						+ Add report
+					</button>
+				</DeskSection>
+
+				<DeskSection :title="`${activeLabel} records`" :cols="1">
+					<p class="text-sm text-ink-500 -mt-1">
+						DocType tiles render in the {{ activeLabel }} workspace's
+						<strong>Records</strong> group. Each opens the generic list + add/edit form
+						for that DocType (columns and filters come from the DocType's own fields).
+					</p>
+					<div class="overflow-x-auto">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="text-left text-ink-500 border-b border-ink-100">
+									<th class="py-1.5 pr-2 font-medium w-8">#</th>
+									<th class="py-1.5 pr-2 font-medium w-44">Label</th>
+									<th class="py-1.5 pr-2 font-medium w-52">DocType</th>
+									<th class="py-1.5 pr-2 font-medium w-28">Icon</th>
+									<th class="py-1.5 pr-2 font-medium">Description</th>
+									<th class="w-20"></th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="(r, i) in docRows"
+									:key="i"
+									class="border-b border-ink-50 align-top"
+								>
+									<td class="py-1 pr-2 text-ink-400 tabular-nums pt-2.5">
+										{{ i + 1 }}
+									</td>
+									<td class="py-1 pr-2">
+										<DeskInput
+											v-model="r.label"
+											placeholder="Tile title (defaults to DocType)"
+										/>
+									</td>
+									<td class="py-1 pr-2">
+										<DeskLinkPicker
+											v-model="r.doctype"
+											doctype="DocType"
+											placeholder="Select DocType"
+											value-field="name"
+											:search-fields="['name']"
+											:page-length="20"
+										/>
+									</td>
+									<td class="py-1 pr-2">
+										<DeskInput v-model="r.icon" placeholder="file-text" />
+									</td>
+									<td class="py-1 pr-2">
+										<DeskInput
+											v-model="r.description"
+											placeholder="Short description"
+										/>
+									</td>
+									<td class="py-1 text-center whitespace-nowrap pt-2">
+										<button
+											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
+											:disabled="i === 0"
+											title="Move up"
+											@click="move(docRows, i, -1)"
+										>
+											↑
+										</button>
+										<button
+											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
+											:disabled="i === docRows.length - 1"
+											title="Move down"
+											@click="move(docRows, i, 1)"
+										>
+											↓
+										</button>
+										<button
+											class="text-ink-400 hover:text-danger-600 px-1"
+											title="Remove"
+											@click="removeRecord(i)"
+										>
+											×
+										</button>
+									</td>
+								</tr>
+								<tr v-if="!docRows.length">
+									<td colspan="6" class="py-3 text-center text-ink-400">
+										No records configured for {{ activeLabel }} yet.
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addRecord">
+						+ Add record
 					</button>
 				</DeskSection>
 			</template>
