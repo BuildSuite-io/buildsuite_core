@@ -177,6 +177,8 @@ def set_workspace_reports(workspace, reports=None):
 # --------------------------------------------------------------------------- #
 # List fieldtypes that never belong as a list column even if flagged in_list_view.
 _NON_LIST_FIELDTYPES = {"Table", "Table MultiSelect", "Section Break", "Column Break", "HTML", "Button"}
+# Fieldtypes that make a usable list filter (discrete/enumerable or a simple text/date match).
+_FILTERABLE_FIELDTYPES = {"Link", "Select", "Check", "Date", "Datetime", "Data", "Small Text"}
 
 
 def _resolve_doctype(row):
@@ -292,6 +294,27 @@ def get_doctype_list_config(doctype):
 
 	order_by = f"{meta.sort_field or 'modified'} {(meta.sort_order or 'desc').lower()}"
 
+	# Filter controls, derived from the DocType's own meta: Frappe's list filters
+	# (in_standard_filter) plus the list columns (in_list_view), of filterable types.
+	filters = []
+	seen = set()
+	for df in meta.fields:
+		if df.fieldname in seen or df.fieldname == "name" or df.hidden:
+			continue
+		if df.fieldtype not in _FILTERABLE_FIELDTYPES:
+			continue
+		if not (df.in_standard_filter or df.in_list_view):
+			continue
+		seen.add(df.fieldname)
+		filters.append(
+			{
+				"fieldname": df.fieldname,
+				"label": df.label or df.fieldname,
+				"fieldtype": df.fieldtype,
+				"options": df.options or "",
+			}
+		)
+
 	return {
 		"doctype": doctype,
 		"label": doctype,
@@ -300,6 +323,7 @@ def get_doctype_list_config(doctype):
 		"initialOrderBy": order_by,
 		"titleField": meta.title_field or "name",
 		"isSubmittable": bool(meta.is_submittable),
+		"filters": filters,
 	}
 
 
