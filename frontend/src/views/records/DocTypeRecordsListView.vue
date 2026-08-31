@@ -81,13 +81,7 @@ function onRow(row) {
 <template>
 	<DeskPage :title="config?.label || doctype" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<button
-				v-if="perms.create"
-				type="button"
-				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
-				style="border-radius: 6px"
-				@click="onNew"
-			>
+			<button v-if="perms.create" type="button" class="desk-save-btn" @click="onNew">
 				+ New
 			</button>
 		</template>

@@ -338,4 +338,37 @@ def get_doctype_permissions(doctype):
 		"create": bool(frappe.has_permission(doctype, "create")),
 		"delete": bool(frappe.has_permission(doctype, "delete")),
 		"submit": bool(frappe.has_permission(doctype, "submit")),
+		"cancel": bool(frappe.has_permission(doctype, "cancel")),
 	}
+
+
+@frappe.whitelist()
+def submit_record(doctype, name):
+	"""Submit a saved draft of an allow-listed DocType (doc.submit enforces the submit
+	permission + validation server-side)."""
+	_require_allowed(doctype)
+	doc = frappe.get_doc(doctype, name)
+	doc.submit()
+	return {"name": doc.name, "docstatus": doc.docstatus}
+
+
+@frappe.whitelist()
+def cancel_record(doctype, name):
+	"""Cancel a submitted document of an allow-listed DocType."""
+	_require_allowed(doctype)
+	doc = frappe.get_doc(doctype, name)
+	doc.cancel()
+	return {"name": doc.name, "docstatus": doc.docstatus}
+
+
+@frappe.whitelist()
+def amend_record(doctype, name):
+	"""Amend a cancelled document — a fresh draft copy linked via amended_from."""
+	_require_allowed(doctype)
+	src = frappe.get_doc(doctype, name)
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled document can be amended."))
+	new = frappe.copy_doc(src)
+	new.amended_from = name
+	new.insert()
+	return {"name": new.name, "docstatus": new.docstatus}

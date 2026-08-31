@@ -4,9 +4,10 @@
 // Dynamic Link, Select, Check, Date and numeric cells all work (a row's Dynamic
 // Link resolves its target from the sibling cell in the same row). Add / remove
 // rows; new rows seed their field defaults.
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import DocTypeFieldControl from "./DocTypeFieldControl.vue";
+import DocTypeChildRowModal from "./DocTypeChildRowModal.vue";
 
 const props = defineProps({
 	modelValue: { type: Array, default: () => [] },
@@ -56,6 +57,11 @@ function removeRow(i) {
 	next.splice(i, 1);
 	emit("update:modelValue", next);
 }
+
+// Full-detail modal for a single row (all child fields, not just the grid columns).
+const detailIndex = ref(-1);
+const detailOpen = computed(() => detailIndex.value >= 0);
+const detailRow = computed(() => rows.value[detailIndex.value] || {});
 </script>
 
 <template>
@@ -67,7 +73,7 @@ function removeRow(i) {
 					<th v-for="c in columns" :key="c.fieldname" class="px-2 py-2 text-left font-medium">
 						{{ c.label || c.fieldname }}<span v-if="c.reqd" class="text-danger-600"> *</span>
 					</th>
-					<th class="w-8"></th>
+					<th class="w-16"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -82,11 +88,19 @@ function removeRow(i) {
 							compact
 						/>
 					</td>
-					<td class="px-2 py-1 text-center pt-2">
+					<td class="px-2 py-1 text-center whitespace-nowrap pt-2">
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-700 px-1"
+							title="Open row detail"
+							@click="detailIndex = i"
+						>
+							⤢
+						</button>
 						<button
 							v-if="!disabled"
 							type="button"
-							class="text-ink-400 hover:text-danger-600"
+							class="text-ink-400 hover:text-danger-600 px-1"
 							title="Remove row"
 							@click="removeRow(i)"
 						>
@@ -106,5 +120,15 @@ function removeRow(i) {
 				+ Add row
 			</button>
 		</div>
+
+		<DocTypeChildRowModal
+			:open="detailOpen"
+			:row="detailRow"
+			:doctype="doctype"
+			:title="`Row ${detailIndex + 1} · ${doctype}`"
+			:disabled="disabled"
+			@close="detailIndex = -1"
+		/>
 	</div>
 </template>
+

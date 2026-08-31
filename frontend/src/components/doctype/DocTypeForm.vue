@@ -2,13 +2,24 @@
 // Generic, meta-driven form for an arbitrary DocType. Renders each field by its
 // fieldtype via the shared DocTypeFieldControl, honouring reqd / read_only /
 // hidden / depends_on, plus full-width child-table grids (DocTypeChildTable) and
-// Dynamic Links. Loads via frappe.client.get (full doc incl. child tables) and
-// saves via frappe.client.insert / save — so untouched child rows round-trip.
+// Dynamic Links. For submittable DocTypes the action bar follows docstatus:
+// Draft → Save / Submit / Delete; Submitted → Cancel; Cancelled → Amend / Delete.
 import { computed, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
-import { getRecord, insertRecord, saveRecord } from "@/data/doctypeRecordApi";
+import {
+	getRecord,
+	insertRecord,
+	saveRecord,
+	deleteRecord,
+	submitRecord,
+	cancelRecord,
+	amendRecord,
+} from "@/data/doctypeRecordApi";
 import { getDoctypePermissions } from "@/data/workspaceSettingApi";
+import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
+import StatusBadge from "@/components/StatusBadge.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DocTypeFieldControl from "@/components/doctype/DocTypeFieldControl.vue";
 import DocTypeChildTable from "@/components/doctype/DocTypeChildTable.vue";
@@ -17,19 +28,29 @@ const props = defineProps({
 	doctype: { type: String, required: true },
 	name: { type: String, default: "" },
 });
-const emit = defineEmits(["saved", "cancelled"]);
 
+const router = useRouter();
+const confirmDialog = useConfirm();
 const { meta, loading: metaLoading } = useDoctypeMeta(props.doctype);
 
 const form = reactive({ doctype: props.doctype });
 const loading = ref(false);
-const saving = ref(false);
+const busy = ref(false);
 const formError = ref("");
-const perms = ref({ read: true, write: true, create: true, delete: true });
+const perms = ref({ read: true, write: true, create: true, delete: true, submit: true, cancel: true });
 
 const isEdit = computed(() => !!props.name);
+const docstatus = computed(() => Number(form.docstatus || 0));
+const submittable = computed(() => !!meta.value?.is_submittable);
+const isDraft = computed(() => isEdit.value && docstatus.value === 0);
+const isSubmitted = computed(() => isEdit.value && docstatus.value === 1);
+const isCancelled = computed(() => isEdit.value && docstatus.value === 2);
+// A submitted/cancelled document is not field-editable through this form.
+const locked = computed(() => isSubmitted.value || isCancelled.value);
+const statusLabel = computed(() =>
+	docstatus.value === 1 ? "Submitted" : docstatus.value === 2 ? "Cancelled" : "Draft"
+);
 
-// Structural / not-yet-supported fieldtypes never rendered (Table is handled separately).
 const SKIP = new Set([
 	"Section Break",
 	"Column Break",
@@ -62,7 +83,6 @@ function isRenderable(f) {
 	return evalDependsOn(f.depends_on);
 }
 
-// Sections split on Section Break; scalars render in a 2-col grid, tables full-width.
 const sections = computed(() => {
 	const fields = meta.value?.fields || [];
 	const out = [{ label: "", fields: [], tables: [] }];
@@ -79,11 +99,9 @@ const sections = computed(() => {
 });
 
 function isReadOnly(f) {
-	return (
-		!!f.read_only ||
-		(isEdit.value && !perms.value.write) ||
-		(!isEdit.value && !perms.value.create)
-	);
+	if (locked.value) return true;
+	if (f.read_only) return true;
+	return isEdit.value ? !perms.value.write : !perms.value.create;
 }
 
 // --- load --------------------------------------------------------------------
@@ -93,7 +111,7 @@ function resolveDefault(f) {
 	if (f.fieldtype === "Date" && /^today$/i.test(d)) return new Date().toISOString().slice(0, 10);
 	if (f.fieldtype === "Datetime" && /^(now|today)$/i.test(d))
 		return new Date().toISOString().slice(0, 16);
-	if (/^(user|__user)$/i.test(d)) return undefined; // let the server stamp the session user
+	if (/^(user|__user)$/i.test(d)) return undefined;
 	return f.fieldtype === "Check" ? (Number(d) ? 1 : 0) : d;
 }
 
@@ -137,7 +155,15 @@ watch(
 );
 watch(() => [props.doctype, props.name], load, { immediate: true });
 
-// --- save --------------------------------------------------------------------
+// --- navigation --------------------------------------------------------------
+function goList() {
+	router.push({ name: "records-list", params: { doctype: props.doctype } });
+}
+function goEdit(name) {
+	router.replace({ name: "record-edit", params: { doctype: props.doctype, name } });
+}
+
+// --- actions -----------------------------------------------------------------
 function missingRequired() {
 	const missing = [];
 	for (const s of sections.value) {
@@ -160,23 +186,113 @@ async function onSave() {
 		formError.value = `Please fill: ${missing.join(", ")}.`;
 		return;
 	}
-	saving.value = true;
+	busy.value = true;
 	try {
 		const doc = isEdit.value ? await saveRecord({ ...form }) : await insertRecord({ ...form });
 		showToast(isEdit.value ? "Saved." : "Created.");
-		emit("saved", doc);
+		if (!isEdit.value && doc?.name) goEdit(doc.name);
+		else await load();
 	} catch (err) {
 		formError.value = err.message || "Save failed.";
 	} finally {
-		saving.value = false;
+		busy.value = false;
 	}
 }
 
-const canSave = computed(() => (isEdit.value ? perms.value.write : perms.value.create));
+async function onSubmit() {
+	formError.value = "";
+	const missing = missingRequired();
+	if (missing.length) {
+		formError.value = `Please fill: ${missing.join(", ")}.`;
+		return;
+	}
+	busy.value = true;
+	try {
+		await saveRecord({ ...form }); // persist edits before submitting
+		await submitRecord(props.doctype, props.name);
+		showToast("Submitted.");
+		await load();
+	} catch (err) {
+		formError.value = err.message || "Submit failed.";
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onCancel() {
+	const ok = await confirmDialog({
+		title: `Cancel ${props.name}?`,
+		message: "This cancels the submitted document.",
+		confirmLabel: "Cancel document",
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		await cancelRecord(props.doctype, props.name);
+		showToast("Cancelled.");
+		await load();
+	} catch (err) {
+		formError.value = err.message || "Cancel failed.";
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onAmend() {
+	const ok = await confirmDialog({
+		title: `Amend ${props.name}?`,
+		message: "Creates a fresh editable draft copy; the original stays cancelled.",
+		confirmLabel: "Amend",
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		const res = await amendRecord(props.doctype, props.name);
+		showToast("Amended — a draft was created.");
+		goEdit(res.name);
+	} catch (err) {
+		formError.value = err.message || "Amend failed.";
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onDelete() {
+	const ok = await confirmDialog({
+		title: `Delete ${props.name}?`,
+		message: "This permanently removes the record.",
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		await deleteRecord(props.doctype, props.name);
+		showToast("Deleted.");
+		goList();
+	} catch (err) {
+		formError.value = err.message || "Delete failed.";
+		busy.value = false;
+	}
+}
+
+const SECONDARY =
+	"text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md";
+const DANGER =
+	"text-xs px-3 py-1.5 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 rounded-md";
 </script>
 
 <template>
 	<div>
+		<div
+			v-if="isEdit && submittable"
+			class="mb-4 flex items-center gap-2"
+		>
+			<StatusBadge :status="statusLabel" />
+			<span v-if="isDraft" class="text-[11px] text-ink-500">Not submitted yet.</span>
+		</div>
+
 		<div
 			v-if="formError"
 			class="mb-4 px-4 py-2.5 bg-danger-50 border border-danger-200 rounded-md text-xs text-danger-700 whitespace-pre-line"
@@ -232,21 +348,77 @@ const canSave = computed(() => (isEdit.value ? perms.value.write : perms.value.c
 			<div
 				class="flex items-center gap-2 pt-2 border-t border-ink-200 sticky bottom-0 bg-white py-3"
 			>
+				<!-- New -->
 				<button
-					v-if="canSave"
+					v-if="!isEdit && perms.create"
 					type="submit"
-					class="text-xs px-3 py-1.5 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium rounded-md"
-					:disabled="saving"
+					class="desk-save-btn"
+					:disabled="busy"
 				>
-					{{ saving ? "Saving…" : isEdit ? "Save" : "Create" }}
+					{{ busy ? "Creating…" : "Create" }}
 				</button>
-				<button
-					type="button"
-					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
-					@click="emit('cancelled')"
-				>
-					Cancel
-				</button>
+
+				<!-- Draft -->
+				<template v-else-if="isDraft">
+					<button v-if="perms.write" type="submit" class="desk-save-btn" :disabled="busy">
+						{{ busy ? "Saving…" : "Save" }}
+					</button>
+					<button
+						v-if="submittable && perms.submit"
+						type="button"
+						:class="SECONDARY"
+						:disabled="busy"
+						@click="onSubmit"
+					>
+						Submit
+					</button>
+					<button
+						v-if="perms.delete"
+						type="button"
+						:class="DANGER"
+						:disabled="busy"
+						@click="onDelete"
+					>
+						Delete
+					</button>
+				</template>
+
+				<!-- Submitted -->
+				<template v-else-if="isSubmitted">
+					<button
+						v-if="perms.cancel"
+						type="button"
+						:class="DANGER"
+						:disabled="busy"
+						@click="onCancel"
+					>
+						Cancel
+					</button>
+				</template>
+
+				<!-- Cancelled -->
+				<template v-else-if="isCancelled">
+					<button
+						v-if="perms.create"
+						type="button"
+						class="desk-save-btn"
+						:disabled="busy"
+						@click="onAmend"
+					>
+						Amend
+					</button>
+					<button
+						v-if="perms.delete"
+						type="button"
+						:class="DANGER"
+						:disabled="busy"
+						@click="onDelete"
+					>
+						Delete
+					</button>
+				</template>
+
+				<button type="button" :class="SECONDARY" @click="goList">Back</button>
 			</div>
 		</form>
 	</div>
