@@ -83,20 +83,44 @@ function isRenderable(f) {
 	return evalDependsOn(f.depends_on);
 }
 
-const sections = computed(() => {
+// Field layout: Tab Break → tabs, Section Break → sections within a tab, then fields.
+// Fields before the first Tab Break form an implicit first tab (Frappe's "Details").
+const activeTab = ref(0);
+
+const tabs = computed(() => {
 	const fields = meta.value?.fields || [];
-	const out = [{ label: "", fields: [], tables: [] }];
+	const mkSection = (label) => ({ label: label || "", fields: [], tables: [] });
+	const mkTab = (label) => ({ label: label || "", sections: [] });
+	const out = [];
+	let tab = mkTab("");
+	let section = mkSection("");
+	tab.sections.push(section);
+	out.push(tab);
 	for (const f of fields) {
+		if (f.fieldtype === "Tab Break") {
+			tab = mkTab(f.label || "");
+			section = mkSection("");
+			tab.sections.push(section);
+			out.push(tab);
+			continue;
+		}
 		if (f.fieldtype === "Section Break") {
-			out.push({ label: f.label || "", fields: [], tables: [] });
+			section = mkSection(f.label || "");
+			tab.sections.push(section);
 			continue;
 		}
 		if (!isRenderable(f)) continue;
-		if (f.fieldtype === "Table") out[out.length - 1].tables.push(f);
-		else out[out.length - 1].fields.push(f);
+		if (f.fieldtype === "Table") section.tables.push(f);
+		else section.fields.push(f);
 	}
-	return out.filter((s) => s.fields.length || s.tables.length);
+	const pruned = out
+		.map((t) => ({ ...t, sections: t.sections.filter((s) => s.fields.length || s.tables.length) }))
+		.filter((t) => t.sections.length);
+	if (pruned.length > 1 && !pruned[0].label) pruned[0].label = "Details";
+	return pruned;
 });
+
+const currentTab = computed(() => tabs.value[activeTab.value] || tabs.value[0] || { sections: [] });
 
 function isReadOnly(f) {
 	if (locked.value) return true;
@@ -166,26 +190,39 @@ function goEdit(name) {
 // --- actions -----------------------------------------------------------------
 function missingRequired() {
 	const missing = [];
-	for (const s of sections.value) {
-		for (const f of s.fields) {
-			if (!f.reqd || isReadOnly(f)) continue;
-			const v = form[f.fieldname];
-			if (v === undefined || v === null || v === "") missing.push(f.label || f.fieldname);
+	let firstTab = null;
+	const flag = (label, ti) => {
+		missing.push(label);
+		if (firstTab === null) firstTab = ti;
+	};
+	tabs.value.forEach((t, ti) => {
+		for (const s of t.sections) {
+			for (const f of s.fields) {
+				if (!f.reqd || isReadOnly(f)) continue;
+				const v = form[f.fieldname];
+				if (v === undefined || v === null || v === "") flag(f.label || f.fieldname, ti);
+			}
+			for (const tb of s.tables) {
+				if (tb.reqd && !(form[tb.fieldname] || []).length) flag(tb.label || tb.fieldname, ti);
+			}
 		}
-		for (const t of s.tables) {
-			if (t.reqd && !(form[t.fieldname] || []).length) missing.push(t.label || t.fieldname);
-		}
+	});
+	return { missing, firstTab };
+}
+
+function guardRequired() {
+	const { missing, firstTab } = missingRequired();
+	if (missing.length) {
+		if (firstTab !== null) activeTab.value = firstTab;
+		formError.value = `Please fill: ${missing.join(", ")}.`;
+		return false;
 	}
-	return missing;
+	return true;
 }
 
 async function onSave() {
 	formError.value = "";
-	const missing = missingRequired();
-	if (missing.length) {
-		formError.value = `Please fill: ${missing.join(", ")}.`;
-		return;
-	}
+	if (!guardRequired()) return;
 	busy.value = true;
 	try {
 		const doc = isEdit.value ? await saveRecord({ ...form }) : await insertRecord({ ...form });
@@ -201,11 +238,7 @@ async function onSave() {
 
 async function onSubmit() {
 	formError.value = "";
-	const missing = missingRequired();
-	if (missing.length) {
-		formError.value = `Please fill: ${missing.join(", ")}.`;
-		return;
-	}
+	if (!guardRequired()) return;
 	busy.value = true;
 	try {
 		await saveRecord({ ...form }); // persist edits before submitting
@@ -305,7 +338,28 @@ const DANGER =
 		</div>
 
 		<form v-else @submit.prevent="onSave">
-			<section v-for="(s, si) in sections" :key="si" class="mb-6">
+			<!-- Tabs (Tab Break fields) -->
+			<div
+				v-if="tabs.length > 1"
+				class="flex items-center gap-1 border-b border-ink-200 mb-5 overflow-x-auto"
+			>
+				<button
+					v-for="(t, ti) in tabs"
+					:key="ti"
+					type="button"
+					class="px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors"
+					:class="
+						activeTab === ti
+							? 'border-brand-600 text-brand-700 font-medium'
+							: 'border-transparent text-ink-500 hover:text-ink-800'
+					"
+					@click="activeTab = ti"
+				>
+					{{ t.label || "Details" }}
+				</button>
+			</div>
+
+			<section v-for="(s, si) in currentTab.sections" :key="si" class="mb-6">
 				<h3
 					v-if="s.label"
 					class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-3 pb-1.5 border-b border-ink-200"
