@@ -36,7 +36,7 @@ def _state_field(doctype):
 
 
 @frappe.whitelist()
-def get_workflow_info(doctype, name=None):
+def get_workflow_info(doctype: str, name: str | None = None):
 	"""Whether an active workflow governs `doctype`; with `name`, also the doc's current
 	state and the transitions available to the calling user (role + condition filtered)."""
 	wf_name = get_workflow_name(doctype)
@@ -69,7 +69,7 @@ def get_workflow_info(doctype, name=None):
 
 
 @frappe.whitelist()
-def apply_action(doctype, name, action):
+def apply_action(doctype: str, name: str, action: str):
 	"""Apply a workflow `action` to (doctype, name) through Frappe's engine, then return
 	the new lifecycle snapshot. Frappe enforces the transition's role, condition and
 	self-approval rules, and drives docstatus when the target state is submitted/cancelled."""

@@ -183,7 +183,7 @@ COST_TYPES = ("Material", "Labour", "Plant", "Subcontract", "Overhead")
 
 
 @frappe.whitelist()
-def get_actuals_log(project, cost_type=None, from_date=None, to_date=None, source_doctype=None):
+def get_actuals_log(project: str, cost_type: str | None = None, from_date: str | None = None, to_date: str | None = None, source_doctype: str | None = None):
 	"""The actuals log, optionally filtered by cost type / date range / source doctype (R4).
 	Also the data source for cost-vs-budget."""
 	entries = _actual_entries(project)
@@ -200,7 +200,7 @@ def get_actuals_log(project, cost_type=None, from_date=None, to_date=None, sourc
 
 
 @frappe.whitelist()
-def get_actuals_summary(project):
+def get_actuals_summary(project: str):
 	"""Per-code actual for the BOQ, plus the coverage split. An item-coded line credits its item
 	AND its parent group (roll up, never down); group totals reconcile identically whether the
 	lines beneath were coded fine or coarse. Returns:
@@ -242,7 +242,7 @@ def get_actuals_summary(project):
 
 
 @frappe.whitelist()
-def get_actuals_for_code(project, group_code=None, item_code=None):
+def get_actuals_for_code(project: str, group_code: str | None = None, item_code: str | None = None):
 	"""The contributing entries behind one code, for the drill-down (R1). An item code returns
 	only its own lines; a group code rolls up every line carrying that group (both group-coded
 	and item-coded), never splitting a group-coded total down to items by guesswork."""

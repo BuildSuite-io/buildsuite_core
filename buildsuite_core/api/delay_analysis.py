@@ -143,7 +143,7 @@ def _weekly_trend(project, as_of):
 
 
 @frappe.whitelist()
-def delay_analysis(project=None):
+def delay_analysis(project: str | None = None):
 	"""The three Delay Analysis views for a project. Empty payload when no project is given."""
 	if not project:
 		return {"stages": [], "silent_tasks": [], "weekly_trend": []}

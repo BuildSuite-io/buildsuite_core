@@ -6,31 +6,32 @@ and net payable. A Script Report so its conditions bind only when a filter is se
 with empty filters on page load). All filters are optional — the register spans projects."""
 
 import frappe
+from frappe import _
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
 		{
-			"label": "Bill",
+			"label": _("Bill"),
 			"fieldname": "bill",
 			"fieldtype": "Link",
 			"options": "Subcontractor Bill",
 			"width": 160,
 		},
 		{
-			"label": "Subcontractor",
+			"label": _("Subcontractor"),
 			"fieldname": "subcontractor",
 			"fieldtype": "Link",
 			"options": "Supplier",
 			"width": 180,
 		},
-		{"label": "Project", "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
-		{"label": "Date", "fieldname": "date", "fieldtype": "Date", "width": 100},
-		{"label": "Gross", "fieldname": "gross", "fieldtype": "Currency", "width": 120},
-		{"label": "Retention", "fieldname": "retention", "fieldtype": "Currency", "width": 120},
-		{"label": "Net Payable", "fieldname": "net_payable", "fieldtype": "Currency", "width": 130},
-		{"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 110},
+		{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
+		{"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
+		{"label": _("Gross"), "fieldname": "gross", "fieldtype": "Currency", "width": 120},
+		{"label": _("Retention"), "fieldname": "retention", "fieldtype": "Currency", "width": 120},
+		{"label": _("Net Payable"), "fieldname": "net_payable", "fieldtype": "Currency", "width": 130},
+		{"label": _("Status"), "fieldname": "status", "fieldtype": "Data", "width": 110},
 	]
 
 	conditions = ""
@@ -46,11 +47,11 @@ def execute(filters=None):
 		conditions += " AND sb.date <= %(to_date)s"
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT sb.name AS bill, sb.subcontractor, sb.project, sb.date,
 			sb.gross, sb.retention_amount AS retention, sb.net_payable, sb.status
 		FROM `tabSubcontractor Bill` sb
-		WHERE sb.docstatus < 2 {conditions}
+		WHERE sb.docstatus < 2 """ + conditions + """
 		ORDER BY sb.date DESC, sb.name DESC
 		""",
 		filters,

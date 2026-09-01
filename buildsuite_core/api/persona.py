@@ -82,13 +82,13 @@ def list_assignable_roles():
 
 @frappe.whitelist()
 def save_persona(
-	name=None,
-	persona_name=None,
-	slug=None,
-	description=None,
-	enabled=1,
-	sort_order=0,
-	roles=None,
+	name: str | None = None,
+	persona_name: str | None = None,
+	slug: str | None = None,
+	description: str | None = None,
+	enabled: int = 1,
+	sort_order: int = 0,
+	roles: str | None = None,
 ):
 	"""Create or update a persona. The persona_name is the record key and is only
 	settable on create (renaming would orphan the User.persona links that point at

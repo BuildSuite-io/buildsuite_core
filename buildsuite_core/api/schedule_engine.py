@@ -352,7 +352,7 @@ def recompute_conflicts_on_update(doc, method=None):
 
 
 @frappe.whitelist()
-def reschedule_downstream(task, new_start=None, new_end=None, dry_run=1):
+def reschedule_downstream(task: str, new_start: str | None = None, new_end: str | None = None, dry_run: int = 1):
 	"""Preview (dry_run=1) or commit (dry_run=0) a duration-preserving downstream
 	cascade after moving `task` to new_start/new_end. Returns {"moves": [...]}.
 

@@ -226,14 +226,14 @@ def _serialize(doc):
 # Reads
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def get_bill(name):
+def get_bill(name: str):
 	doc = frappe.get_doc(PI, name)
 	doc.check_permission("read")
 	return _serialize(doc)
 
 
 @frappe.whitelist()
-def list_payables(company=None):
+def list_payables(company: str | None = None):
 	"""Unified Bills list: direct supplier Purchase Invoices + submitted Subcontractor Bills.
 	A subcontractor bill's own generated PI (which carries `subcontractor_bill`) is excluded so
 	it isn't counted twice."""
@@ -335,7 +335,7 @@ def _pay_status(docstatus, grand, outstanding):
 
 
 @frappe.whitelist()
-def payables_summary(company=None):
+def payables_summary(company: str | None = None):
 	"""Header totals for the Bills panel (matches the prototype): outstanding Payable,
 	Retention held (withheld on non-final subcontractor bills), and supplier Advances paid."""
 	company = company or default_company()
@@ -365,7 +365,7 @@ def payables_summary(company=None):
 
 
 @frappe.whitelist()
-def list_billable_purchase_orders(company=None):
+def list_billable_purchase_orders(company: str | None = None):
 	"""Submitted Purchase Orders that still have something to bill (per_billed < 100) — the
 	'From Purchase Order' picker. A supplier bill raised against one pre-fills from its lines."""
 	company = company or default_company()
@@ -391,7 +391,7 @@ def list_billable_purchase_orders(company=None):
 
 
 @frappe.whitelist()
-def get_po_bill_lines(purchase_order):
+def get_po_bill_lines(purchase_order: str):
 	"""Confirm-don't-construct: map a Purchase Order to its unbilled bill lines (item, remaining
 	qty, uom, PO rate) via ERPNext's native mapper, so the covered PO lines flip billed on submit.
 	Returns the supplier + project too, to lock the bill header to the PO."""
@@ -428,7 +428,7 @@ def get_po_bill_lines(purchase_order):
 
 
 @frappe.whitelist()
-def get_item_details(item_code):
+def get_item_details(item_code: str):
 	"""Item master defaults for a direct bill line — the item name, its stock UOM and a buying
 	rate (Item Price buying list, else last purchase rate) to pre-fill qty × rate."""
 	it = frappe.db.get_value("Item", item_code, ["item_name", "stock_uom", "description"], as_dict=True) or {}
@@ -447,7 +447,7 @@ def get_item_details(item_code):
 # Writes
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def save_bill(payload):
+def save_bill(payload: str):
 	"""Create or edit a DRAFT supplier Purchase Invoice. Same shape as the customer invoice,
 	plus an optional supplier bill_no/bill_date (the supplier's own reference)."""
 	data = frappe.parse_json(payload)
@@ -558,7 +558,7 @@ def _guard_workflow():
 
 
 @frappe.whitelist()
-def submit_bill(name):
+def submit_bill(name: str):
 	_guard_workflow()
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("submit")
@@ -568,7 +568,7 @@ def submit_bill(name):
 
 
 @frappe.whitelist()
-def cancel_bill(name):
+def cancel_bill(name: str):
 	_guard_workflow()
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("cancel")
@@ -578,7 +578,7 @@ def cancel_bill(name):
 
 
 @frappe.whitelist()
-def delete_bill(name):
+def delete_bill(name: str):
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("delete")
 	if pi.docstatus != 0:
@@ -591,7 +591,14 @@ def delete_bill(name):
 # Pay (Payment Entry against the PI)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def record_payment(name, amount=None, date=None, mode_of_payment=None, pay_from=None, reference_no=None):
+def record_payment(
+	name: str,
+	amount: str | None = None,
+	date: str | None = None,
+	mode_of_payment: str | None = None,
+	pay_from: str | None = None,
+	reference_no: str | None = None,
+):
 	"""Create + submit a Payment Entry paying the bill FROM a Bank/Cash account."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
@@ -625,7 +632,7 @@ def record_payment(name, amount=None, date=None, mode_of_payment=None, pay_from=
 
 
 @frappe.whitelist()
-def list_payments(name):
+def list_payments(name: str):
 	"""Cash payments allocated to this bill — plain Payment Entries only. Adjusted supplier
 	advances are excluded here; they show under the bill's Advance Payments instead."""
 	doc = frappe.get_doc(PI, name)
@@ -657,7 +664,14 @@ def list_payments(name):
 
 
 @frappe.whitelist()
-def record_advance(supplier, amount, date=None, pay_from=None, mode_of_payment=None, reference_no=None):
+def record_advance(
+	supplier: str,
+	amount: str,
+	date: str | None = None,
+	pay_from: str | None = None,
+	mode_of_payment: str | None = None,
+	reference_no: str | None = None,
+):
 	"""Pay a supplier an advance BEFORE (or without) a bill — a submitted on-account Payment
 	Entry whose full amount stays unallocated until a later bill draws it down."""
 	from erpnext.accounts.party import get_party_account
@@ -731,7 +745,7 @@ def _draft_committed(pe_names):
 
 
 @frappe.whitelist()
-def available_advances(name):
+def available_advances(name: str):
 	"""The bill supplier's on-account advances that can still be adjusted against this bill,
 	oldest first — the Payment Entry's unallocated balance net of anything already earmarked on
 	any draft bill (including this one)."""
@@ -797,7 +811,7 @@ def _reconcile_advance(pi, pe, amount):
 
 
 @frappe.whitelist()
-def link_advance(name, payment_entry, amount):
+def link_advance(name: str, payment_entry: str, amount: str):
 	"""Adjust `amount` of a supplier advance against this bill, reducing its outstanding."""
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("write")
@@ -858,7 +872,7 @@ def link_advance(name, payment_entry, amount):
 
 
 @frappe.whitelist()
-def unlink_advance(name, payment_entry):
+def unlink_advance(name: str, payment_entry: str):
 	"""Reverse an advance adjustment — remove the draft `advances` row, or unreconcile the
 	Payment Entry from a submitted bill (native Unreconcile Payment)."""
 	pi = frappe.get_doc(PI, name)
@@ -897,7 +911,7 @@ def unlink_advance(name, payment_entry):
 # Pickers
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def list_pay_accounts(company=None):
+def list_pay_accounts(company: str | None = None):
 	"""Bank/Cash accounts a bill can be paid FROM — the active (default) company."""
 	company = company or default_company()
 	return frappe.get_all(
@@ -909,7 +923,7 @@ def list_pay_accounts(company=None):
 
 
 @frappe.whitelist()
-def list_tax_templates(company=None):
+def list_tax_templates(company: str | None = None):
 	filters = {"disabled": 0}
 	if company:
 		filters["company"] = company
@@ -919,7 +933,7 @@ def list_tax_templates(company=None):
 
 
 @frappe.whitelist()
-def get_tax_template_rows(template):
+def get_tax_template_rows(template: str):
 	doc = frappe.get_doc("Purchase Taxes and Charges Template", template)
 	return [
 		{
@@ -933,7 +947,7 @@ def get_tax_template_rows(template):
 
 
 @frappe.whitelist()
-def get_terms(name):
+def get_terms(name: str):
 	from buildsuite_core.api.invoice import _html_to_text
 
 	return {"terms": _html_to_text(frappe.db.get_value("Terms and Conditions", name, "terms"))}

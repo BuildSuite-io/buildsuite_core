@@ -62,7 +62,7 @@ def get_request(name: str):
 
 
 @frappe.whitelist()
-def save_request(payload):
+def save_request(payload: str):
 	"""Create or edit a Requested petty cash request."""
 	data = frappe.parse_json(payload)
 	name = data.get("name")
@@ -87,7 +87,7 @@ def save_request(payload):
 
 
 @frappe.whitelist()
-def disburse(name, paid_from):
+def disburse(name: str, paid_from: str):
 	doc = frappe.get_doc(DOCTYPE, name)
 	if not _can_disburse():
 		frappe.throw(_("You are not authorised to disburse petty cash."), frappe.PermissionError)
@@ -96,7 +96,7 @@ def disburse(name, paid_from):
 
 
 @frappe.whitelist()
-def issue_direct(payload):
+def issue_direct(payload: str):
 	"""Issue petty-cash float straight to a holder, with no request behind it (S273). Only
 	the finance approvers may do this. It creates the Petty Cash Request already marked as a
 	direct issue and disburses it in one step — reusing the same account checks + Journal
@@ -163,7 +163,7 @@ def delete_request(name: str):
 
 
 @frappe.whitelist()
-def list_cash_bank_accounts(company=None):
+def list_cash_bank_accounts(company: str | None = None):
 	"""Bank/Cash ledger accounts to disburse FROM (the funding source) — excluding the Petty
 	Cash account itself, since crediting Petty Cash on a disbursement (Dr Petty Cash / Cr Petty
 	Cash) would be a no-op. Scoped to the active (default) company unless one is passed; see the
@@ -185,7 +185,7 @@ def list_cash_bank_accounts(company=None):
 
 
 @frappe.whitelist()
-def holder_balances(company=None):
+def holder_balances(company: str | None = None):
 	"""Reconciled per-holder petty-cash position from the GL: disbursed (float in),
 	spent (verified expense out) and the net balance in hand. One view over both the
 	Petty Cash Request (disburse) and Expense Entry (spend) legs."""
@@ -195,7 +195,7 @@ def holder_balances(company=None):
 
 
 @frappe.whitelist()
-def disbursement_prefill(request):
+def disbursement_prefill(request: str):
 	"""What the Desk Journal Entry form needs to prefill a disbursement from a Petty Cash
 	Request: the company, amount, the Petty Cash account to debit, and the holder to stamp on
 	that leg. Only a Requested request can be disbursed."""
@@ -225,7 +225,7 @@ def disbursement_prefill(request):
 
 
 @frappe.whitelist()
-def statement(employee):
+def statement(employee: str):
 	"""A holder's personal petty-cash statement: disbursements in + petty-cash expenses
 	out, newest first. Cancelled entries are omitted (no balance impact); drafts are
 	included so pending spend is visible. Date/project/account/status filtering is left

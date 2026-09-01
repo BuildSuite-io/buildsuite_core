@@ -10,6 +10,7 @@ Report's `%(project)s` substitution would blow up on that. Project is required (
 project-scoped), so with none set we simply return no rows."""
 
 import frappe
+from frappe import _
 from frappe.utils import flt
 
 
@@ -22,13 +23,13 @@ def _qty(v):
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
-		{"label": "Item", "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 220},
-		{"label": "UOM", "fieldname": "uom", "fieldtype": "Data", "width": 80},
-		{"label": "Ordered", "fieldname": "ordered", "fieldtype": "Float", "width": 100},
-		{"label": "Received", "fieldname": "received", "fieldtype": "Float", "width": 100},
-		{"label": "Consumed", "fieldname": "consumed", "fieldtype": "Float", "width": 100},
-		{"label": "At Site", "fieldname": "at_site", "fieldtype": "Float", "width": 100},
-		{"label": "Flag", "fieldname": "flag", "fieldtype": "Data", "width": 180},
+		{"label": _("Item"), "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 220},
+		{"label": _("UOM"), "fieldname": "uom", "fieldtype": "Data", "width": 80},
+		{"label": _("Ordered"), "fieldname": "ordered", "fieldtype": "Float", "width": 100},
+		{"label": _("Received"), "fieldname": "received", "fieldtype": "Float", "width": 100},
+		{"label": _("Consumed"), "fieldname": "consumed", "fieldtype": "Float", "width": 100},
+		{"label": _("At Site"), "fieldname": "at_site", "fieldtype": "Float", "width": 100},
+		{"label": _("Flag"), "fieldname": "flag", "fieldtype": "Data", "width": 180},
 	]
 	if not filters.get("project"):
 		return columns, []
@@ -41,7 +42,7 @@ def execute(filters=None):
 		having_extra += " AND SUM(ordered) - SUM(received) > 0"
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT item_code, MAX(uom) AS uom,
 			SUM(ordered) AS ordered, SUM(received) AS received, SUM(consumed) AS consumed,
 			SUM(received) - SUM(consumed) AS at_site,
@@ -63,7 +64,7 @@ def execute(filters=None):
 					AND se.project = %(project)s
 		) x
 		GROUP BY item_code
-		HAVING SUM(ordered) + SUM(received) + SUM(consumed) > 0 {having_extra}
+		HAVING SUM(ordered) + SUM(received) + SUM(consumed) > 0 """ + having_extra + """
 		ORDER BY item_code
 		""",
 		filters,

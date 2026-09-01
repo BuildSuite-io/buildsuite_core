@@ -66,10 +66,10 @@ def list_suppliers():
 def create_supplier(
 	supplier_name: str,
 	supplier_type: str = "Company",
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Create a regular Supplier (subcontractors are created in the Subcontract module)."""
 	supplier_name = (supplier_name or "").strip()
@@ -97,12 +97,12 @@ def create_supplier(
 @frappe.whitelist()
 def update_supplier(
 	name: str,
-	new_name=None,
-	supplier_type=None,
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	new_name: str | None = None,
+	supplier_type: str | None = None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Update a supplier's name / type / tax id and its primary contact. Subcontractors
 	are managed in the Subcontract module, not here."""

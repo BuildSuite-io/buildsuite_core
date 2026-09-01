@@ -41,7 +41,7 @@ def _with_filter_defaults(report, filters):
 
 
 @frappe.whitelist()
-def get_report_filters(report):
+def get_report_filters(report: str):
 	"""Everything the in-app renderer needs to build a report's filter bar agnostically:
 
 	- `script`: the report's client script (as Frappe's Desk loads it). The renderer evals
@@ -80,7 +80,7 @@ def get_report_filters(report):
 
 
 @frappe.whitelist()
-def run_report(report, filters=None):
+def run_report(report: str, filters: str | None = None):
 	"""Execute a Query/Script Report and return {report_name, ref_doctype, columns, result}.
 	`frappe.desk.query_report.run` enforces the report's own read permission."""
 	if isinstance(filters, str):

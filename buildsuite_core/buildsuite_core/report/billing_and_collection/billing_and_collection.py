@@ -14,32 +14,33 @@ field exists only on subcontractor bills (what we withhold from subcontractors, 
 figure). Reported as "—" rather than a zero that would read as "the client withholds nothing"."""
 
 import frappe
+from frappe import _
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
 		{
-			"label": "Invoice",
+			"label": _("Invoice"),
 			"fieldname": "invoice",
 			"fieldtype": "Link",
 			"options": "Sales Invoice",
 			"width": 160,
 		},
 		{
-			"label": "Customer",
+			"label": _("Customer"),
 			"fieldname": "customer",
 			"fieldtype": "Link",
 			"options": "Customer",
 			"width": 180,
 		},
-		{"label": "Raised", "fieldname": "raised", "fieldtype": "Date", "width": 100},
-		{"label": "Due", "fieldname": "due_date", "fieldtype": "Date", "width": 100},
-		{"label": "Overdue (days)", "fieldname": "overdue_days", "fieldtype": "Int", "width": 110},
-		{"label": "Invoiced", "fieldname": "invoiced", "fieldtype": "Currency", "width": 120},
-		{"label": "Received", "fieldname": "received", "fieldtype": "Currency", "width": 120},
-		{"label": "Outstanding", "fieldname": "outstanding", "fieldtype": "Currency", "width": 120},
-		{"label": "Retention", "fieldname": "retention", "fieldtype": "Data", "width": 90},
+		{"label": _("Raised"), "fieldname": "raised", "fieldtype": "Date", "width": 100},
+		{"label": _("Due"), "fieldname": "due_date", "fieldtype": "Date", "width": 100},
+		{"label": _("Overdue (days)"), "fieldname": "overdue_days", "fieldtype": "Int", "width": 110},
+		{"label": _("Invoiced"), "fieldname": "invoiced", "fieldtype": "Currency", "width": 120},
+		{"label": _("Received"), "fieldname": "received", "fieldtype": "Currency", "width": 120},
+		{"label": _("Outstanding"), "fieldname": "outstanding", "fieldtype": "Currency", "width": 120},
+		{"label": _("Retention"), "fieldname": "retention", "fieldtype": "Data", "width": 90},
 	]
 	if not filters.get("project"):
 		return columns, [], None, None, []
@@ -53,7 +54,7 @@ def execute(filters=None):
 		conditions += " AND si.outstanding_amount > 0 AND si.due_date < CURDATE()"
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT si.name AS invoice,
 			si.customer AS customer,
 			si.posting_date AS raised,
@@ -64,7 +65,7 @@ def execute(filters=None):
 			si.grand_total - si.outstanding_amount AS received,
 			si.outstanding_amount AS outstanding
 		FROM `tabSales Invoice` si
-		WHERE si.docstatus = 1 AND si.project = %(project)s {conditions}
+		WHERE si.docstatus = 1 AND si.project = %(project)s """ + conditions + """
 		ORDER BY si.posting_date DESC, si.name DESC
 		""",
 		filters,
@@ -80,10 +81,10 @@ def execute(filters=None):
 	overdue = sum(row.outstanding or 0 for row in data if row.overdue_days)
 
 	report_summary = [
-		{"label": "Invoiced", "value": invoiced, "datatype": "Currency"},
-		{"label": "Received", "value": received, "datatype": "Currency", "indicator": "green"},
-		{"label": "Overdue", "value": overdue, "datatype": "Currency", "indicator": "red" if overdue else ""},
-		{"label": "Retention held", "value": "—", "datatype": "Data"},
+		{"label": _("Invoiced"), "value": invoiced, "datatype": "Currency"},
+		{"label": _("Received"), "value": received, "datatype": "Currency", "indicator": "green"},
+		{"label": _("Overdue"), "value": overdue, "datatype": "Currency", "indicator": "red" if overdue else ""},
+		{"label": _("Retention held"), "value": "—", "datatype": "Data"},
 	]
 
 	return columns, data, None, None, report_summary

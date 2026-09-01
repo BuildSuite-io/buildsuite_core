@@ -6,31 +6,32 @@ and % billed to date. A Script Report so its conditions bind only when a filter 
 runs with empty filters on page load). All filters are optional — the register spans projects."""
 
 import frappe
+from frappe import _
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
 		{
-			"label": "WO",
+			"label": _("WO"),
 			"fieldname": "work_order",
 			"fieldtype": "Link",
 			"options": "Subcontractor Work Order",
 			"width": 160,
 		},
 		{
-			"label": "Subcontractor",
+			"label": _("Subcontractor"),
 			"fieldname": "subcontractor",
 			"fieldtype": "Link",
 			"options": "Supplier",
 			"width": 180,
 		},
-		{"label": "Project", "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
-		{"label": "Date", "fieldname": "date", "fieldtype": "Date", "width": 100},
-		{"label": "Type", "fieldname": "delivery_type", "fieldtype": "Data", "width": 110},
-		{"label": "Value", "fieldname": "total_value", "fieldtype": "Currency", "width": 130},
-		{"label": "% Billed", "fieldname": "percent_billed", "fieldtype": "Percent", "width": 100},
-		{"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 110},
+		{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
+		{"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
+		{"label": _("Type"), "fieldname": "delivery_type", "fieldtype": "Data", "width": 110},
+		{"label": _("Value"), "fieldname": "total_value", "fieldtype": "Currency", "width": 130},
+		{"label": _("% Billed"), "fieldname": "percent_billed", "fieldtype": "Percent", "width": 100},
+		{"label": _("Status"), "fieldname": "status", "fieldtype": "Data", "width": 110},
 	]
 
 	conditions = ""
@@ -46,7 +47,7 @@ def execute(filters=None):
 		conditions += " AND wo.date <= %(to_date)s"
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT wo.name AS work_order, wo.subcontractor, wo.project, wo.date,
 			wo.delivery_type, wo.total_value, wo.status,
 			LEAST(100, ROUND(IFNULL(
@@ -54,7 +55,7 @@ def execute(filters=None):
 					WHERE sb.work_order = wo.name AND sb.docstatus < 2), 0)
 				/ NULLIF(wo.total_value, 0) * 100, 1)) AS percent_billed
 		FROM `tabSubcontractor Work Order` wo
-		WHERE wo.docstatus < 2 {conditions}
+		WHERE wo.docstatus < 2 """ + conditions + """
 		ORDER BY wo.date DESC, wo.name DESC
 		""",
 		filters,

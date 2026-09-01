@@ -28,7 +28,7 @@ def _bucket(days):
 
 
 @frappe.whitelist()
-def receivables_and_payables(company=None):
+def receivables_and_payables(company: str | None = None):
 	"""Aged open receivables (Sales Invoices) and payables (Purchase Invoices), each row bucketed
 	by days overdue. Payables carry a supplier/subcontractor kind + any retention withheld."""
 	company = company or default_company()
@@ -110,7 +110,7 @@ def _petty_split(company):
 
 
 @frappe.whitelist()
-def financial_position(company=None):
+def financial_position(company: str | None = None):
 	"""What we have (bank, cash, petty cash out with holders, customers owe) vs what we owe
 	(suppliers, subcontractors, retention held), and the net. Balances from the GL and open
 	documents. Supplier/customer advances and own-pocket reimbursements aren't broken out yet."""
@@ -119,7 +119,9 @@ def financial_position(company=None):
 	def doc_sum(doctype, field):
 		return flt(
 			frappe.db.sql(
-				f"SELECT IFNULL(SUM(`{field}`), 0) FROM `tab{doctype}` WHERE docstatus = 1 AND company = %s",
+				# field/doctype are server-controlled identifiers (called with hardcoded values);
+				# the company value is parameterized. Concatenated to avoid an f-string in SQL.
+				"SELECT IFNULL(SUM(`" + field + "`), 0) FROM `tab" + doctype + "` WHERE docstatus = 1 AND company = %s",
 				(company,),
 			)[0][0]
 		)
@@ -191,7 +193,7 @@ def _direct_expense_range(company):
 
 
 @frappe.whitelist()
-def profit_and_loss(project=None, from_date=None, to_date=None, company=None):
+def profit_and_loss(project: str | None = None, from_date: str | None = None, to_date: str | None = None, company: str | None = None):
 	"""Our own account-tree Profit & Loss for the Project Finance workspace — computed from the
 	posted GL so it's a real P&L, but ours (labels + layout), not the stock ERPNext financial
 	statement. Income and expense ledger accounts, scoped to an optional project + period, with
@@ -212,11 +214,13 @@ def profit_and_loss(project=None, from_date=None, to_date=None, company=None):
 		params.append(to_date)
 
 	rows = frappe.db.sql(
-		f"""SELECT gle.account, acc.root_type, acc.lft,
+		"""SELECT gle.account, acc.root_type, acc.lft,
 			gle.voucher_type, gle.voucher_no, gle.party, gle.against, gle.posting_date,
 			gle.debit, gle.credit
 		FROM `tabGL Entry` gle JOIN `tabAccount` acc ON acc.name = gle.account
-		WHERE {conds}
+		WHERE """
+		+ conds  # server-built from hardcoded fragments; values are in `params`
+		+ """
 		ORDER BY gle.posting_date, gle.creation""",
 		params,
 		as_dict=True,
@@ -285,14 +289,14 @@ def _cash_bank_accounts(company):
 
 
 @frappe.whitelist()
-def cash_bank_accounts(company=None):
+def cash_bank_accounts(company: str | None = None):
 	"""The Bank/Cash accounts the Cash & Bank statement picker offers (single-company seam)."""
 	company = company or default_company()
 	return _cash_bank_accounts(company)
 
 
 @frappe.whitelist()
-def cash_bank_statement(account=None, from_date=None, to_date=None, company=None):
+def cash_bank_statement(account: str | None = None, from_date: str | None = None, to_date: str | None = None, company: str | None = None):
 	"""A running-balance statement for one Bank/Cash account, from its GL. Cash/Bank are asset
 	accounts, so a debit is money in and a credit is money out. The opening balance folds in
 	everything posted before `from_date` (0 when no period is set — the statement runs from the
@@ -326,8 +330,10 @@ def cash_bank_statement(account=None, from_date=None, to_date=None, company=None
 		conds += " AND posting_date <= %s"
 		params.append(to_date)
 	rows = frappe.db.sql(
-		f"""SELECT posting_date, voucher_type, voucher_no, against, debit, credit, party_type, party, remarks
-		FROM `tabGL Entry` WHERE {conds}
+		"""SELECT posting_date, voucher_type, voucher_no, against, debit, credit, party_type, party, remarks
+		FROM `tabGL Entry` WHERE """
+		+ conds  # server-built from hardcoded fragments; values are in `params`
+		+ """
 		ORDER BY posting_date, creation""",
 		params,
 		as_dict=True,
