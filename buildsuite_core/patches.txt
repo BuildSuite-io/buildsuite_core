@@ -36,3 +36,4 @@ buildsuite_core.patches.grant_child_table_read_access # 2026-08-21
 buildsuite_core.patches.resync_director_permission_matrix # 2026-08-24
 buildsuite_core.patches.repoint_pnl_to_bespoke # 2026-08-25
 buildsuite_core.patches.resync_picker_select_permissions
+buildsuite_core.patches.backfill_persona_roles # 2026-09-01
