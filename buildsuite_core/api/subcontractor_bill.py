@@ -166,7 +166,7 @@ def get_bill(name: str):
 
 
 @frappe.whitelist()
-def list_bills(project=None):
+def list_bills(project: str | None = None):
 	"""Subcontractor Bills for the list — the workflow state (from docstatus) plus the derived
 	payment status (Unpaid / Partly Paid / Paid) read through each bill's generated Purchase
 	Invoice, so the list can show both badges."""
@@ -313,7 +313,7 @@ def list_withholding_categories():
 # Writes
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def save_bill(payload):
+def save_bill(payload: str):
 	"""Create or update a DRAFT bill (both modes). WO-bill lines are re-derived server-side
 	from the Measurement Books (never trusted from the client); direct-bill lines are taken
 	from the payload."""
@@ -476,7 +476,7 @@ def make_payment_entry(name: str):
 
 
 @frappe.whitelist()
-def record_payment(name, amount=None, date=None, mode_of_payment=None, paid_from=None, reference_no=None):
+def record_payment(name: str, amount: str | None = None, date: str | None = None, mode_of_payment: str | None = None, paid_from: str | None = None, reference_no: str | None = None):
 	"""Create + submit a Payment Entry against the bill's Purchase Invoice (used by tests / API)."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
@@ -511,7 +511,7 @@ def record_payment(name, amount=None, date=None, mode_of_payment=None, paid_from
 
 
 @frappe.whitelist()
-def list_pay_accounts(company=None):
+def list_pay_accounts(company: str | None = None):
 	"""Bank/Cash accounts a bill can be paid FROM — the active (default) company, excluding
 	the Petty Cash float. See the single-company seam."""
 	from buildsuite_core.utils.petty_cash import get_petty_cash_account
@@ -564,7 +564,7 @@ def available_advances(name: str):
 
 
 @frappe.whitelist()
-def link_advance(name: str, payment_entry: str, amount):
+def link_advance(name: str, payment_entry: str, amount: str):
 	"""Adjust `amount` of a subcontractor advance against this bill, reducing its outstanding."""
 	from buildsuite_core.api import supplier_bill as _sb
 

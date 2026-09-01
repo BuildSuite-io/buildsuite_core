@@ -5,7 +5,7 @@ from erpnext.stock.get_item_details import _get_item_tax_template
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_tax_template(doctype, txt, searchfield, start, page_len, filters):
+def get_tax_template(doctype: str, txt: str, searchfield: str, start: str, page_len: str, filters: str):
 	item_doc = frappe.get_cached_doc("Item", filters.get("item_code"))
 	item_group = filters.get("item_group")
 	company = filters.get("company")

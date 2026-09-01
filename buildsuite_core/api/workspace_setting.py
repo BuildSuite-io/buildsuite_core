@@ -78,7 +78,7 @@ def _resolve(row):
 
 
 @frappe.whitelist()
-def get_workspace_reports(workspace):
+def get_workspace_reports(workspace: str):
 	"""Ordered, renderable report tiles for a workspace. Any signed-in user (whoever
 	can open the workspace)."""
 	if workspace not in _SLUGS:
@@ -126,7 +126,7 @@ def get_workspace_settings():
 
 
 @frappe.whitelist()
-def set_workspace_reports(workspace, reports=None):
+def set_workspace_reports(workspace: str, reports: str | None = None):
 	"""Replace one workspace's report rows (order preserved), leaving other
 	workspaces' rows untouched. Admin only."""
 	_require_admin()
@@ -214,7 +214,7 @@ def _require_allowed(doctype):
 
 
 @frappe.whitelist()
-def get_workspace_doctypes(workspace):
+def get_workspace_doctypes(workspace: str):
 	"""Ordered, renderable DocType tiles for a workspace. Any signed-in user."""
 	if workspace not in _SLUGS:
 		return []
@@ -230,7 +230,7 @@ def get_workspace_doctypes(workspace):
 
 
 @frappe.whitelist()
-def set_workspace_doctypes(workspace, doctypes=None):
+def set_workspace_doctypes(workspace: str, doctypes: str | None = None):
 	"""Replace one workspace's DocType rows (order preserved), leaving other workspaces'
 	rows untouched. Admin only."""
 	_require_admin()
@@ -272,7 +272,7 @@ def set_workspace_doctypes(workspace, doctypes=None):
 
 
 @frappe.whitelist()
-def get_doctype_list_config(doctype):
+def get_doctype_list_config(doctype: str):
 	"""The DocTypeListView props for an allow-listed DocType, derived from its Frappe meta:
 	columns from in_list_view fields, search from search_fields, order from sort_field."""
 	_require_allowed(doctype)
@@ -328,7 +328,7 @@ def get_doctype_list_config(doctype):
 
 
 @frappe.whitelist()
-def get_doctype_permissions(doctype):
+def get_doctype_permissions(doctype: str):
 	"""The current user's action permissions on an allow-listed DocType — for gating the
 	New / Save / Delete buttons. Server-side enforcement is unchanged; this is UI only."""
 	_require_allowed(doctype)
@@ -343,7 +343,7 @@ def get_doctype_permissions(doctype):
 
 
 @frappe.whitelist()
-def submit_record(doctype, name):
+def submit_record(doctype: str, name: str):
 	"""Submit a saved draft of an allow-listed DocType (doc.submit enforces the submit
 	permission + validation server-side)."""
 	_require_allowed(doctype)
@@ -353,7 +353,7 @@ def submit_record(doctype, name):
 
 
 @frappe.whitelist()
-def cancel_record(doctype, name):
+def cancel_record(doctype: str, name: str):
 	"""Cancel a submitted document of an allow-listed DocType."""
 	_require_allowed(doctype)
 	doc = frappe.get_doc(doctype, name)
@@ -362,7 +362,7 @@ def cancel_record(doctype, name):
 
 
 @frappe.whitelist()
-def amend_record(doctype, name):
+def amend_record(doctype: str, name: str):
 	"""Amend a cancelled document — a fresh draft copy linked via amended_from."""
 	_require_allowed(doctype)
 	src = frappe.get_doc(doctype, name)

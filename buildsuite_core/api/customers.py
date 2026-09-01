@@ -61,10 +61,10 @@ def list_customers():
 def create_customer(
 	customer_name: str,
 	customer_type: str = "Company",
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Create a Customer. Accepts the New Project picker's minimal call and the
 	Customers master's fuller payload (contact person / phone / email / tax id)."""
@@ -95,12 +95,12 @@ def create_customer(
 @frappe.whitelist()
 def update_customer(
 	name: str,
-	new_name=None,
-	customer_type=None,
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	new_name: str | None = None,
+	customer_type: str | None = None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Update a customer's name / type / tax id and its primary contact."""
 	if not frappe.has_permission("Customer", "write"):

@@ -102,8 +102,7 @@ class TaskProgressEntry(Document):
 		if pred:
 			frappe.throw(
 				_(
-					"You can't log progress on this task yet — its Finish-to-Start "
-					'predecessor "{0}" isn\'t Completed.'
+					"You can't log progress on this task yet — its Finish-to-Start predecessor '{0}' isn't Completed."
 				).format(pred)
 			)
 

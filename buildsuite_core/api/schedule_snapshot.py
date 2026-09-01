@@ -128,7 +128,7 @@ def _apply_snapshot(rows):
 
 
 @frappe.whitelist()
-def restore_snapshot(name, capture_undo=1):
+def restore_snapshot(name: str, capture_undo: int = 1):
 	"""Restore a snapshot's dates. Captures an Undo of the current state first (so
 	the restore is itself undoable) unless capture_undo=0."""
 	doc = frappe.get_doc(SNAPSHOT, name)
@@ -144,7 +144,7 @@ def restore_snapshot(name, capture_undo=1):
 
 
 @frappe.whitelist()
-def undo_last(project):
+def undo_last(project: str):
 	"""Pop the newest Undo snapshot for the project, restore it, and delete it — so
 	repeated calls walk the stack back. No-op (undone=False) when the stack is empty."""
 	latest = frappe.get_all(
@@ -170,7 +170,7 @@ def undo_last(project):
 
 
 @frappe.whitelist()
-def save_revision(project, label):
+def save_revision(project: str, label: str):
 	"""Save a named Revision snapshot of the project's current schedule."""
 	if not frappe.has_permission("Project", "read", project):
 		frappe.throw(_("You are not permitted to snapshot this schedule."), frappe.PermissionError)
@@ -181,7 +181,7 @@ def save_revision(project, label):
 
 
 @frappe.whitelist()
-def list_snapshots(project, kind=None):
+def list_snapshots(project: str, kind: str | None = None):
 	"""Snapshots for a project (newest first). Pass kind to filter to Undo/Revision."""
 	if not frappe.has_permission("Project", "read", project):
 		frappe.throw(_("You are not permitted to view this schedule."), frappe.PermissionError)
@@ -197,7 +197,7 @@ def list_snapshots(project, kind=None):
 
 
 @frappe.whitelist()
-def delete_snapshot(name):
+def delete_snapshot(name: str):
 	"""Delete a snapshot (enforces the Schedule Snapshot delete permission)."""
 	frappe.delete_doc(SNAPSHOT, name)
 	return True

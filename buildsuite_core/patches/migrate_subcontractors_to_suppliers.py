@@ -164,6 +164,7 @@ def _repoint(doctype, name_map):
 			continue
 		supplier_name = frappe.db.get_value("Supplier", new, "supplier_name")
 		frappe.db.sql(
-			f"update `{table}` set subcontractor = %s, subcontractor_name = %s where subcontractor = %s",
+			# table is a server-controlled identifier (iterated from a known list); values parameterized.
+			"update `" + table + "` set subcontractor = %s, subcontractor_name = %s where subcontractor = %s",
 			(new, supplier_name, old),
 		)

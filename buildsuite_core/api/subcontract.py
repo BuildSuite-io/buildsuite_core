@@ -136,15 +136,15 @@ def get_wo_print_data(name: str):
 
 @frappe.whitelist()
 def save_work_order(
-	name=None,
-	subcontractor=None,
-	project=None,
-	date=None,
-	delivery_type=None,
-	retention_percent=None,
-	terms_template=None,
-	terms=None,
-	lines=None,
+	name: str | None = None,
+	subcontractor: str | None = None,
+	project: str | None = None,
+	date: str | None = None,
+	delivery_type: str | None = None,
+	retention_percent: str | None = None,
+	terms_template: str | None = None,
+	terms: str | None = None,
+	lines: str | None = None,
 ):
 	"""Create or update a Work Order (header + SOV lines). Line amounts + the total
 	are computed by the controller."""
@@ -424,13 +424,13 @@ def get_measurement_book(name: str):
 
 @frappe.whitelist()
 def save_measurement_book(
-	name=None,
-	work_order=None,
-	project=None,
-	date=None,
-	measured_by=None,
-	remarks=None,
-	entries=None,
+	name: str | None = None,
+	work_order: str | None = None,
+	project: str | None = None,
+	date: str | None = None,
+	measured_by: str | None = None,
+	remarks: str | None = None,
+	entries: str | None = None,
 ):
 	"""Create or update a Measurement Book (header + entries). Only Draft books
 	are editable — Certified books feed billed quantity, so editing is blocked."""
@@ -440,7 +440,7 @@ def save_measurement_book(
 		doc = frappe.get_doc(MEASUREMENT_BOOK, name)
 		doc.check_permission("write")
 		if doc.status != "Draft":
-			frappe.throw("Only Draft measurement books can be edited. Revert to Draft first.")
+			frappe.throw(_("Only Draft measurement books can be edited. Revert to Draft first."))
 	else:
 		doc = frappe.new_doc(MEASUREMENT_BOOK)
 

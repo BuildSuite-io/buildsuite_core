@@ -414,7 +414,6 @@ def cancel_registers(doc_name):
 
 
 def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate):
-	print("wage_rate",wage_rate)
 	doc = frappe.get_doc(
 		{
 			"doctype": "Labour Attendance Register",
@@ -511,7 +510,7 @@ def _labour_filters():
 
 
 @frappe.whitelist()
-def get_employees(date, project=None):
+def get_employees(date: str, project: str | None = None):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	leave_emps = []
@@ -542,7 +541,7 @@ def get_employees(date, project=None):
 
 
 @frappe.whitelist()
-def get_assigned_employees(project):
+def get_assigned_employees(project: str):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	if "hrms" in frappe.get_installed_apps():
@@ -565,7 +564,7 @@ def get_assigned_employees(project):
 
 
 @frappe.whitelist()
-def get_last_day_attendance(project, current_date):
+def get_last_day_attendance(project: str, current_date: str):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	last_doc = frappe.db.get_value(

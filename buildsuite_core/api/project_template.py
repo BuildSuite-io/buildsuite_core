@@ -88,7 +88,7 @@ def get_project_template(project_category: str):
 
 
 @frappe.whitelist()
-def save_project_template(project_category: str, work_packages=None, stages=None, tasks=None):
+def save_project_template(project_category: str, work_packages: str | None = None, stages: str | None = None, tasks: str | None = None):
 	"""Upsert the category's template. Replaces its Work Packages, Stages and Tasks
 	wholesale from the payload. Each task row becomes a fresh is_template Task; the
 	previous template Tasks are removed so re-saving doesn't accumulate orphans."""

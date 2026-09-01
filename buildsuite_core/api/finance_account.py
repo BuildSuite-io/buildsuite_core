@@ -62,7 +62,7 @@ def _serialize(acc, petty, company):
 
 
 @frappe.whitelist()
-def list_finance_accounts(company=None):
+def list_finance_accounts(company: str | None = None):
 	company = company or default_company()
 	if not company:
 		return []
@@ -77,7 +77,7 @@ def list_finance_accounts(company=None):
 
 
 @frappe.whitelist()
-def save_finance_account(name, type, account_no=None, opening_balance=0, account=None):
+def save_finance_account(name: str, type: str, account_no: str | None = None, opening_balance: int = 0, account: str | None = None):
 	"""Create or edit a finance account. `account` is the Account id when editing."""
 	_guard()
 	company = default_company()
@@ -116,7 +116,7 @@ def save_finance_account(name, type, account_no=None, opening_balance=0, account
 
 
 @frappe.whitelist()
-def delete_finance_account(account):
+def delete_finance_account(account: str):
 	"""Delete a finance account. Refused if it has any posted GL movement."""
 	_guard()
 	company = default_company()

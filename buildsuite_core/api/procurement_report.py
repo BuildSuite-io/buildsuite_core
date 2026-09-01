@@ -57,7 +57,7 @@ def _item_meta(item_codes):
 
 
 @frappe.whitelist()
-def requests_to_order(project=None):
+def requests_to_order(project: str | None = None):
 	"""Requests waiting to be ordered — submitted Purchase Material Requests not fully ordered
 	(the gap between the request book and the order book). Value is the still-to-order portion,
 	item count and dates let the view flag age and lateness."""
@@ -97,8 +97,11 @@ def _item_rollup(child_doctype, parents):
 	if not parents:
 		return {}
 	rows = frappe.db.sql(
-		f"""SELECT parent, COUNT(*) AS cnt, IFNULL(SUM((qty - IFNULL(ordered_qty, 0)) * rate), 0) AS val
-		FROM `tab{child_doctype}` WHERE parent IN %s GROUP BY parent""",
+		# child_doctype is a server-controlled identifier; parents is parameterized.
+		"""SELECT parent, COUNT(*) AS cnt, IFNULL(SUM((qty - IFNULL(ordered_qty, 0)) * rate), 0) AS val
+		FROM `tab"""
+		+ child_doctype
+		+ """` WHERE parent IN %s GROUP BY parent""",
 		(tuple(parents),),
 		as_dict=True,
 	)
@@ -106,7 +109,7 @@ def _item_rollup(child_doctype, parents):
 
 
 @frappe.whitelist()
-def delivery_followup(project=None):
+def delivery_followup(project: str | None = None):
 	"""Delivery follow-up — submitted Purchase Orders not fully received, with how much has
 	landed (per_received) and the value still due. The view sorts the chase list and flags the
 	overdue ones off `required_by`."""
@@ -147,7 +150,7 @@ def delivery_followup(project=None):
 
 
 @frappe.whitelist()
-def site_stock(project=None):
+def site_stock(project: str | None = None):
 	"""Material at site — received minus consumed, per item, at each project store. Received
 	counts posted Purchase Receipts; consumed counts posted Material Issues. A cancelled
 	receipt never entered stock."""
@@ -204,7 +207,7 @@ def site_stock(project=None):
 
 
 @frappe.whitelist()
-def rate_check(project=None):
+def rate_check(project: str | None = None):
 	"""Purchase rate vs estimate — the latest order line per item that carries a Rate Master
 	code, against the Rate Master's current QS rate. Lines without a code are counted as
 	`unlinked` rather than silently dropped."""
@@ -215,10 +218,11 @@ def rate_check(project=None):
 		where += " AND po.project IN %s"
 		params.append(tuple(scope))
 	lines = frappe.db.sql(
-		f"""SELECT poi.item_code, poi.item_name, poi.uom, poi.rate, poi.custom_rate_master AS code,
+		"""SELECT poi.item_code, poi.item_name, poi.uom, poi.rate, poi.custom_rate_master AS code,
 			po.supplier_name AS supplier, po.supplier AS supplier_id, po.name AS po, po.transaction_date AS order_date
 		FROM `tabPurchase Order Item` poi JOIN `tabPurchase Order` po ON po.name = poi.parent
-		WHERE {where}""",
+		WHERE """
+		+ where,  # server-built from hardcoded fragments; values are in `params`
 		tuple(params),
 		as_dict=True,
 	)
@@ -266,7 +270,7 @@ def rate_check(project=None):
 
 
 @frappe.whitelist()
-def purchase_register(project=None):
+def purchase_register(project: str | None = None):
 	"""Purchase register — every purchase order line (order not cancelled): date, order,
 	supplier, item, quantity, rate and amount, so last-paid is one search away."""
 	scope = _scoped_projects(project)
@@ -276,11 +280,13 @@ def purchase_register(project=None):
 		where += " AND po.project IN %s"
 		params.append(tuple(scope))
 	lines = frappe.db.sql(
-		f"""SELECT po.name AS po, po.transaction_date AS date, po.supplier_name AS supplier,
+		"""SELECT po.name AS po, po.transaction_date AS date, po.supplier_name AS supplier,
 			po.supplier AS supplier_id, po.project AS project, poi.item_code, poi.item_name,
 			poi.qty, poi.uom, poi.rate, poi.amount
 		FROM `tabPurchase Order Item` poi JOIN `tabPurchase Order` po ON po.name = poi.parent
-		WHERE {where}
+		WHERE """
+		+ where  # server-built from hardcoded fragments; values are in `params`
+		+ """
 		ORDER BY po.transaction_date DESC, po.name DESC""",
 		tuple(params),
 		as_dict=True,
@@ -304,7 +310,7 @@ def purchase_register(project=None):
 
 
 @frappe.whitelist()
-def consumption_by_cost_code(project=None):
+def consumption_by_cost_code(project: str | None = None):
 	"""Consumption by cost code — material issued to site (posted Material Issues), one row per
 	issue line with the cost code it was booked against, its date, and a value at the item
 	master's standard rate (a list price, not the actual issue cost — issue valuation needs
@@ -316,10 +322,11 @@ def consumption_by_cost_code(project=None):
 		where += " AND se.project IN %s"
 		params.append(tuple(scope))
 	lines = frappe.db.sql(
-		f"""SELECT se.project AS project, se.posting_date AS date, se.custom_cost_code_label AS code,
+		"""SELECT se.project AS project, se.posting_date AS date, se.custom_cost_code_label AS code,
 			sed.item_code, sed.item_name, sed.qty, sed.uom
 		FROM `tabStock Entry Detail` sed JOIN `tabStock Entry` se ON se.name = sed.parent
-		WHERE {where}""",
+		WHERE """
+		+ where,  # server-built from hardcoded fragments; values are in `params`
 		tuple(params),
 		as_dict=True,
 	)

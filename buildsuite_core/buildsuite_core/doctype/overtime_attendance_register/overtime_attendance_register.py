@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.utils import *
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
@@ -90,15 +91,20 @@ class OvertimeAttendanceRegister(Document):
 				f"Overtime already marked for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}."
 			)
 		if self.overtime_hours == 0:
-			frappe.throw("Overtime hours cannot be zero!")
+			frappe.throw(_("Overtime hours cannot be zero!"))
 		self.overtime_wage_calculated = flt(self.overtime_rate) * flt(self.overtime_hours)
 	pass
 @frappe.whitelist()
-def update_wage(employee_id, wage):
-    if employee_id and wage:
-        frappe.db.set_value("Employee",employee_id,'custom_wage_for_overtime',wage)
-        frappe.db.commit()
-        return wage
+def update_wage(employee_id: str, wage: str):
+    if not (employee_id and wage):
+        return
+    # Enforce write permission on the Employee before mutating its wage (was an
+    # unguarded whitelisted write). db_set persists within the request transaction —
+    # no manual commit needed.
+    emp = frappe.get_doc("Employee", employee_id)
+    emp.check_permission("write")
+    emp.db_set("custom_wage_for_overtime", wage)
+    return wage
 
 # @frappe.whitelist()
 # def project_list_query(doctype, txt, searchfield, start, page_len, filters):

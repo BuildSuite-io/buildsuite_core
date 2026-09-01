@@ -66,7 +66,7 @@ def _in(d, start, end):
 
 
 @frappe.whitelist()
-def get_progress_report(project, period="weekly", date=None, audience="client"):
+def get_progress_report(project: str, period: str = "weekly", date: str | None = None, audience: str = "client"):
 	if not project or not frappe.db.exists("Project", project):
 		frappe.throw(frappe._("Project not found."))
 	period = period if period in _SPANS else "weekly"

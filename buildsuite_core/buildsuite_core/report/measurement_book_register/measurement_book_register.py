@@ -6,30 +6,31 @@ measured total. A Script Report so its conditions bind only when a filter is set
 with empty filters on page load). All filters are optional — the register spans projects."""
 
 import frappe
+from frappe import _
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
 		{
-			"label": "MB",
+			"label": _("MB"),
 			"fieldname": "measurement_book",
 			"fieldtype": "Link",
 			"options": "Measurement Book",
 			"width": 160,
 		},
-		{"label": "Project", "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
+		{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
 		{
-			"label": "Work Order",
+			"label": _("Work Order"),
 			"fieldname": "work_order",
 			"fieldtype": "Link",
 			"options": "Subcontractor Work Order",
 			"width": 160,
 		},
-		{"label": "Date", "fieldname": "date", "fieldtype": "Date", "width": 100},
-		{"label": "Entries", "fieldname": "entries", "fieldtype": "Int", "width": 90},
-		{"label": "Measured", "fieldname": "measured", "fieldtype": "Float", "width": 120},
-		{"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 110},
+		{"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
+		{"label": _("Entries"), "fieldname": "entries", "fieldtype": "Int", "width": 90},
+		{"label": _("Measured"), "fieldname": "measured", "fieldtype": "Float", "width": 120},
+		{"label": _("Status"), "fieldname": "status", "fieldtype": "Data", "width": 110},
 	]
 
 	conditions = ""
@@ -45,12 +46,12 @@ def execute(filters=None):
 		conditions += " AND mb.date <= %(to_date)s"
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT mb.name AS measurement_book, mb.project, mb.work_order, mb.date,
 			(SELECT COUNT(*) FROM `tabMeasurement Book Entry` e WHERE e.parent = mb.name) AS entries,
 			mb.measured_total AS measured, mb.status
 		FROM `tabMeasurement Book` mb
-		WHERE mb.docstatus < 2 {conditions}
+		WHERE mb.docstatus < 2 """ + conditions + """
 		ORDER BY mb.date DESC, mb.name DESC
 		""",
 		filters,

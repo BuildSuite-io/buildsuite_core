@@ -200,7 +200,7 @@ def _serialize(doc):
 # Reads
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def list_invoices(project=None, company=None):
+def list_invoices(project: str | None = None, company: str | None = None):
 	"""Sales Invoices for the active (default) company, newest first, with the payment summary
 	for aging/status in the panel."""
 	company = company or default_company()
@@ -269,7 +269,7 @@ def list_invoices(project=None, company=None):
 
 
 @frappe.whitelist()
-def get_invoice(name):
+def get_invoice(name: str):
 	doc = frappe.get_doc(SI, name)
 	doc.check_permission("read")
 	return _serialize(doc)
@@ -279,7 +279,7 @@ def get_invoice(name):
 # Writes
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def save_invoice(payload):
+def save_invoice(payload: str):
 	"""Create or edit a DRAFT Sales Invoice. payload: {name?, customer, project?, date,
 	due_date?, items:[{description, qty, rate}], taxes_and_charges?, taxes:[{charge_type,
 	account_head, rate, description}], additional_discount_on?, additional_discount_percentage?,
@@ -385,7 +385,7 @@ def _guard_workflow():
 
 
 @frappe.whitelist()
-def submit_invoice(name):
+def submit_invoice(name: str):
 	_guard_workflow()
 	si = frappe.get_doc(SI, name)
 	si.check_permission("submit")
@@ -395,7 +395,7 @@ def submit_invoice(name):
 
 
 @frappe.whitelist()
-def cancel_invoice(name):
+def cancel_invoice(name: str):
 	_guard_workflow()
 	si = frappe.get_doc(SI, name)
 	si.check_permission("cancel")
@@ -405,7 +405,7 @@ def cancel_invoice(name):
 
 
 @frappe.whitelist()
-def delete_invoice(name):
+def delete_invoice(name: str):
 	si = frappe.get_doc(SI, name)
 	si.check_permission("delete")
 	if si.docstatus != 0:
@@ -418,7 +418,7 @@ def delete_invoice(name):
 # Receive payment (Payment Entry against the SI)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def record_receipt(name, amount=None, date=None, mode_of_payment=None, deposit_to=None, reference_no=None):
+def record_receipt(name: str, amount: str | None = None, date: str | None = None, mode_of_payment: str | None = None, deposit_to: str | None = None, reference_no: str | None = None):
 	"""Create + submit a Payment Entry receiving against the invoice, into a Bank/Cash account."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
@@ -452,7 +452,7 @@ def record_receipt(name, amount=None, date=None, mode_of_payment=None, deposit_t
 
 
 @frappe.whitelist()
-def list_receipts(name):
+def list_receipts(name: str):
 	"""Cash receipts allocated to this invoice — plain Payment Entries only. Adjusted customer
 	advances are excluded here; they show under the invoice's Advance Payments instead."""
 	doc = frappe.get_doc(SI, name)
@@ -487,7 +487,7 @@ def list_receipts(name):
 # Customer advances (on-account receipts, no invoice yet)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def record_advance(customer, amount, date=None, deposit_to=None, mode_of_payment=None, reference_no=None):
+def record_advance(customer: str, amount: str, date: str | None = None, deposit_to: str | None = None, mode_of_payment: str | None = None, reference_no: str | None = None):
 	"""Receive money from a customer BEFORE (or without) an invoice — a submitted on-account
 	Payment Entry whose full amount stays unallocated until a later invoice draws it down."""
 	from erpnext.accounts.party import get_party_account
@@ -561,7 +561,7 @@ def _draft_committed(pe_names):
 
 
 @frappe.whitelist()
-def available_advances(name):
+def available_advances(name: str):
 	"""The invoice customer's on-account advances that can still be adjusted against this
 	invoice, oldest first — the Payment Entry's unallocated balance net of anything already
 	earmarked on any draft invoice (including this one)."""
@@ -629,7 +629,7 @@ def _reconcile_advance(si, pe, amount):
 
 
 @frappe.whitelist()
-def link_advance(name, payment_entry, amount):
+def link_advance(name: str, payment_entry: str, amount: str):
 	"""Adjust `amount` of a customer advance against this invoice, reducing its outstanding."""
 	si = frappe.get_doc(SI, name)
 	si.check_permission("write")
@@ -692,7 +692,7 @@ def link_advance(name, payment_entry, amount):
 
 
 @frappe.whitelist()
-def unlink_advance(name, payment_entry):
+def unlink_advance(name: str, payment_entry: str):
 	"""Reverse an advance adjustment — remove the draft `advances` row, or unreconcile the
 	Payment Entry from a submitted invoice (native Unreconcile Payment)."""
 	si = frappe.get_doc(SI, name)
@@ -728,7 +728,7 @@ def unlink_advance(name, payment_entry):
 
 
 @frappe.whitelist()
-def receivables_summary(company=None):
+def receivables_summary(company: str | None = None):
 	"""Header totals for the Invoices panel — total outstanding receivable (submitted, unpaid
 	Sales Invoices) and total unallocated customer advances — for the active company."""
 	company = company or default_company()
@@ -747,7 +747,7 @@ def receivables_summary(company=None):
 
 
 @frappe.whitelist()
-def advances_summary(company=None):
+def advances_summary(company: str | None = None):
 	"""Total unallocated customer advances held for the active (default) company."""
 	company = company or default_company()
 	total = frappe.db.sql(
@@ -766,7 +766,7 @@ def advances_summary(company=None):
 # Pickers
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def list_deposit_accounts(company=None):
+def list_deposit_accounts(company: str | None = None):
 	"""Bank/Cash accounts a receipt can be deposited INTO — the active (default) company."""
 	company = company or default_company()
 	return frappe.get_all(
@@ -778,7 +778,7 @@ def list_deposit_accounts(company=None):
 
 
 @frappe.whitelist()
-def list_tax_templates(company=None):
+def list_tax_templates(company: str | None = None):
 	"""Sales Taxes and Charges Templates for the picker (GST/VAT/none — whatever is seeded)."""
 	filters = {"disabled": 0}
 	if company:
@@ -794,7 +794,7 @@ def list_tax_templates(company=None):
 
 
 @frappe.whitelist()
-def get_tax_template_rows(template):
+def get_tax_template_rows(template: str):
 	"""Resolve a Sales tax template's rows into the invoice's tax-table shape (Bill pattern)."""
 	doc = frappe.get_doc("Sales Taxes and Charges Template", template)
 	return [
@@ -825,7 +825,7 @@ def _html_to_text(html):
 
 
 @frappe.whitelist()
-def get_terms(name):
+def get_terms(name: str):
 	"""The body of a Terms and Conditions template as plain text (imported into the invoice
 	terms box). ERPNext stores it as HTML, which is unfriendly to edit — so convert it."""
 	return {"terms": _html_to_text(frappe.db.get_value("Terms and Conditions", name, "terms"))}

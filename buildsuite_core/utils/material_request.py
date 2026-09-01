@@ -5,7 +5,7 @@ from frappe.query_builder.functions import Sum
 from frappe.utils import cint, cstr, flt, get_link_to_form, getdate, new_line_sep, nowdate
 
 @frappe.whitelist()
-def create_purchase_order(source_name, target_doc=None):
+def create_purchase_order(source_name: str, target_doc: str | None = None):
     doclist = get_mapped_doc(
 		"Material Request",
 		source_name,

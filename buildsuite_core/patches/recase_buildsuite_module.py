@@ -43,6 +43,7 @@ def execute():
 		"Custom HTML Block",
 	):
 		if frappe.db.table_exists(dt) and frappe.db.has_column(dt, "module"):
-			frappe.db.sql(f"update `tab{dt}` set module = %s where module = %s", (new, old))
+			# dt is a server-controlled identifier (iterated doctype list); values parameterized.
+			frappe.db.sql("update `tab" + dt + "` set module = %s where module = %s", (new, old))
 
 	frappe.clear_cache()

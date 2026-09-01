@@ -281,7 +281,7 @@ def get_petty_cash_account(company, throw=True):
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_petty_cash_account_query(doctype, txt, searchfield, start, page_len, filters):
+def get_petty_cash_account_query(doctype: str, txt: str, searchfield: str, start: str, page_len: str, filters: str):
 	"""Return only the petty cash account for the given company."""
 	company = (filters or {}).get("company")
 	if not company:
@@ -310,7 +310,7 @@ def get_petty_cash_account_query(doctype, txt, searchfield, start, page_len, fil
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_employee_for_petty_cash_user(doctype, txt, searchfield, start, page_len, filters):
+def get_employee_for_petty_cash_user(doctype: str, txt: str, searchfield: str, start: str, page_len: str, filters: str):
 	"""Return only the employee record linked to the logged-in Petty Cash user."""
 	user = (filters or {}).get("user")
 	if not user:
