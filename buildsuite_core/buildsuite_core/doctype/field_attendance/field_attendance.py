@@ -414,7 +414,6 @@ def cancel_registers(doc_name):
 
 
 def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate):
-	print("wage_rate",wage_rate)
 	doc = frappe.get_doc(
 		{
 			"doctype": "Labour Attendance Register",

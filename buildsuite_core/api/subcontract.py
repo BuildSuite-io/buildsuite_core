@@ -440,7 +440,7 @@ def save_measurement_book(
 		doc = frappe.get_doc(MEASUREMENT_BOOK, name)
 		doc.check_permission("write")
 		if doc.status != "Draft":
-			frappe.throw("Only Draft measurement books can be edited. Revert to Draft first.")
+			frappe.throw(_("Only Draft measurement books can be edited. Revert to Draft first."))
 	else:
 		doc = frappe.new_doc(MEASUREMENT_BOOK)
 

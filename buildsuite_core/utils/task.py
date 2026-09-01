@@ -481,7 +481,7 @@ def enforce_predecessor_gate(doc, method=None):
 		doc.status = "Open"
 		return
 	frappe.throw(
-		_('"{0}" can\'t be set to {1} yet — its Finish-to-Start predecessor "{2}" isn\'t Completed.').format(
+		_("'{0}' can't be set to {1} yet — its Finish-to-Start predecessor '{2}' isn't Completed.").format(
 			doc.get("subject") or doc.name, status, pred
 		)
 	)
