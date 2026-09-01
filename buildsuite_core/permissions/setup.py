@@ -1022,7 +1022,7 @@ def setup_child_table_read_access():
 
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
-	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import seed_personas
+	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import repair_default_personas
 	from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
 		seed_workspace_reports,
 	)
@@ -1049,7 +1049,10 @@ def setup_record_permissions():
 	# Mirror read to child tables of everything the BuildSuite roles can read (must run AFTER
 	# all the parent grants above are in place).
 	setup_child_table_read_access()
-	# Personas map to the roles ensured above — seed them once the roles exist.
-	seed_personas()
+	# Personas map to the roles ensured above. Use repair (not plain seed) so an existing
+	# persona that was created empty — the persona-creation patches run BEFORE the roles
+	# exist, and plain seed_personas skips already-created personas — gets its missing
+	# default roles backfilled now that the roles are in place.
+	repair_default_personas()
 	# Per-workspace report tiles (Query Reports + the Workspace Setting table).
 	seed_workspace_reports()
