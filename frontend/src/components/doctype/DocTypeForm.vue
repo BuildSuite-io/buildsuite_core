@@ -122,6 +122,17 @@ const tabs = computed(() => {
 
 const currentTab = computed(() => tabs.value[activeTab.value] || tabs.value[0] || { sections: [] });
 
+// Dirty tracking: while a draft has unsaved edits, Save is the primary action;
+// once clean, Submit becomes primary (Frappe's Save-then-Submit behaviour).
+const pristine = ref("");
+function snapshot() {
+	pristine.value = JSON.stringify(form);
+}
+const dirty = computed(() => JSON.stringify(form) !== pristine.value);
+const showSave = computed(
+	() => isDraft.value && perms.value.write && !(submittable.value && !dirty.value)
+);
+
 function isReadOnly(f) {
 	if (locked.value) return true;
 	if (f.read_only) return true;
@@ -164,6 +175,7 @@ async function load() {
 		} else if (meta.value) {
 			seedNew();
 		}
+		snapshot();
 	} catch (err) {
 		formError.value = err.message || "Failed to load record.";
 	} finally {
@@ -174,7 +186,10 @@ async function load() {
 watch(
 	() => meta.value,
 	(m) => {
-		if (m && !isEdit.value && !loading.value) seedNew();
+		if (m && !isEdit.value && !loading.value) {
+			seedNew();
+			snapshot();
+		}
 	}
 );
 watch(() => [props.doctype, props.name], load, { immediate: true });
@@ -222,6 +237,7 @@ function guardRequired() {
 
 async function onSave() {
 	formError.value = "";
+	if (isEdit.value && !dirty.value) return; // nothing to save on a clean draft
 	if (!guardRequired()) return;
 	busy.value = true;
 	try {
@@ -412,15 +428,20 @@ const DANGER =
 					{{ busy ? "Creating…" : "Create" }}
 				</button>
 
-				<!-- Draft -->
+				<!-- Draft: Save is primary while dirty; once clean, Submit takes over. -->
 				<template v-else-if="isDraft">
-					<button v-if="perms.write" type="submit" class="desk-save-btn" :disabled="busy">
+					<button
+						v-if="showSave"
+						type="submit"
+						class="desk-save-btn"
+						:disabled="busy || !dirty"
+					>
 						{{ busy ? "Saving…" : "Save" }}
 					</button>
 					<button
 						v-if="submittable && perms.submit"
 						type="button"
-						:class="SECONDARY"
+						:class="dirty ? SECONDARY : 'desk-save-btn'"
 						:disabled="busy"
 						@click="onSubmit"
 					>

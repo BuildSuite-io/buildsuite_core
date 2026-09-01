@@ -30,6 +30,7 @@ import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 
 const store = useDataStore();
 
@@ -196,6 +197,8 @@ onMounted(async () => {
 					Active role: {{ store.currentRole?.name }}
 				</div>
 			</div>
+
+			<WorkspaceRecordsSection workspace="site-execution" />
 
 			<!-- Reports group — configured in Site Execution Settings (report + icon
            + description, in order). Each tile opens the report's desk route. -->

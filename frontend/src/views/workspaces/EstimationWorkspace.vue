@@ -5,6 +5,7 @@
 import { computed, ref, onMounted } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 
 const today = computed(() =>
 	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
@@ -74,6 +75,8 @@ const SETUP = [
 					:description="sc.description"
 				/>
 			</div>
+
+			<WorkspaceRecordsSection workspace="estimation" />
 
 			<!-- Reports group — configured in Workspace Setting -->
 			<div v-if="reports.length" class="mt-8">

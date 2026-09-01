@@ -11,7 +11,8 @@ import { storeToRefs } from "pinia";
 import { useFinanceMock } from "@/data/financeMock";
 import { useSessionStore } from "@/stores/session";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getWorkspaceReports, getWorkspaceDoctypes } from "@/data/workspaceSettingApi";
+import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
@@ -76,24 +77,17 @@ const MASTERS = [
 // BuildSuite-specific Petty Cash / Expense Summary. Each tile is role-gated server-side, so
 // a persona without the Accounts roles simply gets none.
 const reports = ref([]);
-const records = ref([]);
 onMounted(async () => {
 	try {
 		reports.value = await getWorkspaceReports("project-finance");
 	} catch {
 		reports.value = [];
 	}
-	try {
-		records.value = await getWorkspaceDoctypes("project-finance");
-	} catch {
-		records.value = [];
-	}
 });
 
 const txTiles = computed(() => TRANSACTIONS.filter((t) => canSee(t.section)));
 const masterTiles = computed(() => MASTERS.filter((t) => canSee(t.section)));
 const showReports = computed(() => canSee("reports") && reports.value.length > 0);
-const showRecords = computed(() => records.value.length > 0);
 const showOverview = computed(() => canSee("overview"));
 </script>
 
@@ -205,32 +199,7 @@ const showOverview = computed(() => canSee("overview"));
 				</div>
 
 				<!-- Records (admin-curated DocTypes) -->
-				<div v-if="showRecords" class="mb-8">
-					<h2
-						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
-					>
-						Records
-					</h2>
-					<div class="border-t border-ink-200 mb-3"></div>
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-						<WorkspaceShortcut
-							v-for="(d, i) in records"
-							:key="i"
-							:icon="d.icon"
-							:label="d.label"
-							:description="d.description"
-							:to="d.route"
-						>
-							<template #badge>
-								<span
-									class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
-									style="border-radius: 2px"
-									>Records</span
-								>
-							</template>
-						</WorkspaceShortcut>
-					</div>
-				</div>
+				<WorkspaceRecordsSection workspace="project-finance" />
 
 				<!-- Reports -->
 				<div v-if="showReports" class="mb-4">
