@@ -12,6 +12,7 @@ import { useFinanceMock } from "@/data/financeMock";
 import { useSessionStore } from "@/stores/session";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
@@ -196,6 +197,9 @@ const showOverview = computed(() => canSee("overview"));
 						/>
 					</div>
 				</div>
+
+				<!-- Records (admin-curated DocTypes) -->
+				<WorkspaceRecordsSection workspace="project-finance" />
 
 				<!-- Reports -->
 				<div v-if="showReports" class="mb-4">

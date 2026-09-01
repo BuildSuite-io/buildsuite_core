@@ -11,6 +11,7 @@ import { RouterLink } from "vue-router";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 
 const today = computed(() => {
 	const d = new Date();
@@ -99,6 +100,8 @@ onMounted(async () => {
 					:to="sc.to"
 				/>
 			</div>
+
+			<WorkspaceRecordsSection workspace="subcontract" />
 
 			<!-- Reports group -->
 			<div v-if="reports.length" class="mt-8">

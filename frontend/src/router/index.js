@@ -364,6 +364,24 @@ const routes = [
 				component: () => import("@/views/procurement/NewMaterialRequestView.vue"),
 			},
 			{
+				path: "records/:doctype/new",
+				name: "record-new",
+				component: () => import("@/views/records/DocTypeRecordFormView.vue"),
+				props: true,
+			},
+			{
+				path: "records/:doctype/:name",
+				name: "record-edit",
+				component: () => import("@/views/records/DocTypeRecordFormView.vue"),
+				props: true,
+			},
+			{
+				path: "records/:doctype",
+				name: "records-list",
+				component: () => import("@/views/records/DocTypeRecordsListView.vue"),
+				props: true,
+			},
+			{
 				path: "procurement/purchase-orders",
 				name: "purchase-orders",
 				component: () => import("@/views/procurement/PurchaseOrdersListView.vue"),

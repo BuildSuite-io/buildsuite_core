@@ -5,7 +5,9 @@
  "engine": "InnoDB",
  "field_order": [
   "reports_section",
-  "reports"
+  "reports",
+  "doctypes_section",
+  "doctypes"
  ],
  "fields": [
   {
@@ -19,6 +21,18 @@
    "fieldtype": "Table",
    "label": "Reports",
    "options": "Workspace Report"
+  },
+  {
+   "fieldname": "doctypes_section",
+   "fieldtype": "Section Break",
+   "label": "Workspace Records"
+  },
+  {
+   "description": "DocType shortcut tiles rendered in each workspace, tagged by workspace slug. Each opens the generic /records list + form for that DocType.",
+   "fieldname": "doctypes",
+   "fieldtype": "Table",
+   "label": "DocTypes",
+   "options": "Workspace Doctype"
   }
  ],
  "index_web_pages_for_search": 0,
