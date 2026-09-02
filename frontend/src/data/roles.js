@@ -643,6 +643,10 @@ const _MODULE_ACCESS = {
 		// read links to Supplier), but that only resolves the WO's supplier name — no screen.
 		// Accountant + QS maintain subcontractors fully; Estimator is read-only.
 		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		// PM maintains subcontractors (create/edit) but does NOT delete them (backend _CRW).
+		// Delete must be listed explicitly, else it defaults to `create` and the button renders
+		// for PM though the server (correctly) rejects it. Mirrors SUBCONTRACT_ROLE_PERMS.
+		del: ["procurement", "director", "qs", "accountant", "admin", "bsa"],
 		read: ["procurement", "pm", "director", "qs", "accountant", "estimator", "admin", "bsa"],
 	},
 	subcontractorWorkOrder: {
@@ -689,11 +693,17 @@ const _MODULE_ACCESS = {
 	},
 	// Workforce
 	fieldEmployee: {
+		// HR/PM/admin maintain the worker master fully; Site Engineer edits but does NOT
+		// delete (backend EMPLOYEE_WRITE_ROLE_PERMS SE _CRW), so del is explicit.
 		create: ["pm", "site-engineer", "hr-manager", "admin", "bsa"],
+		del: ["pm", "hr-manager", "admin", "bsa"],
 		read: _ALL_PERSONAS, // Employee is a linked-master read mirror — every persona reads it
 	},
 	crew: {
+		// PM/SE/HR maintain crews fully; Foreman maintains membership (edit) but does NOT
+		// delete a crew (backend CREW_ROLE_PERMS Foreman _CRW), so del is explicit.
 		create: ["pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
+		del: ["pm", "site-engineer", "hr-manager", "admin", "bsa"],
 		read: ["director", "pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
 	},
 	fieldAttendance: {
@@ -711,7 +721,10 @@ const _MODULE_ACCESS = {
 	},
 	// Equipment
 	machinery: {
+		// Procurement + Store Keeper maintain the register fully; PM edits but does NOT delete
+		// (backend MACHINERY_ROLE_PERMS PM _CRW), so del is explicit.
 		create: ["pm", "procurement", "store-keeper", "admin", "bsa"],
+		del: ["procurement", "store-keeper", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -725,7 +738,10 @@ const _MODULE_ACCESS = {
 		],
 	},
 	machineryUsage: {
+		// Site records usage (PM/SE/SK full); Foreman edits but does NOT delete (backend
+		// MACHINERY_USAGE_ROLE_PERMS Foreman _CRW), so del is explicit.
 		create: ["pm", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
+		del: ["pm", "site-engineer", "store-keeper", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
@@ -742,8 +758,11 @@ const _MODULE_ACCESS = {
 	// buildsuite_core/permissions/setup.py, so the finance panels' "+ New" buttons
 	// show only for personas whose DocPerm would actually allow the insert.
 	supplier: {
-		// Supplier (SUBCONTRACT_ROLE_PERMS) — same doctype the Suppliers panel creates
+		// Supplier (SUBCONTRACT_ROLE_PERMS) — same doctype the Suppliers panel creates.
+		// PM maintains suppliers (create/edit) but does NOT delete them (backend _CRW), so
+		// del is explicit (else it defaults to create and PM gets a Delete button the server rejects).
 		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
+		del: ["procurement", "director", "qs", "accountant", "admin", "bsa"],
 		read: [
 			"procurement",
 			"pm",
@@ -759,8 +778,10 @@ const _MODULE_ACCESS = {
 	},
 	customer: {
 		// Customer (CUSTOMER_WRITE_ROLE_PERMS); read is the linked-master mirror = every persona
-		// EXCEPT HR Manager, which has no Customer screen (per the HR ruling).
+		// EXCEPT HR Manager, which has no Customer screen (per the HR ruling). PM edits but does
+		// NOT delete (backend _CRW), so del is explicit.
 		create: ["director", "pm", "accountant", "admin", "bsa"],
+		del: ["director", "accountant", "admin", "bsa"],
 		read: _ALL_PERSONAS.filter((p) => p !== "hr-manager"),
 	},
 	supplierBill: {
@@ -782,8 +803,14 @@ const _MODULE_ACCESS = {
 		read: ["director", "pm", "procurement", "accountant", "estimator", "admin", "bsa"],
 	},
 	pettyCash: {
-		// Petty Cash Request (PETTY_CASH_ROLE_PERMS)
+		// Petty Cash Request (PETTY_CASH_ROLE_PERMS). Director/PM/Accountant own it fully (_FULL);
+		// Site Engineer + Foreman raise + edit their own (create+write, no delete); Store Keeper /
+		// Procurement / Estimator / HR RAISE only (create+read, no write/delete). So edit excludes
+		// the raise-only roles and del is finance-only — both must be explicit, else they default
+		// to the full create set and render Edit/Delete buttons the server rejects.
 		create: ["director", "pm", "accountant", "site-engineer", "foreman", "store-keeper", "procurement", "estimator", "hr-manager", "admin", "bsa"],
+		edit: ["director", "pm", "accountant", "site-engineer", "foreman", "admin", "bsa"],
+		del: ["director", "pm", "accountant", "admin", "bsa"],
 		read: [
 			"director",
 			"pm",
