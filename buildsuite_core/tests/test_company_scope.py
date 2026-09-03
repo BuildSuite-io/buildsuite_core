@@ -58,3 +58,54 @@ class TestCompanyScope(BuildSuiteTestCase):
 		boq_a = self._boq(pa.name)  # belongs to company A
 		with self.assertRaises(frappe.ValidationError):
 			self._sco(pb.name, boq_revision=boq_a.name)
+
+	# --- per-company masters in a BOQ ------------------------------------
+	def _assembly(self, company):
+		h = frappe.generate_hash(length=5)
+		return frappe.get_doc(
+			{
+				"doctype": "Assembly",
+				"assembly_code": f"ASM-{h}",
+				"assembly_name": "X",
+				"uom": "Nos",
+				"company": company,
+			}
+		).insert(ignore_permissions=True)
+
+	def _boq_group(self, boq):
+		return frappe.get_doc(
+			{"doctype": "BOQ Group", "boq": boq, "code": "A", "group_name": "X"}
+		).insert(ignore_permissions=True)
+
+	def _boq_item(self, boq, group, **kw):
+		return frappe.get_doc(
+			{
+				"doctype": "BOQ Item",
+				"boq": boq,
+				"boq_group": group,
+				"code": f"A.{frappe.generate_hash(length=3)}",
+				"description": "x",
+				"unit": "Nos",
+				"planned_qty": 1,
+				"rate": 1,
+				**kw,
+			}
+		).insert(ignore_permissions=True)
+
+	def test_boq_item_accepts_same_company_assembly(self):
+		p = self._project(self.company)
+		boq = self._boq(p.name)
+		g = self._boq_group(boq.name)
+		asm = self._assembly(self.company)
+		item = self._boq_item(boq.name, g.name, assembly=asm.name)
+		self.assertTrue(item.name)
+
+	def test_boq_item_rejects_cross_company_assembly(self):
+		"""A company-A BOQ item cannot pull a company-B Assembly (a per-company master)."""
+		c2 = self._second_company()
+		p = self._project(self.company)  # BOQ in company A
+		boq = self._boq(p.name)
+		g = self._boq_group(boq.name)
+		asm_b = self._assembly(c2)  # Assembly in company B
+		with self.assertRaises(frappe.ValidationError):
+			self._boq_item(boq.name, g.name, assembly=asm_b.name)

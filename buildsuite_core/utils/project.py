@@ -87,6 +87,23 @@ def assert_same_company(doc, link_field, link_doctype, label=None):
 		)
 
 
+def assert_link_same_company(link_name, link_doctype, company, label=None):
+	"""The linked record must belong to `company`. For docs whose own company is derived rather
+	than stored — e.g. a BOQ Item / Sub Item resolving its BOQ's company before checking that its
+	Assembly / Rate Master (per-company masters) match. No-op when either side is unset.
+	"""
+	if not link_name or not company:
+		return
+	other = frappe.db.get_value(link_doctype, link_name, "company")
+	if other and other != company:
+		frappe.throw(
+			frappe._("{0} {1} belongs to company {2}, not {3} — it cannot be used here.").format(
+				label or link_doctype, link_name, other, company
+			),
+			title=frappe._("Company mismatch"),
+		)
+
+
 def set_company_on_insert(doc, method=None):
 	"""Default/inherit company before insert (PRJ-005, PRJ-012).
 
