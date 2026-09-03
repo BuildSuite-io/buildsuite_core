@@ -1020,6 +1020,68 @@ def setup_child_table_read_access():
 		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
 
 
+# --- Mobile app permissions (additional, layered on the base matrix) -----------
+# A companion mobile app (a separate app) authenticates as BuildSuite users and needs extra
+# DocPerms on top of the base matrix, per the mobile-permissions sheet. Applied with
+# _upgrade_role_perms so it only RAISES perms, never revokes a base grant; each call passes only
+# the ptypes it grants, so unlisted ptypes (e.g. delete) keep their base value.
+_MOBILE_FULL = {"select": 1, "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1}
+_MOBILE_CRW = {"select": 1, "read": 1, "write": 1, "create": 1, "print": 1}  # Select/Read/Write/Create
+_MOBILE_SR = {"select": 1, "read": 1, "print": 1}  # Select, Read
+
+_M_PM = "BuildSuite PM"
+_M_ENGINEER = "BuildSuite Site Engineer"
+_M_FOREMAN = "BuildSuite Foreman"
+# Roles that may create a Field Attendance muster (from FIELD_ATTENDANCE_ROLE_PERMS).
+_MOBILE_FIELD_ATT_ROLES = (_M_PM, _M_ENGINEER, _M_FOREMAN, "BuildSuite HR Manager")
+# Every BuildSuite persona — an Expense Entry can be raised by all of them (→ Account read), and
+# File is available to all in the mobile app.
+_MOBILE_ALL_ROLES = (
+	"BuildSuite Director",
+	_M_PM,
+	"BuildSuite QS",
+	"BuildSuite Estimator",
+	_M_ENGINEER,
+	_M_FOREMAN,
+	"BuildSuite Procurement Officer",
+	"BuildSuite Store Keeper",
+	"BuildSuite Accountant",
+	"BuildSuite HR Manager",
+)
+
+
+def _mobile_perm(roles, perm):
+	return {role: perm for role in roles}
+
+
+def setup_mobile_permissions():
+	"""Extra DocPerms for the companion mobile app, layered on the base matrix (never revokes).
+	Source: the mobile-permissions sheet — Select/Read/Write/Create/Submit/Cancel per doctype."""
+	full, crw, sr = tuple(_MOBILE_FULL), tuple(_MOBILE_CRW), tuple(_MOBILE_SR)
+	eng_fore = (_M_ENGINEER, _M_FOREMAN)
+	eng_fore_pm = (_M_ENGINEER, _M_FOREMAN, _M_PM)
+
+	# Account — anyone who can raise an expense reads/selects accounts in the mobile form.
+	_upgrade_role_perms("Account", _mobile_perm(_MOBILE_ALL_ROLES, _MOBILE_SR), sr)
+	# Material Request + Stock Entry — Site Engineer + Foreman, full lifecycle.
+	_upgrade_role_perms("Material Request", _mobile_perm(eng_fore, _MOBILE_FULL), full)
+	_upgrade_role_perms("Stock Entry", _mobile_perm(eng_fore, _MOBILE_FULL), full)
+	# Field Attendance muster + its derived registers — field-attendance creators, full.
+	for dt in ("Field Attendance", "Labour Attendance Register", "Overtime Attendance Register"):
+		_upgrade_role_perms(dt, _mobile_perm(_MOBILE_FIELD_ATT_ROLES, _MOBILE_FULL), full)
+	# File — every persona (attach field photos / receipts).
+	_upgrade_role_perms("File", _mobile_perm(_MOBILE_ALL_ROLES, _MOBILE_CRW), crw)
+	# Journal Entry + Item — Site Engineer + Foreman, read/select only.
+	_upgrade_role_perms("Journal Entry", _mobile_perm(eng_fore, _MOBILE_SR), sr)
+	_upgrade_role_perms("Item", _mobile_perm(eng_fore, _MOBILE_SR), sr)
+	# Task Progress Entry — Site Engineer + Foreman + PM, create/edit.
+	_upgrade_role_perms("Task Progress Entry", _mobile_perm(eng_fore_pm, _MOBILE_CRW), crw)
+	# Purchase Receipt — Site Engineer + Foreman + PM, full lifecycle.
+	_upgrade_role_perms("Purchase Receipt", _mobile_perm(eng_fore_pm, _MOBILE_FULL), full)
+	# UOM — Site Engineer + Foreman + PM, read/select.
+	_upgrade_role_perms("UOM", _mobile_perm(eng_fore_pm, _MOBILE_SR), sr)
+
+
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
 	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import repair_default_personas
@@ -1043,6 +1105,7 @@ def setup_record_permissions():
 	setup_workforce_permissions()
 	setup_equipment_permissions()
 	setup_project_finance_permissions()
+	setup_mobile_permissions()  # extra DocPerms for the companion mobile app (layered)
 	_ensure_role(WORKFLOW_EDITOR_ROLE)
 	setup_stage_planning_workflow()
 	setup_subcontractor_wo_workflow()

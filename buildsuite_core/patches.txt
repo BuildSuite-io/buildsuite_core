@@ -37,3 +37,4 @@ buildsuite_core.patches.resync_director_permission_matrix # 2026-08-24
 buildsuite_core.patches.repoint_pnl_to_bespoke # 2026-08-25
 buildsuite_core.patches.resync_picker_select_permissions
 buildsuite_core.patches.backfill_persona_roles # 2026-09-01
+buildsuite_core.patches.resync_mobile_permissions # 2026-09-03 mobile app perms
