@@ -8,6 +8,7 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -38,15 +39,8 @@ const machineryOptions = computed(() =>
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
 	}))
 );
-const projectRes = useDocTypeList("Project", {
-	fields: ["name", "project_name"],
-	orderBy: "project_name asc",
-	pageLength: 0,
-	cache: "buildsuite-project-options",
-});
-const projectOptions = computed(() =>
-	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name }))
-);
+// Project picker is company-scoped to the switcher's working company (per-company projects).
+const companyFilter = activeCompanyFilter();
 
 const today = new Date().toISOString().slice(0, 10);
 const form = reactive({
@@ -164,12 +158,14 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 				<DeskField label="Project" required :error="errors.project">
-					<DeskSearchableSelect
+					<DeskLinkPicker
 						v-model="form.project"
-						:options="projectOptions"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						:filters="companyFilter"
 						placeholder="Pick a project…"
 						search-placeholder="Search project…"
-						allow-clear
 					/>
 				</DeskField>
 				<DeskField label="Task">

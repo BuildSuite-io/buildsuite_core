@@ -746,6 +746,7 @@ export const useDataStore = defineStore("data", {
 				description: "",
 				color: colourForId(r.id),
 				logo: r.logo,
+				projectCount: r.project_count ?? 0,
 			}));
 			this.companies = mapped;
 			this.companiesLoaded = true;

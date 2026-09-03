@@ -88,6 +88,7 @@ def list_companies() -> list:
 			"abbr": r.abbr or "",
 			"logo": r.get("custom_company_logo") or "",
 			"is_default": r.name == default,
+			"project_count": frappe.db.count("Project", {"company": r.name}),
 		}
 		for r in rows
 	]
