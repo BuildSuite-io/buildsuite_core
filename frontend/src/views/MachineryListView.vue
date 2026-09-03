@@ -2,7 +2,8 @@
 // Machinery Register — the Equipment Register report (Equipment workspace). Owned + hired
 // plant with their rates, with the prototype's filter strip (type, ownership, status).
 
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useDataStore } from "@/stores";
 import { useRouter, RouterLink } from "vue-router";
 
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -17,13 +18,15 @@ import { getMachineryRegister } from "@/data/equipmentApi";
 import { fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const store = useDataStore();
 const { canCreate } = usePermissions();
 
 const all = ref([]);
 const loading = ref(true);
 const error = ref("");
 
-onMounted(async () => {
+async function load() {
+	loading.value = true;
 	try {
 		all.value = (await getMachineryRegister()) || [];
 	} catch (e) {
@@ -31,7 +34,10 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-});
+}
+onMounted(load);
+// Re-scope to the topbar switcher's working company.
+watch(() => store.activeCompany, load);
 
 const search = ref("");
 const BLANK = { type: "", ownership: "", status: "" };

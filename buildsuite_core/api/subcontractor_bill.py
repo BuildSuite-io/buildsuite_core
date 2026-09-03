@@ -170,8 +170,11 @@ def list_bills(project=None):
 	"""Subcontractor Bills for the list — the workflow state (from docstatus) plus the derived
 	payment status (Unpaid / Partly Paid / Paid) read through each bill's generated Purchase
 	Invoice, so the list can show both badges."""
+	from buildsuite_core.utils.project import default_company
+
 	PI = "Purchase Invoice"
-	filters = {}
+	# Scope to the switcher's working company (Subcontractor Bill is company-scoped).
+	filters = {"company": default_company()}
 	if project:
 		filters["project"] = project
 	bills = frappe.get_all(

@@ -4,7 +4,8 @@
 // period). Rows come resolved from the server (machine / project / task names + total cost) so
 // nothing is looked up a second time on the client — see ISS-142.
 
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useDataStore } from "@/stores";
 import { useRouter, RouterLink } from "vue-router";
 
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -18,13 +19,15 @@ import { getMachineryUsageReport } from "@/data/equipmentApi";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const store = useDataStore();
 const { canCreate } = usePermissions();
 
 const all = ref([]);
 const loading = ref(true);
 const error = ref("");
 
-onMounted(async () => {
+async function load() {
+	loading.value = true;
 	try {
 		all.value = (await getMachineryUsageReport()) || [];
 	} catch (e) {
@@ -32,7 +35,10 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-});
+}
+onMounted(load);
+// Re-scope to the topbar switcher's working company.
+watch(() => store.activeCompany, load);
 
 const search = ref("");
 const BLANK = { machine: "", project: "", from: "", to: "" };

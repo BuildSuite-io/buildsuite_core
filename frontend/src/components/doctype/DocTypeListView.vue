@@ -4,6 +4,7 @@ import DeskList from "@/components/desk/DeskList.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate } from "@/utils/format";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 
 const props = defineProps({
@@ -27,6 +28,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["row-click", "count-change"]);
+
+// Reactive [["company","=",<working company>]] (or []) from the topbar switcher — used to
+// auto-scope any list whose doctype has a `company` field (see serverFilters).
+const companyScopeFilter = activeCompanyFilter();
 
 const search = ref("");
 const meta = ref(null);
@@ -178,6 +183,21 @@ const resolvedColumns = computed(() => {
 
 const serverFilters = computed(() => {
 	const filters = [...props.baseFilters];
+	// Auto company-scope: when the doctype has a `company` field, scope the list to the
+	// switcher's working company — unless the caller already handles company itself (its own
+	// filter chip / base filter). Re-queries on switch via the serverFilters watch below.
+	const callerHandlesCompany =
+		props.baseFilters.some((f) => Array.isArray(f) && f[0] === "company") ||
+		Object.values(props.filterFieldMap || {}).some(
+			(spec) => spec === "company" || spec?.field === "company"
+		);
+	if (
+		!callerHandlesCompany &&
+		fieldMetaMap.value.has("company") &&
+		companyScopeFilter.value.length
+	) {
+		filters.push(...companyScopeFilter.value);
+	}
 	for (const [key, value] of Object.entries(props.filterValues || {})) {
 		if (!value) continue;
 		const spec = props.filterFieldMap?.[key];
