@@ -5,6 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime, nowdate
 
+from buildsuite_core.utils.project import default_company
+
 
 class ConstructionRateMaster(Document):
 	# begin: auto-generated types
@@ -31,6 +33,10 @@ class ConstructionRateMaster(Document):
 		rate_name: DF.Data
 		uom: DF.Link
 	# end: auto-generated types
+
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()
 
 	def validate(self):
 		self.sync_rate_history()

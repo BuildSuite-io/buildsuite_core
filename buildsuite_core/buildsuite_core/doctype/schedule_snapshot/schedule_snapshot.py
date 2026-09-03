@@ -3,6 +3,8 @@
 
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 
 class ScheduleSnapshot(Document):
 	# begin: auto-generated types
@@ -22,4 +24,5 @@ class ScheduleSnapshot(Document):
 		trigger: DF.Data | None
 	# end: auto-generated types
 
-	pass
+	def validate(self):
+		anchor_company_to_project(self)

@@ -5,6 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 
 class MachineryUsage(Document):
 	# begin: auto-generated types
@@ -26,6 +28,8 @@ class MachineryUsage(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		anchor_company_to_project(self)
+
 		# The task is optional, but if set it must belong to the selected project —
 		# a usage log must never be booked against a task from another project.
 		if self.task and self.project:

@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
+  "company",
   "column_break_o1sw",
   "date",
   "column_break_vbqw",
@@ -47,6 +48,14 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_o1sw",

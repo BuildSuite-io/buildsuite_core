@@ -7,7 +7,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "type_name"
+  "type_name",
+  "company"
  ],
  "fields": [
   {
@@ -17,6 +18,13 @@
    "label": "Type Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   }
  ],
  "grid_page_length": 50,

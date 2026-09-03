@@ -8,6 +8,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
 HOURS_PER_DAY = 8
@@ -55,6 +57,8 @@ class FieldAttendance(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		anchor_company_to_project(self)
+
 		self.validate_rows_present()
 
 		emp_map = self.get_employee_map()

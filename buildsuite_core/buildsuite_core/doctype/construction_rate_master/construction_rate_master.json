@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "rate_code",
+  "company",
   "rate_name",
   "category",
   "rate_master_category",
@@ -31,6 +32,13 @@
    "placeholder": "CEM-OPC-53",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   },
   {
    "fieldname": "rate_name",

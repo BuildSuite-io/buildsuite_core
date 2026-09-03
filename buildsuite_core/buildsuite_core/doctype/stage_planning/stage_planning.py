@@ -7,6 +7,8 @@ from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 from frappe.utils import flt
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 
 class StagePlanning(Document):
 	# begin: auto-generated types
@@ -38,6 +40,8 @@ class StagePlanning(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		anchor_company_to_project(self)
+
 		# SAW-011 — an Approved stage is locked: its task list and planned
 		# quantities can't change in place. The supported way to modify is Revise
 		# (Approved -> Draft), which changes workflow_state and so isn't blocked

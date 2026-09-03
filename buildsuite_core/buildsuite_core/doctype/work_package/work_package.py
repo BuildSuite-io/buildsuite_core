@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 
 def _next_wp_code(project):
 	"""Next unused WP-NN code within a project (WP-01, WP-02 …)."""
@@ -18,6 +20,9 @@ def _next_wp_code(project):
 
 
 class WorkPackage(Document):
+	def validate(self):
+		anchor_company_to_project(self)
+
 	def before_insert(self):
 		# Auto-generate the business code when left blank (the create form promises
 		# this). Kept per-project + sequential so it's stable and human-readable.

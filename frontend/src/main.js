@@ -7,6 +7,7 @@ import router from "./router";
 import "./style.css";
 import { applyBootToWindow, syncSessionFromCookie } from "./utils/session";
 import { useSessionStore } from "./stores/session";
+import { useDataStore } from "./stores";
 import { DEV_BOOT_METHOD } from "./utils/appRoute";
 
 const DEV_BOOT_URL = `/api/method/${DEV_BOOT_METHOD}`;
@@ -49,6 +50,17 @@ async function mountApp() {
 
 	const sessionStore = useSessionStore(pinia);
 	await sessionStore.bootstrapSession();
+
+	// Load the REAL Company DocType before mount so the switcher / pickers have the
+	// company list + resolved active company on first paint. Guarded — a failure
+	// (e.g. backend unreachable) must not block mount; the store falls back to the
+	// seed companies in hydrate().
+	const dataStore = useDataStore(pinia);
+	try {
+		await dataStore.loadCompanies();
+	} catch (error) {
+		console.warn("[buildsuite] Failed to load companies", error);
+	}
 
 	app.use(router);
 	app.mount("#app");

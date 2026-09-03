@@ -4,6 +4,8 @@
 # import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import default_company
+
 
 class RateMasterCategory(Document):
 	# begin: auto-generated types
@@ -18,4 +20,6 @@ class RateMasterCategory(Document):
 		resource_type: DF.Literal["Material", "Labour", "Equipment"]
 	# end: auto-generated types
 
-	pass
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()

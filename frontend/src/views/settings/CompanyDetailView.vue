@@ -17,6 +17,12 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import {
+	getCompanyBranding,
+	updateCompanyBranding,
+	uploadCompanyLogo,
+} from "@/data/companyApi";
+import { showToast } from "@/utils/appToast";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -56,14 +62,11 @@ function cancelEdit() {
 	form.value = JSON.parse(JSON.stringify(company.value));
 	editing.value = false;
 }
-function saveEdit() {
+async function saveEdit() {
 	if (!store.isAdmin) return;
-	store.updateCompany(props.id, {
-		name: form.value.name,
-		shortName: form.value.shortName,
-		description: form.value.description,
-		color: form.value.color,
-	});
+	// Real Company only has `company_name` as an editable identity field. shortName
+	// (abbr), colour and description are store-derived and not persisted.
+	await store.updateCompany(props.id, { name: form.value.name });
 	editing.value = false;
 }
 function onPrimary() {
@@ -97,7 +100,7 @@ async function deleteCompany() {
 		}))
 	)
 		return;
-	const result = store.deleteCompany(props.id);
+	const result = await store.deleteCompany(props.id);
 	if (result.ok) {
 		router.push("/settings/companies");
 	} else {
@@ -117,6 +120,94 @@ const titleStatus = computed(() => {
 	if (company.value && company.value.id === store.activeCompany) out.push("Active");
 	return out;
 });
+
+// --- Branding & Letter Head -------------------------------------------------
+// The brand (logo + subtext) is a REAL ERPNext Company field, materialised into the
+// shared letter head server-side (Company.on_update → rebuild_letter_head), so saving
+// re-brands every print format. Single-company seam: only the default company drives the
+// (single) letter head today, so the section shows on the active company; per-company
+// branding falls out when multi-company support lands (the backend is already keyed by
+// company). Wired to the real backend independent of the prototype's mock company store.
+const isActiveCompany = computed(
+	() => company.value && company.value.id === store.activeCompany
+);
+const brandFileInput = ref(null);
+const brand = ref({ loading: false, saving: false, uploading: false });
+const brandCompanyName = ref("");
+const letterHeadName = ref("");
+const brandLoaded = ref({ logo: "", subtext: "" });
+const brandForm = ref({ logo: "", subtext: "" });
+const brandDirty = computed(
+	() =>
+		brandForm.value.logo !== brandLoaded.value.logo ||
+		brandForm.value.subtext !== brandLoaded.value.subtext
+);
+
+async function loadBrand() {
+	brand.value.loading = true;
+	try {
+		const b = await getCompanyBranding();
+		brandCompanyName.value = b.company_name || b.company || "";
+		letterHeadName.value = b.letter_head || "";
+		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
+		brandForm.value = { ...brandLoaded.value };
+	} catch (err) {
+		showToast(err.message || "Failed to load branding", "error");
+	} finally {
+		brand.value.loading = false;
+	}
+}
+function pickLogo() {
+	if (store.isAdmin) brandFileInput.value?.click();
+}
+async function onLogoSelected(e) {
+	const file = e.target.files?.[0];
+	e.target.value = ""; // allow re-selecting the same file
+	if (!file) return;
+	if (!file.type.startsWith("image/")) {
+		showToast("Please choose an image file.", "error");
+		return;
+	}
+	brand.value.uploading = true;
+	try {
+		const url = await uploadCompanyLogo(file);
+		if (!url) throw new Error("Upload returned no file URL.");
+		brandForm.value.logo = url;
+		showToast("Logo uploaded — Save branding to apply.", "success");
+	} catch (err) {
+		showToast(err.message || "Upload failed", "error");
+	} finally {
+		brand.value.uploading = false;
+	}
+}
+function removeLogo() {
+	brandForm.value.logo = "";
+}
+async function saveBrand() {
+	if (!store.isAdmin || !brandDirty.value) return;
+	brand.value.saving = true;
+	try {
+		const b = await updateCompanyBranding({
+			logo: brandForm.value.logo,
+			letter_head_subtext: brandForm.value.subtext,
+		});
+		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
+		brandForm.value = { ...brandLoaded.value };
+		showToast("Branding saved — letter head updated across all print formats.", "success");
+	} catch (err) {
+		showToast(err.message || "Save failed", "error");
+	} finally {
+		brand.value.saving = false;
+	}
+}
+
+watch(
+	isActiveCompany,
+	(active) => {
+		if (active) loadBrand();
+	},
+	{ immediate: true }
+);
 </script>
 
 <template>
@@ -244,6 +335,124 @@ const titleStatus = computed(() => {
 								></span>
 								<span class="text-ink-700">{{ opt.label }}</span>
 							</label>
+						</div>
+					</div>
+				</DeskSection>
+
+				<!-- Branding & Letter Head — real Company fields; drives print letter heads -->
+				<DeskSection v-if="isActiveCompany" title="Branding & Letter Head">
+					<div class="md:col-span-2 space-y-4">
+						<p class="text-[11px] text-ink-500">
+							Logo and subtext for
+							<b>{{ brandCompanyName || company.name }}</b>, materialised into the
+							<span class="font-mono">{{ letterHeadName || "letter head" }}</span>
+							that fronts every print format (Work Order, Purchase Order, Invoice…).
+							Per-company branding follows when multi-company support lands.
+						</p>
+
+						<!-- Logo -->
+						<div class="flex items-center gap-4">
+							<div
+								class="w-24 h-24 border border-ink-200 rounded flex items-center justify-center bg-ink-50 overflow-hidden flex-shrink-0"
+							>
+								<img
+									v-if="brandForm.logo"
+									:src="brandForm.logo"
+									alt="Company logo"
+									class="max-w-full max-h-full object-contain"
+								/>
+								<span v-else class="text-[10px] text-ink-400">No logo</span>
+							</div>
+							<div v-if="store.isAdmin" class="flex flex-col gap-2">
+								<button
+									type="button"
+									class="text-xs px-3 py-1.5 rounded bg-ink-900 text-white hover:bg-ink-800 disabled:opacity-50"
+									:disabled="brand.uploading"
+									@click="pickLogo"
+								>
+									{{
+										brand.uploading
+											? "Uploading…"
+											: brandForm.logo
+												? "Replace logo"
+												: "Upload logo"
+									}}
+								</button>
+								<button
+									v-if="brandForm.logo"
+									type="button"
+									class="text-xs px-3 py-1.5 rounded border border-ink-200 hover:bg-ink-50"
+									@click="removeLogo"
+								>
+									Remove
+								</button>
+								<input
+									ref="brandFileInput"
+									type="file"
+									accept="image/*"
+									class="hidden"
+									@change="onLogoSelected"
+								/>
+							</div>
+						</div>
+
+						<!-- Subtext -->
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
+								Letter head subtext
+							</div>
+							<DeskTextarea
+								v-model="brandForm.subtext"
+								:rows="3"
+								:disabled="!store.isAdmin"
+								placeholder="Registered address · GSTIN · phone / email"
+							/>
+							<p class="text-[11px] text-ink-500 mt-1">
+								Shown under the company name in the letter head; line breaks preserved.
+							</p>
+						</div>
+
+						<!-- Live preview -->
+						<div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
+								Preview
+							</div>
+							<div class="border border-ink-200 rounded p-4 bg-white">
+								<div class="flex items-center gap-3">
+									<img
+										v-if="brandForm.logo"
+										:src="brandForm.logo"
+										alt=""
+										style="height: 44px; width: auto; object-fit: contain"
+									/>
+									<div>
+										<div class="text-base font-semibold text-ink-900">
+											{{ brandCompanyName || company.name }}
+										</div>
+										<div
+											v-if="brandForm.subtext"
+											class="text-[11px] text-ink-500 mt-0.5 whitespace-pre-line"
+										>
+											{{ brandForm.subtext }}
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Save (independent of the identity Edit/Save above) -->
+						<div v-if="store.isAdmin" class="flex items-center gap-3">
+							<button
+								type="button"
+								class="text-xs px-3 py-1.5 rounded bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+								:disabled="!brandDirty || brand.saving"
+								@click="saveBrand"
+							>
+								{{ brand.saving ? "Saving…" : "Save branding" }}
+							</button>
+							<span v-if="brandDirty" class="text-[11px] text-warning-700"
+								>Unsaved branding changes</span
+							>
 						</div>
 					</div>
 				</DeskSection>

@@ -82,6 +82,15 @@ class TaskProgressEntry(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		# Anchor company to the task's project (a TPE has no direct project link).
+		# Non-project tasks simply leave company unset — never throw here.
+		if self.task:
+			project = frappe.db.get_value("Task", self.task, "project")
+			if project:
+				company = frappe.db.get_value("Project", project, "company")
+				if company:
+					self.company = company
+
 		# A task can't log progress while a Finish-to-Start predecessor is still open.
 		self._block_if_predecessor_incomplete()
 		self._reject_if_task_completed()

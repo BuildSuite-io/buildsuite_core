@@ -11,6 +11,7 @@
   "rate",
   "column_break_kehv",
   "project",
+  "company",
   "quantity",
   "fuel_cost",
   "column_break_oyoq",
@@ -31,6 +32,14 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "Project"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "task",

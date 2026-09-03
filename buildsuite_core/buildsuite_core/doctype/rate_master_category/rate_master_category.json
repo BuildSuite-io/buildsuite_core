@@ -8,7 +8,8 @@
  "engine": "InnoDB",
  "field_order": [
   "resource_type",
-  "category"
+  "category",
+  "company"
  ],
  "fields": [
   {
@@ -16,6 +17,13 @@
    "fieldtype": "Data",
    "label": "Category",
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   },
   {
    "fieldname": "resource_type",

@@ -48,6 +48,45 @@ def default_company():
 	)
 
 
+def anchor_company_to_project(doc, project_field="project"):
+	"""Anchor a document's company to its project's company (the accounting-company rule).
+
+	Always re-derives `doc.company` from the linked project — never just when blank — so a stale
+	value or the user's default company can't drift away from the project. Throws if the project
+	has no company. With no project yet, falls back to default_company(). This is the reusable
+	form of SubcontractorWorkOrder._set_company / SubcontractorBill._sync_from_work_order — call
+	it from a project-scoped doctype's validate().
+	"""
+	project = doc.get(project_field)
+	if project:
+		project_company = frappe.db.get_value("Project", project, "company")
+		if not project_company:
+			frappe.throw(frappe._("Project {0} has no company set.").format(project))
+		doc.company = project_company
+	elif not doc.get("company"):
+		doc.company = default_company()
+
+
+def assert_same_company(doc, link_field, link_doctype, label=None):
+	"""Guard that a linked, company-scoped record shares `doc`'s company.
+
+	Blocks cross-company mixing — e.g. a Company A BOQ referenced by a Company B scope-change
+	order. No-op when either side has no company yet (anchor the document's company first).
+	`label` is the human name used in the error (defaults to the link doctype).
+	"""
+	link_name = doc.get(link_field)
+	if not link_name or not doc.get("company"):
+		return
+	other = frappe.db.get_value(link_doctype, link_name, "company")
+	if other and other != doc.get("company"):
+		frappe.throw(
+			frappe._("{0} {1} belongs to company {2}, not {3} — it cannot be used here.").format(
+				label or link_doctype, link_name, other, doc.get("company")
+			),
+			title=frappe._("Company mismatch"),
+		)
+
+
 def set_company_on_insert(doc, method=None):
 	"""Default/inherit company before insert (PRJ-005, PRJ-012).
 

@@ -34,6 +34,16 @@ export function useActiveCompany() {
 	return company;
 }
 
+// Authoritative setter for the active company. The topbar switcher (via
+// store.setActiveCompany) calls this so `activeCompanyFilter()` re-computes and every bound
+// picker re-queries the moment the user switches company. `started` is flipped so the lazy
+// initial fetch can't later clobber the user's explicit choice.
+export function setActiveCompany(name) {
+	if (!name) return;
+	started = true;
+	company.value = name;
+}
+
 // A reactive DeskLinkPicker `:filters` fragment limiting a company-partitioned doctype
 // (Account, Employee, Project, …) to the active company. Empty until the company is known, so
 // the picker degrades to unfiltered rather than showing nothing (the server guard still blocks

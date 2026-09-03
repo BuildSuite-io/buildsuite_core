@@ -20,11 +20,14 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 
 const route = useRoute();
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
 const { canCreate } = usePermissions();
+// Scope the Project picker to the active company; re-queries when the switcher changes.
+const companyFilter = activeCompanyFilter();
 
 const TYPES = [
 	"Design Change",
@@ -119,6 +122,7 @@ const breadcrumbs = [
 						label-field="project_name"
 						value-field="name"
 						:search-fields="['project_name', 'name']"
+						:filters="companyFilter"
 						placeholder="Pick a project…"
 					/>
 				</DeskField>

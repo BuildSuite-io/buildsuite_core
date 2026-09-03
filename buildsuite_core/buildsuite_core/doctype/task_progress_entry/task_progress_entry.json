@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "task",
+  "company",
   "progress_section",
   "cumulative_progress",
   "column_break_bume",
@@ -30,6 +31,14 @@
    "label": "Task",
    "options": "Task",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "entry_date",

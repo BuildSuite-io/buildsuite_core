@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "trade_name",
+  "company",
   "enabled"
  ],
  "fields": [
@@ -18,6 +19,13 @@
    "placeholder": "Flooring",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   },
   {
    "default": "1",

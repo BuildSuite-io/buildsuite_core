@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
+  "company",
   "kind",
   "label",
   "column_break_meta",
@@ -24,6 +25,14 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "default": "Undo",

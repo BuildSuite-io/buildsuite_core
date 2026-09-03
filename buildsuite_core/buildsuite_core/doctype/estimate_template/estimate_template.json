@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "template_code",
+  "company",
   "template_name",
   "description",
   "project_category",
@@ -25,6 +26,13 @@
    "label": "Template Code",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   },
   {
    "fieldname": "template_name",

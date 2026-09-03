@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "category_name",
+  "company",
   "enabled",
   "sort_order",
   "column_break_lbl",
@@ -24,6 +25,13 @@
    "placeholder": "Residential",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
   },
   {
    "default": "1",
