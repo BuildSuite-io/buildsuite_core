@@ -476,7 +476,7 @@ def make_payment_entry(name: str):
 
 
 @frappe.whitelist()
-def record_payment(name: str, amount: str | None = None, date: str | None = None, mode_of_payment: str | None = None, paid_from: str | None = None, reference_no: str | None = None):
+def record_payment(name: str, amount: str | float | None = None, date: str | None = None, mode_of_payment: str | None = None, paid_from: str | None = None, reference_no: str | None = None):
 	"""Create + submit a Payment Entry against the bill's Purchase Invoice (used by tests / API)."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
