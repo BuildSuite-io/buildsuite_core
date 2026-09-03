@@ -10,6 +10,8 @@
 // are derived, cancelling recomputes accounts / outstandings / floats cleanly.
 import { ref, computed, onMounted } from "vue";
 import { useDataStore } from "@/stores";
+import { usePagination } from "@/composables/usePagination";
+import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import { fmtINR, fmtDate } from "@/utils/format";
@@ -121,6 +123,7 @@ const filtered = computed(() => {
 				(m.ref || "").toLowerCase().includes(term))
 	);
 });
+const pager = usePagination(filtered);
 const totalIn = computed(() =>
 	filtered.value.filter((m) => m.dir === "in").reduce((a, m) => a + m.amount, 0)
 );
@@ -280,7 +283,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 					</thead>
 					<tbody>
 						<tr
-							v-for="m in filtered"
+							v-for="m in pager.pagedRows"
 							:key="m.name"
 							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30"
 						>
@@ -331,6 +334,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 							: "No transactions recorded yet."
 					}}
 				</div>
+				<DeskPaginationFooter :pager="pager" />
 			</section>
 			<p class="text-[11px] text-ink-400">
 				Posted transactions are cancelled, not edited — cancel the wrong entry and record a

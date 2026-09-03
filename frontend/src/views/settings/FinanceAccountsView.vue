@@ -9,6 +9,8 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtINR } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
+import { usePagination } from "@/composables/usePagination";
+import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import {
 	listFinanceAccounts,
 	saveFinanceAccount,
@@ -21,6 +23,7 @@ const confirmDialog = useConfirm();
 const canManage = computed(() => store.isAdmin);
 
 const accounts = ref([]);
+const pager = usePagination(accounts);
 const loading = ref(true);
 const loadError = ref("");
 
@@ -153,7 +156,7 @@ async function del(acc) {
 					</thead>
 					<tbody>
 						<tr
-							v-for="acc in accounts"
+							v-for="acc in pager.pagedRows"
 							:key="acc.id"
 							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30"
 						>
@@ -242,6 +245,7 @@ async function del(acc) {
 						</tr>
 					</tbody>
 				</table>
+				<DeskPaginationFooter :pager="pager" />
 			</section>
 
 			<p class="text-[11px] text-ink-400 mt-3">
