@@ -545,9 +545,11 @@ def _serialize_subcontractor(sup):
 @frappe.whitelist()
 def list_subcontractors():
 	"""All subcontractor Suppliers with their trade, tax id and primary-contact details."""
+	from buildsuite_core.utils.project import default_company
+
 	rows = frappe.get_all(
 		"Supplier",
-		filters={"supplier_type": SUBCONTRACTOR_TYPE},
+		filters={"supplier_type": SUBCONTRACTOR_TYPE, "company": default_company()},
 		fields=["name", "supplier_name", "custom_trade", "tax_id", "disabled"],
 		order_by="supplier_name asc",
 		limit_page_length=0,

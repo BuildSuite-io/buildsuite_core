@@ -177,6 +177,10 @@ doc_events = {
     "Purchase Receipt": {
         "on_update":"buildsuite_core.utils.purchase_receipt.create_remarks"
     },
+	# Org-wide ERPNext masters made company-scoped: stamp the working company on insert.
+	"Supplier": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
+	"Customer": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
+	"Item": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
 	"Project": {
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [

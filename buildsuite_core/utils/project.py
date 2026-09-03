@@ -48,6 +48,15 @@ def default_company():
 	)
 
 
+def stamp_company_on_insert(doc, method=None):
+	"""Stamp the working company on an org-wide ERPNext master (Supplier / Customer / Item) at
+	insert so it can be company-scoped. Only sets when blank — never overrides an explicit
+	choice. Wired via hooks.py doc_events for those doctypes.
+	"""
+	if not doc.get("company"):
+		doc.company = default_company()
+
+
 def anchor_company_to_project(doc, project_field="project"):
 	"""Anchor a document's company to its project's company (the accounting-company rule).
 

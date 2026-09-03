@@ -1,4 +1,41 @@
 CUSTOM_FIELD = {
+	# Company-scope the org-wide ERPNext masters so multi-company can isolate them: the field
+	# is `company` (matching every BuildSuite doctype) so it auto-integrates with the SPA's
+	# company-scoped lists/pickers and the cross-company guards. Stamped on insert
+	# (stamp_company_on_insert, hooks.py) and backfilled to the default company.
+	"Supplier": [
+		{
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"label": "Company",
+			"options": "Company",
+			"insert_after": "supplier_group",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Customer": [
+		{
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"label": "Company",
+			"options": "Company",
+			"insert_after": "customer_group",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Item": [
+		{
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"label": "Company",
+			"options": "Company",
+			"insert_after": "item_group",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	# Company branding — drives the shared "BuildSuite Standard" Letter Head used by every
 	# print format. The logo + subtext are edited in the SPA (Settings → Company Branding) or
 	# Desk; either write rebuilds the letter head (see hooks.py Company.on_update →

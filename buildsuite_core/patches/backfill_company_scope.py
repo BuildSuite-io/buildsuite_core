@@ -35,6 +35,10 @@ _MASTERS = (
 	"Subcontract Delivery Type",
 	"Construction Trade",
 	"Labour Trade",
+	# Org-wide ERPNext masters made company-scoped — stamp existing rows to the default company.
+	"Supplier",
+	"Customer",
+	"Item",
 )
 
 
