@@ -177,6 +177,11 @@ doc_events = {
     "Purchase Receipt": {
         "on_update":"buildsuite_core.utils.purchase_receipt.create_remarks"
     },
+	# Reference No is optional in BuildSuite (SPA + mobile); default it for a bank Payment
+	# Entry so no path (advance / receipt / bill payment) hits ERPNext's mandatory check.
+	"Payment Entry": {
+		"before_validate": "buildsuite_core.utils.payment.default_bank_reference"
+	},
 	"Project": {
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [
