@@ -188,6 +188,8 @@ const pmName = computed(() => {
 	return row?.fullName || project.value?.pm || "";
 });
 const resolvedProjectId = computed(() => project.value?.id || props.id);
+// Title-row ⋯ menu — Delete lives here (matches prototype S299; Edit stays visible).
+const menuOpen = ref(false);
 const parent = computed(() =>
 	project.value?.parentId ? store.projectById(project.value.parentId) : null
 );
@@ -1083,13 +1085,25 @@ usePageTitle(() => project.value?.name);
 	>
 		<!-- Edit + Delete buttons share the title row (DeskPage #actions slot) -->
 		<template #actions>
-			<!-- Jump to this project's Gantt (mirrors the Task detail's "Open Gantt" link). -->
+			<!-- Schedule + Edit stay visible; Delete moves behind a ⋯ menu (matches prototype
+			     S299 — Edit is reached constantly, Delete happens once in a project's life). -->
 			<RouterLink
 				:to="`/schedule?project=${resolvedProjectId}`"
-				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1.5"
 				style="border-radius: 6px"
 			>
-				Open Schedule →
+				<svg
+					class="w-3 h-3 text-ink-400"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					v-html="getWorkspaceIconPath('calendar')"
+				/>
+				Schedule
 			</RouterLink>
 			<button
 				v-if="canEdit('project')"
@@ -1100,15 +1114,42 @@ usePageTitle(() => project.value?.name);
 			>
 				Edit
 			</button>
-			<button
-				v-if="canDelete('project')"
-				type="button"
-				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
-				style="border-radius: 6px"
-				@click="deleteProject"
-			>
-				Delete
-			</button>
+			<div v-if="canDelete('project')" class="relative">
+				<button
+					type="button"
+					class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-600 flex items-center"
+					style="border-radius: 6px"
+					aria-haspopup="menu"
+					:aria-expanded="menuOpen"
+					title="More actions"
+					@click="menuOpen = !menuOpen"
+				>
+					<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+						<circle cx="5" cy="12" r="1.6" />
+						<circle cx="12" cy="12" r="1.6" />
+						<circle cx="19" cy="12" r="1.6" />
+					</svg>
+				</button>
+				<div v-if="menuOpen" class="fixed inset-0 z-30" @click="menuOpen = false"></div>
+				<div
+					v-if="menuOpen"
+					class="absolute right-0 top-full mt-1 w-44 bg-white border border-ink-200 shadow-fp-lg z-40 py-1"
+					style="border-radius: 8px"
+					role="menu"
+				>
+					<button
+						type="button"
+						role="menuitem"
+						class="w-full text-left px-3 py-1.5 text-xs text-danger-700 hover:bg-danger-50"
+						@click="
+							menuOpen = false;
+							deleteProject();
+						"
+					>
+						Delete project
+					</button>
+				</div>
+			</div>
 		</template>
 
 		<div>
