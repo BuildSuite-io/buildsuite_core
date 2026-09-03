@@ -849,6 +849,7 @@ const assembliesRes = useDocTypeList("Assembly", {
 	fields: ["name", "assembly_name", "uom", "rate_per_unit"],
 	pageLength: 5000,
 	cache: "buildsuite-boq-item-assemblies",
+	auto: false, // fetched by the company-scope watcher once the BOQ's company is known
 });
 const assembliesMap = computed(() => {
 	const m = {};
@@ -984,7 +985,23 @@ const rateMasterRes = useDocTypeList("Construction Rate Master", {
 	orderBy: "rate_code asc",
 	pageLength: 0,
 	cache: "buildsuite-boq-rate-master",
+	auto: false, // fetched by the company-scope watcher once the BOQ's company is known
 });
+
+// Per-company masters: scope the Assembly + Rate-Master pickers to THIS BOQ's company, so a
+// user never sees (or picks) a cross-company master that the server would reject on save.
+watch(
+	() => boqDoc.value?.company,
+	(company) => {
+		if (!company) return;
+		const filters = [["company", "=", company]];
+		assembliesRes.update?.({ filters });
+		assembliesRes.fetch?.();
+		rateMasterRes.update?.({ filters });
+		rateMasterRes.fetch?.();
+	},
+	{ immediate: true }
+);
 const rateMasterOptions = computed(() =>
 	(rateMasterRes.data || []).map((r) => ({
 		id: r.name,
