@@ -52,3 +52,53 @@ export function activeCompanyFilter() {
 	const c = useActiveCompany();
 	return computed(() => (c.value ? [["company", "=", c.value]] : []));
 }
+
+// Doctypes that carry a `company` field and whose pickers must be scoped to the working
+// company. Kept here (the one company-scope seam) so DeskLinkPicker can auto-scope every picker
+// of these doctypes — no per-call-site opt-in — keeping all pickers consistent. Covers the
+// ERPNext masters we company-scoped (Supplier/Customer/Item/Employee) plus every BuildSuite
+// company-scoped doctype and per-company master. Keep in sync when a doctype gains `company`.
+const COMPANY_SCOPED_DOCTYPES = new Set([
+	"Project",
+	"Employee",
+	"Supplier",
+	"Customer",
+	"Item",
+	"BOQ",
+	"Subcontractor Work Order",
+	"Subcontractor Bill",
+	"Measurement Book",
+	"Scope Change Order",
+	"Work Package",
+	"Stage Planning",
+	"Field Attendance",
+	"Machinery",
+	"Machinery Usage",
+	"Crew",
+	"Petty Cash Request",
+	"Expense Entry",
+	"Assembly",
+	"Assembly Category",
+	"Construction Rate Master",
+	"Rate Master Category",
+	"Estimate Template",
+	"Project Category",
+	"Machinery Type",
+	"Subcontract Delivery Type",
+	"Construction Trade",
+	"Labour Trade",
+]);
+
+export function isCompanyScopedDoctype(doctype) {
+	return COMPANY_SCOPED_DOCTYPES.has(doctype);
+}
+
+// The active-company `:filters` fragment for a specific doctype: the company filter when that
+// doctype is company-scoped, else [] (so org-wide pickers like Company/UOM stay unfiltered).
+// DeskLinkPicker uses this to auto-scope any company-partitioned picker.
+export function companyFilterForDoctype(doctype) {
+	const c = useActiveCompany();
+	return computed(() =>
+		c.value && COMPANY_SCOPED_DOCTYPES.has(doctype) ? [["company", "=", c.value]] : []
+	);
+}
