@@ -1083,6 +1083,14 @@ usePageTitle(() => project.value?.name);
 	>
 		<!-- Edit + Delete buttons share the title row (DeskPage #actions slot) -->
 		<template #actions>
+			<!-- Jump to this project's Gantt (mirrors the Task detail's "Open Gantt" link). -->
+			<RouterLink
+				:to="`/schedule?project=${resolvedProjectId}`"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1"
+				style="border-radius: 6px"
+			>
+				Open Schedule →
+			</RouterLink>
 			<button
 				v-if="canEdit('project')"
 				type="button"
