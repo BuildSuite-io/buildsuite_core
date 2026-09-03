@@ -335,7 +335,7 @@ const expenseAccountFilters = computed(() => [
 							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
 							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
-							<td class="px-4 py-2.5 text-right"><button type="button" class="text-[11px] px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-md" @click.stop="onSubmit(e)">Submit</button></td>
+							<td class="px-4 py-2.5 text-right"><button type="button" class="text-[11px] px-2 py-1 bg-brand-600 hover:bg-brand-700 text-ink-900 rounded-md" @click.stop="onSubmit(e)">Submit</button></td>
 						</tr>
 					</tbody>
 				</table>
@@ -511,3 +511,11 @@ const expenseAccountFilters = computed(() => [
 		</div>
 	</DeskPage>
 </template>
+
+<style scoped>
+/* CTA buttons read black-on-green in dark mode (prototype). The shared .desk-save-btn is
+   green-bg/white-text in dark; scope the black text to this view for now. */
+html.dark .desk-save-btn {
+	color: #0f172a;
+}
+</style>

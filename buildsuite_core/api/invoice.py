@@ -520,9 +520,10 @@ def record_advance(customer: str, amount: str, date: str | None = None, deposit_
 	pe.received_amount = amount
 	if mode_of_payment:
 		pe.mode_of_payment = mode_of_payment
-	if reference_no:
-		pe.reference_no = reference_no
-		pe.reference_date = date or nowdate()
+	# ERPNext makes Reference No + Date mandatory for a Bank Mode of Payment; we keep them
+	# OPTIONAL for the user by defaulting them when none was supplied (harmless for cash).
+	pe.reference_no = reference_no or "Advance"
+	pe.reference_date = date or nowdate()
 	pe.custom_is_bs_advance = 1  # durable marker — a fully-consumed advance must never read as a receipt
 	pe.flags.ignore_permissions = True
 	pe.set_missing_values()
