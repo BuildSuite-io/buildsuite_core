@@ -182,6 +182,12 @@ doc_events = {
 	"Payment Entry": {
 		"before_validate": "buildsuite_core.utils.payment.default_bank_reference"
 	},
+	# ERPNext auto-creates a self-service User Permission (own Employee only) when a user is linked
+	# to their Employee. For a roster-managing persona that wrongly hides every OTHER employee
+	# (empty field-employee list, 403 on any other worker) — drop it so access matches the matrix.
+	"User Permission": {
+		"after_insert": "buildsuite_core.utils.employee_permissions.drop_self_service_for_managers"
+	},
 	"Project": {
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [

@@ -144,13 +144,27 @@ class TestFieldEmployee(BuildSuiteTestCase):
 		).insert(ignore_permissions=True)
 		return email
 
-	def test_hr_manager_who_is_an_employee_can_still_add_workers(self):
-		"""Regression: an HR Manager linked to their own Employee carries a self-service
-		'own record only' User Permission on Employee. Roster management must bypass it — the
-		Administrator-run tests never hit this because Administrator ignores permissions."""
+	def test_hr_manager_who_is_an_employee_manages_the_whole_roster(self):
+		"""An HR Manager linked to their own Employee carries ERPNext's auto-created self-service
+		'own record only' User Permission. For a roster-managing role that contradicts the matrix,
+		so the after_insert hook drops it — the manager then READS / LISTS / ADDS every worker. The
+		matrix tests never caught this: they run as freshly-made users who aren't Employees (no User
+		Permission) and check doctype-level has_permission, which never applies User Permissions."""
 		email = self._make_user("BuildSuite HR Manager")
-		# Setting user_id makes ERPNext auto-create the self-service "own record only" User
-		# Permission on Employee — the exact real-world condition that broke roster management.
+		# Another worker that already exists — the one the manager must be able to see.
+		other = frappe.get_doc(
+			{
+				"doctype": "Employee",
+				"first_name": "Other",
+				"company": self.company,
+				"gender": "Male",
+				"date_of_birth": "1990-01-01",
+				"date_of_joining": "2021-01-01",
+				"is_labour": 1,
+			}
+		).insert(ignore_permissions=True)
+		# Linking the manager to their OWN Employee makes ERPNext auto-create the self-service User
+		# Permission — which the hook immediately drops for a roster manager.
 		own = frappe.get_doc(
 			{
 				"doctype": "Employee",
@@ -162,15 +176,21 @@ class TestFieldEmployee(BuildSuiteTestCase):
 				"user_id": email,
 			}
 		).insert(ignore_permissions=True)
-		self.assertTrue(
+		self.assertFalse(
 			frappe.db.exists("User Permission", {"user": email, "allow": "Employee"}),
-			"expected the self-service Employee User Permission to exist",
+			"the self-service Employee User Permission must be dropped for a roster manager",
 		)
 		frappe.clear_cache()
 
 		frappe.set_user(email)
 		try:
-			res = self._save()  # a DIFFERENT worker — blocked before the fix
+			# READ another worker — 403'd before the fix.
+			self.assertTrue(frappe.has_permission("Employee", "read", doc=other.name))
+			# LIST returns other workers, not just their own — empty before the fix.
+			names = {e.name for e in frappe.get_list("Employee", limit_page_length=0)}
+			self.assertIn(other.name, names)
+			# CREATE a new worker.
+			res = self._save()
 			self.assertTrue(res["name"])
 			self.assertNotEqual(res["name"], own.name)
 		finally:

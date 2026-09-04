@@ -40,3 +40,4 @@ buildsuite_core.patches.backfill_persona_roles # 2026-09-01
 buildsuite_core.patches.resync_mobile_permissions # 2026-09-03 mobile app perms
 buildsuite_core.patches.strip_read_mirror_overreach # 2026-09-03 scope persona ERPNext footprint
 buildsuite_core.patches.resync_derived_attendance_perms # 2026-09-04 derived registers read-only
+buildsuite_core.patches.drop_manager_employee_user_permissions # 2026-09-04 roster mgrs see all employees
