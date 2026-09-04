@@ -129,3 +129,60 @@ class TestFieldEmployee(BuildSuiteTestCase):
 
 		res = self._save(company=None)
 		self.assertEqual(frappe.db.get_value("Employee", res["name"], "company"), default_company())
+
+	# --- permission path (runs as a real persona, not Administrator) -------------------------
+	def _make_user(self, role):
+		email = f"uat-{frappe.generate_hash(length=8)}@buildsuite.test"
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": "UAT",
+				"send_welcome_email": 0,
+				"roles": [{"role": role}],
+			}
+		).insert(ignore_permissions=True)
+		return email
+
+	def test_hr_manager_who_is_an_employee_can_still_add_workers(self):
+		"""Regression: an HR Manager linked to their own Employee carries a self-service
+		'own record only' User Permission on Employee. Roster management must bypass it — the
+		Administrator-run tests never hit this because Administrator ignores permissions."""
+		email = self._make_user("BuildSuite HR Manager")
+		# Setting user_id makes ERPNext auto-create the self-service "own record only" User
+		# Permission on Employee — the exact real-world condition that broke roster management.
+		own = frappe.get_doc(
+			{
+				"doctype": "Employee",
+				"first_name": "Manager",
+				"company": self.company,
+				"gender": "Male",
+				"date_of_birth": "1985-01-01",
+				"date_of_joining": "2020-01-01",
+				"user_id": email,
+			}
+		).insert(ignore_permissions=True)
+		self.assertTrue(
+			frappe.db.exists("User Permission", {"user": email, "allow": "Employee"}),
+			"expected the self-service Employee User Permission to exist",
+		)
+		frappe.clear_cache()
+
+		frappe.set_user(email)
+		try:
+			res = self._save()  # a DIFFERENT worker — blocked before the fix
+			self.assertTrue(res["name"])
+			self.assertNotEqual(res["name"], own.name)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_persona_without_employee_create_is_refused(self):
+		"""The roster bypass is role-gated: a persona the matrix does not grant Employee create
+		(Foreman) still cannot add a field worker."""
+		email = self._make_user("BuildSuite Foreman")
+		frappe.set_user(email)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				self._save()
+		finally:
+			frappe.set_user("Administrator")

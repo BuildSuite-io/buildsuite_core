@@ -59,11 +59,22 @@ def save_field_employee(
 	if not first_name:
 		frappe.throw(_("First name is required."))
 
+	# Managing the field-labour roster is a doctype-level capability (HR Manager / PM / Site
+	# Engineer / admin per EMPLOYEE_WRITE_ROLE_PERMS). Check that explicitly, then save with
+	# ignore_permissions: a manager who is themselves an Employee carries a self-service "own
+	# record only" User Permission on Employee, which would otherwise block them from creating or
+	# editing OTHER field workers. Role authorisation is enforced here; the User Permission is a
+	# self-service scope that must not apply to roster management.
+	manage_ptype = "write" if name else "create"
+	if not frappe.has_permission(EMPLOYEE, manage_ptype):
+		frappe.throw(
+			_("You do not have permission to manage field employees."), frappe.PermissionError
+		)
+
 	if name:
 		if not frappe.db.exists(EMPLOYEE, name):
 			frappe.throw(_("Field employee {0} no longer exists.").format(name))
 		doc = frappe.get_doc(EMPLOYEE, name)
-		doc.check_permission("write")
 		# Without this, any Employee could be converted into a field worker.
 		if not doc.is_labour:
 			frappe.throw(_("{0} is not a field employee.").format(name))
@@ -95,5 +106,5 @@ def save_field_employee(
 	if allocated_projects is not None:
 		_apply_allocations(doc, rows)
 
-	doc.save()
+	doc.save(ignore_permissions=True)
 	return {"name": doc.name}
