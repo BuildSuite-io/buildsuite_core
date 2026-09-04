@@ -11,9 +11,9 @@ const today = computed(() => {
 });
 
 const shortcuts = [
-	{ label: "Field Employees", icon: "hard-hat", to: "/field-employees" },
-	{ label: "Crews", icon: "users-2", to: "/crews" },
-	{ label: "Field Attendance", icon: "clipboard-list", to: "/field-attendance" },
+	{ label: "Field Employees", icon: "hard-hat", to: "/field-employees", cap: "fieldEmployee" },
+	{ label: "Crews", icon: "users-2", to: "/crews", cap: "crew" },
+	{ label: "Field Attendance", icon: "clipboard-list", to: "/field-attendance", cap: "fieldAttendance" },
 ];
 
 const reports = [
@@ -48,6 +48,7 @@ const reports = [
 					:icon="sc.icon"
 					:label="sc.label"
 					:to="sc.to"
+					:cap="sc.cap"
 				/>
 			</div>
 
