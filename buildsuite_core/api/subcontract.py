@@ -141,7 +141,7 @@ def save_work_order(
 	project: str | None = None,
 	date: str | None = None,
 	delivery_type: str | None = None,
-	retention_percent: str | None = None,
+	retention_percent: str | float | None = None,
 	terms_template: str | None = None,
 	terms: str | None = None,
 	lines: str | None = None,
