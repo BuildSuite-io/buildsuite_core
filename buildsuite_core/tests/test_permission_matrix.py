@@ -493,6 +493,37 @@ class TestPersonaCrudMatrix(_PersonaBase):
 	def test_accountant_matrix(self):
 		self._assert_persona_matrix("Accountant", PERSONA_CRUD_MATRIX["Accountant"])
 
+	# ERPNext transactional doctypes no construction persona should ever browse. The per-persona
+	# matrices above only police the ~dozen entities each one lists — they say nothing about the
+	# hundreds of OTHER ERPNext doctypes, which is exactly how the read-mirror leaked `read` across
+	# all of Manufacturing / CRM. This is the negative footprint guard for that class of over-reach:
+	# a persona may hold `select` (pick a reference), but never `read` (list / open / browse).
+	_FORBIDDEN_READ = (
+		"BOM",
+		"Work Order",
+		"Job Card",
+		"Production Plan",
+		"Lead",
+		"Opportunity",
+		"Prospect",
+		"Pricing Rule",
+		"Loyalty Program",
+		"POS Profile",
+	)
+
+	def test_no_persona_can_read_the_erpnext_transactional_surface(self):
+		for persona in PERSONA_CRUD_MATRIX:
+			email = self._make_user(persona)
+			for doctype in self._FORBIDDEN_READ:
+				if not frappe.db.exists("DocType", doctype):
+					continue
+				with self.subTest(persona=persona, doctype=doctype):
+					self.assertFalse(
+						self._allowed(email, doctype, "read"),
+						f"{persona} must NOT read {doctype!r} — ERPNext footprint leak "
+						f"(a `select` grant for a picker is fine, `read` is not)",
+					)
+
 
 class TestPickerSelectPermissions(_PersonaBase):
 	"""Picker-only reference masters grant `select` (link-field resolution), not `read`.
