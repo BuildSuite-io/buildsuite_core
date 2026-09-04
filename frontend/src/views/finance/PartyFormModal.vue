@@ -12,8 +12,9 @@ const props = defineProps({
 	typeOptions: { type: Array, default: () => [] }, // string[]
 	initial: { type: Object, default: null }, // for edit
 	serverError: { type: String, default: "" }, // e.g. duplicate-name from the parent's save attempt
+	canDelete: { type: Boolean, default: false }, // show Delete when editing an existing record
 });
-const emit = defineEmits(["save", "close"]);
+const emit = defineEmits(["save", "close", "delete"]);
 
 const form = ref(blank());
 const error = ref("");
@@ -147,18 +148,29 @@ function onSave() {
 				</div>
 
 				<footer
-					class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0"
+					class="px-4 py-3 border-t border-ink-200 flex items-center gap-2 flex-shrink-0"
 				>
+					<!-- Delete only when editing an existing record and the persona may delete. -->
 					<button
+						v-if="initial && canDelete"
 						type="button"
-						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
-						@click="emit('close')"
+						class="text-xs px-3 py-1.5 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 rounded-md"
+						@click="emit('delete')"
 					>
-						Cancel
+						Delete
 					</button>
-					<button type="button" class="text-xs desk-save-btn" @click="onSave">
-						Save
-					</button>
+					<div class="ml-auto flex items-center gap-2">
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
+							@click="emit('close')"
+						>
+							Cancel
+						</button>
+						<button type="button" class="text-xs desk-save-btn" @click="onSave">
+							Save
+						</button>
+					</div>
 				</footer>
 			</div>
 		</div>

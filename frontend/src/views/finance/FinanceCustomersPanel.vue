@@ -6,6 +6,8 @@ import { ref, computed, onMounted } from "vue";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { listCustomers, addCustomer, updateCustomer } from "@/data/customersApi";
+import { createDataAdapter } from "@/data/adapters";
+import { useConfirm } from "@/composables/useConfirm";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -15,7 +17,9 @@ import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const store = useDataStore();
-const { canCreate } = usePermissions();
+const { canCreate, canDelete } = usePermissions();
+const adapter = createDataAdapter(store);
+const confirmDialog = useConfirm();
 // Customers are created AND edited from this panel; the create and write role-sets
 // coincide (Director / PM / Accountant / admin tier), so one capability gates both.
 const canManage = computed(() => canCreate("customer"));
@@ -87,6 +91,27 @@ async function onSave(payload) {
 		await load();
 	} catch (err) {
 		modalError.value = err.message || "Save failed.";
+	}
+}
+async function onDelete() {
+	if (!editing.value) return;
+	const ok = await confirmDialog({
+		title: `Delete ${editing.value.name}?`,
+		message:
+			"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments).",
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	modalError.value = "";
+	try {
+		await adapter.remove("Customer", editing.value.id);
+		modalOpen.value = false;
+		await load();
+		showToast("Customer deleted.");
+	} catch (err) {
+		modalError.value =
+			err.message || "Delete failed — the customer may have linked transactions.";
 	}
 }
 
@@ -171,7 +196,9 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:type-options="TYPE_OPTIONS"
 				:initial="editing"
 				:server-error="modalError"
+				:can-delete="canDelete('customer')"
 				@save="onSave"
+				@delete="onDelete"
 				@close="modalOpen = false"
 			/>
 		</div>
