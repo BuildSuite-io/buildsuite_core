@@ -10,6 +10,8 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { listSuppliers, addSupplier, updateSupplier } from "@/data/suppliersApi";
+import { createDataAdapter } from "@/data/adapters";
+import { useConfirm } from "@/composables/useConfirm";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -20,7 +22,9 @@ import { fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const store = useDataStore();
-const { canCreate } = usePermissions();
+const { canCreate, canDelete } = usePermissions();
+const adapter = createDataAdapter(store);
+const confirmDialog = useConfirm();
 // Regular suppliers are created AND edited here; create and write role-sets coincide
 // (Procurement / PM / Director / admin tier), so one capability gates both.
 const canManage = computed(() => canCreate("supplier"));
@@ -99,6 +103,27 @@ async function onSave(payload) {
 		await load();
 	} catch (err) {
 		modalError.value = err.message || "Save failed.";
+	}
+}
+async function onDelete() {
+	if (!editing.value) return;
+	const ok = await confirmDialog({
+		title: `Delete ${editing.value.name}?`,
+		message:
+			"This supplier master record will be removed permanently. Deletion is blocked if it has linked transactions (bills, payments, work orders).",
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	modalError.value = "";
+	try {
+		await adapter.remove("Supplier", editing.value.id);
+		modalOpen.value = false;
+		await load();
+		showToast("Supplier deleted.");
+	} catch (err) {
+		modalError.value =
+			err.message || "Delete failed — the supplier may have linked transactions.";
 	}
 }
 
@@ -195,7 +220,9 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:type-options="MODAL_TYPES"
 				:initial="editing"
 				:server-error="modalError"
+				:can-delete="canDelete('subcontractor')"
 				@save="onSave"
+				@delete="onDelete"
 				@close="modalOpen = false"
 			/>
 		</div>
