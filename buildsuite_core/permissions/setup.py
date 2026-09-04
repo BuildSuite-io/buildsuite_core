@@ -696,6 +696,10 @@ def setup_subcontract_permissions():
 	# Subcontractors are native Suppliers (supplier_type="Subcontractor") — grant the
 	# BuildSuite roles CRUD on Supplier so the Vue "Subcontractor" screens work.
 	_apply_role_perms("Supplier", SUBCONTRACT_ROLE_PERMS)
+	# Store Keeper posts receipts against suppliers and reads the supplier in that custody/receipt
+	# context. This used to arrive as a read-mirror side-effect; now that the mirror only grants
+	# `select` on link targets, make Store Keeper's supplier read an explicit, authored grant.
+	_upgrade_role_perms("Supplier", {"BuildSuite Store Keeper": _READ}, _PTYPES)
 	_apply_role_perms("Subcontractor Work Order", SUBCONTRACT_WO_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Measurement Book", MEASUREMENT_BOOK_ROLE_PERMS)
 	_apply_role_perms("Subcontractor Bill", SUBCONTRACT_BILL_ROLE_PERMS, _SUBMIT_PTYPES)
@@ -779,7 +783,9 @@ def setup_workforce_permissions():
 		# user). The derived rule is "no role edits directly", so drop any `All` custom
 		# grant before seeding the read-only BuildSuite matrix.
 		frappe.db.delete("Custom DocPerm", {"parent": dt, "role": "All"})
-		_apply_role_perms(dt, DERIVED_ATTENDANCE_ROLE_PERMS)
+		# These are submittable but DERIVED — manage the submit ptypes too, so read-only really
+		# means read-only (no role keeps submit/cancel, e.g. from the earlier mobile-full grant).
+		_apply_role_perms(dt, DERIVED_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
 
 
 # --- M3 — Equipment -----------------------------------------------------------
@@ -959,21 +965,29 @@ _READ_MIRROR_DENYLIST = {
 	"Email Account",
 }
 
-
 def setup_child_table_read_access():
-	"""Grant each BuildSuite role read on the doctypes REFERENCED by every parent it can read —
-	the parent's child (Table) doctypes AND its Link-field targets.
+	"""Give each BuildSuite role the MINIMAL grant on the doctypes referenced by every parent it
+	can read — `read` on the parent's child (Table) doctypes, `select` on its Link-field targets.
 
-	Custom DocPerms completely override standard perms, so a role granted read on a parent has
-	NO grant on the child tables or linked masters that parent's list/detail views render (line
-	items, a `trade` → Labour Trade column, a filter dropdown, …) — and the fetch then 403s
-	(e.g. HR Manager reads Crew but not its `trade` → Labour Trade). Mirroring read to those
-	referenced doctypes closes that class of gap. Read only (never write/delete), layered on top
-	of existing perms, system doctypes excluded — idempotent."""
+	Custom DocPerms completely override standard perms, so a role granted read on a parent has NO
+	grant on the child tables its detail view renders (line items 403) or on the masters its Link
+	fields point at (the picker dropdown / link validation fails). We close both gaps, but with the
+	RIGHT ptype for each:
+
+	- Child tables get `read`: their rows ARE the parent's data, rendered inline with it.
+	- Link targets get `select`, NOT `read`. `select` is all a link field needs — the picker
+	  endpoint (`frappe.get_list`) and link validation honour it — whereas `read` would ALSO let
+	  the persona list / report / export / open that master and surface its Desk workspace. Blanket
+	  `read` on every link target is exactly what leaked almost all of ERPNext into every persona
+	  (Stock Entry → Work Order → all of Manufacturing, …). A reference granted with `select` is
+	  harmless: pick-ability, not browse. This matches the `_SELECT` convention the base matrix
+	  already uses for picker-only masters (see the resync_picker_select_permissions patch).
+
+	Layered on top of existing perms (never revokes), system doctypes excluded — idempotent."""
 	# Parents = doctypes with a REAL perm-map grant, identified by print=1 (every perm shorthand
-	# — _READ/_FULL/_RAISE/… — carries it). This deliberately excludes the mirror's OWN grants
-	# (which set only read=1), so a re-run doesn't treat mirror-granted masters as parents and
-	# fan out second-order — that's what keeps after_migrate fast.
+	# — _READ/_FULL/_RAISE/… — carries it). This excludes the mirror's OWN grants (read=1/print=0
+	# on child tables, select=1/print=0 on link targets), so a re-run doesn't treat a mirrored
+	# doctype as a parent and fan out second-order — that's what keeps after_migrate fast.
 	grants = frappe.get_all(
 		"Custom DocPerm",
 		filters={"read": 1, "print": 1, "permlevel": 0, "role": ["in", list(BUILDSUITE_ROLES)]},
@@ -983,25 +997,28 @@ def setup_child_table_read_access():
 	for g in grants:
 		roles_by_parent.setdefault(g.doctype, set()).add(g.role)
 
-	# desired[ref] = the roles that should be able to read `ref` (a child table or link target).
-	desired = {}
+	# child_targets get `read` (line items); link_targets get `select` (pick-only reference).
+	child_targets, link_targets = {}, {}
 	for parent, roles in roles_by_parent.items():
 		if not frappe.db.exists("DocType", parent):
 			continue
 		meta = frappe.get_meta(parent)
-		referenced = {df.options for df in meta.get_table_fields() if df.options}
-		referenced |= {
-			df.options
-			for df in meta.get_link_fields()
-			if df.options and df.options not in _READ_MIRROR_DENYLIST
-		}
-		for ref in referenced:
-			desired.setdefault(ref, set()).update(roles)
+		for df in meta.get_table_fields():
+			if df.options:
+				child_targets.setdefault(df.options, set()).update(roles)
+		for df in meta.get_link_fields():
+			if df.options and df.options not in _READ_MIRROR_DENYLIST:
+				link_targets.setdefault(df.options, set()).update(roles)
+
+	_grant_mirror_read(child_targets)
+	_grant_link_select(link_targets)
+
+
+def _grant_mirror_read(desired):
+	"""Grant `read` on each child-table ref in `desired` to the roles that lack it. One bulk read of
+	the current state first, so a steady-state re-run (after_migrate) does zero writes, stays fast."""
 	if not desired:
 		return
-
-	# Everything already read-granted on those refs, in ONE query — so a steady-state re-run
-	# (after_migrate) does zero writes and stays fast enough to run on every migrate.
 	have = {}
 	for row in frappe.get_all(
 		"Custom DocPerm",
@@ -1016,8 +1033,45 @@ def setup_child_table_read_access():
 			continue
 		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
 			continue
-		# ptypes=("read",) — grant read without disturbing any other permission on the target.
 		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
+
+
+def _grant_link_select(link_targets):
+	"""Grant `select` (pick-only) on each link target to the roles that lack it.
+
+	`add_permission` seeds read=1 on a fresh Custom DocPerm row — the exact over-grant we are
+	removing — so for a role that holds NO authored grant on the target (print=0) we strip that read
+	straight back off, leaving `select` alone. A role that already holds an authored grant (print=1,
+	e.g. Account, or Item/UOM via the mobile sheet) keeps its read; we only add select alongside it."""
+	if not link_targets:
+		return
+	have_select, have_authored = {}, {}
+	for row in frappe.get_all(
+		"Custom DocPerm",
+		filters={"parent": ["in", list(link_targets)], "permlevel": 0},
+		fields=["parent as doctype", "role", "select", "print"],
+	):
+		if row.get("select"):
+			have_select.setdefault(row.doctype, set()).add(row.role)
+		if row.get("print"):
+			have_authored.setdefault(row.doctype, set()).add(row.role)
+
+	for ref, roles in link_targets.items():
+		missing = roles - have_select.get(ref, set())
+		if not missing:
+			continue
+		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
+			continue
+		_upgrade_role_perms(ref, {role: {"select": 1} for role in missing}, ptypes=("select",))
+		for role in missing - have_authored.get(ref, set()):
+			# pick-only role: drop the read add_permission seeded so this reference is select-only.
+			frappe.db.set_value(
+				"Custom DocPerm",
+				{"parent": ref, "role": role, "permlevel": 0},
+				"read",
+				0,
+				update_modified=False,
+			)
 
 
 # --- Mobile app permissions (additional, layered on the base matrix) -----------
@@ -1066,9 +1120,11 @@ def setup_mobile_permissions():
 	# Material Request + Stock Entry — Site Engineer + Foreman, full lifecycle.
 	_upgrade_role_perms("Material Request", _mobile_perm(eng_fore, _MOBILE_FULL), full)
 	_upgrade_role_perms("Stock Entry", _mobile_perm(eng_fore, _MOBILE_FULL), full)
-	# Field Attendance muster + its derived registers — field-attendance creators, full.
-	for dt in ("Field Attendance", "Labour Attendance Register", "Overtime Attendance Register"):
-		_upgrade_role_perms(dt, _mobile_perm(_MOBILE_FIELD_ATT_ROLES, _MOBILE_FULL), full)
+	# Field Attendance muster — field-attendance creators get the full lifecycle. The Labour /
+	# Overtime Attendance Registers are DERIVED (generated when the muster is submitted; "no role
+	# edits directly" per DERIVED_ATTENDANCE_ROLE_PERMS), so mobile only reads them — they keep the
+	# base matrix's read-only grant, never write/create/submit here.
+	_upgrade_role_perms("Field Attendance", _mobile_perm(_MOBILE_FIELD_ATT_ROLES, _MOBILE_FULL), full)
 	# File — every persona (attach field photos / receipts).
 	_upgrade_role_perms("File", _mobile_perm(_MOBILE_ALL_ROLES, _MOBILE_CRW), crw)
 	# Journal Entry + Item — Site Engineer + Foreman, read/select only.

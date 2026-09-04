@@ -321,7 +321,7 @@ PERSONA_CRUD_MATRIX = {
 		"Customer": "crw",  # maintain, no delete
 	},
 	"Store Keeper": {
-		"Supplier": "r",  # read-only (granted via the read-mirror, not a bespoke map)
+		"Supplier": "r",  # read-only — Store Keeper reads suppliers in its receipt/custody context
 		"Purchase Invoice": "r",  # Supplier Bill — read-only, no create
 		"Payment Entry": "",  # advances — no access at all
 		"Machinery": "crwd",  # register — full custody maintenance
