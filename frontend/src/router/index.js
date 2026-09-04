@@ -535,22 +535,25 @@ const routes = [
 				name: "subcontractor-work-order-new",
 				component: () => import("@/views/NewSubcontractorWorkOrderView.vue"),
 			},
+			// The Work Order name can carry slashes on imported sites (e.g. CNBC/1069/24/07/2026),
+			// so the `id` param must match across "/". The /edit and /print routes come first (their
+			// trailing static segment makes them win); the bare detail route is the greedy fallback.
 			{
-				path: "subcontractor-work-orders/:id",
-				name: "subcontractor-work-order-detail",
-				component: () => import("@/views/SubcontractorWorkOrderDetailView.vue"),
-				props: true,
-			},
-			{
-				path: "subcontractor-work-orders/:id/edit",
+				path: "subcontractor-work-orders/:id(.*)/edit",
 				name: "subcontractor-work-order-edit",
 				component: () => import("@/views/NewSubcontractorWorkOrderView.vue"),
 				props: true,
 			},
 			{
-				path: "subcontractor-work-orders/:id/print",
+				path: "subcontractor-work-orders/:id(.*)/print",
 				name: "subcontractor-work-order-print",
 				component: () => import("@/views/SubcontractorWorkOrderPrintView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-work-orders/:id(.*)",
+				name: "subcontractor-work-order-detail",
+				component: () => import("@/views/SubcontractorWorkOrderDetailView.vue"),
 				props: true,
 			},
 			{
