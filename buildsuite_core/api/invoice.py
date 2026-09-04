@@ -418,7 +418,7 @@ def delete_invoice(name: str):
 # Receive payment (Payment Entry against the SI)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def record_receipt(name: str, amount: str | None = None, date: str | None = None, mode_of_payment: str | None = None, deposit_to: str | None = None, reference_no: str | None = None):
+def record_receipt(name: str, amount: str | float | None = None, date: str | None = None, mode_of_payment: str | None = None, deposit_to: str | None = None, reference_no: str | None = None):
 	"""Create + submit a Payment Entry receiving against the invoice, into a Bank/Cash account."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
@@ -487,7 +487,7 @@ def list_receipts(name: str):
 # Customer advances (on-account receipts, no invoice yet)
 # --------------------------------------------------------------------------- #
 @frappe.whitelist()
-def record_advance(customer: str, amount: str, date: str | None = None, deposit_to: str | None = None, mode_of_payment: str | None = None, reference_no: str | None = None):
+def record_advance(customer: str, amount: str | float, date: str | None = None, deposit_to: str | None = None, mode_of_payment: str | None = None, reference_no: str | None = None):
 	"""Receive money from a customer BEFORE (or without) an invoice — a submitted on-account
 	Payment Entry whose full amount stays unallocated until a later invoice draws it down."""
 	from erpnext.accounts.party import get_party_account
@@ -630,7 +630,7 @@ def _reconcile_advance(si, pe, amount):
 
 
 @frappe.whitelist()
-def link_advance(name: str, payment_entry: str, amount: str):
+def link_advance(name: str, payment_entry: str, amount: str | float):
 	"""Adjust `amount` of a customer advance against this invoice, reducing its outstanding."""
 	si = frappe.get_doc(SI, name)
 	si.check_permission("write")

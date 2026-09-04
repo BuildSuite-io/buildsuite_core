@@ -593,7 +593,7 @@ def delete_bill(name: str):
 @frappe.whitelist()
 def record_payment(
 	name: str,
-	amount: str | None = None,
+	amount: str | float | None = None,
 	date: str | None = None,
 	mode_of_payment: str | None = None,
 	pay_from: str | None = None,
@@ -667,7 +667,7 @@ def list_payments(name: str):
 @frappe.whitelist()
 def record_advance(
 	supplier: str,
-	amount: str,
+	amount: str | float,
 	date: str | None = None,
 	pay_from: str | None = None,
 	mode_of_payment: str | None = None,
@@ -812,7 +812,7 @@ def _reconcile_advance(pi, pe, amount):
 
 
 @frappe.whitelist()
-def link_advance(name: str, payment_entry: str, amount: str):
+def link_advance(name: str, payment_entry: str, amount: str | float):
 	"""Adjust `amount` of a supplier advance against this bill, reducing its outstanding."""
 	pi = frappe.get_doc(PI, name)
 	pi.check_permission("write")

@@ -564,7 +564,7 @@ def available_advances(name: str):
 
 
 @frappe.whitelist()
-def link_advance(name: str, payment_entry: str, amount: str):
+def link_advance(name: str, payment_entry: str, amount: str | float):
 	"""Adjust `amount` of a subcontractor advance against this bill, reducing its outstanding."""
 	from buildsuite_core.api import supplier_bill as _sb
 
