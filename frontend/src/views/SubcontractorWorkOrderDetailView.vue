@@ -109,7 +109,7 @@ function onRaiseBill() {
 // In-app print: routes to the Vue print view, which renders the work order as a
 // printable document and exports via the browser print dialog (Save as PDF).
 function onPrint() {
-	router.push(`/subcontractor-work-orders/${wo.value.name}/print`);
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.value.name)}/print`);
 }
 
 async function onSubmit() {
@@ -162,7 +162,7 @@ async function onAmend() {
 	try {
 		const res = await amendWorkOrder(wo.value.name);
 		showToast("Amended — a fresh draft was created.");
-		router.push(`/subcontractor-work-orders/${res.name}`);
+		router.push(`/subcontractor-work-orders/${encodeURIComponent(res.name)}`);
 	} catch (err) {
 		showToast(err.message || "Amend failed", "error");
 	} finally {
@@ -171,7 +171,7 @@ async function onAmend() {
 }
 
 function onEdit() {
-	router.push(`/subcontractor-work-orders/${wo.value.name}/edit`);
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.value.name)}/edit`);
 }
 
 async function onDelete() {

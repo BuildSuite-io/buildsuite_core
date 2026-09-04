@@ -177,7 +177,7 @@ async function onSave() {
 			lines: form.value.lines.map(lineForSave),
 		};
 		const wo = await saveWorkOrder(payload);
-		router.push(`/subcontractor-work-orders/${wo.name}`);
+		router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`);
 	} catch (err) {
 		showToast(err.message || "Failed to save work order", "error");
 	} finally {
@@ -193,7 +193,7 @@ const breadcrumbs = computed(() => [
 	{ label: "Subcontract", to: "/subcontract" },
 	{ label: "Work Orders", to: "/subcontractor-work-orders" },
 	isEdit.value
-		? { label: editingId.value, to: `/subcontractor-work-orders/${editingId.value}` }
+		? { label: editingId.value, to: `/subcontractor-work-orders/${encodeURIComponent(editingId.value)}` }
 		: { label: "New" },
 	...(isEdit.value ? [{ label: "Edit" }] : []),
 ]);
