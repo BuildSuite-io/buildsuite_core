@@ -25,11 +25,13 @@ const route = useRoute();
 const adapter = createDataAdapter(useDataStore());
 const { canCreate } = usePermissions();
 
+// Active only. Own cache key — the detail view's picker still lists every machine.
 const machineryRes = useDocTypeList("Machinery", {
 	fields: ["name", "machinery_name", "machinery_type", "ownership", "rate", "rate_unit"],
+	filters: [["status", "=", "Active"]],
 	orderBy: "machinery_name asc",
 	pageLength: 0,
-	cache: "buildsuite-machinery-options",
+	cache: "buildsuite-machinery-active-options",
 });
 const machineryOptions = computed(() =>
 	(machineryRes.data || []).map((m) => ({

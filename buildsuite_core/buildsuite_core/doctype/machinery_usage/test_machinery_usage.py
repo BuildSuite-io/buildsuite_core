@@ -163,3 +163,25 @@ class TestMachineryUsage(BuildSuiteTestCase):
 
 		frappe.delete_doc("Machinery Usage", usage.name, ignore_permissions=True)
 		self.assertFalse(frappe.db.exists("Machinery Usage", usage.name))
+
+	def test_inactive_machine_cannot_be_logged(self):
+		machine = self._machine()
+		frappe.db.set_value("Machinery", machine.name, "status", "Inactive")
+
+		with self.assertRaisesRegex(frappe.ValidationError, "Inactive"):
+			frappe.get_doc({"doctype": "Machinery Usage", "machine": machine.name}).insert(
+				ignore_permissions=True
+			)
+
+	def test_log_is_frozen_once_its_machine_is_retired(self):
+		# Strict rule: retiring a machine seals its existing logs, not just new ones.
+		machine = self._machine()
+		usage = frappe.get_doc({"doctype": "Machinery Usage", "machine": machine.name}).insert(
+			ignore_permissions=True
+		)
+
+		frappe.db.set_value("Machinery", machine.name, "status", "Inactive")
+
+		usage.fuel_cost = 250
+		with self.assertRaisesRegex(frappe.ValidationError, "Inactive"):
+			usage.save(ignore_permissions=True)
