@@ -12,15 +12,15 @@ const today = computed(() => {
 });
 
 const shortcuts = [
-	{ label: "Material Requests", icon: "clipboard-list", to: "/procurement/material-requests" },
-	{ label: "Purchase Orders", icon: "file-text", to: "/procurement/purchase-orders" },
-	{ label: "Purchase Receipts", icon: "check-circle", to: "/procurement/receipts" },
+	{ label: "Material Requests", icon: "clipboard-list", to: "/procurement/material-requests", cap: "materialRequest" },
+	{ label: "Purchase Orders", icon: "file-text", to: "/procurement/purchase-orders", cap: "purchaseOrder" },
+	{ label: "Purchase Receipts", icon: "check-circle", to: "/procurement/receipts", cap: "purchaseReceipt" },
 	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
 	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
-	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills" },
-	{ label: "Material Consumption", icon: "stock", to: "/material-consumption" },
-	{ label: "Suppliers", icon: "building-2", href: "/app/supplier" },
-	{ label: "Items", icon: "tag", to: "/items" },
+	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills", cap: "supplierBill" },
+	{ label: "Material Consumption", icon: "stock", to: "/material-consumption", cap: "materialConsumption" },
+	{ label: "Suppliers", icon: "building-2", href: "/app/supplier", cap: "supplier" },
+	{ label: "Items", icon: "tag", to: "/items", cap: "item" },
 ];
 
 // Report tiles are configured per workspace in Workspace Setting.
@@ -98,6 +98,7 @@ onMounted(async () => {
 					:to="sc.to"
 					:href="sc.href"
 					:prevent="sc.prevent"
+					:cap="sc.cap"
 				/>
 			</div>
 

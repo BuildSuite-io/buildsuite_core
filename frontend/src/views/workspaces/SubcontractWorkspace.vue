@@ -19,10 +19,10 @@ const today = computed(() => {
 });
 
 const shortcuts = [
-	{ label: "Subcontractors", icon: "users-2", to: "/subcontractors" },
-	{ label: "Work Orders", icon: "clipboard-list", to: "/subcontractor-work-orders" },
-	{ label: "Measurement Books", icon: "chart-bar", to: "/measurement-books" },
-	{ label: "Subcontractor Bills", icon: "file-text", to: "/subcontractor-bills" },
+	{ label: "Subcontractors", icon: "users-2", to: "/subcontractors", cap: "subcontractor" },
+	{ label: "Work Orders", icon: "clipboard-list", to: "/subcontractor-work-orders", cap: "subcontractorWorkOrder" },
+	{ label: "Measurement Books", icon: "chart-bar", to: "/measurement-books", cap: "measurementBook" },
+	{ label: "Subcontractor Bills", icon: "file-text", to: "/subcontractor-bills", cap: "subcontractorBill" },
 ];
 
 // Report tiles are configured per workspace in Workspace Setting.
@@ -98,6 +98,7 @@ onMounted(async () => {
 					:icon="sc.icon"
 					:label="sc.label"
 					:to="sc.to"
+					:cap="sc.cap"
 				/>
 			</div>
 
