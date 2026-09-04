@@ -44,7 +44,7 @@ function printDoc() {
 	window.print();
 }
 function backToWO() {
-	router.push(`/subcontractor-work-orders/${props.id}`);
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(props.id)}`);
 }
 
 async function load() {
