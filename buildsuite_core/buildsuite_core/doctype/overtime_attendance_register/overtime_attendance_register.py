@@ -8,6 +8,8 @@ from frappe.model.document import Document
 from frappe.utils import flt, getdate
 from frappe.query_builder.functions import Sum
 
+from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import MAX_OT_HOURS_PER_DAY
+
 
 class OvertimeAttendanceRegister(Document):
 	# begin: auto-generated types
@@ -86,9 +88,14 @@ class OvertimeAttendanceRegister(Document):
 
 		existing_hours = flt(existing_hours[0][0]) if existing_hours else 0.0
 		total_overtime_hours = existing_hours + flt(self.overtime_hours)
-		if total_overtime_hours and total_overtime_hours >= 16:
+		if total_overtime_hours and total_overtime_hours > MAX_OT_HOURS_PER_DAY:
 			frappe.throw(
-				f"Overtime already marked for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}."
+				_("{0}: Overtime for {1} would be {2} hours, over the {3} hour daily limit.").format(
+					frappe.bold(self.employee_name),
+					frappe.bold(self.overtime_date),
+					total_overtime_hours,
+					MAX_OT_HOURS_PER_DAY,
+				)
 			)
 		if self.overtime_hours == 0:
 			frappe.throw(_("Overtime hours cannot be zero!"))

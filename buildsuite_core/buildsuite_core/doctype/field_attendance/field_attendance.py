@@ -11,7 +11,7 @@ from frappe.utils import flt, getdate
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
 HOURS_PER_DAY = 8
-MAX_OT_HOURS_PER_DAY = 8
+MAX_OT_HOURS_PER_DAY = 16
 
 # Rows above this count are processed in a background job on submit/cancel.
 ENQUEUE_THRESHOLD = 25
