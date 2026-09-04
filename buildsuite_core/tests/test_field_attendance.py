@@ -5,6 +5,9 @@
 import frappe
 
 from buildsuite_core.api.field_attendance import get_roster, save_field_attendance
+from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
+	MAX_OT_HOURS_PER_DAY,
+)
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
 
@@ -139,3 +142,31 @@ class TestFieldAttendance(BuildSuiteTestCase):
 		for row in get_roster(self.project):
 			self.assertIn("employee", row)
 			self.assertIn("employee_name", row)
+
+	def _save_with_overtime(self, hours):
+		return self._save(
+			employee_list=frappe.as_json(
+				[{"employee": self.worker_a, "status": "Present", "overtime_hours": hours}]
+			)
+		)
+
+	def test_overtime_up_to_the_daily_limit_is_allowed(self):
+		res = self._save_with_overtime(MAX_OT_HOURS_PER_DAY)
+		self.assertEqual(res["employee_list"][0]["overtime_hours"], MAX_OT_HOURS_PER_DAY)
+
+	def test_overtime_over_the_daily_limit_is_rejected(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "daily limit"):
+			self._save_with_overtime(MAX_OT_HOURS_PER_DAY + 0.5)
+
+	def test_overtime_at_the_limit_survives_submit(self):
+		res = self._save_with_overtime(MAX_OT_HOURS_PER_DAY)
+		frappe.get_doc("Field Attendance", res["name"]).submit()
+
+		self.assertEqual(
+			frappe.db.get_value(
+				"Overtime Attendance Register",
+				{"field_attendance": res["name"], "docstatus": 1},
+				"overtime_hours",
+			),
+			MAX_OT_HOURS_PER_DAY,
+		)
