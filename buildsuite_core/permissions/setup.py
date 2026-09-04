@@ -783,7 +783,9 @@ def setup_workforce_permissions():
 		# user). The derived rule is "no role edits directly", so drop any `All` custom
 		# grant before seeding the read-only BuildSuite matrix.
 		frappe.db.delete("Custom DocPerm", {"parent": dt, "role": "All"})
-		_apply_role_perms(dt, DERIVED_ATTENDANCE_ROLE_PERMS)
+		# These are submittable but DERIVED — manage the submit ptypes too, so read-only really
+		# means read-only (no role keeps submit/cancel, e.g. from the earlier mobile-full grant).
+		_apply_role_perms(dt, DERIVED_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
 
 
 # --- M3 — Equipment -----------------------------------------------------------
@@ -1118,9 +1120,11 @@ def setup_mobile_permissions():
 	# Material Request + Stock Entry — Site Engineer + Foreman, full lifecycle.
 	_upgrade_role_perms("Material Request", _mobile_perm(eng_fore, _MOBILE_FULL), full)
 	_upgrade_role_perms("Stock Entry", _mobile_perm(eng_fore, _MOBILE_FULL), full)
-	# Field Attendance muster + its derived registers — field-attendance creators, full.
-	for dt in ("Field Attendance", "Labour Attendance Register", "Overtime Attendance Register"):
-		_upgrade_role_perms(dt, _mobile_perm(_MOBILE_FIELD_ATT_ROLES, _MOBILE_FULL), full)
+	# Field Attendance muster — field-attendance creators get the full lifecycle. The Labour /
+	# Overtime Attendance Registers are DERIVED (generated when the muster is submitted; "no role
+	# edits directly" per DERIVED_ATTENDANCE_ROLE_PERMS), so mobile only reads them — they keep the
+	# base matrix's read-only grant, never write/create/submit here.
+	_upgrade_role_perms("Field Attendance", _mobile_perm(_MOBILE_FIELD_ATT_ROLES, _MOBILE_FULL), full)
 	# File — every persona (attach field photos / receipts).
 	_upgrade_role_perms("File", _mobile_perm(_MOBILE_ALL_ROLES, _MOBILE_CRW), crw)
 	# Journal Entry + Item — Site Engineer + Foreman, read/select only.
