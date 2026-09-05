@@ -203,7 +203,7 @@ function woPercent(wo) {
 						<li v-for="wo in recentWorkOrders" :key="wo.name" class="px-4 py-3">
 							<div class="flex items-baseline justify-between gap-2">
 								<RouterLink
-									:to="`/subcontractor-work-orders/${wo.name}`"
+									:to="`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`"
 									class="text-sm text-ink-900 font-medium hover:text-brand-700 truncate"
 								>
 									{{ wo.subcontractor_name || wo.name }}
@@ -340,7 +340,7 @@ function woPercent(wo) {
 							<div class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ projectName(mb.project) }} ·
 								<RouterLink
-									:to="`/subcontractor-work-orders/${mb.work_order}`"
+									:to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`"
 									class="text-brand-700 hover:underline"
 									>{{ mb.work_order }}</RouterLink
 								>

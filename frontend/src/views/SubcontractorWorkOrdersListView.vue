@@ -83,7 +83,7 @@ const breadcrumbs = [
 ];
 
 function onRowClick(row) {
-	router.push(`/subcontractor-work-orders/${row.name}`);
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(row.name)}`);
 }
 </script>
 
@@ -111,7 +111,7 @@ function onRowClick(row) {
 		>
 			<template #cell-name="{ row }">
 				<DeskLink
-					:to="`/subcontractor-work-orders/${row.name}`"
+					:to="`/subcontractor-work-orders/${encodeURIComponent(row.name)}`"
 					class="font-mono text-xs"
 					@click.stop
 					>{{ row.name }}</DeskLink
