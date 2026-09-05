@@ -42,3 +42,4 @@ buildsuite_core.patches.strip_read_mirror_overreach # 2026-09-03 scope persona E
 buildsuite_core.patches.resync_derived_attendance_perms # 2026-09-04 derived registers read-only
 buildsuite_core.patches.drop_manager_employee_user_permissions # 2026-09-04 roster mgrs see all employees
 buildsuite_core.patches.fix_stage_planning_name_column # 2026-09-04 stage planning name column int->varchar
+buildsuite_core.patches.resync_persona_permission_matrix # 2026-09-05 converge stale imported-site perms
