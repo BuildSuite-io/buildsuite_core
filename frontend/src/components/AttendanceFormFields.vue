@@ -18,7 +18,7 @@ defineProps({
 // The three "applies to all rows" controls report upward instead of writing the
 // header directly — useAttendanceSheet owns both the header value and the rows,
 // so the two can never disagree.
-const emit = defineEmits(["status", "overtime", "comments"]);
+const emit = defineEmits(["status", "overtime", "comments", "project"]);
 
 const { projectOptions } = useProjectOptions();
 </script>
@@ -27,10 +27,11 @@ const { projectOptions } = useProjectOptions();
 	<DeskSection title="Header" :cols="3">
 		<DeskField label="Project" required :error="errors.project">
 			<DeskSearchableSelect
-				v-model="form.project"
+				:model-value="form.project"
 				:options="projectOptions"
 				placeholder="Pick a project…"
 				search-placeholder="Search projects…"
+				@update:model-value="(v) => emit('project', v)"
 			/>
 		</DeskField>
 		<DeskField label="Date" required :error="errors.date">

@@ -3,7 +3,7 @@
 // from Desk. The header block and roster helpers are shared with the detail view
 // via AttendanceFormFields / useAttendanceSheet.
 
-import { reactive, ref, watch } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -34,14 +34,6 @@ const form = reactive({
 	employee_list: [],
 });
 
-// Task is scoped to the project — the server rejects a stale cross-project one.
-watch(
-	() => form.project,
-	() => {
-		form.task = "";
-	},
-);
-
 const {
 	inTable,
 	addRow,
@@ -49,6 +41,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
 	addProjectRoster,
@@ -119,6 +112,7 @@ const breadcrumbs = [
 				@status="setHeaderStatus"
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
+				@project="setHeaderProject"
 			/>
 
 			<AttendanceEmployeeTable

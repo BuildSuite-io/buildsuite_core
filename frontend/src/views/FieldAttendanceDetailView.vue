@@ -126,6 +126,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
 	addProjectRoster,
@@ -153,14 +154,6 @@ function snapshot() {
 		})),
 	};
 }
-
-// Task is scoped to the project — the server rejects a stale cross-project one.
-watch(
-	() => form.value.project,
-	() => {
-		if (editing.value) form.value.task = "";
-	},
-);
 
 function startEdit() {
 	form.value = snapshot();
@@ -410,6 +403,7 @@ const breadcrumbs = computed(() => [
 				@status="setHeaderStatus"
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
+				@project="setHeaderProject"
 			/>
 
 			<AttendanceEmployeeTable
