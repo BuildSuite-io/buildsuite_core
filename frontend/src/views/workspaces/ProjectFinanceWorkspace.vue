@@ -7,9 +7,8 @@
 // Cash, which is live.
 import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
-import { storeToRefs } from "pinia";
 import { useFinanceMock } from "@/data/financeMock";
-import { useSessionStore } from "@/stores/session";
+import { usePermissions } from "@/composables/usePermissions";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
@@ -17,8 +16,7 @@ import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
 const fin = useFinanceMock();
-const session = useSessionStore();
-const { access } = storeToRefs(session);
+const { canRead } = usePermissions();
 
 const today = new Date().toLocaleDateString("en-US", {
 	weekday: "long",
@@ -27,50 +25,26 @@ const today = new Date().toLocaleDateString("en-US", {
 });
 const cashBank = computed(() => fin.totalCashBank);
 
-// Role gating — parity with the prototype's visibleFinanceTabs.
-const FINANCE_SITE_ROLES = ["BuildSuite Site Engineer", "BuildSuite Foreman"];
-const FINANCE_FULL_ROLES = [
-	"BuildSuite Director",
-	"BuildSuite PM",
-	"BuildSuite Accountant",
-	"BuildSuite QS",
-	"BuildSuite Administrator",
-	"System Manager",
-	"Administrator",
-];
-const roles = computed(() => access.value?.roles || []);
-const hasAny = (list) => roles.value.some((r) => list.includes(r));
-const visibleSections = computed(() => {
-	if (hasAny(FINANCE_FULL_ROLES))
-		return [
-			"overview",
-			"petty-cash",
-			"expenses",
-			"customers",
-			"suppliers",
-			"invoices",
-			"bills",
-			"payments",
-			"reports",
-		];
-	if (hasAny(FINANCE_SITE_ROLES)) return ["petty-cash", "expenses"];
-	return [];
-});
-const canSee = (section) => visibleSections.value.includes(section);
-const noAccess = computed(() => !visibleSections.value.length);
+// Per-persona gating — each tile follows the persona's cap in PERSONA_CAPS
+// (roles.js), the same source the access-control artifact is generated from, so
+// the workspace shows exactly what the matrix grants (e.g. Foreman reads Customer
+// and Petty Cash / Expenses, but not Invoices / Bills / Payments). This is the
+// cap-gating every other workspace already uses; Project Finance was the last
+// outlier still gating by coarse session-role buckets, which is why a Foreman
+// (or Procurement, Store Keeper, …) saw fewer tiles than the matrix grants.
 
 // Per the prototype's Site Execution rule (S50), DocType shortcut tiles render WITHOUT a
 // description — only the Reports group below carries subtext.
 const TRANSACTIONS = [
-	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash" },
-	{ section: "expenses", icon: "receipt", label: "Expenses" },
-	{ section: "invoices", icon: "file-text", label: "Invoices" },
-	{ section: "bills", icon: "banknote", label: "Bills" },
-	{ section: "payments", icon: "refresh-ccw", label: "Payments" },
+	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash", cap: "pettyCash" },
+	{ section: "expenses", icon: "receipt", label: "Expenses", cap: "expense" },
+	{ section: "invoices", icon: "file-text", label: "Invoices", cap: "salesInvoice" },
+	{ section: "bills", icon: "banknote", label: "Bills", cap: "supplierBill" },
+	{ section: "payments", icon: "refresh-ccw", label: "Payments", cap: "advance" },
 ];
 const MASTERS = [
-	{ section: "customers", icon: "users-round", label: "Customers" },
-	{ section: "suppliers", icon: "building-2", label: "Suppliers" },
+	{ section: "customers", icon: "users-round", label: "Customers", cap: "customer" },
+	{ section: "suppliers", icon: "building-2", label: "Suppliers", cap: "supplier" },
 ];
 // Report tiles are configured per workspace in Workspace Setting (same as Site Execution /
 // Procurement) — the standard ERPNext finance reports through the in-app renderer plus the
@@ -85,10 +59,24 @@ onMounted(async () => {
 	}
 });
 
-const txTiles = computed(() => TRANSACTIONS.filter((t) => canSee(t.section)));
-const masterTiles = computed(() => MASTERS.filter((t) => canSee(t.section)));
-const showReports = computed(() => canSee("reports") && reports.value.length > 0);
-const showOverview = computed(() => canSee("overview"));
+const txTiles = computed(() => TRANSACTIONS.filter((t) => canRead(t.cap)));
+const masterTiles = computed(() => MASTERS.filter((t) => canRead(t.cap)));
+// The Financial Overview (company-wide cash & bank) and the Reports group are for
+// ledger-level finance personas — those who can read Invoices / Bills / Payments.
+// Site personas (Foreman / Site Engineer) still get their permitted tiles, but not
+// the company-wide overview.
+const hasLedgerFinance = computed(
+	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance"),
+);
+const showReports = computed(() => hasLedgerFinance.value && reports.value.length > 0);
+const showOverview = computed(() => hasLedgerFinance.value);
+const noAccess = computed(
+	() =>
+		!txTiles.value.length &&
+		!masterTiles.value.length &&
+		!showOverview.value &&
+		!showReports.value,
+);
 </script>
 
 <template>
