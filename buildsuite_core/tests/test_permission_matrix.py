@@ -82,6 +82,24 @@ class TestPersonaRoleSync(_PersonaBase):
 				stray = (MANAGED_ROLES - {role}) & roles
 				self.assertFalse(stray, f"{persona} leaked other personas' roles: {stray}")
 
+	# --- a persona user is a System User (can log in without System Manager) --
+	def test_persona_makes_the_user_a_system_user(self):
+		"""A persona user works in the Desk/SPA, so setting a persona must make them a System
+		User — otherwise login needs a System Manager role added on top, which over-grants (e.g.
+		System Manager unlocks the full Project Finance workspace)."""
+		email = f"su-{self._n}-{frappe.generate_hash(length=4)}@example.com"
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": "SysUser",
+				"user_type": "Website User",  # deliberately NOT a system user
+				"send_welcome_email": 0,
+				"persona": "Site Engineer",
+			}
+		).insert(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("User", email, "user_type"), "System User")
+
 	# --- switching between field personas ------------------------------------
 	def test_switch_chain_keeps_only_current_field_persona_role(self):
 		"""Switch one user through every ordinary persona in turn. At each step it must
