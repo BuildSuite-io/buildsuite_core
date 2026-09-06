@@ -7,6 +7,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { ATTENDANCE_STATUSES } from "@/utils/workforceForms";
 
@@ -39,6 +40,16 @@ const { projectOptions } = useProjectOptions();
 			<DeskSelect :model-value="form.status" @update:model-value="(v) => emit('status', v)">
 				<option v-for="s in ATTENDANCE_STATUSES" :key="s">{{ s }}</option>
 			</DeskSelect>
+		</DeskField>
+		<DeskField label="Task (optional)" hint="Books the whole sheet to one task.">
+			<DeskLinkPicker
+				v-model="form.task"
+				doctype="Task"
+				label-field="subject"
+				value-field="name"
+				:filters="form.project ? [['project', '=', form.project]] : []"
+				placeholder="Deploy to task…"
+			/>
 		</DeskField>
 		<DeskField label="Overtime hours" hint="Applies to all rows.">
 			<DeskInput

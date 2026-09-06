@@ -3,7 +3,7 @@
 // from Desk. The header block and roster helpers are shared with the detail view
 // via AttendanceFormFields / useAttendanceSheet.
 
-import { reactive, ref } from "vue";
+import { reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -28,10 +28,19 @@ const form = reactive({
 	project: "",
 	date: new Date().toISOString().slice(0, 10),
 	status: "Present",
+	task: "",
 	overtime_hours: 0,
 	comments: "",
 	employee_list: [],
 });
+
+// Task is scoped to the project — the server rejects a stale cross-project one.
+watch(
+	() => form.project,
+	() => {
+		form.task = "";
+	},
+);
 
 const {
 	inTable,

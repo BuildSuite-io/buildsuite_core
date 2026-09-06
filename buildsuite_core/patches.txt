@@ -46,3 +46,4 @@ buildsuite_core.patches.resync_persona_permission_matrix # 2026-09-05 converge s
 buildsuite_core.patches.restore_transaction_doctype_naming # 2026-09-05 bill/MB naming import override
 buildsuite_core.patches.restore_subcontractor_work_order_naming # 2026-09-05 WO naming import override
 buildsuite_core.patches.promote_persona_users_to_system_user # 2026-09-06 persona users are system users
+buildsuite_core.patches.backfill_field_attendance_employees_count # 2026-09-06 ISS-167 list count
