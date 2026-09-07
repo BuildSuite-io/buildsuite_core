@@ -196,10 +196,19 @@ function apply() {
 			<!-- Value -->
 			<div class="flex-1 min-w-0">
 				<DeskLinkPicker
-					v-if="valueKind === 'link'"
+					v-if="valueKind === 'link' && selectedField?.options"
+					:key="selectedField.options"
 					v-model="value"
-					:doctype="selectedField?.options || 'DocType'"
+					:doctype="selectedField.options"
 					placeholder="Select…"
+				/>
+				<!-- Link field without a resolvable target doctype (e.g. Dynamic Link): fall back to text. -->
+				<input
+					v-else-if="valueKind === 'link'"
+					v-model="value"
+					type="text"
+					class="desk-input w-full"
+					placeholder="Value"
 				/>
 				<DeskSelect v-else-if="valueKind === 'select'" v-model="value">
 					<option value="">—</option>
