@@ -13,6 +13,7 @@ const props = defineProps({
 	initial: { type: Object, default: null }, // for edit
 	serverError: { type: String, default: "" }, // e.g. duplicate-name from the parent's save attempt
 	canDelete: { type: Boolean, default: false }, // show Delete when editing an existing record
+	readOnly: { type: Boolean, default: false }, // read-access persona: view the record, no edit/save/delete
 });
 const emit = defineEmits(["save", "close", "delete"]);
 
@@ -69,7 +70,10 @@ function onSave() {
 					</button>
 				</header>
 
-				<div class="px-4 py-4 overflow-y-auto flex-1 space-y-3">
+				<fieldset
+					:disabled="readOnly"
+					class="px-4 py-4 overflow-y-auto flex-1 space-y-3 min-w-0 border-0"
+				>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
@@ -145,14 +149,14 @@ function onSave() {
 							placeholder="29AABC…1Z5"
 						/>
 					</div>
-				</div>
+				</fieldset>
 
 				<footer
 					class="px-4 py-3 border-t border-ink-200 flex items-center gap-2 flex-shrink-0"
 				>
 					<!-- Delete only when editing an existing record and the persona may delete. -->
 					<button
-						v-if="initial && canDelete"
+						v-if="initial && canDelete && !readOnly"
 						type="button"
 						class="text-xs px-3 py-1.5 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 rounded-md"
 						@click="emit('delete')"
@@ -165,9 +169,14 @@ function onSave() {
 							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 							@click="emit('close')"
 						>
-							Cancel
+							{{ readOnly ? "Close" : "Cancel" }}
 						</button>
-						<button type="button" class="text-xs desk-save-btn" @click="onSave">
+						<button
+							v-if="!readOnly"
+							type="button"
+							class="text-xs desk-save-btn"
+							@click="onSave"
+						>
 							Save
 						</button>
 					</div>
