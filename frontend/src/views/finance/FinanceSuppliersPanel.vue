@@ -22,7 +22,7 @@ import { fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const store = useDataStore();
-const { canCreate, canDelete } = usePermissions();
+const { canCreate, canDelete, canRead } = usePermissions();
 const adapter = createDataAdapter(store);
 const confirmDialog = useConfirm();
 // Regular suppliers are created AND edited here; create and write role-sets coincide
@@ -74,6 +74,16 @@ const columns = [
 	{ key: "advance", label: "Advance paid", align: "right" },
 ];
 
+// Sort by Updated (most-recently-touched first) by default; Created and Updated are always
+// offered alongside the column sorts. Rows carry `updated`/`created` from the API.
+const sortOptions = [
+	...columns.map((c) => ({ value: c.key, label: c.label })),
+	{ value: "updated", label: "Updated" },
+	{ value: "created", label: "Created" },
+];
+const sortField = ref("updated");
+const sortDirection = ref("desc");
+
 // --- create / edit modal (regular suppliers only) ---
 const modalOpen = ref(false);
 const modalError = ref("");
@@ -89,7 +99,9 @@ function onRowClick(row) {
 		router.push(`/subcontractors/${row.id}`);
 		return;
 	}
-	if (!canManage.value) return;
+	// Read-access personas open the record read-only (view, no edit/save/delete); the modal
+	// switches to view mode via :read-only. Only block users who can't read at all.
+	if (!canRead("supplier")) return;
 	editing.value = row;
 	modalError.value = "";
 	modalOpen.value = true;
@@ -145,6 +157,11 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:columns="columns"
 				row-key="id"
 				search-placeholder="Search name, contact, trade, tax ID…"
+				:sort-options="sortOptions"
+				:sort-field="sortField"
+				:sort-direction="sortDirection"
+				@update:sort-field="sortField = $event"
+				@update:sort-direction="sortDirection = $event"
 				@row-click="onRowClick"
 			>
 				<template #filter-chips>
@@ -215,12 +232,13 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 
 			<PartyFormModal
 				:open="modalOpen"
-				:title="editing ? 'Edit Supplier' : 'New Supplier'"
+				:title="editing ? (canManage ? 'Edit Supplier' : 'View Supplier') : 'New Supplier'"
 				type-label="Supplier type"
 				:type-options="MODAL_TYPES"
 				:initial="editing"
 				:server-error="modalError"
 				:can-delete="canDelete('subcontractor')"
+				:read-only="!canManage"
 				@save="onSave"
 				@delete="onDelete"
 				@close="modalOpen = false"

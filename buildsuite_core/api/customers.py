@@ -33,11 +33,12 @@ def _default_group_and_territory(doc):
 
 @frappe.whitelist()
 def list_customers():
-	"""All customers with type, tax id, primary contact and advance held, name-sorted."""
+	"""All customers with type, tax id, primary contact and advance held, most-recently-updated
+	first. `updated`/`created` are returned so the list can be re-sorted by either client-side."""
 	rows = frappe.get_all(
 		"Customer",
-		fields=["name", "customer_name", "customer_type", "tax_id"],
-		order_by="customer_name asc",
+		fields=["name", "customer_name", "customer_type", "tax_id", "modified", "creation"],
+		order_by="modified desc",
 	)
 	out = []
 	for c in rows:
@@ -52,6 +53,8 @@ def list_customers():
 				"phone": contact["phone"],
 				"email": contact["email"],
 				"advance": unallocated_advance("Customer", c.name),
+				"updated": str(c.modified or ""),
+				"created": str(c.creation or ""),
 			}
 		)
 	return out
