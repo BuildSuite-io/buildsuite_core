@@ -8,6 +8,7 @@
 // Emits `apply` with { fieldname, label, fieldtype, options, condition, value } or `cancel`.
 import { ref, computed, watch } from "vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
 const props = defineProps({
@@ -79,6 +80,11 @@ const TIMESPANS = [
 
 const sortedFields = computed(() =>
 	[...props.fields].sort((a, b) => String(a.label).localeCompare(String(b.label)))
+);
+// Options for the searchable field picker — the fieldname shows as a hint so
+// same-labelled fields stay distinguishable.
+const fieldOptions = computed(() =>
+	sortedFields.value.map((f) => ({ value: f.fieldname, label: f.label, hint: f.fieldname }))
 );
 
 const fieldname = ref(props.initial?.fieldname || sortedFields.value[0]?.fieldname || "");
@@ -204,12 +210,14 @@ function apply() {
 		style="border-radius: 10px"
 	>
 		<div class="flex items-start gap-2">
-			<!-- Field -->
-			<DeskSelect v-model="fieldname" class="!w-40 flex-shrink-0">
-				<option v-for="f in sortedFields" :key="f.fieldname" :value="f.fieldname">
-					{{ f.label }}
-				</option>
-			</DeskSelect>
+			<!-- Field (searchable — doctypes can have many fields) -->
+			<DeskSearchableSelect
+				v-model="fieldname"
+				:options="fieldOptions"
+				placeholder="Field"
+				search-placeholder="Search fields…"
+				class="w-44 flex-shrink-0"
+			/>
 
 			<!-- Condition -->
 			<DeskSelect v-model="condition" class="!w-32 flex-shrink-0">
