@@ -83,7 +83,11 @@ const sortedFields = computed(() =>
 
 const fieldname = ref(props.initial?.fieldname || sortedFields.value[0]?.fieldname || "");
 const condition = ref(props.initial?.condition || "");
-const value = ref(props.initial?.value ?? "");
+// Copy array values (multi / between) so editing chips before Apply — or cancelling —
+// never mutates the live filter still held in the list.
+const value = ref(
+	Array.isArray(props.initial?.value) ? [...props.initial.value] : (props.initial?.value ?? "")
+);
 
 const selectedField = computed(
 	() => props.fields.find((f) => f.fieldname === fieldname.value) || null
@@ -135,9 +139,27 @@ const selectOptions = computed(() =>
 
 function resetValueForKind() {
 	if (valueKind.value === "between") value.value = ["", ""];
+	else if (valueKind.value === "multi") value.value = [];
 	else if (valueKind.value === "isset") value.value = "set";
 	else if (valueKind.value === "check") value.value = "1";
 	else value.value = "";
+}
+
+// --- multi-value (`in` / `not in`) helpers ---------------------------------------
+const multiPickerKey = ref(0); // bump to remount the Link "add" picker so it clears
+function addMultiItem(v) {
+	const val = String(v ?? "").trim();
+	if (!val) return;
+	if (!Array.isArray(value.value)) value.value = [];
+	if (!value.value.includes(val)) value.value.push(val);
+	multiPickerKey.value += 1;
+}
+function addMultiFromInput(e) {
+	addMultiItem(e.target.value);
+	e.target.value = "";
+}
+function removeMultiItem(i) {
+	value.value.splice(i, 1);
 }
 
 // Keep condition valid when the field changes; reset value when the control shape changes.
@@ -159,6 +181,7 @@ const canApply = computed(() => {
 	if (!fieldname.value || !condition.value) return false;
 	if (valueKind.value === "isset") return true;
 	if (valueKind.value === "between") return value.value?.[0] && value.value?.[1];
+	if (valueKind.value === "multi") return Array.isArray(value.value) && value.value.length > 0;
 	return value.value !== "" && value.value != null;
 });
 
@@ -250,13 +273,50 @@ function apply() {
 					class="desk-input w-full"
 					placeholder="Value"
 				/>
-				<input
-					v-else-if="valueKind === 'multi'"
-					v-model="value"
-					type="text"
-					class="desk-input w-full"
-					placeholder="Comma-separated values"
-				/>
+				<div v-else-if="valueKind === 'multi'" class="space-y-1">
+					<div v-if="value.length" class="flex flex-wrap gap-1">
+						<span
+							v-for="(item, i) in value"
+							:key="i"
+							class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-ink-100 text-ink-700"
+							style="border-radius: 9999px"
+						>
+							{{ item }}
+							<button
+								type="button"
+								class="text-ink-500 hover:text-ink-800 leading-none"
+								aria-label="Remove"
+								@click="removeMultiItem(i)"
+							>
+								×
+							</button>
+						</span>
+					</div>
+					<!-- Add control: link picker for Link fields, option list for Select, else a tag input. -->
+					<DeskLinkPicker
+						v-if="fieldtype === 'Link' && selectedField?.options"
+						:key="`multi-${selectedField.options}-${multiPickerKey}`"
+						:model-value="''"
+						:doctype="selectedField.options"
+						placeholder="Add…"
+						@update:model-value="addMultiItem"
+					/>
+					<DeskSelect
+						v-else-if="fieldtype === 'Select'"
+						:model-value="''"
+						@update:model-value="addMultiItem"
+					>
+						<option value="">Add…</option>
+						<option v-for="o in selectOptions" :key="o" :value="o">{{ o }}</option>
+					</DeskSelect>
+					<input
+						v-else
+						type="text"
+						class="desk-input w-full"
+						placeholder="Type a value and press Enter"
+						@keyup.enter="addMultiFromInput"
+					/>
+				</div>
 				<input
 					v-else
 					v-model="value"

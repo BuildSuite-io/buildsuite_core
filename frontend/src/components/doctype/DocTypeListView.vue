@@ -226,7 +226,9 @@ function toServerFilter(f) {
 			return v === "" || v == null ? null : [field, f.condition, `%${v}%`];
 		case "in":
 		case "not in": {
-			const list = String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+			const list = Array.isArray(v)
+				? v.filter(Boolean)
+				: String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 			return list.length ? [field, f.condition, list] : null;
 		}
 		case "is":
@@ -244,6 +246,10 @@ function toServerFilter(f) {
 
 function openFilterEditor() {
 	editingFilterIndex.value = -1;
+	filterEditorOpen.value = true;
+}
+function editFilter(i) {
+	editingFilterIndex.value = i;
 	filterEditorOpen.value = true;
 }
 function onFilterApply(filter) {
@@ -268,10 +274,12 @@ const CONDITION_SYMBOL = {
 	is: "is", ">": ">", "<": "<", ">=": "≥", "<=": "≤", Between: "between", Timespan: "in",
 };
 function chipLabel(f) {
-	let text = String(f.value ?? "");
+	let text;
 	if (f.condition === "is") text = f.value === "not set" ? "Not Set" : "Set";
 	else if (f.condition === "Between" && Array.isArray(f.value)) text = `${f.value[0]} – ${f.value[1]}`;
+	else if (Array.isArray(f.value)) text = f.value.join(", ");
 	else if (f.fieldtype === "Check") text = f.value === "0" || f.value === 0 ? "No" : "Yes";
+	else text = String(f.value ?? "");
 	return `${f.label} ${CONDITION_SYMBOL[f.condition] || f.condition} ${text}`.trim();
 }
 
@@ -716,12 +724,15 @@ function onPageSizeChange(value) {
 					:meta-loading="metaLoading"
 					:fields="resolvedFields"
 				/>
-				<DeskFilterChip
+				<span
 					v-for="(f, i) in dynamicFilters"
 					:key="i"
-					:label="chipLabel(f)"
-					@remove="removeFilter(i)"
-				/>
+					class="cursor-pointer"
+					title="Click to edit"
+					@click="editFilter(i)"
+				>
+					<DeskFilterChip :label="chipLabel(f)" @remove="removeFilter(i)" />
+				</span>
 				<button
 					v-if="dynamicFilters.length"
 					type="button"
