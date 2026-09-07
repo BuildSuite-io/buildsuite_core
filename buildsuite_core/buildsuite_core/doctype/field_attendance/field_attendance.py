@@ -47,15 +47,20 @@ class FieldAttendance(Document):
 		comments: DF.SmallText | None
 		date: DF.Date
 		employee_list: DF.Table[FieldAttendanceEmployee]
+		employees_count: DF.Int
 		naming_series: DF.Literal["HR-FA-.YYYY.-"]
 		overtime_hours: DF.Float
 		project: DF.Link
 		project_name: DF.Data | None
 		status: DF.Literal["", "Present", "Half Day", "Absent", "Overtime Only"]
+		task: DF.Link | None
 	# end: auto-generated types
 
 	def validate(self):
 		self.validate_rows_present()
+		self.validate_task_project()
+
+		self.employees_count = len(self.employee_list)
 
 		emp_map = self.get_employee_map()
 		leave_map = self.get_leave_map()
@@ -125,6 +130,15 @@ class FieldAttendance(Document):
 	# ------------------------------------------------------------------
 	# row / list level
 	# ------------------------------------------------------------------
+
+	def validate_task_project(self):
+		if not (self.task and self.project):
+			return
+
+		if frappe.db.get_value("Task", self.task, "project") != self.project:
+			frappe.throw(
+				_("Task {0} does not belong to project {1}.").format(self.task, self.project)
+			)
 
 	def validate_rows_present(self):
 		if not self.employee_list:

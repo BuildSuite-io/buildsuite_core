@@ -38,6 +38,8 @@ def _serialize(doc) -> dict:
 		"project_name": doc.project_name,
 		"date": str(doc.date) if doc.date else None,
 		"status": doc.status,
+		"task": doc.task,
+		"task_subject": frappe.db.get_value("Task", doc.task, "subject") if doc.task else None,
 		"overtime_hours": doc.overtime_hours,
 		"comments": doc.comments,
 		"docstatus": doc.docstatus,
@@ -71,6 +73,7 @@ def save_field_attendance(
 	project: str | None = None,
 	date: str | None = None,
 	status: str | None = None,
+	task: str | None = None,
 	overtime_hours: float | None = None,
 	comments: str | None = None,
 	employee_list: str | None = None,
@@ -104,6 +107,8 @@ def save_field_attendance(
 	# "Absent" header to Present or blank the hours and comments.
 	if status is not None:
 		doc.status = status
+	if task is not None:
+		doc.task = task
 	if overtime_hours is not None:
 		doc.overtime_hours = overtime_hours
 	if comments is not None:

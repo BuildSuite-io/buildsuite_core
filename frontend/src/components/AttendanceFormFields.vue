@@ -7,6 +7,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { ATTENDANCE_STATUSES } from "@/utils/workforceForms";
 
@@ -17,7 +18,7 @@ defineProps({
 // The three "applies to all rows" controls report upward instead of writing the
 // header directly — useAttendanceSheet owns both the header value and the rows,
 // so the two can never disagree.
-const emit = defineEmits(["status", "overtime", "comments"]);
+const emit = defineEmits(["status", "overtime", "comments", "project"]);
 
 const { projectOptions } = useProjectOptions();
 </script>
@@ -26,10 +27,11 @@ const { projectOptions } = useProjectOptions();
 	<DeskSection title="Header" :cols="3">
 		<DeskField label="Project" required :error="errors.project">
 			<DeskSearchableSelect
-				v-model="form.project"
+				:model-value="form.project"
 				:options="projectOptions"
 				placeholder="Pick a project…"
 				search-placeholder="Search projects…"
+				@update:model-value="(v) => emit('project', v)"
 			/>
 		</DeskField>
 		<DeskField label="Date" required :error="errors.date">
@@ -39,6 +41,16 @@ const { projectOptions } = useProjectOptions();
 			<DeskSelect :model-value="form.status" @update:model-value="(v) => emit('status', v)">
 				<option v-for="s in ATTENDANCE_STATUSES" :key="s">{{ s }}</option>
 			</DeskSelect>
+		</DeskField>
+		<DeskField label="Task (optional)" hint="Books the whole sheet to one task.">
+			<DeskLinkPicker
+				v-model="form.task"
+				doctype="Task"
+				label-field="subject"
+				value-field="name"
+				:filters="form.project ? [['project', '=', form.project]] : []"
+				placeholder="Deploy to task…"
+			/>
 		</DeskField>
 		<DeskField label="Overtime hours" hint="Applies to all rows.">
 			<DeskInput

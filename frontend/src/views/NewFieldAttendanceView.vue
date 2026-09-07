@@ -28,6 +28,7 @@ const form = reactive({
 	project: "",
 	date: new Date().toISOString().slice(0, 10),
 	status: "Present",
+	task: "",
 	overtime_hours: 0,
 	comments: "",
 	employee_list: [],
@@ -40,6 +41,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
 	addProjectRoster,
@@ -110,6 +112,7 @@ const breadcrumbs = [
 				@status="setHeaderStatus"
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
+				@project="setHeaderProject"
 			/>
 
 			<AttendanceEmployeeTable
