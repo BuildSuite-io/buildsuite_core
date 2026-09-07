@@ -1,0 +1,22 @@
+{
+ "app": "buildsuite_core",
+ "creation": "2026-09-06 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "workforce",
+ "icon_type": "Link",
+ "idx": 2,
+ "label": "Workforce",
+ "link_to": "",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/buildsuite_core/icons/desktop_icons/subtle/workforce.svg",
+ "modified": "2026-09-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Workforce",
+ "owner": "Administrator",
+ "parent_icon": "Group",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}
