@@ -38,6 +38,7 @@ def _apply_allocations(doc, rows: list) -> None:
 @frappe.whitelist(methods=["POST"])
 def save_field_employee(
 	name: str | None = None,
+	employee: str | None = None,
 	first_name: str | None = None,
 	last_name: str | None = None,
 	gender: str | None = None,
@@ -81,6 +82,8 @@ def save_field_employee(
 	else:
 		doc = frappe.new_doc(EMPLOYEE)
 		doc.naming_series = "HR-EMP-"
+		# The code becomes the record name, so it is fixed at creation.
+		doc.employee = (employee or "").strip()
 		status = status or "Active"
 
 	doc.is_labour = 1

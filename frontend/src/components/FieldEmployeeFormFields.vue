@@ -12,6 +12,8 @@ import { useContractorOptions } from "@/composables/useContractorOptions";
 defineProps({
 	form: { type: Object, required: true },
 	errors: { type: Object, default: () => ({}) },
+	// The code is the record id, so it is fixed once the worker exists.
+	isExisting: { type: Boolean, default: false },
 });
 
 const { contractorOptions } = useContractorOptions();
@@ -19,6 +21,9 @@ const { contractorOptions } = useContractorOptions();
 
 <template>
 	<DeskSection title="Worker" :cols="3">
+		<DeskField label="Employee code" hint="Auto (HR-EMP-#####) if blank.">
+			<DeskInput v-model="form.employee" placeholder="HR-EMP-00015" :disabled="isExisting" />
+		</DeskField>
 		<DeskField label="First name" required :error="errors.first_name">
 			<DeskInput v-model="form.first_name" />
 		</DeskField>
