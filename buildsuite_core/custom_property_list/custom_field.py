@@ -440,13 +440,16 @@ CUSTOM_FIELD = {
 		# Charge a JV expense line to a BOQ cost code — the same four fields as Stock Entry /
 		# Subcontractor Bill Line, so the actuals log (buildsuite_core.api.boq_actuals) folds a
 		# Journal Entry debit into BOQ actual by cost code, and CostCodePicker.vue-style logic
-		# works unchanged. `project` is native on Journal Entry Account.
+		# works unchanged. `project` is native on Journal Entry Account (surfaced in the grid via
+		# a property setter). Type + Cost Code show as grid columns so the feature is discoverable
+		# without expanding the row.
 		{
 			"fieldname": "custom_cost_code_type",
 			"fieldtype": "Select",
 			"label": "Cost Code Type",
 			"options": "\nGroup\nItem",
 			"insert_after": "project",
+			"in_list_view": 1,
 			"module": "BuildSuite Core",
 		},
 		{
@@ -473,6 +476,7 @@ CUSTOM_FIELD = {
 			"insert_after": "custom_cost_code_item",
 			"depends_on": "eval:doc.custom_cost_code_type",
 			"read_only": 1,
+			"in_list_view": 1,
 			"module": "BuildSuite Core",
 		},
 	],
