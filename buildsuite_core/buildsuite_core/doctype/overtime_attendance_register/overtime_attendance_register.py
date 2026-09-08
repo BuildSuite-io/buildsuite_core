@@ -65,7 +65,13 @@ class OvertimeAttendanceRegister(Document):
 
 	def validate_date_ot_and_rate(self):
 		docs = [x.get("status") for x in frappe.get_all("Labour Attendance Register",{"attendance_date":self.overtime_date,"docstatus":1,"employee":self.employee},["status"])]
-		if not docs:
+		# An "Overtime Only" row creates no Labour Attendance Register by design.
+		row_status = self.field_attendance and frappe.db.get_value(
+			"Field Attendance Employee",
+			{"parent": self.field_attendance, "employee": self.employee},
+			"status",
+		)
+		if not docs and row_status != "Overtime Only":
 			frappe.throw(
 				f"No regular attendance record found for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}!"
 			)
