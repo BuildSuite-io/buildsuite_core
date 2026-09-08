@@ -155,7 +155,7 @@ async function onWorkflowAction(action) {
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: "Delete draft?",
+		title: "Delete invoice?",
 		message: `Permanently delete ${inv.value.name}?`,
 		confirmLabel: "Delete",
 		destructive: true,
@@ -350,7 +350,7 @@ async function unlinkAdvance(row) {
 					Print / PDF
 				</button>
 				<button
-					v-if="isDraft && canDelete('salesInvoice')"
+					v-if="(isDraft || isCancelled) && canDelete('salesInvoice')"
 					type="button"
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-danger-600 rounded-md"
 					:disabled="busy"
