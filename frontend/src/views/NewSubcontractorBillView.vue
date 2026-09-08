@@ -6,10 +6,11 @@
 // Taxes, TDS, discount and retention overrides are edited on the detail page
 // (Draft-editable). Pre-fills the WO from ?work_order=… on the URL.
 
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { getBill, getWoBillContext, saveBill } from "@/data/subcontractApi";
+import { useAutosave } from "@/composables/useAutosave";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -64,6 +65,8 @@ function costCodeFromLine(l) {
 const mode = ref("wo"); // 'wo' | 'direct'
 const saving = ref(false);
 const errors = ref({});
+// Auto-save only engages once an existing draft has finished loading into the form.
+const ready = ref(false);
 
 const form = ref({
 	work_order: route.query.work_order || "",
@@ -121,6 +124,9 @@ watch(
 						: [{ scope: "", cost_code: null, amount: 0 }],
 				};
 				if (!bill.is_direct) loadWoContext(bill.work_order);
+				// Arm auto-save after the watcher has flushed the load-population.
+				await nextTick();
+				ready.value = true;
 			} catch (err) {
 				showToast(err.message || "Failed to load bill", "error");
 			}
@@ -171,39 +177,49 @@ function validate() {
 	return Object.keys(e).length === 0;
 }
 
+// Payload shared by the explicit Save and the quiet auto-save.
+function buildPayload() {
+	return mode.value === "wo"
+		? {
+				name: editingId.value || undefined,
+				is_direct: 0,
+				work_order: form.value.work_order,
+				date: form.value.date,
+				supplier_invoice_no: form.value.supplier_invoice_no,
+				supplier_invoice_date: form.value.supplier_invoice_date || undefined,
+				retention_percent: form.value.retention_percent,
+		  }
+		: {
+				name: editingId.value || undefined,
+				is_direct: 1,
+				subcontractor: form.value.subcontractor,
+				project: form.value.project,
+				date: form.value.date,
+				supplier_invoice_no: form.value.supplier_invoice_no,
+				supplier_invoice_date: form.value.supplier_invoice_date || undefined,
+				retention_percent: form.value.retention_percent,
+				lines: form.value.lines
+					.filter((l) => (l.scope || "").trim() || Number(l.amount) > 0)
+					.map((l) => ({
+						scope: l.scope,
+						...costCodeForSave(l.cost_code),
+						amount: Number(l.amount) || 0,
+					})),
+		  };
+}
+
+// Silent validity gate for auto-save — mirrors validate() WITHOUT mutating the `errors` UI (so
+// typing never flashes errors). In edit mode the wo-mode "no fresh qty" check doesn't apply.
+function isSaveable() {
+	if (mode.value === "wo") return !!form.value.work_order;
+	return !!form.value.subcontractor && !!form.value.project && directGross.value > 0;
+}
+
 async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const payload =
-			mode.value === "wo"
-				? {
-						name: editingId.value || undefined,
-						is_direct: 0,
-						work_order: form.value.work_order,
-						date: form.value.date,
-						supplier_invoice_no: form.value.supplier_invoice_no,
-						supplier_invoice_date: form.value.supplier_invoice_date || undefined,
-						retention_percent: form.value.retention_percent,
-				  }
-				: {
-						name: editingId.value || undefined,
-						is_direct: 1,
-						subcontractor: form.value.subcontractor,
-						project: form.value.project,
-						date: form.value.date,
-						supplier_invoice_no: form.value.supplier_invoice_no,
-						supplier_invoice_date: form.value.supplier_invoice_date || undefined,
-						retention_percent: form.value.retention_percent,
-						lines: form.value.lines
-							.filter((l) => (l.scope || "").trim() || Number(l.amount) > 0)
-							.map((l) => ({
-								scope: l.scope,
-								...costCodeForSave(l.cost_code),
-								amount: Number(l.amount) || 0,
-							})),
-				  };
-		const bill = await saveBill(payload);
+		const bill = await saveBill(buildPayload());
 		router.push(`/subcontractor-bills/${bill.name}`);
 	} catch (err) {
 		showToast(err.message || "Failed to save bill", "error");
@@ -211,6 +227,16 @@ async function onSave() {
 		saving.value = false;
 	}
 }
+
+// Quiet background update of the existing draft. The subcontractor-bill form has no frontend
+// permission gate on its Save button (backend-enforced), so auto-save adds none either — it
+// stays gated on draft-exists / loaded / valid, matching the button exactly.
+async function quietSave() {
+	await saveBill(buildPayload());
+}
+const { status: autosaveStatus } = useAutosave(form, quietSave, {
+	canAutosave: () => ready.value && isEdit.value && isSaveable(),
+});
 function onCancel() {
 	router.back();
 }
@@ -243,7 +269,16 @@ const breadcrumbs = computed(() => [
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"
-				/>
+				>
+					<template #left>
+						<span
+							v-if="isEdit && autosaveStatus !== 'idle'"
+							class="text-xs text-ink-400"
+						>
+							{{ autosaveStatus === "saving" ? "Saving…" : "Saved" }}
+						</span>
+					</template>
+				</DeskActionBar>
 			</template>
 
 			<!-- Mode toggle (create only) -->
