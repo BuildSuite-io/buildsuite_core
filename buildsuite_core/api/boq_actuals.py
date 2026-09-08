@@ -19,6 +19,7 @@ Rails (all post on Submit, reverse on Cancel):
   Material Consumption   qty x valuation rate  (Stock Entry.total_outgoing_value)  -> "Material"
   Subcontractor Bill     this-period amount    (Subcontractor Bill Line)           -> "Subcontract"
   Expense Entry          expense amount        (Expense Entry Table)               -> "Overhead"
+  Journal Entry          line debit            (Journal Entry Account.debit)        -> "Overhead"
 
 Cost is recognised at consumption, not at purchase — a Purchase Receipt increases stock but
 does not touch BOQ actual. The Subcontractor Work Order (Committed) is a separate promise and
@@ -168,13 +169,76 @@ def _expense_entries(project):
 	return out
 
 
+def _journal_entries(project):
+	"""Submitted Journal Entry (JV) expense lines charged to a cost code — direct GL spend booked
+	by a Journal Voucher. The line's DEBIT is the expense; the cost code + project live on the
+	Journal Entry Account row (a credit leg carries no debit, so it self-excludes). Child-row
+	docstatus mirrors the parent, so filtering docstatus=1 selects lines of submitted JEs."""
+	rows = frappe.get_all(
+		"Journal Entry Account",
+		filters={
+			"project": project,
+			"docstatus": 1,
+			"custom_cost_code_type": ["in", ["Group", "Item"]],
+		},
+		fields=[
+			"name",
+			"parent",
+			"account",
+			"debit_in_account_currency",
+			"custom_cost_code_type",
+			"custom_cost_code_group",
+			"custom_cost_code_item",
+			"custom_cost_code_label",
+			"user_remark",
+		],
+	)
+	if not rows:
+		return []
+	parents = {
+		je.name: je
+		for je in frappe.get_all(
+			"Journal Entry",
+			filters={"name": ["in", list({r.parent for r in rows})]},
+			fields=["name", "posting_date"],
+		)
+	}
+	out = []
+	for r in rows:
+		amount = flt(r.debit_in_account_currency)
+		if not (r.custom_cost_code_group or r.custom_cost_code_item) or amount == 0:
+			continue
+		je = parents.get(r.parent)
+		out.append(
+			{
+				"cost_code_type": r.custom_cost_code_type,
+				"group_code": r.custom_cost_code_group or "",
+				"item_code": r.custom_cost_code_item or "",
+				"cost_type": "Overhead",
+				"amount": amount,
+				"source_doctype": "Journal Entry",
+				"source_name": r.parent,
+				"source_line": r.name,
+				"party": r.account or None,
+				"date": str(je.posting_date) if je and je.posting_date else None,
+				"label": r.custom_cost_code_label or r.user_remark or "",
+			}
+		)
+	return out
+
+
 def _actual_entries(project):
 	"""The full actuals log for a project — one line per contributing source line, across all
-	three rails. Derived live from submitted documents (never stored). This is the single source
+	rails. Derived live from submitted documents (never stored). This is the single source
 	the summary and the drill-down both read, so they can never disagree (R2)."""
 	if not project:
 		return []
-	return _material_entries(project) + _subcontract_entries(project) + _expense_entries(project)
+	return (
+		_material_entries(project)
+		+ _subcontract_entries(project)
+		+ _expense_entries(project)
+		+ _journal_entries(project)
+	)
 
 
 # The cost types a group row reports, in display order. A type with no source shows "— pending",

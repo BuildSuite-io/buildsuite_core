@@ -27,6 +27,17 @@ def get_property_setters():
 			"property_type": "Text",
 		},
 		{
+			# Show the (native) per-line Project in the Journal Entry accounts grid, so a JV
+			# expense line can be charged to a project + BOQ cost code inline — set Project, then
+			# pick a Cost Code Type (journal_entry.js opens the code picker). Feeds BOQ actual.
+			"doctype_or_field": "DocField",
+			"doctype": "Journal Entry Account",
+			"fieldname": "project",
+			"property": "in_list_view",
+			"value": "1",
+			"property_type": "Check",
+		},
+		{
 			"name": "Project-status-options",
 			"doctype_or_field": "DocField",
 			"doctype": "Project",
