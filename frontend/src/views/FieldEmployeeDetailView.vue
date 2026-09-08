@@ -54,6 +54,7 @@ function snapshot() {
 	const d = doc.value;
 	if (!d) return {};
 	return {
+		employee: d.name || "",
 		first_name: d.first_name || "",
 		last_name: d.last_name || "",
 		gender: d.gender || "",
@@ -185,6 +186,9 @@ const breadcrumbs = computed(() => [
 		<!-- View mode -->
 		<div v-if="!editing">
 			<DeskSection title="Worker" :cols="3">
+				<DeskField label="Employee code">
+					<div class="text-sm font-mono text-ink-800">{{ doc.name }}</div>
+				</DeskField>
 				<DeskField label="First name">
 					<div class="text-sm text-ink-900">{{ doc.first_name || "—" }}</div>
 				</DeskField>
@@ -245,7 +249,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<FieldEmployeeFormFields :form="form" :errors="errors" />
+			<FieldEmployeeFormFields :form="form" :errors="errors" is-existing />
 
 			<AllocatedProjectsTable
 				:rows="form.allocated_projects"
