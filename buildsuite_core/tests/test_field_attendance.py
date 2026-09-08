@@ -143,10 +143,10 @@ class TestFieldAttendance(BuildSuiteTestCase):
 			self.assertIn("employee", row)
 			self.assertIn("employee_name", row)
 
-	def _save_with_overtime(self, hours):
+	def _save_with_overtime(self, hours, status="Present"):
 		return self._save(
 			employee_list=frappe.as_json(
-				[{"employee": self.worker_a, "status": "Present", "overtime_hours": hours}]
+				[{"employee": self.worker_a, "status": status, "overtime_hours": hours}]
 			)
 		)
 
@@ -170,3 +170,29 @@ class TestFieldAttendance(BuildSuiteTestCase):
 			),
 			MAX_OT_HOURS_PER_DAY,
 		)
+
+	def test_overtime_only_submits_without_a_labour_register(self):
+		res = self._save_with_overtime(8, status="Overtime Only")
+		frappe.get_doc("Field Attendance", res["name"]).submit()
+
+		self.assertTrue(
+			frappe.db.exists(
+				"Overtime Attendance Register",
+				{"field_attendance": res["name"], "docstatus": 1},
+			)
+		)
+		self.assertFalse(
+			frappe.db.exists("Labour Attendance Register", {"field_attendance": res["name"]})
+		)
+
+	def test_hand_made_overtime_still_needs_regular_attendance(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "No regular attendance record"):
+			frappe.get_doc(
+				{
+					"doctype": "Overtime Attendance Register",
+					"employee": self.worker_a,
+					"overtime_date": self.today,
+					"project": self.project,
+					"overtime_hours": 4,
+				}
+			).insert(ignore_permissions=True)
