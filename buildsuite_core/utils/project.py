@@ -227,16 +227,38 @@ def seed_from_template_on_insert(doc, method=None):
 	if not template_name:
 		return
 	template = frappe.get_doc("Project Template", template_name)
+	_apply_template(doc, template, seed_wps, seed_stages, seed_tasks)
+
+
+def _apply_template(project_doc, template, seed_wps, seed_stages, seed_tasks):
+	"""Append a Project Template's Work Packages, Tasks and Stages onto a project — the single
+	seeding path shared by the create-time hook AND the post-creation import (⋯ menu). Existing
+	data is always kept: a Work Package whose `code` already exists on the project is reused
+	(never duplicated), and tasks/stages are appended. Tasks link to their Work Package by the
+	template's work-package code, resolving to an existing WP when one is present. Returns
+	{"work_packages", "tasks", "stages"} — the count of each NEWLY created."""
+	created = {"work_packages": 0, "tasks": 0, "stages": 0}
+
+	# Existing Work Packages by code, so a re-import reuses them (keep both, no duplicate code)
+	# and tasks can link to an existing WP even when Work Packages aren't being (re)imported.
+	wp_by_code = {
+		wp.code: wp.name
+		for wp in frappe.get_all(
+			"Work Package", filters={"project": project_doc.name}, fields=["name", "code"]
+		)
+		if wp.code
+	}
 
 	# --- Work Packages -----------------------------------------------------
-	wp_by_code = {}
 	if seed_wps:
 		for row in sorted(template.custom_work_packages, key=lambda r: r.sort_order or 0):
+			if row.code in wp_by_code:
+				continue  # keep the existing Work Package with this code
 			try:
 				wp = frappe.get_doc(
 					{
 						"doctype": "Work Package",
-						"project": doc.name,
+						"project": project_doc.name,
 						"code": row.code,
 						"work_package_name": row.work_package_name,
 						"budget": row.budget or 0,
@@ -245,15 +267,16 @@ def seed_from_template_on_insert(doc, method=None):
 					}
 				).insert(ignore_permissions=True)
 				wp_by_code[row.code] = wp.name
+				created["work_packages"] += 1
 			except Exception:
 				frappe.log_error(
 					frappe.get_traceback(),
-					f'BuildSuite: seed work package "{row.code}" for project "{doc.name}"',
+					f'BuildSuite: seed work package "{row.code}" for project "{project_doc.name}"',
 				)
 
 	# --- Tasks (undated; scheduled later on the Gantt) — linked to their WP ---
-	# Remember which seeded tasks belong to which template stage so the stages
-	# below can pick them up into their stage_planning_tasks list.
+	# Remember which seeded tasks belong to which template stage so the stages below can pick
+	# them up into their stage_planning_tasks list.
 	tasks_by_stage = {}
 	if seed_tasks:
 		for row in template.tasks:
@@ -262,7 +285,7 @@ def seed_from_template_on_insert(doc, method=None):
 				task = frappe.get_doc(
 					{
 						"doctype": "Task",
-						"project": doc.name,
+						"project": project_doc.name,
 						"subject": tt.subject,
 						"priority": tt.priority or "Medium",
 						"expected_time": tt.expected_time or 0,
@@ -270,21 +293,53 @@ def seed_from_template_on_insert(doc, method=None):
 						"task_status": "Yet To Start",
 					}
 				).insert(ignore_permissions=True)
+				created["tasks"] += 1
 				stage = row.get("custom_stage")
 				if stage:
 					tasks_by_stage.setdefault(stage, []).append(task.name)
 			except Exception:
 				frappe.log_error(
 					frappe.get_traceback(),
-					f'BuildSuite: seed task "{row.task}" for project "{doc.name}"',
+					f'BuildSuite: seed task "{row.task}" for project "{project_doc.name}"',
 				)
 
 	# --- Stages (planned dates from the template offsets, clamped to bounds) ---
 	if seed_stages:
 		try:
-			_seed_stages_from_template(doc, template, tasks_by_stage)
+			created["stages"] = _seed_stages_from_template(project_doc, template, tasks_by_stage)
 		except Exception:
-			frappe.log_error(frappe.get_traceback(), f'BuildSuite: seed stages for project "{doc.name}"')
+			frappe.log_error(
+				frappe.get_traceback(), f'BuildSuite: seed stages for project "{project_doc.name}"'
+			)
+
+	return created
+
+
+@frappe.whitelist()
+def import_project_template(project: str, work_packages=0, stages=0, tasks=0, project_category: str | None = None):
+	"""Import a Project Template into an EXISTING project (⋯ menu → Import project template).
+	Appends the chosen layers — the project's existing Work Packages / Tasks / Stages are kept.
+	Defaults to the project's own Project Category template; pass `project_category` to import a
+	different category's template. Returns {ok, category, work_packages, tasks, stages}."""
+	from frappe.utils import cint
+
+	doc = frappe.get_doc("Project", project)
+	doc.check_permission("write")
+
+	category = project_category or doc.get("project_category")
+	if not category:
+		frappe.throw(_("This project has no Project Category, so there is no template to import."))
+	template_name = frappe.db.get_value("Project Template", {"project_category": category}, "name")
+	if not template_name:
+		frappe.throw(_("No template is configured for category {0}.").format(category))
+
+	seed_wps, seed_stages, seed_tasks = cint(work_packages), cint(stages), cint(tasks)
+	if not (seed_wps or seed_stages or seed_tasks):
+		frappe.throw(_("Choose at least one of Work Packages, Stages or Tasks to import."))
+
+	template = frappe.get_doc("Project Template", template_name)
+	created = _apply_template(doc, template, bool(seed_wps), bool(seed_stages), bool(seed_tasks))
+	return {"ok": True, "category": category, **created}
 
 
 @frappe.whitelist()
