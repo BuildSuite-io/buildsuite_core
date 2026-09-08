@@ -408,8 +408,9 @@ def cancel_invoice(name: str):
 def delete_invoice(name: str):
 	si = frappe.get_doc(SI, name)
 	si.check_permission("delete")
-	if si.docstatus != 0:
-		frappe.throw(_("Only a draft invoice can be deleted."))
+	# Draft (0) and Cancelled (2) can be deleted; a Submitted (1) invoice must be cancelled first.
+	if si.docstatus == 1:
+		frappe.throw(_("A submitted invoice must be cancelled before it can be deleted."))
 	frappe.delete_doc(SI, name)
 	return {"name": name, "deleted": True}
 
