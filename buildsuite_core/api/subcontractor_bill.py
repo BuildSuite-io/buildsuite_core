@@ -233,7 +233,7 @@ def list_bills(project: str | None = None):
 def get_wo_bill_context(work_order: str):
 	"""Everything the New (Work Order) bill screen needs: WO header, the derived this-period
 	lines (measured − previously billed), and the next RA number."""
-	from buildsuite_core.api.subcontract import get_wo_measurements
+	from buildsuite_core.api.subcontract import _wo_state, get_wo_measurements
 	from buildsuite_core.buildsuite_core.doctype.subcontractor_bill.subcontractor_bill import (
 		previously_billed_by_line,
 	)
@@ -270,7 +270,9 @@ def get_wo_bill_context(work_order: str):
 		"project_name": frappe.db.get_value("Project", wo.project, "project_name"),
 		"company": wo.company,
 		"retention_percent": wo.retention_percent,
-		"status": wo.status,
+		# Work Order state is derived from docstatus (Phase 2 dropped the stored `status` field);
+		# reading wo.status raised AttributeError on migrated sites that never had that field.
+		"status": _wo_state(wo),
 		"total_value": wo.total_value,
 		"next_ra_no": max([r for r in existing if r] or [0]) + 1,
 		"lines": lines,
