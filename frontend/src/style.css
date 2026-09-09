@@ -124,10 +124,10 @@
     @apply bg-ink-200 text-ink-500 cursor-not-allowed;
   }
   html.dark .desk-save-btn {
-    background-color: #16A34A;
-    color: #FFFFFF;
+    background-color: #4ADE80;
+    color: #052E16;
   }
-  html.dark .desk-save-btn:hover:not(:disabled) { background-color: #15803D; }
+  html.dark .desk-save-btn:hover:not(:disabled) { background-color: #3BD273; }
   html.dark .desk-save-btn:disabled {
     background-color: #262626;
     color: #737373;
@@ -285,4 +285,59 @@
   .border, .border-ink-100, .border-ink-200, .border-ink-300 { border-color: #cbd5e1 !important; }
 
   @page { size: A4; margin: 12mm; }
+}
+
+@layer base {
+  /* Dark-mode fidelity ported from the prototype (buildsuite-core-demo): opacity-suffixed
+     surfaces, status/brand borders + badges, dark primary buttons and <select> styling that had
+     no dark remap in the SPA and rendered washed-out / over-bright against the dark canvas. */
+  /* NB: the prototype's `html.dark select { background-image: <chevron> }` is intentionally NOT
+     ported — the SPA's selects use native appearance (no base `select` arrow with
+     background-repeat/position), so that image tiled across every select in dark mode. The
+     option-list colour rule below is safe and kept. */
+  html.dark .prod-primary { background-color: #F5F5F5; color: #171717; }
+  html.dark .prod-primary:hover:not(:disabled) { background-color: #E5E5E5; }
+  html.dark .prod-primary-off { background-color: #3A3A3A; color: #A3A3A3; }
+  html.dark select option { background-color: #242424; color: #F5F5F5; }
+  html.dark .bg-ink-50\/50 { background-color: rgba(31, 31, 31, 0.5); }
+  html.dark .bg-brand-50\/30 { background-color: rgba(22, 163, 74, 0.10); }
+  html.dark .bg-brand-50\/40 { background-color: rgba(22, 163, 74, 0.13); }
+  html.dark .bg-danger-50\/30 { background-color: rgba(220, 38, 38, 0.10); }
+  html.dark .bg-info-50\/60 { background-color: rgba(37, 99, 235, 0.14); }
+  html.dark .bg-warning-50\/40 { background-color: rgba(217, 119, 6, 0.10); }
+  html.dark .bg-warning-50\/60 { background-color: rgba(217, 119, 6, 0.14); }
+  html.dark .bg-ink-200\/60 { background-color: rgba(51, 51, 51, 0.6); }
+  html.dark .bg-success-50\/50 { background-color: rgba(5, 150, 105, 0.16); }
+  html.dark .hover\:bg-ink-50\/60:hover { background-color: rgba(31, 31, 31, 0.6); }
+  html.dark .border-ink-200\/70 { border-color: rgba(51, 51, 51, 0.7); }
+  html.dark .border-brand-100 { border-color: rgba(22, 163, 74, 0.30); }
+  html.dark .border-brand-200 { border-color: rgba(22, 163, 74, 0.40); }
+  html.dark .border-brand-300 { border-color: rgba(22, 163, 74, 0.50); }
+  html.dark .border-ink-900 { border-color: #525252; }
+  html.dark .border-success-200 { border-color: rgba(16, 185, 129, 0.40); }
+  html.dark .border-warning-200 { border-color: rgba(245, 158, 11, 0.40); }
+  html.dark .border-danger-200 { border-color: rgba(239, 68, 68, 0.40); }
+  html.dark .border-info-200 { border-color: rgba(59, 130, 246, 0.40); }
+  html.dark .border-danger-300 { border-color: rgba(239, 68, 68, 0.55); }
+  html.dark .border-warning-500 { border-color: rgba(245, 158, 11, 0.60); }
+  html.dark .border-brand-600 { border-color: #4ADE80; }
+  html.dark .border-brand-400,
+ html.dark .hover\:border-brand-400:hover { border-color: rgba(74, 222, 128, 0.60); }
+  html.dark .hover\:border-warning-500:hover { border-color: rgba(245, 158, 11, 0.60); }
+  html.dark .ring-brand-300,
+ html.dark .hover\:ring-brand-300:hover { --tw-ring-color: rgba(74, 222, 128, 0.55); }
+  html.dark .bg-success-700 { background-color: #34D399; color: #052E16; }
+  html.dark .from-danger-50 { --tw-gradient-from: rgba(239, 68, 68, 0.14); --tw-gradient-to: rgba(239, 68, 68, 0); }
+  html.dark .from-info-50\/40 { --tw-gradient-from: rgba(59, 130, 246, 0.10); --tw-gradient-to: rgba(59, 130, 246, 0); }
+  html.dark .from-warning-50\/40 { --tw-gradient-from: rgba(245, 158, 11, 0.10); --tw-gradient-to: rgba(245, 158, 11, 0); }
+  html.dark .from-warning-50\/60 { --tw-gradient-from: rgba(245, 158, 11, 0.14); --tw-gradient-to: rgba(245, 158, 11, 0); }
+  html.dark .bg-brand-200 { background-color: rgba(22, 163, 74, 0.38); color: #86EFAC; }
+  html.dark .bg-success-200 { background-color: rgba(16, 185, 129, 0.38); color: #6EE7B7; }
+  html.dark .bg-warning-200 { background-color: rgba(245, 158, 11, 0.38); color: #FCD34D; }
+  html.dark .bg-danger-200 { background-color: rgba(239, 68, 68, 0.38); color: #FCA5A5; }
+  html.dark .bg-info-200 { background-color: rgba(59, 130, 246, 0.38); color: #93C5FD; }
+  html.dark .text-warning-700\/80 { color: rgba(252, 211, 77, 0.8); }
+  html.dark .bg-brand-600 { background-color: #4ADE80; color: #052E16; }
+  html.dark .bg-brand-700 { background-color: #3BD273; color: #052E16; }
+  html.dark .hover\:bg-brand-700:hover { background-color: #3BD273; color: #052E16; }
 }
