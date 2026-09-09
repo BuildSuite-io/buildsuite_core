@@ -14,6 +14,18 @@
    "options": "Project"
   },
   {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "invoice",
+   "fieldtype": "Link",
+   "label": "Invoice",
+   "options": "Sales Invoice"
+  },
+  {
    "fieldname": "from_date",
    "fieldtype": "Date",
    "label": "From"
@@ -32,7 +44,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2026-08-20 00:00:00.000000",
+ "modified": "2026-09-09 00:00:00.000000",
  "module": "BuildSuite Core",
  "name": "Billing and Collection",
  "owner": "Administrator",
