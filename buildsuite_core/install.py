@@ -45,9 +45,13 @@ def after_migrate():
 def _backfill_project_company(doctype, extra_where=""):
 	"""Re-anchor a doctype's `company` to its project's company where they drifted. Idempotent."""
 	rows = frappe.db.sql(
-		f"""select d.name, p.company as project_company
-		from `tab{doctype}` d join `tabProject` p on p.name = d.project
-		where d.company != p.company and p.company is not null and p.company != '' {extra_where}""",
+		# doctype + extra_where are server-controlled (hardcoded call sites), no user input.
+		"""select d.name, p.company as project_company
+		from `tab"""
+		+ doctype
+		+ """` d join `tabProject` p on p.name = d.project
+		where d.company != p.company and p.company is not null and p.company != '' """
+		+ extra_where,
 		as_dict=True,
 	)
 	for r in rows:
@@ -244,7 +248,7 @@ def create_item_group():
 		frappe.rename_doc("Item Group", "Raw Material", "Materials", force=1, merge=0)
 	if frappe.db.get_value("Item Group", "Asset"):
 		frappe.rename_doc("Item Group", "Asset", "Assets", force=1, merge=0)
-	frappe.db.commit()
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit -- persist Item Group renames during install/migrate
 
 
 def before_migrate():

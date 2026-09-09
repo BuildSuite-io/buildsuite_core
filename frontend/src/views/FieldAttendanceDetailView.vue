@@ -25,11 +25,10 @@ import {
 	DOCSTATUS_LABELS,
 	validateFieldAttendance,
 } from "@/utils/workforceForms";
-import { fmtDate } from "@/utils/format";
+import { fmtDate, fmtINR } from "@/utils/format";
 import { isPermissionDenied } from "@/utils/frappeError";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskSection from "@/components/desk/DeskSection.vue";
-import DeskField from "@/components/desk/DeskField.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
 import AccessDenied from "@/components/AccessDenied.vue";
 import AttendanceFormFields from "@/components/AttendanceFormFields.vue";
 import AttendanceTableActions from "@/components/AttendanceTableActions.vue";
@@ -94,6 +93,39 @@ const docStatusLabel = computed(() =>
 );
 const rows = computed(() => doc.value?.employee_list || []);
 
+const cards = computed(() => {
+	const d = doc.value;
+	if (!d) return [];
+
+	const present = rows.value.filter(
+		(r) => r.status === "Present" || r.status === "Half Day",
+	).length;
+
+	return [
+		{ label: "Project", value: d.project_name || projectLabel(d.project) || "—" },
+		{
+			label: "Crew",
+			value: d.crew_name || d.crew || "—",
+			to: d.crew ? `/crews/${d.crew}` : null,
+		},
+		{
+			label: "Task",
+			value: d.task_subject || d.task || "—",
+			to: d.task ? `/tasks/${d.task}` : null,
+		},
+		{
+			label: "Present",
+			value: `${present} / ${rows.value.length}`,
+			cls: "font-medium tabular-nums",
+		},
+		{
+			label: "Labour cost",
+			value: fmtINR(d.labour_cost),
+			cls: "font-medium tabular-nums",
+		},
+	];
+});
+
 const {
 	inTable,
 	addRow,
@@ -101,6 +133,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
 	addProjectRoster,
@@ -113,6 +146,8 @@ function snapshot() {
 		project: d.project || "",
 		date: d.date || "",
 		status: d.status || "Present",
+		task: d.task || "",
+		crew: d.crew || "",
 		overtime_hours: d.overtime_hours ?? 0,
 		comments: d.comments || "",
 		employee_list: (d.employee_list || []).map((r) => ({
@@ -343,30 +378,23 @@ const breadcrumbs = computed(() => [
 				This sheet is {{ docStatusLabel.toLowerCase() }} and can no longer be edited here.
 			</div>
 
-			<DeskSection title="Header" :cols="3">
-				<DeskField label="Project">
-					<div class="text-sm text-ink-900">
-						{{ doc.project_name || projectLabel(doc.project) || "—" }}
+			<!-- Headline strip — project / crew / task / present / labour cost -->
+			<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+				<div
+					v-for="c in cards"
+					:key="c.label"
+					class="bg-white border border-ink-200 px-3 py-2"
+					style="border-radius: 6px"
+				>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ c.label }}
 					</div>
-				</DeskField>
-				<DeskField label="Date">
-					<div class="text-sm text-ink-700">{{ fmtDate(doc.date) || "—" }}</div>
-				</DeskField>
-				<DeskField label="Status">
-					<div class="text-sm text-ink-700">{{ doc.status || "—" }}</div>
-				</DeskField>
-
-				<DeskField label="Overtime hours">
-					<div class="text-sm tabular-nums text-ink-700">
-						{{ doc.overtime_hours || 0 }}
+					<div class="text-sm text-ink-900 mt-0.5 truncate" :class="c.cls">
+						<DeskLink v-if="c.to" :to="c.to">{{ c.value }}</DeskLink>
+						<template v-else>{{ c.value }}</template>
 					</div>
-				</DeskField>
-				<div class="md:col-span-3">
-					<DeskField label="Comments">
-						<div class="text-sm text-ink-700">{{ doc.comments || "—" }}</div>
-					</DeskField>
 				</div>
-			</DeskSection>
+			</div>
 
 			<AttendanceEmployeeTable :rows="rows" :statuses="ATTENDANCE_STATUSES" />
 
@@ -383,6 +411,7 @@ const breadcrumbs = computed(() => [
 				@status="setHeaderStatus"
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
+				@project="setHeaderProject"
 			/>
 
 			<AttendanceEmployeeTable
@@ -411,8 +440,10 @@ const breadcrumbs = computed(() => [
 			:date="form.date"
 			:project-label="projectLabel(form.project)"
 			:existing="[...inTable]"
+			:crew="form.crew"
 			@close="bulkOpen = false"
 			@add="addWorkers"
+			@crew="form.crew = $event"
 		/>
 	</DeskPage>
 

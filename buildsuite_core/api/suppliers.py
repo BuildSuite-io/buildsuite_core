@@ -35,11 +35,12 @@ def _default_supplier_group(subcontractor=False):
 @frappe.whitelist()
 def list_suppliers():
 	"""Every supplier (incl. subcontractors) with type, trade, tax id, primary contact
-	and advance paid — name-sorted. Subcontractor rows carry is_subcontractor + trade."""
+	and advance paid — most-recently-updated first. `updated`/`created` are returned so the
+	list can be re-sorted by either client-side. Subcontractor rows carry is_subcontractor + trade."""
 	rows = frappe.get_all(
 		"Supplier",
-		fields=["name", "supplier_name", "supplier_type", "tax_id", "custom_trade"],
-		order_by="supplier_name asc",
+		fields=["name", "supplier_name", "supplier_type", "tax_id", "custom_trade", "modified", "creation"],
+		order_by="modified desc",
 	)
 	out = []
 	for s in rows:
@@ -57,6 +58,8 @@ def list_suppliers():
 				"phone": contact["phone"],
 				"email": contact["email"],
 				"advance": unallocated_advance("Supplier", s.name),
+				"updated": str(s.modified or ""),
+				"created": str(s.creation or ""),
 			}
 		)
 	return out
@@ -66,10 +69,10 @@ def list_suppliers():
 def create_supplier(
 	supplier_name: str,
 	supplier_type: str = "Company",
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Create a regular Supplier (subcontractors are created in the Subcontract module)."""
 	supplier_name = (supplier_name or "").strip()
@@ -97,12 +100,12 @@ def create_supplier(
 @frappe.whitelist()
 def update_supplier(
 	name: str,
-	new_name=None,
-	supplier_type=None,
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	new_name: str | None = None,
+	supplier_type: str | None = None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Update a supplier's name / type / tax id and its primary contact. Subcontractors
 	are managed in the Subcontract module, not here."""

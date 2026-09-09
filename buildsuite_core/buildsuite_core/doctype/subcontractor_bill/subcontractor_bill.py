@@ -34,7 +34,7 @@ def previously_billed_by_line(work_order, exclude_bill=None):
 	return out
 
 
-class SubcontractorBill(Document):
+class SubcontractorBill(Document):  # nosemgrep: frappe-modifying-but-not-comitting-other-method -- validate() helpers set self.* fields, persisted by the normal save (db_set not appropriate in validate)
 	def validate(self):
 		self._sync_from_work_order()
 		if self.work_order and not self.is_direct:

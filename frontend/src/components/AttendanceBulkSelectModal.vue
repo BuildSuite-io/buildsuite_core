@@ -17,10 +17,12 @@ const props = defineProps({
 	project: { type: String, default: "" },
 	date: { type: String, default: "" },
 	projectLabel: { type: String, default: "" },
+	// The sheet's crew — the dropdown below is a second view of it, not its own value.
+	crew: { type: String, default: "" },
 	// Workers already on the sheet — shown disabled, never re-added.
 	existing: { type: Array, default: () => [] },
 });
-const emit = defineEmits(["close", "add"]);
+const emit = defineEmits(["close", "add", "crew"]);
 
 const adapter = createDataAdapter(useDataStore());
 const { workerOptions } = useFieldEmployeeOptions();
@@ -74,7 +76,7 @@ watch(
 	async (isOpen) => {
 		if (!isOpen) return;
 		search.value = "";
-		bulkCrew.value = "";
+		bulkCrew.value = props.crew;
 		checked.value = new Set();
 		extraNames.value = new Map();
 		projectRoster.value = [];
@@ -155,6 +157,8 @@ async function selectCrew() {
 				.filter((m) => m.field_employee)
 				.map((m) => ({ employee: m.field_employee, employee_name: m.employee_name }))
 		);
+		// The button is the commit point — browsing the dropdown must not rewrite the sheet.
+		emit("crew", bulkCrew.value);
 	} catch (err) {
 		showToast(err.message || "Could not load the crew.", "error");
 	}

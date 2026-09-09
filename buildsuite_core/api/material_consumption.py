@@ -60,7 +60,7 @@ def get_material_consumption(name: str) -> dict:
 
 
 @frappe.whitelist()
-def list_material_consumption(start=0, page_length=10, search=None, project=None) -> dict:
+def list_material_consumption(start: int = 0, page_length: int = 10, search: str | None = None, project: str | None = None) -> dict:
 	"""One page of Material Issue entries + total_count for the pager."""
 	filters = {"stock_entry_type": MATERIAL_ISSUE}
 	if project and isinstance(project, str):

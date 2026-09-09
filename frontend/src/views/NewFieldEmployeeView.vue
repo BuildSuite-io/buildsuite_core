@@ -26,6 +26,7 @@ const activeCompany = useActiveCompany();
 const today = new Date().toISOString().slice(0, 10);
 
 const form = reactive({
+	employee: "",
 	first_name: "",
 	last_name: "",
 	gender: "",

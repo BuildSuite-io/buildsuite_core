@@ -29,6 +29,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useUserNames } from "@/composables/useUserNames";
 import { usePermissions } from "@/composables/usePermissions";
+import { usePagination } from "@/composables/usePagination";
+import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
@@ -130,6 +132,8 @@ const columns = computed(() => {
 
 // --- balances ---
 const balances = ref([]);
+// Balances is a bespoke table (the requests list uses DeskList) — give it a client-side pager too.
+const balancesPager = usePagination(balances);
 async function loadBalances() {
 	try {
 		balances.value = await pettyCashHolderBalances();
@@ -369,7 +373,7 @@ const rowsForTab = computed(() => {
 				</thead>
 				<tbody>
 					<tr
-						v-for="b in balances"
+						v-for="b in balancesPager.pagedRows"
 						:key="b.employee || b.holder"
 						class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
 						:title="`Open ${b.holder}'s petty-cash report`"
@@ -408,6 +412,7 @@ const rowsForTab = computed(() => {
 					</tr>
 				</tbody>
 			</table>
+			<DeskPaginationFooter :pager="balancesPager" />
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
 				Balance in hand = disbursed float − approved expenses (from the Expenses tab). A
 				negative balance means the holder fronted their own money — it's owed back to them

@@ -53,7 +53,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Category",
-   "options": "Material\nLabour\nEquipment",
+   "options": "Material\nLabour\nEquipment\nOthers",
    "reqd": 1
   },
   {
@@ -127,7 +127,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-11 07:15:06.422414",
+ "modified": "2026-09-09 21:25:30.614279",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Construction Rate Master",

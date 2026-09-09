@@ -3,17 +3,33 @@
 // flag. Trade links to Labour Trade, contractor to Supplier (blank = engaged
 // directly). Wage type is deliberately not modelled — the wage fields carry it.
 
+import { computed, ref } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useContractorOptions } from "@/composables/useContractorOptions";
+import { useProjectOptions } from "@/composables/useProjectOptions";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const { contractorName } = useContractorOptions();
+const { projectOptions } = useProjectOptions();
 const { canCreate } = usePermissions();
+
+const projectFilter = ref("");
+
+// Allocation is a child table, so this needs Frappe's 4-part filter form —
+// filterFieldMap only builds 3-part ones.
+const baseFilters = computed(() => {
+	const filters = [["is_labour", "=", 1]];
+	if (projectFilter.value) {
+		filters.push(["Project Assigned", "project", "=", projectFilter.value]);
+	}
+	return filters;
+});
 
 function onRowClick(row) {
 	router.push(`/field-employees/${row.name}`);
@@ -60,13 +76,25 @@ const breadcrumbs = [
 			]"
 			:columns="columns"
 			:search-fields="['employee_name', 'name', 'custom_trade', 'custom_contractor']"
-			:base-filters="[['is_labour', '=', 1]]"
+			:base-filters="baseFilters"
 			cache-key="buildsuite-field-employees"
 			row-key="name"
 			initial-order-by="employee_name asc"
 			search-placeholder="Search workers…"
 			@row-click="onRowClick"
 		>
+			<template #filter-chips>
+				<div class="w-56">
+					<DeskSearchableSelect
+						v-model="projectFilter"
+						:options="projectOptions"
+						placeholder="All projects"
+						search-placeholder="Search projects…"
+						allow-clear
+					/>
+				</div>
+			</template>
+
 			<template #cell-name="{ row }">
 				<DeskLink
 					:to="`/field-employees/${row.name}`"

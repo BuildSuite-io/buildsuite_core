@@ -105,7 +105,7 @@ def _mr_actions(doc):
 
 
 @frappe.whitelist()
-def get_material_request(name):
+def get_material_request(name: str):
 	doc = frappe.get_doc(MATERIAL_REQUEST, name)
 	doc.check_permission("read")
 	out = _serialize_mr(doc)
@@ -114,7 +114,12 @@ def get_material_request(name):
 
 
 @frappe.whitelist()
-def save_material_request(name=None, project=None, schedule_date=None, items=None):
+def save_material_request(
+	name: str | None = None,
+	project: str | None = None,
+	schedule_date: str | None = None,
+	items: str | None = None,
+):
 	"""Create / update a draft Material Request (Purchase type). One project for the
 	whole request, stamped on every line + used to anchor the company."""
 	items = frappe.parse_json(items) or []
@@ -161,7 +166,7 @@ def save_material_request(name=None, project=None, schedule_date=None, items=Non
 
 
 @frappe.whitelist()
-def submit_material_request(name):
+def submit_material_request(name: str):
 	doc = frappe.get_doc(MATERIAL_REQUEST, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -169,7 +174,7 @@ def submit_material_request(name):
 
 
 @frappe.whitelist()
-def cancel_material_request(name):
+def cancel_material_request(name: str):
 	doc = frappe.get_doc(MATERIAL_REQUEST, name)
 	doc.check_permission("cancel")
 	doc.cancel()
@@ -177,7 +182,7 @@ def cancel_material_request(name):
 
 
 @frappe.whitelist()
-def amend_material_request(name):
+def amend_material_request(name: str):
 	src = frappe.get_doc(MATERIAL_REQUEST, name)
 	src.check_permission("amend")
 	if src.docstatus != 2:
@@ -190,7 +195,7 @@ def amend_material_request(name):
 
 
 @frappe.whitelist()
-def delete_material_request(name):
+def delete_material_request(name: str):
 	frappe.delete_doc(MATERIAL_REQUEST, name)
 	return {"ok": True}
 
@@ -252,7 +257,7 @@ def _po_actions(doc):
 
 
 @frappe.whitelist()
-def get_purchase_order(name):
+def get_purchase_order(name: str):
 	doc = frappe.get_doc(PURCHASE_ORDER, name)
 	doc.check_permission("read")
 	out = _serialize_po(doc)
@@ -284,7 +289,7 @@ def _supplier_detail(supplier):
 
 
 @frappe.whitelist()
-def get_po_print_data(name):
+def get_po_print_data(name: str):
 	"""A Purchase Order enriched with the party/project detail the in-app print view
 	needs (supplier contact + tax id, project code/location). Single fetch so the Vue
 	print page mirrors the seeded Frappe Print Format from one payload."""
@@ -306,7 +311,7 @@ def get_po_print_data(name):
 
 
 @frappe.whitelist()
-def get_mr_for_po(material_request):
+def get_mr_for_po(material_request: str):
 	"""Prefill payload for a PO raised from an approved Material Request — the
 	request's project and its still-to-order lines (qty net of already-ordered)."""
 	doc = frappe.get_doc(MATERIAL_REQUEST, material_request)
@@ -337,14 +342,14 @@ def get_mr_for_po(material_request):
 
 @frappe.whitelist()
 def save_purchase_order(
-	name=None,
-	supplier=None,
-	project=None,
-	transaction_date=None,
-	schedule_date=None,
-	items=None,
-	terms=None,
-	material_request=None,
+	name: str | None = None,
+	supplier: str | None = None,
+	project: str | None = None,
+	transaction_date: str | None = None,
+	schedule_date: str | None = None,
+	items: str | None = None,
+	terms: str | None = None,
+	material_request: str | None = None,
 ):
 	"""Create / update a draft Purchase Order. Rate is entered by hand (single
 	company currency, conversion 1); line amounts are computed by the controller."""
@@ -398,7 +403,7 @@ def save_purchase_order(
 
 
 @frappe.whitelist()
-def submit_purchase_order(name):
+def submit_purchase_order(name: str):
 	doc = frappe.get_doc(PURCHASE_ORDER, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -406,7 +411,7 @@ def submit_purchase_order(name):
 
 
 @frappe.whitelist()
-def cancel_purchase_order(name):
+def cancel_purchase_order(name: str):
 	doc = frappe.get_doc(PURCHASE_ORDER, name)
 	doc.check_permission("cancel")
 	doc.cancel()
@@ -414,7 +419,7 @@ def cancel_purchase_order(name):
 
 
 @frappe.whitelist()
-def amend_purchase_order(name):
+def amend_purchase_order(name: str):
 	src = frappe.get_doc(PURCHASE_ORDER, name)
 	src.check_permission("amend")
 	if src.docstatus != 2:
@@ -427,7 +432,7 @@ def amend_purchase_order(name):
 
 
 @frappe.whitelist()
-def delete_purchase_order(name):
+def delete_purchase_order(name: str):
 	frappe.delete_doc(PURCHASE_ORDER, name)
 	return {"ok": True}
 
@@ -526,7 +531,7 @@ def get_open_purchase_orders():
 
 
 @frappe.whitelist()
-def get_receipt_draft(purchase_order):
+def get_receipt_draft(purchase_order: str):
 	"""Build (unsaved) a receipt from a PO so the form shows the remaining-to-receive
 	lines, pre-filled with warehouse + PO rate. Nothing is persisted until save."""
 	try:
@@ -561,7 +566,13 @@ def _apply_receipt_lines(doc, lines, warehouse=None):
 
 
 @frappe.whitelist()
-def save_purchase_receipt(name=None, purchase_order=None, posting_date=None, warehouse=None, items=None):
+def save_purchase_receipt(
+	name: str | None = None,
+	purchase_order: str | None = None,
+	posting_date: str | None = None,
+	warehouse: str | None = None,
+	items: str | None = None,
+):
 	"""Create / update a draft Purchase Receipt against a PO. New receipts are seeded
 	from the PO mapper (warehouse, rate, links); the entered received quantities and
 	the chosen receiving warehouse are applied and zero lines dropped."""
@@ -588,7 +599,7 @@ def save_purchase_receipt(name=None, purchase_order=None, posting_date=None, war
 
 
 @frappe.whitelist()
-def get_purchase_receipt(name):
+def get_purchase_receipt(name: str):
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("read")
 	out = _serialize_pr(doc, _ordered_map(doc.items))
@@ -602,7 +613,7 @@ def get_purchase_receipt(name):
 
 
 @frappe.whitelist()
-def submit_purchase_receipt(name):
+def submit_purchase_receipt(name: str):
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -610,7 +621,7 @@ def submit_purchase_receipt(name):
 
 
 @frappe.whitelist()
-def cancel_purchase_receipt(name):
+def cancel_purchase_receipt(name: str):
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("cancel")
 	doc.cancel()
@@ -618,7 +629,7 @@ def cancel_purchase_receipt(name):
 
 
 @frappe.whitelist()
-def amend_purchase_receipt(name):
+def amend_purchase_receipt(name: str):
 	src = frappe.get_doc(PURCHASE_RECEIPT, name)
 	src.check_permission("amend")
 	if src.docstatus != 2:
@@ -631,6 +642,6 @@ def amend_purchase_receipt(name):
 
 
 @frappe.whitelist()
-def delete_purchase_receipt(name):
+def delete_purchase_receipt(name: str):
 	frappe.delete_doc(PURCHASE_RECEIPT, name)
 	return {"ok": True}

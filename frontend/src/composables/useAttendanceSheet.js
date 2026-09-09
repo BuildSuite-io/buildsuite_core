@@ -43,6 +43,13 @@ export function useAttendanceSheet(getForm) {
 		eachRow((r) => (r.comments = v));
 	}
 
+	// Task is scoped to the project, so a project change drops it. A handler, not a
+	// watcher, for the reason above: Edit swaps the whole form in.
+	function setHeaderProject(v) {
+		form.value.project = v;
+		form.value.task = "";
+	}
+
 	const inTable = computed(
 		() => new Set((form.value?.employee_list || []).map((r) => r.employee).filter(Boolean))
 	);
@@ -118,6 +125,7 @@ export function useAttendanceSheet(getForm) {
 		setHeaderStatus,
 		setHeaderOvertime,
 		setHeaderComments,
+		setHeaderProject,
 		rosterToAdd,
 		rosterTitle,
 		addProjectRoster,

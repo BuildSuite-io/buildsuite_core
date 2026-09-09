@@ -762,7 +762,7 @@ const accountFilters = computed(() =>
 				</div>
 				<DeskLink
 					v-if="!bill.is_direct"
-					:to="`/subcontractor-work-orders/${bill.work_order}`"
+					:to="`/subcontractor-work-orders/${encodeURIComponent(bill.work_order)}`"
 					class="text-sm mt-0.5 block"
 					>{{ bill.work_order }}</DeskLink
 				>

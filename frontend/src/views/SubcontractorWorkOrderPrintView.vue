@@ -11,7 +11,7 @@ const props = defineProps({ id: { type: String, required: true } });
 	<ServerPrintDocument
 		doctype="Subcontractor Work Order"
 		:name="props.id"
-		:back-to="`/subcontractor-work-orders/${props.id}`"
+		:back-to="`/subcontractor-work-orders/${encodeURIComponent(props.id)}`"
 		back-label="Back to work order"
 	/>
 </template>

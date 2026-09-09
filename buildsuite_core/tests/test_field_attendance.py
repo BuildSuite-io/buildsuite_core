@@ -5,6 +5,9 @@
 import frappe
 
 from buildsuite_core.api.field_attendance import get_roster, save_field_attendance
+from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
+	MAX_OT_HOURS_PER_DAY,
+)
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
 
@@ -139,3 +142,96 @@ class TestFieldAttendance(BuildSuiteTestCase):
 		for row in get_roster(self.project):
 			self.assertIn("employee", row)
 			self.assertIn("employee_name", row)
+
+	def _save_with_overtime(self, hours, status="Present"):
+		return self._save(
+			employee_list=frappe.as_json(
+				[{"employee": self.worker_a, "status": status, "overtime_hours": hours}]
+			)
+		)
+
+	def test_overtime_up_to_the_daily_limit_is_allowed(self):
+		res = self._save_with_overtime(MAX_OT_HOURS_PER_DAY)
+		self.assertEqual(res["employee_list"][0]["overtime_hours"], MAX_OT_HOURS_PER_DAY)
+
+	def test_overtime_over_the_daily_limit_is_rejected(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "daily limit"):
+			self._save_with_overtime(MAX_OT_HOURS_PER_DAY + 0.5)
+
+	def test_overtime_at_the_limit_survives_submit(self):
+		res = self._save_with_overtime(MAX_OT_HOURS_PER_DAY)
+		frappe.get_doc("Field Attendance", res["name"]).submit()
+
+		self.assertEqual(
+			frappe.db.get_value(
+				"Overtime Attendance Register",
+				{"field_attendance": res["name"], "docstatus": 1},
+				"overtime_hours",
+			),
+			MAX_OT_HOURS_PER_DAY,
+		)
+
+	def test_overtime_only_submits_without_a_labour_register(self):
+		res = self._save_with_overtime(8, status="Overtime Only")
+		frappe.get_doc("Field Attendance", res["name"]).submit()
+
+		self.assertTrue(
+			frappe.db.exists(
+				"Overtime Attendance Register",
+				{"field_attendance": res["name"], "docstatus": 1},
+			)
+		)
+		self.assertFalse(
+			frappe.db.exists("Labour Attendance Register", {"field_attendance": res["name"]})
+		)
+
+	def test_labour_cost_sums_daily_and_overtime(self):
+		res = self._save(
+			employee_list=frappe.as_json(
+				[
+					{"employee": self.worker_a, "status": "Present", "overtime_hours": 2},
+					{"employee": self.worker_b, "status": "Half Day", "overtime_hours": 1},
+				]
+			)
+		)
+		# worker_a 900 + 2h OT; worker_b half of 1100 + 1h OT. OT is 50/hr for both.
+		self.assertEqual(res["labour_cost"], 900 + 2 * 50 + 1100 / 2 + 50)
+
+	def test_labour_cost_ignores_absent(self):
+		res = self._save(
+			employee_list=frappe.as_json(
+				[
+					{"employee": self.worker_a, "status": "Present"},
+					{"employee": self.worker_b, "status": "Absent"},
+				]
+			)
+		)
+		self.assertEqual(res["labour_cost"], 900)
+
+	def test_crew_round_trips_and_survives_a_partial_update(self):
+		crew = frappe.get_doc(
+			{
+				"doctype": "Crew",
+				"crew_name": f"UAT Gang {frappe.generate_hash(length=4)}",
+				"company": self.company,
+			}
+		).insert(ignore_permissions=True)
+
+		res = self._save(crew=crew.name)
+		self.assertEqual(res["crew"], crew.name)
+		self.assertEqual(res["crew_name"], crew.crew_name)
+
+		# The next save doesn't send a crew — it must not be blanked.
+		self.assertEqual(self._save(name=res["name"])["crew"], crew.name)
+
+	def test_hand_made_overtime_still_needs_regular_attendance(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "No regular attendance record"):
+			frappe.get_doc(
+				{
+					"doctype": "Overtime Attendance Register",
+					"employee": self.worker_a,
+					"overtime_date": self.today,
+					"project": self.project,
+					"overtime_hours": 4,
+				}
+			).insert(ignore_permissions=True)

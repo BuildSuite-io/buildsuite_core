@@ -17,7 +17,7 @@ defineProps({
 // The three "applies to all rows" controls report upward instead of writing the
 // header directly — useAttendanceSheet owns both the header value and the rows,
 // so the two can never disagree.
-const emit = defineEmits(["status", "overtime", "comments"]);
+const emit = defineEmits(["status", "overtime", "comments", "project"]);
 
 // Project picker scoped to the switcher's working company (per-company projects).
 const companyFilter = activeCompanyFilter();
@@ -27,13 +27,14 @@ const companyFilter = activeCompanyFilter();
 	<DeskSection title="Header" :cols="3">
 		<DeskField label="Project" required :error="errors.project">
 			<DeskLinkPicker
-				v-model="form.project"
+				:model-value="form.project"
 				doctype="Project"
 				label-field="project_name"
 				value-field="name"
 				:filters="companyFilter"
 				placeholder="Pick a project…"
 				search-placeholder="Search projects…"
+				@update:model-value="(v) => emit('project', v)"
 			/>
 		</DeskField>
 		<DeskField label="Date" required :error="errors.date">
@@ -43,6 +44,25 @@ const companyFilter = activeCompanyFilter();
 			<DeskSelect :model-value="form.status" @update:model-value="(v) => emit('status', v)">
 				<option v-for="s in ATTENDANCE_STATUSES" :key="s">{{ s }}</option>
 			</DeskSelect>
+		</DeskField>
+		<DeskField label="Task (optional)" hint="Books the whole sheet to one task.">
+			<DeskLinkPicker
+				v-model="form.task"
+				doctype="Task"
+				label-field="subject"
+				value-field="name"
+				:filters="form.project ? [['project', '=', form.project]] : []"
+				placeholder="Deploy to task…"
+			/>
+		</DeskField>
+		<DeskField label="Crew (optional)" hint="Records which gang worked this sheet.">
+			<DeskLinkPicker
+				v-model="form.crew"
+				doctype="Crew"
+				label-field="crew_name"
+				value-field="name"
+				placeholder="Pick a crew…"
+			/>
 		</DeskField>
 		<DeskField label="Overtime hours" hint="Applies to all rows.">
 			<DeskInput

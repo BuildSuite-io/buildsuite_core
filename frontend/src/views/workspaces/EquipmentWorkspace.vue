@@ -13,8 +13,8 @@ const today = computed(() => {
 });
 
 const shortcuts = [
-	{ label: "Machinery Register", icon: "wrench", to: "/machinery" },
-	{ label: "Machinery Usage", icon: "clipboard-list", to: "/machinery-usage" },
+	{ label: "Machinery Register", icon: "wrench", to: "/machinery", cap: "machinery" },
+	{ label: "Machinery Usage", icon: "clipboard-list", to: "/machinery-usage", cap: "machineryUsage" },
 ];
 
 // Fuel & running cost was dropped (prototype S314): fuel is captured per usage entry and
@@ -97,6 +97,7 @@ const reports = [
 					:icon="sc.icon"
 					:label="sc.label"
 					:to="sc.to"
+					:cap="sc.cap"
 				/>
 			</div>
 

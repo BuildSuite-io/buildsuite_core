@@ -317,13 +317,15 @@ def reconciled_holder_balances(company=None):
 		params["company"] = company
 
 	rows = frappe.db.sql(
-		f"""
+		"""
 		SELECT gle.employee AS employee,
 			COALESCE(SUM(gle.debit), 0) AS disbursed,
 			COALESCE(SUM(gle.credit), 0) AS spent
 		FROM `tabGL Entry` gle
 		INNER JOIN `tabAccount` a ON a.name = gle.account
-		WHERE {conditions}
+		WHERE """
+		+ conditions  # server-built from hardcoded fragments; values are in `params`
+		+ """
 		GROUP BY gle.employee
 		""",
 		params,
@@ -382,21 +384,21 @@ def _pending_expense_total(employee, account):
 
 
 @frappe.whitelist()
-def get_balance_amount_approved(employee):
+def get_balance_amount_approved(employee: str):
 	"""Settled balance — submitted GL entries only."""
 	_company, account = _employee_context(employee)
 	return _posted_balance(employee, account)
 
 
 @frappe.whitelist()
-def get_pending_approval_balance(employee):
+def get_pending_approval_balance(employee: str):
 	"""Expense claims raised but not yet approved."""
 	_company, account = _employee_context(employee)
 	return _pending_expense_total(employee, account)
 
 
 @frappe.whitelist()
-def get_total_balance_include_review(employee):
+def get_total_balance_include_review(employee: str):
 	"""Settled balance adjusted for drafts still under review."""
 	_company, account = _employee_context(employee)
 	return (
@@ -409,7 +411,7 @@ def get_total_balance_include_review(employee):
 # Backwards-compatible alias for the original misspelled endpoint. Remove once the
 # JS/portal callers have been repointed.
 @frappe.whitelist()
-def get_total_balance_inculde_review(employee):
+def get_total_balance_inculde_review(employee: str):
 	return get_total_balance_include_review(employee)
 
 
@@ -465,7 +467,7 @@ def _fetch_display_fields(targets):
 
 
 @frappe.whitelist()
-def get_transaction_list(employee, transaction_type=None, project=None, from_date=None, to_date=None):
+def get_transaction_list(employee: str, transaction_type: str | None = None, project: str | None = None, from_date: str | None = None, to_date: str | None = None):
 	"""Petty cash ledger for an employee, newest first, with a running balance.
 
 	The running balance is accumulated across the employee's full history before the

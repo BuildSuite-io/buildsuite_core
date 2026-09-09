@@ -86,7 +86,7 @@ function onRowClick(row) {
 			</template>
 			<template #cell-work_order="{ row }">
 				<DeskLink
-					:to="`/subcontractor-work-orders/${row.work_order}`"
+					:to="`/subcontractor-work-orders/${encodeURIComponent(row.work_order)}`"
 					class="font-mono text-xs"
 					@click.stop
 					>{{ row.work_order }}</DeskLink

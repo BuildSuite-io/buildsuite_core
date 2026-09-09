@@ -37,6 +37,17 @@ buildsuite_core.patches.resync_director_permission_matrix # 2026-08-24
 buildsuite_core.patches.repoint_pnl_to_bespoke # 2026-08-25
 buildsuite_core.patches.resync_picker_select_permissions
 buildsuite_core.patches.backfill_persona_roles # 2026-09-01
-
-buildsuite_core.patches.backfill_company_scope # 2026-09-03 multi-company
-buildsuite_core.patches.backfill_master_company # 2026-09-03 supplier/customer/item company
+buildsuite_core.patches.resync_mobile_permissions # 2026-09-03 mobile app perms
+buildsuite_core.patches.strip_read_mirror_overreach # 2026-09-03 scope persona ERPNext footprint
+buildsuite_core.patches.resync_derived_attendance_perms # 2026-09-04 derived registers read-only
+buildsuite_core.patches.drop_manager_employee_user_permissions # 2026-09-04 roster mgrs see all employees
+buildsuite_core.patches.fix_stage_planning_name_column # 2026-09-04 stage planning name column int->varchar
+buildsuite_core.patches.resync_persona_permission_matrix # 2026-09-05 converge stale imported-site perms
+buildsuite_core.patches.restore_transaction_doctype_naming # 2026-09-05 bill/MB naming import override
+buildsuite_core.patches.restore_subcontractor_work_order_naming # 2026-09-05 WO naming import override
+buildsuite_core.patches.promote_persona_users_to_system_user # 2026-09-06 persona users are system users
+buildsuite_core.patches.backfill_field_attendance_employees_count # 2026-09-06 ISS-167 list count
+buildsuite_core.patches.add_subcontract_client_ledger_variance_reports # 2026-09-09 client bill / sub ledger / cost code variance tiles
+buildsuite_core.patches.seed_workforce_report_tiles # 2026-09-09 workforce report tiles to Workspace Setting
+buildsuite_core.patches.backfill_company_scope # 2026-09-09 multi-company
+buildsuite_core.patches.backfill_master_company # 2026-09-09 supplier/customer/item company

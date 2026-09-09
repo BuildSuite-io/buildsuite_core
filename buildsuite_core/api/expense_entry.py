@@ -117,7 +117,7 @@ def list_expenses():
 
 
 @frappe.whitelist()
-def get_expense(name):
+def get_expense(name: str):
 	"""Full expense entry (parent + lines) for the detail modal."""
 	doc = frappe.get_doc(DOCTYPE, name)
 	doc.check_permission("read")
@@ -159,7 +159,7 @@ def get_expense(name):
 
 
 @frappe.whitelist()
-def ledger(transaction_type=None, project=None, from_date=None, to_date=None):
+def ledger(transaction_type: str | None = None, project: str | None = None, from_date: str | None = None, to_date: str | None = None):
 	"""Petty-cash transaction ledger for the caller's employee (newest first)."""
 	employee = _current_employee()
 	if not employee:
@@ -168,7 +168,7 @@ def ledger(transaction_type=None, project=None, from_date=None, to_date=None):
 
 
 @frappe.whitelist()
-def save_expense(payload):
+def save_expense(payload: str):
 	"""Create or edit a draft Expense Entry (PF-04).
 
 	rows: [{expense_account, amount, description, project?}]. `paid_from` is either
@@ -245,7 +245,7 @@ def save_expense(payload):
 
 
 @frappe.whitelist()
-def list_cash_bank_accounts(project=None, company=None):
+def list_cash_bank_accounts(project: str | None = None, company: str | None = None):
 	"""Bank/Cash accounts a Company-paid expense can be drawn from (excludes Petty Cash).
 
 	Scoped to the active (default) company; a project or company can override it (a project's
@@ -269,7 +269,7 @@ def list_cash_bank_accounts(project=None, company=None):
 
 
 @frappe.whitelist()
-def submit_expense(name):
+def submit_expense(name: str):
 	"""Approve (submit) a draft Expense Entry — posts the Journal Entry."""
 	if not _can_submit():
 		frappe.throw(_("You are not authorised to approve expense entries."), frappe.PermissionError)
@@ -282,7 +282,7 @@ def submit_expense(name):
 
 
 @frappe.whitelist()
-def cancel_expense(name):
+def cancel_expense(name: str):
 	"""Cancel a submitted Expense Entry (reverses its Journal Entry) or delete a draft."""
 	doc = frappe.get_doc(DOCTYPE, name)
 	if doc.docstatus == 1:
@@ -297,7 +297,7 @@ def cancel_expense(name):
 
 
 @frappe.whitelist()
-def list_expense_accounts(company):
+def list_expense_accounts(company: str):
 	"""Expense (P&L) ledger accounts for the row picker."""
 	return frappe.get_all(
 		"Account",

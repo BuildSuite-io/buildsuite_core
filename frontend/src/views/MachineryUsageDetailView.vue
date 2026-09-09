@@ -45,6 +45,8 @@ const machineryOptions = computed(() =>
 		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
 	}))
 );
+// Machinery is hash-named, so show its label instead — like projectName() below.
+const machineName = (id) => machineryOptions.value.find((o) => o.value === id)?.label || id;
 const projectRes = useDocTypeList("Project", {
 	fields: ["name", "project_name"],
 	orderBy: "project_name asc",
@@ -152,14 +154,14 @@ const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Equipment", to: "/equipment" },
 	{ label: "Machinery Usage", to: "/machinery-usage" },
-	{ label: doc.value ? `${doc.value.machine} · ${fmtDate(doc.value.date)}` : props.id },
+	{ label: doc.value ? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}` : props.id },
 ]);
 </script>
 
 <template>
 	<DeskPage
 		v-if="doc"
-		:title="`${doc.machine} — ${fmtDate(doc.date)}`"
+		:title="`${machineName(doc.machine)} — ${fmtDate(doc.date)}`"
 		:subtitle="`${doc.quantity} ${doc.unit} · ${viewTotal}`"
 		:breadcrumbs="breadcrumbs"
 	>
@@ -206,7 +208,7 @@ const breadcrumbs = computed(() => [
 		<div v-if="!editing">
 			<DeskSection title="Usage" :cols="3">
 				<DeskField label="Machine">
-					<DeskLink :to="`/machinery/${doc.machine}`">{{ doc.machine }}</DeskLink>
+					<DeskLink :to="`/machinery/${doc.machine}`">{{ machineName(doc.machine) }}</DeskLink>
 				</DeskField>
 				<DeskField label="Project"
 					><div class="text-sm text-ink-700">

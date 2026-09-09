@@ -107,7 +107,7 @@ def get_employee_rates(emp, date):
 	return labour_rate
 
 @frappe.whitelist()
-def project_list_query(doctype, txt, searchfield, start, page_len, filters):
+def project_list_query(doctype: str, txt: str, searchfield: str, start: str, page_len: str, filters: str):
 	if filters:
 		query = """
 			SELECT
@@ -125,12 +125,10 @@ def project_list_query(doctype, txt, searchfield, start, page_len, filters):
 				pro.name
 			LIMIT %(start)s, %(page_len)s
 		"""
-		values = frappe.db.sql(query.format(**{
-			}), {
+		values = frappe.db.sql(query, {
 			'employee': filters['employee'],
-			'txt': "%{}%".format(txt),
 			'start': start,
-			'page_len': page_len
+			'page_len': page_len,
 		})
 		return values
 

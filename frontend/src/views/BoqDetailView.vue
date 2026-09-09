@@ -476,6 +476,12 @@ function openActualSource(e) {
 			"_blank",
 			"noopener"
 		);
+	} else if (e.source_doctype === "Journal Entry") {
+		window.open(
+			`/app/journal-entry/${encodeURIComponent(e.source_name)}`,
+			"_blank",
+			"noopener"
+		);
 	}
 }
 const COST_TYPE_TONE = {

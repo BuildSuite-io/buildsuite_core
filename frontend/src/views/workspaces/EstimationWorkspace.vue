@@ -21,25 +21,28 @@ onMounted(async () => {
 	}
 });
 
-const ESTIMATES = [{ to: "/boq", icon: "chart-bar", label: "BOQ" }];
+const ESTIMATES = [{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" }];
 const SETUP = [
 	{
 		to: "/rate-master",
 		icon: "tag",
 		label: "Rate Master",
 		description: "Price book for materials, labour, and equipment.",
+		cap: "rateMaster",
 	},
 	{
 		to: "/assembly",
 		icon: "layout-grid",
 		label: "Assembly",
 		description: "Rate-analysis recipes built from rate-master resources.",
+		cap: "assembly",
 	},
 	{
 		to: "/estimate-template",
 		icon: "file-text",
 		label: "Estimate Template",
 		description: "Reusable BOQ skeletons of assemblies and resources.",
+		cap: "estimateTemplate",
 	},
 ];
 </script>
@@ -59,6 +62,7 @@ const SETUP = [
 					:to="sc.to"
 					:icon="sc.icon"
 					:label="sc.label"
+					:cap="sc.cap"
 				/>
 			</div>
 
@@ -73,6 +77,7 @@ const SETUP = [
 					:icon="sc.icon"
 					:label="sc.label"
 					:description="sc.description"
+					:cap="sc.cap"
 				/>
 			</div>
 

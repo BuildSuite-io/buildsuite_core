@@ -66,7 +66,7 @@ def _in(d, start, end):
 
 
 @frappe.whitelist()
-def get_progress_report(project, period="weekly", date=None, audience="client"):
+def get_progress_report(project: str, period: str = "weekly", date: str | None = None, audience: str = "client"):
 	if not project or not frappe.db.exists("Project", project):
 		frappe.throw(frappe._("Project not found."))
 	period = period if period in _SPANS else "weekly"
@@ -365,6 +365,18 @@ def get_progress_report(project, period="weekly", date=None, audience="client"):
 				"by": a.owner,
 			}
 		)
+	# Resolve author emails to display names for the caption byline.
+	owner_emails = list({p["by"] for p in photos if p.get("by")})
+	if owner_emails:
+		name_by = {
+			u.name: (u.full_name or u.name)
+			for u in frappe.get_all(
+				"User", filters={"name": ["in", owner_emails]}, fields=["name", "full_name"]
+			)
+		}
+		for p in photos:
+			p["by"] = name_by.get(p["by"], p["by"])
+
 	photos.sort(key=lambda p: p["taken_on"] or "", reverse=True)
 
 	# --- programme position + variations (client-facing) ---

@@ -28,7 +28,7 @@ def _require_draft(doc):
 
 
 @frappe.whitelist()
-def submit_boq(boq):
+def submit_boq(boq: str):
 	"""Draft -> Submitted."""
 	_require_write(boq)
 	doc = frappe.get_doc("BOQ", boq)
@@ -86,7 +86,7 @@ def _validate_codes_for_approval(doc):
 
 
 @frappe.whitelist()
-def approve_boq(boq):
+def approve_boq(boq: str):
 	"""Approve a Submitted BOQ; supersede any other Approved revision of the same
 	project. Gated on BOQ_APPROVE_ROLES (server-authoritative)."""
 	if not set(frappe.get_roles()) & set(BOQ_APPROVE_ROLES):
@@ -112,7 +112,7 @@ def approve_boq(boq):
 
 
 @frappe.whitelist()
-def explode_item(boq_item):
+def explode_item(boq_item: str):
 	"""Replace a BOQ Item's sub-items with snapshot rows from its Assembly's
 	components (qty = coefficient x driving_qty). Idempotent. Draft only."""
 	item = frappe.get_doc("BOQ Item", boq_item)
@@ -159,7 +159,7 @@ def explode_item(boq_item):
 
 
 @frappe.whitelist()
-def recalculate_actuals(boq):
+def recalculate_actuals(boq: str):
 	"""For items linked to a Task, set actual_qty = planned_qty x task.progress%."""
 	_require_write(boq)
 	frappe.flags.boq_skip_rollup = True
@@ -257,7 +257,7 @@ def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=N
 
 
 @frappe.whitelist()
-def create_revision(boq, source_sco=None, title=None):
+def create_revision(boq: str, source_sco: str | None = None, title: str | None = None):
 	"""Clone a BOQ into a new Draft revision (revision = max+1, base_revision = src)."""
 	if not frappe.has_permission("BOQ", "create"):
 		frappe.throw(_("You are not permitted to create a BOQ."), frappe.PermissionError)
@@ -287,7 +287,7 @@ def create_revision(boq, source_sco=None, title=None):
 
 
 @frappe.whitelist()
-def clone_boq(from_project, to_project, from_work_package=None, to_work_package=None, title=None):
+def clone_boq(from_project: str, to_project: str, from_work_package: str | None = None, to_work_package: str | None = None, title: str | None = None):
 	"""project->project: a new Draft BOQ on the target. wp->wp (same project):
 	retag the source WP's lines onto the project's latest BOQ."""
 	if not frappe.has_permission("BOQ", "create"):
@@ -333,7 +333,7 @@ def clone_boq(from_project, to_project, from_work_package=None, to_work_package=
 
 
 @frappe.whitelist()
-def import_template(boq, estimate_template):
+def import_template(boq: str, estimate_template: str):
 	"""Seed groups + items from an Estimate Template into a Draft BOQ. Assembly rows
 	auto-explode; Resource rows get a single rate-analysis sub-item."""
 	_require_write(boq)

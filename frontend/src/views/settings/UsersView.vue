@@ -84,7 +84,7 @@ const breadcrumbs = [
 
 // ---- Edit modal ----
 const editOpen = ref(false);
-const editForm = reactive({ email: "", fullName: "", persona: "", enabled: true });
+const editForm = reactive({ email: "", fullName: "", mobile: "", persona: "", enabled: true });
 const editErrors = ref({});
 const editError = ref("");
 const editSaving = ref(false);
@@ -94,6 +94,7 @@ const mailConfigured = ref(null);
 function openEdit(row) {
 	editForm.email = row.email || row.name;
 	editForm.fullName = row.full_name || "";
+	editForm.mobile = row.mobile_no || "";
 	editForm.persona = row.persona || "";
 	editForm.enabled = !!row.enabled;
 	editErrors.value = {};
@@ -120,6 +121,7 @@ async function saveEdit() {
 		await updateBuildsuiteUser({
 			email: editForm.email,
 			full_name: editForm.fullName.trim(),
+			mobile_no: editForm.mobile.trim(),
 			persona: editForm.persona,
 			enabled: editForm.enabled ? 1 : 0,
 		});
@@ -318,6 +320,9 @@ async function deleteUser() {
 								hint="Login id — cannot be changed after the user is created."
 							>
 								<DeskInput :model-value="editForm.email" disabled />
+							</DeskField>
+							<DeskField label="Mobile" hint="Optional — contact number for this user.">
+								<DeskInput v-model="editForm.mobile" type="tel" placeholder="+91 98xxx xxxxx" />
 							</DeskField>
 							<DeskField
 								label="Account status"

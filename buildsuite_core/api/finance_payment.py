@@ -44,7 +44,7 @@ def _classify(pe, refs, sub_suppliers):
 
 
 @frappe.whitelist()
-def list_payments(company=None):
+def list_payments(company: str | None = None):
 	"""Every submitted party Payment Entry for the active (default) company, newest first."""
 	company = company or default_company()
 	pes = frappe.get_all(
@@ -104,7 +104,7 @@ def list_payments(company=None):
 
 
 @frappe.whitelist()
-def cancel_payment(name):
+def cancel_payment(name: str):
 	"""Cancel (reverse) a Payment Entry. ERPNext discipline: posted transactions are cancelled,
 	not edited — the linked invoice/bill outstanding (or the party's unallocated advance)
 	recomputes automatically. Record a fresh payment if it was entered wrongly."""

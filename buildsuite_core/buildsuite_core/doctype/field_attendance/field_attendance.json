@@ -9,6 +9,8 @@
  "field_order": [
   "project",
   "company",
+  "task",
+  "crew",
   "column_break_o1sw",
   "date",
   "column_break_vbqw",
@@ -21,6 +23,7 @@
   "comments",
   "section_break_20su",
   "employee_list",
+  "employees_count",
   "section_break_pdmm",
   "amended_from",
   "column_break_3cdg",
@@ -79,6 +82,18 @@
    "reqd": 1
   },
   {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "crew",
+   "fieldtype": "Link",
+   "label": "Crew",
+   "options": "Crew"
+  },
+  {
    "fieldname": "section_break_dkns",
    "fieldtype": "Section Break"
   },
@@ -126,13 +141,20 @@
   {
    "fieldname": "column_break_3cdg",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employees_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Employees Count",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-22 18:36:38.826430",
+ "modified": "2026-09-09 20:24:19.858194",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Field Attendance",

@@ -6,6 +6,8 @@ import { ref, computed, onMounted } from "vue";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { listCustomers, addCustomer, updateCustomer } from "@/data/customersApi";
+import { createDataAdapter } from "@/data/adapters";
+import { useConfirm } from "@/composables/useConfirm";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -15,7 +17,9 @@ import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
 const store = useDataStore();
-const { canCreate } = usePermissions();
+const { canCreate, canDelete, canRead } = usePermissions();
+const adapter = createDataAdapter(store);
+const confirmDialog = useConfirm();
 // Customers are created AND edited from this panel; the create and write role-sets
 // coincide (Director / PM / Accountant / admin tier), so one capability gates both.
 const canManage = computed(() => canCreate("customer"));
@@ -62,6 +66,16 @@ const columns = [
 	{ key: "advance", label: "Advance held", align: "right" },
 ];
 
+// Sort by Updated (most-recently-touched first) by default; Created and Updated are always
+// offered alongside the column sorts. Rows carry `updated`/`created` from the API.
+const sortOptions = [
+	...columns.map((c) => ({ value: c.key, label: c.label })),
+	{ value: "updated", label: "Updated" },
+	{ value: "created", label: "Created" },
+];
+const sortField = ref("updated");
+const sortDirection = ref("desc");
+
 // --- create / edit modal ---
 const modalOpen = ref(false);
 const modalError = ref("");
@@ -73,7 +87,9 @@ function openCreate() {
 	modalOpen.value = true;
 }
 function onRowClick(row) {
-	if (!canManage.value) return;
+	// Read-access personas open the record read-only (view, no edit/save/delete); the modal
+	// switches to view mode via :read-only. Only block users who can't read at all.
+	if (!canRead("customer")) return;
 	editing.value = row;
 	modalError.value = "";
 	modalOpen.value = true;
@@ -87,6 +103,27 @@ async function onSave(payload) {
 		await load();
 	} catch (err) {
 		modalError.value = err.message || "Save failed.";
+	}
+}
+async function onDelete() {
+	if (!editing.value) return;
+	const ok = await confirmDialog({
+		title: `Delete ${editing.value.name}?`,
+		message:
+			"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments).",
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	modalError.value = "";
+	try {
+		await adapter.remove("Customer", editing.value.id);
+		modalOpen.value = false;
+		await load();
+		showToast("Customer deleted.");
+	} catch (err) {
+		modalError.value =
+			err.message || "Delete failed — the customer may have linked transactions.";
 	}
 }
 
@@ -108,6 +145,11 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:columns="columns"
 				row-key="id"
 				search-placeholder="Search name, contact, tax ID…"
+				:sort-options="sortOptions"
+				:sort-field="sortField"
+				:sort-direction="sortDirection"
+				@update:sort-field="sortField = $event"
+				@update:sort-direction="sortDirection = $event"
 				@row-click="onRowClick"
 			>
 				<template #filter-chips>
@@ -166,12 +208,15 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 
 			<PartyFormModal
 				:open="modalOpen"
-				:title="editing ? 'Edit Customer' : 'New Customer'"
+				:title="editing ? (canManage ? 'Edit Customer' : 'View Customer') : 'New Customer'"
 				type-label="Customer type"
 				:type-options="TYPE_OPTIONS"
 				:initial="editing"
 				:server-error="modalError"
+				:can-delete="canDelete('customer')"
+				:read-only="!canManage"
 				@save="onSave"
+				@delete="onDelete"
 				@close="modalOpen = false"
 			/>
 		</div>

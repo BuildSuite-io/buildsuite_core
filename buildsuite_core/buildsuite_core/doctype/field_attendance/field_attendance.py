@@ -13,7 +13,7 @@ from buildsuite_core.utils.project import anchor_company_to_project
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
 HOURS_PER_DAY = 8
-MAX_OT_HOURS_PER_DAY = 8
+MAX_OT_HOURS_PER_DAY = 16
 
 # Rows above this count are processed in a background job on submit/cancel.
 ENQUEUE_THRESHOLD = 25
@@ -34,6 +34,23 @@ STATUS_MAP = {
 # Statuses that may carry overtime hours
 OT_ALLOWED_STATUSES = ("Present", "Half Day", "Overtime Only")
 
+# Share of the daily wage each status earns — mirrors
+# LabourAttendanceRegister.update_daily_wages().
+WAGE_FACTOR = {"Present": 1.0, "Half Day": 0.5}
+
+
+def sheet_labour_cost(doc):
+	"""Each row's daily share plus its overtime.
+
+	From the rows, not the registers: those only exist after submit, so a draft
+	would report a zero that reads as "this cost nothing".
+	"""
+	return sum(
+		flt(row.labour_rate) * WAGE_FACTOR.get(row.status, 0.0)
+		+ flt(row.overtime_rate) * flt(row.overtime_hours)
+		for row in doc.employee_list
+	)
+
 
 class FieldAttendance(Document):
 	# begin: auto-generated types
@@ -47,19 +64,25 @@ class FieldAttendance(Document):
 
 		amended_from: DF.Link | None
 		comments: DF.SmallText | None
+		crew: DF.Link | None
 		date: DF.Date
 		employee_list: DF.Table[FieldAttendanceEmployee]
+		employees_count: DF.Int
 		naming_series: DF.Literal["HR-FA-.YYYY.-"]
 		overtime_hours: DF.Float
 		project: DF.Link
 		project_name: DF.Data | None
 		status: DF.Literal["", "Present", "Half Day", "Absent", "Overtime Only"]
+		task: DF.Link | None
 	# end: auto-generated types
 
 	def validate(self):
 		anchor_company_to_project(self)
 
 		self.validate_rows_present()
+		self.validate_task_project()
+
+		self.employees_count = len(self.employee_list)
 
 		emp_map = self.get_employee_map()
 		leave_map = self.get_leave_map()
@@ -129,6 +152,15 @@ class FieldAttendance(Document):
 	# ------------------------------------------------------------------
 	# row / list level
 	# ------------------------------------------------------------------
+
+	def validate_task_project(self):
+		if not (self.task and self.project):
+			return
+
+		if frappe.db.get_value("Task", self.task, "project") != self.project:
+			frappe.throw(
+				_("Task {0} does not belong to project {1}.").format(self.task, self.project)
+			)
 
 	def validate_rows_present(self):
 		if not self.employee_list:
@@ -388,6 +420,7 @@ def create_registers(doc_name):
 				reference=doc.name,
 				comments=row.comments,
 				wage_rate=row.labour_rate,
+				task=doc.task,
 			)
 
 		if flt(row.overtime_hours) > 0 and row.employee not in existing_ot:
@@ -399,6 +432,7 @@ def create_registers(doc_name):
 				reference=doc.name,
 				comments=row.comments,
 				overtime_rate=row.overtime_rate,
+				task=doc.task,
 			)
 
 
@@ -417,8 +451,7 @@ def cancel_registers(doc_name):
 			reg.cancel()
 
 
-def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate):
-	print("wage_rate",wage_rate)
+def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate, task=None):
 	doc = frappe.get_doc(
 		{
 			"doctype": "Labour Attendance Register",
@@ -427,6 +460,7 @@ def create_labour_attendance(employee, date, project, status, reference, comment
 			"project": project,
 			"status": status,
 			"wage_rate": wage_rate,
+			"task": task,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -436,7 +470,7 @@ def create_labour_attendance(employee, date, project, status, reference, comment
 
 
 def create_overtime_attendance(
-	employee, date, project, overtime_hours, reference, comments, overtime_rate
+	employee, date, project, overtime_hours, reference, comments, overtime_rate, task=None
 ):
 	doc = frappe.get_doc(
 		{
@@ -446,6 +480,7 @@ def create_overtime_attendance(
 			"project": project,
 			"overtime_rate": overtime_rate,
 			OT_HOURS_FIELD: overtime_hours,
+			"task": task,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -515,7 +550,7 @@ def _labour_filters():
 
 
 @frappe.whitelist()
-def get_employees(date, project=None):
+def get_employees(date: str, project: str | None = None):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	leave_emps = []
@@ -546,7 +581,7 @@ def get_employees(date, project=None):
 
 
 @frappe.whitelist()
-def get_assigned_employees(project):
+def get_assigned_employees(project: str):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	if "hrms" in frappe.get_installed_apps():
@@ -569,7 +604,7 @@ def get_assigned_employees(project):
 
 
 @frappe.whitelist()
-def get_last_day_attendance(project, current_date):
+def get_last_day_attendance(project: str, current_date: str):
 	frappe.has_permission("Field Attendance", throw=True)
 
 	last_doc = frappe.db.get_value(

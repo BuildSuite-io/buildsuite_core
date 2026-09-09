@@ -6,7 +6,7 @@ from frappe.utils import cint, flt
 
 
 @frappe.whitelist()
-def list_rate_masters(start=0, page_length=10, search=None, category=None, with_counts=False):
+def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None = None, category: str | None = None, with_counts: bool = False):
 	"""One page of rate masters + total_count (filtered, for the pager). When
 	with_counts is set, also the global total and per-category counts (KPI cards)."""
 	filters = {}
@@ -62,7 +62,7 @@ def get_rate_update_threshold():
 
 
 @frappe.whitelist()
-def update_rates_from_po(purchase_order, updates, supplier=None):
+def update_rates_from_po(purchase_order: str, updates: str, supplier: str | None = None):
 	if isinstance(updates, str):
 		updates = json.loads(updates)
 

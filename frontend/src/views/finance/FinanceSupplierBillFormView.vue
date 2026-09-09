@@ -6,7 +6,7 @@
 //   · Direct — no PO: pick the supplier and enter Item-master lines manually.
 // Item lines carry a real Item (qty × rate), then taxes & discount via templates + a live
 // waterfall, and terms. Mirrors the customer-invoice form.
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
@@ -26,6 +26,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
+import { useAutosave } from "@/composables/useAutosave";
 import { fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, default: "" } });
@@ -80,6 +81,8 @@ const termsOpen = ref(false);
 const errors = reactive({ supplier: "", po: "", lines: "" });
 const saving = ref(false);
 const loading = ref(isEdit.value);
+// Auto-save only engages once an existing draft has finished loading into the form.
+const ready = ref(false);
 
 if (isEdit.value) {
 	getSupplierBill(props.id)
@@ -127,6 +130,10 @@ if (isEdit.value) {
 			});
 			if (!form.lines.length) form.lines = [blankLine()];
 			termsOpen.value = !!b.terms;
+			// Arm auto-save after the watcher has flushed the load-population.
+			nextTick(() => {
+				ready.value = true;
+			});
 		})
 		.catch((err) => showToast(err.message || "Failed to load bill", "error"))
 		.finally(() => (loading.value = false));
@@ -244,6 +251,53 @@ const breadcrumbs = computed(() => [
 	{ label: isEdit.value ? `Edit ${props.id}` : "New supplier bill" },
 ]);
 
+// Payload shared by the explicit Save and the quiet auto-save.
+function buildPayload() {
+	const lines = form.lines.filter((l) => (l.item_code || l.description) && lineAmount(l) > 0);
+	return {
+		name: isEdit.value ? props.id : undefined,
+		supplier: form.supplier,
+		project: form.project || undefined,
+		bill_no: form.bill_no || undefined,
+		bill_date: form.bill_date || undefined,
+		date: form.date,
+		due_date: form.due_date || undefined,
+		items: lines.map((l) => ({
+			item_code: l.item_code || undefined,
+			description: (l.description || "").trim(),
+			qty: Number(l.qty) || 1,
+			uom: l.uom || undefined,
+			rate: Number(l.rate),
+			purchase_order: l.purchase_order || undefined,
+			po_detail: l.po_detail || undefined,
+		})),
+		taxes_and_charges: form.taxes_and_charges || undefined,
+		taxes: form.taxes
+			.filter((t) => t.account_head)
+			.map((t) => ({
+				charge_type: t.charge_type,
+				account_head: t.account_head,
+				description: t.description,
+				rate: Number(t.rate) || 0,
+			})),
+		additional_discount_on: form.discount_on,
+		additional_discount_percentage:
+			form.discount_type === "%" ? Number(form.discount_value) || 0 : 0,
+		discount_amount: form.discount_type === "₹" ? Number(form.discount_value) || 0 : 0,
+		tc_name: form.tc_name || undefined,
+		terms: form.terms || undefined,
+	};
+}
+
+// Silent validity gate for auto-save — mirrors save()'s checks WITHOUT mutating the `errors` UI.
+function isSaveable() {
+	return (
+		!!form.supplier &&
+		(mode.value !== "po" || !!form.purchase_order) &&
+		form.lines.some((l) => (l.item_code || l.description) && lineAmount(l) > 0)
+	);
+}
+
 async function save() {
 	errors.supplier = "";
 	errors.po = "";
@@ -256,39 +310,7 @@ async function save() {
 
 	saving.value = true;
 	try {
-		const res = await saveSupplierBill({
-			name: isEdit.value ? props.id : undefined,
-			supplier: form.supplier,
-			project: form.project || undefined,
-			bill_no: form.bill_no || undefined,
-			bill_date: form.bill_date || undefined,
-			date: form.date,
-			due_date: form.due_date || undefined,
-			items: lines.map((l) => ({
-				item_code: l.item_code || undefined,
-				description: (l.description || "").trim(),
-				qty: Number(l.qty) || 1,
-				uom: l.uom || undefined,
-				rate: Number(l.rate),
-				purchase_order: l.purchase_order || undefined,
-				po_detail: l.po_detail || undefined,
-			})),
-			taxes_and_charges: form.taxes_and_charges || undefined,
-			taxes: form.taxes
-				.filter((t) => t.account_head)
-				.map((t) => ({
-					charge_type: t.charge_type,
-					account_head: t.account_head,
-					description: t.description,
-					rate: Number(t.rate) || 0,
-				})),
-			additional_discount_on: form.discount_on,
-			additional_discount_percentage:
-				form.discount_type === "%" ? Number(form.discount_value) || 0 : 0,
-			discount_amount: form.discount_type === "₹" ? Number(form.discount_value) || 0 : 0,
-			tc_name: form.tc_name || undefined,
-			terms: form.terms || undefined,
-		});
+		const res = await saveSupplierBill(buildPayload());
 		showToast(isEdit.value ? "Bill updated." : "Bill saved as draft.");
 		router.push(`/project-finance/supplier-bills/${res.name}`);
 	} catch (err) {
@@ -297,6 +319,15 @@ async function save() {
 		saving.value = false;
 	}
 }
+
+// Quiet background update of the existing draft. Gated on the SAME permission the Save button
+// uses (canSaveBill), plus draft-exists / loaded / valid — never writes where Save is denied.
+async function quietSave() {
+	await saveSupplierBill(buildPayload());
+}
+const { status: autosaveStatus } = useAutosave(form, quietSave, {
+	canAutosave: () => ready.value && isEdit.value && canSaveBill.value && isSaveable(),
+});
 </script>
 
 <template>
@@ -319,7 +350,16 @@ async function save() {
 					:saving="saving"
 					@save="save"
 					@cancel="router.back()"
-				/>
+				>
+					<template #left>
+						<span
+							v-if="isEdit && autosaveStatus !== 'idle'"
+							class="text-xs text-ink-400"
+						>
+							{{ autosaveStatus === "saving" ? "Saving…" : "Saved" }}
+						</span>
+					</template>
+				</DeskActionBar>
 			</template>
 
 			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Loading…</div>

@@ -294,11 +294,11 @@ const breadcrumbs = computed(() => [
 								v-for="wo in linkedWOs"
 								:key="wo.name"
 								class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
-								@click="router.push(`/subcontractor-work-orders/${wo.name}`)"
+								@click="router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`)"
 							>
 								<td class="px-3 py-2">
 									<DeskLink
-										:to="`/subcontractor-work-orders/${wo.name}`"
+										:to="`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`"
 										@click.stop
 										>{{ wo.name }}</DeskLink
 									>

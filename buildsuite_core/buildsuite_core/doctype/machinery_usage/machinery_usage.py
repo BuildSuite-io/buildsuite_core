@@ -29,6 +29,7 @@ class MachineryUsage(Document):
 
 	def validate(self):
 		anchor_company_to_project(self)
+		self.validate_machine_active()
 
 		# The task is optional, but if set it must belong to the selected project —
 		# a usage log must never be booked against a task from another project.
@@ -36,3 +37,13 @@ class MachineryUsage(Document):
 			task_project = frappe.db.get_value("Task", self.task, "project")
 			if task_project != self.project:
 				frappe.throw(_("Task {0} does not belong to project {1}.").format(self.task, self.project))
+
+	def validate_machine_active(self):
+		machine = frappe.db.get_value("Machinery", self.machine, ["status", "machinery_name"], as_dict=True)
+
+		if machine and machine.status == "Inactive":
+			frappe.throw(
+				_("Machinery {0} is Inactive. Usage cannot be logged against it.").format(
+					machine.machinery_name or self.machine
+				)
+			)

@@ -33,11 +33,12 @@ def _default_group_and_territory(doc):
 
 @frappe.whitelist()
 def list_customers():
-	"""All customers with type, tax id, primary contact and advance held, name-sorted."""
+	"""All customers with type, tax id, primary contact and advance held, most-recently-updated
+	first. `updated`/`created` are returned so the list can be re-sorted by either client-side."""
 	rows = frappe.get_all(
 		"Customer",
-		fields=["name", "customer_name", "customer_type", "tax_id"],
-		order_by="customer_name asc",
+		fields=["name", "customer_name", "customer_type", "tax_id", "modified", "creation"],
+		order_by="modified desc",
 	)
 	out = []
 	for c in rows:
@@ -52,6 +53,8 @@ def list_customers():
 				"phone": contact["phone"],
 				"email": contact["email"],
 				"advance": unallocated_advance("Customer", c.name),
+				"updated": str(c.modified or ""),
+				"created": str(c.creation or ""),
 			}
 		)
 	return out
@@ -61,10 +64,10 @@ def list_customers():
 def create_customer(
 	customer_name: str,
 	customer_type: str = "Company",
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Create a Customer. Accepts the New Project picker's minimal call and the
 	Customers master's fuller payload (contact person / phone / email / tax id)."""
@@ -95,12 +98,12 @@ def create_customer(
 @frappe.whitelist()
 def update_customer(
 	name: str,
-	new_name=None,
-	customer_type=None,
-	gstin=None,
-	contact_person=None,
-	phone=None,
-	email=None,
+	new_name: str | None = None,
+	customer_type: str | None = None,
+	gstin: str | None = None,
+	contact_person: str | None = None,
+	phone: str | None = None,
+	email: str | None = None,
 ):
 	"""Update a customer's name / type / tax id and its primary contact."""
 	if not frappe.has_permission("Customer", "write"):

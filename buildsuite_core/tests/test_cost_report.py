@@ -89,3 +89,67 @@ class TestCostVsBudget(BuildSuiteTestCase):
 		res = cost_vs_budget_by_cost_code(p.name)
 		self.assertEqual(len(res["rows"]), 1)
 		self.assertEqual(res["rows"][0]["costType"], "Unclassified")
+
+	# --- Journal Entry (JV) actuals rail -----------------------------------------------------
+	def _account(self, root_type, account_type=None):
+		filters = {"company": self.company, "root_type": root_type, "is_group": 0}
+		if account_type:
+			filters["account_type"] = account_type
+		names = frappe.get_all("Account", filters=filters, limit=1, pluck="name")
+		return names[0] if names else None
+
+	def test_journal_entry_actual_by_cost_code(self):
+		"""A submitted JV expense line charged to a cost code books its debit into BOQ actual
+		(Overhead), and cancelling reverses it — same derived-getter behaviour as the other rails."""
+		from buildsuite_core.api.boq_actuals import get_actuals_summary
+
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		g = self._group(b.name, code="A", name="Civil")
+		self._item(b.name, g.name, qty=10, rate=100, cost_head="Material")
+		boq_api.approve_boq(b.name)
+
+		expense_account = self._account("Expense")
+		cash_account = self._account("Asset", "Cash") or self._account("Asset")
+		cost_center = frappe.db.get_value("Company", self.company, "cost_center")
+
+		je = frappe.new_doc("Journal Entry")
+		je.company = self.company
+		je.posting_date = "2026-07-20"
+		je.append(
+			"accounts",
+			{
+				"account": expense_account,
+				"debit_in_account_currency": 5000,
+				"cost_center": cost_center,
+				"project": p.name,
+				"custom_cost_code_type": "Group",
+				"custom_cost_code_group": "A",
+				"custom_cost_code_label": "A · Civil",
+			},
+		)
+		je.append(
+			"accounts",
+			{"account": cash_account, "credit_in_account_currency": 5000, "cost_center": cost_center},
+		)
+		je.flags.ignore_permissions = True
+		je.insert()
+
+		# Draft JV contributes nothing (reads only submitted docs).
+		self.assertEqual(get_actuals_summary(p.name)["by_group"].get("A", {}).get("actual", 0), 0)
+
+		je.submit()
+		summary = get_actuals_summary(p.name)
+		self.assertAlmostEqual(summary["by_group"]["A"]["actual"], 5000, places=2)
+		self.assertAlmostEqual(summary["by_group"]["A"]["by_cost_type"]["Overhead"], 5000, places=2)
+
+		# The drill-down entry references the JV (its "BOQ actual hyperlink").
+		from buildsuite_core.api.boq_actuals import get_actuals_for_code
+
+		entries = get_actuals_for_code(p.name, group_code="A")["entries"]
+		je_entry = next(e for e in entries if e["source_doctype"] == "Journal Entry")
+		self.assertEqual(je_entry["source_name"], je.name)
+
+		# Cancelling reverses the contribution.
+		je.cancel()
+		self.assertEqual(get_actuals_summary(p.name)["by_group"].get("A", {}).get("actual", 0), 0)

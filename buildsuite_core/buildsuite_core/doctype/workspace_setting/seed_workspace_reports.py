@@ -55,6 +55,44 @@ _SEED = {
 			"report": "Subcontractor Bill Register",
 			"description": "Running subcontractor bills with retention + net payable rollups.",
 		},
+		{
+			"label": "Client Bill Register",
+			"icon": "wallet",
+			"report": "Client Bill Register",
+			"description": "Client interim payment certificates, with total claimed + outstanding.",
+		},
+		{
+			"label": "Subcontractor Ledger",
+			"icon": "chart-line",
+			"report": "Subcontractor Ledger",
+			"description": "Per-sub: committed on WOs, billed net, retention held, still to bill.",
+		},
+		{
+			"label": "Cost Code Variance",
+			"icon": "chart-bar",
+			"report": "Cost Code Variance",
+			"description": "Planned vs Committed vs Actual per BOQ cost code, for a project.",
+		},
+	),
+	"workforce": (
+		{
+			"label": "Labour Attendance Register",
+			"icon": "clipboard-list",
+			"route": "/labour-attendance",
+			"description": "Per-worker daily wages — Full Day / Half Day / Absent.",
+		},
+		{
+			"label": "Overtime Attendance Register",
+			"icon": "chart-line",
+			"route": "/overtime-attendance",
+			"description": "Per-worker overtime hours × overtime rate.",
+		},
+		{
+			"label": "Site Attendance Summary",
+			"icon": "hard-hat",
+			"route": "/workforce/attendance-summary",
+			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
+		},
 	),
 	"procurement": (
 		{

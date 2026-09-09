@@ -8,25 +8,26 @@ A Script Report so the project condition binds only when set (Frappe runs with e
 on page load; a Query Report's %(project)s would crash). Project is required."""
 
 import frappe
+from frappe import _
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = [
 		{
-			"label": "Subcontractor",
+			"label": _("Subcontractor"),
 			"fieldname": "subcontractor",
 			"fieldtype": "Link",
 			"options": "Supplier",
 			"width": 200,
 		},
-		{"label": "Name", "fieldname": "subcontractor_name", "fieldtype": "Data", "width": 200},
-		{"label": "WO Value", "fieldname": "wo_value", "fieldtype": "Currency", "width": 110},
-		{"label": "Measured Qty", "fieldname": "measured", "fieldtype": "Float", "width": 110},
-		{"label": "Billed", "fieldname": "billed", "fieldtype": "Currency", "width": 110},
-		{"label": "Retention", "fieldname": "retention", "fieldtype": "Currency", "width": 110},
-		{"label": "Paid", "fieldname": "paid", "fieldtype": "Currency", "width": 110},
-		{"label": "Outstanding", "fieldname": "outstanding", "fieldtype": "Currency", "width": 110},
+		{"label": _("Name"), "fieldname": "subcontractor_name", "fieldtype": "Data", "width": 200},
+		{"label": _("WO Value"), "fieldname": "wo_value", "fieldtype": "Currency", "width": 110},
+		{"label": _("Measured Qty"), "fieldname": "measured", "fieldtype": "Float", "width": 110},
+		{"label": _("Billed"), "fieldname": "billed", "fieldtype": "Currency", "width": 110},
+		{"label": _("Retention"), "fieldname": "retention", "fieldtype": "Currency", "width": 110},
+		{"label": _("Paid"), "fieldname": "paid", "fieldtype": "Currency", "width": 110},
+		{"label": _("Outstanding"), "fieldname": "outstanding", "fieldtype": "Currency", "width": 110},
 	]
 	if not filters.get("project"):
 		return columns, []
@@ -35,7 +36,7 @@ def execute(filters=None):
 	sub_cond = " AND x.subcontractor = %(subcontractor)s" if filters.get("subcontractor") else ""
 
 	data = frappe.db.sql(
-		f"""
+		"""
 		SELECT subcontractor, MAX(subcontractor_name) AS subcontractor_name,
 			SUM(wo_value) AS wo_value, SUM(measured) AS measured, SUM(billed) AS billed,
 			SUM(retention) AS retention, SUM(paid) AS paid, SUM(billed) - SUM(paid) AS outstanding
@@ -56,7 +57,7 @@ def execute(filters=None):
 				FROM `tabSubcontractor Bill` sb
 				WHERE sb.docstatus = 1 AND sb.project = %(project)s
 		) x
-		WHERE 1=1 {sub_cond}
+		WHERE 1=1 """ + sub_cond + """
 		GROUP BY subcontractor HAVING SUM(wo_value) + SUM(billed) > 0 ORDER BY SUM(wo_value) DESC
 		""",
 		filters,

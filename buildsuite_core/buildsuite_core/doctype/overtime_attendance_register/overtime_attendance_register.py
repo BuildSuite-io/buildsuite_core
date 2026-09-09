@@ -2,10 +2,13 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.utils import *
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 from frappe.query_builder.functions import Sum
+
+from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import MAX_OT_HOURS_PER_DAY
 
 
 class OvertimeAttendanceRegister(Document):
@@ -62,7 +65,13 @@ class OvertimeAttendanceRegister(Document):
 
 	def validate_date_ot_and_rate(self):
 		docs = [x.get("status") for x in frappe.get_all("Labour Attendance Register",{"attendance_date":self.overtime_date,"docstatus":1,"employee":self.employee},["status"])]
-		if not docs:
+		# An "Overtime Only" row creates no Labour Attendance Register by design.
+		row_status = self.field_attendance and frappe.db.get_value(
+			"Field Attendance Employee",
+			{"parent": self.field_attendance, "employee": self.employee},
+			"status",
+		)
+		if not docs and row_status != "Overtime Only":
 			frappe.throw(
 				f"No regular attendance record found for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}!"
 			)
@@ -85,20 +94,30 @@ class OvertimeAttendanceRegister(Document):
 
 		existing_hours = flt(existing_hours[0][0]) if existing_hours else 0.0
 		total_overtime_hours = existing_hours + flt(self.overtime_hours)
-		if total_overtime_hours and total_overtime_hours >= 16:
+		if total_overtime_hours and total_overtime_hours > MAX_OT_HOURS_PER_DAY:
 			frappe.throw(
-				f"Overtime already marked for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}."
+				_("{0}: Overtime for {1} would be {2} hours, over the {3} hour daily limit.").format(
+					frappe.bold(self.employee_name),
+					frappe.bold(self.overtime_date),
+					total_overtime_hours,
+					MAX_OT_HOURS_PER_DAY,
+				)
 			)
 		if self.overtime_hours == 0:
-			frappe.throw("Overtime hours cannot be zero!")
+			frappe.throw(_("Overtime hours cannot be zero!"))
 		self.overtime_wage_calculated = flt(self.overtime_rate) * flt(self.overtime_hours)
 	pass
 @frappe.whitelist()
-def update_wage(employee_id, wage):
-    if employee_id and wage:
-        frappe.db.set_value("Employee",employee_id,'custom_wage_for_overtime',wage)
-        frappe.db.commit()
-        return wage
+def update_wage(employee_id: str, wage: str):
+    if not (employee_id and wage):
+        return
+    # Enforce write permission on the Employee before mutating its wage (was an
+    # unguarded whitelisted write). db_set persists within the request transaction —
+    # no manual commit needed.
+    emp = frappe.get_doc("Employee", employee_id)
+    emp.check_permission("write")
+    emp.db_set("custom_wage_for_overtime", wage)
+    return wage
 
 # @frappe.whitelist()
 # def project_list_query(doctype, txt, searchfield, start, page_len, filters):

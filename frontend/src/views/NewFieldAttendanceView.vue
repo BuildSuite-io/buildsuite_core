@@ -28,6 +28,8 @@ const form = reactive({
 	project: "",
 	date: new Date().toISOString().slice(0, 10),
 	status: "Present",
+	task: "",
+	crew: "",
 	overtime_hours: 0,
 	comments: "",
 	employee_list: [],
@@ -40,6 +42,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
 	addProjectRoster,
@@ -110,6 +113,7 @@ const breadcrumbs = [
 				@status="setHeaderStatus"
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
+				@project="setHeaderProject"
 			/>
 
 			<AttendanceEmployeeTable
@@ -138,8 +142,10 @@ const breadcrumbs = [
 			:date="form.date"
 			:project-label="projectLabel(form.project)"
 			:existing="[...inTable]"
+			:crew="form.crew"
 			@close="bulkOpen = false"
 			@add="addWorkers"
+			@crew="form.crew = $event"
 		/>
 	</DeskPage>
 </template>

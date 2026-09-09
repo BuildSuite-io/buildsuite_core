@@ -30,7 +30,7 @@ defineEmits(["remove"]);
 			class="text-brand-700 hover:text-brand-800 leading-none"
 			style="font-size: 14px"
 			aria-label="Remove filter"
-			@click="$emit('remove')"
+			@click.stop="$emit('remove')"
 		>
 			×
 		</button>

@@ -63,6 +63,13 @@ def sync_persona_roles(doc, method=None):
 	if doc.persona and not frappe.db.exists("Persona", doc.persona):
 		return
 
+	# A persona user works in the Desk / SPA, so make them a System User. Otherwise they can't log
+	# in and an admin has to add the System Manager role just to enable login — which over-grants
+	# (e.g. System Manager unlocks the FULL Project Finance workspace). Promotion only: clearing a
+	# persona never demotes an existing System User.
+	if doc.persona and doc.user_type != "System User":
+		doc.user_type = "System User"
+
 	grant = _persona_roles(doc.persona)
 
 	# On a persona SWITCH, strip only the roles the previous persona granted that the

@@ -100,7 +100,7 @@ def _sum(doctype, filters, field):
 
 
 @frappe.whitelist()
-def get_project_dashboard(project=None):
+def get_project_dashboard(project: str | None = None):
 	company = default_company()
 	today = getdate(nowdate())
 	since = add_days(today, -7)

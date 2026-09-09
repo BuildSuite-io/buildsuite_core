@@ -202,7 +202,7 @@ const breadcrumbs = computed(() => [
 					Work order
 				</div>
 				<div class="text-sm mt-0.5">
-					<DeskLink :to="`/subcontractor-work-orders/${mb.work_order}`">{{
+					<DeskLink :to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`">{{
 						mb.work_order
 					}}</DeskLink>
 				</div>

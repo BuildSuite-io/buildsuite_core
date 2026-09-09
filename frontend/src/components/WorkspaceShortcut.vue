@@ -21,6 +21,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { getWorkspaceIconPath, resolveWorkspaceIconSlug } from "@/utils/workspaceIcons";
+import { usePermissions } from "@/composables/usePermissions";
 
 const props = defineProps({
 	to: { type: [String, Object], default: null },
@@ -31,7 +32,15 @@ const props = defineProps({
 	// Set true when the click should NOT navigate (stub tiles, e.g.
 	// AccountingWorkspace's illustrative shortcuts).
 	prevent: { type: Boolean, default: false },
+	// Persona-caps entity this tile opens (e.g. "materialRequest"). When set, the tile is only
+	// rendered for personas that can READ it — so a workspace never shows a shortcut to something
+	// the persona has no access to. Omitted (reports, dashboards) → always shown.
+	cap: { type: String, default: "" },
 });
+
+const { canRead } = usePermissions();
+// Hidden when a cap is declared and the persona can't read that entity.
+const visible = computed(() => !props.cap || canRead(props.cap));
 
 const tag = computed(() => {
 	if (props.prevent) return "a";
@@ -53,6 +62,7 @@ function onClick(e) {
 <template>
 	<component
 		:is="tag"
+		v-if="visible"
 		v-bind="bindings"
 		class="bg-white border border-ink-200 hover:border-brand-400 hover:shadow-sm p-4 transition-all group block"
 		style="border-radius: 8px"

@@ -16,6 +16,7 @@ import { evalReportFilters } from "@/utils/reportFilters";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtINR, fmtDate } from "@/utils/format";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import StatusBadge from "@/components/StatusBadge.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import ReportChart from "@/components/ReportChart.vue";
 
@@ -53,6 +54,12 @@ const urlFilters = computed(() => {
 const filterDefs = ref([]);
 const filterValues = reactive({});
 const NUMERIC = new Set(["Currency", "Float", "Int", "Percent"]);
+// A status column renders as a StatusBadge (one place → every report's status column gets badges:
+// WO / MB / Bill registers, Requests-waiting, etc.).
+function isStatusCol(col) {
+	const f = (col.fieldname || "").toLowerCase();
+	return f === "status" || f.endsWith("_status");
+}
 
 function seedFilters(defs) {
 	for (const k of Object.keys(filterValues)) delete filterValues[k];
@@ -522,6 +529,10 @@ const inputClass =
 										cellText(item.row, col)
 									}}</span>
 								</span>
+								<StatusBadge
+									v-else-if="isStatusCol(col) && cellText(item.row, col)"
+									:status="cellText(item.row, col)"
+								/>
 								<template v-else>{{ cellText(item.row, col) }}</template>
 							</td>
 						</tr>

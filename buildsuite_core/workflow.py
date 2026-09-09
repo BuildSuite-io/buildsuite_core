@@ -13,7 +13,7 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def apply_workflow(doc, action):
+def apply_workflow(doc: str, action: str):
 	"""Allow workflow action on the current doc"""
 	doc = frappe.get_doc(frappe.parse_json(doc))
 	doc.load_from_db()
@@ -117,7 +117,6 @@ def delete_workflow_log(doc, method):
         #     return None
         if frappe.db.exists("Pending Approval Log", {'reference_doctype': doc.doctype, 'reference_name': doc.name}):
             frappe.db.delete("Pending Approval Log", filters={'reference_doctype': doc.doctype, 'reference_name': doc.name})
-            frappe.db.commit()
 
 
 def update_account(doc, method):
