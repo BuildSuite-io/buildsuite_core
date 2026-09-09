@@ -47,3 +47,4 @@ buildsuite_core.patches.restore_transaction_doctype_naming # 2026-09-05 bill/MB 
 buildsuite_core.patches.restore_subcontractor_work_order_naming # 2026-09-05 WO naming import override
 buildsuite_core.patches.promote_persona_users_to_system_user # 2026-09-06 persona users are system users
 buildsuite_core.patches.backfill_field_attendance_employees_count # 2026-09-06 ISS-167 list count
+buildsuite_core.patches.add_subcontract_client_ledger_variance_reports # 2026-09-09 client bill / sub ledger / cost code variance tiles
