@@ -46,7 +46,7 @@ def list_buildsuite_users():
 	return frappe.get_all(
 		"User",
 		filters={"persona": ["is", "set"], "name": ["not in", SYSTEM_ACCOUNTS]},
-		fields=["name", "full_name", "email", "enabled", "persona"],
+		fields=["name", "full_name", "email", "mobile_no", "enabled", "persona"],
 		order_by="full_name asc",
 	)
 
@@ -74,7 +74,14 @@ def get_hidden_user_names():
 
 
 @frappe.whitelist()
-def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: int = 1, send_welcome: int = 1):
+def create_buildsuite_user(
+	full_name: str,
+	email: str,
+	persona: str,
+	enabled: int = 1,
+	send_welcome: int = 1,
+	mobile_no: str | None = None,
+):
 	_require_admin()
 	full_name = (full_name or "").strip()
 	email = (email or "").strip().lower()
@@ -92,6 +99,7 @@ def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: in
 	doc.first_name = parts[0]
 	if len(parts) > 1:
 		doc.last_name = parts[1]
+	doc.mobile_no = (mobile_no or "").strip()
 	doc.enabled = 1 if cint(enabled) else 0
 	doc.user_type = "System User"
 	doc.persona = persona  # the validate hook assigns the matching BuildSuite role
@@ -110,6 +118,7 @@ def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: in
 		"name": doc.name,
 		"email": doc.email,
 		"full_name": doc.full_name,
+		"mobile_no": doc.mobile_no,
 		"enabled": doc.enabled,
 		"persona": doc.persona,
 	}
@@ -117,7 +126,11 @@ def create_buildsuite_user(full_name: str, email: str, persona: str, enabled: in
 
 @frappe.whitelist()
 def update_buildsuite_user(
-	email: str, full_name: str | None = None, persona: str | None = None, enabled: int | None = None
+	email: str,
+	full_name: str | None = None,
+	persona: str | None = None,
+	enabled: int | None = None,
+	mobile_no: str | None = None,
 ):
 	_require_admin()
 	if not frappe.db.exists("User", email):
@@ -132,11 +145,14 @@ def update_buildsuite_user(
 		doc.persona = persona
 	if enabled is not None:
 		doc.enabled = 1 if cint(enabled) else 0
+	if mobile_no is not None:
+		doc.mobile_no = mobile_no.strip()
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return {
 		"name": email,
 		"full_name": doc.full_name,
+		"mobile_no": doc.mobile_no,
 		"enabled": doc.enabled,
 		"persona": doc.persona,
 	}
