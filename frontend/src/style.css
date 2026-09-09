@@ -277,6 +277,18 @@
   /* Avoid splitting report sections across pages where possible. */
   .report-section { page-break-inside: avoid; break-inside: avoid; }
 
+  /* Site photographs — the progress report sizes the grid from the photo count
+     (--photo-cols / --photo-h, set inline by photoLayout) so print honours it too. */
+  .photo-grid {
+    grid-template-columns: repeat(var(--photo-cols, 2), minmax(0, 1fr)) !important;
+    gap: 3mm !important;
+  }
+  .photo-grid figure { break-inside: avoid; }
+  .photo-grid img, .photo-grid figure > div:first-child { height: var(--photo-h, 52mm) !important; }
+
+  /* Start this block on a fresh page (site photographs are heavy). */
+  .report-page-break { break-before: page; }
+
   /* Tighten table cell padding for print density. */
   .report-content table { font-size: 10pt; }
   .report-content table th, .report-content table td { padding: 4px 6px !important; }
