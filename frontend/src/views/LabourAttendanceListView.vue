@@ -91,6 +91,8 @@ const columns = [
 	{ key: "attendance_date", label: "Date" },
 	{ key: "employee_name", label: "Worker" },
 	{ key: "status", label: "Status" },
+	{ key: "day_type", label: "Day type" },
+	{ key: "task", label: "Task" },
 	{ key: "project", label: "Project" },
 	{ key: "wage_rate", label: "Wage rate", align: "right" },
 	{ key: "daily_wage_calculated", label: "Daily wage", align: "right" },
@@ -111,6 +113,8 @@ const breadcrumbs = [
 				'attendance_date',
 				'employee_name',
 				'status',
+				'task',
+				'task_subject',
 				'project',
 				'wage_rate',
 				'daily_wage_calculated',
@@ -176,6 +180,14 @@ const breadcrumbs = [
 
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
+			</template>
+
+			<template #cell-day_type="{ row }">
+				<span class="text-ink-600">{{ row.day_type || "Regular" }}</span>
+			</template>
+
+			<template #cell-task="{ row }">
+				<span class="text-ink-700">{{ row.task_subject || row.task || "—" }}</span>
 			</template>
 
 			<template #cell-project="{ row }">
