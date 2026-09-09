@@ -9,6 +9,7 @@
  "field_order": [
   "project",
   "task",
+  "crew",
   "column_break_o1sw",
   "date",
   "column_break_vbqw",
@@ -78,6 +79,12 @@
    "options": "Task"
   },
   {
+   "fieldname": "crew",
+   "fieldtype": "Link",
+   "label": "Crew",
+   "options": "Crew"
+  },
+  {
    "fieldname": "section_break_dkns",
    "fieldtype": "Section Break"
   },
@@ -138,7 +145,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-06 21:38:31.959823",
+ "modified": "2026-09-09 20:24:19.858194",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Field Attendance",

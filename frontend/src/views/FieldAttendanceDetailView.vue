@@ -25,7 +25,7 @@ import {
 	DOCSTATUS_LABELS,
 	validateFieldAttendance,
 } from "@/utils/workforceForms";
-import { fmtDate } from "@/utils/format";
+import { fmtDate, fmtINR } from "@/utils/format";
 import { isPermissionDenied } from "@/utils/frappeError";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -93,7 +93,6 @@ const docStatusLabel = computed(() =>
 );
 const rows = computed(() => doc.value?.employee_list || []);
 
-// Crew and labour cost show "—" until their data lands.
 const cards = computed(() => {
 	const d = doc.value;
 	if (!d) return [];
@@ -104,7 +103,11 @@ const cards = computed(() => {
 
 	return [
 		{ label: "Project", value: d.project_name || projectLabel(d.project) || "—" },
-		{ label: "Crew", value: "—" },
+		{
+			label: "Crew",
+			value: d.crew_name || d.crew || "—",
+			to: d.crew ? `/crews/${d.crew}` : null,
+		},
 		{
 			label: "Task",
 			value: d.task_subject || d.task || "—",
@@ -115,7 +118,11 @@ const cards = computed(() => {
 			value: `${present} / ${rows.value.length}`,
 			cls: "font-medium tabular-nums",
 		},
-		{ label: "Labour cost", value: "—", cls: "font-medium tabular-nums" },
+		{
+			label: "Labour cost",
+			value: fmtINR(d.labour_cost),
+			cls: "font-medium tabular-nums",
+		},
 	];
 });
 
@@ -140,6 +147,7 @@ function snapshot() {
 		date: d.date || "",
 		status: d.status || "Present",
 		task: d.task || "",
+		crew: d.crew || "",
 		overtime_hours: d.overtime_hours ?? 0,
 		comments: d.comments || "",
 		employee_list: (d.employee_list || []).map((r) => ({
@@ -432,8 +440,10 @@ const breadcrumbs = computed(() => [
 			:date="form.date"
 			:project-label="projectLabel(form.project)"
 			:existing="[...inTable]"
+			:crew="form.crew"
 			@close="bulkOpen = false"
 			@add="addWorkers"
+			@crew="form.crew = $event"
 		/>
 	</DeskPage>
 
