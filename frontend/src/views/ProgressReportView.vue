@@ -244,13 +244,24 @@ function grnTone(s) {
 const showAllPhotos = ref(false);
 const PHOTO_CAP = { daily: 8, weekly: 12, monthly: 18 };
 const photos = computed(() => report.value?.photos || []);
-const shownPhotos = computed(() => {
-	const cap = PHOTO_CAP[period.value] ?? 12;
-	return showAllPhotos.value ? photos.value : photos.value.slice(0, cap);
-});
-const photosCurated = computed(
-	() => !showAllPhotos.value && photos.value.length > (PHOTO_CAP[period.value] ?? 12)
+const photoCap = computed(() => PHOTO_CAP[period.value] ?? 12);
+const shownPhotos = computed(() =>
+	showAllPhotos.value ? photos.value : photos.value.slice(0, photoCap.value)
 );
+const photosCurated = computed(
+	() => !showAllPhotos.value && photos.value.length > photoCap.value
+);
+// Distinct activities (by task caption) the photos span — for the curation caption.
+const photoActivityCount = computed(() => new Set(photos.value.map((p) => p.caption)).size);
+// The grid densifies as the set grows: a few photos get room; many go compact. Print
+// columns/height ride out as CSS custom properties so one @media print rule honours them.
+//   ≤4 → 2-up large · ≤9 → 3-up medium · 10+ → 4-up compact
+const photoLayout = computed(() => {
+	const n = shownPhotos.value.length;
+	if (n <= 4) return { grid: "grid-cols-1 sm:grid-cols-2", img: "h-52", cols: 2, printH: "58mm" };
+	if (n <= 9) return { grid: "grid-cols-2 sm:grid-cols-3", img: "h-36", cols: 3, printH: "40mm" };
+	return { grid: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", img: "h-28", cols: 4, printH: "30mm" };
+});
 
 function generatedOnLabel() {
 	return new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
@@ -762,7 +773,7 @@ function backToProject() {
 
 			<!-- Materials (deliveries always; commercial figures internal only) -->
 			<section class="report-section mb-6 page-break-inside-avoid">
-				<h2 class="rpt-h2">Materials</h2>
+				<h2 class="rpt-h2">{{ isClient ? "Materials received on site" : "Materials" }}</h2>
 				<div v-if="!isClient" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
 					<div class="p-3 border border-ink-200 rounded-lg">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -920,7 +931,7 @@ function backToProject() {
 
 			<!-- Delays & constraints -->
 			<section v-if="report.blockers.length" class="report-section mb-6">
-				<h2 class="rpt-h2">Delays &amp; constraints</h2>
+				<h2 class="rpt-h2">{{ isClient ? "Delays &amp; constraints" : "Issues raised" }}</h2>
 				<ul class="space-y-2">
 					<li
 						v-for="b in report.blockers"
@@ -982,35 +993,90 @@ function backToProject() {
 				</div>
 			</section>
 
-			<!-- Site photographs -->
-			<section v-if="photos.length" class="report-section mb-6">
+			<!-- Site photographs. A client progress report without photographs is a memo;
+			     with them it's evidence of the work. -->
+			<section class="report-section report-page-break mb-6">
 				<h2 class="rpt-h2">Site photographs</h2>
-				<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+				<!-- Say what the reader is looking at. A curated set that doesn't admit it's
+				     curated reads as "this is all that happened". -->
+				<div
+					v-if="photos.length"
+					class="flex flex-wrap items-center justify-between gap-2 mb-2.5"
+				>
+					<p class="text-[11px] text-ink-500">
+						<template v-if="photosCurated">
+							Showing {{ shownPhotos.length }} of {{ photos.length }} photographs — a spread across
+							{{ photoActivityCount }} activit{{ photoActivityCount === 1 ? "y" : "ies" }} recorded in
+							this period.
+						</template>
+						<template v-else>
+							{{ photos.length }} photograph{{ photos.length === 1 ? "" : "s" }} recorded in this
+							period.
+						</template>
+					</p>
+					<button
+						v-if="photos.length > photoCap"
+						type="button"
+						class="print:hidden text-[11px] text-brand-700 hover:underline"
+						@click="showAllPhotos = !showAllPhotos"
+					>
+						{{ showAllPhotos ? `Show a selection (${photoCap})` : `Show all ${photos.length}` }}
+					</button>
+				</div>
+
+				<div
+					v-if="shownPhotos.length"
+					class="grid gap-2.5 photo-grid"
+					:class="photoLayout.grid"
+					:style="{ '--photo-cols': photoLayout.cols, '--photo-h': photoLayout.printH }"
+				>
 					<figure
 						v-for="(p, i) in shownPhotos"
 						:key="i"
-						class="border border-ink-200 rounded-lg overflow-hidden"
+						class="border border-ink-200 rounded-lg overflow-hidden bg-white"
 					>
 						<img
+							v-if="p.url"
 							:src="p.url"
 							:alt="p.caption"
-							class="w-full h-36 object-cover bg-ink-50"
+							class="w-full object-cover bg-ink-50"
+							:class="photoLayout.img"
 							loading="lazy"
 						/>
-						<figcaption class="px-2 py-1.5">
-							<div class="text-[11px] text-ink-800 truncate">{{ p.caption }}</div>
-							<div class="text-[10px] text-ink-400">{{ fmtDate(p.taken_on) }}</div>
+						<div
+							v-else
+							class="w-full bg-ink-50 flex flex-col items-center justify-center gap-1 text-ink-400"
+							:class="photoLayout.img"
+						>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+								/>
+								<circle cx="12" cy="13" r="3" />
+							</svg>
+							<span class="text-[10px]">Photograph on file</span>
+						</div>
+						<figcaption class="px-2 py-1.5 border-t border-ink-100">
+							<div class="text-[10px] font-medium text-ink-800 truncate">{{ p.caption }}</div>
+							<div class="text-[10px] text-ink-500 truncate">
+								{{ fmtDate(p.taken_on) }}<template v-if="p.by"> · {{ p.by }}</template>
+							</div>
 						</figcaption>
 					</figure>
 				</div>
-				<button
-					v-if="photosCurated"
-					type="button"
-					class="text-xs text-brand-700 hover:underline mt-2 print:hidden"
-					@click="showAllPhotos = true"
-				>
-					Show all {{ photos.length }} photographs ▾
-				</button>
+				<div v-else class="text-xs text-ink-500 italic">
+					No site photographs were recorded in this period.
+				</div>
 			</section>
 
 			<footer
