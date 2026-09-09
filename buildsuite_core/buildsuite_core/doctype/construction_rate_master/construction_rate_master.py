@@ -13,13 +13,10 @@ class ConstructionRateMaster(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
+		from buildsuite_core.buildsuite_core.doctype.construction_rate_history.construction_rate_history import ConstructionRateHistory
 		from frappe.types import DF
 
-		from buildsuite_core.buildsuite_core.doctype.construction_rate_history.construction_rate_history import (
-			ConstructionRateHistory,
-		)
-
-		category: DF.Literal["Material", "Labour", "Equipment"]
+		category: DF.Literal["Material", "Labour", "Equipment", "Others"]
 		current_rate: DF.Currency
 		disabled: DF.Check
 		effective_date: DF.Date | None
