@@ -26,6 +26,7 @@ const store = useDataStore();
 const form = reactive({
 	fullName: "",
 	email: "",
+	mobile: "",
 	persona: "",
 	enabled: true,
 	sendWelcome: true,
@@ -73,6 +74,7 @@ async function save() {
 		const user = await createBuildsuiteUser({
 			full_name: form.fullName.trim(),
 			email: form.email.trim().toLowerCase(),
+			mobile_no: form.mobile.trim(),
 			persona: form.persona,
 			enabled: form.enabled ? 1 : 0,
 			send_welcome: form.sendWelcome ? 1 : 0,
@@ -149,6 +151,9 @@ async function save() {
 								formError = '';
 							"
 						/>
+					</DeskField>
+					<DeskField label="Mobile" hint="Optional — contact number for this user.">
+						<DeskInput v-model="form.mobile" type="tel" placeholder="+91 98xxx xxxxx" />
 					</DeskField>
 					<DeskField
 						label="Account status"
