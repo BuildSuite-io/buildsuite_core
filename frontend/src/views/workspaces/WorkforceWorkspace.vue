@@ -1,9 +1,9 @@
 <script setup>
-// Workforce landing. Reports stay hardcoded until "workforce" joins the
-// WORKSPACES allowlist in buildsuite_core/api/workspace_setting.py.
+// Workforce landing — greeting, a DocType shortcuts grid, and a Reports group.
 
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
+import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 
 const today = computed(() => {
 	const d = new Date();
@@ -16,26 +16,15 @@ const shortcuts = [
 	{ label: "Field Attendance", icon: "clipboard-list", to: "/field-attendance", cap: "fieldAttendance" },
 ];
 
-const reports = [
-	{
-		label: "Labour Attendance Register",
-		icon: "clipboard-list",
-		description: "Per-worker daily wages — Full Day / Half Day / Absent.",
-		to: "/labour-attendance",
-	},
-	{
-		label: "Overtime Attendance Register",
-		icon: "chart-line",
-		description: "Per-worker overtime hours × overtime rate.",
-		to: "/overtime-attendance",
-	},
-	{
-		label: "Site Attendance Summary",
-		icon: "hard-hat",
-		description: "Days worked, overtime and labour cost per site — the HR roll-up.",
-		to: "/workforce/attendance-summary",
-	},
-];
+// Report tiles are configured per workspace in Workspace Setting.
+const reports = ref([]);
+onMounted(async () => {
+	try {
+		reports.value = await getWorkspaceReports("workforce");
+	} catch {
+		reports.value = [];
+	}
+});
 </script>
 
 <template>
@@ -66,12 +55,13 @@ const reports = [
 				<div class="border-t border-ink-200 mb-3"></div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					<WorkspaceShortcut
-						v-for="r in reports"
-						:key="r.label"
+						v-for="(r, i) in reports"
+						:key="i"
 						:icon="r.icon"
 						:label="r.label"
 						:description="r.description"
-						:to="r.to"
+						:to="r.external ? null : r.route"
+						:href="r.external ? r.route : null"
 					>
 						<template #badge>
 							<span
