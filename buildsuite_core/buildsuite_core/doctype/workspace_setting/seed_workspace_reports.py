@@ -55,6 +55,24 @@ _SEED = {
 			"report": "Subcontractor Bill Register",
 			"description": "Running subcontractor bills with retention + net payable rollups.",
 		},
+		{
+			"label": "Client Bill Register",
+			"icon": "wallet",
+			"report": "Client Bill Register",
+			"description": "Client interim payment certificates, with total claimed + outstanding.",
+		},
+		{
+			"label": "Subcontractor Ledger",
+			"icon": "chart-line",
+			"report": "Subcontractor Ledger",
+			"description": "Per-sub: committed on WOs, billed net, retention held, still to bill.",
+		},
+		{
+			"label": "Cost Code Variance",
+			"icon": "chart-bar",
+			"report": "Cost Code Variance",
+			"description": "Planned vs Committed vs Actual per BOQ cost code, for a project.",
+		},
 	),
 	"procurement": (
 		{
