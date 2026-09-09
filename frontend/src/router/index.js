@@ -85,6 +85,7 @@ const PAGE_TITLES = {
 	"field-attendance-detail": "Field Attendance",
 	"labour-attendance": "Labour Attendance Register",
 	"overtime-attendance": "Overtime Attendance Register",
+	"attendance-summary": "Site Attendance Summary",
 	"scope-change": "Scope Change",
 	"project-finance": "Project Finance",
 	"petty-cash": "Petty Cash",
@@ -662,6 +663,11 @@ const routes = [
 				path: "overtime-attendance",
 				name: "overtime-attendance",
 				component: () => import("@/views/OvertimeAttendanceListView.vue"),
+			},
+			{
+				path: "workforce/attendance-summary",
+				name: "attendance-summary",
+				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
 			},
 			{
 				path: "scope-change",
