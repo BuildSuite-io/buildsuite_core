@@ -29,6 +29,12 @@ const reports = [
 		description: "Per-worker overtime hours × overtime rate.",
 		to: "/overtime-attendance",
 	},
+	{
+		label: "Site Attendance Summary",
+		icon: "hard-hat",
+		description: "Days worked, overtime and labour cost per site — the HR roll-up.",
+		to: "/workforce/attendance-summary",
+	},
 ];
 </script>
 
