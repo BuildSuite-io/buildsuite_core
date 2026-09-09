@@ -18,6 +18,7 @@ import { fetchProjectBounds } from "@/utils/projectBounds";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import { importProjectTemplate } from "@/data/projectTemplateApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -871,6 +872,42 @@ async function confirmDelete() {
 	}
 }
 
+// --- Import project template (⋯ menu) — append the category template's Work Packages / Stages
+//     / Tasks onto this EXISTING project. Existing data is kept (see import_project_template).
+//     Reuses `templateSummary` (already loaded from the project's category via loadTemplateSummary).
+const importOpen = ref(false);
+const importSaving = ref(false);
+const importOpts = ref({ workPackages: true, stages: true, tasks: true });
+
+function openImportTemplate() {
+	importOpts.value = { workPackages: true, stages: true, tasks: true };
+	importOpen.value = true;
+}
+const importDisabled = computed(
+	() =>
+		importSaving.value ||
+		!(importOpts.value.workPackages || importOpts.value.stages || importOpts.value.tasks)
+);
+async function runImportTemplate() {
+	importSaving.value = true;
+	try {
+		const r = await importProjectTemplate(resolvedProjectId.value, importOpts.value);
+		importOpen.value = false;
+		showToast(
+			`Imported ${r.work_packages} work packages, ${r.tasks} tasks and ${r.stages} stages.`
+		);
+		// Refresh the affected lists so the imported records appear straight away.
+		workPackagesResource.value?.reload?.();
+		tasksResource.value?.reload?.();
+		stageListRef.value?.reload?.();
+		projectResource.value?.reload?.();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary || "Failed to import template", "error");
+	} finally {
+		importSaving.value = false;
+	}
+}
+
 function addSubproject() {
 	// Nested subprojects are not allowed — guard the action even though the
 	// entry button is hidden by `isSubproject`.
@@ -1114,7 +1151,7 @@ usePageTitle(() => project.value?.name);
 			>
 				Edit
 			</button>
-			<div v-if="canDelete('project')" class="relative">
+			<div v-if="canEdit('project') || canDelete('project')" class="relative">
 				<button
 					type="button"
 					class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-600 flex items-center"
@@ -1138,6 +1175,23 @@ usePageTitle(() => project.value?.name);
 					role="menu"
 				>
 					<button
+						v-if="canEdit('project')"
+						type="button"
+						role="menuitem"
+						class="w-full text-left px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+						@click="
+							menuOpen = false;
+							openImportTemplate();
+						"
+					>
+						Import project template
+					</button>
+					<div
+						v-if="canEdit('project') && canDelete('project')"
+						class="my-1 border-t border-ink-100"
+					></div>
+					<button
+						v-if="canDelete('project')"
 						type="button"
 						role="menuitem"
 						class="w-full text-left px-3 py-1.5 text-xs text-danger-700 hover:bg-danger-50"
@@ -1854,6 +1908,91 @@ usePageTitle(() => project.value?.name);
 			:loading="deleteLoading"
 			@confirm="confirmDelete"
 		/>
+
+		<!-- Import project template — append the category template's layers onto this project -->
+		<Teleport to="body">
+			<div
+				v-if="importOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6"
+				@click.self="importOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-md shadow-xl flex flex-col"
+					style="border-radius: 12px"
+					@click.stop
+				>
+					<header
+						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
+					>
+						<h2 class="text-sm font-semibold text-ink-900">Import project template</h2>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-900"
+							aria-label="Close"
+							@click="importOpen = false"
+						>
+							✕
+						</button>
+					</header>
+
+					<div class="px-4 py-4 space-y-3">
+						<template v-if="templateSummary">
+							<p class="text-xs text-ink-600">
+								From the <strong>{{ project.type }}</strong> template. Your existing
+								tasks, stages and work packages are kept — the template is added on
+								top.
+							</p>
+							<label class="flex items-center gap-2 text-sm text-ink-800">
+								<input v-model="importOpts.workPackages" type="checkbox" />
+								Work Packages
+								<span class="text-ink-400"
+									>({{ templateSummary.work_package_count }})</span
+								>
+							</label>
+							<label class="flex items-center gap-2 text-sm text-ink-800">
+								<input v-model="importOpts.stages" type="checkbox" />
+								Stages
+								<span class="text-ink-400">({{ templateSummary.stage_count }})</span>
+							</label>
+							<label class="flex items-center gap-2 text-sm text-ink-800">
+								<input v-model="importOpts.tasks" type="checkbox" />
+								Tasks
+								<span class="text-ink-400">({{ templateSummary.task_count }})</span>
+							</label>
+						</template>
+						<p v-else class="text-sm text-ink-500">
+							No template is configured for this project's category<template
+								v-if="project?.type"
+							>
+								("{{ project.type }}")</template
+							>.
+						</p>
+					</div>
+
+					<footer
+						class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
+							@click="importOpen = false"
+						>
+							Cancel
+						</button>
+						<button
+							v-if="templateSummary"
+							type="button"
+							class="text-xs desk-save-btn"
+							:disabled="importDisabled"
+							:class="{ 'opacity-50 cursor-not-allowed': importDisabled }"
+							@click="runImportTemplate"
+						>
+							{{ importSaving ? "Importing…" : "Import" }}
+						</button>
+					</footer>
+				</div>
+			</div>
+		</Teleport>
 	</DeskPage>
 
 	<AccessDenied
