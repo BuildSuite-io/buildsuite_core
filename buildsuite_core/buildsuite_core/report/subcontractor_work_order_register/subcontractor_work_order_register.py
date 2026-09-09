@@ -52,10 +52,10 @@ def execute(filters=None):
 			wo.delivery_type, wo.total_value, wo.status,
 			LEAST(100, ROUND(IFNULL(
 				(SELECT SUM(sb.gross) FROM `tabSubcontractor Bill` sb
-					WHERE sb.work_order = wo.name AND sb.docstatus < 2), 0)
+					WHERE sb.work_order = wo.name AND sb.docstatus = 1), 0)
 				/ NULLIF(wo.total_value, 0) * 100, 1)) AS percent_billed
 		FROM `tabSubcontractor Work Order` wo
-		WHERE wo.docstatus < 2 """ + conditions + """
+		WHERE wo.docstatus = 1 """ + conditions + """
 		ORDER BY wo.date DESC, wo.name DESC
 		""",
 		filters,

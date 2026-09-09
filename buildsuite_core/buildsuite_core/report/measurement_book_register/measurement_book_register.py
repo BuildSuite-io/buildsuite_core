@@ -51,7 +51,7 @@ def execute(filters=None):
 			(SELECT COUNT(*) FROM `tabMeasurement Book Entry` e WHERE e.parent = mb.name) AS entries,
 			mb.measured_total AS measured, mb.status
 		FROM `tabMeasurement Book` mb
-		WHERE mb.docstatus < 2 """ + conditions + """
+		WHERE mb.docstatus = 1 """ + conditions + """
 		ORDER BY mb.date DESC, mb.name DESC
 		""",
 		filters,

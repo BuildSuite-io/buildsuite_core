@@ -51,7 +51,7 @@ def execute(filters=None):
 		SELECT sb.name AS bill, sb.subcontractor, sb.project, sb.date,
 			sb.gross, sb.retention_amount AS retention, sb.net_payable, sb.status
 		FROM `tabSubcontractor Bill` sb
-		WHERE sb.docstatus < 2 """ + conditions + """
+		WHERE sb.docstatus = 1 """ + conditions + """
 		ORDER BY sb.date DESC, sb.name DESC
 		""",
 		filters,
