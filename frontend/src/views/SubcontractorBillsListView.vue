@@ -2,7 +2,7 @@
 // Subcontractor Bill list — Desk-styled. Each bill generates a Purchase
 // Invoice on submit; the list shows gross / retention / net payable + status.
 
-import { computed, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { listBills } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
@@ -12,6 +12,10 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import ReportFilters from "@/components/reports/ReportFilters.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
@@ -46,8 +50,35 @@ async function load() {
 onMounted(load);
 
 const search = ref("");
+
+// Register filters by party, project, posting state and period — mirrors the other registers.
+const BLANK = { sub: "", project: "", state: "", from: "", to: "" };
+const f = reactive({ ...BLANK });
+const anyFilter = computed(
+	() => Object.keys(BLANK).some((k) => f[k] !== BLANK[k]) || !!search.value
+);
+function clearFilters() {
+	Object.assign(f, BLANK);
+	search.value = "";
+}
+const subOptions = computed(() =>
+	[...new Set(allBills.value.map((b) => b.subcontractor).filter(Boolean))]
+		.map((s) => ({ value: s, label: s }))
+		.sort((a, b) => a.label.localeCompare(b.label))
+);
+const projectOptions = computed(() =>
+	[...new Set(allBills.value.map((b) => b.project).filter(Boolean))]
+		.map((p) => ({ value: p, label: projectName(p) }))
+		.sort((a, b) => a.label.localeCompare(b.label))
+);
+
 const rows = computed(() => {
 	let data = allBills.value;
+	if (f.sub) data = data.filter((b) => b.subcontractor === f.sub);
+	if (f.project) data = data.filter((b) => b.project === f.project);
+	if (f.state) data = data.filter((b) => (b.status || "Draft") === f.state);
+	if (f.from) data = data.filter((b) => (b.date || "") >= f.from);
+	if (f.to) data = data.filter((b) => (b.date || "") <= f.to);
 	const q = search.value.trim().toLowerCase();
 	if (q)
 		data = data.filter(
@@ -93,6 +124,62 @@ function onRowClick(row) {
 				>+ New</RouterLink
 			>
 		</template>
+
+		<ReportFilters
+			:active="anyFilter"
+			:shown="rows.length"
+			:total="allBills.length"
+			noun="bills"
+			@clear="clearFilters"
+		>
+			<label class="flex items-center gap-1.5">
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+					>Subcontractor</span
+				>
+				<span class="w-52 inline-block">
+					<DeskSearchableSelect
+						v-model="f.sub"
+						:options="subOptions"
+						allow-clear
+						placeholder="All subcontractors"
+						search-placeholder="Search…"
+					/>
+				</span>
+			</label>
+			<label class="flex items-center gap-1.5">
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+					>Project</span
+				>
+				<span class="w-52 inline-block">
+					<DeskSearchableSelect
+						v-model="f.project"
+						:options="projectOptions"
+						allow-clear
+						placeholder="All projects"
+						search-placeholder="Search…"
+					/>
+				</span>
+			</label>
+			<label class="flex items-center gap-1.5">
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+					>State</span
+				>
+				<DeskSelect v-model="f.state" class="!w-36">
+					<option value="">Any</option>
+					<option value="Draft">Draft</option>
+					<option value="Submitted">Submitted</option>
+					<option value="Cancelled">Cancelled</option>
+				</DeskSelect>
+			</label>
+			<label class="flex items-center gap-1.5">
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+					>Billed</span
+				>
+				<DeskInput v-model="f.from" type="date" class="!w-36" />
+				<span class="text-[11px] text-ink-400">to</span>
+				<DeskInput v-model="f.to" type="date" class="!w-36" />
+			</label>
+		</ReportFilters>
 
 		<DeskList
 			v-model="search"
