@@ -46,6 +46,10 @@ def execute(filters=None):
 		return columns, [], None, None, []
 
 	conditions = ""
+	if filters.get("customer"):
+		conditions += " AND si.customer = %(customer)s"
+	if filters.get("invoice"):
+		conditions += " AND si.name = %(invoice)s"
 	if filters.get("from_date"):
 		conditions += " AND si.posting_date >= %(from_date)s"
 	if filters.get("to_date"):
