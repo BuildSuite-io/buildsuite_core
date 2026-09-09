@@ -398,6 +398,7 @@ def create_registers(doc_name):
 				reference=doc.name,
 				comments=row.comments,
 				wage_rate=row.labour_rate,
+				task=doc.task,
 			)
 
 		if flt(row.overtime_hours) > 0 and row.employee not in existing_ot:
@@ -409,6 +410,7 @@ def create_registers(doc_name):
 				reference=doc.name,
 				comments=row.comments,
 				overtime_rate=row.overtime_rate,
+				task=doc.task,
 			)
 
 
@@ -427,7 +429,7 @@ def cancel_registers(doc_name):
 			reg.cancel()
 
 
-def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate):
+def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate, task=None):
 	doc = frappe.get_doc(
 		{
 			"doctype": "Labour Attendance Register",
@@ -436,6 +438,7 @@ def create_labour_attendance(employee, date, project, status, reference, comment
 			"project": project,
 			"status": status,
 			"wage_rate": wage_rate,
+			"task": task,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -445,7 +448,7 @@ def create_labour_attendance(employee, date, project, status, reference, comment
 
 
 def create_overtime_attendance(
-	employee, date, project, overtime_hours, reference, comments, overtime_rate
+	employee, date, project, overtime_hours, reference, comments, overtime_rate, task=None
 ):
 	doc = frappe.get_doc(
 		{
@@ -455,6 +458,7 @@ def create_overtime_attendance(
 			"project": project,
 			"overtime_rate": overtime_rate,
 			OT_HOURS_FIELD: overtime_hours,
+			"task": task,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
