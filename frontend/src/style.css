@@ -291,9 +291,10 @@
   /* Dark-mode fidelity ported from the prototype (buildsuite-core-demo): opacity-suffixed
      surfaces, status/brand borders + badges, dark primary buttons and <select> styling that had
      no dark remap in the SPA and rendered washed-out / over-bright against the dark canvas. */
-  html.dark select {
- background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23A3A3A3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
- }
+  /* NB: the prototype's `html.dark select { background-image: <chevron> }` is intentionally NOT
+     ported — the SPA's selects use native appearance (no base `select` arrow with
+     background-repeat/position), so that image tiled across every select in dark mode. The
+     option-list colour rule below is safe and kept. */
   html.dark .prod-primary { background-color: #F5F5F5; color: #171717; }
   html.dark .prod-primary:hover:not(:disabled) { background-color: #E5E5E5; }
   html.dark .prod-primary-off { background-color: #3A3A3A; color: #A3A3A3; }
