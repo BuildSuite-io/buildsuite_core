@@ -74,6 +74,26 @@ _SEED = {
 			"description": "Planned vs Committed vs Actual per BOQ cost code, for a project.",
 		},
 	),
+	"workforce": (
+		{
+			"label": "Labour Attendance Register",
+			"icon": "clipboard-list",
+			"route": "/labour-attendance",
+			"description": "Per-worker daily wages — Full Day / Half Day / Absent.",
+		},
+		{
+			"label": "Overtime Attendance Register",
+			"icon": "chart-line",
+			"route": "/overtime-attendance",
+			"description": "Per-worker overtime hours × overtime rate.",
+		},
+		{
+			"label": "Site Attendance Summary",
+			"icon": "hard-hat",
+			"route": "/workforce/attendance-summary",
+			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
+		},
+	),
 	"procurement": (
 		{
 			"label": "Requests waiting to be ordered",
