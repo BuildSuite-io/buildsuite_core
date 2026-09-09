@@ -52,6 +52,15 @@ const { projectOptions } = useProjectOptions();
 				placeholder="Deploy to task…"
 			/>
 		</DeskField>
+		<DeskField label="Crew (optional)" hint="Records which gang worked this sheet.">
+			<DeskLinkPicker
+				v-model="form.crew"
+				doctype="Crew"
+				label-field="crew_name"
+				value-field="name"
+				placeholder="Pick a crew…"
+			/>
+		</DeskField>
 		<DeskField label="Overtime hours" hint="Applies to all rows.">
 			<DeskInput
 				:model-value="form.overtime_hours"

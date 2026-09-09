@@ -32,6 +32,23 @@ STATUS_MAP = {
 # Statuses that may carry overtime hours
 OT_ALLOWED_STATUSES = ("Present", "Half Day", "Overtime Only")
 
+# Share of the daily wage each status earns — mirrors
+# LabourAttendanceRegister.update_daily_wages().
+WAGE_FACTOR = {"Present": 1.0, "Half Day": 0.5}
+
+
+def sheet_labour_cost(doc):
+	"""Each row's daily share plus its overtime.
+
+	From the rows, not the registers: those only exist after submit, so a draft
+	would report a zero that reads as "this cost nothing".
+	"""
+	return sum(
+		flt(row.labour_rate) * WAGE_FACTOR.get(row.status, 0.0)
+		+ flt(row.overtime_rate) * flt(row.overtime_hours)
+		for row in doc.employee_list
+	)
+
 
 class FieldAttendance(Document):
 	# begin: auto-generated types
@@ -45,6 +62,7 @@ class FieldAttendance(Document):
 
 		amended_from: DF.Link | None
 		comments: DF.SmallText | None
+		crew: DF.Link | None
 		date: DF.Date
 		employee_list: DF.Table[FieldAttendanceEmployee]
 		employees_count: DF.Int

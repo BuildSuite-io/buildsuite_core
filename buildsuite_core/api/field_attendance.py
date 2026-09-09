@@ -15,6 +15,7 @@ from frappe import _
 
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
 	get_assigned_employees,
+	sheet_labour_cost,
 )
 
 FIELD_ATTENDANCE = "Field Attendance"
@@ -40,6 +41,9 @@ def _serialize(doc) -> dict:
 		"status": doc.status,
 		"task": doc.task,
 		"task_subject": frappe.db.get_value("Task", doc.task, "subject") if doc.task else None,
+		"crew": doc.crew,
+		"crew_name": frappe.db.get_value("Crew", doc.crew, "crew_name") if doc.crew else None,
+		"labour_cost": sheet_labour_cost(doc),
 		"overtime_hours": doc.overtime_hours,
 		"comments": doc.comments,
 		"docstatus": doc.docstatus,
@@ -74,6 +78,7 @@ def save_field_attendance(
 	date: str | None = None,
 	status: str | None = None,
 	task: str | None = None,
+	crew: str | None = None,
 	overtime_hours: float | None = None,
 	comments: str | None = None,
 	employee_list: str | None = None,
@@ -109,6 +114,8 @@ def save_field_attendance(
 		doc.status = status
 	if task is not None:
 		doc.task = task
+	if crew is not None:
+		doc.crew = crew
 	if overtime_hours is not None:
 		doc.overtime_hours = overtime_hours
 	if comments is not None:
