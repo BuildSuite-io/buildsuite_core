@@ -116,6 +116,7 @@ const PAGE_TITLES = {
 	"settings-persona-new": "New Persona",
 	"settings-persona-detail": "Persona",
 	forbidden: "Access Denied",
+	"not-found": "Not Found",
 };
 
 const routes = [
@@ -951,7 +952,12 @@ const routes = [
 			target: route.query.target || "/home",
 		}),
 	},
-	{ path: "/:pathMatch(.*)*", redirect: "/home" },
+	// A component, not a redirect, so the mistyped URL stays visible.
+	{
+		path: "/:pathMatch(.*)*",
+		name: "not-found",
+		component: () => import("@/views/NotFoundView.vue"),
+	},
 ];
 
 const router = createRouter({
