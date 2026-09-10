@@ -12,79 +12,16 @@ LETTER_HEAD = "BuildSuite Standard"
 WO_PRINT_FORMAT = "Subcontractor Work Order"
 PO_PRINT_FORMAT = "Purchase Order"
 
-def build_letter_head_html(company_name: str, logo: str | None = None, subtext: str | None = None) -> str:
-	"""Build the Letter Head header HTML from a company's branding: the uploaded logo,
-	the company name, and the free-text subtext (address / GSTIN / contact). Text is
-	escaped; subtext newlines are honoured via white-space:pre-line."""
-	from frappe.utils import escape_html
-
-	logo_html = (
-		f'<img src="{escape_html(logo)}" alt="" style="height:44px; width:auto; object-fit:contain;" />'
-		if logo
-		else ""
-	)
-	subtext_html = (
-		f'<div style="font-size:11px; color:#64748b; margin-top:2px; white-space:pre-line;">'
-		f"{escape_html(subtext)}</div>"
-		if subtext
-		else ""
-	)
-	return (
-		'<div style="display:flex; align-items:center; gap:12px; padding:4px 0;">'
-		f"{logo_html}"
-		"<div>"
-		f'<div style="font-size:16px; font-weight:600; color:#0f172a;">{escape_html(company_name)}</div>'
-		f"{subtext_html}"
-		"</div>"
-		"</div>"
-	)
-
-
-def rebuild_letter_head(company: str | None = None) -> None:
-	"""(Re)build the shared "BuildSuite Standard" Letter Head from a Company's branding.
-
-	Called on seed and whenever a Company is saved (hooks.py Company.on_update), so every
-	print format — which renders the default Letter Head — reflects the current logo +
-	subtext. Reads the branding fields defensively so it is safe before/without the custom
-	fields (fresh install ordering)."""
-	from buildsuite_core.utils.project import default_company
-
-	company = company or default_company()
-	if not company:
-		return
-
-	meta = frappe.get_meta("Company")
-	name = frappe.db.get_value("Company", company, "company_name") or company
-	logo = (
-		frappe.db.get_value("Company", company, "custom_company_logo")
-		if meta.has_field("custom_company_logo")
-		else None
-	)
-	subtext = (
-		frappe.db.get_value("Company", company, "custom_letter_head_subtext")
-		if meta.has_field("custom_letter_head_subtext")
-		else None
-	)
-	content = build_letter_head_html(name, logo, subtext)
-
-	if frappe.db.exists("Letter Head", LETTER_HEAD):
-		lh = frappe.get_doc("Letter Head", LETTER_HEAD)
-		lh.source = "HTML"
-		lh.content = content
-		lh.is_default = 1
-		lh.disabled = 0
-		lh.save(ignore_permissions=True)
-	else:
-		frappe.get_doc(
-			{
-				"doctype": "Letter Head",
-				"letter_head_name": LETTER_HEAD,
-				"source": "HTML",
-				"content": content,
-				"is_default": 1,
-				"disabled": 0,
-			}
-		).insert(ignore_permissions=True)
+_LETTER_HEAD_HTML = """
+<div style="display:flex; align-items:center; gap:12px; padding:4px 0;">
+	<div style="width:44px; height:44px; border:1px dashed #cbd5e1; border-radius:6px;
+		display:flex; align-items:center; justify-content:center; font-size:9px; color:#94a3b8;">LOGO</div>
+	<div>
+		<div style="font-size:16px; font-weight:600; color:#0f172a;">BuildSuite</div>
+		<div style="font-size:11px; color:#94a3b8; font-style:italic;">Construction OS — registered address &middot; GSTIN to be configured</div>
+	</div>
+</div>
+"""
 
 # Jinja/HTML body for the Subcontractor Work Order. The letter head is prepended by
 # the print engine; this template is the document body only.
@@ -121,7 +58,6 @@ _WO_PRINT_HTML = """
 {% set retention = (doc.total_value or 0) * (doc.retention_percent or 0) / 100.0 %}
 
 <div class="wo-print">
-	{% if letter_head and not no_letterhead %}<div style="margin-bottom:16px;">{{ letter_head }}</div>{% endif %}
 	<div class="wo-title-row">
 		<div>
 			<div class="wo-title">WORK ORDER</div>
@@ -251,7 +187,6 @@ _PO_PRINT_HTML = """
 {% set currency = frappe.db.get_value("Company", doc.company, "default_currency") if doc.company else None %}
 
 <div class="po-print">
-	{% if letter_head and not no_letterhead %}<div style="margin-bottom:16px;">{{ letter_head }}</div>{% endif %}
 	<div class="po-title-row">
 		<div>
 			<div class="po-title">PURCHASE ORDER</div>
@@ -351,33 +286,21 @@ def seed_print_assets():
 	_seed_letter_head()
 	_seed_wo_print_format()
 	_seed_po_print_format()
-	# Make the seeded formats the doctype default so the SPA print view (which reads
-	# meta.default_print_format) shows them out of the box. Only when nothing is set —
-	# never clobber an admin's Desk choice (Customize Form → Default Print Format).
-	_set_default_print_format("Subcontractor Work Order", WO_PRINT_FORMAT)
-	_set_default_print_format("Purchase Order", PO_PRINT_FORMAT)
-
-
-def _set_default_print_format(doctype: str, print_format: str) -> None:
-	if frappe.get_meta(doctype).default_print_format:
-		return  # respect the existing default (Desk override or a prior seed)
-	frappe.make_property_setter(
-		{
-			"doctype": doctype,
-			"doctype_or_field": "DocType",
-			"property": "default_print_format",
-			"value": print_format,
-			"property_type": "Data",
-		}
-	)
-	frappe.clear_cache(doctype=doctype)
 
 
 def _seed_letter_head():
-	# Build the letter head from the default company's branding (logo + subtext). On a
-	# fresh site with no branding yet this yields a clean name-only header; it is rebuilt
-	# whenever the company is saved (hooks.py Company.on_update → rebuild_letter_head).
-	rebuild_letter_head()
+	if frappe.db.exists("Letter Head", LETTER_HEAD):
+		return
+	frappe.get_doc(
+		{
+			"doctype": "Letter Head",
+			"letter_head_name": LETTER_HEAD,
+			"source": "HTML",
+			"content": _LETTER_HEAD_HTML,
+			"is_default": 1,
+			"disabled": 0,
+		}
+	).insert(ignore_permissions=True)
 
 
 def _seed_wo_print_format():
