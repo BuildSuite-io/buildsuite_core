@@ -29,12 +29,20 @@ def active_company():
 
 
 @frappe.whitelist()
-def company_branding() -> dict:
-	"""The default company's branding — logo + letter-head subtext — for the Settings page
-	and for confirming what the shared Letter Head is built from."""
-	company = default_company()
-	if not company:
+def company_branding(company: str | None = None) -> dict:
+	"""A company's branding — logo + letter-head subtext — for the Settings page and for
+	confirming what its Letter Head is built from. Defaults to the working (default) company."""
+	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (
+		letter_head_name,
+	)
+
+	company = company or default_company()
+	if not company or not frappe.db.exists("Company", company):
 		return {}
+	if not frappe.has_permission("Company", ptype="read", doc=company):
+		frappe.throw(
+			_("You do not have access to company {0}.").format(company), frappe.PermissionError
+		)
 	meta = frappe.get_meta("Company")
 	return {
 		"company": company,
@@ -45,22 +53,22 @@ def company_branding() -> dict:
 		"letter_head_subtext": frappe.db.get_value("Company", company, "custom_letter_head_subtext")
 		if meta.has_field("custom_letter_head_subtext")
 		else None,
-		"letter_head": "BuildSuite Standard",
+		"letter_head": letter_head_name(company),
 	}
 
 
 @frappe.whitelist()
 def update_company_branding(
-	logo: str | None = None, letter_head_subtext: str | None = None
+	logo: str | None = None, letter_head_subtext: str | None = None, company: str | None = None
 ) -> dict:
-	"""Set the default company's logo / letter-head subtext (administrator only). Saving the
-	Company fires Company.on_update → rebuild_letter_head, so every print format immediately
-	reflects the new branding. Pass a field to change it; omit it to leave it unchanged
-	(an empty string clears it)."""
+	"""Set a company's logo / letter-head subtext (administrator only); defaults to the working
+	(default) company. Saving the Company fires Company.on_update → rebuild_letter_head, so that
+	company's letter head (and any print of its documents) immediately reflects the new branding.
+	Pass a field to change it; omit it to leave it unchanged (an empty string clears it)."""
 	_require_admin()
-	company = default_company()
-	if not company:
-		frappe.throw(_("No default company is configured."))
+	company = company or default_company()
+	if not company or not frappe.db.exists("Company", company):
+		frappe.throw(_("No such company."))
 
 	doc = frappe.get_doc("Company", company)
 	if logo is not None:
@@ -68,7 +76,25 @@ def update_company_branding(
 	if letter_head_subtext is not None:
 		doc.custom_letter_head_subtext = letter_head_subtext or None
 	doc.save(ignore_permissions=True)
-	return company_branding()
+	return company_branding(company)
+
+
+@frappe.whitelist()
+def company_projects(company: str) -> list:
+	"""Projects that belong to a company — for the Company detail page's linked-projects list
+	(and its delete-safety read-out). Respects the caller's project permissions."""
+	if not company or not frappe.db.exists("Company", company):
+		return []
+	rows = frappe.get_all(
+		"Project",
+		filters={"company": company},
+		fields=["name", "project_name", "custom_project_id"],
+		order_by="project_name asc",
+	)
+	return [
+		{"id": r.name, "name": r.project_name or r.name, "code": r.custom_project_id or r.name}
+		for r in rows
+	]
 
 
 @frappe.whitelist()

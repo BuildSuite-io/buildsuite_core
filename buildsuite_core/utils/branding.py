@@ -3,25 +3,20 @@
 
 """Company branding → Letter Head bridge.
 
-The shared "BuildSuite Standard" Letter Head (used by every print format) is a
-materialised snapshot of the default company's logo + subtext. This doc_event rebuilds
-it whenever the company is saved — in Desk or via the SPA — so print formats always show
-the current branding.
+Each company has its own Letter Head — a materialised snapshot of that company's logo +
+subtext — so a printed document carries the branding of the company that issued it (the
+default company's head is is_default, the fallback for documents with no company). This
+doc_event rebuilds a company's letter head whenever it is saved, in Desk or via the SPA, so
+print formats always show the current branding.
 """
 
-import frappe
+import frappe  # noqa: F401 (kept for hook signature parity / future use)
 
 
 def rebuild_letter_head_on_company_change(doc, method=None):
-	"""Company.on_update hook: refresh the letter head from the default company's branding.
-
-	Single-company seam — only the default company drives the (single, is_default) letter
-	head, so a save on any other company is a no-op here.
-	"""
+	"""Company.on_update hook: rebuild THIS company's letter head from its branding."""
 	from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (
 		rebuild_letter_head,
 	)
-	from buildsuite_core.utils.project import default_company
 
-	if doc.name == default_company():
-		rebuild_letter_head(doc.name)
+	rebuild_letter_head(doc.name)

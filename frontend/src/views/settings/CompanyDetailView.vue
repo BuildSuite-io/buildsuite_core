@@ -21,6 +21,7 @@ import {
 	getCompanyBranding,
 	updateCompanyBranding,
 	uploadCompanyLogo,
+	getCompanyProjects,
 } from "@/data/companyApi";
 import { showToast } from "@/utils/appToast";
 
@@ -41,7 +42,16 @@ const COLOR_OPTIONS = [
 ];
 
 const company = computed(() => store.companyById(props.id));
-const linkedProjects = computed(() => store.projectsByCompany(props.id));
+// Real projects that belong to this company (backend, permission-respecting) — not the
+// prototype's local projects slice.
+const linkedProjects = ref([]);
+async function loadLinkedProjects() {
+	try {
+		linkedProjects.value = (await getCompanyProjects(props.id)) || [];
+	} catch {
+		linkedProjects.value = [];
+	}
+}
 const editing = ref(false);
 const form = ref({});
 
@@ -142,7 +152,7 @@ const brandDirty = computed(
 async function loadBrand() {
 	brand.value.loading = true;
 	try {
-		const b = await getCompanyBranding();
+		const b = await getCompanyBranding(props.id);
 		brandCompanyName.value = b.company_name || b.company || "";
 		letterHeadName.value = b.letter_head || "";
 		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
@@ -184,12 +194,13 @@ async function saveBrand() {
 	brand.value.saving = true;
 	try {
 		const b = await updateCompanyBranding({
+			company: props.id,
 			logo: brandForm.value.logo,
 			letter_head_subtext: brandForm.value.subtext,
 		});
 		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
 		brandForm.value = { ...brandLoaded.value };
-		showToast("Branding saved — letter head updated across all print formats.", "success");
+		showToast("Branding saved — this company's letter head updated.", "success");
 	} catch (err) {
 		showToast(err.message || "Save failed", "error");
 	} finally {
@@ -197,10 +208,13 @@ async function saveBrand() {
 	}
 }
 
+// Branding + linked projects are per-company — (re)load for whichever company is being viewed.
 watch(
-	isActiveCompany,
-	(active) => {
-		if (active) loadBrand();
+	() => props.id,
+	(id) => {
+		if (!id) return;
+		loadBrand();
+		loadLinkedProjects();
 	},
 	{ immediate: true }
 );
@@ -302,14 +316,14 @@ watch(
 					</DeskField>
 				</DeskSection>
 				<!-- Branding & Letter Head — real Company fields; drives print letter heads -->
-				<DeskSection v-if="isActiveCompany" title="Branding & Letter Head">
+				<DeskSection title="Branding & Letter Head">
 					<div class="md:col-span-2 space-y-4">
 						<p class="text-[11px] text-ink-500">
 							Logo and subtext for
 							<b>{{ brandCompanyName || company.name }}</b>, materialised into the
 							<span class="font-mono">{{ letterHeadName || "letter head" }}</span>
-							that fronts every print format (Work Order, Purchase Order, Invoice…).
-							Per-company branding follows when multi-company support lands.
+							that fronts every print of this company's documents (Work Order, Purchase
+							Order, Invoice…). No logo? The letter head shows the company's initials.
 						</p>
 
 						<!-- Logo -->

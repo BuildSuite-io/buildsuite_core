@@ -12,41 +12,80 @@ LETTER_HEAD = "BuildSuite Standard"
 WO_PRINT_FORMAT = "Subcontractor Work Order"
 PO_PRINT_FORMAT = "Purchase Order"
 
+_LEGAL_SUFFIXES = {"pvt", "private", "ltd", "limited", "llp", "inc", "co", "and", "&"}
+
+
+def company_monogram(company_name: str) -> str:
+	"""Up to two initials for the logo placeholder, legal suffixes dropped so
+	"Acme Commercial Pvt Ltd" → "AC", not "ACPL". Falls back to "BS"."""
+	import re
+
+	words = [w for w in re.split(r"\s+", company_name or "") if w and w.lower() not in _LEGAL_SUFFIXES]
+	initials = "".join(w[0].upper() for w in words[:2])
+	return initials or "BS"
+
+
 def build_letter_head_html(company_name: str, logo: str | None = None, subtext: str | None = None) -> str:
-	"""Build the Letter Head header HTML from a company's branding: the uploaded logo,
-	the company name, and the free-text subtext (address / GSTIN / contact). Text is
+	"""Build the Letter Head header HTML from a company's branding: the uploaded logo (or a
+	brand-coloured monogram of the company's initials when there is none — an empty box reads
+	as a missing image, a monogram reads as a letter head), the company name, and the free-text
+	subtext (address / GSTIN / contact). Mirrors the prototype's shared LetterHead. Text is
 	escaped; subtext newlines are honoured via white-space:pre-line."""
 	from frappe.utils import escape_html
 
-	logo_html = (
-		f'<img src="{escape_html(logo)}" alt="" style="height:44px; width:auto; object-fit:contain;" />'
-		if logo
-		else ""
-	)
+	font = "-apple-system, 'Segoe UI', Roboto, sans-serif"
+	if logo:
+		mark_html = (
+			f'<img src="{escape_html(logo)}" alt="" '
+			'style="height:48px; width:auto; object-fit:contain; flex-shrink:0;" />'
+		)
+	else:
+		mark_html = (
+			'<div style="height:48px; width:48px; border-radius:8px; background:#16A34A; '
+			'color:#ffffff; display:flex; align-items:center; justify-content:center; '
+			f'font-weight:600; font-size:18px; flex-shrink:0; font-family:{font};">'
+			f"{escape_html(company_monogram(company_name))}</div>"
+		)
 	subtext_html = (
-		f'<div style="font-size:11px; color:#64748b; margin-top:2px; white-space:pre-line;">'
+		'<div style="font-size:11px; color:#475569; margin-top:3px; white-space:pre-line; '
+		'line-height:1.4;">'
 		f"{escape_html(subtext)}</div>"
 		if subtext
 		else ""
 	)
 	return (
-		'<div style="display:flex; align-items:center; gap:12px; padding:4px 0;">'
-		f"{logo_html}"
-		"<div>"
-		f'<div style="font-size:16px; font-weight:600; color:#0f172a;">{escape_html(company_name)}</div>'
+		'<div style="display:flex; align-items:center; gap:12px; padding:0 0 10px 0; '
+		f'border-bottom:2px solid #0f172a; font-family:{font};">'
+		f"{mark_html}"
+		'<div style="min-width:0;">'
+		'<div style="font-size:18px; font-weight:600; color:#0f172a; line-height:1.2;">'
+		f"{escape_html(company_name)}</div>"
 		f"{subtext_html}"
 		"</div>"
 		"</div>"
 	)
 
 
-def rebuild_letter_head(company: str | None = None) -> None:
-	"""(Re)build the shared "BuildSuite Standard" Letter Head from a Company's branding.
+def letter_head_name(company: str) -> str:
+	"""The Letter Head name for a company. The default company keeps the historical
+	"BuildSuite Standard" name (which stays is_default, the fallback for documents with no
+	company); every other company gets its own "BuildSuite — <name>" head."""
+	from buildsuite_core.utils.project import default_company
 
-	Called on seed and whenever a Company is saved (hooks.py Company.on_update), so every
-	print format — which renders the default Letter Head — reflects the current logo +
-	subtext. Reads the branding fields defensively so it is safe before/without the custom
-	fields (fresh install ordering)."""
+	if company == default_company():
+		return LETTER_HEAD
+	name = frappe.db.get_value("Company", company, "company_name") or company
+	return f"BuildSuite — {name}"
+
+
+def rebuild_letter_head(company: str | None = None) -> None:
+	"""(Re)build a company's Letter Head from its branding (logo + subtext).
+
+	One Letter Head per company so a print reflects the branding of the company that issued the
+	document (resolved in api.printing.get_print_html). The default company's head is is_default
+	— the fallback for documents with no company. Called on seed and whenever a Company is saved
+	(hooks.py Company.on_update). Reads the branding fields defensively so it is safe
+	before/without the custom fields (fresh install ordering)."""
 	from buildsuite_core.utils.project import default_company
 
 	company = company or default_company()
@@ -66,25 +105,33 @@ def rebuild_letter_head(company: str | None = None) -> None:
 		else None
 	)
 	content = build_letter_head_html(name, logo, subtext)
+	lh_name = letter_head_name(company)
+	is_default = 1 if company == default_company() else 0
 
-	if frappe.db.exists("Letter Head", LETTER_HEAD):
-		lh = frappe.get_doc("Letter Head", LETTER_HEAD)
+	if frappe.db.exists("Letter Head", lh_name):
+		lh = frappe.get_doc("Letter Head", lh_name)
 		lh.source = "HTML"
 		lh.content = content
-		lh.is_default = 1
+		lh.is_default = is_default
 		lh.disabled = 0
 		lh.save(ignore_permissions=True)
 	else:
 		frappe.get_doc(
 			{
 				"doctype": "Letter Head",
-				"letter_head_name": LETTER_HEAD,
+				"letter_head_name": lh_name,
 				"source": "HTML",
 				"content": content,
-				"is_default": 1,
+				"is_default": is_default,
 				"disabled": 0,
 			}
 		).insert(ignore_permissions=True)
+
+
+def rebuild_all_letter_heads() -> None:
+	"""Rebuild every company's Letter Head — used on seed and by the backfill patch."""
+	for company in frappe.get_all("Company", pluck="name"):
+		rebuild_letter_head(company)
 
 # Jinja/HTML body for the Subcontractor Work Order. The letter head is prepended by
 # the print engine; this template is the document body only.
@@ -374,10 +421,10 @@ def _set_default_print_format(doctype: str, print_format: str) -> None:
 
 
 def _seed_letter_head():
-	# Build the letter head from the default company's branding (logo + subtext). On a
-	# fresh site with no branding yet this yields a clean name-only header; it is rebuilt
-	# whenever the company is saved (hooks.py Company.on_update → rebuild_letter_head).
-	rebuild_letter_head()
+	# Build a letter head per company from its branding (logo + subtext). On a fresh site with
+	# no branding yet this yields a clean monogram + name-only header; each is rebuilt whenever
+	# that company is saved (hooks.py Company.on_update → rebuild_letter_head).
+	rebuild_all_letter_heads()
 
 
 def _seed_wo_print_format():

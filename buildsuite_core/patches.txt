@@ -51,3 +51,4 @@ buildsuite_core.patches.add_subcontract_client_ledger_variance_reports # 2026-09
 buildsuite_core.patches.seed_workforce_report_tiles # 2026-09-09 workforce report tiles to Workspace Setting
 buildsuite_core.patches.backfill_company_scope # 2026-09-09 multi-company
 buildsuite_core.patches.backfill_master_company # 2026-09-09 supplier/customer/item company
+buildsuite_core.patches.rebuild_company_letter_heads # 2026-09-10 per-company letter heads

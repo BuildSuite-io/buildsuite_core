@@ -24,7 +24,9 @@ export const setActiveCompanyRemote = (company) => call("set_active_company", { 
 // Company branding — logo + letter-head subtext for the default company. These drive the
 // shared Letter Head that every print format renders, so editing them here re-brands all
 // prints (server rebuilds the letter head on save).
-export const getCompanyBranding = () => call("company_branding");
+export const getCompanyProjects = (company) => call("company_projects", { company });
+export const getCompanyBranding = (company) =>
+	call("company_branding", company ? { company } : {});
 export const updateCompanyBranding = (payload) => call("update_company_branding", payload);
 
 // Upload the logo via Frappe's multipart upload_file endpoint. Public (is_private=0) so the
