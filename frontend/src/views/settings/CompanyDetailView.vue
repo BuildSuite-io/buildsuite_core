@@ -64,10 +64,17 @@ function cancelEdit() {
 }
 async function saveEdit() {
 	if (!store.isAdmin) return;
-	// Real Company only has `company_name` as an editable identity field. shortName
-	// (abbr), colour and description are store-derived and not persisted.
-	await store.updateCompany(props.id, { name: form.value.name });
-	editing.value = false;
+	// Name (company_name) and Short name (abbr) are the real editable identity fields;
+	// colour is derived and description isn't a Company field, so neither persists.
+	try {
+		await store.updateCompany(props.id, {
+			name: form.value.name,
+			shortName: form.value.shortName,
+		});
+		editing.value = false;
+	} catch (err) {
+		showToast(err.message || "Could not save the company.", "error");
+	}
 }
 function onPrimary() {
 	editing.value ? saveEdit() : startEdit();
@@ -75,26 +82,13 @@ function onPrimary() {
 
 async function deleteCompany() {
 	if (!store.isAdmin) return;
-	if (linkedProjects.value.length) {
-		// Reference guard — Frappe LinkExistsError pattern. List the offending
-		// projects in the alert so the user knows what to fix first.
-		const sample = linkedProjects.value
-			.slice(0, 5)
-			.map((p) => `• ${p.name} (${p.code})`)
-			.join("\n");
-		const more =
-			linkedProjects.value.length > 5
-				? `\n…and ${linkedProjects.value.length - 5} more`
-				: "";
-		alert(
-			`Cannot delete "${company.value.name}".\n\n${linkedProjects.value.length} project(s) reference this company:\n\n${sample}${more}\n\nReassign or delete those projects first.`
-		);
-		return;
-	}
+	// The backend is the authority on whether the company is still referenced (Frappe
+	// LinkExistsError across every doctype) — don't pre-judge from the local projects slice,
+	// which can't see every real link and would give a false "safe to delete".
 	if (
 		!(await confirmDialog({
 			title: "Delete company",
-			message: `Delete company "${company.value.name}"?\n\nThis is permanent. No project references this company so the delete is safe.`,
+			message: `Delete company "${company.value.name}"?\n\nThis is permanent and only succeeds if no record still references this company.`,
 			confirmLabel: "Delete",
 			destructive: true,
 		}))
@@ -104,8 +98,10 @@ async function deleteCompany() {
 	if (result.ok) {
 		router.push("/settings/companies");
 	} else {
-		// Defensive — shouldn't happen since we pre-checked, but in case of a race.
-		alert(`Delete refused: ${result.reason}`);
+		showToast(
+			`Can't delete "${company.value.name}" — records still reference it. Reassign or remove them first.`,
+			"error"
+		);
 	}
 }
 
@@ -290,9 +286,6 @@ watch(
 					>
 						<DeskInput :model-value="company.id" disabled class="font-mono" />
 					</DeskField>
-					<DeskField label="Description">
-						<DeskTextarea v-model="form.description" :rows="2" />
-					</DeskField>
 				</DeskSection>
 
 				<!-- Brand colour -->
@@ -308,37 +301,6 @@ watch(
 						</div>
 					</DeskField>
 				</DeskSection>
-				<DeskSection title="Brand colour" v-else>
-					<div class="md:col-span-2">
-						<div class="flex flex-wrap gap-2">
-							<label
-								v-for="opt in COLOR_OPTIONS"
-								:key="opt.value"
-								class="inline-flex items-center gap-1.5 cursor-pointer px-2 py-1 border text-xs"
-								:class="
-									form.color === opt.value
-										? 'border-ink-900 bg-ink-50'
-										: 'border-ink-200 hover:bg-ink-50'
-								"
-								style="border-radius: 2px"
-							>
-								<input
-									type="radio"
-									v-model="form.color"
-									:value="opt.value"
-									class="sr-only"
-								/>
-								<span
-									:class="opt.value"
-									class="w-3 h-3"
-									style="border-radius: 2px"
-								></span>
-								<span class="text-ink-700">{{ opt.label }}</span>
-							</label>
-						</div>
-					</div>
-				</DeskSection>
-
 				<!-- Branding & Letter Head — real Company fields; drives print letter heads -->
 				<DeskSection v-if="isActiveCompany" title="Branding & Letter Head">
 					<div class="md:col-span-2 space-y-4">

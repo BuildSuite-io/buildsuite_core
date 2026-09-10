@@ -82,7 +82,16 @@ const serverFilters = computed(() => {
 	// through untouched); this keeps every company-scoped picker consistent in one place.
 	if (usesArrayFilters && companyScope.value.length) {
 		const arr = Array.isArray(props.filters) ? props.filters : [];
-		if (!arr.some((f) => Array.isArray(f) && f[0] === "company")) {
+		// Don't layer the active-company clause on top of a filter that already pins the company.
+		// An explicit `company` filter obviously does; a `project` filter does too — a project
+		// belongs to exactly one company, so its records are already single-company. Appending
+		// ["company","=",<active>] on a project-scoped picker (e.g. the BOQ's SCO / Work Package
+		// pickers) would return NOTHING whenever the active company differs from that project's
+		// company — the exact opposite of the project-company scoping we want.
+		const alreadyScoped = arr.some(
+			(f) => Array.isArray(f) && (f[0] === "company" || f[0] === "project")
+		);
+		if (!alreadyScoped) {
 			return [...arr, ...companyScope.value];
 		}
 	}

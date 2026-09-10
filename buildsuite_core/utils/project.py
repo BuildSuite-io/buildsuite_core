@@ -69,9 +69,12 @@ def anchor_company_to_project(doc, project_field="project"):
 	project = doc.get(project_field)
 	if project:
 		project_company = frappe.db.get_value("Project", project, "company")
-		if not project_company:
-			frappe.throw(frappe._("Project {0} has no company set.").format(project))
-		doc.company = project_company
+		# Fall back to the default company when the project has none yet (e.g. it was created
+		# before a default company was configured). A hard throw here would block the save AND
+		# silently abort template seeding (the WP/Stage inserts are swallowed by
+		# seed_from_template_on_insert's try/except). Downstream same-company guards no-op on a
+		# blank company, so a company-less project degrades safely rather than failing loud.
+		doc.company = project_company or default_company()
 	elif not doc.get("company"):
 		doc.company = default_company()
 

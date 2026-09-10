@@ -11,7 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, nowdate
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import assert_link_same_company, default_company
 
 PI = "Purchase Invoice"
 PE = "Payment Entry"
@@ -474,6 +474,9 @@ def save_bill(payload: str):
 		pi = frappe.new_doc(PI)
 
 	pi.company = company
+	# Company guard: a per-company supplier must belong to this bill's company. No-ops for a
+	# supplier with no company yet (un-backfilled) or on a single-company site.
+	assert_link_same_company(supplier, "Supplier", company, _("Supplier"))
 	pi.supplier = supplier
 	pi.currency = frappe.db.get_value("Company", company, "default_currency")
 	pi.set_posting_time = 1

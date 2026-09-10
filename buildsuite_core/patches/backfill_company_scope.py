@@ -50,6 +50,8 @@ def _needs_company(dt, extra_fields):
 
 
 def execute():
+	skipped = {}  # doctype -> count of rows left company-less (project/task has no company)
+
 	# Project-scoped: company from the linked project.
 	for dt, project_field in _PROJECT_SCOPED.items():
 		if not frappe.db.has_column(dt, "company"):
@@ -59,6 +61,8 @@ def execute():
 			company = frappe.db.get_value("Project", project, "company") if project else None
 			if company:
 				frappe.db.set_value(dt, row.name, "company", company, update_modified=False)
+			else:
+				skipped[dt] = skipped.get(dt, 0) + 1
 
 	# Task Progress Entry: company via task -> project.
 	if frappe.db.has_column("Task Progress Entry", "company"):
@@ -69,6 +73,8 @@ def execute():
 				frappe.db.set_value(
 					"Task Progress Entry", row.name, "company", company, update_modified=False
 				)
+			else:
+				skipped["Task Progress Entry"] = skipped.get("Task Progress Entry", 0) + 1
 
 	# Catalog masters: stamp the default company on any unassigned rows.
 	default = default_company()
@@ -78,3 +84,12 @@ def execute():
 				continue
 			for name in frappe.get_all(dt, filters={"company": ["is", "not set"]}, pluck="name"):
 				frappe.db.set_value(dt, name, "company", default, update_modified=False)
+
+	# Surface rows we could not stamp — their project/task has no company, so they stay
+	# company-less. Cross-company guards no-op on a NULL company, so these are worth flagging
+	# rather than leaving silent.
+	if skipped:
+		summary = ", ".join(f"{n} {dt}" for dt, n in skipped.items())
+		msg = f"Left company unset on rows whose project has no company: {summary}."
+		print(f"backfill_company_scope: {msg}")
+		frappe.log_error(msg, "Multi-company backfill")

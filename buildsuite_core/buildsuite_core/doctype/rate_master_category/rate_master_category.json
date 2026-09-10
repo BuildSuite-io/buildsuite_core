@@ -23,7 +23,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Company",
-   "options": "Company"
+   "options": "Company",
+   "set_only_once": 1
   },
   {
    "fieldname": "resource_type",

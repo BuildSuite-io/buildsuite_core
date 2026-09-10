@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from buildsuite_core.utils.project import anchor_company_to_project
+from buildsuite_core.utils.project import anchor_company_to_project, assert_same_company
 
 
 class MachineryUsage(Document):
@@ -30,6 +30,8 @@ class MachineryUsage(Document):
 	def validate(self):
 		anchor_company_to_project(self)
 		self.validate_machine_active()
+		# The machine is company-scoped — it must belong to this usage's (project's) company.
+		assert_same_company(self, "machine", "Machinery", _("Machine"))
 
 		# The task is optional, but if set it must belong to the selected project —
 		# a usage log must never be booked against a task from another project.

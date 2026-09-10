@@ -8,7 +8,7 @@ import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote } from "@/data/companyApi";
-import { insertRecord, saveRecord, deleteRecord } from "@/data/doctypeRecordApi";
+import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
 import { setActiveCompany as setActiveCompanyScope } from "@/composables/useActiveCompany";
 
 // Deterministic colour for a company id → one of the existing Tailwind badge classes. Real
@@ -759,6 +759,15 @@ export const useDataStore = defineStore("data", {
 					: defaultRow?.id || mapped[0]?.id || null;
 			// Keep the picker-scope seam in step with the resolved active company.
 			if (this.activeCompany) setActiveCompanyScope(this.activeCompany);
+			// Reconcile the server-side default to the resolved choice — otherwise a stored
+			// (localStorage) preference that differs from the backend is_default leaves the
+			// frontend on B while default_company() still returns A, so backend-scoped reads
+			// (and new-record company defaults) disagree with the UI.
+			if (this.activeCompany && this.activeCompany !== defaultRow?.id) {
+				setActiveCompanyRemote(this.activeCompany).catch((e) =>
+					console.warn("Failed to reconcile active company server-side:", e),
+				);
+			}
 			return mapped;
 		},
 
@@ -767,15 +776,22 @@ export const useDataStore = defineStore("data", {
 		// setRole). Additionally pushes the choice to the server (so default_company()
 		// and every company-scoped guard follow the switcher) and updates the
 		// picker-scope ref so bound DeskLinkPickers re-query for the new company.
-		setActiveCompany(companyId) {
+		async setActiveCompany(companyId) {
 			if (!this.companies.find((c) => c.id === companyId)) return;
+			// Persist server-side FIRST, then flip the reactive state. Company-scoped list/report
+			// reads that take no company arg (they rely on the server default_company()) re-query
+			// off the reactive change via watchers — if we flipped first with the POST still in
+			// flight, those reads could race it and return the OLD company's rows. Awaiting removes
+			// the race in the normal case; on failure we still switch locally so the UI stays
+			// responsive (client-side picker filters carry the explicit company anyway).
+			try {
+				await setActiveCompanyRemote(companyId);
+			} catch (e) {
+				console.warn("Failed to persist active company server-side:", e);
+			}
 			this.activeCompany = companyId;
 			saveCompanyToStorage(companyId);
 			setActiveCompanyScope(companyId);
-			// Fire-and-forget — the local switch shouldn't block on the round-trip.
-			setActiveCompanyRemote(companyId).catch((e) =>
-				console.warn("Failed to persist active company server-side:", e),
-			);
 		},
 
 		// ===== Settings DocTypes (Session 34) =====
@@ -917,10 +933,15 @@ export const useDataStore = defineStore("data", {
 			);
 		},
 		async updateCompany(id, patch) {
-			// Only company_name is a real editable identity field — shortName (abbr),
-			// colour and description are store-derived, not persisted. id (docname)
-			// stays immutable.
-			await saveRecord({ doctype: "Company", name: id, company_name: patch.name });
+			// Round-trip the FULL doc: frappe.client.save instantiates the doc from exactly
+			// what we send, so a partial { name, company_name } would blank Company's mandatory
+			// fields (abbr / currency / country) and fail its modified-timestamp check. Fetch
+			// the current doc, apply the editable identity fields, save. id (docname) is immutable;
+			// colour + description are store-derived and not persisted.
+			const doc = await getRecord("Company", id);
+			if (patch.name !== undefined) doc.company_name = patch.name;
+			if (patch.shortName !== undefined && patch.shortName) doc.abbr = patch.shortName;
+			await saveRecord(doc);
 			await this.loadCompanies();
 			return this.companies.find((c) => c.id === id) || null;
 		},

@@ -11,7 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, nowdate
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import assert_link_same_company, default_company
 
 SI = "Sales Invoice"
 PE = "Payment Entry"
@@ -308,6 +308,9 @@ def save_invoice(payload: str):
 		si = frappe.new_doc(SI)
 
 	si.company = company
+	# Company guard: a per-company customer must belong to this invoice's company. No-ops for a
+	# customer with no company yet (un-backfilled) or on a single-company site.
+	assert_link_same_company(customer, "Customer", company, _("Customer"))
 	si.customer = customer
 	si.currency = frappe.db.get_value("Company", company, "default_currency")
 	si.set_posting_time = 1
