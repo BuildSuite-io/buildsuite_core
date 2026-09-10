@@ -246,7 +246,10 @@ doc_events = {
 		],
 	},
 	"Company":{
-		"on_update":"buildsuite_core.utils.petty_cash.create_account",
+		"on_update":[
+			"buildsuite_core.utils.petty_cash.create_account",
+			"buildsuite_core.utils.branding.rebuild_letter_head_on_company_change",
+		],
 	},
 	# Direct-in-Desk petty cash disbursement: a Journal Entry linked to a Petty Cash Request
 	# (the `petty_cash_request` field) disburses it on submit / reverts on cancel, and carries
