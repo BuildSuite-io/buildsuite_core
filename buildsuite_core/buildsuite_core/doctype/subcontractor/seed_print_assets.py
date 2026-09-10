@@ -17,11 +17,16 @@ _LEGAL_SUFFIXES = {"pvt", "private", "ltd", "limited", "llp", "inc", "co", "and"
 
 def company_monogram(company_name: str) -> str:
 	"""Up to two initials for the logo placeholder, legal suffixes dropped so
-	"Acme Commercial Pvt Ltd" → "AC", not "ACPL". Falls back to "BS"."""
+	"Acme Commercial Pvt Ltd" → "AC" (not "ACPL") and non-letters stripped so
+	"XCorp (Demo)" → "XD" (not "X("). Falls back to "BS"."""
 	import re
 
-	words = [w for w in re.split(r"\s+", company_name or "") if w and w.lower() not in _LEGAL_SUFFIXES]
-	initials = "".join(w[0].upper() for w in words[:2])
+	words = [
+		re.sub(r"[^A-Za-z0-9]", "", w)
+		for w in re.split(r"\s+", company_name or "")
+		if w and w.lower() not in _LEGAL_SUFFIXES
+	]
+	initials = "".join(w[0].upper() for w in words if w)[:2]
 	return initials or "BS"
 
 

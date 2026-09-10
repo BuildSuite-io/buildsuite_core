@@ -80,21 +80,34 @@ def update_company_branding(
 
 
 @frappe.whitelist()
-def company_projects(company: str) -> list:
-	"""Projects that belong to a company — for the Company detail page's linked-projects list
-	(and its delete-safety read-out). Respects the caller's project permissions."""
+def company_projects(company: str, limit: int = 20) -> dict:
+	"""Projects that belong to a company — the total count plus a capped sample — for the Company
+	detail page's linked-projects list. A company can own thousands of projects, so the page shows
+	a sample and the total rather than rendering every row. Respects project permissions on the rows."""
+	from frappe.utils import cint
+
 	if not company or not frappe.db.exists("Company", company):
-		return []
+		return {"total": 0, "rows": []}
+	total = frappe.db.count("Project", {"company": company})
 	rows = frappe.get_all(
 		"Project",
 		filters={"company": company},
-		fields=["name", "project_name", "custom_project_id"],
+		fields=["name", "project_name", "custom_project_id", "status"],
 		order_by="project_name asc",
+		limit=cint(limit) or 20,
 	)
-	return [
-		{"id": r.name, "name": r.project_name or r.name, "code": r.custom_project_id or r.name}
-		for r in rows
-	]
+	return {
+		"total": total,
+		"rows": [
+			{
+				"id": r.name,
+				"name": r.project_name or r.name,
+				"code": r.custom_project_id or r.name,
+				"status": r.status or "",
+			}
+			for r in rows
+		],
+	}
 
 
 @frappe.whitelist()

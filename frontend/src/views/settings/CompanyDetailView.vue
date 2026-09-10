@@ -44,12 +44,16 @@ const COLOR_OPTIONS = [
 const company = computed(() => store.companyById(props.id));
 // Real projects that belong to this company (backend, permission-respecting) — not the
 // prototype's local projects slice.
-const linkedProjects = ref([]);
+const linkedProjects = ref([]); // a capped sample of the company's projects
+const linkedProjectsTotal = ref(0); // the real total (a company can own thousands)
 async function loadLinkedProjects() {
 	try {
-		linkedProjects.value = (await getCompanyProjects(props.id)) || [];
+		const r = (await getCompanyProjects(props.id)) || {};
+		linkedProjects.value = r.rows || [];
+		linkedProjectsTotal.value = r.total || 0;
 	} catch {
 		linkedProjects.value = [];
+		linkedProjectsTotal.value = 0;
 	}
 }
 const editing = ref(false);
@@ -149,6 +153,21 @@ const brandDirty = computed(
 		brandForm.value.subtext !== brandLoaded.value.subtext
 );
 
+// Initials for the no-logo placeholder — mirrors the backend letter head (legal suffixes dropped).
+const monogram = computed(() => {
+	const words = String(brandCompanyName.value || company.value?.name || "")
+		.split(/\s+/)
+		.filter((w) => w && !/^(pvt|private|ltd|limited|llp|inc|co|and|&)$/i.test(w))
+		.map((w) => w.replace(/[^A-Za-z0-9]/g, ""))
+		.filter(Boolean);
+	return (
+		words
+			.slice(0, 2)
+			.map((w) => w[0].toUpperCase())
+			.join("") || "BS"
+	);
+});
+
 async function loadBrand() {
 	brand.value.loading = true;
 	try {
@@ -239,9 +258,9 @@ watch(
 					@cancel="cancelEdit"
 				>
 					<template #left>
-						<span v-if="linkedProjects.length" class="text-[11px] text-ink-500">
-							{{ linkedProjects.length }} project{{
-								linkedProjects.length === 1 ? "" : "s"
+						<span v-if="linkedProjectsTotal" class="text-[11px] text-ink-500">
+							{{ linkedProjectsTotal }} project{{
+								linkedProjectsTotal === 1 ? "" : "s"
 							}}
 							reference this company
 						</span>
@@ -401,6 +420,13 @@ watch(
 										alt=""
 										style="height: 44px; width: auto; object-fit: contain"
 									/>
+									<div
+										v-else
+										class="rounded-lg bg-brand-600 text-white flex items-center justify-center font-semibold flex-shrink-0"
+										style="height: 44px; width: 44px; font-size: 18px"
+									>
+										{{ monogram }}
+									</div>
 									<div>
 										<div class="text-base font-semibold text-ink-900">
 											{{ brandCompanyName || company.name }}
@@ -462,6 +488,13 @@ watch(
 									<DeskLink :to="`/projects/${p.id}`">{{ p.name }}</DeskLink>
 								</div>
 								<div class="px-3 py-1.5 text-xs text-ink-500">{{ p.status }}</div>
+							</div>
+							<div
+								v-if="linkedProjectsTotal > linkedProjects.length"
+								class="px-3 py-1.5 text-[11px] text-ink-500 bg-ink-50 border-t border-ink-200"
+							>
+								Showing {{ linkedProjects.length }} of {{ linkedProjectsTotal }} — open the
+								Projects list to see them all.
 							</div>
 						</div>
 						<div v-else class="text-xs text-ink-400 italic">
