@@ -24,6 +24,7 @@ export const setActiveCompanyRemote = (company) => call("set_active_company", { 
 // Company branding — logo + letter-head subtext for the default company. These drive the
 // shared Letter Head that every print format renders, so editing them here re-brands all
 // prints (server rebuilds the letter head on save).
+export const getCompanyContext = () => call("company_context");
 export const getCompanyProjects = (company) => call("company_projects", { company });
 export const getCompanyBranding = (company) =>
 	call("company_branding", company ? { company } : {});

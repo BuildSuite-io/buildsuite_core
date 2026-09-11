@@ -9,7 +9,13 @@
 import { ref, watch, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
-import { getCoreSettings, setProjectNaming, setPettyCashAccount } from "@/data/coreSettingsApi";
+import {
+	getCoreSettings,
+	setProjectNaming,
+	setPettyCashAccount,
+	setMultiCompanyEnabled,
+} from "@/data/coreSettingsApi";
+import { setCompanyAwareness } from "@/composables/useActiveCompany";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -37,6 +43,9 @@ const namingModes = ref([PROJECT_ID_MODE, "Name Series"]);
 const pettyCashAccount = ref("");
 const pettyCashOptions = ref([]);
 
+// Company-awareness master switch (server-persisted). Off = single-company UX.
+const multiCompanyEnabled = ref(false);
+
 onMounted(async () => {
 	try {
 		const res = await getCoreSettings();
@@ -44,6 +53,7 @@ onMounted(async () => {
 		namingModes.value = res.project_naming_modes || namingModes.value;
 		pettyCashAccount.value = res.petty_cash_account || "";
 		pettyCashOptions.value = res.petty_cash_options || [];
+		multiCompanyEnabled.value = !!res.multi_company_enabled;
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -62,6 +72,7 @@ function startEdit() {
 		...JSON.parse(JSON.stringify(store.coreSettings)),
 		naming_mode: projectNaming.value,
 		petty_cash_account: pettyCashAccount.value,
+		multi_company_enabled: multiCompanyEnabled.value,
 	};
 	editing.value = true;
 }
@@ -81,6 +92,13 @@ async function saveEdit() {
 		if (form.value.petty_cash_account !== pettyCashAccount.value) {
 			const res = await setPettyCashAccount(form.value.petty_cash_account || "");
 			pettyCashAccount.value = res.petty_cash_account || "";
+		}
+		if (!!form.value.multi_company_enabled !== multiCompanyEnabled.value) {
+			const res = await setMultiCompanyEnabled(form.value.multi_company_enabled);
+			multiCompanyEnabled.value = !!res.multi_company_enabled;
+			// Reflect it live — the topbar switcher and every company-scoped list/picker follow.
+			store.multiCompanyEnabled = multiCompanyEnabled.value;
+			setCompanyAwareness(multiCompanyEnabled.value);
 		}
 		editing.value = false;
 	} catch (err) {
@@ -130,25 +148,19 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 			<div class="max-w-3xl mx-auto">
 				<DeskSection title="Multi-company">
 					<DeskField
-						label="Enable company segregation"
-						hint="Master switch for multi-company segregation. Off → single-company UX (switcher and column auto-hide). On → multi-company users see segregation controls."
+						label="Enable company awareness"
+						hint="Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company."
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{
-								store.coreSettings.enable_company_segregation
-									? "Enabled"
-									: "Disabled"
-							}}
+							{{ multiCompanyEnabled ? "Enabled" : "Disabled" }}
 						</div>
 						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
 							<input
 								type="checkbox"
-								v-model="form.enable_company_segregation"
+								v-model="form.multi_company_enabled"
 								class="accent-brand-600"
 							/>
-							<span>{{
-								form.enable_company_segregation ? "Enabled" : "Disabled"
-							}}</span>
+							<span>{{ form.multi_company_enabled ? "Enabled" : "Disabled" }}</span>
 						</label>
 					</DeskField>
 					<DeskField

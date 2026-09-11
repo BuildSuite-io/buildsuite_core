@@ -48,6 +48,20 @@ def default_company():
 	)
 
 
+def is_multi_company_enabled():
+	"""Whether company awareness is turned on (BuildSuite Core Settings). Off (default) keeps the
+	app single-company: the topbar switcher is hidden and lists/pickers are not company-scoped."""
+	return bool(frappe.db.get_single_value("BuildSuite Core Settings", "multi_company_enabled"))
+
+
+def company_scope():
+	"""The company to scope company-aware LISTS and PICKERS to: the working company when
+	awareness is enabled, else None (no scoping — show all). This is only for filtering; new-record
+	company defaults and the cross-company guards always use default_company()/the project company,
+	so a single-company site keeps a valid company on every document regardless of this flag."""
+	return default_company() if is_multi_company_enabled() else None
+
+
 def stamp_company_on_insert(doc, method=None):
 	"""Stamp the working company on an org-wide ERPNext master (Supplier / Customer / Item) at
 	insert so it can be company-scoped. Only sets when blank — never overrides an explicit

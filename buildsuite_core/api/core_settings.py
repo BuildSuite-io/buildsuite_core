@@ -58,7 +58,23 @@ def get_core_settings():
 		"project_naming_modes": NAMING_MODES,
 		"petty_cash_account": settings.default_petty_cash_account,
 		"petty_cash_options": _petty_cash_options(company),
+		"multi_company_enabled": bool(settings.multi_company_enabled),
 	}
+
+
+@frappe.whitelist()
+def set_multi_company_enabled(enabled):
+	"""Turn company awareness on/off (administrator only). On = the topbar switcher scopes lists,
+	pickers and new-record company defaults to the selected company; off keeps the app
+	single-company."""
+	from frappe.utils import cint
+
+	_require_admin()
+	doc = frappe.get_single(SETTINGS)
+	doc.multi_company_enabled = cint(enabled)
+	doc.flags.ignore_permissions = True
+	doc.save()
+	return {"multi_company_enabled": bool(doc.multi_company_enabled)}
 
 
 @frappe.whitelist()

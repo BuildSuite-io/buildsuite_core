@@ -7,9 +7,12 @@ import { seedData } from "@/data/seed";
 import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
-import { listCompanies, setActiveCompanyRemote } from "@/data/companyApi";
+import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
-import { setActiveCompany as setActiveCompanyScope } from "@/composables/useActiveCompany";
+import {
+	setActiveCompany as setActiveCompanyScope,
+	setCompanyAwareness,
+} from "@/composables/useActiveCompany";
 
 // Deterministic colour for a company id → one of the existing Tailwind badge classes. Real
 // Company records carry no colour field, so the switcher pill / list badge derive one from
@@ -161,6 +164,9 @@ export const useDataStore = defineStore("data", {
 		// so it never clobbers the backend data with the seed fixture. Stays false if
 		// the backend call failed — hydrate then falls back to the seed companies.
 		companiesLoaded: false,
+		// Company awareness master switch (BuildSuite Core Settings). Off = single-company:
+		// the topbar switcher is hidden and lists/pickers are not company-scoped.
+		multiCompanyEnabled: false,
 		// Active role id. NOT persisted via _persist() — see ROLE_STORAGE_KEY above.
 		role: DEFAULT_ROLE,
 		// Active company id. Same independent-persistence rationale as `role` — lives
@@ -431,7 +437,7 @@ export const useDataStore = defineStore("data", {
 		customerByName: (s) => (name) => s.customers.find((c) => c.name === name) || null,
 		// Per §14.3 the UI hides the company switcher / column / select when there's
 		// only one company — single-company users never see the field.
-		isMultiCompany: (s) => s.companies.length > 1,
+		isMultiCompany: (s) => s.multiCompanyEnabled && s.companies.length > 1,
 		// Project count per company — used by the Settings → Companies list and by
 		// the delete-guard error message (which projects reference this company?).
 		projectsByCompany: (s) => (companyId) => s.projects.filter((p) => p.company === companyId),
@@ -738,6 +744,15 @@ export const useDataStore = defineStore("data", {
 		// the active company: the persisted choice (if still present) → the row the
 		// backend marks is_default → the first row.
 		async loadCompanies() {
+			// Load the awareness flag alongside the companies, and sync it to the useActiveCompany
+			// composable so its picker/list filters gate on the same value the switcher does.
+			try {
+				const ctx = await getCompanyContext();
+				this.multiCompanyEnabled = !!ctx?.multi_company_enabled;
+			} catch {
+				this.multiCompanyEnabled = false;
+			}
+			setCompanyAwareness(this.multiCompanyEnabled);
 			const rows = await listCompanies();
 			const mapped = (rows || []).map((r) => ({
 				id: r.id,

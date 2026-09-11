@@ -6,7 +6,7 @@
 import frappe
 from frappe import _
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import default_company, is_multi_company_enabled
 
 # Org-wide branding is an administrator concern (mirrors api.core_settings.ADMIN_ROLES).
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
@@ -23,9 +23,19 @@ def active_company():
 
 	Same resolver the server-side company guards use, so the frontend picker filters agree
 	with them. `window.sysdefaults.company` is not reliably present (e.g. the standalone Vite
-	dev server), so the SPA fetches this instead. Multi-company later: derive from context.
+	dev server), so the SPA fetches this instead.
 	"""
 	return default_company()
+
+
+@frappe.whitelist()
+def company_context():
+	"""Working company + whether company awareness is enabled — for every signed-in user. The SPA
+	gates the topbar switcher and all list/picker company-scoping on `multi_company_enabled`."""
+	return {
+		"company": default_company(),
+		"multi_company_enabled": is_multi_company_enabled(),
+	}
 
 
 @frappe.whitelist()

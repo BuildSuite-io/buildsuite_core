@@ -2,7 +2,7 @@ import frappe
 from frappe.query_builder.functions import Sum
 from frappe.utils import flt
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import company_scope
 
 
 @frappe.whitelist()
@@ -58,7 +58,7 @@ def machinery_usage_report() -> list[dict]:
 	the report renders without any second lookup. Newest first."""
 	rows = frappe.get_list(
 		"Machinery Usage",
-		filters={"company": default_company()},
+		filters=({"company": company_scope()} if company_scope() else {}),
 		fields=["name", "machine", "project", "task", "date", "quantity", "unit", "rate", "fuel_cost"],
 		order_by="date desc",
 		limit_page_length=0,
@@ -79,7 +79,7 @@ def machinery_register() -> list[dict]:
 	"""Equipment Register report — owned + hired plant with their rates. Ordered by name."""
 	return frappe.get_list(
 		"Machinery",
-		filters={"company": default_company()},
+		filters=({"company": company_scope()} if company_scope() else {}),
 		fields=[
 			"name",
 			"machinery_name",

@@ -16,6 +16,9 @@ async function call(method, args) {
 }
 
 export const getCoreSettings = () => call("get_core_settings");
+// Company-awareness master switch (BuildSuite Core Settings). Admin only. Send 1/0.
+export const setMultiCompanyEnabled = (enabled) =>
+	call("set_multi_company_enabled", { enabled: enabled ? 1 : 0 });
 // Petty Cash Account — the configurable Cash/Bank float petty cash and expenses post to/from.
 export const setPettyCashAccount = (account) => call("set_petty_cash_account", { account });
 export const setProjectNaming = (projectNaming) =>

@@ -14,13 +14,17 @@ import { frappeRequest } from "frappe-ui-frappe-request";
 
 // Module-cached so the round-trip happens once per app load, shared by every caller.
 const company = ref((typeof window !== "undefined" && window.sysdefaults?.company) || null);
+// Company awareness master switch (BuildSuite Core Settings). Off until the backend says
+// otherwise — when off, the filter helpers below return [] so nothing is company-scoped.
+const enabled = ref(false);
 let started = false;
 function ensureLoaded() {
 	if (started) return;
 	started = true;
-	frappeRequest({ url: "buildsuite_core.api.company.active_company" })
-		.then((c) => {
-			if (c) company.value = c;
+	frappeRequest({ url: "buildsuite_core.api.company.company_context" })
+		.then((ctx) => {
+			if (ctx?.company) company.value = ctx.company;
+			enabled.value = !!ctx?.multi_company_enabled;
 		})
 		.catch(() => {
 			/* keep the sysdefaults fallback */
@@ -44,13 +48,25 @@ export function setActiveCompany(name) {
 	company.value = name;
 }
 
+// Reactive company-awareness flag (for the switcher + any UI that shows/hides on it).
+export function companyAwarenessEnabled() {
+	ensureLoaded();
+	return enabled;
+}
+
+// Sync the flag from the store (which loads it alongside the company list) so the composable and
+// the store never disagree. Doesn't flip `started` — the company value still resolves normally.
+export function setCompanyAwareness(on) {
+	enabled.value = !!on;
+}
+
 // A reactive DeskLinkPicker `:filters` fragment limiting a company-partitioned doctype
 // (Account, Employee, Project, …) to the active company. Empty until the company is known, so
 // the picker degrades to unfiltered rather than showing nothing (the server guard still blocks
 // a cross-company save), then narrows once it resolves.
 export function activeCompanyFilter() {
 	const c = useActiveCompany();
-	return computed(() => (c.value ? [["company", "=", c.value]] : []));
+	return computed(() => (enabled.value && c.value ? [["company", "=", c.value]] : []));
 }
 
 // Doctypes that carry a `company` field and whose pickers must be scoped to the working
@@ -99,6 +115,8 @@ export function isCompanyScopedDoctype(doctype) {
 export function companyFilterForDoctype(doctype) {
 	const c = useActiveCompany();
 	return computed(() =>
-		c.value && COMPANY_SCOPED_DOCTYPES.has(doctype) ? [["company", "=", c.value]] : []
+		enabled.value && c.value && COMPANY_SCOPED_DOCTYPES.has(doctype)
+			? [["company", "=", c.value]]
+			: []
 	);
 }
