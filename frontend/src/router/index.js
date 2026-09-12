@@ -36,6 +36,7 @@ const PAGE_TITLES = {
 	assembly: "Assemblies",
 	"assembly-new": "New Assembly",
 	"assembly-detail": "Assembly",
+	quotations: "Quotations",
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",
@@ -269,6 +270,11 @@ const routes = [
 				name: "assembly-detail",
 				component: () => import("@/views/AssemblyDetailView.vue"),
 				props: true,
+			},
+			{
+				path: "quotations",
+				name: "quotations",
+				component: () => import("@/views/QuotationsListView.vue"),
 			},
 			{
 				path: "estimate-template",

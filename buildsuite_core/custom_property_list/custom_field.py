@@ -391,6 +391,17 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	"Quotation": [
+		{
+			"fieldname": "custom_counterparty_type",
+			"fieldtype": "Select",
+			"label": "Customer Type",
+			"options": "\nHomebuyer\nPrivate Client\nMain Contractor",
+			"insert_after": "party_name",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Invoice": [
 		{
 			# Back-link to the Subcontractor Bill that generated this PI (idempotency +

@@ -30,6 +30,10 @@ const classes = computed(() => {
 		Delayed: "bg-danger-50 text-danger-700",
 		Open: "bg-ink-100 text-ink-600",
 		Draft: "bg-ink-100 text-ink-600",
+		Sent: "bg-info-50 text-info-700",
+		Accepted: "bg-success-50 text-success-700",
+		"Partially accepted": "bg-success-50 text-success-700",
+		Expired: "bg-ink-100 text-ink-500",
 		// Sales Invoice submission + payment statuses.
 		Submitted: "bg-info-50 text-info-700",
 		Unpaid: "bg-warning-50 text-warning-700",
