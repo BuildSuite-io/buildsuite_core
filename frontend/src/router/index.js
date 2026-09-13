@@ -42,6 +42,7 @@ const PAGE_TITLES = {
 	"report-delay-analysis": "Delay Analysis",
 	estimation: "Estimation",
 	quotations: "Quotations",
+	"quotation-detail": "Quotation",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
@@ -248,6 +249,12 @@ const routes = [
 				path: "quotations",
 				name: "quotations",
 				component: () => import("@/views/QuotationsListView.vue"),
+			},
+			{
+				path: "quotations/:id",
+				name: "quotation-detail",
+				component: () => import("@/views/QuotationDetailView.vue"),
+				props: true,
 			},
 			{
 				path: "rate-master",

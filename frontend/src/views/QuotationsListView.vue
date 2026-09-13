@@ -2,6 +2,7 @@
 // ERPNext's Quotation. The cards cover every quotation; the table below is filtered.
 
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -10,6 +11,13 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtCurrency, fmtCompactCurrency } from "@/utils/format";
 import { getQuotationSummary } from "@/data/quotationApi";
+import { statusLabel } from "@/data/quotationStatus";
+
+const router = useRouter();
+
+function openQuotation(row) {
+	router.push(`/quotations/${encodeURIComponent(row.name)}`);
+}
 
 const customerFilter = ref("");
 const statusFilter = ref("");
@@ -32,16 +40,6 @@ onMounted(async () => {
 		// Cards stay "—". The list below does not depend on this.
 	}
 });
-
-// ERPNext's selling vocabulary, in an estimator's words. Display only.
-// Replied keeps its own label: the customer came back, but has not decided.
-const STATUS_LABELS = {
-	Open: "Sent",
-	Ordered: "Accepted",
-	"Partially Ordered": "Partially accepted",
-	Lost: "Rejected",
-};
-const statusLabel = (status) => STATUS_LABELS[status] || status || "—";
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
@@ -72,12 +70,8 @@ const columns = [
 </script>
 
 <template>
-	<DeskPage
-		title="Quotations"
-		subtitle="Priced offers to customers who asked you for a price."
-		:breadcrumbs="breadcrumbs"
-		printable
-	>
+	<DeskPage title="Quotations" subtitle="Priced offers to customers who asked you for a price."
+		:breadcrumbs="breadcrumbs" printable>
 		<template #actions>
 			<!-- Hands off to Desk until the Vue create form lands. -->
 			<a href="/app/quotation/new" class="desk-save-btn !text-xs">+ New</a>
@@ -128,43 +122,27 @@ const columns = [
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Past their validity
 				</div>
-				<div
-					class="text-base font-semibold tabular-nums"
-					:class="summary.lapsed_count ? 'text-warning-700' : 'text-ink-900'"
-				>
+				<div class="text-base font-semibold tabular-nums"
+					:class="summary.lapsed_count ? 'text-warning-700' : 'text-ink-900'">
 					{{ summary.lapsed_count ?? "—" }}
 				</div>
 				<div class="text-[10px] text-ink-500">chase, or let them go</div>
 			</div>
 		</div>
 
-		<DocTypeListView
-			doctype="Quotation"
-			:field-order="FIELDS"
-			:columns="columns"
-			:filter-values="filterValues"
+		<DocTypeListView doctype="Quotation" :field-order="FIELDS" :columns="columns" :filter-values="filterValues"
 			:filter-field-map="{
 				customer: 'party_name',
 				status: 'status',
 				from: { field: 'transaction_date', op: '>=' },
 				to: { field: 'transaction_date', op: '<=' },
-			}"
-			:search-fields="['name', 'party_name', 'title']"
-			cache-key="buildsuite-quotation-list"
-			row-key="name"
-			search-placeholder="Search quotation, customer…"
-			empty-message="No quotations yet."
-		>
+			}" :search-fields="['name', 'party_name', 'title']" cache-key="buildsuite-quotation-list" row-key="name"
+			search-placeholder="Search quotation, customer…" empty-message="No quotations yet."
+			@row-click="openQuotation">
 			<template #filter-chips>
-				<DeskLinkPicker
-					v-model="customerFilter"
-					doctype="Customer"
-					label-field="customer_name"
-					value-field="name"
-					:search-fields="['customer_name', 'name']"
-					placeholder="Customer: Any"
-					class="!w-52"
-				/>
+				<DeskLinkPicker v-model="customerFilter" doctype="Customer" label-field="customer_name"
+					value-field="name" :search-fields="['customer_name', 'name']" placeholder="Customer: Any"
+					class="!w-52" />
 
 				<DeskSelect v-model="statusFilter" class="!w-40">
 					<option value="">Status: Any</option>
