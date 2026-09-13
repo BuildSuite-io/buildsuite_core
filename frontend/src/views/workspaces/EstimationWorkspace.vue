@@ -21,7 +21,10 @@ onMounted(async () => {
 	}
 });
 
-const ESTIMATES = [{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" }];
+const ESTIMATES = [
+	{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" },
+	{ to: "/quotations", icon: "file-text", label: "Quotations" },
+];
 const SETUP = [
 	{
 		to: "/rate-master",

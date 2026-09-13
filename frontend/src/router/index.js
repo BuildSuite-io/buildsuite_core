@@ -41,6 +41,7 @@ const PAGE_TITLES = {
 	"report-stub": "Report",
 	"report-delay-analysis": "Delay Analysis",
 	estimation: "Estimation",
+	quotations: "Quotations",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
@@ -242,6 +243,11 @@ const routes = [
 				name: "boq-detail",
 				component: () => import("@/views/BoqDetailView.vue"),
 				props: true,
+			},
+			{
+				path: "quotations",
+				name: "quotations",
+				component: () => import("@/views/QuotationsListView.vue"),
 			},
 			{
 				path: "rate-master",

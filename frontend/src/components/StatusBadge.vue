@@ -39,6 +39,11 @@ const classes = computed(() => {
 		"Pending Approval": "bg-warning-50 text-warning-700",
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
+		Sent: "bg-info-50 text-info-700",
+		Replied: "bg-info-100 text-info-700",
+		Accepted: "bg-success-50 text-success-700",
+		"Partially accepted": "bg-success-100 text-success-700",
+		Expired: "bg-ink-100 text-ink-500",
 		// Petty Cash Request lifecycle.
 		Requested: "bg-warning-50 text-warning-700",
 		Disbursed: "bg-success-50 text-success-700",
