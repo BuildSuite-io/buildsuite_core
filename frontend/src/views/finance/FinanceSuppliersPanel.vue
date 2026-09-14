@@ -14,6 +14,8 @@ import { createDataAdapter } from "@/data/adapters";
 import { useConfirm } from "@/composables/useConfirm";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
+import DeskDynamicFilters from "@/components/desk/DeskDynamicFilters.vue";
+import { matchesDynamicFilters } from "@/utils/dynamicFilters";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import PartyFormModal from "./PartyFormModal.vue";
@@ -49,10 +51,19 @@ onMounted(load);
 
 const search = ref("");
 const typeFilter = ref("");
+const dynFilters = ref([]);
+const filterFields = [
+	{ fieldname: "name", label: "Name", fieldtype: "Data" },
+	{ fieldname: "type", label: "Type", fieldtype: "Data" },
+	{ fieldname: "contactPerson", label: "Contact", fieldtype: "Data" },
+	{ fieldname: "phone", label: "Phone", fieldtype: "Data" },
+	{ fieldname: "gstin", label: "Tax ID", fieldtype: "Data" },
+	{ fieldname: "advance", label: "Advance paid", fieldtype: "Currency" },
+];
 
 const rows = computed(() => {
 	const t = search.value.trim().toLowerCase();
-	let list = suppliers.value;
+	let list = suppliers.value.filter((sp) => matchesDynamicFilters(sp, dynFilters.value));
 	if (typeFilter.value) list = list.filter((s) => s.type === typeFilter.value);
 	if (t)
 		list = list.filter(
@@ -157,6 +168,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:columns="columns"
 				row-key="id"
 				search-placeholder="Search name, contact, trade, tax ID…"
+				:show-add-filter="false"
 				:sort-options="sortOptions"
 				:sort-field="sortField"
 				:sort-direction="sortDirection"
@@ -165,6 +177,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				@row-click="onRowClick"
 			>
 				<template #filter-chips>
+					<DeskDynamicFilters :fields="filterFields" v-model:filters="dynFilters" />
 					<DeskFilterChip
 						v-if="typeFilter"
 						:label="`Type: ${typeFilter}`"
