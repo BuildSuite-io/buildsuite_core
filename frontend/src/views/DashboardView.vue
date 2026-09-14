@@ -4,25 +4,31 @@
 // denser Desk-styled overview accessed via "Browse all workspaces" from a landing, or
 // the legacy `/` redirect.
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtCompactINR } from "@/utils/format";
 import { getHomeDashboard } from "@/data/homeDashboardApi";
 
 // One live aggregate read backs the whole overview (api.home.get_home_dashboard).
+const activeCompany = useActiveCompany();
 const dash = ref(null);
 const loading = ref(true);
-onMounted(async () => {
+async function load() {
+	loading.value = true;
 	try {
 		dash.value = await getHomeDashboard();
 	} finally {
 		loading.value = false;
 	}
-});
+}
+onMounted(load);
+// Reload when the switcher changes — the dashboard is scoped to the working company.
+watch(activeCompany, load);
 const kpis = computed(() => dash.value?.kpis || {});
 const rootProjects = computed(() => dash.value?.projects || []);
 const pendingScos = computed(() => dash.value?.pending_scos || []);

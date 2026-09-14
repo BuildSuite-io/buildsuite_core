@@ -2,11 +2,12 @@
 // Role-aware Home. One live aggregate read (api.home.get_home_dashboard) returns the
 // logged-in user's snapshot tiles, primary CTA and alert cards — the same per-role content
 // as the prototype's HomeWorkspaceView. This view is a thin renderer of that payload.
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
 import { useUserNames } from "@/composables/useUserNames";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtCompactINR } from "@/utils/format";
 import { getHomeDashboard } from "@/data/homeDashboardApi";
@@ -14,15 +15,20 @@ import { getHomeDashboard } from "@/data/homeDashboardApi";
 const store = useDataStore();
 const session = useSessionStore();
 const { userName: resolveUserName } = useUserNames();
+const activeCompany = useActiveCompany();
 
 const dash = ref(null);
-onMounted(async () => {
+async function load() {
 	try {
 		dash.value = await getHomeDashboard();
 	} catch {
 		dash.value = null;
 	}
-});
+}
+onMounted(load);
+// The dashboard is scoped to the working company (get_home_dashboard → default_company); reload it
+// when the switcher changes so the home snapshot follows the company.
+watch(activeCompany, load);
 
 const snapshot = computed(() => dash.value?.snapshot || []);
 const alerts = computed(() => dash.value?.alerts || []);
