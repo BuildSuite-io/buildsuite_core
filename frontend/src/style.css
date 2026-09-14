@@ -118,7 +118,14 @@
     background-color: #0F172A;
     border-radius: 6px;
     transition: background-color 0.1s;
+    text-decoration: none;
   }
+  /* Never underline. The primary button is frequently a DeskLink (which carries .desk-link,
+     and .desk-link:hover underlines) — this keeps it a button, not a link, on hover/focus/active
+     in both themes. Defined after .desk-link so it wins the specificity tie. */
+  .desk-save-btn:hover,
+  .desk-save-btn:focus,
+  .desk-save-btn:active { text-decoration: none; }
   .desk-save-btn:hover:not(:disabled) { background-color: #1E293B; }
   .desk-save-btn:disabled {
     @apply bg-ink-200 text-ink-500 cursor-not-allowed;
