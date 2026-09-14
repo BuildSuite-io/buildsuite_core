@@ -1,20 +1,38 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
+import { useConfirm } from "@/composables/useConfirm";
 import { usePageTitle } from "@/composables/usePageTitle";
-import { statusLabel } from "@/data/quotationStatus";
+import { showToast } from "@/utils/appToast";
+import {
+	copyQuotation,
+	markQuotationAccepted,
+	markQuotationRejected,
+	markQuotationSent,
+} from "@/data/quotationApi";
+import { awaitsAnswer, statusLabel } from "@/data/quotationStatus";
 import { fmtCurrency, fmtDate, daysBetween } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
+import StatusBadge from "@/components/StatusBadge.vue";
 
 const props = defineProps({ id: String });
 const adapter = createDataAdapter(useDataStore());
+const router = useRouter();
+const confirmDialog = useConfirm();
 
-const resource = adapter.read("Quotation", props.id);
-const doc = computed(() => resource?.doc || null);
+// Copy & re-price routes to another quotation on the same route, so the component is reused
+// and setup() never runs again — the read has to follow the id.
+const resource = ref(null);
+watch(() => props.id, (id) => (resource.value = adapter.read("Quotation", id)), {
+	immediate: true,
+});
+
+const doc = computed(() => resource.value?.doc || null);
 
 const subtitle = computed(() =>
-	[props.id, doc.value?.party_name, doc.value?.customer_group].filter(Boolean).join(" · "),
+	[props.id, doc.value?.party_name, doc.value?.customer_type].filter(Boolean).join(" · "),
 );
 
 // Counted from today: what is left is the number worth acting on.
@@ -39,6 +57,87 @@ const lineCount = computed(() => {
 	return `${n} line${n === 1 ? "" : "s"}`;
 });
 
+// A draft can still be changed; once it has gone out, only the answer changes.
+const isDraft = computed(() => doc.value?.docstatus === 0);
+// Both halves: a draft can carry a stale status, and only a sent one can be answered.
+const awaitingAnswer = computed(
+	() => doc.value?.docstatus === 1 && awaitsAnswer(doc.value.status)
+);
+
+const busy = ref(false);
+
+async function run(action, done) {
+	busy.value = true;
+	try {
+		await action();
+		await resource.value?.reload?.();
+		showToast(done);
+	} catch (err) {
+		showToast(err.message || "That did not work", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onMarkSent() {
+	const ok = await confirmDialog({
+		title: `Send ${props.id}?`,
+		message: "The lines and prices are frozen once the quotation has gone out.",
+		confirmLabel: "Mark sent",
+	});
+	if (ok) run(() => markQuotationSent(props.id), "Marked as sent.");
+}
+
+async function onAccept() {
+	const ok = await confirmDialog({
+		title: "Customer accepted?",
+		message: "This raises and confirms a sales order from the quotation.",
+		confirmLabel: "Accepted",
+	});
+	if (ok) run(() => markQuotationAccepted(props.id), "Accepted — a sales order is drafted.");
+}
+
+async function onReject() {
+	const ok = await confirmDialog({
+		title: "Customer rejected?",
+		message: "The quotation is marked lost. Copy and re-price it if they come back.",
+		confirmLabel: "Rejected",
+		destructive: true,
+	});
+	if (ok) run(() => markQuotationRejected(props.id), "Marked as rejected.");
+}
+
+async function onCopy() {
+	busy.value = true;
+	try {
+		const { name } = await copyQuotation(props.id);
+		router.push(`/quotations/${encodeURIComponent(name)}`);
+	} catch (err) {
+		showToast(err.message || "Could not copy the quotation", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function onDelete() {
+	const ok = await confirmDialog({
+		title: `Delete ${props.id}?`,
+		message: "This cannot be undone.",
+		confirmLabel: "Delete",
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		await adapter.remove("Quotation", props.id);
+		router.push("/quotations");
+	} catch (err) {
+		showToast(err.message || "Could not delete the quotation", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
 usePageTitle(() => doc.value?.title || props.id);
 
 const breadcrumbs = computed(() => [
@@ -53,11 +152,42 @@ const breadcrumbs = computed(() => [
 	<DeskPage v-if="doc" :title="doc.title || id" :subtitle="subtitle" :status="statusLabel(doc.status)"
 		:breadcrumbs="breadcrumbs">
 		<template #actions>
-			<a :href="`/app/quotation/${encodeURIComponent(id)}`"
+			<a :href="`/printview?doctype=Quotation&name=${encodeURIComponent(id)}`" target="_blank"
+				rel="noopener"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px">
-				Open in Desk
+				Print / PDF
 			</a>
+			<RouterLink v-if="isDraft" :to="`/quotations/${encodeURIComponent(id)}/edit`"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px">
+				Edit
+			</RouterLink>
+			<button v-if="isDraft" type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px" :disabled="busy" @click="onMarkSent">
+				Mark sent
+			</button>
+			<button v-if="awaitingAnswer" type="button"
+				class="text-xs px-2.5 py-1 border border-success-300 bg-success-50 hover:bg-success-100 text-success-700 font-medium"
+				style="border-radius: 6px" :disabled="busy" @click="onAccept">
+				Accepted
+			</button>
+			<button v-if="awaitingAnswer" type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px" :disabled="busy" @click="onReject">
+				Rejected
+			</button>
+			<button v-if="!isDraft" type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px" :disabled="busy" @click="onCopy">
+				Copy &amp; re-price
+			</button>
+			<button v-if="isDraft" type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px" :disabled="busy" @click="onDelete">
+				Delete
+			</button>
 		</template>
 
 		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
@@ -100,19 +230,15 @@ const breadcrumbs = computed(() => [
 				<div class="text-sm text-ink-900 truncate">{{ doc.owner || "—" }}</div>
 			</div>
 
-			<!-- Quotation carries no BOQ or Project link. Both need a custom field. -->
-			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Priced from
-				</div>
-				<div class="text-sm text-ink-400">—</div>
-			</div>
-
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					Project
 				</div>
-				<div class="text-sm text-ink-400">—</div>
+				<RouterLink v-if="doc.project" :to="`/projects/${encodeURIComponent(doc.project)}`"
+					class="text-sm text-brand-700 hover:underline">
+					{{ doc.project }}
+				</RouterLink>
+				<div v-else class="text-sm text-ink-400">Not linked yet</div>
 			</div>
 		</div>
 
@@ -123,9 +249,10 @@ const breadcrumbs = computed(() => [
 
 		<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 			<div class="overflow-x-auto">
-				<table class="w-full text-sm" style="min-width: 640px">
+				<table class="w-full text-sm" style="min-width: 760px">
 					<thead>
 						<tr class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500">
+							<th class="text-left font-medium px-3 py-2 w-24">Source</th>
 							<th class="text-left font-medium px-3 py-2">Description</th>
 							<th class="text-left font-medium px-3 py-2 w-28">Unit</th>
 							<th class="text-right font-medium px-3 py-2 w-28">Qty</th>
@@ -136,7 +263,15 @@ const breadcrumbs = computed(() => [
 
 					<tbody>
 						<tr v-for="(l, i) in lines" :key="l.name || i" class="border-b border-ink-100">
-							<td class="px-3 py-2 text-ink-900">{{ l.item_name }}</td>
+							<td class="px-3 py-2">
+								<StatusBadge :status="l.source" size="xs" />
+							</td>
+							<td class="px-3 py-2">
+								<div class="text-ink-900">{{ l.item_name }}</div>
+								<div v-if="l.source_code" class="text-[10px] font-mono text-ink-500">
+									{{ l.source_code }}
+								</div>
+							</td>
 							<td class="px-3 py-2 text-ink-700">{{ l.uom }}</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
 								{{ l.qty }}
@@ -150,7 +285,7 @@ const breadcrumbs = computed(() => [
 						</tr>
 
 						<tr v-if="!lines.length">
-							<td colspan="5" class="px-3 py-6 text-center text-ink-500 text-xs">
+							<td colspan="6" class="px-3 py-6 text-center text-ink-500 text-xs">
 								No lines on this quotation.
 							</td>
 						</tr>
@@ -158,7 +293,7 @@ const breadcrumbs = computed(() => [
 
 					<tfoot>
 						<tr v-if="lines.length" class="border-t-2 border-ink-200 bg-ink-50">
-							<td colspan="4"
+							<td colspan="5"
 								class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider">
 								Net total
 							</td>
@@ -218,5 +353,22 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 		</div>
+		<div v-if="doc.internal_note" class="mt-4 bg-ink-50 border border-ink-200 px-4 py-3"
+			style="border-radius: 8px">
+			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
+				Internal note — not printed
+			</div>
+			<p class="text-sm text-ink-700 whitespace-pre-line">{{ doc.internal_note }}</p>
+		</div>
 	</DeskPage>
+
+	<DeskPage v-else-if="resource?.doc === null" title="Quotation not found"
+		:breadcrumbs="breadcrumbs">
+		<p class="text-sm text-ink-600">
+			No quotation with that id.
+			<RouterLink to="/quotations" class="desk-link">Back to the register →</RouterLink>
+		</p>
+	</DeskPage>
+
+	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading quotation…</div>
 </template>

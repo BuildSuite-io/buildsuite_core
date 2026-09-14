@@ -64,6 +64,9 @@ const classes = computed(() => {
 		Activity: "bg-ink-100 text-ink-700",
 		Milestone: "bg-warning-100 text-warning-700",
 		Inspection: "bg-info-100 text-info-700",
+		// Where a quotation line came from.
+		Manual: "bg-ink-100 text-ink-700",
+		Assembly: "bg-warning-50 text-warning-700",
 		// Attendance — Field Attendance rows and the Labour Register. Without
 		// these an Absent worker and a Present one render as the same grey pill,
 		// which is the whole signal that column carries.
