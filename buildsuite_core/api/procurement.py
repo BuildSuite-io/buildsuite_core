@@ -5,6 +5,17 @@ from frappe.utils import add_days, date_diff, flt, nowdate
 from buildsuite_core.api.rate_master import get_rate_update_threshold
 
 
+
+def _cf() -> dict:
+	"""Company filter fragment for the dashboard queries — the working company when awareness is
+	on, else {} (all companies). MR/PO/PR all carry a company; the child-item queries inherit the
+	scope through their already-filtered parent names."""
+	from buildsuite_core.utils.project import company_scope
+
+	c = company_scope()
+	return {"company": c} if c else {}
+
+
 @frappe.whitelist()
 def get_dashboard() -> dict:
 	"""KPI figures for the Procurement dashboard (get_list applies user perms)."""
@@ -22,7 +33,7 @@ def _open_material_requests() -> dict:
 	"""Submitted MRs not fully ordered; value = the still-to-order portion."""
 	names = frappe.get_list(
 		"Material Request",
-		filters={"docstatus": 1, "material_request_type": "Purchase", "per_ordered": ["<", 100]},
+		filters={**_cf(), "docstatus": 1, "material_request_type": "Purchase", "per_ordered": ["<", 100]},
 		pluck="name",
 	)
 	return {"count": len(names), "value": _pending_order_value(names)}
@@ -45,7 +56,7 @@ def _on_order() -> dict:
 	"""Submitted POs awaiting delivery (per_received < 100): count + full value."""
 	row = frappe.get_list(
 		"Purchase Order",
-		filters={"docstatus": 1, "per_received": ["<", 100]},
+		filters={**_cf(), "docstatus": 1, "per_received": ["<", 100]},
 		fields=[{"COUNT": "name", "as": "count"}, {"SUM": "grand_total", "as": "value"}],
 	)[0]
 	return {"count": row.count or 0, "value": flt(row.value)}
@@ -55,7 +66,7 @@ def _received_this_week() -> dict:
 	"""Purchase Receipts posted in the last 7 days."""
 	row = frappe.get_list(
 		"Purchase Receipt",
-		filters={"docstatus": 1, "posting_date": [">=", add_days(nowdate(), -7)]},
+		filters={**_cf(), "docstatus": 1, "posting_date": [">=", add_days(nowdate(), -7)]},
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0]
 	return {"count": row.count or 0}
@@ -63,7 +74,7 @@ def _received_this_week() -> dict:
 
 def _above_estimated_rate() -> dict:
 	"""Count PO lines priced > RM_THRESHOLD_PCT above their Rate Master rate."""
-	po_names = frappe.get_list("Purchase Order", filters={"docstatus": 1}, pluck="name")
+	po_names = frappe.get_list("Purchase Order", filters={**_cf(), "docstatus": 1}, pluck="name")
 	return {"count": _over_rate_line_count(po_names)}
 
 
@@ -97,7 +108,7 @@ def _approved_to_order() -> dict:
 	"""Submitted MRs not fully ordered, plus the oldest wait in days."""
 	rows = frappe.get_list(
 		"Material Request",
-		filters={"docstatus": 1, "material_request_type": "Purchase", "per_ordered": ["<", 100]},
+		filters={**_cf(), "docstatus": 1, "material_request_type": "Purchase", "per_ordered": ["<", 100]},
 		fields=["transaction_date"],
 		order_by="transaction_date asc",
 	)
@@ -109,7 +120,7 @@ def _deliveries_overdue() -> dict:
 	"""Submitted POs past schedule_date and not fully received."""
 	pos = frappe.get_list(
 		"Purchase Order",
-		filters={"docstatus": 1, "per_received": ["<", 100], "schedule_date": ["<", nowdate()]},
+		filters={**_cf(), "docstatus": 1, "per_received": ["<", 100], "schedule_date": ["<", nowdate()]},
 		fields=["name", "supplier", "schedule_date"],
 		order_by="schedule_date asc",
 	)
@@ -130,7 +141,8 @@ def _partial_deliveries() -> dict:
 	"""Submitted POs between 1% and 99% received."""
 	row = frappe.get_list(
 		"Purchase Order",
-		filters=[["docstatus", "=", 1], ["per_received", ">", 0], ["per_received", "<", 100]],
+		filters=[["docstatus", "=", 1], ["per_received", ">", 0], ["per_received", "<", 100]]
+		+ ([["company", "=", _cf()["company"]]] if _cf() else []),
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0]
 	return {"count": row.count or 0}
@@ -140,7 +152,7 @@ def _received_not_billed() -> dict:
 	"""Submitted Purchase Receipts not yet fully billed."""
 	row = frappe.get_list(
 		"Purchase Receipt",
-		filters={"docstatus": 1, "per_billed": ["<", 100]},
+		filters={**_cf(), "docstatus": 1, "per_billed": ["<", 100]},
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0]
 	return {"count": row.count or 0}
@@ -150,7 +162,7 @@ def _recent_receipts() -> list[dict]:
 	"""The 5 latest submitted Purchase Receipts, with items and a status."""
 	prs = frappe.get_list(
 		"Purchase Receipt",
-		filters={"docstatus": 1},
+		filters={**_cf(), "docstatus": 1},
 		fields=["name", "supplier", "project", "posting_date"],
 		order_by="posting_date desc, creation desc",
 		limit=5,

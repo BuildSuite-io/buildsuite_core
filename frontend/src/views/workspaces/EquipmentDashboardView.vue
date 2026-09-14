@@ -1,12 +1,13 @@
 <script setup>
 // Equipment dashboard — plant register + usage cost at a glance. Mirrors the demo.
 
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getEquipmentDashboard } from "@/data/equipmentApi";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
@@ -21,6 +22,9 @@ const error = ref("");
 const kpis = ref(null);
 
 onMounted(loadDashboard);
+// Reload when the switcher changes — the dashboard is scoped to the working company.
+const dashActiveCompany = useActiveCompany();
+watch(dashActiveCompany, loadDashboard);
 
 async function loadDashboard() {
 	loading.value = true;
