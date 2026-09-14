@@ -120,6 +120,8 @@ class TestQuotation(BuildSuiteTestCase):
 
 		self.assertEqual(frappe.db.get_value("Sales Order", order, "docstatus"), 1)
 		self.assertEqual(frappe.db.get_value("Quotation", name, "status"), "Ordered")
+		# Nothing is delivered by note, so the order must not be waiting on a delivery.
+		self.assertEqual(frappe.db.get_value("Sales Order", order, "status"), "To Bill")
 
 	def test_accepted_is_refused_twice_and_before_it_has_gone_out(self):
 		name = self._save()

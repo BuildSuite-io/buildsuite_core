@@ -189,6 +189,7 @@ def mark_accepted(name: str) -> dict:
 		frappe.throw(_("This quotation has already been ordered."))
 
 	order = make_sales_order(name)
+	order.skip_delivery_note = 1
 	order.insert()
 	order.submit()
 	return {"name": name, "sales_order": order.name}
