@@ -62,7 +62,13 @@ def get_material_consumption(name: str) -> dict:
 @frappe.whitelist()
 def list_material_consumption(start: int = 0, page_length: int = 10, search: str | None = None, project: str | None = None) -> dict:
 	"""One page of Material Issue entries + total_count for the pager."""
+	from buildsuite_core.utils.project import company_scope
+
 	filters = {"stock_entry_type": MATERIAL_ISSUE}
+	# Stock Entry carries a company; scope to the working company only when awareness is on.
+	scope = company_scope()
+	if scope:
+		filters["company"] = scope
 	if project and isinstance(project, str):
 		filters["project"] = project
 	or_filters = [["name", "like", f"%{search}%"], ["remarks", "like", f"%{search}%"]] if search else None
