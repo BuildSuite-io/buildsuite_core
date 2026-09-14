@@ -3,7 +3,7 @@
 // standard DocTypeListView (pagination / sort / filter / search for free); an invoice IS a
 // Sales Invoice. Rows show two status badges — submission (Draft/Submitted/Cancelled) and, for
 // submitted invoices, the payment status (Unpaid/Overdue/Partly Paid/Paid) — both colour-coded.
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
@@ -21,7 +21,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
-import { useActiveCompany } from "@/composables/useActiveCompany";
+import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
 
@@ -30,9 +30,8 @@ const router = useRouter();
 const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
-const baseFilters = computed(() =>
-	activeCompany.value ? [["company", "=", activeCompany.value]] : []
-);
+// Toggle-gated: [] when company awareness is off, so the list shows every company.
+const baseFilters = activeCompanyFilter();
 
 // The list is a doctype resource; bump this to force a refresh after receive/advance.
 const listKey = ref(0);
@@ -53,6 +52,11 @@ async function loadSummary() {
 	}
 }
 loadSummary();
+// The header totals are scoped server-side to the working company — reload them (and the list)
+// when the switcher changes, so the stat cards follow the company like the rows do.
+watch(activeCompany, () => {
+	refreshList();
+});
 
 // --- status derivation from the native Sales Invoice `status` ---
 function submissionOf(s) {

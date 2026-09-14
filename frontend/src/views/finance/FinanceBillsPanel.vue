@@ -25,6 +25,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Bills" }];
@@ -58,6 +59,10 @@ async function load() {
 	}
 }
 load();
+// The list + header totals are scoped server-side to the working company; reload on a switch so
+// the payables stat cards follow the company.
+const activeCompany = useActiveCompany();
+watch(activeCompany, load);
 
 // --- filters ---
 const search = ref("");
