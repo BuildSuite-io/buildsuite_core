@@ -18,10 +18,13 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 
 const route = useRoute();
 const router = useRouter();
 const { canCreate, canEdit } = usePermissions();
+// Scope the Work Order picker to the active company; re-queries when the switcher changes.
+const companyFilter = activeCompanyFilter();
 
 const editingId = computed(() => route.params.id || null);
 const isEdit = computed(() => !!editingId.value);
@@ -328,6 +331,7 @@ const breadcrumbs = computed(() => [
 						doctype="Subcontractor Work Order"
 						label-field="name"
 						value-field="name"
+						:filters="companyFilter"
 						placeholder="Pick a work order…"
 						@update:model-value="onWorkOrderChange"
 					/>

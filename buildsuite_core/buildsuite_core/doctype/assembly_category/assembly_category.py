@@ -4,6 +4,8 @@
 # import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import default_company
+
 
 class AssemblyCategory(Document):
 	# begin: auto-generated types
@@ -17,4 +19,6 @@ class AssemblyCategory(Document):
 		category: DF.Data | None
 	# end: auto-generated types
 
-	pass
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()

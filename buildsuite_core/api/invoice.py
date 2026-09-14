@@ -11,7 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, nowdate
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import assert_link_same_company, default_company
 
 SI = "Sales Invoice"
 PE = "Payment Entry"
@@ -308,6 +308,9 @@ def save_invoice(payload: str):
 		si = frappe.new_doc(SI)
 
 	si.company = company
+	# Company guard: a per-company customer must belong to this invoice's company. No-ops for a
+	# customer with no company yet (un-backfilled) or on a single-company site.
+	assert_link_same_company(customer, "Customer", company, _("Customer"))
 	si.customer = customer
 	si.currency = frappe.db.get_value("Company", company, "default_currency")
 	si.set_posting_time = 1
@@ -732,13 +735,17 @@ def unlink_advance(name: str, payment_entry: str):
 @frappe.whitelist()
 def receivables_summary(company: str | None = None):
 	"""Header totals for the Invoices panel — total outstanding receivable (submitted, unpaid
-	Sales Invoices) and total unallocated customer advances — for the active company."""
-	company = company or default_company()
+	Sales Invoices) and total unallocated customer advances. Scoped to the working company when
+	company awareness is on, else across all companies (company_scope() → None)."""
+	from buildsuite_core.utils.project import company_scope
+
+	company = company or company_scope()
+	cond = "AND company = %(company)s" if company else ""
 	outstanding = frappe.db.sql(
-		"""
+		f"""
 		SELECT COALESCE(SUM(outstanding_amount), 0)
 		FROM `tabSales Invoice`
-		WHERE docstatus = 1 AND company = %(company)s AND outstanding_amount > 0
+		WHERE docstatus = 1 {cond} AND outstanding_amount > 0
 		""",
 		{"company": company},
 	)
@@ -750,14 +757,18 @@ def receivables_summary(company: str | None = None):
 
 @frappe.whitelist()
 def advances_summary(company: str | None = None):
-	"""Total unallocated customer advances held for the active (default) company."""
-	company = company or default_company()
+	"""Total unallocated customer advances. Scoped to the working company when awareness is on,
+	else across all companies."""
+	from buildsuite_core.utils.project import company_scope
+
+	company = company or company_scope()
+	cond = "AND company = %(company)s" if company else ""
 	total = frappe.db.sql(
-		"""
+		f"""
 		SELECT COALESCE(SUM(unallocated_amount), 0)
 		FROM `tabPayment Entry`
 		WHERE docstatus = 1 AND payment_type = 'Receive' AND party_type = 'Customer'
-			AND company = %(company)s AND unallocated_amount > 0
+			{cond} AND unallocated_amount > 0
 		""",
 		{"company": company},
 	)

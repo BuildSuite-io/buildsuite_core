@@ -4,6 +4,8 @@
 # import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import default_company
+
 
 class LabourTrade(Document):
 	# begin: auto-generated types
@@ -16,3 +18,7 @@ class LabourTrade(Document):
 
 		trade: DF.Data | None
 	# end: auto-generated types
+
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()

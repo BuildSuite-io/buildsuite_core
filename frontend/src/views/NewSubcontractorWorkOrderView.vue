@@ -21,11 +21,14 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtINR } from "@/utils/format";
 
 const route = useRoute();
 const router = useRouter();
 const { canCreate, canEdit } = usePermissions();
+// Scope the Project picker to the active company; re-queries when the switcher changes.
+const companyFilter = activeCompanyFilter();
 
 const editingId = computed(() => route.params.id || null);
 const isEdit = computed(() => !!editingId.value);
@@ -241,6 +244,7 @@ const saveLabel = computed(() =>
 						label-field="project_name"
 						value-field="name"
 						:search-fields="['project_name', 'name']"
+						:filters="companyFilter"
 						placeholder="Pick a project…"
 					/>
 				</DeskField>

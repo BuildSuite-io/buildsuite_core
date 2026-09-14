@@ -8,6 +8,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useDataStore } from "@/stores";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -19,9 +20,16 @@ const today = computed(() => {
 });
 
 const { projectName } = useProjectNames();
+const store = useDataStore();
+// Client-side company scope (this dashboard fetches all + counts client-side): filter to the
+// working company when awareness is on, else pass through (all companies).
+function scoped(rows) {
+	if (!store.multiCompanyEnabled || !store.activeCompany) return rows || [];
+	return (rows || []).filter((r) => r.company === store.activeCompany);
+}
 
 const wosRes = useDocTypeList("Subcontractor Work Order", {
-	fields: [
+	fields: ["company",
 		"name",
 		"subcontractor_name",
 		"project",
@@ -36,20 +44,20 @@ const wosRes = useDocTypeList("Subcontractor Work Order", {
 	cache: "buildsuite-subcontract-wo-dashboard",
 });
 const subsRes = useDocTypeList("Supplier", {
-	fields: ["name", "supplier_name", "disabled"],
+	fields: ["company","name", "supplier_name", "disabled"],
 	filters: [["supplier_type", "=", "Subcontractor"]],
 	orderBy: "supplier_name asc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-dashboard",
 });
 const mbsRes = useDocTypeList("Measurement Book", {
-	fields: ["name", "project", "work_order", "date", "measured_total", "status"],
+	fields: ["company","name", "project", "work_order", "date", "measured_total", "status"],
 	orderBy: "date desc",
 	pageLength: 0,
 	cache: "buildsuite-measurement-book-dashboard",
 });
 const billsRes = useDocTypeList("Subcontractor Bill", {
-	fields: [
+	fields: ["company",
 		"name",
 		"ra_no",
 		"subcontractor_name",
@@ -67,10 +75,10 @@ const billsRes = useDocTypeList("Subcontractor Bill", {
 	cache: "buildsuite-subcontractor-bill-dashboard",
 });
 
-const wos = computed(() => wosRes.data || []);
-const subs = computed(() => subsRes.data || []);
-const bills = computed(() => billsRes.data || []);
-const recentMBs = computed(() => (mbsRes.data || []).slice(0, 5));
+const wos = computed(() => scoped(wosRes.data));
+const subs = computed(() => scoped(subsRes.data));
+const bills = computed(() => scoped(billsRes.data));
+const recentMBs = computed(() => scoped(mbsRes.data).slice(0, 5));
 const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 const recentBills = computed(() => bills.value.slice(0, 6));
 

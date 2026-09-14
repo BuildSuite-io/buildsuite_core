@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
@@ -12,11 +13,21 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { usePermissions } from "@/composables/usePermissions";
 
 const router = useRouter();
+const store = useDataStore();
 const { canCreate } = usePermissions();
 
 const statusFilter = ref("");
 const typeFilter = ref("");
-const companyFilter = ref("");
+// The project list follows the topbar company switcher: it defaults to the working company
+// and re-queries when the user switches. Empty = all companies (single-company site or an
+// explicit "All companies" pick in the filter chip).
+const companyFilter = ref(store.activeCompany || "");
+watch(
+	() => store.activeCompany,
+	(company) => {
+		companyFilter.value = company || "";
+	}
+);
 
 const companiesResource = useDocTypeList("Company", {
 	fields: ["name", "abbr"],

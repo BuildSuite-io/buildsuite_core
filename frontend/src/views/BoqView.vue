@@ -19,11 +19,14 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtCompactINR, fmtINR } from "@/utils/format";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
 const { canCreate } = usePermissions();
+// Scope the Project pickers to the active company; re-queries when the switcher changes.
+const companyFilter = activeCompanyFilter();
 
 const search = ref("");
 const projectFilter = ref("");
@@ -254,6 +257,7 @@ const subtitle = computed(
 						label-field="project_name"
 						value-field="name"
 						:search-fields="['project_name', 'custom_project_id', 'name']"
+						:filters="companyFilter"
 						placeholder="Project: Any"
 					/>
 				</div>
@@ -348,6 +352,7 @@ const subtitle = computed(
 							label-field="project_name"
 							value-field="name"
 							:search-fields="['project_name', 'custom_project_id', 'name']"
+							:filters="companyFilter"
 							placeholder="Select a project"
 						/>
 					</DeskField>

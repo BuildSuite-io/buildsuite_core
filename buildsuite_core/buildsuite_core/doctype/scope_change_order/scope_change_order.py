@@ -5,6 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import today
 
+from buildsuite_core.utils.project import anchor_company_to_project, assert_same_company
+
 
 class ScopeChangeOrder(Document):
 	def validate(self):
@@ -17,11 +19,7 @@ class ScopeChangeOrder(Document):
 			self.status = "Pending Approval"
 
 	def _set_company(self):
-		if self.company:
-			return
-		if self.project:
-			self.company = frappe.db.get_value("Project", self.project, "company")
-		if not self.company:
-			self.company = frappe.defaults.get_user_default("Company") or frappe.db.get_single_value(
-				"Global Defaults", "default_company"
-			)
+		# Anchor to the project's company (always re-derive), then block a BOQ revision that
+		# belongs to another company's project — the core cross-company guard.
+		anchor_company_to_project(self)
+		assert_same_company(self, "boq_revision", "BOQ", label="BOQ")

@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import Autocomplete from "../../../node_modules/frappe-ui/src/components/Autocomplete/Autocomplete.vue";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { companyFilterForDoctype } from "@/composables/useActiveCompany";
 import { useHiddenUsers } from "@/composables/useHiddenUsers";
 
 // Users that BuildSuite Core's own UI must never surface (Administrator, Guest,
@@ -63,14 +64,38 @@ const resolvedFields = computed(() => {
 	);
 });
 
+// Reactive company filter for this picker's doctype (empty for org-wide doctypes). Drives the
+// auto company-scope below and re-queries when the topbar switcher changes the company.
+const companyScope = companyFilterForDoctype(props.doctype);
+
 const serverFilters = computed(() => {
-	// For the User doctype, exclude the accounts BuildSuite Core hides from its own
-	// pickers (Administrator, Guest, platform admins). Only the array filter form is
-	// rewritten (all User pickers use it); everywhere else, pass through untouched.
 	const usesArrayFilters = Array.isArray(props.filters) || !props.filters;
+
+	// For the User doctype, exclude the accounts BuildSuite Core hides from its own pickers
+	// (Administrator, Guest, platform admins). Only the array filter form is rewritten.
 	if (props.doctype === "User" && hiddenUsers.value.length && usesArrayFilters) {
 		return [...(props.filters || []), ["name", "not in", hiddenUsers.value]];
 	}
+
+	// Auto company-scope: limit a company-partitioned doctype's options to the working company,
+	// unless the caller already filters by company. Array filter form only (object/string pass
+	// through untouched); this keeps every company-scoped picker consistent in one place.
+	if (usesArrayFilters && companyScope.value.length) {
+		const arr = Array.isArray(props.filters) ? props.filters : [];
+		// Don't layer the active-company clause on top of a filter that already pins the company.
+		// An explicit `company` filter obviously does; a `project` filter does too — a project
+		// belongs to exactly one company, so its records are already single-company. Appending
+		// ["company","=",<active>] on a project-scoped picker (e.g. the BOQ's SCO / Work Package
+		// pickers) would return NOTHING whenever the active company differs from that project's
+		// company — the exact opposite of the project-company scoping we want.
+		const alreadyScoped = arr.some(
+			(f) => Array.isArray(f) && (f[0] === "company" || f[0] === "project")
+		);
+		if (!alreadyScoped) {
+			return [...arr, ...companyScope.value];
+		}
+	}
+
 	return props.filters;
 });
 
@@ -221,8 +246,10 @@ watch(
 	},
 );
 
+// Watch the RESOLVED serverFilters (not just props.filters) so the picker also re-queries when
+// the topbar switcher changes the working company (which alters serverFilters internally).
 watch(
-	() => props.filters,
+	serverFilters,
 	() => {
 		optionsResource.update({
 			fields: resolvedFields.value,

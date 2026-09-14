@@ -5,6 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from buildsuite_core.utils.project import anchor_company_to_project, assert_same_company
+
 
 class MeasurementBook(Document):
 	def validate(self):
@@ -30,11 +32,7 @@ class MeasurementBook(Document):
 		self.measured_total = total
 
 	def _set_company(self):
-		if self.company:
-			return
-		if self.project:
-			self.company = frappe.db.get_value("Project", self.project, "company")
-		if not self.company:
-			self.company = frappe.defaults.get_user_default("Company") or frappe.db.get_single_value(
-				"Global Defaults", "default_company"
-			)
+		# Anchor to the project's company (always re-derive), then block a Work Order that
+		# belongs to a different company's project from being measured/certified here.
+		anchor_company_to_project(self)
+		assert_same_company(self, "work_order", "Subcontractor Work Order", label="Work Order")

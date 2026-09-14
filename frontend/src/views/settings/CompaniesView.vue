@@ -21,7 +21,9 @@ const items = computed(() => {
 	return store.companies
 		.map((c) => ({
 			...c,
-			projectCount: store.projectsByCompany(c.id).length,
+			// Real per-company project count from the backend (list_companies), not the
+			// prototype projects slice.
+			projectCount: c.projectCount ?? 0,
 		}))
 		.filter((c) => {
 			if (!term) return true;

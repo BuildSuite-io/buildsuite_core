@@ -6,6 +6,7 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from buildsuite_core.buildsuite_core.doctype.boq_item.boq_item import roll_up_item_rate
+from buildsuite_core.utils.project import assert_link_same_company
 
 
 class BOQSubItem(Document):
@@ -31,6 +32,15 @@ class BOQSubItem(Document):
 			if parent:
 				self.work_package = self.work_package or parent.work_package
 				self.cost_head = self.cost_head or parent.cost_head
+
+		# Rate Master + source Assembly are per-company masters — must match the BOQ's company,
+		# so a component can't pull a rate/assembly from another company into this BOQ.
+		if self.boq:
+			boq_company = frappe.db.get_value("BOQ", self.boq, "company")
+			assert_link_same_company(
+				self.rate_master, "Construction Rate Master", boq_company, "Rate Master"
+			)
+			assert_link_same_company(self.source_assembly, "Assembly", boq_company, "Assembly")
 
 	def _roll_up_parent(self):
 		"""Refresh the parent item's rate from its current sub-items — unless the

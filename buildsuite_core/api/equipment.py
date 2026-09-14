@@ -2,23 +2,31 @@ import frappe
 from frappe.query_builder.functions import Sum
 from frappe.utils import flt
 
+from buildsuite_core.utils.project import company_scope
+
 
 @frappe.whitelist()
 def get_dashboard() -> dict:
+	# Scope to the working company when awareness is on, else all (company_scope() → None).
+	scope = company_scope()
+	mcf = {"company": scope} if scope else {}
 	return {
-		"machines": frappe.db.count("Machinery"),
-		"owned": frappe.db.count("Machinery", {"ownership": "Owned"}),
-		"hired": frappe.db.count("Machinery", {"ownership": "Hired"}),
-		"equipment_cost": _equipment_cost(),
-		"recent_usage": _recent_usage(),
-		"register": _register(),
+		"machines": frappe.db.count("Machinery", mcf),
+		"owned": frappe.db.count("Machinery", {**mcf, "ownership": "Owned"}),
+		"hired": frappe.db.count("Machinery", {**mcf, "ownership": "Hired"}),
+		"equipment_cost": _equipment_cost(scope),
+		"recent_usage": _recent_usage(scope),
+		"register": _register(scope),
 	}
 
 
-def _equipment_cost() -> float:
+def _equipment_cost(company=None) -> float:
 	mu = frappe.qb.DocType("Machinery Usage")
-	# qty * rate + fuel, summed across all usage rows
-	row = (frappe.qb.from_(mu).select(Sum(mu.quantity * mu.rate), Sum(mu.fuel_cost))).run()[0]
+	# qty * rate + fuel, summed across usage rows (scoped to the company when set)
+	q = frappe.qb.from_(mu).select(Sum(mu.quantity * mu.rate), Sum(mu.fuel_cost))
+	if company:
+		q = q.where(mu.company == company)
+	row = q.run()[0]
 	return flt(row[0]) + flt(row[1])
 
 
@@ -35,9 +43,10 @@ def _name_map(doctype, value_field, ids):
 	}
 
 
-def _recent_usage() -> list[dict]:
+def _recent_usage(company=None) -> list[dict]:
 	rows = frappe.get_list(
 		"Machinery Usage",
+		filters=({"company": company} if company else {}),
 		fields=["name", "machine", "project", "date", "quantity", "unit", "rate", "fuel_cost"],
 		order_by="date desc",
 		limit=6,
@@ -56,6 +65,7 @@ def machinery_usage_report() -> list[dict]:
 	the report renders without any second lookup. Newest first."""
 	rows = frappe.get_list(
 		"Machinery Usage",
+		filters=({"company": company_scope()} if company_scope() else {}),
 		fields=["name", "machine", "project", "task", "date", "quantity", "unit", "rate", "fuel_cost"],
 		order_by="date desc",
 		limit_page_length=0,
@@ -76,6 +86,7 @@ def machinery_register() -> list[dict]:
 	"""Equipment Register report — owned + hired plant with their rates. Ordered by name."""
 	return frappe.get_list(
 		"Machinery",
+		filters=({"company": company_scope()} if company_scope() else {}),
 		fields=[
 			"name",
 			"machinery_name",
@@ -91,9 +102,10 @@ def machinery_register() -> list[dict]:
 	)
 
 
-def _register() -> list[dict]:
+def _register(company=None) -> list[dict]:
 	return frappe.get_list(
 		"Machinery",
+		filters=({"company": company} if company else {}),
 		fields=["name", "machinery_name", "machinery_type", "ownership", "rate", "rate_unit", "status"],
 		order_by="machinery_name asc",
 		limit=6,

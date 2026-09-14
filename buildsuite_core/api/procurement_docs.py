@@ -16,7 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, nowdate
 
-from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.project import assert_link_same_company, default_company
 
 MATERIAL_REQUEST = "Material Request"
 PURCHASE_ORDER = "Purchase Order"
@@ -366,6 +366,9 @@ def save_purchase_order(
 		doc = frappe.new_doc(PURCHASE_ORDER)
 
 	company = _company_for(project)
+	# Company guard: a per-company supplier must belong to this order's company. No-ops for a
+	# supplier with no company yet (un-backfilled) or on a single-company site.
+	assert_link_same_company(supplier, "Supplier", company, _("Supplier"))
 	doc.supplier = supplier
 	doc.company = company
 	doc.currency = _company_currency(company)

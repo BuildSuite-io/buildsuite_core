@@ -10,7 +10,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
-import { useActiveCompany } from "@/composables/useActiveCompany";
+import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 import { usePermissions } from "@/composables/usePermissions";
 
@@ -18,9 +18,8 @@ const router = useRouter();
 const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
 const activeCompany = useActiveCompany();
-const baseFilters = computed(() =>
-	activeCompany.value ? [["company", "=", activeCompany.value]] : []
-);
+// Toggle-gated: [] when company awareness is off, so the list shows every company.
+const baseFilters = activeCompanyFilter();
 
 const FIELDS = [
 	"name",

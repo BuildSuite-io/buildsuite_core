@@ -10,7 +10,9 @@
   "subcontract_section",
   "default_subcontractor_expense_account",
   "finance_section",
-  "default_petty_cash_account"
+  "default_petty_cash_account",
+  "multi_company_section",
+  "multi_company_enabled"
  ],
  "fields": [
   {
@@ -55,6 +57,18 @@
    "fieldtype": "Link",
    "label": "Default Petty Cash Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "multi_company_section",
+   "fieldtype": "Section Break",
+   "label": "Multi-company"
+  },
+  {
+   "default": "0",
+   "description": "When on, the topbar company switcher scopes lists, pickers and new-record company defaults to the selected company. Off keeps the app single-company (the default company).",
+   "fieldname": "multi_company_enabled",
+   "fieldtype": "Check",
+   "label": "Enable company awareness"
   }
  ],
  "index_web_pages_for_search": 1,

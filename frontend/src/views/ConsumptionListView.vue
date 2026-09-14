@@ -13,10 +13,12 @@ import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { usePermissions } from "@/composables/usePermissions";
 import { listMaterialConsumption } from "@/data/materialConsumptionApi";
+import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { fmtDate } from "@/utils/format";
 
 const router = useRouter();
+const store = useDataStore();
 const { projectOptions, projectLabel } = useProjectOptions();
 const { canCreate } = usePermissions();
 
@@ -64,6 +66,14 @@ watch(projectFilter, () => {
 	page.value = 1;
 	reload();
 });
+// Follow the company switcher (Material Issues are company-scoped when awareness is on).
+watch(
+	() => store.activeCompany,
+	() => {
+		page.value = 1;
+		reload();
+	}
+);
 onMounted(reload);
 
 // Formatting is the view's job — the API returns data.

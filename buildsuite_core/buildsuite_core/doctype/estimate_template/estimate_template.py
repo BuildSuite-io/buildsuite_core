@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import default_company
+
 
 class EstimateTemplate(Document):
 	# begin: auto-generated types
@@ -29,6 +31,10 @@ class EstimateTemplate(Document):
 		template_code: DF.Data
 		template_name: DF.Data
 	# end: auto-generated types
+
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()
 
 	def validate(self):
 		total = 0

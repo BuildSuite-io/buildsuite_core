@@ -2,8 +2,9 @@
 // Subcontractor Bill list — Desk-styled. Each bill generates a Purchase
 // Invoice on submit; the list shows gross / retention / net payable + status.
 
-import { computed, reactive, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
 import { listBills } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { usePermissions } from "@/composables/usePermissions";
@@ -19,6 +20,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const router = useRouter();
+const store = useDataStore();
 const { projectName } = useProjectNames();
 const { canCreate } = usePermissions();
 
@@ -48,6 +50,8 @@ async function load() {
 	}
 }
 onMounted(load);
+// Re-scope to the topbar switcher's working company.
+watch(() => store.activeCompany, load);
 
 const search = ref("");
 

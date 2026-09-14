@@ -4,6 +4,8 @@
 # import frappe
 from frappe.model.document import Document
 
+from buildsuite_core.utils.project import default_company
+
 
 class MachineryType(Document):
 	# begin: auto-generated types
@@ -17,4 +19,6 @@ class MachineryType(Document):
 		type_name: DF.Data
 	# end: auto-generated types
 
-	pass
+	def before_insert(self):
+		if not self.company:
+			self.company = default_company()

@@ -9,7 +9,13 @@ from frappe.utils import cint, flt
 def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None = None, category: str | None = None, with_counts: bool = False):
 	"""One page of rate masters + total_count (filtered, for the pager). When
 	with_counts is set, also the global total and per-category counts (KPI cards)."""
+	from buildsuite_core.utils.project import company_scope
+
 	filters = {}
+	# Rate masters are per-company; scope to the working company only when awareness is on.
+	scope = company_scope()
+	if scope:
+		filters["company"] = scope
 	if category:
 		filters["category"] = category
 	or_filters = None

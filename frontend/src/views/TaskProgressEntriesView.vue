@@ -35,6 +35,7 @@ const entriesResource = adapter.list("Task Progress Entry", {
 	fields: [
 		"name",
 		"task",
+		"company",
 		"entry_date",
 		"cumulative_progress",
 		"skilled",
@@ -53,6 +54,7 @@ const entriesResource = adapter.list("Task Progress Entry", {
 		return rows.map((row) => ({
 			id: row?.name || "",
 			task: row?.task || "",
+			company: row?.company || "",
 			entryDate: row?.entry_date || null,
 			progressPct: Number(row?.cumulative_progress) || 0,
 			narrative: row?.narrative || "",
@@ -77,6 +79,14 @@ function toArray(data) {
 }
 
 const allEntries = computed(() => toArray(entriesResource.data));
+
+// The set the page works from — scoped to the switcher's company when awareness is on (this view
+// fetches all + filters client-side). Everything else (search, task filter, KPIs) derives from it.
+const companyScopedEntries = computed(() => {
+	const scope =
+		store.multiCompanyEnabled && store.activeCompany ? store.activeCompany : null;
+	return scope ? allEntries.value.filter((e) => e.company === scope) : allEntries.value;
+});
 
 const tasksResource = adapter.list("Task", {
 	fields: ["name", "subject", "status"],
@@ -115,7 +125,7 @@ const SORT_OPTIONS = [
 
 const items = computed(() => {
 	const term = search.value.trim().toLowerCase();
-	return allEntries.value.filter((e) => {
+	return companyScopedEntries.value.filter((e) => {
 		if (taskFilter.value && e.task !== taskFilter.value) return false;
 		if (enteredByFilter.value && e.enteredBy !== enteredByFilter.value) return false;
 		if (blockerOnly.value && !e.blockerFlag) return false;
@@ -130,7 +140,7 @@ const items = computed(() => {
 });
 
 const kpis = computed(() => {
-	const all = allEntries.value;
+	const all = companyScopedEntries.value;
 	return {
 		total: all.length,
 		today: all.filter((e) => e.entryDate === TODAY).length,
@@ -160,7 +170,7 @@ const columns = [
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Task Progress Entry" }];
 
-const subtitle = computed(() => `${items.value.length} of ${allEntries.value.length}`);
+const subtitle = computed(() => `${items.value.length} of ${companyScopedEntries.value.length}`);
 
 function onRowClick(row) {
 	router.push(`/progress-entries/${row.id}`);

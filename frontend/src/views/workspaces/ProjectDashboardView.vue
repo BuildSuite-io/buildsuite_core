@@ -4,13 +4,14 @@
 // KPIs + earned value, project health, cost booked by head, the decision queue, site
 // activity (7d), commitments, and a needs-attention list. Everything derived server-side —
 // this view renders and re-fetches on scope change.
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { getProjectDashboard } from "@/data/projectDashboardApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 
 const data = ref(null);
@@ -41,6 +42,9 @@ function setScope(v) {
 	load();
 }
 onMounted(load);
+// Reload when the switcher changes — the dashboard is scoped to the working company.
+const dashActiveCompany = useActiveCompany();
+watch(dashActiveCompany, load);
 
 const kpis = computed(() => data.value?.kpis || {});
 const health = computed(() => data.value?.health || []);

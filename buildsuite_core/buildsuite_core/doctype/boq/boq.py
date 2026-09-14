@@ -6,12 +6,12 @@ from frappe.model.document import Document
 from frappe.utils import today
 
 from buildsuite_core.buildsuite_core.doctype.boq.boq_rollup import compute_boq_totals
+from buildsuite_core.utils.project import anchor_company_to_project, assert_same_company
 
 
 class BOQ(Document):
 	def before_insert(self):
-		if self.project and not self.company:
-			self.company = frappe.db.get_value("Project", self.project, "company")
+		anchor_company_to_project(self)
 		if not self.prepared_by:
 			self.prepared_by = frappe.session.user
 		if not self.prepared_date:
@@ -22,8 +22,10 @@ class BOQ(Document):
 			self.revision = 1
 
 	def validate(self):
-		if self.project and not self.company:
-			self.company = frappe.db.get_value("Project", self.project, "company")
+		# Company is anchored to the project; a BOQ derived from another BOQ (base_revision)
+		# must share the same company — blocks cross-company revision chains.
+		anchor_company_to_project(self)
+		assert_same_company(self, "base_revision", "BOQ", label="BOQ")
 		compute_boq_totals(self)
 
 	def on_trash(self):

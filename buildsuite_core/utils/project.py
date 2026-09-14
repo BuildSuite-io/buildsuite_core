@@ -37,15 +37,116 @@ def sync_project_status(doc, method=None):
 
 
 def default_company():
-	"""The company a new record defaults to when none is chosen — the creating user's
-	company, else their user default, else the site default. This is the resolution the New
-	Project screen uses; shared so other docs (e.g. a direct Subcontractor Bill with no
-	project) default their accounting company the same way."""
+	"""The company a new record defaults to (and the backend scope resolves to) — the creating
+	user's company, else their user default, else the site default. This is the resolution the New
+	Project screen uses; shared so other docs (e.g. a direct Subcontractor Bill with no project)
+	default their accounting company the same way.
+
+	When company awareness is ON, the topbar switcher's explicit choice wins, so the backend scope
+	matches the client switcher. That choice is the user's personal Company default (set by
+	set_active_company) — read from the DefaultValue row directly, because
+	frappe.defaults.get_user_default("Company") returns the User.company FIELD for the Company key,
+	not the personal default, and would otherwise ignore the switch for users who have a company on
+	their User record."""
+	user = frappe.session.user
+	if is_multi_company_enabled():
+		# The user's personal Company default (parent = the user, parenttype "__default"), set by
+		# set_active_company. defkey compares case-insensitively, so "company" matches the stored
+		# "Company". Empty when the user hasn't switched — then fall through to the usual chain.
+		chosen = frappe.db.get_value(
+			"DefaultValue",
+			{"parent": user, "defkey": "company"},
+			"defvalue",
+		)
+		if chosen:
+			return chosen
 	return (
-		frappe.db.get_value("User", frappe.session.user, "company")
+		frappe.db.get_value("User", user, "company")
 		or frappe.defaults.get_user_default("Company")
 		or frappe.db.get_single_value("Global Defaults", "default_company")
 	)
+
+
+def is_multi_company_enabled():
+	"""Whether company awareness is turned on (BuildSuite Core Settings). Off (default) keeps the
+	app single-company: the topbar switcher is hidden and lists/pickers are not company-scoped."""
+	return bool(frappe.db.get_single_value("BuildSuite Core Settings", "multi_company_enabled"))
+
+
+def company_scope():
+	"""The company to scope company-aware LISTS and PICKERS to: the working company when
+	awareness is enabled, else None (no scoping — show all). This is only for filtering; new-record
+	company defaults and the cross-company guards always use default_company()/the project company,
+	so a single-company site keeps a valid company on every document regardless of this flag."""
+	return default_company() if is_multi_company_enabled() else None
+
+
+def stamp_company_on_insert(doc, method=None):
+	"""Stamp the working company on an org-wide ERPNext master (Supplier / Customer / Item) at
+	insert so it can be company-scoped. Only sets when blank — never overrides an explicit
+	choice. Wired via hooks.py doc_events for those doctypes.
+	"""
+	if not doc.get("company"):
+		doc.company = default_company()
+
+
+def anchor_company_to_project(doc, project_field="project"):
+	"""Anchor a document's company to its project's company (the accounting-company rule).
+
+	Always re-derives `doc.company` from the linked project — never just when blank — so a stale
+	value or the user's default company can't drift away from the project. Throws if the project
+	has no company. With no project yet, falls back to default_company(). This is the reusable
+	form of SubcontractorWorkOrder._set_company / SubcontractorBill._sync_from_work_order — call
+	it from a project-scoped doctype's validate().
+	"""
+	project = doc.get(project_field)
+	if project:
+		project_company = frappe.db.get_value("Project", project, "company")
+		# Fall back to the default company when the project has none yet (e.g. it was created
+		# before a default company was configured). A hard throw here would block the save AND
+		# silently abort template seeding (the WP/Stage inserts are swallowed by
+		# seed_from_template_on_insert's try/except). Downstream same-company guards no-op on a
+		# blank company, so a company-less project degrades safely rather than failing loud.
+		doc.company = project_company or default_company()
+	elif not doc.get("company"):
+		doc.company = default_company()
+
+
+def assert_same_company(doc, link_field, link_doctype, label=None):
+	"""Guard that a linked, company-scoped record shares `doc`'s company.
+
+	Blocks cross-company mixing — e.g. a Company A BOQ referenced by a Company B scope-change
+	order. No-op when either side has no company yet (anchor the document's company first).
+	`label` is the human name used in the error (defaults to the link doctype).
+	"""
+	link_name = doc.get(link_field)
+	if not link_name or not doc.get("company"):
+		return
+	other = frappe.db.get_value(link_doctype, link_name, "company")
+	if other and other != doc.get("company"):
+		frappe.throw(
+			frappe._("{0} {1} belongs to company {2}, not {3} — it cannot be used here.").format(
+				label or link_doctype, link_name, other, doc.get("company")
+			),
+			title=frappe._("Company mismatch"),
+		)
+
+
+def assert_link_same_company(link_name, link_doctype, company, label=None):
+	"""The linked record must belong to `company`. For docs whose own company is derived rather
+	than stored — e.g. a BOQ Item / Sub Item resolving its BOQ's company before checking that its
+	Assembly / Rate Master (per-company masters) match. No-op when either side is unset.
+	"""
+	if not link_name or not company:
+		return
+	other = frappe.db.get_value(link_doctype, link_name, "company")
+	if other and other != company:
+		frappe.throw(
+			frappe._("{0} {1} belongs to company {2}, not {3} — it cannot be used here.").format(
+				label or link_doctype, link_name, other, company
+			),
+			title=frappe._("Company mismatch"),
+		)
 
 
 def set_company_on_insert(doc, method=None):

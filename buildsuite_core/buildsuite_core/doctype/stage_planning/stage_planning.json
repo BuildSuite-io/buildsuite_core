@@ -8,6 +8,7 @@
  "field_order": [
   "stage_name",
   "project",
+  "company",
   "workflow_state",
   "column_break_1",
   "planned_start",
@@ -56,6 +57,14 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_1",

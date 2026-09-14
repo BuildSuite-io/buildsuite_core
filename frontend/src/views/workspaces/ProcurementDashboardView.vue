@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getProcurementDashboard } from "@/data/procurementApi";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { dayjs } from "frappe-ui";
 
 const today = computed(() =>
@@ -17,6 +18,9 @@ const error = ref("");
 const kpis = ref(null);
 
 onMounted(loadDashboard);
+// Reload when the switcher changes — the dashboard is scoped to the working company.
+const dashActiveCompany = useActiveCompany();
+watch(dashActiveCompany, loadDashboard);
 
 async function loadDashboard() {
 	loading.value = true;

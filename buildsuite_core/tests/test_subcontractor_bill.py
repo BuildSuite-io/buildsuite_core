@@ -193,8 +193,12 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 			self.skipTest("needs a second company to simulate the drift")
 		sub = self._subcontractor()
 		wo = self._work_order(sub, qty=100, rate=85)
-		frappe.db.set_value("Subcontractor Work Order", wo.name, "company", other)  # drift
+		# Certify the MB while the WO is still consistent with its project, THEN drift the WO's
+		# company (a WO can't actually drift in normal use — it re-anchors on every save; the MB
+		# guard blocks measuring a cross-company WO). The drift simulates later corruption the
+		# bill must still survive by anchoring to the project.
 		self._certified_mb(wo, qty=40)
+		frappe.db.set_value("Subcontractor Work Order", wo.name, "company", other)  # drift
 		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"})
 		bill.fetch_lines()
 		bill.insert(ignore_permissions=True)

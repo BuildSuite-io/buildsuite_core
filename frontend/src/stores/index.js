@@ -7,6 +7,32 @@ import { seedData } from "@/data/seed";
 import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
+import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
+import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
+import {
+	setActiveCompany as setActiveCompanyScope,
+	setCompanyAwareness,
+} from "@/composables/useActiveCompany";
+
+// Deterministic colour for a company id → one of the existing Tailwind badge classes. Real
+// Company records carry no colour field, so the switcher pill / list badge derive one from
+// the docname via a stable char-sum hash (same id always maps to the same colour).
+const COMPANY_COLOURS = [
+	"bg-violet-600",
+	"bg-blue-600",
+	"bg-amber-600",
+	"bg-emerald-600",
+	"bg-rose-600",
+	"bg-cyan-600",
+	"bg-brand-600",
+	"bg-ink-600",
+];
+function colourForId(id) {
+	const key = String(id || "");
+	let sum = 0;
+	for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
+	return COMPANY_COLOURS[sum % COMPANY_COLOURS.length];
+}
 
 const STORAGE_KEY = "buildsuite:data:v1";
 // Role is persisted under its own key so resetAll() (which wipes domain data)
@@ -133,6 +159,14 @@ function addDaysISO(isoDate, days) {
 export const useDataStore = defineStore("data", {
 	state: () => ({
 		hydrated: false,
+		// Set once loadCompanies() has populated `companies` from the REAL Company
+		// DocType. hydrate() (which runs post-mount, after loadCompanies) checks this
+		// so it never clobbers the backend data with the seed fixture. Stays false if
+		// the backend call failed — hydrate then falls back to the seed companies.
+		companiesLoaded: false,
+		// Company awareness master switch (BuildSuite Core Settings). Off = single-company:
+		// the topbar switcher is hidden and lists/pickers are not company-scoped.
+		multiCompanyEnabled: false,
 		// Active role id. NOT persisted via _persist() — see ROLE_STORAGE_KEY above.
 		role: DEFAULT_ROLE,
 		// Active company id. Same independent-persistence rationale as `role` — lives
@@ -403,7 +437,7 @@ export const useDataStore = defineStore("data", {
 		customerByName: (s) => (name) => s.customers.find((c) => c.name === name) || null,
 		// Per §14.3 the UI hides the company switcher / column / select when there's
 		// only one company — single-company users never see the field.
-		isMultiCompany: (s) => s.companies.length > 1,
+		isMultiCompany: (s) => s.multiCompanyEnabled && s.companies.length > 1,
 		// Project count per company — used by the Settings → Companies list and by
 		// the delete-guard error message (which projects reference this company?).
 		projectsByCompany: (s) => (companyId) => s.projects.filter((p) => p.company === companyId),
@@ -463,9 +497,12 @@ export const useDataStore = defineStore("data", {
 			if (stored) {
 				this.user = stored.user;
 				this.team = stored.team;
-				// Companies first — back-compat fallback for payloads predating §14.
-				this.companies =
-					stored.companies ?? JSON.parse(JSON.stringify(seedData.companies));
+				// Companies come from the REAL Company DocType (loadCompanies, run
+				// pre-mount). Only fall back to stored/seed if that hasn't happened yet
+				// (e.g. backend unreachable) so we never clobber real data.
+				if (!this.companiesLoaded)
+					this.companies =
+						stored.companies ?? JSON.parse(JSON.stringify(seedData.companies));
 				// Session 40 — Customer master with seed fallback.
 				this.customers =
 					stored.customers ?? JSON.parse(JSON.stringify(seedData.customers));
@@ -583,7 +620,8 @@ export const useDataStore = defineStore("data", {
 			} else {
 				this.user = seedData.user;
 				this.team = seedData.team;
-				this.companies = JSON.parse(JSON.stringify(seedData.companies));
+				if (!this.companiesLoaded)
+					this.companies = JSON.parse(JSON.stringify(seedData.companies));
 				this.customers = JSON.parse(JSON.stringify(seedData.customers));
 				this.projects = JSON.parse(JSON.stringify(seedData.projects));
 				this.workPackages = JSON.parse(JSON.stringify(seedData.workPackages));
@@ -610,15 +648,18 @@ export const useDataStore = defineStore("data", {
 				this.projectTypes = JSON.parse(JSON.stringify(seedData.projectTypes));
 				this._persist();
 			}
-			// Resolve active company AFTER companies slice is populated. Defensive: if
-			// the stored id is no longer present (companies removed from the fixture),
-			// fall back to the first available company or the DEFAULT_COMPANY_ID seed.
-			const storedCompany = loadCompanyFromStorage();
-			const validCompanyIds = this.companies.map((c) => c.id);
-			this.activeCompany =
-				storedCompany && validCompanyIds.includes(storedCompany)
-					? storedCompany
-					: this.companies[0]?.id || DEFAULT_COMPANY_ID;
+			// Resolve active company AFTER companies slice is populated. When
+			// loadCompanies() already ran (real backend), it resolved activeCompany
+			// against the real rows + is_default — don't second-guess it here. Otherwise
+			// (seed fallback) resolve from storage against the seed companies.
+			if (!this.companiesLoaded) {
+				const storedCompany = loadCompanyFromStorage();
+				const validCompanyIds = this.companies.map((c) => c.id);
+				this.activeCompany =
+					storedCompany && validCompanyIds.includes(storedCompany)
+						? storedCompany
+						: this.companies[0]?.id || DEFAULT_COMPANY_ID;
+			}
 			// Backfill `company` onto child records that predate §14. Idempotent — only
 			// sets the field where it's missing. Simulates the production hook that
 			// would auto-populate `company` on cascade.
@@ -695,14 +736,77 @@ export const useDataStore = defineStore("data", {
 			this.setTheme(this.theme === "dark" ? "light" : "dark");
 		},
 
+		// ===== Companies — REAL ERPNext Company DocType =====
+		// Loads every Company via the backend and maps it to the store shape the
+		// four company views expect ({id, name, shortName, description, color}).
+		// Real Company has no shortName/colour/description, so we derive them:
+		// shortName from `abbr`, colour from a deterministic id hash. Then resolves
+		// the active company: the persisted choice (if still present) → the row the
+		// backend marks is_default → the first row.
+		async loadCompanies() {
+			// Load the awareness flag alongside the companies, and sync it to the useActiveCompany
+			// composable so its picker/list filters gate on the same value the switcher does.
+			try {
+				const ctx = await getCompanyContext();
+				this.multiCompanyEnabled = !!ctx?.multi_company_enabled;
+			} catch {
+				this.multiCompanyEnabled = false;
+			}
+			setCompanyAwareness(this.multiCompanyEnabled);
+			const rows = await listCompanies();
+			const mapped = (rows || []).map((r) => ({
+				id: r.id,
+				name: r.name,
+				shortName: r.abbr || r.name,
+				description: "",
+				color: colourForId(r.id),
+				logo: r.logo,
+				projectCount: r.project_count ?? 0,
+			}));
+			this.companies = mapped;
+			this.companiesLoaded = true;
+			const ids = mapped.map((c) => c.id);
+			const stored = loadCompanyFromStorage();
+			const defaultRow = (rows || []).find((r) => r.is_default);
+			this.activeCompany =
+				stored && ids.includes(stored)
+					? stored
+					: defaultRow?.id || mapped[0]?.id || null;
+			// Keep the picker-scope seam in step with the resolved active company.
+			if (this.activeCompany) setActiveCompanyScope(this.activeCompany);
+			// Reconcile the server-side default to the resolved choice — otherwise a stored
+			// (localStorage) preference that differs from the backend is_default leaves the
+			// frontend on B while default_company() still returns A, so backend-scoped reads
+			// (and new-record company defaults) disagree with the UI.
+			if (this.activeCompany && this.activeCompany !== defaultRow?.id) {
+				setActiveCompanyRemote(this.activeCompany).catch((e) =>
+					console.warn("Failed to reconcile active company server-side:", e),
+				);
+			}
+			return mapped;
+		},
+
 		// ===== Active company (UI preference, persisted to COMPANY_STORAGE_KEY) =====
-		// Same independent-persistence pattern as setRole. Validates against the
-		// companies slice (not the static COMPANIES fixture import) so editing the
-		// seed after first run doesn't strand the user on a deleted id.
-		setActiveCompany(companyId) {
+		// Local set + own localStorage key (same independent-persistence pattern as
+		// setRole). Additionally pushes the choice to the server (so default_company()
+		// and every company-scoped guard follow the switcher) and updates the
+		// picker-scope ref so bound DeskLinkPickers re-query for the new company.
+		async setActiveCompany(companyId) {
 			if (!this.companies.find((c) => c.id === companyId)) return;
+			// Persist server-side FIRST, then flip the reactive state. Company-scoped list/report
+			// reads that take no company arg (they rely on the server default_company()) re-query
+			// off the reactive change via watchers — if we flipped first with the POST still in
+			// flight, those reads could race it and return the OLD company's rows. Awaiting removes
+			// the race in the normal case; on failure we still switch locally so the UI stays
+			// responsive (client-side picker filters carry the explicit company anyway).
+			try {
+				await setActiveCompanyRemote(companyId);
+			} catch (e) {
+				console.warn("Failed to persist active company server-side:", e);
+			}
 			this.activeCompany = companyId;
 			saveCompanyToStorage(companyId);
+			setActiveCompanyScope(companyId);
 		},
 
 		// ===== Settings DocTypes (Session 34) =====
@@ -817,65 +921,55 @@ export const useDataStore = defineStore("data", {
 			this._persist();
 		},
 
-		// ===== Company CRUD (Session 32 — Settings page) =====
-		// Note: companies are org-wide masters (§14.4) — not project-scoped. Deletion
-		// is blocked when any project references the company (Frappe-standard
-		// LinkExistsError pattern, per the user's design-question choice).
-		addCompany(data) {
-			// ID is user-provided OR auto-generated. We normalise to uppercase and
-			// ensure uniqueness — if a collision, append a numeric suffix.
-			let id = (data.id || "").trim().toUpperCase();
-			if (!id) id = uid("CMP").toUpperCase();
-			if (this.companies.find((c) => c.id === id)) {
-				let n = 2;
-				while (this.companies.find((c) => c.id === `${id}-${n}`)) n++;
-				id = `${id}-${n}`;
-			}
-			const company = {
-				id,
-				name: (data.name || "Untitled Company").trim(),
-				shortName: (data.shortName || data.name || "Company").trim(),
-				description: (data.description || "").trim(),
-				color: data.color || "bg-ink-600",
-			};
-			this.companies.push(company);
-			this._persist();
-			return company;
-		},
-		updateCompany(id, patch) {
-			const idx = this.companies.findIndex((c) => c.id === id);
-			if (idx === -1) return null;
-			// ID is locked after create — strip it from any patch to avoid silent rename.
-			const safe = { ...patch };
-			delete safe.id;
-			this.companies[idx] = { ...this.companies[idx], ...safe };
-			this._persist();
-			return this.companies[idx];
-		},
-		deleteCompany(id) {
-			// Refuse if any project references this company. Mirror of Frappe's
-			// LinkExistsError — return a result the UI can render meaningfully.
-			const linked = this.projects.filter((p) => p.company === id);
-			if (linked.length) {
-				return {
-					ok: false,
-					reason: "referenced",
-					projects: linked.map((p) => ({ id: p.id, name: p.name, code: p.code })),
-				};
-			}
-			const idx = this.companies.findIndex((c) => c.id === id);
-			if (idx === -1) return { ok: false, reason: "not_found" };
-			this.companies.splice(idx, 1);
-			// If the deleted company was the active one, pivot to the first remaining
-			// company so the topbar switcher doesn't strand on a missing id.
-			if (this.activeCompany === id) {
-				const next = this.companies[0]?.id;
-				if (next) {
-					this.activeCompany = next;
-					saveCompanyToStorage(next);
+		// ===== Company CRUD — REAL ERPNext Company DocType =====
+		// Companies are org-wide masters (§14.4) — not project-scoped. CRUD goes
+		// through the generic frappe.client.* doctype adapter; permissions +
+		// LinkExistsError are enforced server-side. Each mutation refreshes the
+		// slice via loadCompanies() so derived fields (shortName/colour) stay
+		// consistent. `name` (docname) is immutable in ERPNext, so id never changes.
+		async addCompany(data) {
+			const created = await insertRecord({
+				doctype: "Company",
+				company_name: data.name,
+				abbr: data.abbr,
+				default_currency: data.currency || "INR",
+				country: data.country || "India",
+			});
+			await this.loadCompanies();
+			const id = created?.name;
+			return (
+				this.companies.find((c) => c.id === id) || {
+					id,
+					name: created?.company_name || data.name,
+					shortName: created?.abbr || data.abbr || data.name,
+					description: "",
+					color: colourForId(id),
 				}
+			);
+		},
+		async updateCompany(id, patch) {
+			// Round-trip the FULL doc: frappe.client.save instantiates the doc from exactly
+			// what we send, so a partial { name, company_name } would blank Company's mandatory
+			// fields (abbr / currency / country) and fail its modified-timestamp check. Fetch
+			// the current doc, apply the editable identity fields, save. id (docname) is immutable;
+			// colour + description are store-derived and not persisted.
+			const doc = await getRecord("Company", id);
+			if (patch.name !== undefined) doc.company_name = patch.name;
+			if (patch.shortName !== undefined && patch.shortName) doc.abbr = patch.shortName;
+			await saveRecord(doc);
+			await this.loadCompanies();
+			return this.companies.find((c) => c.id === id) || null;
+		},
+		async deleteCompany(id) {
+			try {
+				await deleteRecord("Company", id);
+			} catch (e) {
+				// Server refuses when any document links to the company (LinkExistsError).
+				// Keep the shape the detail view's guard renders (it lists linked projects
+				// from its own computed; we don't need to re-fetch them here).
+				return { ok: false, reason: "referenced", projects: [] };
 			}
-			this._persist();
+			await this.loadCompanies();
 			return { ok: true };
 		},
 

@@ -16,7 +16,12 @@ from frappe.utils import today
 
 
 def get_default_company():
-	return frappe.db.get_value("Company", {}, "name")
+	# The configured default company (what per-company masters default to on insert), so a
+	# test's project/BOQ and the masters it creates share a company. Falls back to any company
+	# on a bare site.
+	from buildsuite_core.utils.project import default_company
+
+	return default_company() or frappe.db.get_value("Company", {}, "name")
 
 
 class BuildSuiteTestCase(UnitTestCase):

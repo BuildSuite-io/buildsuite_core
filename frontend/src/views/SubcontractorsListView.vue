@@ -1,8 +1,9 @@
 <script setup>
 // Subcontractors master list — Desk-styled, mirrors the prototype.
 
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { usePermissions } from "@/composables/usePermissions";
 import { listSubcontractors } from "@/data/subcontractApi";
@@ -12,6 +13,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const router = useRouter();
+const store = useDataStore();
 const { canCreate } = usePermissions();
 
 // Subcontractors are Suppliers of type "Subcontractor"; the API joins each one's
@@ -35,6 +37,8 @@ async function loadSubs() {
 	}
 }
 onMounted(loadSubs);
+// Re-scope to the topbar switcher's working company (Supplier is now company-scoped).
+watch(() => store.activeCompany, loadSubs);
 
 // Trade filter — the Construction Trade master drives the dropdown.
 const tradesRes = useDocTypeList("Construction Trade", {

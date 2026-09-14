@@ -6,9 +6,8 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import { useProjectOptions } from "@/composables/useProjectOptions";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { ATTENDANCE_STATUSES } from "@/utils/workforceForms";
 
 defineProps({
@@ -20,15 +19,19 @@ defineProps({
 // so the two can never disagree.
 const emit = defineEmits(["status", "overtime", "comments", "project"]);
 
-const { projectOptions } = useProjectOptions();
+// Project picker scoped to the switcher's working company (per-company projects).
+const companyFilter = activeCompanyFilter();
 </script>
 
 <template>
 	<DeskSection title="Header" :cols="3">
 		<DeskField label="Project" required :error="errors.project">
-			<DeskSearchableSelect
+			<DeskLinkPicker
 				:model-value="form.project"
-				:options="projectOptions"
+				doctype="Project"
+				label-field="project_name"
+				value-field="name"
+				:filters="companyFilter"
 				placeholder="Pick a project…"
 				search-placeholder="Search projects…"
 				@update:model-value="(v) => emit('project', v)"
