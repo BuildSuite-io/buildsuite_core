@@ -37,12 +37,31 @@ def sync_project_status(doc, method=None):
 
 
 def default_company():
-	"""The company a new record defaults to when none is chosen — the creating user's
-	company, else their user default, else the site default. This is the resolution the New
-	Project screen uses; shared so other docs (e.g. a direct Subcontractor Bill with no
-	project) default their accounting company the same way."""
+	"""The company a new record defaults to (and the backend scope resolves to) — the creating
+	user's company, else their user default, else the site default. This is the resolution the New
+	Project screen uses; shared so other docs (e.g. a direct Subcontractor Bill with no project)
+	default their accounting company the same way.
+
+	When company awareness is ON, the topbar switcher's explicit choice wins, so the backend scope
+	matches the client switcher. That choice is the user's personal Company default (set by
+	set_active_company) — read from the DefaultValue row directly, because
+	frappe.defaults.get_user_default("Company") returns the User.company FIELD for the Company key,
+	not the personal default, and would otherwise ignore the switch for users who have a company on
+	their User record."""
+	user = frappe.session.user
+	if is_multi_company_enabled():
+		# The user's personal Company default (parent = the user, parenttype "__default"), set by
+		# set_active_company. defkey compares case-insensitively, so "company" matches the stored
+		# "Company". Empty when the user hasn't switched — then fall through to the usual chain.
+		chosen = frappe.db.get_value(
+			"DefaultValue",
+			{"parent": user, "defkey": "company"},
+			"defvalue",
+		)
+		if chosen:
+			return chosen
 	return (
-		frappe.db.get_value("User", frappe.session.user, "company")
+		frappe.db.get_value("User", user, "company")
 		or frappe.defaults.get_user_default("Company")
 		or frappe.db.get_single_value("Global Defaults", "default_company")
 	)
