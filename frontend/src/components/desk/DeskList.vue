@@ -18,6 +18,9 @@
 
 import { computed, ref, watch } from "vue";
 import DeskSortControl from "@/components/desk/DeskSortControl.vue";
+import DeskFilterEditor from "@/components/desk/DeskFilterEditor.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import { matchesDynamicFilters } from "@/utils/dynamicFilters";
 
 const props = defineProps({
 	rows: { type: Array, required: true },
@@ -30,6 +33,10 @@ const props = defineProps({
 	showSort: { type: Boolean, default: true },
 	showColumns: { type: Boolean, default: true },
 	showAddFilter: { type: Boolean, default: true },
+	// Fields offered by the built-in "+ Add filter" builder. Null → derived from `columns`
+	// (each column as a Data field). Pass richer defs — [{ fieldname, label, fieldtype, options }]
+	// — for Link/Select/Date filters. Filters apply client-side over `rows`.
+	filterFields: { type: Array, default: null },
 	sortField: { type: String, default: "" },
 	sortDirection: { type: String, default: "desc" },
 	sortOptions: { type: Array, default: null },
@@ -118,13 +125,66 @@ function compareSortValues(a, b) {
 	});
 }
 
+// ----- Dynamic "+ Add filter" (built in — every DeskList gets it) -----------
+// Filterable fields: the caller's `filterFields`, else every non-blank column as a Data field
+// (skips the trailing actions/blank column). Filters apply client-side over `rows`.
+const filterableFields = computed(() => {
+	if (Array.isArray(props.filterFields)) return props.filterFields;
+	return props.columns
+		.filter((c) => c && c.key && c.label)
+		.map((c) => ({ fieldname: c.key, label: c.label, fieldtype: "Data" }));
+});
+const dynFilters = ref([]);
+const filterEditorOpen = ref(false);
+const editingFilterIndex = ref(-1);
+function openAddFilter() {
+	editingFilterIndex.value = -1;
+	filterEditorOpen.value = true;
+	emit("add-filter"); // legacy: some callers may still listen; harmless
+}
+function editFilterChip(i) {
+	editingFilterIndex.value = i;
+	filterEditorOpen.value = true;
+}
+function onFilterApply(f) {
+	if (editingFilterIndex.value >= 0) dynFilters.value.splice(editingFilterIndex.value, 1, f);
+	else dynFilters.value.push(f);
+	filterEditorOpen.value = false;
+	editingFilterIndex.value = -1;
+}
+function removeFilterChip(i) {
+	dynFilters.value.splice(i, 1);
+}
+function clearDynFilters() {
+	dynFilters.value = [];
+}
+const FILTER_CONDITION_SYMBOL = {
+	"=": "=", "!=": "≠", like: "like", "not like": "not like", in: "in", "not in": "not in",
+	is: "is", ">": ">", "<": "<", ">=": "≥", "<=": "≤", Between: "between", Timespan: "in",
+};
+function filterChipLabel(f) {
+	let text;
+	if (f.condition === "is") text = f.value === "not set" ? "Not Set" : "Set";
+	else if (f.condition === "Between" && Array.isArray(f.value)) text = `${f.value[0]} – ${f.value[1]}`;
+	else if (Array.isArray(f.value)) text = f.value.join(", ");
+	else if (f.fieldtype === "Check") text = f.value === "0" || f.value === 0 ? "No" : "Yes";
+	else text = String(f.value ?? "");
+	return `${f.label} ${FILTER_CONDITION_SYMBOL[f.condition] || f.condition} ${text}`.trim();
+}
+// The rows after the built-in dynamic filters. Client-side only, so it's a no-op under
+// server pagination (the parent must push filters to its query in that case).
+const filteredRows = computed(() => {
+	if (props.serverPaginated || !dynFilters.value.length) return props.rows;
+	return props.rows.filter((r) => matchesDynamicFilters(r, dynFilters.value));
+});
+
 const sortedRows = computed(() => {
-	if (!props.showSort || !internalSortField.value) return props.rows;
+	if (!props.showSort || !internalSortField.value) return filteredRows.value;
 
 	const direction = internalSortDirection.value === "asc" ? 1 : -1;
 	const field = internalSortField.value;
 
-	return [...props.rows].sort((left, right) => {
+	return [...filteredRows.value].sort((left, right) => {
 		const result = compareSortValues(sortValueFor(left, field), sortValueFor(right, field));
 		return result * direction;
 	});
@@ -290,14 +350,40 @@ const showPagination = computed(() => {
 				/>
 			</div>
 			<slot name="filter-chips" />
-			<button
-				v-if="showAddFilter"
-				type="button"
-				class="desk-link text-xs px-1.5"
-				@click="emit('add-filter')"
+			<!-- Built-in dynamic filters: chips (click to edit, X to remove) + Clear -->
+			<span
+				v-for="(f, i) in dynFilters"
+				:key="i"
+				class="cursor-pointer"
+				title="Click to edit"
+				@click="editFilterChip(i)"
 			>
-				+ Add filter
+				<DeskFilterChip :label="filterChipLabel(f)" @remove="removeFilterChip(i)" />
+			</span>
+			<button
+				v-if="dynFilters.length"
+				type="button"
+				class="text-[11px] text-ink-500 hover:text-ink-800 px-1"
+				@click="clearDynFilters"
+			>
+				Clear
 			</button>
+			<div v-if="showAddFilter" class="relative">
+				<button type="button" class="desk-link text-xs px-1.5" @click="openAddFilter">
+					+ Add filter
+				</button>
+				<template v-if="filterEditorOpen">
+					<div class="fixed inset-0 z-30" @click="filterEditorOpen = false"></div>
+					<div class="absolute left-0 top-7 z-40">
+						<DeskFilterEditor
+							:fields="filterableFields"
+							:initial="editingFilterIndex >= 0 ? dynFilters[editingFilterIndex] : null"
+							@apply="onFilterApply"
+							@cancel="filterEditorOpen = false"
+						/>
+					</div>
+				</template>
+			</div>
 
 			<div class="ml-auto flex items-center gap-1">
 				<DeskSortControl

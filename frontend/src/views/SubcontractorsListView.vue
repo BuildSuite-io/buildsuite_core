@@ -10,9 +10,7 @@ import { listSubcontractors } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
-import DeskDynamicFilters from "@/components/desk/DeskDynamicFilters.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
-import { matchesDynamicFilters } from "@/utils/dynamicFilters";
 
 const router = useRouter();
 const store = useDataStore();
@@ -55,7 +53,6 @@ const tradeFilter = ref("");
 const search = ref("");
 
 // Dynamic "+ Add filter" — the filterable columns; applied client-side over the loaded rows.
-const dynFilters = ref([]);
 const filterFields = computed(() => [
 	{ fieldname: "name", label: "Name", fieldtype: "Data" },
 	{ fieldname: "trade", label: "Trade", fieldtype: "Select", options: tradeOptions.value.join("\n") },
@@ -66,7 +63,7 @@ const filterFields = computed(() => [
 ]);
 
 const rows = computed(() => {
-	let data = subs.value.filter((s) => matchesDynamicFilters(s, dynFilters.value));
+	let data = subs.value;
 	if (tradeFilter.value) data = data.filter((s) => s.trade === tradeFilter.value);
 	const q = search.value.trim().toLowerCase();
 	if (q)
@@ -127,12 +124,9 @@ function onRowClick(row) {
 			:columns="columns"
 			row-key="id"
 			search-placeholder="Search name, trade, contact…"
-			:show-add-filter="false"
+			:filter-fields="filterFields"
 			@row-click="onRowClick"
 		>
-			<template #filter-chips>
-				<DeskDynamicFilters :fields="filterFields" v-model:filters="dynFilters" />
-			</template>
 			<template #cell-id="{ row }">
 				<DeskLink
 					:to="`/subcontractors/${row.id}`"
