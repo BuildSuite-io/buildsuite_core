@@ -51,6 +51,10 @@ export function useDocTypeList(doctype, options = {}) {
 	if (options.orFilters !== undefined) resourceConfig.orFilters = options.orFilters;
 	if (options.cache !== undefined) resourceConfig.cache = options.cache;
 	if (options.transform !== undefined) resourceConfig.transform = options.transform;
+	// A caller-supplied error handler. Providing one routes list-fetch failures to the caller
+	// (which can show an error state) instead of frappe-ui's global fallbackErrorHandler, so a
+	// denied/invalid read degrades gracefully rather than surfacing as an uncaught rejection.
+	if (options.onError !== undefined) resourceConfig.onError = options.onError;
 
 	return createListResource(resourceConfig);
 }

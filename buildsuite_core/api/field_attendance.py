@@ -196,3 +196,31 @@ def amend_field_attendance(name: str) -> dict:
 	amended.workflow_state = None
 	amended.insert()
 	return _serialize(amended)
+
+
+# Register subtitle totals — a permission-aware filtered SUM over a register column. The
+# attendance-register list views need a total across the WHOLE filtered set (not just the
+# page). Modern Frappe rejects string SQL functions in `fields` (e.g. "sum(x) as total"),
+# so the sum is computed here over frappe.get_list (which applies the user's read
+# permissions + query conditions). Doctype and field are allow-listed.
+_REGISTER_SUM_FIELDS = {
+	"Labour Attendance Register": {"daily_wage_calculated"},
+	"Overtime Attendance Register": {"overtime_hours", "overtime_wage_calculated"},
+}
+
+
+@frappe.whitelist()
+def register_total(doctype: str, field: str, filters: str | None = None):
+	"""SUM of `field` over `doctype` rows matching `filters` (a JSON list of Frappe filter
+	tuples), respecting the caller's read permissions. UI subtitle helper only."""
+	from frappe.utils import flt
+
+	allowed = _REGISTER_SUM_FIELDS.get(doctype)
+	if not allowed or field not in allowed:
+		frappe.throw(_("Unsupported register total for {0}.{1}").format(doctype, field))
+
+	parsed = frappe.parse_json(filters) if filters else []
+	if not isinstance(parsed, list):
+		parsed = []
+	rows = frappe.get_list(doctype, filters=parsed, fields=[field], limit_page_length=0)
+	return flt(sum(flt(r.get(field)) for r in rows))
