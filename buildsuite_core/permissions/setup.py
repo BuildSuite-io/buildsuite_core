@@ -1140,6 +1140,9 @@ def setup_mobile_permissions():
 
 def setup_record_permissions():
 	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
+	from buildsuite_core.buildsuite_core.doctype.buildsuite_workspace.seed_workspaces import (
+		seed_workspaces,
+	)
 	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import repair_default_personas
 	from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
 		seed_workspace_reports,
@@ -1175,3 +1178,6 @@ def setup_record_permissions():
 	repair_default_personas()
 	# Per-workspace report tiles (Query Reports + the Workspace Setting table).
 	seed_workspace_reports()
+	# The workspace registry (sidebar visibility + order + metadata). Runs after the roles
+	# above exist so each workspace's Visible-To roles resolve.
+	seed_workspaces()

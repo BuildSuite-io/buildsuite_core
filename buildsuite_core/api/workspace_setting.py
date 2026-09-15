@@ -373,3 +373,42 @@ def amend_record(doctype: str, name: str):
 	new.amended_from = name
 	new.insert()
 	return {"name": new.name, "docstatus": new.docstatus}
+
+
+@frappe.whitelist()
+def get_visible_workspaces():
+	"""The SPA sidebar workspaces the current user may see: the BuildSuite Workspace records
+	whose Visible-To roles intersect the user's roles, in sort order.
+
+	This is the backend source for sidebar / landing visibility + ordering (replacing the
+	frontend WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices). Per-tile and per-record gating
+	stay separate (usePermissions caps + get_doctype_permissions); this only decides which
+	workspace entries appear."""
+	if not frappe.db.exists("DocType", "BuildSuite Workspace"):
+		return []
+
+	user_roles = set(frappe.get_roles())
+	# One pass for the role rows, grouped by workspace, so it's 2 queries not N+1.
+	roles_by_ws = {}
+	for row in frappe.get_all("BuildSuite Workspace Role", fields=["parent", "role"]):
+		roles_by_ws.setdefault(row.parent, set()).add(row.role)
+
+	workspaces = frappe.get_all(
+		"BuildSuite Workspace",
+		fields=["name", "label", "icon", "route", "workspace_group", "sort_order"],
+		order_by="sort_order asc",
+	)
+	out = []
+	for ws in workspaces:
+		if roles_by_ws.get(ws.name, set()) & user_roles:
+			out.append(
+				{
+					"slug": ws.name,
+					"label": ws.label,
+					"icon": ws.icon,
+					"route": ws.route,
+					"group": ws.workspace_group,
+					"order": ws.sort_order,
+				}
+			)
+	return out
