@@ -1,146 +1,117 @@
 <script setup>
-// Workspace Structure Settings — Single DocType with nested child tables.
-// BSA-only. Session 34, the architecturally significant Settings DocType:
-// the Site Execution workspace landing renders its shortcut grid from this
-// DocType (NOT from hardcoded router.js config). A BSA at a customer org
-// can reorder shortcuts, hide some per role, add new ones, all without
-// developer involvement.
-//
-// Schema:
-//   workspace_definitions (parent rows)
-//     ↓
-//   shortcuts (child rows, embedded on each definition)
-//
-// M1 ships with one seeded workspace_definitions row (Site Execution); the
-// other workspaces from §12.2 become addable rows as their modules ship.
+// Workspace Structure — BSA/Admin editor for the per-workspace quick-nav shortcut tiles.
+// Backed by the BuildSuite Workspace Shortcut registry (get/set via api.workspace_setting),
+// so edits are real, server-side, and role-filtered — the Site Execution landing (and any
+// other workspace) renders its shortcut grid from the same source. Each shortcut can be
+// restricted to a subset of the workspace's roles; no restriction = every role that can see
+// the workspace sees the shortcut.
 
-import { ref, computed, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
-import { ROLES } from "@/data/roles";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
-import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
+import { getWorkspaceShortcutsConfig, setWorkspaceShortcuts } from "@/data/workspaceSettingApi";
+import { showToast } from "@/utils/appToast";
 
 const store = useDataStore();
 
-// View-mode vs edit-mode toggle. Workspace + shortcut editing happens inline
-// in edit mode; cancel reverts to the store snapshot.
+// [{ slug, label, available_roles:[roleName], shortcuts:[{label,icon,route,sort_order,enabled,roles:[roleName]}] }]
+const config = ref([]);
 const editing = ref(false);
-const form = ref({ workspace_definitions: [] });
 const saving = ref(false);
+const loading = ref(true);
 
-watch(
-	() => store.workspaceStructure,
-	(ws) => {
-		if (ws) form.value = JSON.parse(JSON.stringify(ws));
-	},
-	{ immediate: true, deep: true }
+async function load() {
+	loading.value = true;
+	try {
+		config.value = await getWorkspaceShortcutsConfig();
+	} catch (e) {
+		config.value = [];
+		showToast(e.message || "Could not load workspace shortcuts.", "error");
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(load);
+
+const canEdit = computed(() => store.isBSA || store.isAdmin);
+const totalShortcuts = computed(() =>
+	config.value.reduce((sum, w) => sum + (w.shortcuts?.length || 0), 0)
 );
 
 function startEdit() {
-	form.value = JSON.parse(JSON.stringify(store.workspaceStructure));
 	editing.value = true;
 }
-function cancelEdit() {
-	form.value = JSON.parse(JSON.stringify(store.workspaceStructure));
+async function cancelEdit() {
 	editing.value = false;
+	await load(); // discard local edits
 }
-function saveEdit() {
-	if (!store.isBSA && !store.isAdmin) return;
+async function save() {
+	if (!canEdit.value) return;
 	saving.value = true;
-	// Replace whole shape — we treat this like a Single DocType save (full record
-	// round-trip). Drops empty shortcuts (label blank).
-	const clean = {
-		workspace_definitions: form.value.workspace_definitions.map((def) => ({
-			...def,
-			shortcuts: (def.shortcuts || []).filter((s) => s && s.label && s.label.trim()),
-		})),
-	};
-	store.workspaceStructure = clean;
-	// Reuse persist via a dummy update (no granular action for whole-structure save).
-	store._persist();
-	saving.value = false;
-	editing.value = false;
-}
-function onPrimary() {
-	editing.value ? saveEdit() : startEdit();
-}
-
-// Child-table ops on the form's local copy. Saved together on saveEdit.
-function addShortcut(defIdx) {
-	const def = form.value.workspace_definitions[defIdx];
-	const nextOrder =
-		(def.shortcuts || []).reduce((m, s) => Math.max(m, s.sort_order || 0), 0) + 1;
-	def.shortcuts = [
-		...(def.shortcuts || []),
-		{
-			id:
-				"WSST-NEW-" +
-				Date.now().toString().slice(-6) +
-				"-" +
-				Math.floor(Math.random() * 1000),
-			label: "",
-			icon: "🔗",
-			route_path: "/",
-			visible_to_roles: null,
-			sort_order: nextOrder,
-		},
-	];
-}
-function removeShortcut(defIdx, shortcutIdx) {
-	form.value.workspace_definitions[defIdx].shortcuts.splice(shortcutIdx, 1);
-}
-function moveShortcut(defIdx, shortcutIdx, dir) {
-	const shortcuts = form.value.workspace_definitions[defIdx].shortcuts;
-	const target = shortcutIdx + dir;
-	if (target < 0 || target >= shortcuts.length) return;
-	const tmp = shortcuts[shortcutIdx];
-	shortcuts[shortcutIdx] = shortcuts[target];
-	shortcuts[target] = tmp;
-	// Re-stamp sort_order from position.
-	shortcuts.forEach((s, i) => {
-		s.sort_order = i + 1;
-	});
-}
-function toggleRole(target, roleId) {
-	// target.visible_to_roles: null = inherit / all; array = explicit allow-list.
-	const cur = target.visible_to_roles;
-	if (cur === null) {
-		// Materialise from "all" → explicit minus the toggled one. Use all role ids
-		// EXCEPT the one being toggled.
-		target.visible_to_roles = ROLES.map((r) => r.id).filter((id) => id !== roleId);
-	} else {
-		const next = cur.includes(roleId) ? cur.filter((id) => id !== roleId) : [...cur, roleId];
-		// If next covers all roles, collapse back to null (the inherit signal).
-		target.visible_to_roles = next.length === ROLES.length ? null : next;
+	try {
+		for (const ws of config.value) {
+			const rows = (ws.shortcuts || []).filter((s) => s.label?.trim() && s.route?.trim());
+			await setWorkspaceShortcuts(ws.slug, rows);
+		}
+		showToast("Workspace shortcuts saved.");
+		editing.value = false;
+		await load();
+	} catch (e) {
+		showToast(e.message || "Could not save.", "error");
+	} finally {
+		saving.value = false;
 	}
 }
+function onPrimary() {
+	editing.value ? save() : startEdit();
+}
+
+// --- shortcut row ops (local until Save) ---
+function addShortcut(ws) {
+	const nextOrder = (ws.shortcuts || []).reduce((m, s) => Math.max(m, s.sort_order || 0), 0) + 1;
+	ws.shortcuts.push({ label: "", icon: "🔗", route: "/", sort_order: nextOrder, enabled: true, roles: [] });
+}
+function removeShortcut(ws, i) {
+	ws.shortcuts.splice(i, 1);
+}
+function moveShortcut(ws, i, dir) {
+	const t = i + dir;
+	if (t < 0 || t >= ws.shortcuts.length) return;
+	const rows = ws.shortcuts;
+	[rows[i], rows[t]] = [rows[t], rows[i]];
+	rows.forEach((s, idx) => (s.sort_order = idx + 1));
+}
+function toggleRole(sc, role) {
+	const i = sc.roles.indexOf(role);
+	if (i >= 0) sc.roles.splice(i, 1);
+	else sc.roles.push(role);
+}
+// "BuildSuite Foreman" -> "Foreman"; "System Manager" stays.
+const roleLabel = (r) => r.replace(/^BuildSuite /, "");
+const scVisibility = (sc) => (sc.roles?.length ? sc.roles.map(roleLabel).join(", ") : "Everyone");
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Settings", to: "/settings" },
 	{ label: "Workspace Structure" },
 ];
-
-const totalShortcuts = computed(() =>
-	form.value.workspace_definitions.reduce((sum, d) => sum + (d.shortcuts?.length || 0), 0)
-);
 </script>
 
 <template>
 	<DeskPage
 		title="Workspace Structure"
-		subtitle="Configure workspace shortcut grids"
+		subtitle="Configure the quick-nav shortcut tiles shown on each workspace"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					v-if="store.isBSA || store.isAdmin"
+					v-if="canEdit"
 					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
 					:show-cancel="editing"
 					:saving="saving"
@@ -150,10 +121,8 @@ const totalShortcuts = computed(() =>
 				>
 					<template #left>
 						<span class="text-[11px] text-ink-500">
-							{{ form.workspace_definitions.length }} workspace{{
-								form.workspace_definitions.length === 1 ? "" : "s"
-							}}
-							· {{ totalShortcuts }} shortcuts
+							{{ config.length }} workspace{{ config.length === 1 ? "" : "s" }} ·
+							{{ totalShortcuts }} shortcuts
 						</span>
 					</template>
 				</DeskActionBar>
@@ -166,251 +135,119 @@ const totalShortcuts = computed(() =>
 			</template>
 
 			<div class="max-w-4xl mx-auto">
-				<DeskSection
-					v-for="(def, defIdx) in editing
-						? form.workspace_definitions
-						: store.workspaceStructure.workspace_definitions"
-					:key="def.id"
-					:title="def.display_name || 'Untitled workspace'"
-				>
-					<div class="md:col-span-2">
-						<!-- Workspace definition meta row -->
-						<div
-							class="grid border border-ink-200 bg-ink-50 px-3 py-2 mb-3"
-							style="
-								grid-template-columns: 1fr 1fr 120px 100px;
-								gap: 8px;
-								border-radius: 2px;
-							"
-						>
-							<div>
-								<div
-									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								>
-									Slug
-								</div>
-								<div class="text-xs font-mono text-ink-700">
-									{{ def.workspace_slug }}
-								</div>
-							</div>
-							<div>
-								<div
-									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								>
-									Display name
-								</div>
-								<DeskInput
-									v-if="editing"
-									v-model="def.display_name"
-									class="!text-xs"
-								/>
-								<div v-else class="text-xs text-ink-900">
-									{{ def.display_name }}
-								</div>
-							</div>
-							<div>
-								<div
-									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								>
-									Enabled
-								</div>
-								<div v-if="editing" class="py-1">
-									<input
-										type="checkbox"
-										v-model="def.enabled"
-										class="accent-brand-600"
-									/>
-								</div>
-								<div v-else class="text-xs">
-									<span
-										:class="def.enabled ? 'text-success-700' : 'text-ink-500'"
-										>{{ def.enabled ? "On" : "Off" }}</span
-									>
-								</div>
-							</div>
-							<div>
-								<div
-									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								>
-									Shortcuts
-								</div>
-								<div class="text-xs tabular-nums text-ink-700">
-									{{ def.shortcuts?.length || 0 }}
-								</div>
-							</div>
-						</div>
+				<div v-if="loading" class="px-4 py-6 text-sm text-ink-500">Loading…</div>
 
-						<!-- Shortcuts table -->
+				<DeskSection v-for="ws in config" :key="ws.slug" :title="ws.label">
+					<div class="md:col-span-2">
 						<div
-							v-if="(def.shortcuts || []).length"
+							v-if="(ws.shortcuts || []).length"
 							class="border border-ink-200"
 							style="border-radius: 2px"
 						>
 							<div
-								class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								:style="
-									editing
-										? 'grid-template-columns: 32px 40px minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(160px, 1.2fr) 70px;'
-										: 'grid-template-columns: 40px minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(160px, 1.2fr);'
-								"
+								v-for="(sc, scIdx) in ws.shortcuts"
+								:key="scIdx"
+								class="flex items-start gap-2 border-b border-ink-100 last:border-b-0 px-2 py-2 text-sm"
 							>
-								<div v-if="editing"></div>
-								<div class="px-2 py-1.5">Icon</div>
-								<div class="px-2 py-1.5">Label</div>
-								<div class="px-2 py-1.5">Route</div>
-								<div class="px-2 py-1.5">Visible to</div>
-								<div v-if="editing" class="px-2 py-1.5"></div>
-							</div>
-							<div
-								v-for="(sc, scIdx) in def.shortcuts"
-								:key="sc.id"
-								class="grid desk-row-stripe border-b border-ink-100 last:border-b-0 items-center text-sm"
-								:style="
-									editing
-										? 'grid-template-columns: 32px 40px minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(160px, 1.2fr) 70px;'
-										: 'grid-template-columns: 40px minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(160px, 1.2fr);'
-								"
-							>
-								<!-- Reorder up/down (edit mode only) -->
-								<div
-									v-if="editing"
-									class="px-1 py-1 flex flex-col items-center gap-0.5"
-								>
+								<!-- Reorder (edit only) -->
+								<div v-if="editing" class="flex flex-col items-center gap-0.5 pt-1">
 									<button
 										type="button"
-										class="text-[9px] px-1 py-0 border border-ink-200 bg-white hover:bg-ink-50 leading-tight"
+										class="text-[9px] px-1 border border-ink-200 bg-white hover:bg-ink-50"
 										style="border-radius: 2px"
 										:disabled="scIdx === 0"
 										:class="scIdx === 0 ? 'opacity-30 cursor-not-allowed' : ''"
-										@click="moveShortcut(defIdx, scIdx, -1)"
-										title="Move up"
+										@click="moveShortcut(ws, scIdx, -1)"
 									>
 										▲
 									</button>
 									<button
 										type="button"
-										class="text-[9px] px-1 py-0 border border-ink-200 bg-white hover:bg-ink-50 leading-tight"
+										class="text-[9px] px-1 border border-ink-200 bg-white hover:bg-ink-50"
 										style="border-radius: 2px"
-										:disabled="scIdx === def.shortcuts.length - 1"
-										:class="
-											scIdx === def.shortcuts.length - 1
-												? 'opacity-30 cursor-not-allowed'
-												: ''
-										"
-										@click="moveShortcut(defIdx, scIdx, +1)"
-										title="Move down"
+										:disabled="scIdx === ws.shortcuts.length - 1"
+										:class="scIdx === ws.shortcuts.length - 1 ? 'opacity-30 cursor-not-allowed' : ''"
+										@click="moveShortcut(ws, scIdx, +1)"
 									>
 										▼
 									</button>
 								</div>
 
-								<!-- Icon -->
-								<div class="px-2 py-1.5">
-									<DeskInput
-										v-if="editing"
-										v-model="sc.icon"
-										class="!text-base !w-10 !text-center"
-									/>
-									<div v-else class="text-base leading-none">{{ sc.icon }}</div>
-								</div>
-
-								<!-- Label -->
-								<div class="px-2 py-1.5">
-									<DeskInput
-										v-if="editing"
-										v-model="sc.label"
-										placeholder="e.g. Projects"
-										class="!text-xs"
-									/>
-									<div v-else class="text-sm text-ink-900">{{ sc.label }}</div>
-								</div>
-
-								<!-- Route -->
-								<div class="px-2 py-1.5">
-									<DeskInput
-										v-if="editing"
-										v-model="sc.route_path"
-										placeholder="/…"
-										class="!text-xs font-mono"
-									/>
-									<div v-else class="text-xs font-mono text-ink-600">
-										{{ sc.route_path }}
+								<div class="flex-1 min-w-0">
+									<!-- Icon / Label / Route -->
+									<div class="flex items-center gap-2">
+										<template v-if="editing">
+											<DeskInput v-model="sc.icon" class="!text-base !w-10 !text-center" />
+											<DeskInput v-model="sc.label" placeholder="Label" class="!text-xs !flex-1" />
+											<DeskInput v-model="sc.route" placeholder="/route" class="!text-xs !flex-1 !font-mono" />
+											<label class="flex items-center gap-1 text-[11px] text-ink-600">
+												<input type="checkbox" v-model="sc.enabled" class="accent-brand-600" />
+												On
+											</label>
+										</template>
+										<template v-else>
+											<span class="text-base">{{ sc.icon }}</span>
+											<span class="text-ink-900 font-medium">{{ sc.label }}</span>
+											<span class="text-xs font-mono text-ink-500">{{ sc.route }}</span>
+											<span v-if="!sc.enabled" class="text-[10px] text-ink-400 italic">(off)</span>
+										</template>
 									</div>
-								</div>
 
-								<!-- Visible to (role allow-list) -->
-								<div class="px-2 py-1.5">
-									<div v-if="!editing" class="text-[10px] text-ink-600">
-										<span
-											v-if="!sc.visible_to_roles"
-											class="italic text-ink-400"
-											>All roles</span
-										>
-										<span v-else
-											>{{ sc.visible_to_roles.length }} of
-											{{ ROLES.length }} roles</span
-										>
-									</div>
-									<details v-else class="text-[10px] text-ink-700">
-										<summary class="cursor-pointer hover:text-ink-900">
-											<span v-if="!sc.visible_to_roles" class="italic"
-												>All roles</span
-											>
-											<span v-else
-												>{{ sc.visible_to_roles.length }} of
-												{{ ROLES.length }} roles ▾</span
-											>
-										</summary>
-										<div class="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
+									<!-- Visible-to roles -->
+									<div class="mt-1.5 text-[11px]">
+										<template v-if="editing">
+											<span class="text-ink-500 mr-1">Visible to:</span>
 											<label
-												v-for="r in ROLES"
-												:key="r.id"
-												class="flex items-center gap-1 cursor-pointer"
+												v-for="role in ws.available_roles"
+												:key="role"
+												class="inline-flex items-center gap-1 mr-2 text-ink-700"
 											>
 												<input
 													type="checkbox"
-													:checked="
-														!sc.visible_to_roles ||
-														sc.visible_to_roles.includes(r.id)
-													"
-													class="accent-brand-600 w-3 h-3"
-													@change="toggleRole(sc, r.id)"
+													:checked="sc.roles.includes(role)"
+													class="accent-brand-600"
+													@change="toggleRole(sc, role)"
 												/>
-												<span class="truncate">{{ r.shortName }}</span>
+												{{ roleLabel(role) }}
 											</label>
-										</div>
-									</details>
+											<span v-if="!sc.roles.length" class="text-ink-400 italic ml-1">
+												(none checked = everyone who can see this workspace)
+											</span>
+										</template>
+										<template v-else>
+											<span class="text-ink-500">Visible to:</span>
+											<span class="text-ink-700 ml-1">{{ scVisibility(sc) }}</span>
+										</template>
+									</div>
 								</div>
 
-								<!-- Remove (edit mode) -->
-								<div v-if="editing" class="px-2 py-1.5 flex justify-center">
-									<button
-										type="button"
-										class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-ink-50"
-										style="border-radius: 2px; color: #b91c1c"
-										@click="removeShortcut(defIdx, scIdx)"
-										title="Remove shortcut"
-									>
-										✕
-									</button>
-								</div>
+								<button
+									v-if="editing"
+									type="button"
+									class="text-[11px] text-danger-600 hover:text-danger-800 px-1 pt-1"
+									@click="removeShortcut(ws, scIdx)"
+								>
+									Remove
+								</button>
 							</div>
 						</div>
-						<div v-else class="text-xs text-ink-400 italic py-2">
-							No shortcuts on this workspace yet.
-						</div>
+						<div v-else class="text-xs text-ink-400 italic px-1 py-2">No shortcuts.</div>
 
 						<button
 							v-if="editing"
 							type="button"
-							class="mt-2 text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="addShortcut(defIdx)"
+							class="mt-2 text-[11px] text-brand-700 hover:underline"
+							@click="addShortcut(ws)"
 						>
 							+ Add shortcut
 						</button>
 					</div>
 				</DeskSection>
+
+				<div v-if="!loading && !config.length" class="px-4 py-6 text-sm text-ink-500">
+					No workspaces configured.
+					<RouterLink to="/settings" class="text-brand-700 hover:underline">Back to Settings</RouterLink>
+				</div>
 			</div>
 		</DeskForm>
 	</DeskPage>

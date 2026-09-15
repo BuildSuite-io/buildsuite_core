@@ -1,0 +1,125 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-09-15 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "workspace",
+  "label",
+  "column_break_meta",
+  "enabled",
+  "sort_order",
+  "section_break_dest",
+  "icon",
+  "route",
+  "section_break_roles",
+  "roles"
+ ],
+ "fields": [
+  {
+   "fieldname": "workspace",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Workspace",
+   "options": "BuildSuite Workspace",
+   "reqd": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "0",
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sort Order"
+  },
+  {
+   "fieldname": "section_break_dest",
+   "fieldtype": "Section Break",
+   "label": "Destination"
+  },
+  {
+   "default": "🔗",
+   "description": "Emoji shown on the shortcut tile.",
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
+  },
+  {
+   "description": "In-app route the shortcut opens (e.g. /projects).",
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "label": "Route",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_roles",
+   "fieldtype": "Section Break",
+   "label": "Visibility"
+  },
+  {
+   "description": "Roles that see this shortcut. Leave empty to inherit the workspace's visibility (anyone who can see the workspace sees the shortcut).",
+   "fieldname": "roles",
+   "fieldtype": "Table",
+   "label": "Restrict To Roles",
+   "options": "BuildSuite Workspace Role"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Workspace Shortcut",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "BuildSuite Administrator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "sort_order",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

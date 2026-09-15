@@ -5,7 +5,8 @@
 import { defineStore } from "pinia";
 import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
-import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
+import { ROLES } from "@/data/roles";
+import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
@@ -139,7 +140,6 @@ function saveToStorage(state) {
 			// Settings DocTypes (Session 34)
 			coreSettings: state.coreSettings,
 			siteExecutionSettings: state.siteExecutionSettings,
-			workspaceStructure: state.workspaceStructure,
 			// Session 39 — Project Type Settings (exploratory; brings forward the
 			// Heavy interpretation from §13.3 item 19 and the M2-deferred configurable
 			// WP label from Session 36).
@@ -187,6 +187,9 @@ export const useDataStore = defineStore("data", {
 		// company — lives in THEME_STORAGE_KEY so resetAll() preserves it as
 		// a UI preference.
 		theme: DEFAULT_THEME,
+		// Sidebar workspaces the logged-in user may see — loaded from the backend registry
+		// on boot (loadWorkspaces). Each: {slug, label, icon, route, group, order, access}.
+		workspaces: [],
 		// Companies master list. Project-scoped slices derive `company` from their
 		// parent project; this slice is the source of truth for what companies exist.
 		companies: [],
@@ -209,13 +212,11 @@ export const useDataStore = defineStore("data", {
 		boqGroups: [],
 		boqItems: [],
 		boqSubItems: [],
-		// Settings DocTypes (Session 34) — three Single DocTypes that ship in M1.
-		// coreSettings + siteExecutionSettings are flat objects (Single records);
-		// workspaceStructure is a nested child-table shape (parent definitions +
-		// shortcuts children) that drives the Site Execution workspace landing.
+		// Settings DocTypes (Session 34). coreSettings + siteExecutionSettings are flat
+		// objects (Single records). (Workspace shortcut config moved to the backend
+		// BuildSuite Workspace Shortcut registry.)
 		coreSettings: {},
 		siteExecutionSettings: {},
-		workspaceStructure: { workspace_definitions: [] },
 		// Project Type Settings (Session 39 — exploratory). Each record:
 		//   { id, name, workPackageLabel, workPackageLabelPlural,
 		//     defaultTemplate (string — Project Type name in the templates fixture,
@@ -417,22 +418,17 @@ export const useDataStore = defineStore("data", {
 		// ===== Role system (see src/data/roles.js, CLAUDE.md §12) =====
 		currentRole: (s) =>
 			ROLES.find((r) => r.id === s.role) || ROLES.find((r) => r.id === DEFAULT_ROLE),
-		// Workspace slugs visible to the active role, ordered per WORKSPACE_ORDER[roleId].
-		// A slug listed in WORKSPACE_ORDER but null in WORKSPACE_VISIBILITY is filtered out.
-		visibleWorkspaces: (s) => {
-			const order = WORKSPACE_ORDER[s.role] || [];
-			return order.filter((slug) => {
-				const wsMap = WORKSPACE_VISIBILITY[slug];
-				return wsMap && wsMap[s.role] != null;
-			});
-		},
-		// Function getter: returns the access level for the active role on a given workspace,
-		// or null if hidden. Use this to gate CTAs / route guards downstream.
-		workspaceAccess: (s) => (slug) => {
-			const wsMap = WORKSPACE_VISIBILITY[slug];
-			if (!wsMap) return null;
-			return wsMap[s.role] ?? null;
-		},
+		// Workspace slugs visible to the logged-in user, ordered — sourced from the backend
+		// registry (api.workspace_setting.get_visible_workspaces), loaded on boot into
+		// `workspaces`. Replaces the old client WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
+		visibleWorkspaces: (s) => s.workspaces.map((w) => w.slug),
+		// Function getter: the cosmetic access hint ('full' | 'read' | …) for a workspace, or
+		// null if the user can't see it. Visibility itself is the backend's call, not this.
+		workspaceAccess: (s) => (slug) =>
+			s.workspaces.find((w) => w.slug === slug)?.access ?? null,
+		// Full backend workspace record (label/icon/route/group/order) for a slug — lets the
+		// sidebar/landings read metadata from the one backend source.
+		workspaceInfo: (s) => (slug) => s.workspaces.find((w) => w.slug === slug) || null,
 
 		// ===== Company (§14) =====
 		// Full company object for the active id (defensive — falls back to the first
@@ -480,29 +476,8 @@ export const useDataStore = defineStore("data", {
 			const roles = useSessionStore().access?.roles || [];
 			return LEADERSHIP_ROLES.some((r) => roles.includes(r));
 		},
-
-		// ===== Settings (Session 34) =====
-		// Resolve a workspace definition by slug. Returns null if not configured —
-		// the Site Execution landing falls back to a hardcoded message in that case.
-		workspaceDefinitionBySlug: (s) => (slug) =>
-			s.workspaceStructure.workspace_definitions.find((d) => d.workspace_slug === slug) ||
-			null,
-		// Shortcuts visible to the active role for a given workspace slug. Per the
-		// §12.3 visibility matrix and the per-shortcut visible_to_roles override.
-		// null visible_to_roles on a shortcut/definition = "no role restriction"
-		// (anyone who can see the workspace sees the shortcut).
-		visibleShortcutsFor: (s) => (slug) => {
-			const def = s.workspaceStructure.workspace_definitions.find(
-				(d) => d.workspace_slug === slug,
-			);
-			if (!def || !def.enabled) return [];
-			// Definition-level role gate first
-			if (def.visible_to_roles && !def.visible_to_roles.includes(s.role)) return [];
-			return (def.shortcuts || [])
-				.filter((sc) => !sc.visible_to_roles || sc.visible_to_roles.includes(s.role))
-				.slice()
-				.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-		},
+		// (Workspace shortcut getters retired — shortcuts now come from the backend registry
+		// via api.workspace_setting.get_workspace_shortcuts.)
 	},
 
 	actions: {
@@ -557,8 +532,7 @@ export const useDataStore = defineStore("data", {
 					stored.boqSubItems ?? JSON.parse(JSON.stringify(seedData.boqSubItems));
 				// Session 34: Settings DocTypes. coreSettings + siteExecutionSettings
 				// are merged (stored ∪ seed defaults) so adding new fields to the seed
-				// surfaces them without wiping user-set values. workspaceStructure
-				// takes stored if present, else the seed (parent + child arrays).
+				// surfaces them without wiping user-set values.
 				this.coreSettings = {
 					...JSON.parse(JSON.stringify(seedData.coreSettings)),
 					...(stored.coreSettings || {}),
@@ -567,57 +541,10 @@ export const useDataStore = defineStore("data", {
 					...JSON.parse(JSON.stringify(seedData.siteExecutionSettings)),
 					...(stored.siteExecutionSettings || {}),
 				};
-				this.workspaceStructure =
-					stored.workspaceStructure ??
-					JSON.parse(JSON.stringify(seedData.workspaceStructure));
 				// Session 39 — projectTypes slice (exploratory). Seed-fallback so older
 				// payloads continue to work.
 				this.projectTypes =
 					stored.projectTypes ?? JSON.parse(JSON.stringify(seedData.projectTypes));
-				// Session 38 — strip retired Site Execution shortcuts from any stored
-				// workspace definition: WSST-002 (Work Packages), WSST-004 (Stage
-				// Planning). Both are still reachable via Project Detail tabs / direct
-				// URLs; just not surfaced as workspace tiles. (WSST-006 / Scope Change
-				// Orders was restored once the SCO register became a real backend
-				// surface.) Idempotent — only marks dirty if rows were actually present.
-				const RETIRED_SITE_EXEC_SHORTCUTS = ["WSST-002", "WSST-004"];
-				let workspaceMigrationDirty = false;
-				for (const def of this.workspaceStructure.workspace_definitions || []) {
-					if (def.workspace_slug !== "site-execution") continue;
-					const before = (def.shortcuts || []).length;
-					def.shortcuts = (def.shortcuts || []).filter(
-						(s) => !RETIRED_SITE_EXEC_SHORTCUTS.includes(s.id),
-					);
-					if (def.shortcuts.length !== before) workspaceMigrationDirty = true;
-				}
-				// Restore the Scope Change Orders shortcut (WSST-006) for sessions whose
-				// stored definition had it stripped by the earlier S38 migration — the SCO
-				// register is now a real backend surface. Idempotent (only adds if absent).
-				for (const def of this.workspaceStructure.workspace_definitions || []) {
-					if (def.workspace_slug !== "site-execution") continue;
-					const shortcuts = def.shortcuts || (def.shortcuts = []);
-					if (!shortcuts.some((s) => s.id === "WSST-006")) {
-						shortcuts.push({
-							id: "WSST-006",
-							label: "Scope Change Orders",
-							icon: "🔁",
-							route_path: "/sco",
-							visible_to_roles: null,
-							sort_order: 6,
-						});
-						workspaceMigrationDirty = true;
-					}
-				}
-				// Strip legacy /app/ prefix from any route_path values left in localStorage
-				// from before the /app prefix was removed from all routes.
-				for (const def of this.workspaceStructure.workspace_definitions || []) {
-					for (const sc of def.shortcuts || []) {
-						if (sc.route_path && sc.route_path.startsWith("/app/")) {
-							sc.route_path = sc.route_path.slice(4);
-							workspaceMigrationDirty = true;
-						}
-					}
-				}
 				// Stamp a default `task_type` of 'Activity' on any stored task that lacks it.
 				let taskMigrationDirty = false;
 				for (const t of this.tasks) {
@@ -636,10 +563,8 @@ export const useDataStore = defineStore("data", {
 					!stored.customers ||
 					!stored.coreSettings ||
 					!stored.siteExecutionSettings ||
-					!stored.workspaceStructure ||
 					!stored.projectTypes ||
-					taskMigrationDirty ||
-					workspaceMigrationDirty
+					taskMigrationDirty
 				)
 					this._persist();
 			} else {
@@ -668,7 +593,6 @@ export const useDataStore = defineStore("data", {
 				this.siteExecutionSettings = JSON.parse(
 					JSON.stringify(seedData.siteExecutionSettings),
 				);
-				this.workspaceStructure = JSON.parse(JSON.stringify(seedData.workspaceStructure));
 				// Session 39 — Project Type Settings (exploratory).
 				this.projectTypes = JSON.parse(JSON.stringify(seedData.projectTypes));
 				this._persist();
@@ -768,6 +692,18 @@ export const useDataStore = defineStore("data", {
 		// shortName from `abbr`, colour from a deterministic id hash. Then resolves
 		// the active company: the persisted choice (if still present) → the row the
 		// backend marks is_default → the first row.
+		// Load the user's visible workspaces from the backend registry (sidebar visibility +
+		// order + metadata). Called on boot after the session is established. On failure the
+		// sidebar is simply empty rather than crashing.
+		async loadWorkspaces() {
+			try {
+				this.workspaces = (await getVisibleWorkspaces()) || [];
+			} catch (e) {
+				this.workspaces = [];
+				console.warn("Failed to load workspaces:", e);
+			}
+		},
+
 		async loadCompanies() {
 			// Load the awareness flag alongside the companies, and sync it to the useActiveCompany
 			// composable so its picker/list filters gate on the same value the switcher does.
@@ -849,101 +785,6 @@ export const useDataStore = defineStore("data", {
 			this.siteExecutionSettings = { ...this.siteExecutionSettings, ...patch };
 			this._persist();
 			return this.siteExecutionSettings;
-		},
-
-		// Workspace Structure CRUD — nested child-table shape. Parent rows live in
-		// workspace_definitions; shortcuts live as embedded children on each parent.
-		// Same model as stagePlanningTasks on stagePlannings.
-		addWorkspaceDefinition(data) {
-			const id = uid("WSDEF");
-			const def = {
-				id,
-				workspace_slug: data.workspace_slug || "",
-				display_name: data.display_name || "Untitled Workspace",
-				enabled: data.enabled !== false,
-				visible_to_roles: data.visible_to_roles || null,
-				shortcuts: Array.isArray(data.shortcuts) ? data.shortcuts.slice() : [],
-			};
-			this.workspaceStructure.workspace_definitions.push(def);
-			this._persist();
-			return def;
-		},
-		updateWorkspaceDefinition(id, patch) {
-			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === id,
-			);
-			if (idx === -1) return null;
-			const merged = { ...this.workspaceStructure.workspace_definitions[idx], ...patch };
-			// shortcuts is a child array — only replace if patch explicitly passes one.
-			if (patch.shortcuts === undefined)
-				merged.shortcuts = this.workspaceStructure.workspace_definitions[idx].shortcuts;
-			this.workspaceStructure.workspace_definitions[idx] = merged;
-			this._persist();
-			return merged;
-		},
-		deleteWorkspaceDefinition(id) {
-			this.workspaceStructure.workspace_definitions =
-				this.workspaceStructure.workspace_definitions.filter((d) => d.id !== id);
-			this._persist();
-		},
-		// Shortcut child rows — patch the parent definition's array.
-		addWorkspaceShortcut(defId, rowData) {
-			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId,
-			);
-			if (idx === -1) return null;
-			const existing = this.workspaceStructure.workspace_definitions[idx].shortcuts || [];
-			const nextOrder = existing.reduce((max, s) => Math.max(max, s.sort_order || 0), 0) + 1;
-			const row = {
-				id: uid("WSST"),
-				label: rowData.label || "New shortcut",
-				icon: rowData.icon || "🔗",
-				route_path: rowData.route_path || "/",
-				visible_to_roles: rowData.visible_to_roles || null,
-				sort_order: Number(rowData.sort_order) || nextOrder,
-			};
-			const next = [...existing, row];
-			this.workspaceStructure.workspace_definitions[idx] = {
-				...this.workspaceStructure.workspace_definitions[idx],
-				shortcuts: next,
-			};
-			this._persist();
-			return row;
-		},
-		updateWorkspaceShortcut(defId, shortcutId, patch) {
-			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId,
-			);
-			if (idx === -1) return null;
-			const rows = (this.workspaceStructure.workspace_definitions[idx].shortcuts || []).map(
-				(s) => {
-					if (s.id !== shortcutId) return s;
-					const merged = { ...s, ...patch };
-					if (patch.sort_order !== undefined)
-						merged.sort_order = Number(patch.sort_order) || 0;
-					return merged;
-				},
-			);
-			this.workspaceStructure.workspace_definitions[idx] = {
-				...this.workspaceStructure.workspace_definitions[idx],
-				shortcuts: rows,
-			};
-			this._persist();
-			return rows.find((s) => s.id === shortcutId) || null;
-		},
-		removeWorkspaceShortcut(defId, shortcutId) {
-			const idx = this.workspaceStructure.workspace_definitions.findIndex(
-				(d) => d.id === defId,
-			);
-			if (idx === -1) return;
-			const rows = (
-				this.workspaceStructure.workspace_definitions[idx].shortcuts || []
-			).filter((s) => s.id !== shortcutId);
-			this.workspaceStructure.workspace_definitions[idx] = {
-				...this.workspaceStructure.workspace_definitions[idx],
-				shortcuts: rows,
-			};
-			this._persist();
 		},
 
 		// ===== Company CRUD — REAL ERPNext Company DocType =====

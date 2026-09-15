@@ -1,7 +1,15 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessionStore } from "@/stores/session";
+import { useDataStore } from "@/stores";
+import { usePermissions } from "@/composables/usePermissions";
+import { WORKSPACE_META } from "@/data/workspaces";
 import { getLoginUrl } from "@/utils/session";
 import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
+
+// The canonical workspace slugs. A workspace landing route's `name` IS its slug, so the
+// route guard can gate any of them on the user's visible-workspaces list without per-route
+// meta. Everything backend-derived flows through store.visibleWorkspaces.
+const WORKSPACE_SLUGS = new Set(Object.keys(WORKSPACE_META));
 
 // Per-route browser title (route name -> human label). Detail pages get a generic
 // label here; the view overrides it with the record name via usePageTitle.
@@ -892,6 +900,7 @@ const routes = [
 				path: "settings/workspaces",
 				name: "settings-workspaces",
 				component: () => import("@/views/settings/WorkspaceSettingsView.vue"),
+				meta: { requiresAdmin: true },
 			},
 			// Legacy redirect — Site Execution Settings became the tabbed Workspace Setting.
 			{
@@ -907,38 +916,45 @@ const routes = [
 				path: "settings/project-categories",
 				name: "settings-project-categories",
 				component: () => import("@/views/settings/ProjectCategoriesView.vue"),
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/project-categories/new",
 				name: "settings-project-category-new",
 				component: () => import("@/views/settings/NewProjectCategoryView.vue"),
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/project-categories/:id",
 				name: "settings-project-category-detail",
 				component: () => import("@/views/settings/ProjectCategoryDetailView.vue"),
+				meta: { requiresAdmin: true },
 				props: true,
 			},
 			{
 				path: "settings/project-categories/:id/template",
 				name: "settings-project-category-template",
 				component: () => import("@/views/settings/ProjectTemplateEditorView.vue"),
+				meta: { requiresAdmin: true },
 				props: true,
 			},
 			{
 				path: "settings/personas",
 				name: "settings-personas",
 				component: () => import("@/views/settings/PersonasView.vue"),
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/personas/new",
 				name: "settings-persona-new",
 				component: () => import("@/views/settings/NewPersonaView.vue"),
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/personas/:id",
 				name: "settings-persona-detail",
 				component: () => import("@/views/settings/PersonaDetailView.vue"),
+				meta: { requiresAdmin: true },
 				props: true,
 			},
 		],
@@ -988,6 +1004,31 @@ router.beforeEach(async (to) => {
 				target: to.fullPath,
 			},
 		};
+	}
+
+	// ----- Per-route permission guards (beyond the app-level `allowed` gate above) -----
+	// These consume the store getters that everything else now flows through, so they gate on
+	// backend truth (workspace visibility / admin role / resource caps) — a hidden route's DEEP
+	// LINK is blocked, not just its sidebar entry.
+	const dataStore = useDataStore();
+	dataStore.hydrate(); // idempotent; ensures the store is populated
+
+	// Workspace deep-link: block a workspace the user can't see. Fail-open if the visible list
+	// hasn't populated yet (mid-boot), so a legitimate user is never false-denied.
+	if (WORKSPACE_SLUGS.has(to.name)) {
+		const visible = dataStore.visibleWorkspaces;
+		if (visible.length && !visible.includes(to.name)) return { path: "/" };
+	}
+
+	// Admin-only routes (declared via meta). Mirrors the redirect the settings views already do.
+	if (to.meta?.requiresBSA && !dataStore.isBSA) return { path: "/settings" };
+	if (to.meta?.requiresAdmin && !dataStore.isAdmin) return { path: "/settings" };
+
+	// Resource-cap routes (declared via meta.cap) — block a screen for a resource the user
+	// can't read. Extensible: annotate resource routes with `meta: { cap: "<resourceKey>" }`.
+	if (to.meta?.cap) {
+		const { canRead } = usePermissions();
+		if (!canRead(to.meta.cap)) return { path: "/" };
 	}
 
 	return true;

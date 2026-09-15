@@ -3,11 +3,10 @@
 // one of the 3 Vue surfaces (locked by Block-A decision 2). Greeting + role-
 // filtered shortcuts grid, no Number Cards / Quick Lists / charts per §13.2.
 //
-// Architectural win: shortcuts are NOT hardcoded — they come from
-// store.visibleShortcutsFor('site-execution'), which reads from Workspace
-// Structure Settings (Session 34 DocType). A BSA at a customer org can
-// reorder / hide / add shortcuts via /app/settings/workspace-structure
-// without developer involvement.
+// Architectural win: shortcuts are NOT hardcoded — they come from the backend
+// registry (BuildSuite Workspace Shortcut, role-filtered server-side by
+// get_workspace_shortcuts). A BSA at a customer org can reorder / hide / add
+// shortcuts via /settings/workspace-structure without developer involvement.
 //
 // Session 35 — EXPLORATORY DESIGN VISUALISATION (additive, NOT M1 scope):
 //   1. A prominent Project Dashboard tile rendered ABOVE the shortcuts grid,
@@ -29,13 +28,15 @@ import { useDataStore } from "@/stores";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import { getWorkspaceReports, getWorkspaceShortcuts } from "@/data/workspaceSettingApi";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 
 const store = useDataStore();
 
-const shortcuts = computed(() => store.visibleShortcutsFor("site-execution"));
-const definition = computed(() => store.workspaceDefinitionBySlug("site-execution"));
+// Shortcuts come from the backend registry (BuildSuite Workspace Shortcut), role-filtered
+// server-side. A BSA configures them at /settings/workspace-structure.
+const shortcuts = ref([]);
+const shortcutsLoaded = ref(false);
 
 const today = computed(() => {
 	const d = new Date();
@@ -59,6 +60,13 @@ onMounted(async () => {
 		reportTiles.value = await getWorkspaceReports("site-execution");
 	} catch {
 		reportTiles.value = [];
+	}
+	try {
+		shortcuts.value = await getWorkspaceShortcuts("site-execution");
+	} catch {
+		shortcuts.value = [];
+	} finally {
+		shortcutsLoaded.value = true;
 	}
 });
 </script>
@@ -145,9 +153,9 @@ onMounted(async () => {
 				</div>
 			</RouterLink>
 
-			<!-- Shortcuts grid — driven by workspaceStructure. Tiles use the
-           shared <WorkspaceShortcut> component (Session 40) so every
-           workspace landing renders the same tile shape. -->
+			<!-- Shortcuts grid — role-filtered by the backend registry. Tiles use the
+           shared <WorkspaceShortcut> component so every workspace landing renders
+           the same tile shape. -->
 			<div
 				v-if="shortcuts.length"
 				class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
@@ -156,46 +164,29 @@ onMounted(async () => {
 				     description — only the Reports group below carries subtext. -->
 				<WorkspaceShortcut
 					v-for="sc in shortcuts"
-					:key="sc.id"
-					:to="sc.route_path"
+					:key="sc.route"
+					:to="sc.route"
 					:icon="sc.icon"
 					:label="sc.label"
 				/>
 			</div>
 
-			<!-- Empty / disabled state -->
+			<!-- No shortcuts (none configured, or none visible to this user) -->
 			<div
-				v-else-if="!definition || !definition.enabled"
+				v-else-if="shortcutsLoaded"
 				class="bg-white border border-ink-200 px-4 py-6 text-center"
 				style="border-radius: 8px"
 			>
 				<div class="text-sm text-ink-500 mb-1">
-					Site Execution workspace is not configured.
+					No Site Execution shortcuts available.
 				</div>
 				<RouterLink
 					v-if="store.isBSA"
 					to="/settings/workspace-structure"
 					class="text-xs text-brand-700 hover:underline"
 				>
-					Open Workspace Structure Settings →
+					Configure shortcuts →
 				</RouterLink>
-				<div v-else class="text-[11px] text-ink-400 italic">
-					Contact your BuildSuite Administrator to enable.
-				</div>
-			</div>
-
-			<!-- No shortcuts visible to this role -->
-			<div
-				v-else
-				class="bg-white border border-ink-200 px-4 py-6 text-center"
-				style="border-radius: 8px"
-			>
-				<div class="text-sm text-ink-500 mb-1">
-					No Site Execution shortcuts available for your role.
-				</div>
-				<div class="text-[11px] text-ink-400 italic">
-					Active role: {{ store.currentRole?.name }}
-				</div>
 			</div>
 
 			<WorkspaceRecordsSection workspace="site-execution" />

@@ -62,6 +62,12 @@ async function mountApp() {
 		console.warn("[buildsuite] Failed to load companies", error);
 	}
 
+	// Load the sidebar workspaces the user may see (backend registry) before mount, so the
+	// first paint has the correct nav. Only for a user who can open the app; guarded internally.
+	if (sessionStore.access?.allowed) {
+		await dataStore.loadWorkspaces();
+	}
+
 	app.use(router);
 	app.mount("#app");
 }
