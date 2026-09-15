@@ -11,8 +11,14 @@ instead of duplicating the matrix. Server-side enforcement is unchanged — the 
 payload is a UI convenience only.
 
 Notes on the mapping:
-* ``subcontractor`` and ``supplier`` both back onto ``Supplier`` (subcontractors are
-  Suppliers of type "Subcontractor"); they resolve to identical DocPerm caps.
+* ``subcontractor`` and ``supplier`` are INTENTIONAL ALIASES — both back onto ``Supplier``
+  (a subcontractor is a Supplier of type "Subcontractor"), so they necessarily resolve to
+  identical caps. The two keys exist only for call-site readability (the Subcontract screens
+  vs the Suppliers panel); they cannot be gated apart, because DocPerms are doctype-level, not
+  per-type. (The retired client matrix gave them *different* read sets — an impossible
+  distinction the backend correctly collapses. Screen-level visibility that used to lean on
+  that split is handled by the workspace registry instead.) The alias is enforced by
+  test_permission_matrix.TestResourcePermissionDerivation.
 * ``materialConsumption`` is a ``Stock Entry`` of type "Material Issue", ``supplierBill``
   a ``Purchase Invoice``, ``advance`` a ``Payment Entry`` — the DocPerm is at the Doctype
   level, which is exactly what the corresponding ``*_ROLE_PERMS`` matrix governs.

@@ -667,6 +667,26 @@ class TestResourcePermissionDerivation(_PersonaBase):
 					self.assertIn(caps["writeScope"], ("all", "own", "none"))
 					self.assertIn(caps["deleteScope"], ("all", "own", "none"))
 
+	def test_subcontractor_and_supplier_are_identical_aliases(self):
+		# Both keys back onto the Supplier doctype (a subcontractor IS a Supplier of type
+		# "Subcontractor"), so their caps MUST be identical for every persona — they can't be
+		# gated apart. Guards against a future remap that would silently reintroduce the old
+		# hand-matrix's impossible split. See permissions/resource_map.py.
+		self.assertEqual(RESOURCE_DOCTYPES["subcontractor"], RESOURCE_DOCTYPES["supplier"])
+		for persona in PERSONA_ROLE:
+			email = self._make_user(persona)
+			frappe.set_user(email)
+			try:
+				payload = get_resource_permissions()
+			finally:
+				frappe.set_user("Administrator")
+			with self.subTest(persona=persona):
+				self.assertEqual(
+					payload["subcontractor"],
+					payload["supplier"],
+					f"{persona}: subcontractor and supplier caps diverged (same doctype)",
+				)
+
 	def test_denied_user_gets_empty_payload(self):
 		# A user with no BuildSuite role can't open the app; the derived payload must be empty
 		# (never a partial grant leaked through the picker read-mirror).
