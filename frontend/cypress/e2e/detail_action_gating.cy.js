@@ -38,7 +38,7 @@
 // Requires the persona test users + demo records:
 //   bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_users
 
-import { PERSONA_CAPS } from "../../src/data/roles";
+import { PERSONA_CAPS } from "../support/personaCaps";
 
 // Per entity: `base` (detail route is `${base}/${name}`), the fixture key (defaults to `entity`),
 // and the page-actions buttons. Each button: { text, cap: 'e'|'d'|'x'|'c', when, capEntity? }.

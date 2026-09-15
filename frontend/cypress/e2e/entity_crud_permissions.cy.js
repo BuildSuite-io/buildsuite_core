@@ -11,7 +11,7 @@
 // Requires the persona test users:
 //   bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_users
 
-import { PERSONA_CAPS } from "../../src/data/roles";
+import { PERSONA_CAPS } from "../support/personaCaps";
 
 // entity key (matches PERSONA_CAPS) -> its list route + the "+ New" affordance label.
 const ENTITIES = [
