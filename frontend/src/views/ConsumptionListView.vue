@@ -31,6 +31,18 @@ const page = ref(1);
 const pageSize = ref(10);
 const search = ref("");
 const projectFilter = ref("");
+// Built-in "+ Add filter" — DeskList emits server tuples; we pass them to the query.
+// Only the real Stock Entry fields are offered (items/state are synthesized in the view).
+const dynamicFilters = ref([]);
+const filterFields = [
+	{ fieldname: "posting_date", label: "Date", fieldtype: "Date" },
+	{ fieldname: "custom_cost_code_label", label: "Cost code", fieldtype: "Data" },
+];
+function onDynamicFilters(serverFilters) {
+	dynamicFilters.value = serverFilters;
+	page.value = 1;
+	reload();
+}
 
 // reqId: only the latest request wins.
 let reqId = 0;
@@ -43,6 +55,7 @@ async function reload() {
 			page_length: pageSize.value,
 			search: search.value.trim() || undefined,
 			project: projectFilter.value || undefined,
+			filters: dynamicFilters.value.length ? JSON.stringify(dynamicFilters.value) : undefined,
 		});
 		if (my !== reqId) return;
 		rows.value = res.rows || [];
@@ -116,7 +129,9 @@ const breadcrumbs = [
 			:columns="columns"
 			row-key="name"
 			search-placeholder="Search consumption…"
+			:filter-fields="filterFields"
 			@row-click="(row) => router.push(`/material-consumption/${row.name}`)"
+			@filters-change="onDynamicFilters"
 			:server-paginated="true"
 			:total-rows="totalCount"
 			:current-page="page"

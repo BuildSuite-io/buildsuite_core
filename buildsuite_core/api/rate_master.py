@@ -6,18 +6,21 @@ from frappe.utils import cint, flt
 
 
 @frappe.whitelist()
-def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None = None, category: str | None = None, with_counts: bool = False):
+def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None = None, category: str | None = None, filters: str | None = None, with_counts: bool = False):
 	"""One page of rate masters + total_count (filtered, for the pager). When
 	with_counts is set, also the global total and per-category counts (KPI cards)."""
+	from buildsuite_core.utils.list_filters import parse_client_filters
 	from buildsuite_core.utils.project import company_scope
 
-	filters = {}
+	# frappe.get_list takes list-form filters, so the base scoping goes in as tuples too —
+	# that lets the ad-hoc "+ Add filter" tuples extend the same list.
+	filters = parse_client_filters(filters, "Construction Rate Master")
 	# Rate masters are per-company; scope to the working company only when awareness is on.
 	scope = company_scope()
 	if scope:
-		filters["company"] = scope
+		filters.append(["company", "=", scope])
 	if category:
-		filters["category"] = category
+		filters.append(["category", "=", category])
 	or_filters = None
 	if search:
 		or_filters = [

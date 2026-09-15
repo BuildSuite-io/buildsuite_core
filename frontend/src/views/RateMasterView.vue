@@ -44,6 +44,22 @@ const page = ref(1);
 const pageSize = ref(10);
 const search = ref("");
 const categoryFilter = ref("");
+// Built-in "+ Add filter" — DeskList hands us the server tuples; we pass them to the query.
+// fieldname is the real DB field (the list rows are mapped, but the backend filters on the doctype).
+const dynamicFilters = ref([]);
+const filterFields = computed(() => [
+	{ fieldname: "rate_code", label: "Code", fieldtype: "Data" },
+	{ fieldname: "rate_name", label: "Description", fieldtype: "Data" },
+	{ fieldname: "category", label: "Category", fieldtype: "Select", options: categoryOptions.value.join("\n") },
+	{ fieldname: "uom", label: "UOM", fieldtype: "Data" },
+	{ fieldname: "current_rate", label: "Current Rate", fieldtype: "Currency" },
+	{ fieldname: "effective_date", label: "Last Updated", fieldtype: "Date" },
+]);
+function onDynamicFilters(serverFilters) {
+	dynamicFilters.value = serverFilters;
+	page.value = 1;
+	reload();
+}
 
 function mapRow(r) {
 	return {
@@ -71,6 +87,7 @@ async function reload({ withCounts = false } = {}) {
 			page_length: pageSize.value,
 			search: search.value.trim() || undefined,
 			category: categoryFilter.value || undefined,
+			filters: dynamicFilters.value.length ? JSON.stringify(dynamicFilters.value) : undefined,
 			with_counts: withCounts ? 1 : undefined,
 		});
 		if (my !== reqId) return;
@@ -345,11 +362,13 @@ async function removeRate() {
 			:columns="columns"
 			row-key="id"
 			search-placeholder="Search code or description…"
+			:filter-fields="filterFields"
 			:server-paginated="true"
 			:total-rows="totalCount"
 			:current-page="page"
 			:page-size="pageSize"
 			@row-click="onRowClick"
+			@filters-change="onDynamicFilters"
 			@page-change="
 				(p) => {
 					if (p !== page) {

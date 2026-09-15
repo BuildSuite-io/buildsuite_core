@@ -61,3 +61,38 @@ export function matchesDynamicFilters(row, filters) {
 	if (!filters || !filters.length) return true;
 	return filters.every((f) => matchesOne(row?.[f.fieldname], f.condition, f.value));
 }
+
+// One dynamic filter -> a [field, operator, value] tuple the backend understands
+// (frappe.get_list / reportview). Returns null when the value is empty so the filter
+// is dropped rather than sent as a no-op. Mirrors DocTypeListView.toServerFilter so
+// server-paginated DeskList views filter identically to the doctype list.
+export function toServerFilter(f) {
+	const field = f.fieldname;
+	const v = f.value;
+	switch (f.condition) {
+		case "like":
+		case "not like":
+			return v === "" || v == null ? null : [field, f.condition, `%${v}%`];
+		case "in":
+		case "not in": {
+			const list = toList(v);
+			return list.length ? [field, f.condition, list] : null;
+		}
+		case "is":
+			return [field, "is", v || "set"];
+		case "Between": {
+			const [a, b] = Array.isArray(v) ? v : [];
+			return a && b ? [field, "between", [a, b]] : null;
+		}
+		case "Timespan":
+			return v ? [field, "timespan", v] : null;
+		default:
+			return v === "" || v == null ? null : [field, f.condition, v];
+	}
+}
+
+// The full set of dynamic filters as server tuples, dropping the empty ones.
+export function toServerFilters(filters) {
+	if (!filters || !filters.length) return [];
+	return filters.map(toServerFilter).filter(Boolean);
+}

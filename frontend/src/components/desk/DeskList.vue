@@ -20,7 +20,7 @@ import { computed, ref, watch } from "vue";
 import DeskSortControl from "@/components/desk/DeskSortControl.vue";
 import DeskFilterEditor from "@/components/desk/DeskFilterEditor.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
-import { matchesDynamicFilters } from "@/utils/dynamicFilters";
+import { matchesDynamicFilters, toServerFilters } from "@/utils/dynamicFilters";
 
 const props = defineProps({
 	rows: { type: Array, required: true },
@@ -63,6 +63,9 @@ const emit = defineEmits([
 	"toggle-columns",
 	"page-change",
 	"page-size-change",
+	// Server tuples for the built-in dynamic filters. Server-paginated lists listen and
+	// push these to their query (client-side lists filter in-memory and can ignore it).
+	"filters-change",
 ]);
 
 const internalSortField = ref(props.sortField);
@@ -177,6 +180,15 @@ const filteredRows = computed(() => {
 	if (props.serverPaginated || !dynFilters.value.length) return props.rows;
 	return props.rows.filter((r) => matchesDynamicFilters(r, dynFilters.value));
 });
+
+// Server-paginated parents can't filter in memory — hand them the server tuples so they
+// can re-query. Emitted whenever the filter set changes (deep watch: chips are mutated
+// in place via splice/push).
+watch(
+	dynFilters,
+	(next) => emit("filters-change", toServerFilters(next)),
+	{ deep: true }
+);
 
 const sortedRows = computed(() => {
 	if (!props.showSort || !internalSortField.value) return filteredRows.value;
