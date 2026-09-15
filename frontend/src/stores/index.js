@@ -3,6 +3,7 @@
 // To reset: in browser DevTools > Application > Local Storage, remove the 'buildsuite:data:v1' key, then reload.
 
 import { defineStore } from "pinia";
+import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
 import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
@@ -39,6 +40,10 @@ const STORAGE_KEY = "buildsuite:data:v1";
 // preserves the active role — it's a UI preference, not seed-derived state.
 const ROLE_STORAGE_KEY = "buildsuite:role";
 const DEFAULT_ROLE = "admin";
+// Backend role names behind the admin flags (isAdmin / isBSA). The admin persona maps to
+// the native System Manager role; the BSA persona to BuildSuite Administrator.
+const SYSTEM_MANAGER_ROLE = "System Manager";
+const BSA_ROLE = "BuildSuite Administrator";
 // Active company also persisted independently — same rationale as role.
 const COMPANY_STORAGE_KEY = "buildsuite:company";
 // Light / dark theme — same independent-persistence pattern as role + company.
@@ -448,13 +453,19 @@ export const useDataStore = defineStore("data", {
 		// Session 34: admin-like predicate. BSA (BuildSuite Administrator) and the
 		// System Manager (admin) both see admin-only Settings tiles. Per §12.1 they
 		// coexist — Admin owns Frappe-platform admin, BSA owns BuildSuite-product
-		// admin. Both gate the same Settings tiles in this prototype since the
-		// distinction is conceptual; production Frappe would split via real Role
-		// records + permissions.
-		isAdmin: (s) => s.role === "admin" || s.role === "bsa",
+		// admin. Both gate the same Settings tiles.
+		//
+		// Sourced from the user's REAL backend roles (session.access.roles), NOT the
+		// dev-switchable persona (store.role): the RoleSwitcher can't reveal admin UI, and
+		// the flag matches what the server-side admin endpoints (_require_admin) actually
+		// enforce. admin persona → System Manager role; BSA persona → BuildSuite Administrator.
+		isAdmin: () => {
+			const roles = useSessionStore().access?.roles || [];
+			return roles.includes(SYSTEM_MANAGER_ROLE) || roles.includes(BSA_ROLE);
+		},
 		// Narrower getter for BSA-only surfaces (Workspace Structure Settings is
 		// the canonical example — only BSA can reconfigure workspace shortcuts).
-		isBSA: (s) => s.role === "bsa",
+		isBSA: () => useSessionStore().access?.roles?.includes(BSA_ROLE) ?? false,
 
 		// ===== Settings (Session 34) =====
 		// Resolve a workspace definition by slug. Returns null if not configured —
