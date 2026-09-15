@@ -32,6 +32,7 @@
   "tax_percent",
   "section_break_wxgf",
   "buildsuite_tenders_items",
+  "items_count",
   "internal_notes_section",
   "notes"
  ],
@@ -197,12 +198,20 @@
    "fieldtype": "Table",
    "label": "BuildSuite Tenders Items",
    "options": "BuildSuite Tenders Items"
+  },
+  {
+   "fieldname": "items_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Items Count",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-15 22:23:04.690876",
+ "modified": "2026-09-15 23:18:47.126819",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

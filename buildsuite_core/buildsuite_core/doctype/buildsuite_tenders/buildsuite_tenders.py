@@ -23,6 +23,7 @@ class BuildSuiteTenders(Document):
 		envelope_structure: DF.Literal["Single", "Two-envelope", "Three-envelope"]
 		issued_by: DF.Literal["Government", "Main Contractor"]
 		issuing_body: DF.Data
+		items_count: DF.Int
 		margin_percent: DF.Float
 		notes: DF.SmallText | None
 		performance_guarantee_percent: DF.Data | None
@@ -34,4 +35,6 @@ class BuildSuiteTenders(Document):
 		title: DF.Data
 	# end: auto-generated types
 
-	pass
+	def validate(self):
+
+		self.items_count = len(self.buildsuite_tenders_items)
