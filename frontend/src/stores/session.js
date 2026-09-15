@@ -13,6 +13,10 @@ export const useSessionStore = defineStore("session", {
 			allowed: false,
 			roles: [],
 			persona: null,
+			// Backend-derived per-resource caps (api.permission.get_resource_permissions),
+			// keyed by the frontend resource key. usePermissions reads this — it's the single
+			// source of truth for CRUD gating (replaces the old roles.js PERSONA_CAPS matrix).
+			resourcePermissions: {},
 			reason: "guest",
 		},
 		lastCheckedAt: null,
@@ -50,6 +54,7 @@ export const useSessionStore = defineStore("session", {
 				allowed: Boolean(context.allowed),
 				roles: Array.isArray(context.roles) ? context.roles : [],
 				persona: context.persona || null,
+				resourcePermissions: context.resource_permissions || {},
 				reason: context.reason || (context.allowed ? "ok" : "missing_role"),
 			};
 			this.developerMode = Boolean(context.developer_mode);
