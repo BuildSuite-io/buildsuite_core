@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { ROLES } from "@/data/roles";
-import { WORKSPACE_META, ACCESS_LABEL, workspaceMetric } from "@/data/workspaces";
+import { ACCESS_LABEL, workspaceMetric } from "@/data/workspaces";
 import { useDataStore } from "@/stores";
 import LandingShell from "@/layouts/LandingShell.vue";
 import { fmtCompactINR } from "@/utils/format";
@@ -75,11 +75,9 @@ const pendingPayments = [
 ];
 
 const tiles = computed(() =>
-	store.visibleWorkspaces.map((slug) => ({
-		slug,
-		...WORKSPACE_META[slug],
-		metric: workspaceMetric(slug, store),
-		access: store.workspaceAccess(slug),
+	store.workspaces.map((ws) => ({
+		...ws,
+		metric: workspaceMetric(ws.slug, store),
 	}))
 );
 </script>

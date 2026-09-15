@@ -395,7 +395,7 @@ def get_visible_workspaces():
 
 	workspaces = frappe.get_all(
 		"BuildSuite Workspace",
-		fields=["name", "label", "icon", "route", "workspace_group", "sort_order"],
+		fields=["name", "label", "icon", "route", "workspace_group", "sort_order", "description"],
 		order_by="sort_order asc",
 	)
 	out = []
@@ -412,6 +412,7 @@ def get_visible_workspaces():
 				"route": ws.route,
 				"group": ws.workspace_group,
 				"order": ws.sort_order,
+				"description": ws.description or "",
 				# The strongest hint among the user's roles (combined-responsibility users). Cosmetic.
 				"access": max(hints, key=lambda h: _ACCESS_RANK.get(h, 0)),
 			}

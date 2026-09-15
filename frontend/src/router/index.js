@@ -2,14 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useDataStore } from "@/stores";
 import { usePermissions } from "@/composables/usePermissions";
-import { WORKSPACE_META } from "@/data/workspaces";
 import { getLoginUrl } from "@/utils/session";
 import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
-
-// The canonical workspace slugs. A workspace landing route's `name` IS its slug, so the
-// route guard can gate any of them on the user's visible-workspaces list without per-route
-// meta. Everything backend-derived flows through store.visibleWorkspaces.
-const WORKSPACE_SLUGS = new Set(Object.keys(WORKSPACE_META));
 
 // Per-route browser title (route name -> human label). Detail pages get a generic
 // label here; the view overrides it with the record name via usePageTitle.
@@ -298,6 +292,7 @@ const routes = [
 			{
 				path: "site-execution",
 				name: "site-execution",
+				meta: { workspace: "site-execution" },
 				component: () => import("@/views/workspaces/SiteExecutionWorkspace.vue"),
 			},
 			{
@@ -340,11 +335,13 @@ const routes = [
 			{
 				path: "estimation",
 				name: "estimation",
+				meta: { workspace: "estimation" },
 				component: () => import("@/views/workspaces/EstimationWorkspace.vue"),
 			},
 			{
 				path: "procurement",
 				name: "procurement",
+				meta: { workspace: "procurement" },
 				component: () => import("@/views/workspaces/ProcurementWorkspace.vue"),
 			},
 			{
@@ -470,6 +467,7 @@ const routes = [
 			{
 				path: "equipment",
 				name: "equipment",
+				meta: { workspace: "equipment" },
 				component: () => import("@/views/workspaces/EquipmentWorkspace.vue"),
 			},
 			{
@@ -512,6 +510,7 @@ const routes = [
 			{
 				path: "subcontract",
 				name: "subcontract",
+				meta: { workspace: "subcontract" },
 				component: () => import("@/views/workspaces/SubcontractWorkspace.vue"),
 			},
 			{
@@ -613,6 +612,7 @@ const routes = [
 			{
 				path: "workforce",
 				name: "workforce",
+				meta: { workspace: "workforce" },
 				component: () => import("@/views/workspaces/WorkforceWorkspace.vue"),
 			},
 			{
@@ -705,6 +705,7 @@ const routes = [
 			{
 				path: "project-finance",
 				name: "project-finance",
+				meta: { workspace: "project-finance" },
 				component: () => import("@/views/workspaces/ProjectFinanceWorkspace.vue"),
 			},
 			{
@@ -774,11 +775,13 @@ const routes = [
 			{
 				path: "accounting",
 				name: "accounting",
+				meta: { workspace: "accounting" },
 				component: () => import("@/views/workspaces/AccountingWorkspace.vue"),
 			},
 			{
 				path: "buying",
 				name: "buying",
+				meta: { workspace: "buying" },
 				component: () => import("@/views/PlaceholderView.vue"),
 				props: {
 					title: "Buying",
@@ -789,6 +792,7 @@ const routes = [
 			{
 				path: "stock",
 				name: "stock",
+				meta: { workspace: "stock" },
 				component: () => import("@/views/PlaceholderView.vue"),
 				props: {
 					title: "Stock",
@@ -799,6 +803,7 @@ const routes = [
 			{
 				path: "assets",
 				name: "assets",
+				meta: { workspace: "assets" },
 				component: () => import("@/views/PlaceholderView.vue"),
 				props: {
 					title: "Assets",
@@ -809,6 +814,7 @@ const routes = [
 			{
 				path: "hr",
 				name: "hr",
+				meta: { workspace: "hr" },
 				component: () => import("@/views/PlaceholderView.vue"),
 				props: {
 					title: "HR",
@@ -1013,11 +1019,12 @@ router.beforeEach(async (to) => {
 	const dataStore = useDataStore();
 	dataStore.hydrate(); // idempotent; ensures the store is populated
 
-	// Workspace deep-link: block a workspace the user can't see. Fail-open if the visible list
-	// hasn't populated yet (mid-boot), so a legitimate user is never false-denied.
-	if (WORKSPACE_SLUGS.has(to.name)) {
+	// Workspace deep-link: block a workspace route (meta.workspace = slug) the user can't see.
+	// Fail-open if the visible list hasn't populated yet (mid-boot), so a legitimate user is
+	// never false-denied. A new workspace route just declares its own meta.workspace.
+	if (to.meta?.workspace) {
 		const visible = dataStore.visibleWorkspaces;
-		if (visible.length && !visible.includes(to.name)) return { path: "/" };
+		if (visible.length && !visible.includes(to.meta.workspace)) return { path: "/" };
 	}
 
 	// Admin-only routes (declared via meta). Mirrors the redirect the settings views already do.

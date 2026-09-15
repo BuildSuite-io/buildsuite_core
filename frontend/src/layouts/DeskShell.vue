@@ -73,37 +73,6 @@ const profileRole = computed(() => {
 	return "";
 });
 
-// Per-workspace UI metadata (label, route path, icon, group). The visibility matrix
-// and per-role ordering live in src/data/roles.js (CLAUDE.md §12.2, §12.3) — this
-// table is the UI-side mapping from slug → presentation.
-const WORKSPACES = {
-	"site-execution": {
-		name: "Site Execution",
-		to: "/site-execution",
-		icon: "🏗️",
-		group: "buildsuite",
-	},
-	estimation: { name: "Estimation", to: "/estimation", icon: "📐", group: "buildsuite" },
-	procurement: { name: "Procurement", to: "/procurement", icon: "🛒", group: "buildsuite" },
-	subcontract: { name: "Subcontract", to: "/subcontract", icon: "🤝", group: "buildsuite" },
-	workforce: { name: "Workforce", to: "/workforce", icon: "👷", group: "buildsuite" },
-	// 'scope-change' removed Session 33 — merged into Site Execution. The
-	// /app/scope-change route stays registered as a legacy redirect target but
-	// doesn't appear in the sidebar anymore.
-	"project-finance": {
-		name: "Project Finance",
-		to: "/project-finance",
-		icon: "💵",
-		group: "buildsuite",
-	},
-	equipment: { name: "Equipment", to: "/equipment", icon: "🔧", group: "buildsuite" },
-	accounting: { name: "Accounting", to: "/accounting", icon: "📊", group: "erpnext" },
-	buying: { name: "Buying", to: "/buying", icon: "📥", group: "erpnext" },
-	stock: { name: "Stock", to: "/stock", icon: "📦", group: "erpnext" },
-	assets: { name: "Assets", to: "/assets", icon: "🏭", group: "erpnext" },
-	hr: { name: "HR", to: "/hr", icon: "👤", group: "erpnext" },
-};
-
 // Access-level hint pills (CLAUDE.md §12.3). Shown next to a workspace link when
 // the active role has restricted access (anything other than 'full').
 const ACCESS_HINTS = {
@@ -160,31 +129,19 @@ const navGroups = computed(() => {
 		buildsuiteItems.push({ slug: "insights", name: "Insights", to: "/insights", icon: "💡", group: "buildsuite", hint: null });
 	}
 	const erpnextItems = [];
-	const otherBuildsuiteItems = [];
-	for (const slug of store.visibleWorkspaces) {
-		if (slug === "site-execution") continue;
-		const meta = WORKSPACES[slug];
-		if (!meta) continue;
-		const access = store.workspaceAccess(slug);
-		const hint = access && access !== "full" ? ACCESS_HINTS[access] : null;
-		const item = { slug, ...meta, hint };
-		if (meta.group === "buildsuite") {
-			otherBuildsuiteItems.push(item);
-		} else {
+	// store.workspaces is the backend registry list — role-filtered, ordered (sort_order),
+	// and carrying its own metadata (name/icon/to/group). Adding a BuildSuite Workspace record
+	// therefore flows into the sidebar with no frontend edit.
+	for (const ws of store.workspaces) {
+		const hint = ws.access && ws.access !== "full" ? ACCESS_HINTS[ws.access] : null;
+		const item = { slug: ws.slug, name: ws.name, icon: ws.icon, to: ws.to, group: ws.group, hint };
+		if (ws.group === "erpnext") {
 			// Link to the real ERPNext desk workspace (full-page nav), not the SPA route.
-			erpnextItems.push({ ...item, external: true, href: deskWorkspaceUrl(slug) });
+			erpnextItems.push({ ...item, external: true, href: deskWorkspaceUrl(ws.slug) });
+		} else {
+			buildsuiteItems.push(item);
 		}
 	}
-
-	if (store.visibleWorkspaces.includes("site-execution")) {
-		const meta = WORKSPACES["site-execution"];
-		if (meta) {
-			const access = store.workspaceAccess("site-execution");
-			const hint = access && access !== "full" ? ACCESS_HINTS[access] : null;
-			buildsuiteItems.push({ slug: "site-execution", ...meta, hint });
-		}
-	}
-	buildsuiteItems.push(...otherBuildsuiteItems);
 
 	const groups = [];
 	if (buildsuiteItems.length) {
