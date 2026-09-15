@@ -6,7 +6,6 @@
 import { computed, ref } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
-import { WORKSPACE_META } from "@/data/workspaces";
 import LogoIcon from "@/components/LogoIcon.vue";
 import RoleSwitcher from "@/components/RoleSwitcher.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
@@ -32,16 +31,14 @@ const tiles = computed(() => {
 		},
 	];
 
-	for (const slug of store.visibleWorkspaces) {
-		const meta = WORKSPACE_META[slug];
-		if (!meta) continue;
+	for (const ws of store.workspaces) {
 		out.push({
-			key: slug,
-			label: meta.name,
-			to: meta.to,
+			key: ws.slug,
+			label: ws.name,
+			to: ws.to,
 			style: TILE_STYLE.workspace,
 			isLogo: false,
-			iconSlug: slug,
+			iconSlug: ws.slug,
 		});
 	}
 

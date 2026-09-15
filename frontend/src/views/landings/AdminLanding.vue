@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { ROLES } from "@/data/roles";
-import { WORKSPACE_META, workspaceMetric } from "@/data/workspaces";
+import { workspaceMetric } from "@/data/workspaces";
 import { useDataStore } from "@/stores";
 import LandingShell from "@/layouts/LandingShell.vue";
 import { fmtDate } from "@/utils/format";
@@ -21,14 +21,14 @@ const todayLabel = today.toLocaleDateString("en-IN", {
 
 // Workspace launcher — Admin sees all 12. Group by BuildSuite vs ERPNext per §12.2.
 const buildsuiteTiles = computed(() =>
-	store.visibleWorkspaces
-		.filter((slug) => WORKSPACE_META[slug]?.group === "buildsuite")
-		.map((slug) => ({ slug, ...WORKSPACE_META[slug], metric: workspaceMetric(slug, store) }))
+	store.workspaces
+		.filter((ws) => ws.group === "buildsuite")
+		.map((ws) => ({ ...ws, metric: workspaceMetric(ws.slug, store) }))
 );
 const erpnextTiles = computed(() =>
-	store.visibleWorkspaces
-		.filter((slug) => WORKSPACE_META[slug]?.group === "erpnext")
-		.map((slug) => ({ slug, ...WORKSPACE_META[slug], metric: workspaceMetric(slug, store) }))
+	store.workspaces
+		.filter((ws) => ws.group === "erpnext")
+		.map((ws) => ({ ...ws, metric: workspaceMetric(ws.slug, store) }))
 );
 
 // Recent activity feed — composed from any store entity that carries a meaningful

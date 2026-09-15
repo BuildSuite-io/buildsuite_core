@@ -697,7 +697,19 @@ export const useDataStore = defineStore("data", {
 		// sidebar is simply empty rather than crashing.
 		async loadWorkspaces() {
 			try {
-				this.workspaces = (await getVisibleWorkspaces()) || [];
+				// Normalise the backend rows to the metadata shape the sidebar/landings consume
+				// ({name, icon, to, group, desc}) — this is the single source, replacing the
+				// former client WORKSPACE_META copies.
+				this.workspaces = ((await getVisibleWorkspaces()) || []).map((w) => ({
+					slug: w.slug,
+					name: w.label,
+					icon: w.icon,
+					to: w.route,
+					group: w.group,
+					order: w.order,
+					access: w.access,
+					desc: w.description || "",
+				}));
 			} catch (e) {
 				this.workspaces = [];
 				console.warn("Failed to load workspaces:", e);
