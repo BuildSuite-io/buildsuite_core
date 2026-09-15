@@ -40,10 +40,16 @@ const STORAGE_KEY = "buildsuite:data:v1";
 // preserves the active role — it's a UI preference, not seed-derived state.
 const ROLE_STORAGE_KEY = "buildsuite:role";
 const DEFAULT_ROLE = "admin";
-// Backend role names behind the admin flags (isAdmin / isBSA). The admin persona maps to
-// the native System Manager role; the BSA persona to BuildSuite Administrator.
+// Backend role names behind the role-based UI gates. Persona → role: admin → System Manager,
+// bsa → BuildSuite Administrator, director → BuildSuite Director, pm → BuildSuite PM,
+// accountant → BuildSuite Accountant.
 const SYSTEM_MANAGER_ROLE = "System Manager";
 const BSA_ROLE = "BuildSuite Administrator";
+const DIRECTOR_ROLE = "BuildSuite Director";
+const PM_ROLE = "BuildSuite PM";
+const ACCOUNTANT_ROLE = "BuildSuite Accountant";
+// Leadership = the Insights / oversight audience (Director / PM / the two admin roles).
+const LEADERSHIP_ROLES = [DIRECTOR_ROLE, PM_ROLE, SYSTEM_MANAGER_ROLE, BSA_ROLE];
 // Active company also persisted independently — same rationale as role.
 const COMPANY_STORAGE_KEY = "buildsuite:company";
 // Light / dark theme — same independent-persistence pattern as role + company.
@@ -466,6 +472,14 @@ export const useDataStore = defineStore("data", {
 		// Narrower getter for BSA-only surfaces (Workspace Structure Settings is
 		// the canonical example — only BSA can reconfigure workspace shortcuts).
 		isBSA: () => useSessionStore().access?.roles?.includes(BSA_ROLE) ?? false,
+		// Does the user hold this backend role? For feature toggles that gate on a specific
+		// responsibility (e.g. Payments management → Accountant) rather than admin-ness.
+		hasRole: () => (roleName) => useSessionStore().access?.roles?.includes(roleName) ?? false,
+		// Leadership audience — Insights + oversight dashboards. Backend-role based, like isAdmin.
+		isLeadership: () => {
+			const roles = useSessionStore().access?.roles || [];
+			return LEADERSHIP_ROLES.some((r) => roles.includes(r));
+		},
 
 		// ===== Settings (Session 34) =====
 		// Resolve a workspace definition by slug. Returns null if not configured —

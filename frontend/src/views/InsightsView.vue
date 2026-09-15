@@ -36,7 +36,7 @@ const { ctx, loading } = useInsightsData();
 
 // First layer: leadership only. Each dataset also respects the persona's own read
 // permissions (via ctx's canRead gates), so users only see allowed numbers.
-const canUseInsights = computed(() => ["director", "pm", "admin", "bsa"].includes(store.role));
+const canUseInsights = computed(() => store.isLeadership);
 
 onMounted(() => {
 	if (!canUseInsights.value) return router.replace("/");
