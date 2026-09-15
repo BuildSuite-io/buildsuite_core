@@ -39,6 +39,11 @@ const classes = computed(() => {
 		"Pending Approval": "bg-warning-50 text-warning-700",
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
+		Sent: "bg-info-50 text-info-700",
+		Replied: "bg-info-100 text-info-700",
+		Accepted: "bg-success-50 text-success-700",
+		"Partially accepted": "bg-success-100 text-success-700",
+		Expired: "bg-ink-100 text-ink-500",
 		// Petty Cash Request lifecycle.
 		Requested: "bg-warning-50 text-warning-700",
 		Disbursed: "bg-success-50 text-success-700",
@@ -59,6 +64,9 @@ const classes = computed(() => {
 		Activity: "bg-ink-100 text-ink-700",
 		Milestone: "bg-warning-100 text-warning-700",
 		Inspection: "bg-info-100 text-info-700",
+		// Where a quotation line came from.
+		Manual: "bg-ink-100 text-ink-700",
+		Assembly: "bg-warning-50 text-warning-700",
 		// Attendance — Field Attendance rows and the Labour Register. Without
 		// these an Absent worker and a Present one render as the same grey pill,
 		// which is the whole signal that column carries.

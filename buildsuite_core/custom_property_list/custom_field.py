@@ -82,6 +82,57 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Quotation (native ERPNext) — the estimator's priced offer to a customer.
+	"Quotation": [
+		{
+			"fieldname": "customer_type",
+			"fieldtype": "Select",
+			"label": "Customer Type",
+			"options": "\nHomebuyer\nPrivate Client\nMain Contractor",
+			"insert_after": "party_name",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"options": "Project",
+			"label": "Project",
+			"insert_after": "order_type",
+			"module": "BuildSuite Core",
+		},
+		# For whoever picks the quotation up next. print_hide keeps it off the customer's copy.
+		{
+			"fieldname": "internal_note",
+			"fieldtype": "Small Text",
+			"label": "Internal Note",
+			"insert_after": "terms",
+			"print_hide": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Where the line came from: typed on this quotation, or pulled from the assembly
+	# catalogue.
+	"Quotation Item": [
+		{
+			"fieldname": "source",
+			"fieldtype": "Select",
+			"label": "Source",
+			"options": "Manual\nAssembly",
+			"default": "Manual",
+			"insert_after": "item_code",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "source_code",
+			"fieldtype": "Data",
+			"label": "Source Code",
+			"description": "The assembly code this line was priced from.",
+			"insert_after": "source",
+			"module": "BuildSuite Core",
+		},
+	],
 	"Project": [
 		{
 			"fieldname": "custom_project_id",
