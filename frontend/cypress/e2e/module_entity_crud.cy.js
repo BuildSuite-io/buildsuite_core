@@ -1,321 +1,74 @@
-// Basic CRUD permission ENABLEMENT for every live-module entity outside the 6 PERSONA_CAPS
+// Basic CRUD permission ENABLEMENT for every live-module entity outside the 6 core
 // ones (procurement / subcontract / estimation / workforce / equipment). For each entity this
 // verifies the personas who SHOULD be able to create it can actually reach the list (read
 // enablement) and see its "+ New" affordance (create enablement), and that read-only personas
-// can still open the list. Expected create/read sets mirror the backend role matrix in
-// buildsuite_core/permissions/setup.py.
+// can still open the list.
 //
-// These list views are gated through usePermissions().canCreate (PERSONA_CAPS now covers these
-// entities), so the spec asserts BOTH directions: create-capable personas see "+ New", and
-// read-only personas do NOT (while still being able to open the list). Before the caps were
-// wired the read-only negative failed for every entity — that delta is the gap this closes.
+// The expected create/read sets are DERIVED from the backend-derived oracle (support/personaCaps.js,
+// generated from api.permission.get_resource_permissions) — the same source usePermissions now reads
+// — so they can never drift from the backend. (The persona_caps_fresh spec guards the oracle itself.)
+// The two derived attendance registers aren't resource-mapped entities, so they keep an explicit
+// read-only set.
+//
+// These list views are gated through usePermissions().canCreate, so the spec asserts BOTH directions:
+// create-capable personas see "+ New", and read-only personas do NOT (while still being able to open
+// the list).
 //
 // Requires the persona test users:
 //   bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_users
 
-// entity -> route, "+ New" affordance label (null = read-only register, no create button),
-// and the personas the backend lets create / read it.
-const ENTITIES = [
+import { PERSONA_CAPS } from "../support/personaCaps";
+
+const PERSONAS = Object.keys(PERSONA_CAPS);
+const creators = (cap) => PERSONAS.filter((p) => PERSONA_CAPS[p][cap]?.c === true);
+const readers = (cap) => PERSONAS.filter((p) => PERSONA_CAPS[p][cap]?.r === true);
+
+// entity -> route, "+ New" affordance label (null = read-only register, no create button), and the
+// oracle resource key (`cap`) its create/read are derived from. The two derived attendance registers
+// have no resource key, so they carry an explicit read-only set instead.
+const ENTITIES_RAW = [
 	// --- Procurement ---
-	{
-		key: "Material Request",
-		route: "/procurement/material-requests",
-		newText: "New Request",
-		create: ["pm", "site-engineer", "foreman", "procurement", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"site-engineer",
-			"foreman",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Purchase Order",
-		route: "/procurement/purchase-orders",
-		newText: "New PO",
-		create: ["procurement", "admin", "bsa"],
-		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
-	},
-	{
-		key: "Purchase Receipt",
-		route: "/procurement/receipts",
-		newText: "New Receipt",
-		create: ["procurement", "store-keeper", "admin", "bsa"],
-		read: ["director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"],
-	},
-	{
-		key: "Material Consumption",
-		route: "/material-consumption",
-		newText: "Record consumption",
-		create: ["site-engineer", "procurement", "store-keeper", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"site-engineer",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Item",
-		route: "/items",
-		newText: "New Item",
-		create: ["procurement", "store-keeper", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"estimator",
-			"qs",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
+	{ key: "Material Request", route: "/procurement/material-requests", newText: "New Request", cap: "materialRequest" },
+	{ key: "Purchase Order", route: "/procurement/purchase-orders", newText: "New PO", cap: "purchaseOrder" },
+	{ key: "Purchase Receipt", route: "/procurement/receipts", newText: "New Receipt", cap: "purchaseReceipt" },
+	{ key: "Material Consumption", route: "/material-consumption", newText: "Record consumption", cap: "materialConsumption" },
+	{ key: "Item", route: "/items", newText: "New Item", cap: "item" },
 
 	// --- Estimation ---
-	{
-		key: "BOQ",
-		route: "/boq",
-		newText: "New BOQ",
-		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-	},
-	{
-		key: "Assembly",
-		route: "/assembly",
-		newText: "New",
-		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-	},
-	{
-		key: "Estimate Template",
-		route: "/estimate-template",
-		newText: "New",
-		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-		read: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-	},
-	{
-		key: "Rate Master",
-		route: "/rate-master",
-		newText: "New rate",
-		create: ["director", "pm", "estimator", "qs", "admin", "bsa"],
-		read: ["director", "pm", "estimator", "qs", "procurement", "admin", "bsa"],
-	},
+	{ key: "BOQ", route: "/boq", newText: "New BOQ", cap: "boq" },
+	{ key: "Assembly", route: "/assembly", newText: "New", cap: "assembly" },
+	{ key: "Estimate Template", route: "/estimate-template", newText: "New", cap: "estimateTemplate" },
+	{ key: "Rate Master", route: "/rate-master", newText: "New rate", cap: "rateMaster" },
 
 	// --- Subcontract ---
-	{
-		key: "Subcontractor",
-		route: "/subcontractors",
-		newText: "New",
-		// QS + Accountant maintain subcontractors fully; Estimator is read-only. Site Engineer
-		// has backend read (WO read-mirror) but no Subcontractors screen, so it's not listed here.
-		create: ["procurement", "pm", "director", "qs", "accountant", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"accountant",
-			"estimator",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Subcontractor Work Order",
-		route: "/subcontractor-work-orders",
-		newText: "New",
-		create: ["procurement", "pm", "director", "qs", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"estimator",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Measurement Book",
-		route: "/measurement-books",
-		newText: "New",
-		// Procurement has NO MB access; Director is oversight-only (read). Site Engineer RAISES
-		// (create+read) but never edits/certifies; QS + PM are full. Estimator + Accountant read.
-		create: ["pm", "qs", "site-engineer", "admin", "bsa"],
-		read: [
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"estimator",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Subcontractor Bill",
-		route: "/subcontractor-bills",
-		newText: "New",
-		// Director is oversight-only (read, never raises a bill); Estimator has no bill access.
-		// Procurement + PM prepare bills, QS + Accountant raise/submit. Site Engineer reads.
-		create: ["procurement", "pm", "qs", "accountant", "admin", "bsa"],
-		read: [
-			"procurement",
-			"pm",
-			"director",
-			"qs",
-			"site-engineer",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
+	{ key: "Subcontractor", route: "/subcontractors", newText: "New", cap: "subcontractor" },
+	{ key: "Subcontractor Work Order", route: "/subcontractor-work-orders", newText: "New", cap: "subcontractorWorkOrder" },
+	{ key: "Measurement Book", route: "/measurement-books", newText: "New", cap: "measurementBook" },
+	{ key: "Subcontractor Bill", route: "/subcontractor-bills", newText: "New", cap: "subcontractorBill" },
 
 	// --- Workforce ---
+	{ key: "Field Employee", route: "/field-employees", newText: "New", cap: "fieldEmployee" },
+	{ key: "Crew", route: "/crews", newText: "New", cap: "crew" },
+	{ key: "Field Attendance", route: "/field-attendance", newText: "New", cap: "fieldAttendance" },
+	// Derived registers — read-only, not resource-mapped; explicit read set (DERIVED_ATTENDANCE_ROLE_PERMS).
 	{
-		key: "Field Employee",
-		route: "/field-employees",
-		newText: "New",
-		create: ["pm", "site-engineer", "hr-manager", "admin", "bsa"],
-		// Employee is a linked-master read mirror — every persona reads it for pickers.
-		read: [
-			"director",
-			"pm",
-			"estimator",
-			"qs",
-			"site-engineer",
-			"foreman",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"hr-manager",
-			"admin",
-			"bsa",
-		],
+		key: "Labour Attendance Register", route: "/labour-attendance", newText: null, cap: null, create: [],
+		read: ["director", "pm", "qs", "site-engineer", "foreman", "accountant", "hr-manager", "admin", "bsa"],
 	},
 	{
-		key: "Crew",
-		route: "/crews",
-		newText: "New",
-		create: ["pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
-		read: ["director", "pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
-	},
-	{
-		key: "Field Attendance",
-		route: "/field-attendance",
-		newText: "New",
-		create: ["pm", "site-engineer", "foreman", "hr-manager", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"site-engineer",
-			"foreman",
-			"hr-manager",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Labour Attendance Register",
-		route: "/labour-attendance",
-		newText: null,
-		create: [],
-		read: [
-			"director",
-			"pm",
-			"qs",
-			"site-engineer",
-			"foreman",
-			"accountant",
-			"hr-manager",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Overtime Attendance Register",
-		route: "/overtime-attendance",
-		newText: null,
-		create: [],
-		read: [
-			"director",
-			"pm",
-			"qs",
-			"site-engineer",
-			"foreman",
-			"accountant",
-			"hr-manager",
-			"admin",
-			"bsa",
-		],
+		key: "Overtime Attendance Register", route: "/overtime-attendance", newText: null, cap: null, create: [],
+		read: ["director", "pm", "qs", "site-engineer", "foreman", "accountant", "hr-manager", "admin", "bsa"],
 	},
 
 	// --- Equipment ---
-	{
-		key: "Machinery",
-		route: "/machinery",
-		newText: "New",
-		create: ["pm", "procurement", "store-keeper", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"site-engineer",
-			"foreman",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
-	{
-		key: "Machinery Usage",
-		route: "/machinery-usage",
-		newText: "Log usage",
-		create: ["pm", "site-engineer", "foreman", "store-keeper", "admin", "bsa"],
-		read: [
-			"director",
-			"pm",
-			"site-engineer",
-			"foreman",
-			"procurement",
-			"store-keeper",
-			"accountant",
-			"admin",
-			"bsa",
-		],
-	},
+	{ key: "Machinery", route: "/machinery", newText: "New", cap: "machinery" },
+	{ key: "Machinery Usage", route: "/machinery-usage", newText: "Log usage", cap: "machineryUsage" },
 ];
 
-const PERSONAS = [
-	"director",
-	"pm",
-	"estimator",
-	"qs",
-	"site-engineer",
-	"foreman",
-	"procurement",
-	"store-keeper",
-	"accountant",
-	"hr-manager",
-	"admin",
-	"bsa",
-];
+// Fill create/read from the oracle for resource-mapped entities; keep explicit sets for the registers.
+const ENTITIES = ENTITIES_RAW.map((e) =>
+	e.cap ? { ...e, create: creators(e.cap), read: readers(e.cap) } : e
+);
 
 describe("Create enablement — authorised personas reach each entity's + New", () => {
 	PERSONAS.forEach((persona) => {

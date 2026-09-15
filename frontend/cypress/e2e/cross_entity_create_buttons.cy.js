@@ -11,7 +11,7 @@
 //   bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_users
 // (the spec itself provisions the WO via ensure_cypress_work_order.)
 
-import { PERSONA_CAPS } from "../../src/data/roles";
+import { PERSONA_CAPS } from "../support/personaCaps";
 
 // Cross-entity link buttons on the Work Order detail → the PERSONA_CAPS key each gates on.
 const WO_LINK_BUTTONS = [
