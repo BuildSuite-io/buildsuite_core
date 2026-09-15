@@ -25,13 +25,13 @@ const today = new Date().toLocaleDateString("en-US", {
 });
 const cashBank = computed(() => fin.totalCashBank);
 
-// Per-persona gating — each tile follows the persona's cap in PERSONA_CAPS
-// (roles.js), the same source the access-control artifact is generated from, so
-// the workspace shows exactly what the matrix grants (e.g. Foreman reads Customer
-// and Petty Cash / Expenses, but not Invoices / Bills / Payments). This is the
-// cap-gating every other workspace already uses; Project Finance was the last
-// outlier still gating by coarse session-role buckets, which is why a Foreman
-// (or Procurement, Store Keeper, …) saw fewer tiles than the matrix grants.
+// Per-persona gating — each tile follows the persona's read cap, now derived from the
+// backend DocPerms (usePermissions → api.permission.get_resource_permissions), so the
+// workspace shows exactly what the backend grants (e.g. Foreman reads Customer and Petty
+// Cash / Expenses, but not Invoices / Bills / Payments). This is the cap-gating every
+// other workspace already uses; Project Finance was the last outlier still gating by
+// coarse session-role buckets, which is why a Foreman (or Procurement, Store Keeper, …)
+// saw fewer tiles than the backend grants.
 
 // Per the prototype's Site Execution rule (S50), DocType shortcut tiles render WITHOUT a
 // description — only the Reports group below carries subtext.

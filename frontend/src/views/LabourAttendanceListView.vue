@@ -15,6 +15,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { frappeRequest } from "frappe-ui-frappe-request";
 
 const { projectOptions, projectLabel } = useProjectOptions();
 const { workerOptions } = useFieldEmployeeOptions();
@@ -68,17 +69,17 @@ function currentServerFilters() {
 }
 async function loadTotal() {
 	try {
-		const params = new URLSearchParams({
-			doctype: "Labour Attendance Register",
-			fields: JSON.stringify(["sum(daily_wage_calculated) as total"]),
-			filters: JSON.stringify(currentServerFilters()),
-		});
-		const res = await fetch("/api/method/frappe.client.get_list?" + params, {
-			credentials: "include",
-			headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-		});
-		const data = await res.json();
-		totalWages.value = Number(data?.message?.[0]?.total) || 0;
+		totalWages.value =
+			Number(
+				await frappeRequest({
+					url: "buildsuite_core.api.field_attendance.register_total",
+					params: {
+						doctype: "Labour Attendance Register",
+						field: "daily_wage_calculated",
+						filters: JSON.stringify(currentServerFilters()),
+					},
+				})
+			) || 0;
 	} catch {
 		totalWages.value = 0;
 	}
@@ -91,7 +92,6 @@ const columns = [
 	{ key: "attendance_date", label: "Date" },
 	{ key: "employee_name", label: "Worker" },
 	{ key: "status", label: "Status" },
-	{ key: "day_type", label: "Day type" },
 	{ key: "task", label: "Task" },
 	{ key: "project", label: "Project" },
 	{ key: "wage_rate", label: "Wage rate", align: "right" },
@@ -180,10 +180,6 @@ const breadcrumbs = [
 
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
-			</template>
-
-			<template #cell-day_type="{ row }">
-				<span class="text-ink-600">{{ row.day_type || "Regular" }}</span>
 			</template>
 
 			<template #cell-task="{ row }">

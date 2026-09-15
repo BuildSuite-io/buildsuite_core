@@ -6,8 +6,8 @@ import { appUrl } from "../../src/utils/appRoute";
 
 // Persona id -> test-user email. Provisioned idempotently by
 // buildsuite_core.api.cypress_setup.ensure_cypress_users (keep this map in sync with
-// CYPRESS_USERS there and PERSONA_CAPS in src/data/roles.js). Password defaults to the
-// Cypress adminPassword config.
+// CYPRESS_USERS there and the PERSONA_CAPS oracle in support/personaCaps.js). Password
+// defaults to the Cypress adminPassword config.
 const PERSONA_USERS = {
 	director: "cypress-director@buildsuite.test",
 	pm: "cypress-pm@buildsuite.test",

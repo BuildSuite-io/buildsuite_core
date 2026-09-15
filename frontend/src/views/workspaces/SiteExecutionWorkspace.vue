@@ -47,8 +47,8 @@ const today = computed(() => {
 // "Owner" roles that should see the portfolio dashboard tile. Hardcoded
 // here per the exploratory-visualisation framing; production would put this
 // on the workspace tile's `roles` child-table column.
-const OWNER_ROLES = ["director", "pm", "admin", "accountant", "bsa"];
-const showProjectDashboard = computed(() => OWNER_ROLES.includes(store.role));
+// Project dashboard = the oversight audience (leadership + the Accountant), from backend roles.
+const showProjectDashboard = computed(() => store.isLeadership || store.hasRole("BuildSuite Accountant"));
 
 // --- Reports group --------------------------------------------------------
 // Configured per workspace in Workspace Setting (label + destination + icon +

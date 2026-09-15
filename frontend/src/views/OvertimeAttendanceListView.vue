@@ -12,6 +12,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { frappeRequest } from "frappe-ui-frappe-request";
 
 const { projectOptions, projectLabel } = useProjectOptions();
 const { workerOptions } = useFieldEmployeeOptions();
@@ -54,22 +55,19 @@ function currentServerFilters() {
 	return f;
 }
 async function loadTotals() {
+	const filters = JSON.stringify(currentServerFilters());
+	const total = (field) =>
+		frappeRequest({
+			url: "buildsuite_core.api.field_attendance.register_total",
+			params: { doctype: "Overtime Attendance Register", field, filters },
+		});
 	try {
-		const params = new URLSearchParams({
-			doctype: "Overtime Attendance Register",
-			fields: JSON.stringify([
-				"sum(overtime_hours) as hours",
-				"sum(overtime_wage_calculated) as amount",
-			]),
-			filters: JSON.stringify(currentServerFilters()),
-		});
-		const res = await fetch("/api/method/frappe.client.get_list?" + params, {
-			credentials: "include",
-			headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
-		});
-		const data = await res.json();
-		totalHours.value = Number(data?.message?.[0]?.hours) || 0;
-		totalAmount.value = Number(data?.message?.[0]?.amount) || 0;
+		const [hours, amount] = await Promise.all([
+			total("overtime_hours"),
+			total("overtime_wage_calculated"),
+		]);
+		totalHours.value = Number(hours) || 0;
+		totalAmount.value = Number(amount) || 0;
 	} catch {
 		totalHours.value = 0;
 		totalAmount.value = 0;

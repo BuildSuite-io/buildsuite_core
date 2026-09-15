@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 
+from buildsuite_core.permissions.resource_map import RESOURCE_DOCTYPES
 from buildsuite_core.permissions.setup import BUILDSUITE_ROLES
 
 # Roles permitted to open the BuildSuite Core app. System Manager is always allowed;
@@ -64,7 +65,63 @@ def get_access_context():
 			"user": user,
 			"roles": roles,
 			"persona": persona,
+			# Backend-derived UI gating caps, folded into the boot probe so the SPA needs
+			# no extra round trip. Empty for a user who can't open the app anyway.
+			"resource_permissions": _resource_permissions() if allowed else {},
 			"reason": reason,
 			"developer_mode": developer_mode,
 		}
 	)
+
+
+# The DocPerm ptypes the SPA gates on, mapped to the short cap keys usePermissions reads
+# (c=create, r=read, e=write/edit, d=delete, x=submit). Kept here so the payload speaks the
+# frontend's vocabulary and the resolver stays a straight lookup.
+_CAP_PTYPES = {"c": "create", "r": "read", "e": "write", "d": "delete", "x": "submit"}
+
+
+def _resource_permissions() -> dict:
+	"""The current user's effective caps for every mapped resource, derived from
+	``frappe.has_permission`` — the single source of truth the SPA gates on.
+
+	Each resource → ``{c, r, e, d, x, writeScope, deleteScope}``. ``writeScope`` /
+	``deleteScope`` are ``"all" | "own" | "none"``: a persona whose write is granted only
+	via an ``if_owner`` DocPerm reports ``"own"`` so the SPA can keep its own-record gating
+	(edit/delete only your own drafts) that a bare boolean can't express.
+	"""
+	out = {}
+	for key, doctype in RESOURCE_DOCTYPES.items():
+		if not frappe.db.exists("DocType", doctype):
+			# A Doctype absent on this site (e.g. an ERPNext module not installed) is simply
+			# "no access" rather than an error — keeps the payload shape stable.
+			out[key] = {c: False for c in _CAP_PTYPES}
+			out[key].update({"writeScope": "none", "deleteScope": "none"})
+			continue
+		caps = {
+			cap: bool(frappe.has_permission(doctype, ptype=ptype))
+			for cap, ptype in _CAP_PTYPES.items()
+		}
+		caps["writeScope"] = _ptype_scope(doctype, "write") if caps["e"] else "none"
+		caps["deleteScope"] = _ptype_scope(doctype, "delete") if caps["d"] else "none"
+		out[key] = caps
+	return out
+
+
+def _ptype_scope(doctype: str, ptype: str) -> str:
+	"""Whether the user's grant of ``ptype`` on ``doctype`` is unrestricted ("all") or
+	limited to their own records ("own"). ``has_permission`` alone can't tell these apart —
+	it's True for both — so we inspect the resolved role perms' ``if_owner`` map."""
+	perms = frappe.permissions.get_role_permissions(doctype, user=frappe.session.user)
+	if not perms.get(ptype):
+		return "none"
+	# if_owner may be absent or present-but-None; normalise before indexing.
+	return "own" if (perms.get("if_owner") or {}).get(ptype) else "all"
+
+
+@frappe.whitelist(methods=["GET"])
+def get_resource_permissions():
+	"""Standalone accessor for the derived resource caps (also embedded in
+	``get_access_context``). UI gating only; server-side enforcement is unchanged."""
+	if not _has_app_permission(log_denial=False):
+		return {}
+	return _resource_permissions()

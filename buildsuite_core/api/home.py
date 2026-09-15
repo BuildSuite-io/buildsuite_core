@@ -44,9 +44,17 @@ def _count(doctype, filters):
 
 
 def _sum(doctype, filters, field):
+	"""Company/project-scoped SUM that never raises. Built with the query builder: modern
+	Frappe rejects string SQL functions ("sum(x) as t") in list fields, which silently made
+	every KPI here read 0. Stays elevated (no doctype-permission gating), like _count."""
+	from frappe.query_builder.functions import Sum
+
 	try:
-		rows = frappe.get_all(doctype, filters=filters, fields=[f"sum(`{field}`) as t"])
-		return flt(rows[0].t) if rows else 0.0
+		table = frappe.qb.DocType(doctype)
+		rows = frappe.qb.get_query(
+			doctype, filters=filters or {}, fields=[Sum(table[field]).as_("t")]
+		).run(as_dict=True)
+		return flt(rows[0].t) if rows and rows[0].t is not None else 0.0
 	except Exception:
 		return 0.0
 

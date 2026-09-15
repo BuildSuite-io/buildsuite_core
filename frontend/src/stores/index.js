@@ -3,6 +3,7 @@
 // To reset: in browser DevTools > Application > Local Storage, remove the 'buildsuite:data:v1' key, then reload.
 
 import { defineStore } from "pinia";
+import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
 import { ROLES } from "@/data/roles";
 import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
@@ -40,6 +41,16 @@ const STORAGE_KEY = "buildsuite:data:v1";
 // preserves the active role — it's a UI preference, not seed-derived state.
 const ROLE_STORAGE_KEY = "buildsuite:role";
 const DEFAULT_ROLE = "admin";
+// Backend role names behind the role-based UI gates. Persona → role: admin → System Manager,
+// bsa → BuildSuite Administrator, director → BuildSuite Director, pm → BuildSuite PM,
+// accountant → BuildSuite Accountant.
+const SYSTEM_MANAGER_ROLE = "System Manager";
+const BSA_ROLE = "BuildSuite Administrator";
+const DIRECTOR_ROLE = "BuildSuite Director";
+const PM_ROLE = "BuildSuite PM";
+const ACCOUNTANT_ROLE = "BuildSuite Accountant";
+// Leadership = the Insights / oversight audience (Director / PM / the two admin roles).
+const LEADERSHIP_ROLES = [DIRECTOR_ROLE, PM_ROLE, SYSTEM_MANAGER_ROLE, BSA_ROLE];
 // Active company also persisted independently — same rationale as role.
 const COMPANY_STORAGE_KEY = "buildsuite:company";
 // Light / dark theme — same independent-persistence pattern as role + company.
@@ -444,13 +455,29 @@ export const useDataStore = defineStore("data", {
 		// Session 34: admin-like predicate. BSA (BuildSuite Administrator) and the
 		// System Manager (admin) both see admin-only Settings tiles. Per §12.1 they
 		// coexist — Admin owns Frappe-platform admin, BSA owns BuildSuite-product
-		// admin. Both gate the same Settings tiles in this prototype since the
-		// distinction is conceptual; production Frappe would split via real Role
-		// records + permissions.
-		isAdmin: (s) => s.role === "admin" || s.role === "bsa",
+		// admin. Both gate the same Settings tiles.
+		//
+		// Sourced from the user's REAL backend roles (session.access.roles), NOT the
+		// dev-switchable persona (store.role): the RoleSwitcher can't reveal admin UI, and
+		// the flag matches what the server-side admin endpoints (_require_admin) actually
+		// enforce. admin persona → System Manager role; BSA persona → BuildSuite Administrator.
+		isAdmin: () => {
+			const roles = useSessionStore().access?.roles || [];
+			return roles.includes(SYSTEM_MANAGER_ROLE) || roles.includes(BSA_ROLE);
+		},
 		// Narrower getter for BSA-only surfaces (Workspace Structure Settings is
 		// the canonical example — only BSA can reconfigure workspace shortcuts).
-		isBSA: (s) => s.role === "bsa",
+		isBSA: () => useSessionStore().access?.roles?.includes(BSA_ROLE) ?? false,
+		// Does the user hold this backend role? For feature toggles that gate on a specific
+		// responsibility (e.g. Payments management → Accountant) rather than admin-ness.
+		hasRole: () => (roleName) => useSessionStore().access?.roles?.includes(roleName) ?? false,
+		// Leadership audience — Insights + oversight dashboards. Backend-role based, like isAdmin.
+		isLeadership: () => {
+			const roles = useSessionStore().access?.roles || [];
+			return LEADERSHIP_ROLES.some((r) => roles.includes(r));
+		},
+		// (Workspace shortcut getters retired — shortcuts now come from the backend registry
+		// via api.workspace_setting.get_workspace_shortcuts.)
 	},
 
 	actions: {

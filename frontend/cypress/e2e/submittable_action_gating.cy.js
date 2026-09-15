@@ -16,7 +16,7 @@
 //
 // NOTE: assumes the plain docstatus lifecycle (no active workflow on the bill) — the app's default.
 
-import { PERSONA_CAPS } from "../../src/data/roles";
+import { PERSONA_CAPS } from "../support/personaCaps";
 
 const ENTITY = "subcontractorBill";
 

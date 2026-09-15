@@ -23,7 +23,7 @@ const confirmDialog = useConfirm();
 // Per M3, the Accountant cancels payments alongside the admin tier — mirror the
 // Payment Entry cancel permission the backend enforces (cancel_payment →
 // check_permission("cancel")), so the UI doesn't hide an action the user is allowed.
-const canManage = computed(() => store.isAdmin || store.role === "accountant");
+const canManage = computed(() => store.isAdmin || store.hasRole("BuildSuite Accountant"));
 
 const movements = ref([]);
 const loading = ref(true);

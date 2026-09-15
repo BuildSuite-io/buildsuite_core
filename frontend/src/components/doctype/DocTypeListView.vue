@@ -39,6 +39,9 @@ const search = ref("");
 const meta = ref(null);
 const metaError = ref(null);
 const metaLoading = ref(false);
+// Set when a list fetch fails (denied read, invalid field, backend error) so the view can
+// show a message instead of letting the rejection go uncaught.
+const listError = ref(null);
 const currentPage = ref(1);
 const currentPageSize = ref(props.pageSize);
 const totalCount = ref(null);
@@ -381,6 +384,11 @@ const resource = useDocTypeList(props.doctype, {
 	start: props.paginated ? 0 : 0,
 	cache: props.cacheKey || `doctype-list:${props.doctype}`,
 	auto: false,
+	// Capture a failed list read here (denied doctype, invalid field, backend error) so it
+	// shows as a message instead of hitting frappe-ui's global fallbackErrorHandler.
+	onError: (err) => {
+		listError.value = err;
+	},
 });
 
 const parsedDefaultOrder = computed(() => {
@@ -447,7 +455,20 @@ async function fetchCurrentPage(resetPage = false) {
 		resource.setData([]);
 	}
 
-	return resource.fetch();
+	// A failed list read (a denied doctype, an invalid field, a backend error) must not
+	// escalate to an uncaught promise rejection — the callers below fire this without
+	// awaiting. We call reload() rather than fetch() because the list resource's fetch()
+	// discards reload()'s promise (so its rejection would orphan); reload() is otherwise
+	// identical and returns the awaitable promise, so this try/catch actually catches it.
+	// The error is captured into `listError` and shown as a message (mirrors fetchCount).
+	try {
+		listError.value = null;
+		return await resource.reload();
+	} catch (err) {
+		listError.value = err;
+		console.warn("[buildsuite] Failed to fetch list", err);
+		return undefined;
+	}
 }
 
 // Real total count of matching records (respects filters + search + permissions),
@@ -698,6 +719,9 @@ function onPageSizeChange(value) {
 	<div class="relative">
 		<div v-if="metaError" class="mb-2 text-xs text-danger-600">
 			Failed to load {{ doctype }} metadata.
+		</div>
+		<div v-if="listError" class="mb-2 text-xs text-danger-600">
+			Couldn't load this list. Please adjust your filters or try again.
 		</div>
 
 		<!-- Dynamic filter editor (Frappe-style field/condition/value builder) -->
