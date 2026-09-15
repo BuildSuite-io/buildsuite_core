@@ -29,72 +29,112 @@ PERSONA_ROLE = {
 	"bsa": "BuildSuite Administrator",
 }
 
-_ALL = tuple(PERSONA_ROLE)
-
-# Canonical workspaces, in sidebar order (list index -> sort_order). `visible_to` = the
-# personas whose WORKSPACE_VISIBILITY value is non-null (admin/bsa are on every workspace).
+# Canonical workspaces, in sidebar order (list index -> sort_order). `visibility` = the
+# WORKSPACE_VISIBILITY sheet: persona -> access hint (the persona is visible when present;
+# the hint is cosmetic only). admin/bsa are on every workspace as "full".
 WORKSPACES = [
 	# --- BuildSuite (native SPA) workspaces ---
 	{
 		"slug": "site-execution", "label": "Site Execution", "icon": "🏗️", "route": "/site-execution",
 		"description": "Projects, work packages, tasks, schedule.",
-		"visible_to": ("director", "pm", "estimator", "qs", "site-engineer", "foreman", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "full", "estimator": "read", "qs": "read",
+			"site-engineer": "full", "foreman": "create-own", "accountant": "read",
+			"admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "estimation", "label": "Estimation", "icon": "📐", "route": "/estimation",
 		"description": "BOQ, Rate Master, revision compare.",
-		"visible_to": ("director", "pm", "estimator", "qs", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "read", "estimator": "full", "qs": "full",
+			"admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "procurement", "label": "Procurement", "icon": "🛒", "route": "/procurement",
 		"description": "Material requests, supplier follow-up, GRN.",
-		"visible_to": ("director", "pm", "site-engineer", "foreman", "procurement", "store-keeper", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "approve", "site-engineer": "create-own",
+			"foreman": "create-own", "procurement": "full", "store-keeper": "full",
+			"accountant": "read", "admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "subcontract", "label": "Subcontract", "icon": "🤝", "route": "/subcontract",
 		"description": "Vendors, work orders, RA bills, retention.",
-		"visible_to": ("director", "pm", "estimator", "qs", "site-engineer", "procurement", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "approve", "estimator": "read", "qs": "full",
+			"site-engineer": "read", "procurement": "full", "accountant": "read",
+			"admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "workforce", "label": "Workforce", "icon": "👷", "route": "/workforce",
 		"description": "Crews, overtime, wages to contractor.",
-		"visible_to": ("director", "pm", "site-engineer", "foreman", "accountant", "hr-manager", "admin", "bsa"),
+		"visibility": {
+			"director": "read", "pm": "approve", "site-engineer": "full", "foreman": "full",
+			"accountant": "read", "hr-manager": "full", "admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "equipment", "label": "Equipment", "icon": "🔧", "route": "/equipment",
 		"description": "Plant & machinery register and usage.",
-		"visible_to": ("director", "pm", "site-engineer", "foreman", "procurement", "store-keeper", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "read", "pm": "approve", "site-engineer": "full", "foreman": "full",
+			"procurement": "full", "store-keeper": "full", "accountant": "read",
+			"admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "project-finance", "label": "Project Finance", "icon": "💵", "route": "/project-finance",
 		"description": "Petty cash, cost summary, project P&L.",
-		"visible_to": _ALL,
+		"visibility": {
+			"director": "full", "pm": "full", "estimator": "self-service", "qs": "read",
+			"site-engineer": "self-service", "foreman": "self-service", "procurement": "self-service",
+			"store-keeper": "self-service", "accountant": "full", "hr-manager": "self-service",
+			"admin": "full", "bsa": "full",
+		},
 	},
 	# --- Inherited ERPNext workspaces (link out to the Frappe desk) ---
 	{
 		"slug": "accounting", "label": "Accounting", "icon": "📊", "route": "/accounting", "group": "erpnext",
 		"description": "Inherited from ERPNext.",
-		"visible_to": ("director", "pm", "accountant", "admin", "bsa"),
+		"visibility": {"director": "full", "pm": "read", "accountant": "full", "admin": "full", "bsa": "full"},
 	},
 	{
 		"slug": "buying", "label": "Buying", "icon": "📥", "route": "/buying", "group": "erpnext",
 		"description": "Inherited from ERPNext.",
-		"visible_to": ("director", "pm", "procurement", "store-keeper", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "read", "procurement": "full", "store-keeper": "read",
+			"accountant": "read", "admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "stock", "label": "Stock", "icon": "📦", "route": "/stock", "group": "erpnext",
 		"description": "Inherited from ERPNext.",
-		"visible_to": ("director", "pm", "site-engineer", "procurement", "store-keeper", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "read", "site-engineer": "read", "procurement": "read",
+			"store-keeper": "full", "accountant": "read", "admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "assets", "label": "Assets", "icon": "🏭", "route": "/assets", "group": "erpnext",
 		"description": "Inherited from ERPNext — extended for Plant & Machinery.",
-		"visible_to": ("director", "pm", "site-engineer", "foreman", "accountant", "admin", "bsa"),
+		"visibility": {
+			"director": "full", "pm": "read", "site-engineer": "read", "foreman": "read",
+			"accountant": "full", "admin": "full", "bsa": "full",
+		},
 	},
 	{
 		"slug": "hr", "label": "HR", "icon": "👤", "route": "/hr", "group": "erpnext",
 		"description": "Inherited from Frappe HR — office staff only.",
-		"visible_to": _ALL,
+		"visibility": {
+			"director": "full", "pm": "read", "estimator": "self-service", "qs": "self-service",
+			"site-engineer": "self-service", "foreman": "self-service", "procurement": "self-service",
+			"store-keeper": "self-service", "accountant": "full", "hr-manager": "full",
+			"admin": "full", "bsa": "full",
+		},
 	},
 ]
 
@@ -106,7 +146,11 @@ def seed_workspaces():
 		return  # schema not migrated yet
 
 	for order, ws in enumerate(WORKSPACES):
-		roles = [PERSONA_ROLE[p] for p in ws["visible_to"] if frappe.db.exists("Role", PERSONA_ROLE[p])]
+		roles = [
+			{"role": PERSONA_ROLE[p], "access": level}
+			for p, level in ws["visibility"].items()
+			if frappe.db.exists("Role", PERSONA_ROLE[p])
+		]
 		doc = (
 			frappe.get_doc("BuildSuite Workspace", ws["slug"])
 			if frappe.db.exists("BuildSuite Workspace", ws["slug"])
@@ -119,7 +163,7 @@ def seed_workspaces():
 		doc.workspace_group = ws.get("group", "buildsuite")
 		doc.sort_order = order
 		doc.description = ws.get("description", "")
-		doc.set("roles", [{"role": r} for r in roles])
+		doc.set("roles", roles)
 		doc.save(ignore_permissions=True)
 
 	frappe.db.commit()

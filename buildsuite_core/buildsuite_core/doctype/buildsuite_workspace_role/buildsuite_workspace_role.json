@@ -5,17 +5,26 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "role"
+  "role",
+  "access"
  ],
  "fields": [
   {
-   "columns": 6,
+   "columns": 5,
    "fieldname": "role",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Role",
    "options": "Role",
    "reqd": 1
+  },
+  {
+   "columns": 4,
+   "description": "Cosmetic access hint shown next to the workspace (full / read / approve / create-own / self-service). Does NOT gate anything.",
+   "fieldname": "access",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Access Hint"
   }
  ],
  "index_web_pages_for_search": 1,

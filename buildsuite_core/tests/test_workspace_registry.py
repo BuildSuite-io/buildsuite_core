@@ -34,8 +34,8 @@ PERSONA_SLUG = {
 }
 
 
-def _expected_slugs(slug):
-	return {ws["slug"] for ws in WORKSPACES if slug in ws["visible_to"]}
+def _expected_slugs(persona_slug):
+	return {ws["slug"] for ws in WORKSPACES if persona_slug in ws["visibility"]}
 
 
 class TestWorkspaceRegistry(_PersonaBase):
@@ -85,6 +85,22 @@ class TestWorkspaceRegistry(_PersonaBase):
 			for slug in spec["exclude"]:
 				with self.subTest(persona=persona, slug=slug):
 					self.assertNotIn(slug, visible, f"{persona} must NOT see {slug}")
+
+	def test_access_hint_reflects_the_persona(self):
+		# The cosmetic hint returned per workspace matches the sheet for the persona.
+		def hint(email, slug):
+			frappe.set_user(email)
+			try:
+				return next((w["access"] for w in get_visible_workspaces() if w["slug"] == slug), None)
+			finally:
+				frappe.set_user("Administrator")
+
+		est = self._make_user("Estimator")
+		self.assertEqual(hint(est, "site-execution"), "read")
+		self.assertEqual(hint(est, "estimation"), "full")
+		fore = self._make_user("Foreman / Supervisor")
+		self.assertEqual(hint(fore, "procurement"), "create-own")
+		self.assertEqual(hint(fore, "project-finance"), "self-service")
 
 	def test_ordering_is_by_sort_order(self):
 		email = self._make_user("System Manager (Admin)")

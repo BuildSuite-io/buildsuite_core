@@ -39,3 +39,8 @@ export const getDoctypeListConfig = (doctype) => call("get_doctype_list_config",
 
 // The current user's action permissions on a DocType, for gating New / Save / Delete.
 export const getDoctypePermissions = (doctype) => call("get_doctype_permissions", { doctype });
+
+// The SPA sidebar workspaces the current user may see — role-filtered + ordered by the
+// backend registry ({slug, label, icon, route, group, order, access}). Replaces the old
+// client-side WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
+export const getVisibleWorkspaces = () => call("get_visible_workspaces");

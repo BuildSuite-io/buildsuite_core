@@ -4,7 +4,8 @@
 
 import { defineStore } from "pinia";
 import { seedData } from "@/data/seed";
-import { ROLES, WORKSPACE_VISIBILITY, WORKSPACE_ORDER } from "@/data/roles";
+import { ROLES } from "@/data/roles";
+import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
@@ -176,6 +177,9 @@ export const useDataStore = defineStore("data", {
 		// company — lives in THEME_STORAGE_KEY so resetAll() preserves it as
 		// a UI preference.
 		theme: DEFAULT_THEME,
+		// Sidebar workspaces the logged-in user may see — loaded from the backend registry
+		// on boot (loadWorkspaces). Each: {slug, label, icon, route, group, order, access}.
+		workspaces: [],
 		// Companies master list. Project-scoped slices derive `company` from their
 		// parent project; this slice is the source of truth for what companies exist.
 		companies: [],
@@ -406,22 +410,17 @@ export const useDataStore = defineStore("data", {
 		// ===== Role system (see src/data/roles.js, CLAUDE.md §12) =====
 		currentRole: (s) =>
 			ROLES.find((r) => r.id === s.role) || ROLES.find((r) => r.id === DEFAULT_ROLE),
-		// Workspace slugs visible to the active role, ordered per WORKSPACE_ORDER[roleId].
-		// A slug listed in WORKSPACE_ORDER but null in WORKSPACE_VISIBILITY is filtered out.
-		visibleWorkspaces: (s) => {
-			const order = WORKSPACE_ORDER[s.role] || [];
-			return order.filter((slug) => {
-				const wsMap = WORKSPACE_VISIBILITY[slug];
-				return wsMap && wsMap[s.role] != null;
-			});
-		},
-		// Function getter: returns the access level for the active role on a given workspace,
-		// or null if hidden. Use this to gate CTAs / route guards downstream.
-		workspaceAccess: (s) => (slug) => {
-			const wsMap = WORKSPACE_VISIBILITY[slug];
-			if (!wsMap) return null;
-			return wsMap[s.role] ?? null;
-		},
+		// Workspace slugs visible to the logged-in user, ordered — sourced from the backend
+		// registry (api.workspace_setting.get_visible_workspaces), loaded on boot into
+		// `workspaces`. Replaces the old client WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
+		visibleWorkspaces: (s) => s.workspaces.map((w) => w.slug),
+		// Function getter: the cosmetic access hint ('full' | 'read' | …) for a workspace, or
+		// null if the user can't see it. Visibility itself is the backend's call, not this.
+		workspaceAccess: (s) => (slug) =>
+			s.workspaces.find((w) => w.slug === slug)?.access ?? null,
+		// Full backend workspace record (label/icon/route/group/order) for a slug — lets the
+		// sidebar/landings read metadata from the one backend source.
+		workspaceInfo: (s) => (slug) => s.workspaces.find((w) => w.slug === slug) || null,
 
 		// ===== Company (§14) =====
 		// Full company object for the active id (defensive — falls back to the first
@@ -743,6 +742,18 @@ export const useDataStore = defineStore("data", {
 		// shortName from `abbr`, colour from a deterministic id hash. Then resolves
 		// the active company: the persisted choice (if still present) → the row the
 		// backend marks is_default → the first row.
+		// Load the user's visible workspaces from the backend registry (sidebar visibility +
+		// order + metadata). Called on boot after the session is established. On failure the
+		// sidebar is simply empty rather than crashing.
+		async loadWorkspaces() {
+			try {
+				this.workspaces = (await getVisibleWorkspaces()) || [];
+			} catch (e) {
+				this.workspaces = [];
+				console.warn("Failed to load workspaces:", e);
+			}
+		},
+
 		async loadCompanies() {
 			// Load the awareness flag alongside the companies, and sync it to the useActiveCompany
 			// composable so its picker/list filters gate on the same value the switcher does.

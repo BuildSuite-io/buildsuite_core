@@ -389,9 +389,9 @@ def get_visible_workspaces():
 
 	user_roles = set(frappe.get_roles())
 	# One pass for the role rows, grouped by workspace, so it's 2 queries not N+1.
-	roles_by_ws = {}
-	for row in frappe.get_all("BuildSuite Workspace Role", fields=["parent", "role"]):
-		roles_by_ws.setdefault(row.parent, set()).add(row.role)
+	access_by_ws = {}
+	for row in frappe.get_all("BuildSuite Workspace Role", fields=["parent", "role", "access"]):
+		access_by_ws.setdefault(row.parent, {})[row.role] = row.access
 
 	workspaces = frappe.get_all(
 		"BuildSuite Workspace",
@@ -400,15 +400,27 @@ def get_visible_workspaces():
 	)
 	out = []
 	for ws in workspaces:
-		if roles_by_ws.get(ws.name, set()) & user_roles:
-			out.append(
-				{
-					"slug": ws.name,
-					"label": ws.label,
-					"icon": ws.icon,
-					"route": ws.route,
-					"group": ws.workspace_group,
-					"order": ws.sort_order,
-				}
-			)
+		# The access hints of the roles the user actually holds on this workspace.
+		hints = [access_by_ws[ws.name][r] for r in user_roles if r in access_by_ws.get(ws.name, {})]
+		if not hints:
+			continue
+		out.append(
+			{
+				"slug": ws.name,
+				"label": ws.label,
+				"icon": ws.icon,
+				"route": ws.route,
+				"group": ws.workspace_group,
+				"order": ws.sort_order,
+				# The strongest hint among the user's roles (combined-responsibility users). Cosmetic.
+				"access": max(hints, key=lambda h: _ACCESS_RANK.get(h, 0)),
+			}
+		)
 	return out
+
+
+# Precedence for the cosmetic access hint when a user holds several roles on one workspace.
+_ACCESS_RANK = {
+	"full": 6, "approve": 5, "create-own": 4, "mr-only": 3,
+	"read": 2, "pay-only": 2, "self-service": 1, "team-only": 1,
+}
