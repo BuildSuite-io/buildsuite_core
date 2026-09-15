@@ -21,6 +21,8 @@ there is nothing on the Python backend to assert. See the module docstring note.
 
 import frappe
 
+from buildsuite_core.api.permission import _CAP_PTYPES, get_resource_permissions
+from buildsuite_core.permissions.resource_map import RESOURCE_DOCTYPES
 from buildsuite_core.permissions.setup import WORKFLOW_EDITOR_ROLE
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
@@ -599,5 +601,87 @@ class TestPickerSelectPermissions(_PersonaBase):
 			self.assertTrue(frappe.has_permission("Purchase Taxes and Charges Template", "select"))
 			# Account keeps read — it has a Finance Accounts screen + the disburse/JE context reads it.
 			self.assertTrue(frappe.has_permission("Account", "read"))
+		finally:
+			frappe.set_user("Administrator")
+
+
+class TestResourcePermissionDerivation(_PersonaBase):
+	"""Backend-derived UI gating (``api.permission.get_resource_permissions``).
+
+	Stage 1 of retiring the hand-maintained frontend matrix (``roles.js`` ``PERSONA_CAPS`` /
+	``_MODULE_ACCESS``): the SPA will read this payload instead. The contract that makes the
+	swap safe is asserted here — for every persona and every mapped resource, the payload's
+	caps EQUAL ``frappe.has_permission`` on the backing Doctype. If they ever diverge, the
+	derivation is wrong, not the matrix.
+	"""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		# Same convergence the resync patch / CRUD-matrix test runs, so this reflects the
+		# current perm maps rather than the site's migration history.
+		from buildsuite_core.permissions.setup import setup_record_permissions
+
+		setup_record_permissions()
+		frappe.db.commit()
+		frappe.clear_cache()
+
+	def test_resource_map_targets_are_real_doctypes(self):
+		# The map is the single source of the key→Doctype correspondence; a typo here would
+		# silently degrade a resource to "no access" in the derived payload.
+		for key, doctype in RESOURCE_DOCTYPES.items():
+			with self.subTest(resource=key):
+				self.assertTrue(
+					frappe.db.exists("DocType", doctype),
+					f"resource {key!r} → {doctype!r} is not an installed DocType",
+				)
+
+	def test_payload_matches_has_permission_per_persona(self):
+		for persona in PERSONA_ROLE:
+			email = self._make_user(persona)
+			frappe.set_user(email)
+			try:
+				payload = get_resource_permissions()
+			finally:
+				frappe.set_user("Administrator")
+
+			# Every persona in PERSONA_ROLE can open the app, so the payload is populated.
+			self.assertTrue(payload, f"{persona} got an empty resource payload")
+			self.assertEqual(set(payload), set(RESOURCE_DOCTYPES), f"{persona}: key set drift")
+
+			for key, doctype in RESOURCE_DOCTYPES.items():
+				caps = payload[key]
+				for cap, ptype in _CAP_PTYPES.items():
+					expected = bool(frappe.has_permission(doctype, ptype=ptype, user=email))
+					with self.subTest(persona=persona, resource=key, ptype=ptype):
+						self.assertEqual(
+							caps[cap],
+							expected,
+							f"{persona}: {key} ({doctype}) {ptype} — payload {caps[cap]} "
+							f"≠ has_permission {expected}",
+						)
+				# Scope is reported only when the action is granted; "none" iff denied.
+				with self.subTest(persona=persona, resource=key, check="scope"):
+					self.assertEqual(caps["writeScope"] == "none", not caps["e"])
+					self.assertEqual(caps["deleteScope"] == "none", not caps["d"])
+					self.assertIn(caps["writeScope"], ("all", "own", "none"))
+					self.assertIn(caps["deleteScope"], ("all", "own", "none"))
+
+	def test_denied_user_gets_empty_payload(self):
+		# A user with no BuildSuite role can't open the app; the derived payload must be empty
+		# (never a partial grant leaked through the picker read-mirror).
+		email = f"noaccess-{self._n}-{frappe.generate_hash(length=4)}@example.com"
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": "NoAccess",
+				"user_type": "System User",
+				"send_welcome_email": 0,
+			}
+		).insert(ignore_permissions=True)
+		frappe.set_user(email)
+		try:
+			self.assertEqual(get_resource_permissions(), {})
 		finally:
 			frappe.set_user("Administrator")
