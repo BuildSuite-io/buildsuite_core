@@ -424,3 +424,132 @@ _ACCESS_RANK = {
 	"full": 6, "approve": 5, "create-own": 4, "mr-only": 3,
 	"read": 2, "pay-only": 2, "self-service": 1, "team-only": 1,
 }
+
+
+# --------------------------------------------------------------------------- #
+# Workspace quick-nav shortcuts (BuildSuite Workspace Shortcut) — the backend
+# home of the former client-side workspaceStructure config. Role-gated per
+# shortcut; an empty role list inherits the workspace's own visibility.
+# --------------------------------------------------------------------------- #
+def _shortcut_roles(names, parenttype):
+	"""role-name sets grouped by parent, for the given child parenttype."""
+	out = {}
+	if not names:
+		return out
+	for row in frappe.get_all(
+		"BuildSuite Workspace Role",
+		filters={"parent": ["in", names], "parenttype": parenttype},
+		fields=["parent", "role"],
+	):
+		out.setdefault(row.parent, set()).add(row.role)
+	return out
+
+
+@frappe.whitelist()
+def get_workspace_shortcuts(workspace: str):
+	"""Ordered quick-nav shortcuts for a workspace, filtered to the current user's roles. A
+	shortcut with no roles inherits the workspace's visibility (shown to anyone who can see it).
+	Returns [] if the user can't see the workspace at all."""
+	if not frappe.db.exists("BuildSuite Workspace", workspace):
+		return []
+	user_roles = set(frappe.get_roles())
+	ws_roles = set(
+		frappe.get_all(
+			"BuildSuite Workspace Role",
+			filters={"parent": workspace, "parenttype": "BuildSuite Workspace"},
+			pluck="role",
+		)
+	)
+	if not (ws_roles & user_roles):
+		return []
+
+	shortcuts = frappe.get_all(
+		"BuildSuite Workspace Shortcut",
+		filters={"workspace": workspace, "enabled": 1},
+		fields=["name", "label", "icon", "route", "sort_order"],
+		order_by="sort_order asc",
+	)
+	roles_by_sc = _shortcut_roles([s.name for s in shortcuts], "BuildSuite Workspace Shortcut")
+	out = []
+	for s in shortcuts:
+		restrict = roles_by_sc.get(s.name)
+		if restrict and not (restrict & user_roles):
+			continue  # restricted, and the user holds none of the allowed roles
+		out.append({"label": s.label, "icon": s.icon, "route": s.route, "order": s.sort_order})
+	return out
+
+
+@frappe.whitelist()
+def get_workspace_shortcuts_config():
+	"""Every BuildSuite workspace + its shortcut rows (incl. restrict-to role names), for the
+	admin Workspace Structure screen."""
+	_require_admin()
+	workspaces = frappe.get_all(
+		"BuildSuite Workspace",
+		filters={"workspace_group": "buildsuite"},
+		fields=["name", "label", "sort_order"],
+		order_by="sort_order asc",
+	)
+	shortcuts = frappe.get_all(
+		"BuildSuite Workspace Shortcut",
+		fields=["name", "workspace", "label", "icon", "route", "sort_order", "enabled"],
+		order_by="sort_order asc",
+	)
+	roles_by_sc = _shortcut_roles([s.name for s in shortcuts], "BuildSuite Workspace Shortcut")
+	# Each workspace's own Visible-To roles = the set a shortcut may be restricted to.
+	ws_roles = _shortcut_roles([w.name for w in workspaces], "BuildSuite Workspace")
+	by_ws = {w.name: [] for w in workspaces}
+	for s in shortcuts:
+		if s.workspace not in by_ws:
+			continue
+		by_ws[s.workspace].append(
+			{
+				"label": s.label,
+				"icon": s.icon,
+				"route": s.route,
+				"sort_order": s.sort_order,
+				"enabled": bool(s.enabled),
+				"roles": sorted(roles_by_sc.get(s.name, set())),
+			}
+		)
+	return [
+		{
+			"slug": w.name,
+			"label": w.label,
+			"available_roles": sorted(ws_roles.get(w.name, set())),
+			"shortcuts": by_ws[w.name],
+		}
+		for w in workspaces
+	]
+
+
+@frappe.whitelist()
+def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
+	"""Replace one workspace's shortcut rows (order preserved). Admin only. `shortcuts` is a
+	JSON list of {label, icon, route, sort_order, enabled, roles:[role names]}; empty roles =
+	inherit the workspace's visibility."""
+	_require_admin()
+	if not frappe.db.exists("BuildSuite Workspace", workspace):
+		frappe.throw(_("Unknown workspace: {0}").format(workspace))
+	rows = frappe.parse_json(shortcuts) or []
+
+	# Rebuild: drop this workspace's shortcuts, recreate from the payload.
+	for name in frappe.get_all("BuildSuite Workspace Shortcut", filters={"workspace": workspace}, pluck="name"):
+		frappe.delete_doc("BuildSuite Workspace Shortcut", name, ignore_permissions=True, force=True)
+	for i, row in enumerate(rows):
+		label = (row.get("label") or "").strip()
+		route = (row.get("route") or "").strip()
+		if not (label and route):
+			continue
+		roles = [{"role": r} for r in (row.get("roles") or []) if frappe.db.exists("Role", r)]
+		doc = frappe.new_doc("BuildSuite Workspace Shortcut")
+		doc.workspace = workspace
+		doc.label = label
+		doc.icon = (row.get("icon") or "🔗").strip() or "🔗"
+		doc.route = route
+		doc.sort_order = row.get("sort_order") if row.get("sort_order") is not None else i + 1
+		doc.enabled = 1 if row.get("enabled", True) else 0
+		doc.set("roles", roles)
+		doc.insert(ignore_permissions=True)
+	frappe.db.commit()
+	return get_workspace_shortcuts_config()

@@ -10,9 +10,10 @@ independent exclusions the sheet mandates.
 
 import frappe
 
-from buildsuite_core.api.workspace_setting import get_visible_workspaces
+from buildsuite_core.api.workspace_setting import get_visible_workspaces, get_workspace_shortcuts
 from buildsuite_core.buildsuite_core.doctype.buildsuite_workspace.seed_workspaces import (
 	WORKSPACES,
+	seed_workspace_shortcuts,
 	seed_workspaces,
 )
 from buildsuite_core.tests.test_permission_matrix import _PersonaBase
@@ -47,6 +48,7 @@ class TestWorkspaceRegistry(_PersonaBase):
 
 		setup_record_permissions()
 		seed_workspaces()
+		seed_workspace_shortcuts()
 		frappe.db.commit()
 		frappe.clear_cache()
 
@@ -101,6 +103,34 @@ class TestWorkspaceRegistry(_PersonaBase):
 		fore = self._make_user("Foreman / Supervisor")
 		self.assertEqual(hint(fore, "procurement"), "create-own")
 		self.assertEqual(hint(fore, "project-finance"), "self-service")
+
+	def test_shortcuts_are_role_filtered(self):
+		# Progress Entries is restricted to admin/bsa/director/pm/site-engineer/foreman;
+		# everyone else who can see the workspace sees the other four but not that one.
+		def labels(persona):
+			email = self._make_user(persona)
+			frappe.set_user(email)
+			try:
+				return {s["label"] for s in get_workspace_shortcuts("site-execution")}
+			finally:
+				frappe.set_user("Administrator")
+
+		foreman = labels("Foreman / Supervisor")
+		self.assertIn("Progress Entries", foreman)
+		self.assertIn("Projects", foreman)
+
+		estimator = labels("Estimator")
+		self.assertNotIn("Progress Entries", estimator)  # restricted, estimator excluded
+		self.assertIn("Projects", estimator)  # unrestricted
+
+	def test_shortcuts_hidden_when_workspace_not_visible(self):
+		# Procurement can't see Site Execution, so even though it HAS shortcuts, none leak.
+		email = self._make_user("Procurement Officer")
+		frappe.set_user(email)
+		try:
+			self.assertEqual(get_workspace_shortcuts("site-execution"), [])
+		finally:
+			frappe.set_user("Administrator")
 
 	def test_ordering_is_by_sort_order(self):
 		email = self._make_user("System Manager (Admin)")
