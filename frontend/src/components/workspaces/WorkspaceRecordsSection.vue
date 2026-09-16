@@ -9,6 +9,9 @@ import { getWorkspaceDoctypes } from "@/data/workspaceSettingApi";
 
 const props = defineProps({ workspace: { type: String, required: true } });
 
+// Quiet reveal (no loading skeleton): the Records group is configured on only a couple of
+// workspaces, so a skeleton would flash a phantom "Records" header that then collapses on the
+// many workspaces without one. The fetch is fast and the section simply appears when present.
 const records = ref([]);
 onMounted(async () => {
 	try {

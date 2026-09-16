@@ -6,12 +6,12 @@
 // First pass ships Subcontractors + Work Orders. Measurement Books and
 // Subcontractor Bills generate a Purchase Invoice on submit (see the bill detail view).
 
-import { computed, ref, onMounted } from "vue";
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
+import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 
 const today = computed(() => {
 	const d = new Date();
@@ -25,15 +25,6 @@ const shortcuts = [
 	{ label: "Subcontractor Bills", icon: "file-text", to: "/subcontractor-bills", cap: "subcontractorBill" },
 ];
 
-// Report tiles are configured per workspace in Workspace Setting.
-const reports = ref([]);
-onMounted(async () => {
-	try {
-		reports.value = await getWorkspaceReports("subcontract");
-	} catch {
-		reports.value = [];
-	}
-});
 </script>
 
 <template>
@@ -104,32 +95,7 @@ onMounted(async () => {
 
 			<WorkspaceRecordsSection workspace="subcontract" />
 
-			<!-- Reports group -->
-			<div v-if="reports.length" class="mt-8">
-				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
-					Reports
-				</h2>
-				<div class="border-t border-ink-200 mb-3"></div>
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-					<WorkspaceShortcut
-						v-for="(r, i) in reports"
-						:key="i"
-						:icon="r.icon"
-						:label="r.label"
-						:description="r.description"
-						:to="r.external ? null : r.route"
-						:href="r.external ? r.route : null"
-					>
-						<template #badge>
-							<span
-								class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
-								style="border-radius: 2px"
-								>Report</span
-							>
-						</template>
-					</WorkspaceShortcut>
-				</div>
-			</div>
+			<WorkspaceReportsSection workspace="subcontract" />
 		</div>
 	</div>
 </template>

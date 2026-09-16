@@ -742,6 +742,7 @@ function onPageSizeChange(value) {
 			:rows="filteredRows"
 			:columns="resolvedColumns"
 			:row-key="rowKey"
+			:loading="resource.loading || false"
 			:paginated="paginated"
 			:page-size="currentPageSize"
 			:page-size-options="pageSizeOptions"
