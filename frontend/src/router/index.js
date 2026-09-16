@@ -982,6 +982,124 @@ const routes = [
 	},
 ];
 
+// Resource-cap gating for DEEP LINKS. Maps a route name to the resource key
+// (permissions/resource_map.py) whose backend caps gate it. The action is inferred
+// from the route's intent — `*-new` needs create, `*-edit` needs edit, everything
+// else needs read — so a create/edit form opened by URL without permission redirects
+// away instead of rendering a form the backend would refuse to save. This closes the
+// last gap: list/detail entry points are already hidden by usePermissions, but the
+// forms themselves were reachable by hand-typed URL. Backend perms remain the real
+// gate; this is a UX guard, not enforcement. Report pages / generic record browser
+// (record-*) are intentionally omitted — they aren't statically mappable to one key.
+const ROUTE_CAPS = {
+	// Site execution
+	projects: "project",
+	"project-new": "project",
+	"project-detail": "project",
+	"project-progress-report": "project",
+	"work-packages": "workPackage",
+	"wp-new": "workPackage",
+	"wp-detail": "workPackage",
+	tasks: "task",
+	"task-new": "task",
+	"task-detail": "task",
+	"stage-plannings": "stagePlanning",
+	"stage-planning-new": "stagePlanning",
+	"stage-planning-detail": "stagePlanning",
+	"stage-planning-review": "stagePlanning",
+	"progress-entries": "taskProgressEntry",
+	"progress-entry-new": "taskProgressEntry",
+	"progress-entry-detail": "taskProgressEntry",
+	sco: "sco",
+	"sco-new": "sco",
+	"sco-detail": "sco",
+	// Estimation
+	boq: "boq",
+	"boq-detail": "boq",
+	"rate-master": "rateMaster",
+	"rate-master-detail": "rateMaster",
+	assembly: "assembly",
+	"assembly-new": "assembly",
+	"assembly-detail": "assembly",
+	"estimate-template": "estimateTemplate",
+	"estimate-template-new": "estimateTemplate",
+	"estimate-template-detail": "estimateTemplate",
+	// Procurement
+	"material-requests": "materialRequest",
+	"material-request-new": "materialRequest",
+	"material-request-detail": "materialRequest",
+	"material-request-edit": "materialRequest",
+	"purchase-orders": "purchaseOrder",
+	"purchase-order-new": "purchaseOrder",
+	"purchase-order-detail": "purchaseOrder",
+	"purchase-order-edit": "purchaseOrder",
+	"purchase-order-print": "purchaseOrder",
+	"purchase-receipts": "purchaseReceipt",
+	"purchase-receipt-new": "purchaseReceipt",
+	"purchase-receipt-detail": "purchaseReceipt",
+	"purchase-receipt-edit": "purchaseReceipt",
+	items: "item",
+	"material-consumption": "materialConsumption",
+	"material-consumption-new": "materialConsumption",
+	"material-consumption-edit": "materialConsumption",
+	"material-consumption-detail": "materialConsumption",
+	// Equipment
+	machinery: "machinery",
+	"machinery-new": "machinery",
+	"machinery-detail": "machinery",
+	"machinery-usage": "machineryUsage",
+	"machinery-usage-new": "machineryUsage",
+	"machinery-usage-detail": "machineryUsage",
+	// Subcontract
+	subcontractors: "subcontractor",
+	"subcontractor-new": "subcontractor",
+	"subcontractor-detail": "subcontractor",
+	"subcontractor-work-orders": "subcontractorWorkOrder",
+	"subcontractor-work-order-new": "subcontractorWorkOrder",
+	"subcontractor-work-order-detail": "subcontractorWorkOrder",
+	"subcontractor-work-order-edit": "subcontractorWorkOrder",
+	"subcontractor-work-order-print": "subcontractorWorkOrder",
+	"measurement-books": "measurementBook",
+	"measurement-book-new": "measurementBook",
+	"measurement-book-detail": "measurementBook",
+	"measurement-book-edit": "measurementBook",
+	"subcontractor-bills": "subcontractorBill",
+	"subcontractor-bill-new": "subcontractorBill",
+	"subcontractor-bill-detail": "subcontractorBill",
+	"subcontractor-bill-edit": "subcontractorBill",
+	// Workforce
+	"field-employees": "fieldEmployee",
+	"field-employee-new": "fieldEmployee",
+	"field-employee-detail": "fieldEmployee",
+	crews: "crew",
+	"crew-new": "crew",
+	"crew-detail": "crew",
+	"field-attendance": "fieldAttendance",
+	"field-attendance-new": "fieldAttendance",
+	"field-attendance-detail": "fieldAttendance",
+	"labour-attendance": "fieldAttendance",
+	"overtime-attendance": "fieldAttendance",
+	"attendance-summary": "fieldAttendance",
+	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
+	"finance-invoice-new": "salesInvoice",
+	"finance-invoice-edit": "salesInvoice",
+	"finance-invoice": "salesInvoice",
+	"finance-invoice-print": "salesInvoice",
+	"finance-supplier-bill-new": "supplierBill",
+	"finance-supplier-bill-edit": "supplierBill",
+	"finance-supplier-bill": "supplierBill",
+	"petty-cash": "pettyCash",
+};
+
+// Infer the capability a route needs from its name: `*-new` → create, `*-edit` → edit,
+// everything else → read. Keeps ROUTE_CAPS a flat name→key map instead of repeating the
+// action on every entry.
+function inferCapAction(name = "") {
+	if (name.endsWith("-new")) return "create";
+	if (name.endsWith("-edit")) return "edit";
+	return "read";
+}
+
 const router = createRouter({
 	history: createWebHistory(APP_ROUTE),
 	routes,
@@ -1031,11 +1149,25 @@ router.beforeEach(async (to) => {
 	if (to.meta?.requiresBSA && !dataStore.isBSA) return { path: "/settings" };
 	if (to.meta?.requiresAdmin && !dataStore.isAdmin) return { path: "/settings" };
 
-	// Resource-cap routes (declared via meta.cap) — block a screen for a resource the user
-	// can't read. Extensible: annotate resource routes with `meta: { cap: "<resourceKey>" }`.
-	if (to.meta?.cap) {
-		const { canRead } = usePermissions();
-		if (!canRead(to.meta.cap)) return { path: "/" };
+	// Resource-cap deep links — block a form/screen for a resource the user lacks the matching
+	// cap on. The resource key comes from an explicit `meta.cap` or the ROUTE_CAPS name map;
+	// the action is `meta.capAction` or inferred from the route (`*-new` create / `*-edit` edit
+	// / else read). Mirrors the affordance usePermissions already hides, so a hand-typed
+	// `.../new` URL redirects instead of opening a form the backend would reject on save.
+	const capResource = to.meta?.cap || ROUTE_CAPS[to.name];
+	// Fail-open if the caps payload hasn't populated yet (mid-boot), so a legitimate user is
+	// never bounced before their permissions are known — same philosophy as the workspace guard.
+	const capsReady = Object.keys(access?.resourcePermissions || {}).length > 0;
+	if (capResource && capsReady) {
+		const action = to.meta?.capAction || inferCapAction(to.name);
+		const { canRead, canCreate, canEdit } = usePermissions();
+		const allowedCap =
+			action === "create"
+				? canCreate(capResource)
+				: action === "edit"
+					? canEdit(capResource)
+					: canRead(capResource);
+		if (!allowedCap) return { path: "/" };
 	}
 
 	return true;
