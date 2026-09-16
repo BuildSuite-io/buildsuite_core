@@ -1,8 +1,10 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt, formatdate, getdate
 
 
 class BuildSuiteTenders(Document):
@@ -36,5 +38,24 @@ class BuildSuiteTenders(Document):
 	# end: auto-generated types
 
 	def validate(self):
-
 		self.items_count = len(self.buildsuite_tenders_items)
+		self.validate_dates()
+		self.calculate_items()
+
+	def calculate_items(self):
+		# Sell rate is the cost rate plus the margin; the amount is the qty at that sell rate.
+		margin = 1 + flt(self.margin_percent) / 100
+		for row in self.buildsuite_tenders_items:
+			row.sell_rate = flt(row.rate) * margin
+			row.amount = flt(row.qty) * flt(row.sell_rate)
+
+	def validate_dates(self):
+		# A deadline before the invitation was issued is a typo, not a tender.
+		if self.date_issued and self.submission_deadline:
+			if getdate(self.submission_deadline) < getdate(self.date_issued):
+				frappe.throw(
+					_("Submission deadline ({0}) can't be before the date issued ({1}).").format(
+						formatdate(self.submission_deadline), formatdate(self.date_issued)
+					),
+					title=_("Invalid dates"),
+				)

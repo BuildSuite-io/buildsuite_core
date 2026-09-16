@@ -61,6 +61,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "Government",
    "fieldname": "issued_by",
    "fieldtype": "Select",
    "label": "Issued by",
@@ -96,6 +97,7 @@
    "reqd": 1
   },
   {
+   "default": "Single",
    "description": "How the bid is packaged: technical and financial together, or opened in stages.\n",
    "fieldname": "envelope_structure",
    "fieldtype": "Select",
@@ -197,7 +199,8 @@
    "fieldname": "buildsuite_tenders_items",
    "fieldtype": "Table",
    "label": "BuildSuite Tenders Items",
-   "options": "BuildSuite Tenders Items"
+   "options": "BuildSuite Tenders Items",
+   "reqd": 1
   },
   {
    "fieldname": "items_count",
@@ -211,7 +214,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-15 23:18:47.126819",
+ "modified": "2026-09-16 08:26:53.604510",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

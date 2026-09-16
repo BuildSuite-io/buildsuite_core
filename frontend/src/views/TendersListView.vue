@@ -1,6 +1,6 @@
 <script setup>
-// Tenders — formal bids against published invitations. Page shell; the list, filters and
-// cards land once the doctype carries status and totals.
+// Tenders — formal bids against published invitations. The KPI cards land once the doctype
+// carries status and totals.
 
 import { ref, computed } from "vue";
 import { RouterLink } from "vue-router";
@@ -8,7 +8,8 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
-import { fmtDate } from "@/utils/format";
+import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
+import { fmtCurrency, fmtDate } from "@/utils/format";
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
@@ -24,6 +25,9 @@ const FIELDS = [
 	"submission_deadline",
 	"emd_amount"
 ];
+
+const { selectOptions } = useDoctypeMeta("BuildSuite Tenders");
+const envelopeOptions = computed(() => selectOptions("envelope_structure"));
 
 const envelopeFilter = ref("");
 const fromFilter = ref("");
@@ -76,13 +80,16 @@ const columns = [
 			<template #filter-chips>
 				<DeskSelect v-model="envelopeFilter" class="!w-44">
 					<option value="">Envelope: Any</option>
-					<option>Single</option>
-					<option>Two-envelope</option>
-					<option>Three-envelope</option>
+					<option v-for="o in envelopeOptions" :key="o" :value="o">{{ o }}</option>
 				</DeskSelect>
 
 				<DeskInput v-model="fromFilter" type="date" class="!w-36" />
 				<DeskInput v-model="toFilter" type="date" class="!w-36" />
+			</template>
+
+			<template #cell-emd_amount="{ row }">
+				<span v-if="!row.emd_amount" class="text-ink-400">—</span>
+				<span v-else>{{ fmtCurrency(row.emd_amount) }}</span>
 			</template>
 
 			<template #cell-submission_deadline="{ row }">
