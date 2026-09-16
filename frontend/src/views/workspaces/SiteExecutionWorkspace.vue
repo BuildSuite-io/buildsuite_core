@@ -27,9 +27,11 @@ import { RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
+import TileGridSkeleton from "@/components/workspaces/TileGridSkeleton.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getWorkspaceReports, getWorkspaceShortcuts } from "@/data/workspaceSettingApi";
+import { getWorkspaceShortcuts } from "@/data/workspaceSettingApi";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
+import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 
 const store = useDataStore();
 
@@ -50,17 +52,9 @@ const today = computed(() => {
 // Project dashboard = the oversight audience (leadership + the Accountant), from backend roles.
 const showProjectDashboard = computed(() => store.isLeadership || store.hasRole("BuildSuite Accountant"));
 
-// --- Reports group --------------------------------------------------------
-// Configured per workspace in Workspace Setting (label + destination + icon +
-// description, in order). Each tile resolves to a Frappe report route, an in-app
-// path, or a Desk URL (rt.external → open via href, else the SPA router).
-const reportTiles = ref([]);
+// Reports now render through the shared <WorkspaceReportsSection>, which owns its own
+// fetch + skeleton. This view only loads the shortcuts grid.
 onMounted(async () => {
-	try {
-		reportTiles.value = await getWorkspaceReports("site-execution");
-	} catch {
-		reportTiles.value = [];
-	}
 	try {
 		shortcuts.value = await getWorkspaceShortcuts("site-execution");
 	} catch {
@@ -156,8 +150,11 @@ onMounted(async () => {
 			<!-- Shortcuts grid — role-filtered by the backend registry. Tiles use the
            shared <WorkspaceShortcut> component so every workspace landing renders
            the same tile shape. -->
+			<!-- Loading — placeholders match the tile shape so shortcuts swap in without shift. -->
+			<TileGridSkeleton v-if="!shortcutsLoaded" :count="5" />
+
 			<div
-				v-if="shortcuts.length"
+				v-else-if="shortcuts.length"
 				class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
 			>
 				<!-- Per the prototype (S50), DocType shortcut tiles render WITHOUT a
@@ -173,7 +170,7 @@ onMounted(async () => {
 
 			<!-- No shortcuts (none configured, or none visible to this user) -->
 			<div
-				v-else-if="shortcutsLoaded"
+				v-else
 				class="bg-white border border-ink-200 px-4 py-6 text-center"
 				style="border-radius: 8px"
 			>
@@ -191,33 +188,9 @@ onMounted(async () => {
 
 			<WorkspaceRecordsSection workspace="site-execution" />
 
-			<!-- Reports group — configured in Site Execution Settings (report + icon
-           + description, in order). Each tile opens the report's desk route. -->
-			<div v-if="reportTiles.length" class="mt-8">
-				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
-					Reports
-				</h2>
-				<div class="border-t border-ink-200 mb-3"></div>
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-					<WorkspaceShortcut
-						v-for="(rt, i) in reportTiles"
-						:key="i"
-						:to="rt.external ? null : rt.route"
-						:href="rt.external ? rt.route : null"
-						:icon="rt.icon"
-						:label="rt.label"
-						:description="rt.description"
-					>
-						<template #badge>
-							<span
-								class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
-								style="border-radius: 2px"
-								>Report</span
-							>
-						</template>
-					</WorkspaceShortcut>
-				</div>
-			</div>
+			<!-- Reports group — configured in Workspace Setting; shared component owns its
+           own fetch + loading skeleton. -->
+			<WorkspaceReportsSection workspace="site-execution" />
 		</div>
 	</div>
 </template>

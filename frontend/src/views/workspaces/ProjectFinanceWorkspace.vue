@@ -5,13 +5,13 @@
 // (site roles see only Petty Cash + Expenses), mirroring the prototype's
 // store.visibleFinanceTabs. Every section is client-side dummy data except Petty
 // Cash, which is live.
-import { computed, ref, onMounted } from "vue";
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useFinanceMock } from "@/data/financeMock";
 import { usePermissions } from "@/composables/usePermissions";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
-import { getWorkspaceReports } from "@/data/workspaceSettingApi";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
+import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
@@ -46,19 +46,6 @@ const MASTERS = [
 	{ section: "customers", icon: "users-round", label: "Customers", cap: "customer" },
 	{ section: "suppliers", icon: "building-2", label: "Suppliers", cap: "supplier" },
 ];
-// Report tiles are configured per workspace in Workspace Setting (same as Site Execution /
-// Procurement) — the standard ERPNext finance reports through the in-app renderer plus the
-// BuildSuite-specific Petty Cash / Expense Summary. Each tile is role-gated server-side, so
-// a persona without the Accounts roles simply gets none.
-const reports = ref([]);
-onMounted(async () => {
-	try {
-		reports.value = await getWorkspaceReports("project-finance");
-	} catch {
-		reports.value = [];
-	}
-});
-
 const txTiles = computed(() => TRANSACTIONS.filter((t) => canRead(t.cap)));
 const masterTiles = computed(() => MASTERS.filter((t) => canRead(t.cap)));
 // The Financial Overview (company-wide cash & bank) and the Reports group are for
@@ -68,14 +55,11 @@ const masterTiles = computed(() => MASTERS.filter((t) => canRead(t.cap)));
 const hasLedgerFinance = computed(
 	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance"),
 );
-const showReports = computed(() => hasLedgerFinance.value && reports.value.length > 0);
 const showOverview = computed(() => hasLedgerFinance.value);
+// The Reports group is ledger-gated too, so whenever it could show, showOverview is already
+// true — it never independently affects the no-access check.
 const noAccess = computed(
-	() =>
-		!txTiles.value.length &&
-		!masterTiles.value.length &&
-		!showOverview.value &&
-		!showReports.value,
+	() => !txTiles.value.length && !masterTiles.value.length && !showOverview.value,
 );
 </script>
 
@@ -189,34 +173,12 @@ const noAccess = computed(
 				<!-- Records (admin-curated DocTypes) -->
 				<WorkspaceRecordsSection workspace="project-finance" />
 
-				<!-- Reports -->
-				<div v-if="showReports" class="mb-4">
-					<h2
-						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
-					>
-						Reports
-					</h2>
-					<div class="border-t border-ink-200 mb-3"></div>
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-						<WorkspaceShortcut
-							v-for="(r, i) in reports"
-							:key="i"
-							:icon="r.icon"
-							:label="r.label"
-							:description="r.description"
-							:to="r.external ? null : r.route"
-							:href="r.external ? r.route : null"
-						>
-							<template #badge>
-								<span
-									class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
-									style="border-radius: 2px"
-									>Report</span
-								>
-							</template>
-						</WorkspaceShortcut>
-					</div>
-				</div>
+				<!-- Reports (ledger-finance personas only) — shared section owns fetch + skeleton -->
+				<WorkspaceReportsSection
+					workspace="project-finance"
+					:enabled="hasLedgerFinance"
+					spacing="mb-4"
+				/>
 			</template>
 		</div>
 	</div>

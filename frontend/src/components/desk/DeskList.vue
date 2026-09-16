@@ -43,7 +43,15 @@ const props = defineProps({
 	currentPage: { type: Number, default: 1 },
 	totalRows: { type: Number, default: null },
 	compact: { type: Boolean, default: false },
+	// Opt-in: while true AND there are no rows yet, render placeholder skeleton rows
+	// instead of the empty state, so the first load / a page change reads as loading
+	// rather than "no records". Callers that don't pass it are unaffected.
+	loading: { type: Boolean, default: false },
 });
+
+// A handful of pulsing rows during the initial load — capped so a large page size
+// doesn't render dozens of placeholders.
+const skeletonRowCount = computed(() => Math.min(Math.max(props.pageSize || 6, 3), 8));
 
 const emit = defineEmits([
 	"update:modelValue",
@@ -348,6 +356,25 @@ const showPagination = computed(() => {
 					</tr>
 				</thead>
 				<tbody>
+					<!-- First-load / page-change skeleton: pulsing cells matching the columns,
+					     shown only while loading and before any rows have arrived. -->
+					<template v-if="loading && !rows.length">
+						<tr
+							v-for="n in skeletonRowCount"
+							:key="`sk-${n}`"
+							class="border-b border-ink-100"
+							aria-hidden="true"
+						>
+							<td v-if="bulkSelect" :class="['w-9 px-3', compact ? 'py-2' : 'py-3']"></td>
+							<td
+								v-for="col in columns"
+								:key="col.key"
+								:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
+							>
+								<div class="h-3 rounded bg-ink-100 animate-pulse" style="width: 70%"></div>
+							</td>
+						</tr>
+					</template>
 					<tr
 						v-for="row in pagedRows"
 						:key="keyFor(row)"
@@ -383,7 +410,7 @@ const showPagination = computed(() => {
 							}}</slot>
 						</td>
 					</tr>
-					<tr v-if="!rows.length">
+					<tr v-if="!rows.length && !loading">
 						<td
 							:colspan="columns.length + (bulkSelect ? 1 : 0)"
 							class="px-3 py-12 text-center"
