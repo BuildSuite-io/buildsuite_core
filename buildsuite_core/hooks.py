@@ -407,7 +407,12 @@ fixtures = [
 			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel"]]
 		],
 	},
-	{"doctype": "Workflow", "filters": [["workflow_name", "in", ["Stage Planning Approval"]]]},
+	{
+		"doctype": "Workflow",
+		"filters": [
+			["workflow_name", "in", ["Stage Planning Approval", "Scope Change Order Approval"]]
+		],
+	},
 ]
 
 # include js in doctype views

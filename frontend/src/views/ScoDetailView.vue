@@ -6,9 +6,9 @@
 import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
-import { useSessionStore } from "@/stores/session";
 import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
@@ -25,7 +25,6 @@ import { fmtINR, fmtDate } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
-const session = useSessionStore();
 const confirmDialog = useConfirm();
 const { canEditRecord, canDeleteRecord, canCreate } = usePermissions();
 const adapter = createDataAdapter(useDataStore());
@@ -39,12 +38,11 @@ const TYPES = [
 	"Rework",
 	"Other",
 ];
-const APPROVER_ROLES = [
-	"BuildSuite PM",
-	"BuildSuite Director",
-	"BuildSuite Administrator",
-	"System Manager",
-];
+// Approve / Reject / Revise are Frappe Workflow transitions ("Scope Change Order Approval",
+// bound to the `status` field). The available actions come from the workflow — role- and
+// state-filtered by Frappe — so the buttons show exactly what THIS user may do right now.
+const { transitions: wfTransitions, refresh: refreshWorkflow } = useWorkflow("Scope Change Order");
+const wfActions = computed(() => new Set((wfTransitions.value || []).map((t) => t.action)));
 
 const resource = adapter.read("Scope Change Order", props.id, { fields: ["*"] });
 const sco = computed(() => resource?.doc || null);
@@ -58,10 +56,6 @@ const activity = computed(() =>
 		(b.activity_on || "").localeCompare(a.activity_on || ""),
 	),
 );
-const canApprove = computed(() =>
-	(session.access?.roles || []).some((r) => APPROVER_ROLES.includes(r)),
-);
-
 const editing = ref(false);
 const saving = ref(false);
 const busy = ref(false);
@@ -82,6 +76,7 @@ watch(
 	sco,
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
+		if (v?.name) refreshWorkflow(v.name);
 	},
 	{ immediate: true },
 );
@@ -128,6 +123,7 @@ async function onApprove() {
 	try {
 		await approveSco(sco.value.name);
 		await resource?.reload?.();
+		await refreshWorkflow(sco.value.name);
 		showToast("Scope change order approved.");
 	} catch (err) {
 		showToast(err.message || "Approve failed", "error");
@@ -147,6 +143,7 @@ async function confirmReject() {
 	try {
 		await rejectSco(sco.value.name, rejectReason.value);
 		await resource?.reload?.();
+		await refreshWorkflow(sco.value.name);
 		rejectOpen.value = false;
 		showToast("Scope change order rejected.");
 	} catch (err) {
@@ -161,6 +158,7 @@ async function onRevise() {
 	try {
 		await reviseSco(sco.value.name);
 		await resource?.reload?.();
+		await refreshWorkflow(sco.value.name);
 		showToast("Reopened for revision.");
 	} catch (err) {
 		showToast(err.message || "Revise failed", "error");
@@ -231,7 +229,7 @@ const breadcrumbs = computed(() => [
 					Edit
 				</button>
 				<button
-					v-if="isPending && canApprove"
+					v-if="wfActions.has('Approve')"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-success-300 bg-success-50 hover:bg-success-100 text-success-700 font-medium"
 					style="border-radius: 6px"
@@ -241,7 +239,7 @@ const breadcrumbs = computed(() => [
 					Approve
 				</button>
 				<button
-					v-if="isPending && canApprove"
+					v-if="wfActions.has('Reject')"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 					style="border-radius: 6px"
@@ -266,7 +264,7 @@ const breadcrumbs = computed(() => [
 					+ Raise BOQ revision
 				</button>
 				<button
-					v-if="(isApproved || isRejected) && canEditRecord('sco', sco)"
+					v-if="wfActions.has('Revise') && canEditRecord('sco', sco)"
 					type="button"
 					class="text-xs px-2.5 py-1 border border-warning-200 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 					style="border-radius: 6px"
@@ -302,7 +300,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Pending, not an approver: hint -->
 		<div
-			v-if="isPending && !canApprove && !editing"
+			v-if="isPending && !wfActions.has('Approve') && !editing"
 			class="mb-4 px-3 py-2 text-xs text-ink-600 bg-warning-50 border border-warning-200 rounded"
 		>
 			Awaiting PM / Director approval.

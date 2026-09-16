@@ -7,11 +7,18 @@ plain CRUD go through the standard data adapter; only these transitions need the
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime, today
+from frappe.model.workflow import apply_workflow
 
 from buildsuite_core.permissions.setup import BOQ_APPROVE_ROLES
 
 SCO = "Scope Change Order"
+
+# Approve / Reject / Revise now run through the "Scope Change Order Approval" Frappe Workflow
+# (bound to the `status` field). These endpoints stay as the SPA's entry points: they keep the
+# explicit role/state guards (for clear error messages + the Site-Engineer PermissionError the
+# matrix relies on) and then drive the transition through Frappe's engine, which re-checks the
+# transition's role/self-approval rules. The field stamping + audit-trail row are applied by the
+# controller's before_save on the state change, so they fire on every path.
 
 
 def _require_approver():
@@ -19,65 +26,46 @@ def _require_approver():
 		frappe.throw(_("You are not permitted to approve or reject a scope change order."), frappe.PermissionError)
 
 
-def _add_activity(doc, action, comment=None):
-	"""Append an audit-trail row (who did what, when) to the change order."""
-	doc.append(
-		"scope_change_order_activity",
-		{
-			"action": action,
-			"user": frappe.session.user,
-			"activity_on": now_datetime(),
-			"comment": comment,
-		},
-	)
-
-
 @frappe.whitelist()
 def approve_sco(name: str):
-	"""Pending Approval -> Approved. Stamps the approver + date."""
+	"""Pending Approval -> Approved (via workflow). Controller stamps the approver + date."""
 	doc = frappe.get_doc(SCO, name)
 	doc.check_permission("write")
 	_require_approver()
 	if doc.status != "Pending Approval":
 		frappe.throw(_("Only a Pending Approval change order can be approved."))
-	doc.status = "Approved"
-	doc.approved_by = frappe.session.user
-	doc.approved_date = today()
-	doc.rejection_reason = None
-	_add_activity(doc, "Approved")
-	doc.save()
-	return doc.status
+	apply_workflow(frappe.as_json(doc.as_dict()), "Approve")
+	return frappe.db.get_value(SCO, name, "status")
 
 
 @frappe.whitelist()
 def reject_sco(name: str, reason: str = None):
-	"""Pending Approval -> Rejected. Records the rejection reason."""
+	"""Pending Approval -> Rejected (via workflow), recording the rejection reason."""
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A rejection reason is required."))
 	doc = frappe.get_doc(SCO, name)
 	doc.check_permission("write")
 	_require_approver()
 	if doc.status != "Pending Approval":
 		frappe.throw(_("Only a Pending Approval change order can be rejected."))
-	doc.status = "Rejected"
-	doc.rejection_reason = reason
-	_add_activity(doc, "Rejected", reason)
-	doc.save()
-	return doc.status
+	# apply_workflow reloads the doc from the DB, so an in-memory field set would be discarded.
+	# Persist the reason first; the reload picks it up and the controller logs it on the row.
+	frappe.db.set_value(SCO, name, "rejection_reason", reason)
+	doc = frappe.get_doc(SCO, name)
+	apply_workflow(frappe.as_json(doc.as_dict()), "Reject")
+	return frappe.db.get_value(SCO, name, "status")
 
 
 @frappe.whitelist()
 def revise_sco(name: str):
-	"""Approved / Rejected -> Pending Approval, so it can be edited and re-submitted."""
+	"""Approved / Rejected -> Pending Approval (via workflow), so it can be edited and re-submitted."""
 	doc = frappe.get_doc(SCO, name)
 	doc.check_permission("write")
 	if doc.status not in ("Approved", "Rejected"):
 		frappe.throw(_("Only an Approved or Rejected change order can be revised."))
-	doc.status = "Pending Approval"
-	doc.approved_by = None
-	doc.approved_date = None
-	doc.rejection_reason = None
-	_add_activity(doc, "Revised")
-	doc.save()
-	return doc.status
+	apply_workflow(frappe.as_json(doc.as_dict()), "Revise")
+	return frappe.db.get_value(SCO, name, "status")
 
 
 def _project_source_boq(project):
