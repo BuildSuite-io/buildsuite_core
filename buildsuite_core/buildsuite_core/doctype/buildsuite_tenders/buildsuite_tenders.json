@@ -30,9 +30,13 @@
   "margin_percent",
   "column_break_whnv",
   "tax_percent",
+  "preamble_sections_section",
+  "preamble_sections",
   "section_break_wxgf",
   "buildsuite_tenders_items",
   "items_count",
+  "terms_sections_section",
+  "terms_sections",
   "internal_notes_section",
   "notes"
  ],
@@ -209,12 +213,34 @@
    "label": "Items Count",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "preamble_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Before the items"
+  },
+  {
+   "fieldname": "preamble_sections",
+   "fieldtype": "Table",
+   "label": "Before the items",
+   "options": "BuildSuite Tender Section"
+  },
+  {
+   "fieldname": "terms_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Terms & conditions"
+  },
+  {
+   "fieldname": "terms_sections",
+   "fieldtype": "Table",
+   "label": "Terms & conditions",
+   "options": "BuildSuite Tender Section"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-16 08:26:53.604510",
+ "modified": "2026-09-16 20:51:44.112117",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

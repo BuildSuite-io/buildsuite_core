@@ -1,5 +1,5 @@
 <script setup>
-// New tender — the header and its item rows go in one insert.
+// New or edit tender — an `id` prop means edit. Header and item rows go in one call.
 
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -21,11 +21,13 @@ import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { toDateInputValue } from "@/utils/dateInput";
 
+const props = defineProps({ id: { type: String, default: "" } });
+
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
 const { projectOptions } = useProjectOptions();
+const editing = computed(() => !!props.id);
 
-// Select options and field defaults both come from the doctype.
 const { meta, selectOptions, fieldDefault } = useDoctypeMeta("BuildSuite Tenders");
 const issuedByOptions = computed(() => selectOptions("issued_by"));
 const envelopeOptions = computed(() => selectOptions("envelope_structure"));
@@ -34,7 +36,7 @@ const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
 	{ label: "Estimation", to: "/estimation" },
 	{ label: "Tenders", to: "/tenders" },
-	{ label: "New" },
+	{ label: props.id || "New" },
 ];
 
 const form = reactive({
@@ -57,13 +59,26 @@ const form = reactive({
 	notes: "",
 });
 
-// Meta arrives async, so ||= — anything already typed wins.
+// Meta arrives async, so ||= — anything already typed wins. Skipped when editing: a saved
+// tax of 0 is falsy and would be overwritten by the doctype's 18.
 watch(
 	meta,
 	() => {
+		if (editing.value) return;
 		for (const f of ["issued_by", "envelope_structure", "margin_percent", "tax_percent"]) {
 			form[f] ||= fieldDefault(f);
 		}
+	},
+	{ immediate: true }
+);
+
+// Known keys only, so no docstatus/owner rides along into the payload.
+const resource = props.id ? adapter.read("BuildSuite Tenders", props.id) : null;
+watch(
+	() => resource?.doc,
+	(doc) => {
+		if (!doc) return;
+		for (const k of Object.keys(form)) if (doc[k] != null) form[k] = doc[k];
 	},
 	{ immediate: true }
 );
@@ -76,8 +91,7 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 });
 const saving = ref(false);
 
-// Untouched rows are dropped. `source` is seeded on every new row, so it does not count
-// as typed in.
+// Untouched rows are dropped. `source` is seeded on every new row, so it does not count.
 const items = computed(() =>
 	form.buildsuite_tenders_items.filter((r) =>
 		["description", "unit", "qty", "rate", "photo"].some((k) => r[k])
@@ -107,31 +121,37 @@ function validate() {
 async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
+	const payload = {
+		title: form.title.trim(),
+		issuing_body: form.issuing_body.trim(),
+		issued_by: form.issued_by,
+		project: form.project || null,
+		date_issued: form.date_issued || null,
+		tender_reference: form.tender_reference.trim(),
+		submission_deadline: form.submission_deadline,
+		portal: form.portal.trim(),
+		envelope_structure: form.envelope_structure,
+		emd_amount: Number(form.emd_amount) || 0,
+		emd_instrument: form.emd_instrument.trim(),
+		emd_valid_until: form.emd_valid_until || null,
+		performance_guarantee_percent: Number(form.performance_guarantee_percent) || 0,
+		margin_percent: Number(form.margin_percent) || 0,
+		tax_percent: Number(form.tax_percent) || 0,
+		buildsuite_tenders_items: items.value,
+		notes: form.notes,
+	};
 	try {
-		await adapter.create("BuildSuite Tenders", {
-			title: form.title.trim(),
-			issuing_body: form.issuing_body.trim(),
-			issued_by: form.issued_by,
-			project: form.project || null,
-			date_issued: form.date_issued || null,
-			tender_reference: form.tender_reference.trim(),
-			submission_deadline: form.submission_deadline,
-			portal: form.portal.trim(),
-			envelope_structure: form.envelope_structure,
-			// Currency columns are NOT NULL in Frappe, so a blank box lands as 0 either way.
-			emd_amount: Number(form.emd_amount) || 0,
-			emd_instrument: form.emd_instrument.trim(),
-			emd_valid_until: form.emd_valid_until || null,
-			performance_guarantee_percent: Number(form.performance_guarantee_percent) || 0,
-			margin_percent: Number(form.margin_percent) || 0,
-			tax_percent: Number(form.tax_percent) || 0,
-			buildsuite_tenders_items: items.value,
-			notes: form.notes,
-		});
-		showToast("Tender created", "success");
-		router.push("/tenders");
+		if (editing.value) {
+			await adapter.update("BuildSuite Tenders", props.id, payload);
+			showToast("Tender saved", "success");
+			router.push(`/tenders/${props.id}`);
+		} else {
+			const res = await adapter.create("BuildSuite Tenders", payload);
+			showToast("Tender created", "success");
+			router.push(`/tenders/${res.name}`);
+		}
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create tender", "error");
+		showToast(applyServerErrors(err) ?? "Failed to save tender", "error");
 	} finally {
 		saving.value = false;
 	}
@@ -139,12 +159,12 @@ async function onSave() {
 </script>
 
 <template>
-	<DeskPage title="New Tender"
+	<DeskPage :title="editing ? `Edit ${props.id}` : 'New Tender'"
 		subtitle="Type the items straight in, or pull them from an assembly or an estimate. Terms sections are added on the tender itself."
 		:breadcrumbs="breadcrumbs">
 		<DeskForm>
 			<template #action-bar>
-				<DeskActionBar save-label="Create tender" :saving="saving" @save="onSave" @cancel="router.back()" />
+				<DeskActionBar :save-label="editing ? 'Save changes' : 'Create tender'" :saving="saving" @save="onSave" @cancel="router.back()" />
 			</template>
 
 			<DeskSection title="Who and what" :cols="2">

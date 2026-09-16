@@ -56,6 +56,11 @@ const classes = computed(() => {
 		Low: "bg-info-50 text-info-700",
 		// Task Type values per proposal §M2 (Session 31). Slightly bolder fill (100
 		// not 50) to differentiate from status/priority pills in the same row.
+		// Where a tender line came from. Manual stays neutral; a line pulled from the
+		// library is tinted, because a copied rate is worth spotting in the column.
+		Manual: "bg-ink-100 text-ink-600",
+		Assembly: "bg-warning-50 text-warning-700",
+		BOQ: "bg-info-50 text-info-700",
 		Activity: "bg-ink-100 text-ink-700",
 		Milestone: "bg-warning-100 text-warning-700",
 		Inspection: "bg-info-100 text-info-700",
