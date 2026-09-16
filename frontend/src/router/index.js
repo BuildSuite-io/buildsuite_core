@@ -33,6 +33,8 @@ const PAGE_TITLES = {
 	"sco-detail": "Scope Change Order",
 	boq: "Bill of Quantities",
 	"boq-detail": "BOQ",
+	tenders: "Tenders",
+	"tender-new": "New Tender",
 	"rate-master": "Rate Master",
 	"rate-master-detail": "Rate Master",
 	assembly: "Assemblies",
@@ -244,6 +246,16 @@ const routes = [
 				name: "boq-detail",
 				component: () => import("@/views/BoqDetailView.vue"),
 				props: true,
+			},
+			{
+				path: "tenders",
+				name: "tenders",
+				component: () => import("@/views/TendersListView.vue"),
+			},
+			{
+				path: "tenders/new",
+				name: "tender-new",
+				component: () => import("@/views/NewTenderView.vue"),
 			},
 			{
 				path: "rate-master",

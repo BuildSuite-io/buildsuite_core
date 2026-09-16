@@ -1,0 +1,244 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "TN-.YYYY.-.######",
+ "creation": "2026-09-15 21:37:49.665425",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "who_and_what_section",
+  "title",
+  "issuing_body",
+  "project",
+  "column_break_vvzt",
+  "issued_by",
+  "date_issued",
+  "section_break_cxmw",
+  "tender_reference",
+  "portal",
+  "column_break_ysqf",
+  "submission_deadline",
+  "envelope_structure",
+  "earnest_money_and_guarantee_section",
+  "emd_amount",
+  "emd_valid_until",
+  "column_break_gmik",
+  "emd_instrument",
+  "performance_guarantee_percent",
+  "pricing_section",
+  "margin_percent",
+  "column_break_whnv",
+  "tax_percent",
+  "section_break_wxgf",
+  "buildsuite_tenders_items",
+  "items_count",
+  "internal_notes_section",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "issuing_body",
+   "fieldtype": "Data",
+   "label": "Issuing body",
+   "placeholder": "e.g. KMRL",
+   "reqd": 1
+  },
+  {
+   "description": "a tender is bid long before there is a project.",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "who_and_what_section",
+   "fieldtype": "Section Break",
+   "label": "Who and what"
+  },
+  {
+   "fieldname": "column_break_vvzt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Government",
+   "fieldname": "issued_by",
+   "fieldtype": "Select",
+   "label": "Issued by",
+   "options": "Government\nMain Contractor"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date_issued",
+   "fieldtype": "Date",
+   "label": "Date issued"
+  },
+  {
+   "fieldname": "section_break_cxmw",
+   "fieldtype": "Section Break",
+   "label": "Submission"
+  },
+  {
+   "fieldname": "tender_reference",
+   "fieldtype": "Data",
+   "label": "Tender reference",
+   "placeholder": "e.g. KMRL/P2/CIV/2026/17",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ysqf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "A quote past validity can be chased. A tender past its deadline cannot be entered at all.\n",
+   "fieldname": "submission_deadline",
+   "fieldtype": "Date",
+   "label": "Submission deadline",
+   "reqd": 1
+  },
+  {
+   "default": "Single",
+   "description": "How the bid is packaged: technical and financial together, or opened in stages.\n",
+   "fieldname": "envelope_structure",
+   "fieldtype": "Select",
+   "label": "Envelope structure",
+   "options": "Single\nTwo-envelope\nThree-envelope"
+  },
+  {
+   "description": "Where the bid is uploaded.\n",
+   "fieldname": "portal",
+   "fieldtype": "Data",
+   "label": "Portal",
+   "placeholder": "e.g. GePNIC / state e-procurement"
+  },
+  {
+   "fieldname": "earnest_money_and_guarantee_section",
+   "fieldtype": "Section Break",
+   "label": "Earnest money and guarantee"
+  },
+  {
+   "description": "Money genuinely lodged \u2014 it shows as at stake until the bid is decided.",
+   "fieldname": "emd_amount",
+   "fieldtype": "Currency",
+   "label": "EMD amount",
+   "placeholder": "blank if none"
+  },
+  {
+   "fieldname": "emd_valid_until",
+   "fieldtype": "Date",
+   "label": "EMD valid until"
+  },
+  {
+   "fieldname": "column_break_gmik",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Bank guarantee, DD, online transfer.",
+   "fieldname": "emd_instrument",
+   "fieldtype": "Data",
+   "label": "EMD instrument",
+   "placeholder": "e.g. Bank guarantee \u2014 Federal Bank"
+  },
+  {
+   "fieldname": "pricing_section",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "fieldname": "column_break_whnv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "internal_notes_section",
+   "fieldtype": "Section Break",
+   "label": "Internal notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes",
+   "placeholder": "Not printed \u2014 for whoever picks this up next.",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "section_break_wxgf",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "For",
+   "placeholder": "e.g. Station finishes package \u2014 Kochi Metro Phase 2",
+   "reqd": 1,
+   "width": "100"
+  },
+  {
+   "default": "10",
+   "description": "Applied to the subtotal.\n",
+   "fieldname": "margin_percent",
+   "fieldtype": "Float",
+   "label": "Margin %"
+  },
+  {
+   "default": "18",
+   "description": "Charged on subtotal plus margin.\n",
+   "fieldname": "tax_percent",
+   "fieldtype": "Float",
+   "label": "Tax %"
+  },
+  {
+   "description": "What we would have to furnish on award.",
+   "fieldname": "performance_guarantee_percent",
+   "fieldtype": "Data",
+   "label": "Performance guarantee %",
+   "placeholder": "blank if none"
+  },
+  {
+   "fieldname": "buildsuite_tenders_items",
+   "fieldtype": "Table",
+   "label": "BuildSuite Tenders Items",
+   "options": "BuildSuite Tenders Items",
+   "reqd": 1
+  },
+  {
+   "fieldname": "items_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Items Count",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-16 08:26:53.604510",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Tenders",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

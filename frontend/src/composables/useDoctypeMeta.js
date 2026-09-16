@@ -14,7 +14,7 @@ import { frappeRequest } from "frappe-ui-frappe-request";
  * surfaces in the UI automatically, no frontend change needed.
  *
  * @param {string} doctype  e.g. 'User'
- * @returns {{ meta, loading, error, reload, selectOptions }}
+ * @returns {{ meta, loading, error, reload, selectOptions, fieldDefault }}
  */
 const _cache = new Map(); // session cache: doctype -> meta doc
 
@@ -65,7 +65,13 @@ export function useDoctypeMeta(doctype) {
 			.filter(Boolean);
 	}
 
+	/** A field's default as set on the DocType, or "" if it has none. */
+	function fieldDefault(fieldname) {
+		const field = (meta.value?.fields || []).find((f) => f.fieldname === fieldname);
+		return field?.default ?? "";
+	}
+
 	load();
 
-	return { meta, loading, error, reload: load, selectOptions };
+	return { meta, loading, error, reload: load, selectOptions, fieldDefault };
 }
