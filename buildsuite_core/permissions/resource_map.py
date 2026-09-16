@@ -67,3 +67,54 @@ RESOURCE_DOCTYPES = {
 	"pettyCash": "Petty Cash Request",
 	"expense": "Expense Entry",
 }
+
+
+# SPA list-route path → the resource key whose READ permission gates a workspace shortcut
+# pointing there. Shortcuts (BuildSuite Workspace Shortcut) store a route, not a doctype, so
+# this is the seam that lets ``get_workspace_shortcuts`` hide a tile a persona can't read —
+# mirroring ``_resolve_doctype`` for the curated DocType tiles. Routes with no doctype behind
+# them (dashboards, schedule, reports, workspace landings) are intentionally ABSENT here, so
+# they are never gated. Values are validated against RESOURCE_DOCTYPES by test_workspace_registry.
+SHORTCUT_ROUTE_RESOURCES = {
+	# Site execution
+	"/projects": "project",
+	"/work-packages": "workPackage",
+	"/tasks": "task",
+	"/progress-entries": "taskProgressEntry",
+	"/stage-plannings": "stagePlanning",
+	"/sco": "sco",
+	# Estimation
+	"/boq": "boq",
+	"/rate-master": "rateMaster",
+	"/assembly": "assembly",
+	"/estimate-template": "estimateTemplate",
+	# Procurement
+	"/procurement/material-requests": "materialRequest",
+	"/procurement/purchase-orders": "purchaseOrder",
+	"/procurement/receipts": "purchaseReceipt",
+	"/items": "item",
+	"/material-consumption": "materialConsumption",
+	# Equipment
+	"/machinery": "machinery",
+	"/machinery-usage": "machineryUsage",
+	# Subcontract
+	"/subcontractors": "subcontractor",
+	"/subcontractor-work-orders": "subcontractorWorkOrder",
+	"/measurement-books": "measurementBook",
+	"/subcontractor-bills": "subcontractorBill",
+	# Workforce
+	"/field-employees": "fieldEmployee",
+	"/crews": "crew",
+	"/field-attendance": "fieldAttendance",
+	"/labour-attendance": "fieldAttendance",
+	"/overtime-attendance": "fieldAttendance",
+}
+
+
+def route_doctype(route: str | None):
+	"""The backing Doctype for a shortcut route, or ``None`` when the route isn't doctype-backed
+	(so the caller leaves it un-gated). Query strings and a trailing slash are ignored so a
+	stored ``/tasks?foo=1`` or ``/tasks/`` still resolves."""
+	path = (route or "").split("?")[0].rstrip("/") or "/"
+	key = SHORTCUT_ROUTE_RESOURCES.get(path)
+	return RESOURCE_DOCTYPES.get(key) if key else None
