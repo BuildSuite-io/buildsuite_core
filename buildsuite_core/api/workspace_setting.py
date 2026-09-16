@@ -18,6 +18,8 @@ from urllib.parse import quote
 import frappe
 from frappe import _
 
+from buildsuite_core.permissions.resource_map import route_doctype
+
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
 SETTINGS = "Workspace Setting"
 
@@ -476,6 +478,13 @@ def get_workspace_shortcuts(workspace: str):
 		restrict = roles_by_sc.get(s.name)
 		if restrict and not (restrict & user_roles):
 			continue  # restricted, and the user holds none of the allowed roles
+		# Hide a shortcut that points at a DocType the user can't read — a role may see the
+		# workspace yet lack read on one of its records (e.g. Procurement persona with Task
+		# read revoked). Mirrors _resolve_doctype's gate for the curated DocType tiles; routes
+		# with no doctype behind them (dashboards, schedule, reports) stay un-gated.
+		dt = route_doctype(s.route)
+		if dt and not frappe.has_permission(dt, "read"):
+			continue
 		out.append({"label": s.label, "icon": s.icon, "route": s.route, "order": s.sort_order})
 	return out
 

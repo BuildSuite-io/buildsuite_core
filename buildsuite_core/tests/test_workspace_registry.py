@@ -16,6 +16,11 @@ from buildsuite_core.buildsuite_core.doctype.buildsuite_workspace.seed_workspace
 	seed_workspace_shortcuts,
 	seed_workspaces,
 )
+from buildsuite_core.permissions.resource_map import (
+	RESOURCE_DOCTYPES,
+	SHORTCUT_ROUTE_RESOURCES,
+	route_doctype,
+)
 from buildsuite_core.tests.test_permission_matrix import _PersonaBase
 
 # persona record name -> the slug used in the registry seed.
@@ -131,6 +136,50 @@ class TestWorkspaceRegistry(_PersonaBase):
 			self.assertEqual(get_workspace_shortcuts("site-execution"), [])
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_shortcut_route_resources_map_to_real_doctypes(self):
+		# Drift guard: every route in the shortcut seam must resolve to a real resource key,
+		# so a shortcut route can't silently fall through the read-gate (route_doctype -> None).
+		bad = {k for k in SHORTCUT_ROUTE_RESOURCES.values() if k not in RESOURCE_DOCTYPES}
+		self.assertFalse(bad, f"SHORTCUT_ROUTE_RESOURCES values not in RESOURCE_DOCTYPES: {bad}")
+		self.assertEqual(route_doctype("/tasks"), "Task")
+		self.assertEqual(route_doctype("/tasks?x=1"), "Task")  # query string ignored
+		self.assertIsNone(route_doctype("/schedule"))  # not doctype-backed -> never gated
+
+	def test_shortcut_hidden_when_doctype_unreadable(self):
+		# A user may SEE a workspace yet lack read on one of its shortcut targets (the reported
+		# bug: Procurement persona, Task read revoked, still saw the Task tile). Such a shortcut
+		# must be hidden — mirroring the DocType-tile gate — while unrelated ones stay visible.
+		# Foreman sees Site Execution but can't read Purchase Order; add a PO shortcut there.
+		sc = frappe.get_doc(
+			{
+				"doctype": "BuildSuite Workspace Shortcut",
+				"workspace": "site-execution",
+				"label": "Purchase Orders (test)",
+				"icon": "cart",
+				"route": "/procurement/purchase-orders",
+				"sort_order": 999,
+				"enabled": 1,
+			}
+		).insert(ignore_permissions=True)
+		frappe.db.commit()
+		try:
+			foreman = self._make_user("Foreman / Supervisor")
+			frappe.set_user(foreman)
+			# precondition: the workspace is visible but the target DocType is not readable
+			self.assertFalse(frappe.has_permission("Purchase Order", "read"))
+			labels = {s["label"] for s in get_workspace_shortcuts("site-execution")}
+			self.assertNotIn("Purchase Orders (test)", labels)
+			self.assertIn("Projects", labels)  # a readable target is unaffected
+			frappe.set_user("Administrator")
+			admin_labels = {s["label"] for s in get_workspace_shortcuts("site-execution")}
+			self.assertIn("Purchase Orders (test)", admin_labels)  # Admin reads PO -> shown
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc(
+				"BuildSuite Workspace Shortcut", sc.name, ignore_permissions=True, force=True
+			)
+			frappe.db.commit()
 
 	def test_ordering_is_by_sort_order(self):
 		email = self._make_user("System Manager (Admin)")
