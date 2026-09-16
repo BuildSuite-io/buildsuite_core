@@ -218,5 +218,181 @@
     "condition": ""
    }
   ]
+ },
+ {
+  "doctype": "Workflow",
+  "name": "Scope Change Order Approval",
+  "workflow_name": "Scope Change Order Approval",
+  "document_type": "Scope Change Order",
+  "is_active": 1,
+  "override_status": 0,
+  "send_email_alert": 0,
+  "workflow_state_field": "status",
+  "states": [
+   {
+    "state": "Pending Approval",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Approved",
+    "doc_status": "0",
+    "allow_edit": "System Manager",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Rejected",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   }
+  ],
+  "transitions": [
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite QS",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Director",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite QS",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Pending Approval",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   }
+  ]
  }
 ]

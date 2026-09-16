@@ -38,6 +38,29 @@ class TestScopeChangeOrder(BuildSuiteTestCase):
 		self.assertTrue(all(r.user == "Administrator" for r in rows))
 		self.assertTrue(all(r.activity_on for r in rows))
 
+	def test_status_is_governed_by_a_frappe_workflow(self):
+		# The approval flow is now the "Scope Change Order Approval" Frappe Workflow bound to the
+		# `status` field — the SPA reads its transitions via api.workflow.get_workflow_info.
+		from frappe.model.workflow import get_workflow, get_workflow_name
+
+		self.assertEqual(get_workflow_name("Scope Change Order"), "Scope Change Order Approval")
+		self.assertEqual(get_workflow("Scope Change Order").workflow_state_field, "status")
+
+	def test_approve_via_workflow_stamps_the_approver(self):
+		sco = self._make_sco()
+		approve_sco(sco.name)
+		doc = frappe.get_doc("Scope Change Order", sco.name)
+		self.assertEqual(doc.status, "Approved")
+		self.assertEqual(doc.approved_by, "Administrator")
+		self.assertTrue(doc.approved_date)
+
+	def test_reject_requires_a_reason(self):
+		sco = self._make_sco()
+		with self.assertRaises(frappe.ValidationError):
+			reject_sco(sco.name, "")
+		# untouched — still pending
+		self.assertEqual(frappe.db.get_value("Scope Change Order", sco.name, "status"), "Pending Approval")
+
 
 class TestScopeChangeOrderPermissions(BuildSuiteTestCase):
 	"""The 12-persona SCO role matrix (setup.py SCO_ROLE_PERMS + permissions/sco.py)."""
