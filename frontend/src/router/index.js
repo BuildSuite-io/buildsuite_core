@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useDataStore } from "@/stores";
 import { usePermissions } from "@/composables/usePermissions";
+import { getDoctypePermissions } from "@/data/workspaceSettingApi";
 import { getLoginUrl } from "@/utils/session";
 import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
 
@@ -1091,6 +1092,15 @@ const ROUTE_CAPS = {
 	"petty-cash": "pettyCash",
 };
 
+// The generic records browser routes and the has_permission ptype each one needs. The
+// DocType is a route param (dynamic), so unlike ROUTE_CAPS these resolve against the
+// backend at navigation time via get_doctype_permissions rather than the static payload.
+const GENERIC_RECORD_CAPS = {
+	"records-list": "read",
+	"record-new": "create",
+	"record-edit": "write",
+};
+
 // Infer the capability a route needs from its name: `*-new` → create, `*-edit` → edit,
 // everything else → read. Keeps ROUTE_CAPS a flat name→key map instead of repeating the
 // action on every entry.
@@ -1168,6 +1178,22 @@ router.beforeEach(async (to) => {
 					? canEdit(capResource)
 					: canRead(capResource);
 		if (!allowedCap) return { path: "/" };
+	}
+
+	// Generic records browser (/records/:doctype/*) — the DocType is dynamic, so its cap
+	// isn't in the static resourcePermissions payload. Resolve it live from the backend
+	// (allow-list + frappe.has_permission): the list needs read, `new` needs create, `edit`
+	// needs write. A definitive `false` redirects; a thrown error (not allow-listed, or a
+	// transient failure) defers to the view, which re-checks and shows an inline "not
+	// available here" state — and the backend still enforces read/write regardless.
+	const genericNeed = GENERIC_RECORD_CAPS[to.name];
+	if (genericNeed && to.params?.doctype) {
+		try {
+			const p = await getDoctypePermissions(to.params.doctype);
+			if (p && p[genericNeed] === false) return { path: "/" };
+		} catch {
+			// non-allow-listed / perm error / network — the view handles it, backend enforces.
+		}
 	}
 
 	return true;
