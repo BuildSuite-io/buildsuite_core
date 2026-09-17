@@ -1138,16 +1138,12 @@ def setup_mobile_permissions():
 	_upgrade_role_perms("UOM", _mobile_perm(eng_fore_pm, _MOBILE_SR), sr)
 
 
-def setup_record_permissions():
-	"""Seed roles + DocPerms for every BuildSuite-scoped doctype."""
-	from buildsuite_core.buildsuite_core.doctype.buildsuite_workspace.seed_workspaces import (
-		seed_workspaces,
-	)
-	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import repair_default_personas
-	from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
-		seed_workspace_reports,
-	)
-
+def restore_role_permissions():
+	"""Re-apply the BuildSuite DocPerm matrix — the role perms for every managed doctype plus the
+	child-table read mirror — WITHOUT re-seeding the workspace / persona / report registries or
+	the workflows. This is the perm-only slice behind the admin 'Restore Default Permissions'
+	action; setup_record_permissions() wraps it with workflow + registry seeding for install/patch.
+	"""
 	setup_project_permissions()
 	setup_task_permissions()
 	setup_schedule_snapshot_permissions()
@@ -1165,12 +1161,26 @@ def setup_record_permissions():
 	setup_equipment_permissions()
 	setup_project_finance_permissions()
 	setup_mobile_permissions()  # extra DocPerms for the companion mobile app (layered)
-	_ensure_role(WORKFLOW_EDITOR_ROLE)
-	setup_stage_planning_workflow()
-	setup_subcontractor_wo_workflow()
 	# Mirror read to child tables of everything the BuildSuite roles can read (must run AFTER
 	# all the parent grants above are in place).
 	setup_child_table_read_access()
+
+
+def setup_record_permissions():
+	"""Seed roles + DocPerms + workflows + registries for every BuildSuite-scoped doctype."""
+	from buildsuite_core.buildsuite_core.doctype.buildsuite_workspace.seed_workspaces import (
+		seed_workspaces,
+	)
+	from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import repair_default_personas
+	from buildsuite_core.buildsuite_core.doctype.workspace_setting.seed_workspace_reports import (
+		seed_workspace_reports,
+	)
+
+	# The DocPerm matrix (role perms + child-table read mirror).
+	restore_role_permissions()
+	_ensure_role(WORKFLOW_EDITOR_ROLE)
+	setup_stage_planning_workflow()
+	setup_subcontractor_wo_workflow()
 	# Personas map to the roles ensured above. Use repair (not plain seed) so an existing
 	# persona that was created empty — the persona-creation patches run BEFORE the roles
 	# exist, and plain seed_personas skips already-created personas — gets its missing

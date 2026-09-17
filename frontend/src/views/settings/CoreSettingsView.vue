@@ -16,7 +16,12 @@ import {
 	setMultiCompanyEnabled,
 } from "@/data/coreSettingsApi";
 import { setCompanyAwareness } from "@/composables/useActiveCompany";
+import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
+import {
+	restoreDefaultRolePermissions,
+	exportRolePermissions,
+} from "@/data/rolePermissionsApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -26,10 +31,65 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 
 const router = useRouter();
 const store = useDataStore();
+const confirmDialog = useConfirm();
 
 const editing = ref(false);
 const form = ref({});
 const saving = ref(false);
+
+// --- Role permissions (admin actions) ------------------------------------------------
+// The default DocPerm matrix is no longer re-applied on app update, so a client's in-Desk
+// permission tuning survives an upgrade. Restoring the shipped defaults is now an explicit
+// action; exporting the current perms lets a client's customizations be folded back into
+// the defaults.
+const permBusy = ref("");
+
+async function onRestoreDefaults() {
+	const ok = await confirmDialog({
+		title: "Restore default permissions?",
+		message:
+			"This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. " +
+			"Any permission changes made in Desk will be lost. This cannot be undone — export the " +
+			"current permissions first if you want to keep them.",
+		confirmLabel: "Restore defaults",
+		destructive: true,
+	});
+	if (!ok) return;
+	permBusy.value = "restore";
+	try {
+		await restoreDefaultRolePermissions();
+		showToast(
+			"Restore started — default permissions are being re-applied in the background. " +
+				"This can take a few minutes; refresh once it completes."
+		);
+	} catch (err) {
+		showToast(err.message || "Failed to restore default permissions", "error");
+	} finally {
+		permBusy.value = "";
+	}
+}
+
+async function onExportPermissions() {
+	permBusy.value = "export";
+	try {
+		const data = await exportRolePermissions();
+		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const stamp = new Date().toISOString().slice(0, 10);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `buildsuite-role-permissions-${data.site || "site"}-${stamp}.json`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(url);
+		showToast("Role permissions exported.");
+	} catch (err) {
+		showToast(err.message || "Failed to export permissions", "error");
+	} finally {
+		permBusy.value = "";
+	}
+}
 
 // Project naming MODE is server-persisted (BuildSuite Core Settings Single). It's
 // just the mode here ("Project ID" | "Name Series"); the specific series, when Name
@@ -220,6 +280,41 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								{{ a.name }} ({{ a.account_type }})
 							</option>
 						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection v-if="store.isAdmin" title="Role permissions">
+					<DeskField
+						label="Default permission matrix"
+						hint="App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes."
+					>
+						<div class="flex flex-wrap items-center gap-2 py-1">
+							<button
+								type="button"
+								class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 font-medium disabled:opacity-60"
+								style="border-radius: 6px"
+								:disabled="!!permBusy"
+								@click="onExportPermissions"
+							>
+								{{ permBusy === "export" ? "Exporting…" : "Export permissions" }}
+							</button>
+							<button
+								type="button"
+								class="text-xs px-2.5 py-1.5 border border-danger-300 bg-danger-50 hover:bg-danger-100 text-danger-700 font-medium disabled:opacity-60"
+								style="border-radius: 6px"
+								:disabled="!!permBusy"
+								@click="onRestoreDefaults"
+							>
+								{{ permBusy === "restore" ? "Restoring…" : "Restore defaults" }}
+							</button>
+						</div>
+						<p class="text-[11px] text-warning-700 mt-1.5 flex items-start gap-1">
+							<span aria-hidden="true">⚠</span>
+							<span
+								>Restoring overwrites every BuildSuite role permission on this site
+								back to the shipped defaults and cannot be undone.</span
+							>
+						</p>
 					</DeskField>
 				</DeskSection>
 			</div>
