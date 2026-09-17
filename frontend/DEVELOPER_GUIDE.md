@@ -299,30 +299,26 @@ Options: `title`, `message`, `confirmLabel`, `destructive`. Returns `Promise<boo
 
 ---
 
-## 7. Permission gating (UI) — `usePermissions`
+## 7. Permission gating (UI) — see `PERMISSIONS.md`
 
-Hides create/edit/delete affordances for the active persona. The persona is auto-set
-from the **logged-in user** (`User.persona` via `get_access_context`) on load; the
-switcher previews others within the session. The **backend (`permissions/*.py`) is the
-real gate** — this only hides buttons that would fail.
+Access control (resource caps, route guards, workspace/shortcut gating, pickers, workflow
+buttons) has its own guide: **[`PERMISSIONS.md`](./PERMISSIONS.md)**. Read it before adding
+any `v-if` that hides something for a role.
+
+The short version: **the backend is the only real gate**; the UI derives everything from it
+(no client-side permission matrix). Gate affordances with `usePermissions()`:
 
 ```js
 import { usePermissions } from '@/composables/usePermissions'
-const { canCreate, canRead, canEdit, canDelete } = usePermissions()
+const { canCreate, canRead, canEdit, canDelete, canSubmit } = usePermissions()
 ```
-
 ```vue
 <button v-if="canCreate('task')" class="desk-save-btn">+ New Task</button>
 <button v-if="canEdit('stagePlanning')" @click="openEdit">Edit</button>
 ```
 
-Doctype keys: `'project' | 'workPackage' | 'task' | 'taskProgressEntry' | 'stagePlanning'`.
-`canCreate` is `true` only for full-create personas; `canEdit/canDelete` show for full **and**
-own-scope personas (the backend enforces the precise own-record rule); read-only personas get
-a restricted-access notice. Capabilities live in `PERSONA_CAPS` (`src/data/roles.js`).
-
-> Do **not** wire a `v-if` to a getter that always returns true — that leaks actions to
-> the wrong persona. Gate via `usePermissions`, or omit the `v-if` and rely on the backend.
+Resource keys are the camelCase keys of `buildsuite_core/permissions/resource_map.py`. Never
+hardcode role-name lists; when unsure, omit the `v-if` and rely on the backend.
 
 ---
 
@@ -414,6 +410,6 @@ yarn test     # Cypress e2e (real backend); yarn test:open for the GUI runner
 | Composables | `src/composables/{useDocTypeList,useFormErrors,useConfirm,usePermissions}.js` |
 | Errors | `src/utils/frappeError.js` (`parseFrappeError`) |
 | Confirm host | `src/components/ConfirmDialog.vue` (mounted in `App.vue`) |
-| Permissions | `src/data/roles.js` (`PERSONA_CAPS`) |
+| Permissions | **[`PERMISSIONS.md`](./PERMISSIONS.md)** · `src/composables/usePermissions.js` · `buildsuite_core/permissions/resource_map.py` |
 | Session/auth | `src/utils/session.js`, `src/stores/session.js` |
 | Reference screens | `ProjectsView` (generic list), `StagePlanningDetailView` (workflow), `StageReviewView` (Vue dashboard), `settings/UsersView` + `NewUserView` (user mgmt) |
