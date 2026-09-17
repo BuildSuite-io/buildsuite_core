@@ -5,7 +5,8 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 
 from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
-from buildsuite_core.permissions.setup import setup_child_table_read_access, setup_record_permissions
+# Default DocPerms are applied by permissions.setup.setup_record_permissions — invoked on
+# demand via the Restore Default Permissions admin action (api.role_permissions), NOT on migrate.
 from buildsuite_core.utils.project import backfill_project_status
 from buildsuite_core.utils.task import backfill_native_task_type, backfill_task_status
 
@@ -34,12 +35,11 @@ def after_migrate():
 	backfill_work_order_company()
 	backfill_bill_company()
 	seed_master_data()
-	# Self-heal the reference read-mirror on EVERY migrate. It's purely additive + idempotent
-	# (grants only the missing reads, never revokes), so running it LAST — after all patches and
-	# fixture syncs this migrate — guarantees the child-table / link-target reads survive any
-	# authoritative perm re-apply (e.g. a subcontract patch resetting Supplier's role list) that
-	# ran earlier. This removes the "must remember to run the mirror last by hand" footgun.
-	setup_child_table_read_access()
+	# NOTE: an app update no longer touches DocPerms. The SPA now derives its gating entirely
+	# from backend DocPerms, so silently re-applying the default matrix on migrate would clobber
+	# a client's own permission tuning. Restoring the shipped defaults (which includes the
+	# child-table read-mirror) is now an explicit admin action —
+	# api.role_permissions.restore_default_role_permissions, surfaced in BuildSuite Core Settings.
 
 
 def _backfill_project_company(doctype, extra_where=""):
