@@ -78,6 +78,14 @@ watch(
 	() => resource?.doc,
 	(doc) => {
 		if (!doc) return;
+		// Frappe refuses writes once the bid is submitted, so the form would only collect
+		// edits and fail on save. `replace`, not `push` — Back should not bounce straight
+		// back into a form that cannot be saved.
+		if (doc.docstatus !== 0) {
+			showToast("This tender is no longer a draft, so it can't be edited.", "info");
+			router.replace(`/tenders/${props.id}`);
+			return;
+		}
 		for (const k of Object.keys(form)) if (doc[k] != null) form[k] = doc[k];
 	},
 	{ immediate: true }

@@ -398,19 +398,19 @@ fixtures = [
 	{
 		"doctype": "Workflow State",
 		"filters": [
-			["workflow_state_name", "in", ["Draft", "Pending Approval", "Approved", "Rejected", "Cancelled"]]
+			["workflow_state_name", "in", ["Draft", "Pending Approval", "Approved", "Rejected", "Cancelled", "Submitted", "Under Evaluation", "Awarded"]]
 		],
 	},
 	{
 		"doctype": "Workflow Action Master",
 		"filters": [
-			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel"]]
+			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel", "Mark submitted", "Under evaluation", "Awarded", "Not awarded"]]
 		],
 	},
 	{
 		"doctype": "Workflow",
 		"filters": [
-			["workflow_name", "in", ["Stage Planning Approval", "Scope Change Order Approval"]]
+			["workflow_name", "in", ["Stage Planning Approval", "Scope Change Order Approval", "BuildSuite Tenders"]]
 		],
 	},
 ]

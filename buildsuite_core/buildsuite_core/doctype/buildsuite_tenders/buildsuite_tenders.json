@@ -38,7 +38,8 @@
   "terms_sections_section",
   "terms_sections",
   "internal_notes_section",
-  "notes"
+  "notes",
+  "amended_from"
  ],
  "fields": [
   {
@@ -235,12 +236,23 @@
    "fieldtype": "Table",
    "label": "Terms & conditions",
    "options": "BuildSuite Tender Section"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "BuildSuite Tenders",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-09-16 20:51:44.112117",
+ "modified": "2026-09-17 21:17:27.425411",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

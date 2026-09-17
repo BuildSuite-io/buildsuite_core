@@ -42,7 +42,11 @@ const classes = computed(() => {
 		// Petty Cash Request lifecycle.
 		Requested: "bg-warning-50 text-warning-700",
 		Disbursed: "bg-success-50 text-success-700",
-		// Subcontractor Work Order lifecycle + Subcontractor status.
+		// Tender lifecycle. The bid sits with the issuing body here, so it takes the same
+		// warning tint as the other "waiting on someone else's decision" states above.
+		"Under Evaluation": "bg-warning-50 text-warning-700",
+		// Subcontractor Work Order lifecycle + Subcontractor status. Shared with a Tender,
+		// which ends Awarded too.
 		Awarded: "bg-info-50 text-info-700",
 		Closed: "bg-ink-100 text-ink-500",
 		Inactive: "bg-ink-100 text-ink-500",

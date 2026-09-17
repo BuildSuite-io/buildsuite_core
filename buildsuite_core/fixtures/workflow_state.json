@@ -28,5 +28,23 @@
         "name": "Cancelled",
         "workflow_state_name": "Cancelled",
         "style": "Inverse"
+    },
+    {
+        "doctype": "Workflow State",
+        "name": "Submitted",
+        "workflow_state_name": "Submitted",
+        "style": "Info"
+    },
+    {
+        "doctype": "Workflow State",
+        "name": "Under Evaluation",
+        "workflow_state_name": "Under Evaluation",
+        "style": "Warning"
+    },
+    {
+        "doctype": "Workflow State",
+        "name": "Awarded",
+        "workflow_state_name": "Awarded",
+        "style": "Success"
     }
 ]

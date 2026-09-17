@@ -23,5 +23,25 @@
         "doctype": "Workflow Action Master",
         "name": "Cancel",
         "workflow_action_name": "Cancel"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Mark submitted",
+        "workflow_action_name": "Mark submitted"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Under evaluation",
+        "workflow_action_name": "Under evaluation"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Awarded",
+        "workflow_action_name": "Awarded"
+    },
+    {
+        "doctype": "Workflow Action Master",
+        "name": "Not awarded",
+        "workflow_action_name": "Not awarded"
     }
 ]

@@ -18,6 +18,7 @@ class BuildSuiteTenders(Document):
 		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import BuildSuiteTendersItems
 		from frappe.types import DF
 
+		amended_from: DF.Link | None
 		buildsuite_tenders_items: DF.Table[BuildSuiteTendersItems]
 		date_issued: DF.Date | None
 		emd_amount: DF.Currency

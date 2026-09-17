@@ -1,11 +1,12 @@
 <script setup>
 // Tender detail — header, summary cards, items and actions.
 
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useConfirm } from "@/composables/useConfirm";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import { fmtCurrency, fmtDate } from "@/utils/format";
@@ -25,6 +26,45 @@ const resource = adapter.read("BuildSuite Tenders", props.id);
 const doc = computed(() => resource?.doc || null);
 // `doc` is null while the fetch is in flight too, so the empty state has to wait for it.
 const loading = computed(() => !!(resource?.loading ?? resource?.get?.loading));
+
+// The bid lifecycle is a Frappe Workflow. Frappe filters the transitions by the signed-in
+// user's roles and each transition's condition, so the buttons below are already
+// permission-correct — no role list is kept here.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("BuildSuite Tenders");
+
+// The workflow owns the label; the docstatus covers the gap before its fetch lands, and the
+// case where the workflow is deactivated.
+const DOCSTATUS_LABELS = { 0: "Draft", 1: "Submitted", 2: "Cancelled" };
+const stateLabel = computed(
+	() => wfState.value || DOCSTATUS_LABELS[doc.value?.docstatus] || "Draft"
+);
+// Frappe refuses writes to a submitted document, so the edit affordances go with it.
+const isDraft = computed(() => doc.value?.docstatus === 0);
+const busy = ref(false);
+
+// Workflow actions are free text, so tone is keyed on the action name, matching the demo:
+// the two decisions read as win/loss, everything else stays neutral so only the outcome
+// carries colour. An action the workflow adds later falls back to neutral rather than
+// borrowing a meaning it has not earned.
+const ACTION_TONES = {
+	"Mark submitted": "desk-save-btn",
+	Awarded: "desk-save-btn",
+	"Not awarded":
+		"text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700",
+};
+const NEUTRAL_ACTION =
+	"text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700";
+const actionClass = (action) => ACTION_TONES[action] || NEUTRAL_ACTION;
+
+// Keyed on the name, not the doc: `resource.reload()` hands back a fresh object every time, so
+// watching `doc` would re-fetch the transitions after every section save as well.
+watch(() => doc.value?.name, (name) => name && refreshWorkflow(name), { immediate: true });
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
@@ -63,6 +103,21 @@ async function persistSections(field, rows) {
 	}
 }
 
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(props.id, action);
+		await resource?.reload?.();
+		await refreshWorkflow(props.id);
+		showToast(`${action} done.`, "success");
+	} catch (err) {
+		// workflowApi already unwraps the Frappe error into `message`.
+		showToast(err.message || "Action failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: "Delete tender",
@@ -89,15 +144,23 @@ async function onDelete() {
 		</template>
 	</div>
 
-	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :status="doc?.status || 'Draft'"
+	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :status="stateLabel"
 		:breadcrumbs="breadcrumbs" printable>
 		<template #actions>
-			<RouterLink :to="`/tenders/${id}/edit`"
+			<RouterLink v-if="isDraft" :to="`/tenders/${id}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px">
 				Edit
 			</RouterLink>
-			<button type="button"
+
+			<!-- One button per transition this user may take from the current state. -->
+			<button v-for="t in wfActive ? wfTransitions : []" :key="t.action" type="button"
+				:class="actionClass(t.action)" style="border-radius: 6px" :disabled="busy"
+				@click="onWorkflowAction(t.action)">
+				{{ t.action }}
+			</button>
+
+			<button v-if="isDraft" type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px" @click="onDelete">
 				Delete
@@ -181,7 +244,7 @@ async function onDelete() {
 			</span>
 		</div>
 
-		<TenderSections :sections="doc?.preamble_sections || []" editable title="Before the items"
+		<TenderSections :sections="doc?.preamble_sections || []" :editable="isDraft" title="Before the items"
 			class="mb-4" empty-hint="Nothing ahead of the item table."
 			purpose-hint="Optional — scope of work, preamble or method of measurement, printed above the priced schedule."
 			@update:sections="(v) => persistSections('preamble_sections', v)" />
@@ -252,7 +315,7 @@ async function onDelete() {
 		</div>
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-			<TenderSections :sections="doc?.terms_sections || []" editable class="lg:col-span-2"
+			<TenderSections :sections="doc?.terms_sections || []" :editable="isDraft" class="lg:col-span-2"
 				title="Terms &amp; conditions" empty-hint="No terms sections yet."
 				purpose-hint="A tender usually carries several — general conditions, payment, eligibility, defect liability."
 				@update:sections="(v) => persistSections('terms_sections', v)" />
