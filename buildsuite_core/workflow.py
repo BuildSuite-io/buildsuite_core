@@ -13,8 +13,13 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def apply_workflow(doc: str, action: str):
-	"""Allow workflow action on the current doc"""
+def apply_workflow(doc, action: str):
+	"""Allow workflow action on the current doc.
+
+	`doc` is untyped like the frappe.model.workflow.apply_workflow this patches — callers pass a
+	JSON string, a dict or a Document. Annotating it `str` made whitelist type validation reject
+	the other two in any request.
+	"""
 	doc = frappe.get_doc(frappe.parse_json(doc))
 	doc.load_from_db()
 	workflow = get_workflow(doc.doctype)
