@@ -7,6 +7,7 @@ import { RouterLink } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { fmtCurrency, fmtDate } from "@/utils/format";
@@ -85,6 +86,12 @@ const columns = [
 
 				<DeskInput v-model="fromFilter" type="date" class="!w-36" />
 				<DeskInput v-model="toFilter" type="date" class="!w-36" />
+			</template>
+
+			<template #cell-name="{ row }">
+				<DeskLink :to="`/tenders/${row.name}`" class="font-mono text-xs" @click.stop>
+					{{ row.name }}
+				</DeskLink>
 			</template>
 
 			<template #cell-emd_amount="{ row }">

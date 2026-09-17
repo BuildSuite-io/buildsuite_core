@@ -14,6 +14,7 @@ class BuildSuiteTenders(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
+		from buildsuite_core.buildsuite_core.doctype.buildsuite_tender_section.buildsuite_tender_section import BuildSuiteTenderSection
 		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import BuildSuiteTendersItems
 		from frappe.types import DF
 
@@ -30,10 +31,12 @@ class BuildSuiteTenders(Document):
 		notes: DF.SmallText | None
 		performance_guarantee_percent: DF.Data | None
 		portal: DF.Data | None
+		preamble_sections: DF.Table[BuildSuiteTenderSection]
 		project: DF.Link | None
 		submission_deadline: DF.Date
 		tax_percent: DF.Float
 		tender_reference: DF.Data
+		terms_sections: DF.Table[BuildSuiteTenderSection]
 		title: DF.Data
 	# end: auto-generated types
 
