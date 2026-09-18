@@ -30,7 +30,15 @@ export function useWorkflow(doctype) {
 			active.value = !!info.active;
 			stateField.value = info.state_field;
 			state.value = info.state;
-			transitions.value = info.transitions || [];
+			// The backend returns one transition row PER allowed role, so a user who holds several
+			// of a transition's roles (e.g. an admin) gets duplicates. The UI only cares about the
+			// distinct actions available, so collapse by action name — one button per action.
+			const seen = new Set();
+			transitions.value = (info.transitions || []).filter((t) => {
+				if (seen.has(t.action)) return false;
+				seen.add(t.action);
+				return true;
+			});
 		} finally {
 			loading.value = false;
 		}

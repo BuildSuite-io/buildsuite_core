@@ -165,7 +165,7 @@ const breadcrumbs = computed(() => [
 		<template #actions>
 			<ProcurementStatusPill :status="mr.status" class="self-center mr-1" />
 			<span
-				v-if="wfActive && wfState"
+				v-if="wfActive && wfState && wfState !== mr.status"
 				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
 				>{{ wfState }}</span
 			>

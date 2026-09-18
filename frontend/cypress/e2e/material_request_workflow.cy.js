@@ -26,8 +26,9 @@ describe("Material Request — honors the seeded approval workflow", () => {
 		cy.dt("page-title").should("be.visible"); // the MR is readable
 
 		cy.dt("page-actions").within(() => {
-			// The workflow transition from the Draft state.
-			cy.contains("button", "Submit for Approval").should("exist");
+			// The workflow transition from the Draft state — exactly ONE button, even though the
+			// admin holds several of the transition's allowed roles (dedup guard).
+			cy.get("button:contains('Submit for Approval')").should("have.length", 1);
 			// The plain docstatus Submit must NOT show while a workflow governs the doctype.
 			cy.contains("button", /^Submit$/).should("not.exist");
 		});
