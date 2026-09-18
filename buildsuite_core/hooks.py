@@ -410,7 +410,11 @@ fixtures = [
 	{
 		"doctype": "Workflow",
 		"filters": [
-			["workflow_name", "in", ["Stage Planning Approval", "Scope Change Order Approval"]]
+			[
+				"workflow_name",
+				"in",
+				["Stage Planning Approval", "Scope Change Order Approval", "Material Request Approval"],
+			]
 		],
 	},
 ]

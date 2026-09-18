@@ -33,7 +33,8 @@ CYPRESS_USERS = {
 }
 
 
-@frappe.whitelist()
+# dev/test-only fixture password; the function throws unless developer_mode / in_test.
+@frappe.whitelist()  # nosemgrep
 def ensure_cypress_users(password: str = "Cypress-Suite-2026!"):
 	"""Idempotently create/refresh the Cypress persona test users. Returns a summary list.
 
@@ -138,6 +139,57 @@ def ensure_cypress_bills():
 		"draft": frappe.db.get_value("Subcontractor Bill", {"docstatus": 0}, "name"),
 		"submitted": frappe.db.get_value("Subcontractor Bill", {"docstatus": 1}, "name"),
 	}
+
+
+@frappe.whitelist()
+def ensure_cypress_material_request():
+	"""Return a DRAFT Material Request name for the MR workflow e2e. With the seeded
+	"Material Request Approval" workflow active, its detail should show the workflow's
+	"Submit for Approval" transition instead of the plain docstatus Submit. Reuses an existing
+	draft; otherwise provisions one with an HSN-coded item so india_compliance doesn't block the
+	insert. Returns None if it can't provision (spec skips). Dev/test only."""
+	if not (frappe.conf.developer_mode or frappe.flags.in_test):
+		frappe.throw(frappe._("ensure_cypress_material_request is only available in developer / test mode"))
+
+	existing = frappe.db.get_value("Material Request", {"docstatus": 0}, "name")
+	if existing:
+		return existing
+
+	try:
+		company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
+			"Company", {}, "name"
+		)
+		project = frappe.db.get_value("Project", {"company": company}, "name")
+		if not project:
+			project = (
+				frappe.get_doc({"doctype": "Project", "project_name": "Cypress MR Project", "company": company})
+				.insert(ignore_permissions=True)
+				.name
+			)
+		# An HSN-coded item keeps india_compliance from blocking the insert on this GST site.
+		item = frappe.db.get_value("Item", {"gst_hsn_code": ["is", "set"]}, "name") or frappe.db.get_value(
+			"Item", {}, "name"
+		)
+		wh = frappe.db.get_value("Warehouse", {"is_group": 0, "company": company}, "name") or frappe.db.get_value(
+			"Warehouse", {"is_group": 0}, "name"
+		)
+		doc = frappe.get_doc(
+			{
+				"doctype": "Material Request",
+				"material_request_type": "Purchase",
+				"company": company,
+				"project": project,
+				"schedule_date": frappe.utils.today(),
+				"items": [
+					{"item_code": item, "qty": 1, "schedule_date": frappe.utils.today(), "warehouse": wh}
+				],
+			}
+		).insert(ignore_permissions=True)
+		frappe.db.commit()  # nosemgrep
+		return doc.name
+	except Exception:
+		frappe.db.rollback()
+		return None
 
 
 @frappe.whitelist()

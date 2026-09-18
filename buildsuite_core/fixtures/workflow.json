@@ -394,5 +394,201 @@
     "condition": ""
    }
   ]
+ },
+ {
+  "doctype": "Workflow",
+  "name": "Material Request Approval",
+  "workflow_name": "Material Request Approval",
+  "document_type": "Material Request",
+  "is_active": 1,
+  "override_status": 0,
+  "send_email_alert": 0,
+  "workflow_state_field": "workflow_state",
+  "states": [
+   {
+    "state": "Draft",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite Project User",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Pending Approval",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite PM",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Approved",
+    "doc_status": "1",
+    "allow_edit": "System Manager",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Rejected",
+    "doc_status": "0",
+    "allow_edit": "BuildSuite PM",
+    "is_optional_state": 0
+   },
+   {
+    "state": "Cancelled",
+    "doc_status": "2",
+    "allow_edit": "System Manager",
+    "is_optional_state": 1
+   }
+  ],
+  "transitions": [
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Procurement Officer",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Draft",
+    "action": "Submit for Approval",
+    "next_state": "Pending Approval",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Procurement Officer",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Procurement Officer",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Pending Approval",
+    "action": "Reject",
+    "next_state": "Rejected",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite PM",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite Procurement Officer",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Rejected",
+    "action": "Revise",
+    "next_state": "Draft",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "BuildSuite Procurement Officer",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "BuildSuite Administrator",
+    "allow_self_approval": 1,
+    "condition": ""
+   },
+   {
+    "state": "Approved",
+    "action": "Cancel",
+    "next_state": "Cancelled",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": ""
+   }
+  ]
  }
 ]
