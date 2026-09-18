@@ -34,6 +34,7 @@ CYPRESS_USERS = {
 
 
 @frappe.whitelist()
+# nosemgrep: python.lang.security.audit.hardcoded-password-default-argument.hardcoded-password-default-argument -- dev/test-only fixture password; the function throws unless developer_mode / in_test.
 def ensure_cypress_users(password: str = "Cypress-Suite-2026!"):
 	"""Idempotently create/refresh the Cypress persona test users. Returns a summary list.
 
