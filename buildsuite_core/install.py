@@ -244,10 +244,15 @@ def seed_employee_accounting_dimension():
 
 
 def create_item_group():
-	if frappe.db.get_value("Item Group", "Raw Material"):
-		frappe.rename_doc("Item Group", "Raw Material", "Materials", force=1, merge=0)
-	if frappe.db.get_value("Item Group", "Asset"):
-		frappe.rename_doc("Item Group", "Asset", "Assets", force=1, merge=0)
+	# Rename ERPNext's default "Raw Material" → "Materials" and "Asset" → "Assets". Idempotent:
+	# if the target already exists (a prior migrate renamed it, but ERPNext re-seeded the source),
+	# merge the stray source into the target instead of a plain rename — a plain rename onto an
+	# existing name throws "Another Item Group … exists" and aborts the migrate.
+	for src, dst in (("Raw Material", "Materials"), ("Asset", "Assets")):
+		if not frappe.db.exists("Item Group", src):
+			continue
+		merge = bool(frappe.db.exists("Item Group", dst))
+		frappe.rename_doc("Item Group", src, dst, force=1, merge=merge)
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit -- persist Item Group renames during install/migrate
 
 
