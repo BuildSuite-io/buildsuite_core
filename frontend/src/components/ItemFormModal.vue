@@ -39,6 +39,9 @@ function blank() {
 		stock_uom: "",
 		standard_rate: "",
 		custom_rate_master: "",
+		// Physical stock item by default (ERPNext's default too) — a receipt of it posts to the
+		// project store, so it shows up in Material Consumption. Uncheck for a service item.
+		is_stock_item: true,
 		disabled: false,
 	};
 }
@@ -94,6 +97,7 @@ watch(
 					stock_uom: row.stock_uom || "",
 					standard_rate: row.standard_rate ?? "",
 					custom_rate_master: row.custom_rate_master || "",
+					is_stock_item: row.is_stock_item != null ? !!row.is_stock_item : true,
 					disabled: !!row.disabled,
 			  }
 			: blank();
@@ -122,6 +126,7 @@ function payload() {
 		stock_uom: form.value.stock_uom,
 		standard_rate: Number(form.value.standard_rate) || 0,
 		custom_rate_master: form.value.custom_rate_master || "",
+		is_stock_item: form.value.is_stock_item ? 1 : 0,
 		disabled: form.value.disabled ? 1 : 0,
 	};
 }
@@ -282,6 +287,21 @@ async function onDelete() {
 						>. The rate check compares the two figures directly, so the link does
 						nothing until the units match.
 					</p>
+
+					<div class="pt-1">
+						<label class="flex items-center gap-2 text-sm text-ink-700">
+							<input v-model="form.is_stock_item" type="checkbox" />
+							Maintain stock (physical inventory)
+						</label>
+						<p class="text-[11px] text-ink-500 mt-1 ml-6">
+							On: a Purchase Receipt of this item adds to the project store, so it
+							appears in Material Consumption. Off: a service item (labour,
+							subcontractor work, charges) — no stock is tracked.
+							<span v-if="editing" class="text-warning-700"
+								>Can't be changed once the item has stock transactions.</span
+							>
+						</p>
+					</div>
 
 					<label class="flex items-center gap-2 text-sm text-ink-700">
 						<input v-model="form.disabled" type="checkbox" />
