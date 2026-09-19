@@ -21,6 +21,7 @@ const ITEM_FIELDS = [
 	"stock_uom",
 	"standard_rate",
 	"custom_rate_master",
+	"is_stock_item",
 	"disabled",
 ];
 
