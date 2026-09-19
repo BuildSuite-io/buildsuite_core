@@ -8,7 +8,6 @@
  "engine": "InnoDB",
  "field_order": [
   "assembly_code",
-  "company",
   "uom",
   "rate_per_unit",
   "column_break_cpdk",
@@ -28,14 +27,6 @@
    "label": "Assembly Code",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Company",
-   "options": "Company",
-   "set_only_once": 1
   },
   {
    "fieldname": "assembly_name",

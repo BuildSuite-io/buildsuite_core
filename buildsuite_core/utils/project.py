@@ -133,9 +133,9 @@ def assert_same_company(doc, link_field, link_doctype, label=None):
 
 
 def assert_link_same_company(link_name, link_doctype, company, label=None):
-	"""The linked record must belong to `company`. For docs whose own company is derived rather
-	than stored — e.g. a BOQ Item / Sub Item resolving its BOQ's company before checking that its
-	Assembly / Rate Master (per-company masters) match. No-op when either side is unset.
+	"""The linked record must belong to `company` — used to keep a company-scoped master (e.g. a
+	Supplier / Customer on a bill or invoice) from being pulled across companies. No-op when either
+	side is unset.
 	"""
 	if not link_name or not company:
 		return
