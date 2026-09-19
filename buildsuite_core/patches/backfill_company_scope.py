@@ -35,9 +35,8 @@ _MASTERS = (
 	"Subcontract Delivery Type",
 	"Construction Trade",
 	"Labour Trade",
-	# Org-wide ERPNext masters made company-scoped — stamp existing rows to the default company.
-	"Supplier",
-	"Customer",
+	# Org-wide ERPNext master made company-scoped — stamp existing rows to the default company.
+	# (Supplier / Customer are global parties — no company field; see drop_party_company_field.)
 	"Item",
 )
 

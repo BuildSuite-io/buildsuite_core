@@ -71,14 +71,13 @@ export function activeCompanyFilter() {
 
 // Doctypes that carry a `company` field and whose pickers must be scoped to the working
 // company. Kept here (the one company-scope seam) so DeskLinkPicker can auto-scope every picker
-// of these doctypes — no per-call-site opt-in — keeping all pickers consistent. Covers the
-// ERPNext masters we company-scoped (Supplier/Customer/Item/Employee) plus every BuildSuite
-// company-scoped doctype and per-company master. Keep in sync when a doctype gains `company`.
+// of these doctypes — no per-call-site opt-in — keeping all pickers consistent. Keep in sync when
+// a doctype gains `company`. NOTE: Supplier and Customer are intentionally absent — ERPNext parties
+// are global masters (reusable across companies via their per-company Party Account child table),
+// so they are not company-gated.
 const COMPANY_SCOPED_DOCTYPES = new Set([
 	"Project",
 	"Employee",
-	"Supplier",
-	"Customer",
 	"Item",
 	"BOQ",
 	"Subcontractor Work Order",
