@@ -100,15 +100,6 @@ watch(categoryFilter, () => {
 	page.value = 1;
 	reload();
 });
-// Follow the company switcher (rate masters are per-company when awareness is on). Refresh the
-// counts too — the per-category KPI totals are company-scoped as well.
-watch(
-	() => store.activeCompany,
-	() => {
-		page.value = 1;
-		reload({ withCounts: true });
-	}
-);
 onMounted(() => reload({ withCounts: true }));
 
 const editing = ref(null);

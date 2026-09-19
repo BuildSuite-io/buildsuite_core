@@ -7,7 +7,6 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from buildsuite_core.buildsuite_core.doctype.boq.boq_rollup import recompute_boq
-from buildsuite_core.utils.project import assert_link_same_company
 
 _QUANTITY_SOURCES = ("Manual", "Assembly", "Template", "Takeoff")
 
@@ -55,31 +54,30 @@ class BOQItem(Document):
 		self._validate_project_scope()
 
 	def _validate_project_scope(self):
-		"""A BOQ Item's Task / Work Package must belong to the BOQ's own project, and its
-		Assembly (a per-company master) to the BOQ's company — you can't cost work or pull an
-		assembly from another project/company into this BOQ."""
-		if not (self.task or self.work_package or self.assembly):
+		"""A BOQ Item's Task / Work Package must belong to the BOQ's own project — you can't
+		pull a task or work package from another project into this BOQ. (Assemblies are a shared,
+		company-agnostic catalog master, so they carry no such restriction.)"""
+		if not (self.task or self.work_package):
 			return
-		boq = frappe.db.get_value("BOQ", self.boq, ["project", "company"], as_dict=True)
-		if not boq:
+		boq_project = frappe.db.get_value("BOQ", self.boq, "project")
+		if not boq_project:
 			return
 		if self.task:
 			task_project = frappe.db.get_value("Task", self.task, "project")
-			if task_project and task_project != boq.project:
+			if task_project and task_project != boq_project:
 				frappe.throw(
 					_("Task {0} belongs to project {1}, not this BOQ's project {2}.").format(
-						self.task, task_project, boq.project
+						self.task, task_project, boq_project
 					)
 				)
 		if self.work_package:
 			wp_project = frappe.db.get_value("Work Package", self.work_package, "project")
-			if wp_project and wp_project != boq.project:
+			if wp_project and wp_project != boq_project:
 				frappe.throw(
 					_("Work Package {0} belongs to project {1}, not this BOQ's project {2}.").format(
-						self.work_package, wp_project, boq.project
+						self.work_package, wp_project, boq_project
 					)
 				)
-		assert_link_same_company(self.assembly, "Assembly", boq.company, "Assembly")
 
 	def on_update(self):
 		# Propagate WP / cost-head stamps to child sub-items (denormalized join keys).

@@ -59,8 +59,8 @@ class TestCompanyScope(BuildSuiteTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self._sco(pb.name, boq_revision=boq_a.name)
 
-	# --- per-company masters in a BOQ ------------------------------------
-	def _assembly(self, company):
+	# --- shared (company-agnostic) catalog masters in a BOQ --------------
+	def _assembly(self):
 		h = frappe.generate_hash(length=5)
 		return frappe.get_doc(
 			{
@@ -68,7 +68,6 @@ class TestCompanyScope(BuildSuiteTestCase):
 				"assembly_code": f"ASM-{h}",
 				"assembly_name": "X",
 				"uom": "Nos",
-				"company": company,
 			}
 		).insert(ignore_permissions=True)
 
@@ -92,20 +91,12 @@ class TestCompanyScope(BuildSuiteTestCase):
 			}
 		).insert(ignore_permissions=True)
 
-	def test_boq_item_accepts_same_company_assembly(self):
+	def test_boq_item_accepts_any_assembly(self):
+		"""Assemblies are a shared, company-agnostic catalog — a BOQ of any company can use one
+		(no cross-company restriction; BOQ stays company-gated to its project)."""
 		p = self._project(self.company)
 		boq = self._boq(p.name)
 		g = self._boq_group(boq.name)
-		asm = self._assembly(self.company)
+		asm = self._assembly()
 		item = self._boq_item(boq.name, g.name, assembly=asm.name)
 		self.assertTrue(item.name)
-
-	def test_boq_item_rejects_cross_company_assembly(self):
-		"""A company-A BOQ item cannot pull a company-B Assembly (a per-company master)."""
-		c2 = self._second_company()
-		p = self._project(self.company)  # BOQ in company A
-		boq = self._boq(p.name)
-		g = self._boq_group(boq.name)
-		asm_b = self._assembly(c2)  # Assembly in company B
-		with self.assertRaises(frappe.ValidationError):
-			self._boq_item(boq.name, g.name, assembly=asm_b.name)
