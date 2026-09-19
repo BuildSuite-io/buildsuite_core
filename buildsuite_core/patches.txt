@@ -54,3 +54,4 @@ buildsuite_core.patches.backfill_master_company # 2026-09-09 supplier/customer/i
 buildsuite_core.patches.rebuild_company_letter_heads # 2026-09-10 per-company letter heads
 buildsuite_core.patches.seed_workspace_registry # 2026-09-15 backend workspace registry (sidebar visibility)
 buildsuite_core.patches.seed_workspace_shortcuts # 2026-09-15 workspace shortcut registry
+buildsuite_core.patches.drop_party_company_field # 2026-09-19 Supplier/Customer are global ERPNext parties
