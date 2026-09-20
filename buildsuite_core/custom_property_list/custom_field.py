@@ -693,4 +693,67 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Quotation (native ERPNext) — the estimator's priced offer to a customer.
+	"Quotation": [
+		{
+			"fieldname": "customer_type",
+			"fieldtype": "Select",
+			"label": "Customer Type",
+			"options": "\nHomebuyer\nPrivate Client\nMain Contractor",
+			"insert_after": "party_name",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"options": "Project",
+			"label": "Project",
+			"insert_after": "order_type",
+			"module": "BuildSuite Core",
+		},
+		# For whoever picks the quotation up next. print_hide keeps it off the customer's copy.
+		{
+			"fieldname": "internal_note",
+			"fieldtype": "Small Text",
+			"label": "Internal Note",
+			"insert_after": "terms",
+			"print_hide": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Where the line came from: typed on this quotation, or pulled from the assembly
+	# catalogue. Same three fields BuildSuite Tenders Items carries, under the same names.
+	"Quotation Item": [
+		{
+			"fieldname": "source",
+			"fieldtype": "Select",
+			"label": "Source",
+			"options": "Manual\nAssembly",
+			"default": "Manual",
+			"insert_after": "item_code",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "code",
+			"fieldtype": "Data",
+			"label": "Code",
+			"description": "The estimator's own code for this line. Free to edit.",
+			"insert_after": "source",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		# Read-only and separate from "code" on purpose: this is the trail back to the
+		# catalogue, and editing the code above must not break it.
+		{
+			"fieldname": "source_ref",
+			"fieldtype": "Data",
+			"label": "Source Ref",
+			"description": "The assembly this line was priced from.",
+			"insert_after": "code",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 }

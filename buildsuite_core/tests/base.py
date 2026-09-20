@@ -75,6 +75,21 @@ class BuildSuiteTestCase(UnitTestCase):
 		doc.insert(ignore_permissions=True)
 		return doc
 
+	def _make_customer(self):
+		"""Group and territory are mandatory on Customer; any leaf of each will do."""
+		doc = frappe.get_doc(
+			{
+				"doctype": "Customer",
+				"customer_name": f"UAT Cust {frappe.generate_hash(length=5)}",
+				"customer_group": frappe.db.get_value("Customer Group", {"is_group": 0}, "name")
+				or "All Customer Groups",
+				"territory": frappe.db.get_value("Territory", {"is_group": 0}, "name")
+				or "All Territories",
+			}
+		)
+		doc.insert(ignore_permissions=True)
+		return doc
+
 	def _make_rate_master(self, rate=100, category="Material", uom="Nos"):
 		doc = frappe.get_doc(
 			{
