@@ -17,6 +17,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DocTypeChildTable from "@/components/doctype/DocTypeChildTable.vue";
+import TenderLinePicker from "@/components/TenderLinePicker.vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { toDateInputValue } from "@/utils/dateInput";
@@ -78,7 +79,13 @@ watch(
 	() => resource?.doc,
 	(doc) => {
 		if (!doc) return;
-		for (const k of Object.keys(form)) if (doc[k] != null) form[k] = doc[k];
+		// Child tables are COPIED, not aliased. `doc` lives in the shared document cache, and
+		// DocTypeChildTable writes cells in place — assigning the array itself would let the
+		// form edit the record the detail page is reading.
+		for (const k of Object.keys(form)) {
+			if (doc[k] == null) continue;
+			form[k] = Array.isArray(doc[k]) ? doc[k].map((r) => ({ ...r })) : doc[k];
+		}
 	},
 	{ immediate: true }
 );
@@ -90,6 +97,14 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 	submission_deadline: "submission_deadline",
 });
 const saving = ref(false);
+
+// Lines pulled from the assembly catalogue land in the same grid as typed ones — `source`
+// marks where each came from.
+const pickerOpen = ref(false);
+function addLibraryLine(row) {
+	// Replace, don't push — same as DocTypeChildTable's own add/remove.
+	form.buildsuite_tenders_items = [...form.buildsuite_tenders_items, row];
+}
 
 // Untouched rows are dropped. `source` is seeded on every new row, so it does not count.
 const items = computed(() =>
@@ -236,6 +251,14 @@ async function onSave() {
 
 			<DeskSection title="Items" :cols="1">
 				<DocTypeChildTable v-model="form.buildsuite_tenders_items" doctype="BuildSuite Tenders Items" />
+				<div class="mt-2">
+					<button type="button"
+						class="text-xs text-brand-700 hover:underline font-medium"
+						@click="pickerOpen = true">
+						+ Add from library
+					</button>
+					<span class="text-[11px] text-ink-400 ml-2">an assembly from the catalogue</span>
+				</div>
 				<p v-if="errors.buildsuite_tenders_items" class="text-xs text-danger-700 mt-2">
 					{{ errors.buildsuite_tenders_items }}
 				</p>
@@ -251,5 +274,7 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 		</DeskForm>
+
+		<TenderLinePicker :open="pickerOpen" @close="pickerOpen = false" @add="addLibraryLine" />
 	</DeskPage>
 </template>

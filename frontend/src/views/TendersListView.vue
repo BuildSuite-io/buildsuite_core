@@ -1,9 +1,8 @@
 <script setup>
-// Tenders — formal bids against published invitations. The KPI cards land once the doctype
-// carries status and totals.
+// Tenders — formal bids against published invitations.
 
 import { ref, computed } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -11,6 +10,8 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { fmtCurrency, fmtDate } from "@/utils/format";
+
+const router = useRouter();
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
@@ -49,12 +50,20 @@ const filterValues = computed(() => ({
 // entered at all, so the date is worth shouting about.
 const TODAY = new Date().toISOString().slice(0, 10);
 
+// `fields` is what the row actually fetches. Passing `columns` makes DocTypeListView ignore
+// `field-order` entirely (it derives the query from the columns), so the sub-lines below have
+// to name the extra fields they read or they render blank.
 const columns = [
-	{ key: "name", label: "Tender" },
-	{ key: "title", label: "For" },
+	{ key: "name", label: "Tender", fields: ["name", "tender_reference", "issued_by"] },
+	{
+		key: "title",
+		label: "For",
+		fields: ["title", "envelope_structure", "items_count", "margin_percent"],
+	},
 	{ key: "issuing_body", label: "Issuing body" },
 	{ key: "submission_deadline", label: "Deadline" },
 	{ key: "emd_amount", label: "EMD", align: "right" },
+	{ key: "bid_value", label: "Bid value", align: "right" },
 ];
 
 </script>
@@ -77,26 +86,52 @@ const columns = [
 			}"
 			:search-fields="['name', 'title', 'tender_reference', 'issuing_body']" cache-key="buildsuite-tender-list"
 			row-key="name" search-placeholder="Search tender / reference / issuing body"
-			empty-message="No tenders yet.">
+			empty-message="No tenders yet. Start one when an invitation to bid comes in."
+			@row-click="(row) => router.push(`/tenders/${row.name}`)">
 			<template #filter-chips>
-				<DeskSelect v-model="envelopeFilter" class="!w-44">
-					<option value="">Envelope: Any</option>
-					<option v-for="o in envelopeOptions" :key="o" :value="o">{{ o }}</option>
-				</DeskSelect>
+				<label class="flex items-center gap-1.5">
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Envelope</span>
+					<DeskSelect v-model="envelopeFilter" class="!w-40">
+						<option value="">Any</option>
+						<option v-for="o in envelopeOptions" :key="o" :value="o">{{ o }}</option>
+					</DeskSelect>
+				</label>
 
-				<DeskInput v-model="fromFilter" type="date" class="!w-36" />
-				<DeskInput v-model="toFilter" type="date" class="!w-36" />
+				<label class="flex items-center gap-1.5">
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Deadline</span>
+					<DeskInput v-model="fromFilter" type="date" class="!w-36" />
+					<span class="text-[11px] text-ink-400">to</span>
+					<DeskInput v-model="toFilter" type="date" class="!w-36" />
+				</label>
 			</template>
 
 			<template #cell-name="{ row }">
 				<DeskLink :to="`/tenders/${row.name}`" class="font-mono text-xs" @click.stop>
 					{{ row.name }}
 				</DeskLink>
+				<div class="text-[10px] text-ink-500">
+					{{ row.tender_reference || row.issued_by }}
+				</div>
+			</template>
+
+			<template #cell-title="{ row }">
+				<div class="text-ink-900 font-medium">{{ row.title }}</div>
+				<div class="text-[10px] text-ink-500">
+					{{ row.envelope_structure }} · {{ row.items_count || 0 }}
+					line{{ row.items_count === 1 ? "" : "s" }} · {{ row.margin_percent || 0 }}% margin
+				</div>
 			</template>
 
 			<template #cell-emd_amount="{ row }">
 				<span v-if="!row.emd_amount" class="text-ink-400">—</span>
 				<span v-else>{{ fmtCurrency(row.emd_amount) }}</span>
+			</template>
+
+			<template #cell-bid_value="{ row }">
+				<span v-if="!row.bid_value" class="text-ink-400">—</span>
+				<span v-else class="tabular-nums font-medium text-ink-900">
+					{{ fmtCurrency(row.bid_value) }}
+				</span>
 			</template>
 
 			<template #cell-submission_deadline="{ row }">

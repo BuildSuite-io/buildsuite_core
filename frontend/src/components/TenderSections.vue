@@ -1,6 +1,7 @@
 <script setup>
 // Named prose blocks on a tender — scope of work ahead of the items, terms after them.
-// Read-only when `editable` is false, which is how the detail page renders it.
+// The detail page passes `editable` and saves each change as it is made; `editable: false`
+// renders the same blocks as plain text, for a caller that only needs to show them.
 
 import { ref } from "vue";
 import { frappeRequest } from "frappe-ui-frappe-request";
