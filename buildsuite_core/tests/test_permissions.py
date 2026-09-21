@@ -198,9 +198,10 @@ class TestPermissions(BuildSuiteTestCase):
 		self.assertFalse(frappe.db.exists("Stage Planning", st.name))
 
 	def test_hr_manager_reads_tpe_across_projects(self):
-		# PRM-016 — HR Manager reads labour (TPE) across projects, exempt from team scope.
+		# PRM-016 — HR Manager reads labour (TPE) across projects while not teamed. HR Manager is
+		# a FLIP role: unrestricted until added to a Project Team, scoped to teamed projects after.
 		hr = self._make_persona_user("HR Manager", "hr")
-		p = self._make_project(company=self.company)  # HR not on the team
+		p = self._make_project(company=self.company)  # HR not on the team → sees everything
 		t = self._make_task(p.name)
 		tpe = self._file_tpe(t.name, 30)
 
@@ -210,6 +211,43 @@ class TestPermissions(BuildSuiteTestCase):
 			self.assertTrue(doc.has_permission("read"))
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_project_visibility_model(self):
+		# PRM-017 — the team-scoped visibility model (permissions/project.py):
+		#   FLIP roles (e.g. Estimator/QS/Procurement/Store Keeper/Accountant/HR/PM): see every
+		#     project until added to any team, then scoped to their teamed projects.
+		#   TEAM_ONLY roles (Site Engineer, Foreman): always scoped — nothing until teamed.
+		#   EXEMPT roles (Director, System Manager, BuildSuite Administrator): never scoped.
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		def team_project(user, tag):
+			return frappe.get_doc(
+				{
+					"doctype": "Project",
+					"project_name": f"VIS {tag} {self._n}",
+					"custom_project_id": f"VIS-{tag}-{self._n}",
+					"project_status": "Ongoing",
+					"company": self.company,
+					"custom_team_members": [{"user": user}],
+				}
+			).insert(ignore_permissions=True)
+
+		# FLIP: unteamed → unrestricted; teamed → scoped to own projects.
+		est = self._make_persona_user("Estimator", "estvis")
+		self.assertEqual(query(est), "", "an unteamed FLIP role must not be scoped")
+		team_project(est, "est")
+		scoped = query(est)
+		self.assertIn("Project Team", scoped)
+		self.assertIn(frappe.db.escape(est), scoped)
+
+		# TEAM_ONLY: scoped even with no team membership.
+		fm = self._make_persona_user("Foreman / Supervisor", "fmvis")
+		self.assertIn("Project Team", query(fm))
+
+		# EXEMPT: never scoped, even when on a team.
+		d = self._make_persona_user("Director / Owner", "dirvis")
+		team_project(d, "dir")
+		self.assertEqual(query(d), "", "an EXEMPT role must never be scoped")
 
 	# --- M2 access control (Estimation / Rate Master / Purchase & Stock) -----
 	def _as(self, persona, prefix):
