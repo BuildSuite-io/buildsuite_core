@@ -14,7 +14,7 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { PROCUREMENT_REPORTS } from "@/data/procurementReportApi";
 import { fmtCompactINR, fmtDate, fmtINR } from "@/utils/format";
@@ -490,7 +490,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 										{{ fmtINR(m.value) }}
 									</td>
 									<td class="px-3 py-2">
-										<StatusBadge :status="m.status" size="xs" />
+										<ProcurementStatusPill :status="m.status" />
 									</td>
 								</tr>
 							</tbody>
