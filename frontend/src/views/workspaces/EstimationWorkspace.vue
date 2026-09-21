@@ -15,6 +15,7 @@ const today = computed(() =>
 
 const ESTIMATES = [
 	{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" },
+	{ to: "/quotations", icon: "file-text", label: "Quotations" },
 	{ to: "/tenders", icon: "clipboard-list", label: "Tenders" },
 ];
 const SETUP = [
