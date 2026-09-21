@@ -277,15 +277,16 @@ def profit_and_loss(project: str | None = None, from_date: str | None = None, to
 
 
 def _cash_bank_accounts(company):
-	"""Bank + Cash accounts a statement can be drawn for, excluding Petty Cash (that's its own
-	imprest report). Ordered Bank first, then by name."""
-	accounts = frappe.get_all(
+	"""Bank, Cash and Petty Cash accounts a statement can be drawn for (matching the prototype's
+	account picker). Petty Cash accounts are Cash accounts with "Petty" in the name; the statement
+	runs off raw GL entries, so it handles them the same as any other cash/bank account. Ordered
+	Bank first, then by name."""
+	return frappe.get_all(
 		"Account",
 		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
 		fields=["name", "account_name", "account_type"],
 		order_by="account_type, account_name",
 	)
-	return [a for a in accounts if "Petty" not in a.name]
 
 
 @frappe.whitelist()
