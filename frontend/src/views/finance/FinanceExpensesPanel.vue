@@ -24,7 +24,11 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
-import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import {
+	activeCompanyFilter,
+	workingCompanyFilter,
+	useActiveCompany,
+} from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
@@ -36,6 +40,10 @@ const { canCreate, canEdit, canDelete } = usePermissions();
 // the single-company seam — see useActiveCompany. Empty pre-boot → picker unfiltered, but
 // the server-side company guard still blocks a cross-company save.
 const companyFilter = activeCompanyFilter();
+const activeCompany = useActiveCompany();
+// Accounts must never cross companies, even when awareness is off (a site can hold more than
+// one company's ledgers) — so scope Account pickers to the working company unconditionally.
+const accountCompanyFilter = workingCompanyFilter();
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Expenses" }];
 const confirmDialog = useConfirm();
@@ -212,7 +220,7 @@ function resetForm() {
 const payAccounts = ref([]);
 async function loadPayAccounts() {
 	try {
-		payAccounts.value = await listExpensePayAccounts();
+		payAccounts.value = await listExpensePayAccounts(activeCompany.value);
 	} catch {
 		payAccounts.value = [];
 	}
@@ -298,7 +306,7 @@ async function save() {
 const expenseAccountFilters = computed(() => [
 	["root_type", "=", "Expense"],
 	["is_group", "=", 0],
-	...companyFilter.value,
+	...accountCompanyFilter.value,
 ]);
 </script>
 

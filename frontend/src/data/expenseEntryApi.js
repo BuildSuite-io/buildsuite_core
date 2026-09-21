@@ -25,4 +25,5 @@ export const cancelExpense = (name) => call("cancel_expense", { name });
 export const listExpenseAccounts = (company) => call("list_expense_accounts", { company });
 // Bank/Cash accounts a Company-paid expense can draw from — the active (default) company,
 // excluding Petty Cash. See the single-company seam.
-export const listExpensePayAccounts = () => call("list_cash_bank_accounts", {});
+export const listExpensePayAccounts = (company) =>
+	call("list_cash_bank_accounts", company ? { company } : {});

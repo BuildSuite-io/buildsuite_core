@@ -3,8 +3,9 @@
 // across Project Finance (Overview card, disburse / receive / pay modals, Cash & Bank
 // statement). Backed by ERPNext Account (Bank / Cash) — balances are DERIVED (opening
 // balance ± movements), so only the opening balance is editable here.
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import { useDataStore } from "@/stores";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtINR } from "@/utils/format";
@@ -17,6 +18,9 @@ import {
 
 const store = useDataStore();
 const confirmDialog = useConfirm();
+// Scope the list to the working company (default when awareness is off, selected when on) so a
+// site that carries more than one company's ledgers never lists another company's accounts here.
+const activeCompany = useActiveCompany();
 
 const canManage = computed(() => store.isAdmin);
 
@@ -28,14 +32,15 @@ async function reload() {
 	loading.value = true;
 	loadError.value = "";
 	try {
-		accounts.value = await listFinanceAccounts();
+		accounts.value = await listFinanceAccounts(activeCompany.value);
 	} catch (err) {
 		loadError.value = err.message || "Failed to load accounts.";
 	} finally {
 		loading.value = false;
 	}
 }
-onMounted(reload);
+// immediate covers first load; re-runs when the company resolves post-boot or the user switches.
+watch(activeCompany, reload, { immediate: true });
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
