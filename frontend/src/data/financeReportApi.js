@@ -14,9 +14,14 @@ async function call(method, args) {
 	}
 }
 
-export const getReceivablesPayables = () => call("receivables_and_payables", {});
-export const getFinancialPosition = () => call("financial_position", {});
-export const getCashBankAccounts = () => call("cash_bank_accounts", {});
+// company is optional — the backend falls back to default_company() (the single-company seam);
+// pass the active company so these follow the topbar switcher when multi-company is enabled.
+export const getReceivablesPayables = (company) =>
+	call("receivables_and_payables", company ? { company } : {});
+export const getFinancialPosition = (company) =>
+	call("financial_position", company ? { company } : {});
+export const getCashBankAccounts = (company) =>
+	call("cash_bank_accounts", company ? { company } : {});
 export const getCashBankStatement = (account, from_date, to_date) =>
 	call("cash_bank_statement", { account, from_date, to_date });
 export const getProfitAndLoss = ({ project, from_date, to_date } = {}) =>
