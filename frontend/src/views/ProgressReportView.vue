@@ -407,53 +407,31 @@ function backToProject() {
 				</div>
 			</section>
 
-			<!-- Cover header -->
-			<section class="report-section mb-6 pb-4 border-b border-ink-200">
-				<div class="text-xs text-ink-500 mb-1">{{ periodLabel }} · {{ project.code }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">{{ project.name }}</h1>
-				<div
-					v-if="isClient"
-					class="text-[10px] uppercase tracking-wider text-ink-500 mt-3"
-				>
-					Issued to
+			<!-- Cover header — title band -->
+			<section class="report-section mb-6 rounded-xl overflow-hidden border border-ink-200">
+				<div class="px-5 py-4 bg-ink-900 text-white">
+					<div class="text-[10px] uppercase tracking-[0.18em] text-white/70">{{ periodLabel }}</div>
+					<h1 class="text-2xl font-semibold mt-1 leading-tight">{{ project.name }}</h1>
+					<div class="text-sm text-white/80 mt-1">{{ project.client || "—" }} · {{ project.code }}</div>
 				</div>
-				<div
-					class="text-sm text-ink-600"
-					:class="isClient ? 'font-medium text-ink-900' : 'mt-1'"
-				>
-					{{ project.client || "—" }}
-				</div>
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
-					<div>
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
-							Reporting period
-						</div>
-						<div class="text-ink-900 font-medium mt-0.5">
-							{{ fmtDate(window_.start) }} → {{ fmtDate(window_.end) }}
-						</div>
+				<div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-ink-100 bg-white">
+					<div class="px-4 py-3">
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">Reporting period</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ fmtDate(window_.start) }} → {{ fmtDate(window_.end) }}</div>
 					</div>
-					<div>
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
-							Contract programme
-						</div>
-						<div class="text-ink-900 font-medium mt-0.5">
-							{{ fmtDate(project.start_date) }} → {{ fmtDate(project.end_date) }}
-						</div>
+					<div class="px-4 py-3">
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">Contract programme</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ fmtDate(project.start_date) }} → {{ fmtDate(project.end_date) }}</div>
 					</div>
-					<div>
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
-							Project Manager
-						</div>
-						<div class="text-ink-900 font-medium mt-0.5">
-							{{ project.pm_name || "—" }}
-						</div>
+					<div class="px-4 py-3">
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">Project Manager</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ project.pm_name || "—" }}</div>
 					</div>
-					<div>
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
-							Progress
-						</div>
-						<div class="text-ink-900 font-medium mt-0.5 tabular-nums">
-							{{ programme.actual }}%
+					<div class="px-4 py-3">
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">Progress</div>
+						<div class="flex items-baseline gap-1.5 mt-0.5">
+							<span class="text-ink-900 font-semibold tabular-nums">{{ programme.actual }}%</span>
+							<StatusBadge :status="project.status" />
 						</div>
 					</div>
 				</div>
@@ -463,10 +441,13 @@ function backToProject() {
 			<section class="report-section mb-6">
 				<h2 class="rpt-h2">Executive summary</h2>
 				<div
-					class="p-4 bg-brand-50/40 border border-brand-100 rounded-lg text-sm text-ink-800 leading-relaxed"
+					class="card p-4 bg-brand-50/40 border border-brand-100 rounded-lg text-sm text-ink-800 leading-relaxed"
 				>
 					<p v-for="(s, i) in summarySentences" :key="i" class="mb-1 last:mb-0">
 						{{ s }}
+					</p>
+					<p v-if="!summarySentences.length" class="text-ink-500 italic">
+						No project data available.
 					</p>
 				</div>
 			</section>
@@ -720,55 +701,90 @@ function backToProject() {
 			<!-- Stage progress -->
 			<section class="report-section mb-6">
 				<h2 class="rpt-h2">Stage progress</h2>
-				<div
-					v-if="[...currentStages, ...otherStages].length"
-					class="grid grid-cols-1 md:grid-cols-2 gap-3"
-				>
-					<div
-						v-for="s in [...currentStages, ...otherStages]"
-						:key="s.id"
-						class="p-3 border rounded-lg"
-						:class="
-							s.is_current ? 'border-brand-300 bg-brand-50/30' : 'border-ink-200'
-						"
-					>
-						<div class="flex items-center justify-between gap-2 mb-1.5">
-							<div class="text-sm font-medium text-ink-900 truncate">
-								{{ s.name }}
+
+				<!-- Current stage(s) get the space; the rest is context underneath. -->
+				<div v-if="currentStages.length" class="mb-3">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">
+						Current stage{{ currentStages.length === 1 ? "" : "s" }}
+					</div>
+					<div class="grid grid-cols-1 gap-3">
+						<div v-for="s in currentStages" :key="s.id" class="card p-4 border border-brand-200 bg-brand-50/30 rounded-lg">
+							<div class="flex items-start justify-between gap-3 mb-2">
+								<div class="min-w-0">
+									<div class="text-base font-semibold text-ink-900">{{ s.name }}</div>
+									<div class="text-[11px] text-ink-600 mt-0.5">
+										{{ fmtDate(s.planned_start) }} → {{ fmtDate(s.planned_end) }}
+										<template v-if="s.days_left !== null && s.days_left !== undefined">
+											·
+											<span :class="s.days_left < 0 ? 'text-danger-700 font-medium' : 'text-ink-600'">
+												{{ s.days_left >= 0 ? `${s.days_left} day${s.days_left === 1 ? "" : "s"} remaining` : `${-s.days_left} days overdue` }}
+											</span>
+										</template>
+									</div>
+								</div>
+								<div class="text-right flex-shrink-0">
+									<div class="text-2xl font-semibold text-ink-900 tabular-nums leading-none">
+										<template v-if="s.pct !== null">{{ s.pct }}%</template>
+										<span v-else class="text-ink-400 text-base">—</span>
+									</div>
+									<div class="text-[10px] uppercase tracking-wider text-ink-500 mt-1">complete</div>
+								</div>
 							</div>
-							<span
-								class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-								:class="STAGE_TONE[s.state]"
-							>
-								{{ s.state }}
-							</span>
-						</div>
-						<div v-if="s.pct !== null" class="flex items-center gap-2">
-							<div
-								class="flex-1 h-2.5 bg-white border border-ink-200 rounded-full overflow-hidden"
-							>
-								<div
-									class="h-full rounded-full"
-									:class="STAGE_BAR[s.state]"
-									:style="`width:${s.pct}%`"
-								></div>
+							<div class="h-2.5 bg-white border border-ink-200 rounded-full overflow-hidden">
+								<div class="h-full rounded-full" :class="STAGE_BAR[s.state]" :style="`width:${s.pct || 0}%`"></div>
 							</div>
-							<span class="text-[11px] text-ink-700 tabular-nums w-10 text-right"
-								>{{ s.pct }}%</span
-							>
-						</div>
-						<div class="text-[11px] text-ink-500 mt-1.5">
-							<span v-if="s.task_count"
-								>{{ s.done_count }}/{{ s.task_count }} tasks</span
-							>
-							<span v-if="s.planned_start">
-								· {{ fmtDate(s.planned_start) }} →
-								{{ fmtDate(s.planned_end) }}</span
-							>
+							<div class="flex items-center justify-between text-[11px] text-ink-600 mt-1.5">
+								<span>{{ s.done_count }} of {{ s.task_count }} activit{{ s.task_count === 1 ? "y" : "ies" }} complete</span>
+								<span :class="['px-2 py-0.5 rounded-full font-medium', STAGE_TONE[s.state]]">{{ s.state }}</span>
+							</div>
+							<div v-if="s.description" class="text-xs text-ink-700 mt-2">{{ s.description }}</div>
 						</div>
 					</div>
 				</div>
-				<div v-else class="text-xs text-ink-500 italic">No stages touch this period.</div>
+
+				<!-- Remaining stages that touch the period -->
+				<div v-if="otherStages.length">
+					<div v-if="currentStages.length" class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">
+						Other stages in this period
+					</div>
+					<div class="card border border-ink-200 rounded-lg overflow-hidden">
+						<table class="w-full text-xs">
+							<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+								<tr>
+									<th class="text-left px-3 py-2">Stage</th>
+									<th class="text-left px-3 py-2">Planned</th>
+									<th class="text-left px-3 py-2 w-32">Completion</th>
+									<th class="text-left px-3 py-2">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-for="s in otherStages" :key="s.id" class="border-t border-ink-100">
+									<td class="px-3 py-2 text-ink-900">
+										{{ s.name }}
+										<span v-if="!isClient && s.workflow_state && s.workflow_state !== 'Approved'" class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-warning-50 text-warning-700">plan {{ s.workflow_state.toLowerCase() }}</span>
+									</td>
+									<td class="px-3 py-2 text-ink-500 whitespace-nowrap">{{ fmtDate(s.planned_start) }} → {{ fmtDate(s.planned_end) }}</td>
+									<td class="px-3 py-2">
+										<div class="flex items-center gap-2">
+											<div class="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden">
+												<div class="h-full rounded-full" :class="STAGE_BAR[s.state]" :style="`width:${s.pct || 0}%`"></div>
+											</div>
+											<span class="tabular-nums text-ink-700 w-9 text-right">
+												<template v-if="s.pct !== null">{{ s.pct }}%</template>
+												<template v-else>—</template>
+											</span>
+										</div>
+									</td>
+									<td class="px-3 py-2">
+										<span :class="['text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap', STAGE_TONE[s.state]]">{{ s.state }}</span>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div v-if="![...currentStages, ...otherStages].length" class="text-xs text-ink-500 italic">No stages touch this period.</div>
 			</section>
 
 			<!-- Materials (deliveries always; commercial figures internal only) -->
@@ -1079,11 +1095,29 @@ function backToProject() {
 				</div>
 			</section>
 
+			<!-- Signature block. A client-issued document is a record; it needs
+			     to say who stands behind it and be acknowledgeable. -->
+			<section v-if="isClient" class="report-section report-signatures mt-8">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+					<div v-for="sig in ['Prepared by', 'Reviewed by', 'Acknowledged by client']" :key="sig">
+						<div class="h-12 border-b border-ink-400"></div>
+						<div class="text-[11px] text-ink-600 mt-1.5">{{ sig }}</div>
+						<div class="text-[10px] text-ink-400">Name · Signature · Date</div>
+					</div>
+				</div>
+			</section>
+
 			<footer
-				class="report-section mt-8 pt-4 border-t border-ink-200 text-[11px] text-ink-500 flex items-center justify-between"
+				class="report-section mt-8 pt-4 border-t border-ink-200 text-[11px] text-ink-500"
 			>
-				<div>Generated {{ generatedOnLabel() }}</div>
-				<div>{{ company.name }} · {{ project.code }}</div>
+				<div class="flex items-center justify-between gap-4">
+					<div>Generated {{ generatedOnLabel() }}</div>
+					<div>{{ company.name }} · {{ project.code }}</div>
+				</div>
+				<!-- Attribution line closing the document. -->
+				<div class="mt-3 pt-3 border-t border-ink-100 text-center text-[10px] text-ink-400">
+					Generated using <span class="font-semibold text-brand-600">BuildSuite</span>
+				</div>
 			</footer>
 		</main>
 	</div>
