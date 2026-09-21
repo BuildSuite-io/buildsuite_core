@@ -552,8 +552,27 @@ def save_bill(payload: str):
 			frappe.throw(_("Tax account {0} does not belong to company {1}.").format(t.account_head, company))
 
 	pi.flags.ignore_permissions = True
-	pi.set_missing_values()
-	pi.save()
+	# set_missing_values / validate pull the supplier's party details — its default billing
+	# Address, the payable/tax Accounts, etc. On older ERPNext, rendering the address_display
+	# enforces the CALLER's read permission on that Address, so a user restricted by a User
+	# Permission (Company / Supplier / Address) fails here with "no access to this document:
+	# Address - <name>", even though this is server-side plumbing building the bill on their
+	# behalf and the real rules (company, tax account) are enforced above. frappe.permissions
+	# .has_permission honours neither frappe.flags.ignore_permissions nor the doc-level flag for
+	# that nested read — only Administrator — so build + save under an elevated context, then
+	# restore the real owner (owner-based permissions still apply to the finished draft).
+	actual_user = frappe.session.user
+	was_new = pi.is_new()
+	try:
+		frappe.set_user("Administrator")
+		pi.set_missing_values()
+		pi.save()
+	finally:
+		frappe.set_user(actual_user)
+	restore = {"modified_by": actual_user}
+	if was_new:
+		restore["owner"] = actual_user
+	frappe.db.set_value(PI, pi.name, restore, update_modified=False)
 	return {"name": pi.name}
 
 
