@@ -139,8 +139,8 @@ def save_material_request(
 	doc.schedule_date = schedule_date or doc.schedule_date
 
 	# ERPNext requires a target warehouse on stock lines; the prototype has no
-	# warehouse UI, so default to the company/project warehouse (harmless on services).
-	default_wh = _default_warehouse(doc.company)
+	# warehouse UI, so default to the project's site store (or the company default).
+	default_wh = _default_warehouse(doc.company, project)
 	doc.set("items", [])
 	for row in items:
 		if not row.get("item_code") or flt(row.get("qty")) <= 0:
@@ -376,8 +376,9 @@ def save_purchase_order(
 	doc.schedule_date = schedule_date or doc.schedule_date
 	doc.terms = terms
 
-	# Stock lines need a delivery warehouse (see save_material_request); default it.
-	default_wh = _default_warehouse(company)
+	# Stock lines need a delivery warehouse (see save_material_request); default it to the
+	# project's site store (or the company default).
+	default_wh = _default_warehouse(company, project)
 	doc.set("items", [])
 	for row in items:
 		if not row.get("item_code") or flt(row.get("qty")) <= 0:
@@ -453,9 +454,18 @@ def _make_purchase_receipt(source_po):
 	return make_purchase_receipt(source_po)
 
 
-def _default_warehouse(company=None):
-	"""A receiving warehouse for the goods — ERPNext requires one on every stock line.
-	Prefer Stock Settings' default, else the company's first non-group warehouse."""
+def _default_warehouse(company=None, project=None):
+	"""A receiving/target warehouse for stock lines — ERPNext requires one on every stock line.
+	Prefer the project's own site store (create_warehouse_for_project builds a "<Project> Store"
+	per project), so goods land in the project's warehouse rather than a shared default; then
+	Stock Settings' default, else the company's first non-group warehouse. Each candidate is kept
+	only if it belongs to `company`, so a picker/default never crosses companies."""
+	if project:
+		from buildsuite_core.utils.stock_entry import get_warehouse_from_project
+
+		wh = get_warehouse_from_project(project)
+		if wh and (not company or frappe.db.get_value("Warehouse", wh, "company") == company):
+			return wh
 	wh = frappe.db.get_single_value("Stock Settings", "default_warehouse")
 	if wh and (not company or frappe.db.get_value("Warehouse", wh, "company") == company):
 		return wh
@@ -539,9 +549,13 @@ def get_receipt_draft(purchase_order: str):
 		target = _make_purchase_receipt(purchase_order)
 	except Exception as e:  # fully received / closed / permission
 		frappe.throw(_("Can't receive against {0}: {1}").format(purchase_order, str(e)))
-	fallback = _default_warehouse(target.company)
+	# Default to the project's site store, not whatever generic warehouse the PO line carried,
+	# so a project's goods land in its own store. The user can still change it on the form.
+	default_wh = _default_warehouse(target.company, target.get("project"))
+	if default_wh:
+		target.set_warehouse = default_wh
 	for it in target.items:
-		it.warehouse = it.warehouse or fallback
+		it.warehouse = default_wh or it.warehouse
 		# Default the editable received qty to the still-outstanding quantity.
 		it.received_qty = flt(it.received_qty) or flt(it.qty)
 	return _serialize_pr(target, _ordered_map(target.items))
@@ -555,14 +569,16 @@ def _apply_receipt_lines(doc, lines, warehouse=None):
 	by_item = {}
 	for l in lines:
 		by_item.setdefault(l.get("item_code"), l)
-	fallback = warehouse or _default_warehouse(doc.company)
+	# The chosen warehouse wins; otherwise default to the project's site store (over any stale
+	# warehouse the PO line carried), then the company default.
+	fallback = warehouse or _default_warehouse(doc.company, doc.get("project"))
 	for it in doc.items:
 		match = by_poi.get(it.purchase_order_item) or by_item.get(it.item_code)
 		qty = flt(match.get("received_qty")) if match else 0
 		it.received_qty = qty
 		it.qty = qty
 		it.rejected_qty = 0
-		it.warehouse = warehouse or it.warehouse or fallback
+		it.warehouse = warehouse or fallback or it.warehouse
 	doc.set("items", [it for it in doc.items if flt(it.received_qty) > 0])
 
 

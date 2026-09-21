@@ -22,9 +22,19 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const route = useRoute();
+// Warehouses are company-partitioned; scope the picker to the working company (default when
+// awareness is off, selected when on) so a site holding several companies' stores never offers
+// another company's warehouse.
+const activeCompany = useActiveCompany();
+const warehouseFilters = computed(() => {
+	const filters = [["is_group", "=", 0]];
+	if (activeCompany.value) filters.push(["company", "=", activeCompany.value]);
+	return filters;
+});
 const router = useRouter();
 const { canEdit, canCreate } = usePermissions();
 
@@ -257,7 +267,7 @@ const saveLabel = computed(() =>
 						doctype="Warehouse"
 						label-field="warehouse_name"
 						value-field="name"
-						:filters="[['is_group', '=', 0]]"
+						:filters="warehouseFilters"
 						placeholder="— Select warehouse —"
 					/>
 				</DeskField>
