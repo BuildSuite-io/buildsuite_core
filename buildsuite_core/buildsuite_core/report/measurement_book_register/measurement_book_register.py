@@ -51,7 +51,10 @@ def execute(filters=None):
 			(SELECT COUNT(*) FROM `tabMeasurement Book Entry` e WHERE e.parent = mb.name) AS entries,
 			mb.measured_total AS measured, mb.status
 		FROM `tabMeasurement Book` mb
-		WHERE mb.docstatus = 1 """ + conditions + """
+		-- Measurement Book is NOT submittable (its lifecycle is the `status` field: Draft →
+		-- Certified), so every record stays at docstatus 0; filtering docstatus = 1 returned
+		-- nothing. Show all non-cancelled books and let the Status filter/badges narrow them.
+		WHERE mb.docstatus < 2 """ + conditions + """
 		ORDER BY mb.date DESC, mb.name DESC
 		""",
 		filters,

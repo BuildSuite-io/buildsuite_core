@@ -33,6 +33,15 @@ onMounted(async () => {
 });
 
 const show = computed(() => props.enabled && (loading.value || reports.value.length > 0));
+
+// Carry the tile's description into the report route so the report page can show it as its
+// subtitle (otherwise ReportView falls back to a generic label). Appended as a query param so it
+// works whether or not the route already carries one.
+function reportTo(r) {
+	if (r.external || !r.route || !r.description) return r.route;
+	const sep = r.route.includes("?") ? "&" : "?";
+	return `${r.route}${sep}desc=${encodeURIComponent(r.description)}`;
+}
 </script>
 
 <template>
@@ -47,7 +56,7 @@ const show = computed(() => props.enabled && (loading.value || reports.value.len
 				:icon="r.icon"
 				:label="r.label"
 				:description="r.description"
-				:to="r.external ? null : r.route"
+				:to="r.external ? null : reportTo(r)"
 				:href="r.external ? r.route : null"
 			>
 				<template #badge>
