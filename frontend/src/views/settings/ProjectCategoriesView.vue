@@ -3,11 +3,10 @@
 // doctype). Admin / BSA gated. Construction categories drive project templating.
 
 import { onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
-import DeskLink from "@/components/desk/DeskLink.vue";
 
 const store = useDataStore();
 const router = useRouter();
@@ -38,9 +37,9 @@ onMounted(() => {
 <template>
 	<DeskPage title="Project Categories" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<DeskLink to="/settings/project-categories/new" class="desk-save-btn">
+			<RouterLink to="/settings/project-categories/new" class="desk-save-btn">
 				+ New Category
-			</DeskLink>
+			</RouterLink>
 		</template>
 
 		<DocTypeListView
