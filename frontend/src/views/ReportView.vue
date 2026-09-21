@@ -9,6 +9,9 @@ import FrappeReport from "@/components/FrappeReport.vue";
 
 const route = useRoute();
 const report = computed(() => route.params.report || "");
+// The report's description (from its workspace tile), shown as the page subtitle. Falls back to
+// a generic label when the report was opened without one (e.g. a direct URL).
+const subtitle = computed(() => route.query.desc || "Report");
 // Where this report belongs, so the breadcrumb points back (defaults to Reports).
 const backTo = computed(() => route.query.from || "");
 const backLabel = computed(() => route.query.fromLabel || "Reports");
@@ -22,7 +25,7 @@ const breadcrumbs = computed(() => {
 </script>
 
 <template>
-	<DeskPage :title="report" subtitle="Report" :breadcrumbs="breadcrumbs" printable>
+	<DeskPage :title="report" :subtitle="subtitle" :breadcrumbs="breadcrumbs" printable>
 		<FrappeReport :report="report" />
 	</DeskPage>
 </template>
