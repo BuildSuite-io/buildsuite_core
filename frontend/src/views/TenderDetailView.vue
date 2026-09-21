@@ -37,16 +37,15 @@ const subtitle = computed(() =>
 	[props.id, doc.value?.issuing_body, doc.value?.tender_reference].filter(Boolean).join(" · ")
 );
 
-// Each row's amount already carries the margin, so the sum of them is the taxable figure.
+// The totals are stored on the tender, set by calculate_items() on every save — read them
+// rather than re-deriving them here, so the page and the list can never disagree.
 const rows = computed(() => doc.value?.buildsuite_tenders_items || []);
-const taxable = computed(() => rows.value.reduce((a, r) => a + (Number(r.amount) || 0), 0));
-const total = computed(
-	() => taxable.value * (1 + (Number(doc.value?.tax_percent) || 0) / 100)
-);
+const taxable = computed(() => Number(doc.value?.bid_before_tax) || 0);
+const total = computed(() => Number(doc.value?.bid_value) || 0);
+const cost = computed(() => Number(doc.value?.subtotal) || 0);
+const margin = computed(() => Number(doc.value?.margin_amount) || 0);
+const tax = computed(() => Number(doc.value?.tax_amount) || 0);
 const pbg = computed(() => Number(doc.value?.performance_guarantee_percent) || 0);
-const cost = computed(() =>
-	rows.value.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.rate) || 0), 0)
-);
 
 const TODAY = toDateInputValue(new Date());
 const deadlineGone = computed(
@@ -89,8 +88,8 @@ async function onDelete() {
 		</template>
 	</div>
 
-	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :status="doc?.status || 'Draft'"
-		:breadcrumbs="breadcrumbs" printable>
+	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs"
+		printable>
 		<template #actions>
 			<RouterLink :to="`/tenders/${id}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
@@ -196,7 +195,7 @@ async function onDelete() {
 					<tr>
 						<th class="text-left font-medium px-3 py-2.5 w-24">Source</th>
 						<th class="text-left font-medium px-3 py-2.5">Description</th>
-						<th class="text-right font-medium px-3 py-2.5 w-20">Unit</th>
+						<th class="text-left font-medium px-3 py-2.5 w-20">Unit</th>
 						<th class="text-right font-medium px-3 py-2.5 w-20">Qty</th>
 						<th class="text-right font-medium px-3 py-2.5 w-28">Rate</th>
 						<th class="text-right font-medium px-3 py-2.5 w-28">
@@ -218,8 +217,13 @@ async function onDelete() {
 						<td class="px-3 py-3">
 							<StatusBadge v-if="r.source" :status="r.source" size="xs" />
 						</td>
-						<td class="px-3 py-3 text-sm text-ink-900">{{ r.description }}</td>
-						<td class="px-3 py-3 text-right text-ink-600">{{ r.unit || "—" }}</td>
+						<td class="px-3 py-3 text-sm text-ink-900">
+							{{ r.description }}
+							<div v-if="r.source_ref" class="text-[10px] text-ink-500 font-mono">
+								{{ r.source_ref }}
+							</div>
+						</td>
+						<td class="px-3 py-3 text-ink-600">{{ r.unit || "—" }}</td>
 						<td class="px-3 py-3 text-right tabular-nums">{{ r.qty }}</td>
 						<td class="px-3 py-3 text-right tabular-nums">{{ fmtCurrency(r.rate) }}</td>
 						<td class="px-3 py-3 text-right tabular-nums">{{ fmtCurrency(r.sell_rate) }}</td>
@@ -244,7 +248,7 @@ async function onDelete() {
 					<tr>
 						<td colspan="7"
 							class="px-3 pb-3 pt-1 text-right text-[10px] uppercase tracking-wider text-ink-500">
-							of which cost {{ fmtCurrency(cost) }} · margin {{ fmtCurrency(taxable - cost) }}
+							of which cost {{ fmtCurrency(cost) }} · margin {{ fmtCurrency(margin) }}
 						</td>
 					</tr>
 				</tfoot>
@@ -268,7 +272,7 @@ async function onDelete() {
 					</div>
 					<div class="flex justify-between py-1">
 						<dt class="text-ink-600">Margin {{ Number(doc?.margin_percent) || 0 }}%</dt>
-						<dd class="tabular-nums text-ink-900">{{ fmtCurrency(taxable - cost) }}</dd>
+						<dd class="tabular-nums text-ink-900">{{ fmtCurrency(margin) }}</dd>
 					</div>
 					<div class="flex justify-between py-1 border-t border-ink-100 mt-1 pt-2">
 						<dt class="text-ink-600">Bid before tax</dt>
@@ -276,7 +280,7 @@ async function onDelete() {
 					</div>
 					<div class="flex justify-between py-1">
 						<dt class="text-ink-600">Tax {{ Number(doc?.tax_percent) || 0 }}%</dt>
-						<dd class="tabular-nums text-ink-900">{{ fmtCurrency(total - taxable) }}</dd>
+						<dd class="tabular-nums text-ink-900">{{ fmtCurrency(tax) }}</dd>
 					</div>
 					<div class="flex justify-between border-t border-ink-200 mt-1 pt-2 font-semibold">
 						<dt class="text-ink-900">Total</dt>

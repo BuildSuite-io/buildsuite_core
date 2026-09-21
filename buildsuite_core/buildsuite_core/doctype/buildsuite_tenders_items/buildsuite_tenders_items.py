@@ -15,6 +15,7 @@ class BuildSuiteTendersItems(Document):
 		from frappe.types import DF
 
 		amount: DF.Currency
+		code: DF.Data | None
 		description: DF.SmallText
 		parent: DF.Data
 		parentfield: DF.Data
@@ -24,6 +25,7 @@ class BuildSuiteTendersItems(Document):
 		rate: DF.Currency
 		sell_rate: DF.Currency
 		source: DF.Literal["Manual", "BOQ", "Assembly"]
+		source_ref: DF.Data | None
 		unit: DF.Link | None
 	# end: auto-generated types
 

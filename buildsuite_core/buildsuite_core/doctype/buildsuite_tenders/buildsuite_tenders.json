@@ -35,6 +35,14 @@
   "section_break_wxgf",
   "buildsuite_tenders_items",
   "items_count",
+  "section_break_whpa",
+  "column_break_nhvt",
+  "column_break_mbdv",
+  "subtotal",
+  "margin_amount",
+  "bid_before_tax",
+  "tax_amount",
+  "bid_value",
   "terms_sections_section",
   "terms_sections",
   "internal_notes_section",
@@ -235,12 +243,58 @@
    "fieldtype": "Table",
    "label": "Terms & conditions",
    "options": "BuildSuite Tender Section"
+  },
+  {
+   "fieldname": "subtotal",
+   "fieldtype": "Currency",
+   "label": "Subtotal",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "margin_amount",
+   "fieldtype": "Currency",
+   "label": "Margin",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bid_before_tax",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Bid before tax",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "Tax",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bid_value",
+   "fieldtype": "Currency",
+   "label": "Bid value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_whpa",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "fieldname": "column_break_nhvt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_mbdv",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-16 20:51:44.112117",
+ "modified": "2026-09-20 08:15:23.369519",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

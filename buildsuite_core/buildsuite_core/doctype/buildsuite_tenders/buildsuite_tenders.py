@@ -18,6 +18,8 @@ class BuildSuiteTenders(Document):
 		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import BuildSuiteTendersItems
 		from frappe.types import DF
 
+		bid_before_tax: DF.Currency
+		bid_value: DF.Currency
 		buildsuite_tenders_items: DF.Table[BuildSuiteTendersItems]
 		date_issued: DF.Date | None
 		emd_amount: DF.Currency
@@ -27,6 +29,7 @@ class BuildSuiteTenders(Document):
 		issued_by: DF.Literal["Government", "Main Contractor"]
 		issuing_body: DF.Data
 		items_count: DF.Int
+		margin_amount: DF.Currency
 		margin_percent: DF.Float
 		notes: DF.SmallText | None
 		performance_guarantee_percent: DF.Data | None
@@ -34,6 +37,8 @@ class BuildSuiteTenders(Document):
 		preamble_sections: DF.Table[BuildSuiteTenderSection]
 		project: DF.Link | None
 		submission_deadline: DF.Date
+		subtotal: DF.Currency
+		tax_amount: DF.Currency
 		tax_percent: DF.Float
 		tender_reference: DF.Data
 		terms_sections: DF.Table[BuildSuiteTenderSection]
@@ -51,6 +56,15 @@ class BuildSuiteTenders(Document):
 		for row in self.buildsuite_tenders_items:
 			row.sell_rate = flt(row.rate) * margin
 			row.amount = flt(row.qty) * flt(row.sell_rate)
+
+		# Totals are stored, not just derived in the detail view — a list column or a report
+		# reads the parent row only, and cannot reach the item rows to add them up.
+		self.subtotal = sum(flt(row.qty) * flt(row.rate) for row in self.buildsuite_tenders_items)
+		self.bid_before_tax = sum(flt(row.amount) for row in self.buildsuite_tenders_items)
+		self.margin_amount = flt(self.bid_before_tax) - flt(self.subtotal)
+		# Tax is charged on the price the client pays, never on our cost.
+		self.tax_amount = flt(self.bid_before_tax) * flt(self.tax_percent) / 100
+		self.bid_value = flt(self.bid_before_tax) + flt(self.tax_amount)
 
 	def validate_dates(self):
 		# A deadline before the invitation was issued is a typo, not a tender.
