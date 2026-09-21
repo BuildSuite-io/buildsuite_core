@@ -8,21 +8,33 @@ beyond DocPerm, it only declines to object.
 
 import frappe
 
-# Never scoped — see every project. HR's read-only is enforced by DocPerm, not here.
-EXEMPT_ROLES = {"BuildSuite Director", "BuildSuite HR Manager"}
+# Never scoped — see every project regardless of team membership. The org-wide admin roles
+# (System Manager + BuildSuite Administrator) and the Director sit here so that adding them to a
+# Project Team never narrows their global visibility.
+EXEMPT_ROLES = {
+	"BuildSuite Director",
+	"System Manager",
+	"BuildSuite Administrator",
+}
 
-# Unrestricted until the user joins any team; scoped to teamed projects thereafter.
-FLIP_ROLES = {"BuildSuite PM", "System Manager", "BuildSuite Administrator"}
-
-# Always scoped to projects the user is a team member of.
-TEAM_ONLY_ROLES = {
+# Unrestricted until the user joins any team; scoped to their teamed projects thereafter. These
+# are the office/back-office roles that browse everything by default but narrow to their projects
+# once explicitly teamed onto some. HR Manager's read-only is enforced by DocPerm, not here.
+FLIP_ROLES = {
+	"BuildSuite PM",
+	"BuildSuite HR Manager",
 	"BuildSuite Estimator",
 	"BuildSuite QS",
-	"BuildSuite Site Engineer",
-	"BuildSuite Foreman",
 	"BuildSuite Procurement Officer",
 	"BuildSuite Store Keeper",
 	"BuildSuite Accountant",
+}
+
+# Always scoped to projects the user is a team member of — the site roles, who see nothing until
+# teamed onto a project.
+TEAM_ONLY_ROLES = {
+	"BuildSuite Site Engineer",
+	"BuildSuite Foreman",
 }
 
 
