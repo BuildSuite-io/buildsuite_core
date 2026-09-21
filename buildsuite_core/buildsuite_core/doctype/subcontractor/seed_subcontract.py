@@ -59,28 +59,10 @@ def seed_delivery_types():
 
 
 def seed_subcontractor_supplier_group():
-	"""A 'Subcontractor' Supplier Group so subcontractor Suppliers group cleanly. Idempotent.
-
-	On a bare site the app can be installed BEFORE ERPNext's setup wizard seeds the Supplier Group
-	tree — so there is no parent group to attach to, and the old fallback to the literal
-	"All Supplier Groups" root failed with "Could not find Parent Supplier Group: All Supplier
-	Groups". Attach under the standard ERPNext root when it exists, else any existing group, else
-	create the root so the new group always has a valid parent."""
+	"""A 'Subcontractor' Supplier Group so subcontractor Suppliers group cleanly. Idempotent."""
 	if frappe.db.exists("Supplier Group", "Subcontractor"):
 		return
-	ROOT = "All Supplier Groups"
-	parent = (
-		ROOT
-		if frappe.db.exists("Supplier Group", ROOT)
-		else frappe.db.get_value("Supplier Group", {"is_group": 1}, "name")
-	)
-	if not parent:
-		# Empty tree (setup wizard hasn't run) — create the standard root; ERPNext's own
-		# install_fixtures is a no-op on it later since it already exists.
-		frappe.get_doc(
-			{"doctype": "Supplier Group", "supplier_group_name": ROOT, "is_group": 1}
-		).insert(ignore_permissions=True)
-		parent = ROOT
+	parent = frappe.db.get_value("Supplier Group", {"is_group": 1}, "name") or "All Supplier Groups"
 	frappe.get_doc(
 		{"doctype": "Supplier Group", "supplier_group_name": "Subcontractor", "parent_supplier_group": parent}
 	).insert(ignore_permissions=True)
