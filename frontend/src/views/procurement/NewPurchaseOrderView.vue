@@ -7,6 +7,7 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import { getPurchaseOrder, getMrForPo, savePurchaseOrder } from "@/data/procurementApi";
+import { getSupplierBillItemDetails } from "@/data/supplierBillApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -29,6 +30,19 @@ const canSaveForm = computed(() =>
 
 function emptyLine() {
 	return { item_code: "", description: "", qty: null, uom: "", rate: null };
+}
+// Default the line's UOM (and description, when blank) from the Item master on pick — mirrors the
+// Supplier Bill direct-line behaviour so choosing an item never leaves UOM empty (get_item_details
+// returns the Item's stock_uom as `uom`).
+async function onPickItem(line) {
+	if (!line.item_code) return;
+	try {
+		const d = await getSupplierBillItemDetails(line.item_code);
+		if (d.uom) line.uom = d.uom;
+		if (!line.description) line.description = d.description || "";
+	} catch {
+		/* leave the row for manual entry */
+	}
 }
 function inDays(n) {
 	return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
@@ -277,6 +291,7 @@ const saveLabel = computed(() =>
 										value-field="name"
 										:search-fields="['item_name', 'item_code', 'name']"
 										placeholder="— Item —"
+										@update:model-value="onPickItem(line)"
 									/>
 								</td>
 								<td class="px-3 py-2">
