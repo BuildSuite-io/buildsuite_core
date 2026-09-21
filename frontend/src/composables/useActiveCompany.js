@@ -69,6 +69,17 @@ export function activeCompanyFilter() {
 	return computed(() => (enabled.value && c.value ? [["company", "=", c.value]] : []));
 }
 
+// A `:filters` fragment that ALWAYS scopes to the working company (the default company when
+// awareness is off, the selected company when on) — unlike activeCompanyFilter(), which
+// intentionally no-ops while awareness is off. Use it for doctypes that must never cross
+// companies regardless of the awareness flag — Account chiefly, where a site that carries more
+// than one company's ledgers would otherwise leak another company's accounts into a picker.
+// Empty only until the company resolves (pre-boot), then narrows.
+export function workingCompanyFilter(field = "company") {
+	const c = useActiveCompany();
+	return computed(() => (c.value ? [[field, "=", c.value]] : []));
+}
+
 // Doctypes that carry a `company` field and whose pickers must be scoped to the working
 // company. Kept here (the one company-scope seam) so DeskLinkPicker can auto-scope every picker
 // of these doctypes — no per-call-site opt-in — keeping all pickers consistent. Keep in sync when

@@ -5,10 +5,11 @@ import { parseFrappeError } from "@/utils/frappeError";
 // Account (Bank / Cash, company-scoped) — see buildsuite_core.api.finance_account.
 // Balances are derived server-side: current = opening ± recorded movements.
 
-export async function listFinanceAccounts() {
+export async function listFinanceAccounts(company) {
 	try {
 		return await frappeRequest({
 			url: "buildsuite_core.api.finance_account.list_finance_accounts",
+			params: company ? { company } : {},
 		});
 	} catch (err) {
 		throw new Error(parseFrappeError(err).summary || "Failed to load accounts.");

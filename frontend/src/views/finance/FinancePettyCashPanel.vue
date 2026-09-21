@@ -31,9 +31,14 @@ import { useUserNames } from "@/composables/useUserNames";
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const session = useSessionStore();
+// Funding-source accounts are scoped to the working company (default when awareness is off,
+// selected when on) so a site holding more than one company's ledgers never offers another
+// company's Bank/Cash account to disburse from.
+const activeCompany = useActiveCompany();
 const { canCreate } = usePermissions();
 const { userName } = useUserNames();
 const confirmDialog = useConfirm();
@@ -185,7 +190,7 @@ async function openDirect() {
 		saving: false,
 	});
 	try {
-		direct.accounts = await listCashBankAccounts();
+		direct.accounts = await listCashBankAccounts(activeCompany.value);
 	} catch (err) {
 		showToast(err.message || "Failed to load accounts", "error");
 	}
@@ -224,7 +229,7 @@ async function openDisburse(row) {
 	try {
 		// The funding source — Bank/Cash accounts for the active (default) company, EXCLUDING
 		// Petty Cash (Cr must be a real source, never Petty Cash itself, a no-op JE).
-		disb.accounts = await listCashBankAccounts();
+		disb.accounts = await listCashBankAccounts(activeCompany.value);
 	} catch (err) {
 		showToast(err.message || "Failed to load accounts", "error");
 	}
