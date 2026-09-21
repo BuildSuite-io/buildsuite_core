@@ -233,7 +233,7 @@ function toggle(k) {
 					>
 					<DeskInput v-model="to" type="date" class="!w-36" />
 				</div>
-				<div class="ml-auto text-sm">
+				<div class="ml-auto text-sm pr-4">
 					<span class="text-ink-500">Total</span>
 					<span class="font-semibold text-ink-900 tabular-nums">
 						{{ fmtINR(grandTotal) }}</span
