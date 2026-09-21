@@ -4,26 +4,27 @@
 // tiles that open each function in its own page. Role-gated via the session roles
 // (site roles see only Petty Cash + Expenses), mirroring the prototype's
 // store.visibleFinanceTabs. Every section is client-side dummy data except Petty
-// Cash, which is live.
-import { computed } from "vue";
+// Cash, which is live. The Cash & bank figure on the Overview CTA is live and
+// company-scoped (finance_report.financial_position), not the finance mock.
+import { computed, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
-import { useFinanceMock } from "@/data/financeMock";
 import { usePermissions } from "@/composables/usePermissions";
+import { getFinancialPosition } from "@/data/financeReportApi";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
-const fin = useFinanceMock();
 const { canRead } = usePermissions();
+const activeCompany = useActiveCompany();
 
 const today = new Date().toLocaleDateString("en-US", {
 	weekday: "long",
 	month: "short",
 	day: "numeric",
 });
-const cashBank = computed(() => fin.totalCashBank);
 
 // Per-persona gating — each tile follows the persona's read cap, now derived from the
 // backend DocPerms (usePermissions → api.permission.get_resource_permissions), so the
@@ -56,6 +57,21 @@ const hasLedgerFinance = computed(
 	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance"),
 );
 const showOverview = computed(() => hasLedgerFinance.value);
+
+// Cash & bank on the Overview CTA — live GL balances for the active company (bank + cash),
+// the same source the Financial Position report uses. Fetched only when the tile is shown,
+// and re-fetched when the working company changes.
+const cashBank = ref(0);
+async function loadCashBank() {
+	if (!showOverview.value) return;
+	try {
+		const fp = await getFinancialPosition(activeCompany.value);
+		cashBank.value = (Number(fp?.have?.bank) || 0) + (Number(fp?.have?.cash) || 0);
+	} catch {
+		cashBank.value = 0;
+	}
+}
+watch([activeCompany, showOverview], loadCashBank, { immediate: true });
 // The Reports group is ledger-gated too, so whenever it could show, showOverview is already
 // true — it never independently affects the no-access check.
 const noAccess = computed(

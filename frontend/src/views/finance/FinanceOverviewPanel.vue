@@ -2,13 +2,21 @@
 // Project Finance › Financial Overview. Mirrors the prototype's richer overview:
 // a clickable KPI strip (cash & bank · receivables · payables · retention · net
 // position), cash/bank accounts, a "needs attention" action queue, quick actions,
-// receivable/payable chase-lists and the latest money movements. Finance is
-// client-side dummy data for now (except Petty Cash, which is live) — everything
-// here derives from useFinanceMock; the KPI links jump to each section.
-import { computed } from "vue";
+// receivable/payable chase-lists and the latest money movements.
+//
+// The KPI totals, the Accounts section and both chase-lists are LIVE and company-scoped —
+// they come from finance_report (financial_position + receivables_and_payables) and
+// finance_account.list_finance_accounts for the active company. The "Needs attention"
+// draft/expense counts and "Recent transactions" are still the finance demo mock (their
+// registers aren't uniformly company-scoped yet), so those two panels are clearly labelled
+// as sample data below.
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useFinanceMock } from "@/data/financeMock";
 import DeskPage from "@/components/desk/DeskPage.vue";
+import { getFinancialPosition, getReceivablesPayables } from "@/data/financeReportApi";
+import { listFinanceAccounts } from "@/data/financeAccountApi";
+import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
@@ -16,27 +24,52 @@ import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
 const fin = useFinanceMock();
 const router = useRouter();
 const { canCreate } = usePermissions();
+const activeCompany = useActiveCompany();
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Overview" }];
 
 function go(section) {
 	router.push(`/project-finance/${section}`);
 }
-function daysOverdue(due) {
-	if (!due) return 0;
-	return Math.round((Date.now() - new Date(due).getTime()) / 86400000);
-}
 
-// ---- KPIs ----
-const accounts = computed(() => fin.sortedFinanceAccounts || []);
+// ---- Live, company-scoped finance data ----
+const fp = ref({ have: {}, owe: {}, net: 0 });
+const rp = ref({ receivables: [], payables: [] });
+const financeAccounts = ref([]);
+
+async function loadFinance() {
+	const company = activeCompany.value;
+	try {
+		const [pos, recvPay, accts] = await Promise.all([
+			getFinancialPosition(company),
+			getReceivablesPayables(company),
+			listFinanceAccounts(company),
+		]);
+		fp.value = pos || { have: {}, owe: {}, net: 0 };
+		rp.value = recvPay || { receivables: [], payables: [] };
+		financeAccounts.value = accts || [];
+	} catch {
+		/* keep whatever we last had; the panel degrades to zeros rather than mock */
+	}
+}
+watch(activeCompany, loadFinance, { immediate: true });
+
+// ---- KPIs (live) ----
+const accounts = computed(() => financeAccounts.value);
 const cashBankAccounts = computed(() => accounts.value.filter((a) => a.type !== "Petty Cash"));
-const totalCashBank = computed(() => fin.totalCashBank);
-const receivable = computed(() => fin.totalReceivable);
-const overdueCount = computed(
-	() => fin.openInvoices.filter((i) => daysOverdue(i.due_date) > 0).length
+const totalCashBank = computed(
+	() => (Number(fp.value.have?.bank) || 0) + (Number(fp.value.have?.cash) || 0)
 );
-const payable = computed(() => fin.totalPayable);
-const retention = computed(() => fin.retentionHeld);
-const netPosition = computed(() => totalCashBank.value + receivable.value - payable.value);
+const receivable = computed(() => Number(fp.value.have?.customersOwe) || 0);
+const overdueCount = computed(
+	() => rp.value.receivables.filter((r) => (r.days_overdue || 0) > 0).length
+);
+const payable = computed(
+	() => (Number(fp.value.owe?.suppliers) || 0) + (Number(fp.value.owe?.subcontractors) || 0)
+);
+const retention = computed(() => Number(fp.value.owe?.retention) || 0);
+// Net matches the Financial Position report exactly (assets − liabilities, incl. petty/advances),
+// which is where the KPI links, rather than a looser cash+receivable−payable estimate.
+const netPosition = computed(() => Number(fp.value.net) || 0);
 
 // ---- Needs attention (each row jumps to its queue) ----
 const draftInvoices = computed(
@@ -70,23 +103,18 @@ const attention = computed(() => {
 	return out;
 });
 
-// ---- Chase lists ----
+// ---- Chase lists (live, company-scoped) ----
 const topOverdue = computed(() =>
-	fin.openInvoices
-		.map((i) => ({
-			id: i.id,
-			party: fin.customerById(i.customer)?.name || i.customer,
-			amount: fin.invoiceOutstanding(i),
-			days: daysOverdue(i.due_date),
-		}))
-		.filter((r) => r.days > 0)
-		.sort((a, b) => b.days - a.days)
+	rp.value.receivables
+		.filter((r) => (r.days_overdue || 0) > 0)
+		.sort((a, b) => b.days_overdue - a.days_overdue)
 		.slice(0, 4)
+		.map((r) => ({ id: r.id, party: r.party, amount: r.outstanding, days: r.days_overdue }))
 );
 const topPayables = computed(() =>
-	fin.unifiedPayables
-		.filter((p) => p.outstanding > 0.01)
-		.sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))
+	[...rp.value.payables]
+		.filter((p) => (p.outstanding || 0) > 0.01)
+		.sort((a, b) => (a.due || "").localeCompare(b.due || ""))
 		.slice(0, 4)
 );
 
@@ -268,7 +296,7 @@ const toneDot = {
 								</div>
 							</div>
 							<div class="text-sm font-semibold text-ink-900 tabular-nums">
-								{{ fmtINR(fin.accountBalance(acc.id)) }}
+								{{ fmtINR(acc.current_balance) }}
 							</div>
 						</div>
 						<div
@@ -282,10 +310,17 @@ const toneDot = {
 
 				<!-- Needs attention -->
 				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
-					<div class="px-4 py-2.5 bg-ink-50 border-b border-ink-200">
+					<div
+						class="px-4 py-2.5 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
+					>
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
 							Needs attention
 						</h3>
+						<span
+							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
+							title="Draft/expense counts are sample data pending live finance registers."
+							>Sample</span
+						>
 					</div>
 					<div v-if="attention.length" class="divide-y divide-ink-100">
 						<button
@@ -431,7 +466,7 @@ const toneDot = {
 							<div class="min-w-0">
 								<div class="flex items-center gap-1.5">
 									<div class="text-xs text-ink-900 font-medium truncate">
-										{{ fin.supplierById(p.supplier)?.name || p.supplier }}
+										{{ p.party }}
 									</div>
 									<span
 										v-if="p.kind === 'subcontractor'"
@@ -440,7 +475,7 @@ const toneDot = {
 									>
 								</div>
 								<div class="text-[10px] text-ink-400">
-									due {{ fmtDate(p.due_date) }}
+									due {{ fmtDate(p.due) }}
 								</div>
 							</div>
 							<div
@@ -461,8 +496,15 @@ const toneDot = {
 				<div
 					class="px-4 py-2.5 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					<h3
+						class="text-xs uppercase tracking-wider font-semibold text-ink-700 flex items-center gap-2"
+					>
 						Recent transactions
+						<span
+							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
+							title="Sample data pending a live payments register."
+							>Sample</span
+						>
 					</h3>
 					<button
 						type="button"
