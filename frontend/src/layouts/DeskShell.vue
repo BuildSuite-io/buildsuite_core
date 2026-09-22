@@ -1,21 +1,108 @@
 <script setup>
-import { computed, ref, watch } from "vue";
-import { useRoute, RouterLink } from "vue-router";
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
 import { useUserNames } from "@/composables/useUserNames";
+import { usePermissions } from "@/composables/usePermissions";
 import LogoIcon from "@/components/LogoIcon.vue";
 import RoleSwitcher from "@/components/RoleSwitcher.vue";
 import CompanySwitcher from "@/components/CompanySwitcher.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getDeskUrl, logout, getSessionUser } from "@/utils/session";
+import { searchPlaces, decorateRecord } from "@/data/search";
+import { searchRecords } from "@/data/searchApi";
 
 const route = useRoute();
+const router = useRouter();
 const store = useDataStore();
 const session = useSessionStore();
 const { userName } = useUserNames();
+const { canRead } = usePermissions();
+
+// Command palette (⌘K). Two kinds of answer — PLACES (a doctype's list or a
+// report, permission-gated client-side) and RECORDS (the documents themselves,
+// fetched from the permission-safe global-search index). Both flow through the
+// shared search data layer (src/data/search.js, searchApi.js) so this shell only
+// wires the UX, never the search logic.
 const searchOpen = ref(false);
+const searchQuery = ref("");
+const records = ref([]);
+const searchCursor = ref(0);
+const searchInput = ref(null);
+
+// Places: permission-gated + sorted (max 6), derived synchronously from the query.
+const places = computed(() =>
+	searchPlaces(searchQuery.value, {
+		canRead,
+		reportRoutes: session.access?.reportRoutes || [],
+	})
+);
+// Raw record results decorated into palette rows (dropping any doctype with no
+// SPA route). Kept as its own computed so the template can render the section
+// and the flat cursor index off the same list.
+const recordRows = computed(() => records.value.map(decorateRecord).filter(Boolean));
+// One flat list, so the arrow keys walk places then records without the caller
+// having to know which section the cursor is standing in.
+const searchFlat = computed(() => [...places.value, ...recordRows.value]);
+
+// Debounced record fetch. A new query resets the cursor and, after ~180ms of no
+// typing, fetches records when there are ≥ 2 chars; out-of-order responses are
+// dropped by checking the query hasn't moved on since the request went out.
+let searchTimer = null;
+watch(searchQuery, (q) => {
+	searchCursor.value = 0;
+	if (searchTimer) clearTimeout(searchTimer);
+	const text = q.trim();
+	if (text.length < 2) {
+		records.value = [];
+		return;
+	}
+	searchTimer = setTimeout(async () => {
+		try {
+			const rows = await searchRecords(text, 12);
+			// Ignore a stale response whose query has since changed.
+			if (searchQuery.value.trim() === text) records.value = rows;
+		} catch {
+			if (searchQuery.value.trim() === text) records.value = [];
+		}
+	}, 180);
+});
+
+function openSearch() {
+	searchOpen.value = true;
+	nextTick(() => searchInput.value?.focus());
+}
+function closeSearch() {
+	searchOpen.value = false;
+	searchQuery.value = "";
+	records.value = [];
+	searchCursor.value = 0;
+}
+function goSearch(row) {
+	if (!row) return;
+	closeSearch();
+	router.push(row.to);
+}
+function moveSearch(delta) {
+	const n = searchFlat.value.length;
+	if (!n) return;
+	searchCursor.value = (searchCursor.value + delta + n) % n;
+}
+
+// Global hotkey: ⌘K / Ctrl+K toggles the palette; Escape closes it when open.
+function onGlobalKey(e) {
+	if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+		e.preventDefault();
+		searchOpen.value ? closeSearch() : openSearch();
+		return;
+	}
+	// No preventDefault on Esc — other Esc handlers must still run.
+	if (e.key === "Escape" && searchOpen.value) closeSearch();
+}
+onMounted(() => window.addEventListener("keydown", onGlobalKey));
+onBeforeUnmount(() => window.removeEventListener("keydown", onGlobalKey));
 // Mobile sidebar drawer state. The sidebar is always visible on lg+ and
 // collapses to a slide-in drawer below that breakpoint.
 const sidebarOpen = ref(false);
@@ -275,7 +362,7 @@ const navGroups = computed(() => {
 
 			<div class="px-3 py-2" :class="collapsed ? 'lg:px-2' : ''">
 				<button
-					@click="searchOpen = true"
+					@click="openSearch"
 					class="w-full px-2.5 py-1.5 text-xs bg-ink-50 text-ink-600 rounded flex items-center gap-2 hover:bg-ink-100"
 					:class="collapsed ? 'lg:justify-center lg:px-0' : ''"
 					:title="collapsed ? 'Search (⌘K)' : ''"
@@ -559,25 +646,143 @@ const navGroups = computed(() => {
 			</main>
 		</div>
 
-		<!-- Search palette -->
+		<!-- Search palette (⌘K) — PLACES (Go to) first, then RECORDS. One flat,
+		     keyboard-navigable list; every row is permission-gated upstream. -->
 		<div
 			v-if="searchOpen"
-			class="fixed inset-0 bg-ink-900/40 z-50 flex items-start justify-center pt-20"
-			@click="searchOpen = false"
+			class="fixed inset-0 bg-ink-900/40 z-50 flex items-start justify-center pt-20 px-4"
+			@click="closeSearch"
 		>
 			<div
-				class="bg-white rounded-lg shadow-fp-lg w-full max-w-lg border border-ink-200"
+				class="bg-white rounded-lg shadow-fp-lg w-full max-w-xl border border-ink-200 overflow-hidden"
 				@click.stop
 			>
-				<div class="p-3 border-b border-ink-200">
+				<div class="p-3 border-b border-ink-200 flex items-center gap-2">
+					<svg
+						class="w-4 h-4 text-ink-400 flex-shrink-0"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+						/>
+					</svg>
 					<input
-						autofocus
-						placeholder="Type to search projects, tasks, work packages..."
-						class="w-full px-3 py-2 text-sm focus:outline-none"
+						ref="searchInput"
+						v-model="searchQuery"
+						placeholder="Search anything — a project, a task, an order number..."
+						class="w-full text-sm bg-transparent focus:outline-none text-ink-900 placeholder:text-ink-400"
+						@keydown.down.prevent="moveSearch(1)"
+						@keydown.up.prevent="moveSearch(-1)"
+						@keydown.enter.prevent="goSearch(searchFlat[searchCursor])"
 					/>
 				</div>
-				<div class="p-3 text-xs text-ink-500">
-					Quick search across all data · ESC to close
+
+				<div class="max-h-[26rem] overflow-y-auto">
+					<!-- PLACES — where to go: a doctype's list, or a report. -->
+					<div v-if="places.length" class="pt-2">
+						<div
+							class="px-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+						>
+							Go to
+						</div>
+						<button
+							v-for="(p, pi) in places"
+							:key="p.key"
+							type="button"
+							class="w-full text-left px-3 py-2 flex items-center gap-2.5"
+							:class="searchCursor === pi ? 'bg-brand-50' : 'hover:bg-ink-50'"
+							@mouseenter="searchCursor = pi"
+							@click="goSearch(p)"
+						>
+							<span
+								class="w-7 h-7 rounded-lg bg-ink-50 text-ink-600 flex items-center justify-center flex-shrink-0"
+							>
+								<svg
+									class="w-4 h-4"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.75"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+									v-html="getWorkspaceIconPath(p.icon)"
+								/>
+							</span>
+							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{ p.label }}</span>
+							<span class="text-[10px] text-ink-400 flex-shrink-0">{{
+								p.isReport ? "report" : "list"
+							}}</span>
+						</button>
+					</div>
+
+					<!-- RECORDS — the documents themselves. -->
+					<div v-if="recordRows.length" class="pt-2 pb-2">
+						<div
+							class="px-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+						>
+							Records
+						</div>
+						<button
+							v-for="(r, ri) in recordRows"
+							:key="r.key"
+							type="button"
+							class="w-full text-left px-3 py-2 flex items-center gap-2.5"
+							:class="
+								searchCursor === places.length + ri ? 'bg-brand-50' : 'hover:bg-ink-50'
+							"
+							@mouseenter="searchCursor = places.length + ri"
+							@click="goSearch(r)"
+						>
+							<span
+								class="w-7 h-7 rounded-lg bg-ink-50 text-ink-600 flex items-center justify-center flex-shrink-0"
+							>
+								<svg
+									class="w-4 h-4"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.75"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+									v-html="getWorkspaceIconPath(r.icon)"
+								/>
+							</span>
+							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{ r.title }}</span>
+							<span class="text-[10px] text-ink-400 flex-shrink-0">{{ r.type }}</span>
+						</button>
+					</div>
+
+					<!-- Nothing matched a searchable query. -->
+					<div
+						v-if="searchQuery.trim().length >= 2 && !searchFlat.length"
+						class="px-3 py-6 text-center"
+					>
+						<div class="text-sm text-ink-700">No matches</div>
+						<div class="text-[11px] text-ink-500 mt-1">
+							Try a project, a person, a supplier, or a document number.
+						</div>
+					</div>
+
+					<!-- Before they have typed enough to search on. -->
+					<div v-if="searchQuery.trim().length < 2" class="px-3 py-6 text-center">
+						<div class="text-sm text-ink-700">Type to search</div>
+						<div class="text-[11px] text-ink-500 mt-1">
+							Jump to a list or report, or find a record by name or number.
+						</div>
+					</div>
+				</div>
+
+				<div
+					class="px-3 py-2 border-t border-ink-200 bg-ink-50 flex items-center gap-3 text-[10px] text-ink-500"
+				>
+					<span>↑↓ to move</span><span>Enter to open</span><span>Esc to close</span>
 				</div>
 			</div>
 		</div>
