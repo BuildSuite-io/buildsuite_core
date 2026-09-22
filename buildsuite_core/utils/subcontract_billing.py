@@ -256,6 +256,16 @@ def generate_purchase_invoice(bill):
 		pi.apply_tds = 1
 		pi.tax_withholding_category = bill.tax_withholding_category
 
+	# The approval happened on the Subcontractor Bill; the PI is an internal accounting artifact
+	# submitted here directly. If a site has enabled the (opt-in) Purchase Invoice workflow, stamp
+	# the PI to that workflow's submitted state so it doesn't sit in the approval queue and its
+	# workflow_state stays consistent with docstatus.
+	from buildsuite_core.api.workflow import submitted_state
+
+	pi_submitted_state = submitted_state("Purchase Invoice")
+	if pi_submitted_state:
+		pi.workflow_state = pi_submitted_state
+
 	pi.flags.ignore_permissions = True
 	pi.set_missing_values()
 	pi.insert()

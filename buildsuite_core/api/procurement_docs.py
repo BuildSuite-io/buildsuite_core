@@ -165,8 +165,20 @@ def save_material_request(
 	return _serialize_mr(doc)
 
 
+def _guard_workflow(doctype, label):
+	"""Once an active Frappe Workflow governs `doctype`, its lifecycle must flow through the
+	workflow (buildsuite_core.api.workflow.apply_action), not these direct docstatus endpoints —
+	otherwise docstatus and workflow_state drift apart. The Vue detail views already route to the
+	workflow when one is active (useWorkflow); this is the server-side backstop for a direct call."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(doctype):
+		frappe.throw(_("{0} is governed by a workflow — use a workflow action.").format(label))
+
+
 @frappe.whitelist()
 def submit_material_request(name: str):
+	_guard_workflow(MATERIAL_REQUEST, _("Material Request"))
 	doc = frappe.get_doc(MATERIAL_REQUEST, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -175,6 +187,7 @@ def submit_material_request(name: str):
 
 @frappe.whitelist()
 def cancel_material_request(name: str):
+	_guard_workflow(MATERIAL_REQUEST, _("Material Request"))
 	doc = frappe.get_doc(MATERIAL_REQUEST, name)
 	doc.check_permission("cancel")
 	doc.cancel()
@@ -406,6 +419,7 @@ def save_purchase_order(
 
 @frappe.whitelist()
 def submit_purchase_order(name: str):
+	_guard_workflow(PURCHASE_ORDER, _("Purchase Order"))
 	doc = frappe.get_doc(PURCHASE_ORDER, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -414,6 +428,7 @@ def submit_purchase_order(name: str):
 
 @frappe.whitelist()
 def cancel_purchase_order(name: str):
+	_guard_workflow(PURCHASE_ORDER, _("Purchase Order"))
 	doc = frappe.get_doc(PURCHASE_ORDER, name)
 	doc.check_permission("cancel")
 	doc.cancel()
@@ -631,6 +646,7 @@ def get_purchase_receipt(name: str):
 
 @frappe.whitelist()
 def submit_purchase_receipt(name: str):
+	_guard_workflow(PURCHASE_RECEIPT, _("Purchase Receipt"))
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("submit")
 	doc.submit()
@@ -639,6 +655,7 @@ def submit_purchase_receipt(name: str):
 
 @frappe.whitelist()
 def cancel_purchase_receipt(name: str):
+	_guard_workflow(PURCHASE_RECEIPT, _("Purchase Receipt"))
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("cancel")
 	doc.cancel()
