@@ -17,12 +17,24 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const { canEdit, canSubmit, canCreate, canDelete } = usePermissions();
+
+// Defer to an active Frappe Workflow on Purchase Receipt when one is configured — the
+// transition that submits still runs the doc's on_submit, so PR submit side effects are
+// preserved. With no workflow configured, the plain Submit / Cancel lifecycle shows.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Purchase Receipt");
 
 const pr = ref(null);
 const loading = ref(true);
@@ -32,6 +44,7 @@ async function load() {
 	loading.value = true;
 	try {
 		pr.value = await getPurchaseReceipt(props.id);
+		await refreshWorkflow(props.id);
 	} catch (err) {
 		showToast(err.message || "Failed to load receipt", "error");
 	} finally {
@@ -89,6 +102,20 @@ async function onCancel() {
 		busy.value = false;
 	}
 }
+// Workflow-driven transition (only rendered when an active workflow governs Purchase Receipt).
+// The transition that submits the doc runs on_submit, so any PR submit-time logic still fires.
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(pr.value.name, action);
+		await load();
+		showToast(`${action} done.`);
+	} catch (err) {
+		showToast(err.message || "Action failed", "error");
+	} finally {
+		busy.value = false;
+	}
+}
 async function onAmend() {
 	busy.value = true;
 	try {
@@ -134,6 +161,11 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<ProcurementStatusPill :status="pr.status" class="self-center mr-1" />
+			<span
+				v-if="wfActive && wfState && wfState !== pr.status"
+				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
+				>{{ wfState }}</span
+			>
 			<button
 				v-if="isDraft && canEdit('purchaseReceipt')"
 				type="button"
@@ -143,8 +175,9 @@ const breadcrumbs = computed(() => [
 			>
 				Edit
 			</button>
+			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
-				v-if="isDraft && canSubmit('purchaseReceipt')"
+				v-if="!wfActive && isDraft && canSubmit('purchaseReceipt')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
@@ -154,7 +187,7 @@ const breadcrumbs = computed(() => [
 				Submit
 			</button>
 			<button
-				v-if="isSubmitted && canSubmit('purchaseReceipt')"
+				v-if="!wfActive && isSubmitted && canSubmit('purchaseReceipt')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
 				style="border-radius: 6px"
@@ -162,6 +195,18 @@ const breadcrumbs = computed(() => [
 				@click="onCancel"
 			>
 				Cancel
+			</button>
+			<!-- Workflow transitions (active workflow) — role- and state-filtered by the backend -->
+			<button
+				v-for="t in wfActive ? wfTransitions : []"
+				:key="t.action"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onWorkflowAction(t.action)"
+			>
+				{{ t.action }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('purchaseReceipt')"
