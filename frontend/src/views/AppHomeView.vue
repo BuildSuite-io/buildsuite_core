@@ -83,14 +83,53 @@ function tileValue(m) {
 	return m.format === "currency" ? fmtCompactINR(m.value) : m.value;
 }
 
-const quickActions = [
-	{ label: "Users", to: "/settings/users", icon: "users" },
-	{ label: "Companies", to: "/settings/companies", icon: "building-2" },
-	{ label: "Project Categories", to: "/settings/project-categories", icon: "tag" },
-	{ label: "Workspace Structure", to: "/settings/workspace-structure", icon: "layout-grid" },
-	{ label: "All Projects", to: "/projects", icon: "clipboard-list" },
-	{ label: "Data Tools", to: "/settings/data", icon: "database" },
+// Role-gated quick actions — each persona sees only the tiles for its slug, matching
+// the prototype's per-role Home. `store.role` is the persona slug; ALL_ACTIONS lists
+// every tile with the roles allowed to see it, and quickActions filters to the caller.
+const ALL_ACTIONS = [
+	{ key:'projects',      label:'Projects',            to:'/projects',                      icon:'clipboard-list', roles:['director','pm','site-engineer','foreman','estimator','qs','accountant'] },
+	{ key:'tasks',         label:'Tasks',               to:'/tasks',                         icon:'check-circle',   roles:['director','pm','site-engineer','foreman'] },
+	{ key:'progress-new',  label:'File Progress Entry', to:'/progress-entries/new',          icon:'file-text',      roles:['pm','site-engineer','foreman'] },
+	{ key:'schedule',      label:'Schedule',            to:'/schedule',                      icon:'calendar',       roles:['director','pm','site-engineer'] },
+	{ key:'stages',        label:'Stage Planning',      to:'/stage-plannings',               icon:'layout-grid',    roles:['pm','site-engineer'] },
+	{ key:'boq',           label:'BOQ',                 to:'/boq',                           icon:'estimation',     roles:['director','pm','estimator','qs'] },
+	{ key:'rate-master',   label:'Rate Master',         to:'/rate-master',                   icon:'chart-bar',      roles:['estimator','qs'] },
+	{ key:'assemblies',    label:'Assemblies',          to:'/assembly',                      icon:'wrench',         roles:['estimator'] },
+	{ key:'sub-wos',       label:'Work Orders',         to:'/subcontractor-work-orders',     icon:'subcontract',    roles:['pm','qs','director'] },
+	{ key:'sub-bills',     label:'Subcontractor Bills', to:'/subcontractor-bills',           icon:'receipt',        roles:['qs','accountant'] },
+	{ key:'mrs',           label:'Material Requests',   to:'/procurement/material-requests', icon:'clipboard-list', roles:['pm','procurement','store-keeper','site-engineer','foreman'] },
+	{ key:'pos',           label:'Purchase Orders',     to:'/procurement/purchase-orders',   icon:'file-text',      roles:['procurement','store-keeper'] },
+	{ key:'grns',          label:'Purchase Receipts',   to:'/procurement/receipts',          icon:'stock',          roles:['procurement','store-keeper'] },
+	{ key:'grn-new',       label:'Confirm Delivery',    to:'/procurement/receipts/new',      icon:'stock',          roles:['site-engineer','foreman'] },
+	{ key:'consumption',   label:'Record Consumption',  to:'/material-consumption/new',      icon:'package',        roles:['store-keeper','site-engineer','foreman'] },
+	{ key:'items',         label:'Items',               to:'/items',                         icon:'tag',            roles:['procurement','store-keeper'] },
+	{ key:'suppliers',     label:'Suppliers',           to:'/project-finance/suppliers',     icon:'building-2',     roles:['procurement'] },
+	{ key:'fin-invoices',  label:'Invoices',            to:'/project-finance/invoices',      icon:'file-text',      roles:['accountant'] },
+	{ key:'fin-bills',     label:'Bills',               to:'/project-finance/bills',         icon:'receipt',        roles:['accountant'] },
+	{ key:'fin-payments',  label:'Payments',            to:'/project-finance/payments',      icon:'refresh-ccw',    roles:['accountant'] },
+	{ key:'fin-petty',     label:'Petty Cash',          to:'/project-finance/petty-cash',    icon:'hand-coins',     roles:['accountant','director','site-engineer','foreman'] },
+	{ key:'fin-expenses',  label:'Expenses',            to:'/project-finance/expenses',      icon:'receipt',        roles:['director','site-engineer','foreman'] },
+	{ key:'fin-overview',  label:'Financial Overview',  to:'/project-finance/overview',      icon:'wallet',         roles:['director'] },
+	{ key:'wf-attendance', label:'Field Attendance',    to:'/field-attendance',              icon:'users-2',        roles:['foreman','hr-manager','site-engineer'] },
+	{ key:'wf-employees',  label:'Field Employees',     to:'/field-employees',               icon:'hard-hat',       roles:['hr-manager'] },
+	{ key:'wf-crews',      label:'Crews',               to:'/crews',                         icon:'users-2',        roles:['foreman','hr-manager'] },
+	{ key:'wf-labour',     label:'Labour Register',     to:'/labour-attendance',             icon:'clipboard-list', roles:['hr-manager'] },
+	{ key:'admin-users',      label:'Users',              to:'/settings/users',           icon:'users-2',        roles:['admin','bsa'] },
+	{ key:'admin-projects',   label:'Projects',           to:'/projects',                 icon:'clipboard-list', roles:['admin','bsa'] },
+	{ key:'admin-dashboard',  label:'Project Dashboard',  to:'/project-dashboard',        icon:'chart-bar',      roles:['admin','bsa'] },
+	{ key:'admin-boq',        label:'BOQ',                to:'/boq',                      icon:'estimation',     roles:['admin','bsa'] },
+	{ key:'admin-finance',    label:'Financial Overview', to:'/project-finance/overview', icon:'wallet',         roles:['admin','bsa'] },
+	{ key:'admin-attendance', label:'Field Attendance',   to:'/field-attendance',         icon:'users-2',        roles:['admin','bsa'] },
 ];
+// Site roles re-sort their tiles by daily frequency.
+const SITE_ROLES = ["site-engineer", "foreman"];
+const SITE_ACTION_ORDER = ["wf-attendance","progress-new","tasks","consumption","grn-new","mrs","fin-petty","fin-expenses","stages","schedule","projects"];
+const quickActions = computed(() => {
+	const list = ALL_ACTIONS.filter((a) => a.roles.includes(store.role));
+	if (!SITE_ROLES.includes(store.role)) return list;
+	const rank = (a) => { const i = SITE_ACTION_ORDER.indexOf(a.key); return i === -1 ? SITE_ACTION_ORDER.length : i; };
+	return list.slice().sort((a, b) => rank(a) - rank(b));
+});
 </script>
 
 <template>

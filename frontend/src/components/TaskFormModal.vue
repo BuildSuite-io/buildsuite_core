@@ -139,6 +139,9 @@ function validate() {
 }
 
 async function save() {
+	// Guard against a rapid double-click creating duplicate tasks: the disabled-button state
+	// updates a tick late, so a second click can re-enter before it takes effect.
+	if (saving.value) return;
 	if (!validate()) return;
 	saving.value = true;
 	try {

@@ -231,6 +231,11 @@ def add_stage_delay_reason(
 			"logged_on": frappe.utils.now_datetime(),
 		},
 	)
+	# The delay log is an append-only audit trail, not a stage edit, and must work in any workflow
+	# state — including when the stage is submitted/approved on sites where Stage Planning is
+	# submittable (else the save fails with "Not allowed to change Delay Reasons after submission").
+	# Only delay_reasons is touched here, so bypassing the update-after-submit guard is safe.
+	doc.flags.ignore_validate_update_after_submit = True
 	doc.save(ignore_permissions=True)
 	return row.as_dict()
 

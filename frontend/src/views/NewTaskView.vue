@@ -75,23 +75,27 @@ function validate() {
 }
 
 async function save() {
+	// Guard against a rapid double-click creating duplicate tasks. Set `saving` BEFORE the first
+	// await (the project-bounds fetch), so a second click sees it and returns rather than slipping
+	// through the async gap and creating a second Task.
+	if (saving.value) return;
 	if (!validate()) return;
-	const b = await fetchProjectBounds(form.projectId);
-	const boundsErr = outOfParentBoundsError(
-		form.startDate,
-		form.endDate,
-		b.start,
-		b.end,
-		"project",
-	);
-	if (boundsErr) {
-		setErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
-		);
-		return;
-	}
 	saving.value = true;
 	try {
+		const b = await fetchProjectBounds(form.projectId);
+		const boundsErr = outOfParentBoundsError(
+			form.startDate,
+			form.endDate,
+			b.start,
+			b.end,
+			"project",
+		);
+		if (boundsErr) {
+			setErrors(
+				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+			);
+			return;
+		}
 		const res = await adapter.create("Task", {
 			subject: form.name,
 			project: form.projectId,

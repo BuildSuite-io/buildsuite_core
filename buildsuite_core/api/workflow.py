@@ -86,3 +86,16 @@ def apply_action(doctype: str, name: str, action: str):
 def workflow_active(doctype):
 	"""Helper for server-side guards: True when an active workflow governs `doctype`."""
 	return bool(get_workflow_name(doctype))
+
+
+def submitted_state(doctype):
+	"""The workflow state carrying docstatus=1 (the terminal 'approved/submitted' state) for
+	`doctype`'s active workflow, or None when no workflow is active. Stamp it on a document that
+	is submitted programmatically (bypassing the approval UI) so its workflow_state stays
+	consistent with docstatus — e.g. the Purchase Invoice a Subcontractor Bill auto-generates."""
+	if not get_workflow_name(doctype):
+		return None
+	for state in get_workflow(doctype).states:
+		if str(state.doc_status) == "1":
+			return state.state
+	return None

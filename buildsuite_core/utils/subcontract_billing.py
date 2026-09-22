@@ -83,10 +83,30 @@ def _ensure_account(company, account_name, root_type, account_type, parent_hint)
 	return acc.name
 
 
+SERVICE_UOM = "Subcontract Unit"
+
+
+def _ensure_service_uom():
+	"""A fraction-allowing UOM for the generic subcontract service item. ERPNext's default 'Nos'
+	is whole-number only, which rejects the measured (often fractional) quantities a subcontractor
+	bill carries, so those quantities failed to post to the Purchase Invoice."""
+	if not frappe.db.exists("UOM", SERVICE_UOM):
+		frappe.get_doc(
+			{"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}
+		).insert(ignore_permissions=True)
+	return SERVICE_UOM
+
+
 def ensure_service_item():
 	"""The single non-stock service Item all bill lines map to on the PI. Its description
 	carries the real work; users never pick it on the Vue screen."""
+	uom = _ensure_service_uom()
 	if frappe.db.exists("Item", SERVICE_ITEM):
+		# Older installs created this on ERPNext's default 'Nos' (whole-number only), so fractional
+		# measured quantities were rejected. Move it onto the fraction-allowing UOM — it's a
+		# non-stock item, so there's no stock ledger to block the change.
+		if frappe.db.get_value("Item", SERVICE_ITEM, "stock_uom") != uom:
+			frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", uom)
 		return SERVICE_ITEM
 	if not frappe.db.exists("Item Group", SERVICE_ITEM_GROUP):
 		parent = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"
@@ -99,6 +119,7 @@ def ensure_service_item():
 			"item_code": SERVICE_ITEM,
 			"item_name": SERVICE_ITEM,
 			"item_group": SERVICE_ITEM_GROUP,
+			"stock_uom": uom,
 			"is_stock_item": 0,
 			"is_purchase_item": 1,
 			"is_sales_item": 0,
@@ -234,6 +255,16 @@ def generate_purchase_invoice(bill):
 	if bill.apply_tds and bill.tax_withholding_category:
 		pi.apply_tds = 1
 		pi.tax_withholding_category = bill.tax_withholding_category
+
+	# The approval happened on the Subcontractor Bill; the PI is an internal accounting artifact
+	# submitted here directly. If a site has enabled the (opt-in) Purchase Invoice workflow, stamp
+	# the PI to that workflow's submitted state so it doesn't sit in the approval queue and its
+	# workflow_state stays consistent with docstatus.
+	from buildsuite_core.api.workflow import submitted_state
+
+	pi_submitted_state = submitted_state("Purchase Invoice")
+	if pi_submitted_state:
+		pi.workflow_state = pi_submitted_state
 
 	pi.flags.ignore_permissions = True
 	pi.set_missing_values()

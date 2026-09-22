@@ -92,6 +92,8 @@ const PATHS = {
 	users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 	shield: '<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/>',
 	tag: '<path d="M20.59 13.41 11 23l-9-9V3h11z"/><line x1="7" x2="7.01" y1="8" y2="8"/>',
+	package:
+		'<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
 	puzzle: '<path d="M14.5 4a2.5 2.5 0 1 0-5 0V6H8a2 2 0 0 0-2 2v1.5H4a2.5 2.5 0 1 0 0 5H6V16a2 2 0 0 0 2 2h1.5V20a2.5 2.5 0 1 0 5 0V18H16a2 2 0 0 0 2-2v-1.5h2a2.5 2.5 0 1 0 0-5H18V8a2 2 0 0 0-2-2h-1.5z"/>',
 	"layout-grid":
 		'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
