@@ -70,6 +70,13 @@ def _resolve(row):
 		label = label or frappe.db.get_value("Report", report, "report_name") or report
 	if not route:
 		return None
+	# A bespoke (custom-UI) report keeps its own `route`, but its access is anchored on a backend
+	# Report record (buildsuite_core.report_access): hide the tile unless that anchor permits the
+	# user. Routes with no anchor (plain navigation tiles) are unaffected.
+	from buildsuite_core.report_access import is_route_permitted
+
+	if not is_route_permitted(route):
+		return None
 	return {
 		"label": label or route,
 		"route": route,

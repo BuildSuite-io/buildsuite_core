@@ -17,6 +17,9 @@ export const useSessionStore = defineStore("session", {
 			// keyed by the frontend resource key. usePermissions reads this — it's the single
 			// source of truth for CRUD gating (replaces the old roles.js PERSONA_CAPS matrix).
 			resourcePermissions: {},
+			// The bespoke report routes this user may open (api.permission → report_access);
+			// the router guard denies any other gated report route on a deep link.
+			reportRoutes: [],
 			reason: "guest",
 		},
 		lastCheckedAt: null,
@@ -55,6 +58,7 @@ export const useSessionStore = defineStore("session", {
 				roles: Array.isArray(context.roles) ? context.roles : [],
 				persona: context.persona || null,
 				resourcePermissions: context.resource_permissions || {},
+				reportRoutes: Array.isArray(context.report_routes) ? context.report_routes : [],
 				reason: context.reason || (context.allowed ? "ok" : "missing_role"),
 			};
 			this.developerMode = Boolean(context.developer_mode);

@@ -124,6 +124,12 @@ def seed_master_data():
 	seed_invoice_terms()
 	seed_finance_accounts()
 
+	# Report permission anchors — a Report record per bespoke (custom-UI) report so its workspace
+	# tile + route are gated by the Report's roles, like the file-based reports already are.
+	from buildsuite_core.report_access import seed_report_anchors
+
+	seed_report_anchors()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [
