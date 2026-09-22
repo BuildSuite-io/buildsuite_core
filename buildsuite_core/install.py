@@ -124,6 +124,11 @@ def seed_master_data():
 	seed_invoice_terms()
 	seed_finance_accounts()
 
+	# Report permission anchors — a Report record per bespoke (custom-UI) report so its workspace
+	# tile + route are gated by the Report's roles, like the file-based reports already are.
+	from buildsuite_core.report_access import seed_report_anchors
+
+	seed_report_anchors()
 	# Opt-in (inactive) approval workflows for the submittable finance + procurement documents —
 	# created once, never clobbered, so an admin's activation survives migrate. See
 	# buildsuite_core.default_workflows.

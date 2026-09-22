@@ -1170,6 +1170,29 @@ const router = createRouter({
 	},
 });
 
+// Custom-UI report routes whose access is anchored on a backend Report record — mirrors
+// buildsuite_core.report_access.ROUTE_TO_REPORT. The access context's `reportRoutes` is the
+// permitted subset for the current user; a route here that isn't in it is denied on deep link.
+// Keep in sync with report_access._REPORT_ANCHORS.
+const GATED_REPORT_ROUTES = new Set([
+	"/project-finance/report/pnl",
+	"/project-finance/report/aged",
+	"/project-finance/report/position",
+	"/project-finance/report/expenses",
+	"/project-finance/report/cashbank",
+	"/project-finance/report/petty",
+	"/procurement/report/requests-to-order",
+	"/procurement/report/delivery-followup",
+	"/procurement/report/site-stock",
+	"/procurement/report/rate-check",
+	"/procurement/report/purchase-register",
+	"/procurement/report/consumption-by-cost-code",
+	"/labour-attendance",
+	"/overtime-attendance",
+	"/workforce/attendance-summary",
+	"/reports/delay-analysis",
+]);
+
 router.beforeEach(async (to) => {
 	const unprotected = new Set(["forbidden"]);
 	if (unprotected.has(to.name)) return true;
@@ -1230,6 +1253,13 @@ router.beforeEach(async (to) => {
 					? canEdit(capResource)
 					: canRead(capResource);
 		if (!allowedCap) return { path: "/" };
+	}
+
+	// Bespoke report deep-link — a custom-UI report route is gated by its backend Report anchor
+	// (buildsuite_core.report_access). Block it unless the access context lists it as permitted;
+	// mirrors the workspace-tile gate, so a hand-typed report URL is denied the same way.
+	if (GATED_REPORT_ROUTES.has(to.path) && !(access?.reportRoutes || []).includes(to.path)) {
+		return { path: "/" };
 	}
 
 	// Generic records browser (/records/:doctype/*) — the DocType is dynamic, so its cap

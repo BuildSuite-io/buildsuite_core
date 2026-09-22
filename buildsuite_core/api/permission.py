@@ -68,10 +68,20 @@ def get_access_context():
 			# Backend-derived UI gating caps, folded into the boot probe so the SPA needs
 			# no extra round trip. Empty for a user who can't open the app anyway.
 			"resource_permissions": _resource_permissions() if allowed else {},
+			# The bespoke (custom-UI) report routes this user may open — their backend Report
+			# anchor grants a role they hold. The SPA route guard denies any other report route.
+			"report_routes": _permitted_report_routes() if allowed else [],
 			"reason": reason,
 			"developer_mode": developer_mode,
 		}
 	)
+
+
+def _permitted_report_routes():
+	"""The custom report routes the current user may open (see buildsuite_core.report_access)."""
+	from buildsuite_core.report_access import permitted_report_routes
+
+	return permitted_report_routes()
 
 
 # The DocPerm ptypes the SPA gates on, mapped to the short cap keys usePermissions reads
