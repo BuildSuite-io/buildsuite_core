@@ -26,6 +26,8 @@ import frappe
 # the same title (e.g. ERPNext ships a "Purchase Register" Script Report with its own roles). The
 # name is backend-only — tiles and the Vue views keep their clean labels.
 _REPORT_PREFIX = "BuildSuite "
+# All anchors live under the app's own module so admins find them in one place in the Report list.
+_ANCHOR_MODULE = "BuildSuite Core"
 
 # Every report also grants these, so admins always see everything.
 _ADMIN_ROLES = ("BuildSuite Administrator", "System Manager")
@@ -84,6 +86,11 @@ def seed_report_anchors():
 	for name, ref_doctype, _route, roles in _REPORT_ANCHORS:
 		report_name = _REPORT_PREFIX + name
 		if frappe.db.exists("Report", report_name):
+			# Re-home an existing anchor: a Report with a ref_doctype but no explicit module
+			# inherits the ref_doctype's module, scattering our anchors across Accounts / Buying /
+			# Stock. Pull them all under one module so an admin finds them in one place.
+			if frappe.db.get_value("Report", report_name, "module") != _ANCHOR_MODULE:
+				frappe.db.set_value("Report", report_name, "module", _ANCHOR_MODULE)
 			continue
 		if not frappe.db.exists("DocType", ref_doctype):
 			continue
@@ -95,6 +102,9 @@ def seed_report_anchors():
 				"report_type": "Query Report",
 				"ref_doctype": ref_doctype,
 				"is_standard": "No",
+				# Group every anchor under the app's own module — otherwise Frappe defaults the
+				# module to the ref_doctype's (Accounts, Buying, Stock, …) and they scatter.
+				"module": _ANCHOR_MODULE,
 				# Rendered by a custom Vue component — Frappe never runs this, the record only
 				# anchors permission (its roles) + subject (ref_doctype).
 				"query": "",
