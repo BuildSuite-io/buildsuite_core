@@ -136,6 +136,12 @@ def seed_master_data():
 
 	seed_default_workflows()
 
+	# Enrol the app's record doctypes in the global-search index so the command palette can find
+	# their records by content (adds the missing ones + a one-time background reindex).
+	from buildsuite_core.api.search import sync_global_search_doctypes
+
+	sync_global_search_doctypes()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [

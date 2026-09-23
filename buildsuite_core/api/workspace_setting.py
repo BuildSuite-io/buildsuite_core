@@ -217,9 +217,14 @@ def _allowed_doctypes():
 
 
 def _require_allowed(doctype):
-	if doctype not in _allowed_doctypes():
+	"""The generic list/form serves any DocType the user can READ — so search + deep links can
+	reach the records of a doctype the SPA has no bespoke view for (the generic view is the
+	universal fallback). Frappe's own read permission still gates the doctype and every row."""
+	if not doctype or not frappe.db.exists("DocType", doctype):
+		frappe.throw(_("{0} is not available here.").format(doctype or "DocType"), frappe.PermissionError)
+	if not frappe.has_permission(doctype, "read"):
 		frappe.throw(
-			_("{0} is not available here.").format(doctype or "DocType"), frappe.PermissionError
+			_("You don't have access to {0}.").format(doctype), frappe.PermissionError
 		)
 
 
