@@ -154,22 +154,32 @@ def sync_global_search_doctypes():
 	"""Enrol the app's record doctypes in Global Search Settings so the palette can find their
 	records by content. Idempotent — adds only the missing ones and enqueues a one-time background
 	reindex of just those (so a migrate is never blocked and configured doctypes aren't reprocessed)."""
+	valid_dts = set(frappe.get_all("DocType", pluck="name"))
 	gss = frappe.get_single("Global Search Settings")
 	existing = {r.document_type for r in gss.allowed_in_global_search}
 	added = []
 	for dt in _GLOBAL_SEARCH_DOCTYPES:
-		if dt in existing or not frappe.db.exists("DocType", dt):
+		if dt in existing or dt not in valid_dts:
 			continue
 		gss.append("allowed_in_global_search", {"document_type": dt})
 		added.append(dt)
-	if not added:
+	# Global Search Settings is a shared framework Single. On some builds it carries rows for
+	# doctypes that aren't installed here (e.g. Blog Post / Newsletter): its controller validate()
+	# calls frappe.get_meta() on every row, which raises on a missing doctype and would abort the
+	# whole migrate. Drop those dangling rows we don't own so the save (ours or anyone's) succeeds.
+	keep = [r for r in gss.allowed_in_global_search if r.document_type in valid_dts]
+	pruned = len(gss.allowed_in_global_search) - len(keep)
+	if not added and not pruned:
 		return []
+	if pruned:
+		gss.set("allowed_in_global_search", [{"document_type": r.document_type} for r in keep])
 	gss.flags.ignore_permissions = True
 	gss.save()
 	# Existing records aren't in the index until reindexed; do it off the migrate in the background.
-	frappe.enqueue(
-		"buildsuite_core.api.search.rebuild_global_search", doctypes=added, queue="long", timeout=1800
-	)
+	if added:
+		frappe.enqueue(
+			"buildsuite_core.api.search.rebuild_global_search", doctypes=added, queue="long", timeout=1800
+		)
 	return added
 
 
