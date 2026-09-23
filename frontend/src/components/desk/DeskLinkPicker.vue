@@ -136,10 +136,17 @@ function matchesFilterValue(actual, operator, expected) {
 function applyClientFilters(rows, filters = []) {
 	if (!filters || (Array.isArray(filters) && !filters.length)) return rows;
 
+	// A filter on a field the row didn't fetch can't be verified here — and the server already
+	// applied every serverFilter to the query, so the rows are correct. Skip such a clause rather
+	// than drop the row: otherwise a company-scoped picker (filtered by `company`, but fetching
+	// only name + the label field) would client-filter every row out and show "No results".
+	const fetched = (row, fieldname) => row && Object.prototype.hasOwnProperty.call(row, fieldname);
+
 	if (!Array.isArray(filters) && typeof filters === "object") {
 		return rows.filter((row) => {
 			return Object.entries(filters).every(([fieldname, condition]) => {
-				const actual = row?.[fieldname];
+				if (!fetched(row, fieldname)) return true;
+				const actual = row[fieldname];
 				if (Array.isArray(condition)) {
 					const [operator = "=", expected] = condition;
 					return matchesFilterValue(actual, operator, expected);
@@ -152,8 +159,8 @@ function applyClientFilters(rows, filters = []) {
 	return rows.filter((row) => {
 		return filters.every((f) => {
 			const [fieldname, operator = "=", value] = f || [];
-			const actual = row?.[fieldname];
-			return matchesFilterValue(actual, operator, value);
+			if (!fetched(row, fieldname)) return true;
+			return matchesFilterValue(row[fieldname], operator, value);
 		});
 	});
 }
