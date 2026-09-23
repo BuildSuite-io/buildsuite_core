@@ -11,8 +11,8 @@ import CompanySwitcher from "@/components/CompanySwitcher.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getDeskUrl, logout, getSessionUser } from "@/utils/session";
-import { searchPlaces, decorateRecord } from "@/data/search";
-import { searchRecords } from "@/data/searchApi";
+import { searchPlaces, decorateRecord, decorateDoctype } from "@/data/search";
+import { commandPalette } from "@/data/searchApi";
 
 const route = useRoute();
 const router = useRouter();
@@ -29,20 +29,22 @@ const { canRead } = usePermissions();
 const searchOpen = ref(false);
 const searchQuery = ref("");
 const records = ref([]);
+const doctypeMatches = ref([]);
 const searchCursor = ref(0);
 const searchInput = ref(null);
 
-// Places: permission-gated + sorted (max 6), derived synchronously from the query.
-const places = computed(() =>
-	searchPlaces(searchQuery.value, {
+// Places: the curated app lists + reports (permission-gated client-side), followed by any doctype
+// whose NAME matches the query (backend, permission-filtered) opening its generic list — so a
+// query can name a doctype the SPA has no bespoke list for and still reach it.
+const places = computed(() => [
+	...searchPlaces(searchQuery.value, {
 		canRead,
 		reportRoutes: session.access?.reportRoutes || [],
-	})
-);
-// Raw record results decorated into palette rows (dropping any doctype with no
-// SPA route). Kept as its own computed so the template can render the section
-// and the flat cursor index off the same list.
-const recordRows = computed(() => records.value.map(decorateRecord).filter(Boolean));
+	}),
+	...doctypeMatches.value.map(decorateDoctype),
+]);
+// Record results decorated into palette rows (bespoke view, else the generic records browser).
+const recordRows = computed(() => records.value.map(decorateRecord));
 // One flat list, so the arrow keys walk places then records without the caller
 // having to know which section the cursor is standing in.
 const searchFlat = computed(() => [...places.value, ...recordRows.value]);
@@ -57,15 +59,22 @@ watch(searchQuery, (q) => {
 	const text = q.trim();
 	if (text.length < 2) {
 		records.value = [];
+		doctypeMatches.value = [];
 		return;
 	}
 	searchTimer = setTimeout(async () => {
 		try {
-			const rows = await searchRecords(text, 12);
+			const { doctypes, records: recs } = await commandPalette(text, 12);
 			// Ignore a stale response whose query has since changed.
-			if (searchQuery.value.trim() === text) records.value = rows;
+			if (searchQuery.value.trim() === text) {
+				doctypeMatches.value = doctypes;
+				records.value = recs;
+			}
 		} catch {
-			if (searchQuery.value.trim() === text) records.value = [];
+			if (searchQuery.value.trim() === text) {
+				doctypeMatches.value = [];
+				records.value = [];
+			}
 		}
 	}, 180);
 });
@@ -78,6 +87,7 @@ function closeSearch() {
 	searchOpen.value = false;
 	searchQuery.value = "";
 	records.value = [];
+	doctypeMatches.value = [];
 	searchCursor.value = 0;
 }
 function goSearch(row) {

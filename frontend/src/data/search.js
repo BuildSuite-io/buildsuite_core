@@ -38,22 +38,9 @@ export const DOCTYPE_META = {
 	"Purchase Invoice": { label: "Supplier bill", icon: "receipt", to: (n) => `/project-finance/supplier-bills/${n}` },
 };
 
-// Doctypes the SPA has NO bespoke view for but the generic records browser can render
-// (/records/<doctype>/<name>) — mirrors permissions/resource_map.RESOURCE_DOCTYPES. A record of
-// one of these still opens (in the generic form view) rather than being dropped.
-const GENERIC_DOCTYPES = new Set([
-	"Task Progress Entry",
-	"Item",
-	"Stock Entry",
-	"Customer",
-	"Payment Entry",
-	"Petty Cash Request",
-	"Expense Entry",
-]);
-
 // A raw {doctype, name, title} record result -> a palette row. Prefer the doctype's bespoke detail
-// view; fall back to the generic records browser for a doctype without one; null if neither can
-// open it (shouldn't happen — the backend only returns doctypes the SPA can navigate to).
+// view; otherwise open it in the generic records browser (/records/<doctype>/<name>) — the
+// universal fallback for any doctype the SPA has no bespoke view for.
 export function decorateRecord(r) {
 	const meta = DOCTYPE_META[r.doctype];
 	if (meta) {
@@ -66,17 +53,27 @@ export function decorateRecord(r) {
 			to: meta.to(r.name),
 		};
 	}
-	if (GENERIC_DOCTYPES.has(r.doctype)) {
-		return {
-			kind: "record",
-			key: `${r.doctype}:${r.name}`,
-			title: r.title || r.name,
-			type: r.doctype,
-			icon: "file-text",
-			to: `/records/${encodeURIComponent(r.doctype)}/${encodeURIComponent(r.name)}`,
-		};
-	}
-	return null;
+	return {
+		kind: "record",
+		key: `${r.doctype}:${r.name}`,
+		title: r.title || r.name,
+		type: r.doctype,
+		icon: "file-text",
+		to: `/records/${encodeURIComponent(r.doctype)}/${encodeURIComponent(r.name)}`,
+	};
+}
+
+// A name-matched {doctype, label} -> a "place" that opens the doctype's generic list. Lets a query
+// name a doctype the SPA has no bespoke list for (e.g. Journal Entry) and jump straight to it.
+export function decorateDoctype(d) {
+	return {
+		kind: "place",
+		key: `doctype:${d.doctype}`,
+		label: d.label || d.doctype,
+		icon: "file-text",
+		to: `/records/${encodeURIComponent(d.doctype)}`,
+		isDoctype: true,
+	};
 }
 
 // Navigation destinations. `cap` gates a doctype list on a usePermissions read cap; `report` gates
