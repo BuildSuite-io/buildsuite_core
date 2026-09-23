@@ -1,7 +1,9 @@
 {
  "add_total_row": 0,
+ "add_translate_data": 0,
  "columns": [],
- "creation": "2026-08-18 00:00:00.000000",
+ "creation": "2026-08-18 00:00:00",
+ "disable_prepared_report_automation": 0,
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
@@ -11,23 +13,29 @@
    "fieldtype": "Link",
    "label": "Project",
    "mandatory": 1,
-   "options": "Project"
+   "options": "Project",
+   "wildcard_filter": 0
   },
   {
    "fieldname": "late_only",
    "fieldtype": "Check",
-   "label": "Late deliveries only"
+   "label": "Late deliveries only",
+   "mandatory": 0,
+   "wildcard_filter": 0
   },
   {
    "fieldname": "not_fully_delivered",
    "fieldtype": "Check",
-   "label": "Not fully delivered"
+   "label": "Not fully delivered",
+   "mandatory": 0,
+   "wildcard_filter": 0
   }
  ],
- "idx": 0,
+ "idx": 1,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2026-08-20 00:00:00.000000",
+ "letter_head": null,
+ "modified": "2026-09-23 21:39:45.697935",
+ "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Material Status",
  "owner": "Administrator",
@@ -37,19 +45,10 @@
  "report_type": "Script Report",
  "roles": [
   {
-   "role": "System Manager"
-  },
-  {
-   "role": "BuildSuite Administrator"
-  },
-  {
    "role": "BuildSuite Director"
   },
   {
    "role": "BuildSuite PM"
-  },
-  {
-   "role": "BuildSuite QS"
   },
   {
    "role": "BuildSuite Site Engineer"
@@ -58,10 +57,11 @@
    "role": "BuildSuite Foreman"
   },
   {
-   "role": "BuildSuite Procurement Officer"
+   "role": "BuildSuite Administrator"
   },
   {
-   "role": "BuildSuite Store Keeper"
+   "role": "System Manager"
   }
- ]
+ ],
+ "timeout": 0
 }

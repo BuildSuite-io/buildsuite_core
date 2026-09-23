@@ -33,46 +33,73 @@ _ANCHOR_MODULE = "BuildSuite Core"
 _ADMIN_ROLES = ("BuildSuite Administrator", "System Manager")
 
 # (report_name, ref_doctype, spa_route, roles) — the SPA route is the custom Vue view the tile
-# opens; ref_doctype anchors the Report to its primary subject.
+# opens; ref_doctype anchors the Report to its primary subject. Roles are persona roles only; the
+# seeder appends _ADMIN_ROLES so admins always see everything. Kept in step with the access matrix.
 _REPORT_ANCHORS = (
 	# --- Project Finance ---
 	("Profit and Loss", "GL Entry", "/project-finance/report/pnl",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant")),
 	("Receivables and Payables", "Sales Invoice", "/project-finance/report/aged",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant")),
 	("Financial Position", "Account", "/project-finance/report/position",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant")),
 	("Expense Summary", "Expense Entry", "/project-finance/report/expenses",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant")),
 	("Cash and Bank Statement", "Account", "/project-finance/report/cashbank",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant")),
+	# Petty Cash is visible to every persona (matrix).
 	("Petty Cash Report", "Petty Cash Request", "/project-finance/report/petty",
-		("BuildSuite Accountant", "BuildSuite Director", "BuildSuite PM",
-		 "BuildSuite Site Engineer", "BuildSuite Foreman")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Estimator", "BuildSuite QS",
+		 "BuildSuite Site Engineer", "BuildSuite Foreman", "BuildSuite Procurement Officer",
+		 "BuildSuite Store Keeper", "BuildSuite Accountant", "BuildSuite HR Manager")),
 	# --- Procurement ---
 	("Requests Waiting to be Ordered", "Material Request", "/procurement/report/requests-to-order",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Site Engineer",
+		 "BuildSuite Procurement Officer", "BuildSuite Store Keeper")),
 	("Delivery Follow-up", "Purchase Order", "/procurement/report/delivery-followup",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Site Engineer",
+		 "BuildSuite Procurement Officer", "BuildSuite Store Keeper")),
 	("Material at Site", "Purchase Receipt", "/procurement/report/site-stock",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Site Engineer",
+		 "BuildSuite Procurement Officer", "BuildSuite Store Keeper")),
 	("Purchase Rate vs Estimate", "Purchase Order", "/procurement/report/rate-check",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Estimator", "BuildSuite QS",
+		 "BuildSuite Procurement Officer", "BuildSuite Accountant")),
 	("Purchase Register", "Purchase Order", "/procurement/report/purchase-register",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Procurement Officer", "BuildSuite Accountant")),
 	("Consumption by Cost Code", "Stock Entry", "/procurement/report/consumption-by-cost-code",
-		("BuildSuite Procurement Officer", "BuildSuite Store Keeper", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Procurement Officer", "BuildSuite Accountant")),
 	# --- Workforce ---
 	("Labour Attendance Register", "Field Attendance", "/labour-attendance",
-		("BuildSuite HR Manager", "BuildSuite Foreman", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant", "BuildSuite HR Manager")),
 	("Overtime Attendance Register", "Field Attendance", "/overtime-attendance",
-		("BuildSuite HR Manager", "BuildSuite Foreman", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant", "BuildSuite HR Manager")),
 	("Site Attendance Summary", "Field Attendance", "/workforce/attendance-summary",
-		("BuildSuite HR Manager", "BuildSuite Foreman", "BuildSuite PM", "BuildSuite Director")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant", "BuildSuite HR Manager")),
 	# --- Site Execution ---
 	("Delay Analysis", "Stage Planning", "/reports/delay-analysis",
-		("BuildSuite PM", "BuildSuite Director", "BuildSuite Site Engineer")),
+		("BuildSuite Director", "BuildSuite PM", "BuildSuite QS", "BuildSuite Site Engineer")),
 )
+
+# File-based Script Reports carry their roles in their own report .json (the fresh-install
+# default, synced on migrate). Mirrored here — persona roles only, admin appended — so the
+# one-time re-baseline patch can reset EXISTING sites in the same pass as the anchors.
+_FILE_REPORT_ROLES = {
+	"Subcontractor Work Order Register": ("BuildSuite Director", "BuildSuite PM", "BuildSuite QS",
+		"BuildSuite Site Engineer", "BuildSuite Procurement Officer", "BuildSuite Accountant"),
+	"Measurement Book Register": ("BuildSuite Director", "BuildSuite PM", "BuildSuite QS",
+		"BuildSuite Site Engineer"),
+	"Subcontractor Bill Register": ("BuildSuite Director", "BuildSuite PM", "BuildSuite QS",
+		"BuildSuite Procurement Officer", "BuildSuite Accountant"),
+	"Client Bill Register": ("BuildSuite Director", "BuildSuite PM", "BuildSuite QS", "BuildSuite Accountant"),
+	"Subcontractor Ledger": ("BuildSuite Director", "BuildSuite PM", "BuildSuite Procurement Officer",
+		"BuildSuite Accountant"),
+	"Cost Code Variance": ("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant"),
+	"Billing and Collection": ("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant"),
+	"Subcontractor Position": ("BuildSuite Director", "BuildSuite PM", "BuildSuite Accountant"),
+	"Material Status": ("BuildSuite Director", "BuildSuite PM", "BuildSuite Site Engineer",
+		"BuildSuite Foreman"),
+}
 
 # custom SPA route -> its (namespaced) anchor Report name. The one map the tile-gate and
 # route-guard share.
@@ -115,6 +142,35 @@ def seed_report_anchors():
 		doc.insert()
 		created.append(report_name)
 	return created
+
+
+def _matrix_roles():
+	"""report_name -> the full role set (persona roles + admin) for every gated report — anchors
+	and file-based Script Reports alike. The single source the re-baseline patch reads."""
+	out = {_REPORT_PREFIX + name: tuple(roles) + _ADMIN_ROLES for name, _r, _rt, roles in _REPORT_ANCHORS}
+	out.update({name: tuple(roles) + _ADMIN_ROLES for name, roles in _FILE_REPORT_ROLES.items()})
+	return out
+
+
+def reset_report_roles_to_matrix():
+	"""Re-baseline every gated report's roles to the matrix. Run ONCE by a patch to bring existing
+	sites in line: the seeder is create-if-missing, so a role change in _REPORT_ANCHORS never
+	reaches a site that already has the anchor, and file-based .json role edits only reach a site
+	if its report sync re-imports them. Idempotent — sets each Report's Has Role rows to exactly the
+	matrix set and skips one already correct. Returns the reports whose roles changed."""
+	changed = []
+	for report_name, roles in _matrix_roles().items():
+		if not frappe.db.exists("Report", report_name):
+			continue
+		allowed = [r for r in roles if frappe.db.exists("Role", r)]
+		doc = frappe.get_doc("Report", report_name)
+		if {r.role for r in doc.roles} == set(allowed):
+			continue
+		doc.set("roles", [{"role": r} for r in allowed])
+		doc.flags.ignore_permissions = True
+		doc.save()
+		changed.append(report_name)
+	return changed
 
 
 def is_route_permitted(route):
