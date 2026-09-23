@@ -9,6 +9,7 @@
 import { computed, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { usePermissions } from "@/composables/usePermissions";
+import { useSessionStore } from "@/stores/session";
 import { getFinancialPosition } from "@/data/financeReportApi";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
@@ -18,6 +19,7 @@ import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
 
 const { canRead } = usePermissions();
+const session = useSessionStore();
 const activeCompany = useActiveCompany();
 
 const today = new Date().toLocaleDateString("en-US", {
@@ -58,6 +60,15 @@ const hasLedgerFinance = computed(
 );
 const showOverview = computed(() => hasLedgerFinance.value);
 
+// The Reports group follows the per-report backend permission (report_access anchors →
+// session.access.reportRoutes), NOT the coarse ledger-finance caps: a persona granted an
+// individual report (e.g. HR Manager on Profit & Loss) must see it even without invoice /
+// bill / payment access. Any permitted Project Finance report route enables the group; the
+// section itself renders only the tiles the backend returns.
+const hasReports = computed(() =>
+	(session.access?.reportRoutes || []).some((r) => r.startsWith("/project-finance/report/")),
+);
+
 // Cash & bank on the Overview CTA — live GL balances for the active company (bank + cash),
 // the same source the Financial Position report uses. Fetched only when the tile is shown,
 // and re-fetched when the working company changes.
@@ -72,10 +83,14 @@ async function loadCashBank() {
 	}
 }
 watch([activeCompany, showOverview], loadCashBank, { immediate: true });
-// The Reports group is ledger-gated too, so whenever it could show, showOverview is already
-// true — it never independently affects the no-access check.
+// A persona with only a permitted report (no transaction / master tiles, no ledger overview)
+// still has access to the workspace — its Reports group.
 const noAccess = computed(
-	() => !txTiles.value.length && !masterTiles.value.length && !showOverview.value,
+	() =>
+		!txTiles.value.length &&
+		!masterTiles.value.length &&
+		!showOverview.value &&
+		!hasReports.value,
 );
 </script>
 
@@ -189,10 +204,11 @@ const noAccess = computed(
 				<!-- Records (admin-curated DocTypes) -->
 				<WorkspaceRecordsSection workspace="project-finance" />
 
-				<!-- Reports (ledger-finance personas only) — shared section owns fetch + skeleton -->
+				<!-- Reports — per-report backend permission, not the ledger caps; shared section
+				     owns fetch + skeleton and renders only the tiles the backend returns -->
 				<WorkspaceReportsSection
 					workspace="project-finance"
-					:enabled="hasLedgerFinance"
+					:enabled="hasReports"
 					spacing="mb-4"
 				/>
 			</template>
