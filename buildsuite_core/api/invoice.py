@@ -12,6 +12,7 @@ from frappe import _
 from frappe.utils import flt, nowdate
 
 from buildsuite_core.utils.project import default_company
+from buildsuite_core.utils.session import as_administrator
 
 SI = "Sales Invoice"
 PE = "Payment Entry"
@@ -378,12 +379,9 @@ def save_invoice(payload: str):
 	# then restore the real owner. Mirrors save_bill.
 	actual_user = frappe.session.user
 	was_new = si.is_new()
-	try:
-		frappe.set_user("Administrator")
+	with as_administrator():
 		si.set_missing_values()
 		si.save()
-	finally:
-		frappe.set_user(actual_user)
 	restore = {"modified_by": actual_user}
 	if was_new:
 		restore["owner"] = actual_user
