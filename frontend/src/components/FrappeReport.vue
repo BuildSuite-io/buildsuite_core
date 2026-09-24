@@ -10,7 +10,8 @@
 // values, seeded from the report's defaults. A client-side search filters the returned
 // rows, then pagination. Themed for light + dark.
 import { ref, reactive, computed, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, RouterLink } from "vue-router";
+import { decorateRecord } from "@/data/search";
 import { runReport, getReportFilters } from "@/data/reportApi";
 import { evalReportFilters } from "@/utils/reportFilters";
 import { useActiveCompany } from "@/composables/useActiveCompany";
@@ -59,6 +60,15 @@ const NUMERIC = new Set(["Currency", "Float", "Int", "Percent"]);
 function isStatusCol(col) {
 	const f = (col.fieldname || "").toLowerCase();
 	return f === "status" || f.endsWith("_status");
+}
+// A Link-type column whose value is a record → route to that record's detail (bespoke view when
+// one exists, else the generic records browser), so reference columns (WO / MB / Bill / Invoice)
+// are clickable. Project/party columns are returned as plain names (Data), so they don't link.
+function recordRoute(col, row) {
+	if (col.fieldtype !== "Link" || !col.options) return null;
+	const v = cellRaw(row, col);
+	if (v === null || v === undefined || v === "") return null;
+	return decorateRecord({ doctype: col.options, name: v }).to;
 }
 
 function seedFilters(defs) {
@@ -495,7 +505,12 @@ const inputClass =
 							v-for="(item, i) in bodyRows"
 							:key="i"
 							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30"
-							:class="item.group ? 'bg-ink-50/40' : ''"
+							:class="[
+								item.group ? 'bg-ink-50/40' : '',
+								item.row && item.row.is_total
+									? 'font-semibold bg-ink-50 border-t-2 border-ink-300 hover:bg-ink-50'
+									: '',
+							]"
 						>
 							<td
 								v-for="(col, ci) in columns"
@@ -505,8 +520,9 @@ const inputClass =
 									col.align === 'right'
 										? 'text-right tabular-nums'
 										: 'text-left',
-									col.fieldtype === 'Link' && !(ci === 0 && isTree)
-										? 'font-mono text-ink-600'
+									// Retention reads amber (subcontractor bill); other cells default.
+									col.fieldname === 'retention'
+										? 'text-warning-700 font-medium'
 										: 'text-ink-800',
 								]"
 							>
@@ -533,6 +549,14 @@ const inputClass =
 									v-else-if="isStatusCol(col) && cellText(item.row, col)"
 									:status="cellText(item.row, col)"
 								/>
+								<RouterLink
+									v-else-if="recordRoute(col, item.row)"
+									:to="recordRoute(col, item.row)"
+									class="desk-link"
+									@click.stop
+								>
+									{{ cellText(item.row, col) }}
+								</RouterLink>
 								<template v-else>{{ cellText(item.row, col) }}</template>
 							</td>
 						</tr>
