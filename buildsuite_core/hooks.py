@@ -179,6 +179,10 @@ doc_events = {
     "Purchase Receipt": {
         "on_update":"buildsuite_core.utils.purchase_receipt.create_remarks"
     },
+	# A report's roles can't exceed the visibility of a workspace it's tiled in — grant a role a
+	# report only if that role can see the workspace (else the tile never shows). Interactive only;
+	# skipped during install/migrate/patch where seeders set the baseline.
+	"Report": {"validate": "buildsuite_core.report_access.validate_report_roles"},
 	# Org-wide ERPNext masters made company-scoped: stamp the working company on insert.
 	# Supplier / Customer are global ERPNext parties (no BuildSuite company field) — not stamped.
 	"Item": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},

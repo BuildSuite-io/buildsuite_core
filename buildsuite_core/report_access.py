@@ -21,6 +21,7 @@ runs them). Seeded create-if-missing so an admin's later role edits survive migr
 """
 
 import frappe
+from frappe import _
 
 # Anchor Report records are namespaced so they never collide with an ERPNext/standard report of
 # the same title (e.g. ERPNext ships a "Purchase Register" Script Report with its own roles). The
@@ -187,3 +188,84 @@ def is_route_permitted(route):
 def permitted_report_routes():
 	"""The custom report routes the current user may open — for the SPA route guard + tiles."""
 	return [route for route in ROUTE_TO_REPORT if is_route_permitted(route)]
+
+
+# --------------------------------------------------------------------------- #
+# Cross-gate validation: a report's roles can't exceed its workspace's visibility
+# --------------------------------------------------------------------------- #
+def _report_workspaces(report_name):
+	"""Workspace slugs a report is tiled in (via Workspace Setting) — by direct `report` link, or
+	by its bespoke `route` resolving to this anchor."""
+	settings = frappe.get_single("Workspace Setting")
+	slugs = set()
+	for row in settings.reports:
+		if not row.workspace:
+			continue
+		if row.report == report_name or ROUTE_TO_REPORT.get((row.route or "").strip()) == report_name:
+			slugs.add(row.workspace)
+	return slugs
+
+
+def _workspace_roles(slug):
+	"""Roles that may SEE a workspace — its BuildSuite Workspace registry roles."""
+	name = frappe.db.get_value("BuildSuite Workspace", {"slug": slug}, "name")
+	if not name:
+		return set()
+	return set(frappe.get_all("BuildSuite Workspace Role", filters={"parent": name}, pluck="role"))
+
+
+def _workspace_label(slug):
+	return frappe.db.get_value("BuildSuite Workspace", {"slug": slug}, "label") or slug
+
+
+def _grantable_roles(report_name):
+	"""(grantable role set, resolved?) — roles that may hold this report: admins plus everyone who
+	can see a workspace it's tiled in. `resolved` is False when the report isn't tiled anywhere, or
+	no workspace resolves in the registry (so callers can choose not to constrain)."""
+	slugs = _report_workspaces(report_name)
+	visible, resolved = set(_ADMIN_ROLES), False
+	for slug in slugs:
+		wr = _workspace_roles(slug)
+		if wr:
+			resolved = True
+			visible |= wr
+	return visible, resolved, slugs
+
+
+def validate_report_roles(doc, method=None):
+	"""A role granted a BuildSuite report must be able to VIEW a workspace the report is tiled in —
+	otherwise the grant is dead (no tile shows, and the route guard denies the deep-link). Block an
+	interactive save with a clear message so report access can't drift above workspace visibility.
+
+	Skipped during install/migrate/patch: there the seeders establish a consistent baseline (and may
+	set roles before the matching workspace tile is seeded), so enforcing mid-seed would fight them."""
+	if frappe.flags.in_install or frappe.flags.in_migrate or frappe.flags.in_patch:
+		return
+	visible, resolved, slugs = _grantable_roles(doc.name)
+	if not resolved:
+		return  # not tiled anywhere, or the workspace registry isn't seeded here — nothing to check
+	labels = ", ".join(sorted(_workspace_label(s) for s in slugs))
+	for r in doc.roles:
+		if r.role in visible or not frappe.db.exists("Role", r.role):
+			continue
+		frappe.throw(
+			_(
+				"Role {0} can't be granted this report — it can't view the {1} workspace. "
+				"Grant {0} access to that workspace first, or remove the role here."
+			).format(frappe.bold(r.role), frappe.bold(labels)),
+			title=_("Role not permitted for this workspace"),
+		)
+
+
+@frappe.whitelist()
+def grantable_report_roles(report):
+	"""Roles a report MAY be granted (admins + anyone who can see a workspace it's tiled in), for an
+	SPA report-access editor to validate inline / grey out the rest. {report, workspaces,
+	grantable_roles, constrained}."""
+	visible, resolved, slugs = _grantable_roles(report)
+	return {
+		"report": report,
+		"workspaces": sorted(_workspace_label(s) for s in slugs),
+		"grantable_roles": sorted(visible),
+		"constrained": resolved,
+	}
