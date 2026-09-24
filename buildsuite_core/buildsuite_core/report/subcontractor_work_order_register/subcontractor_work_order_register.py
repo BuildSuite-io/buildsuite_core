@@ -19,14 +19,10 @@ def execute(filters=None):
 			"options": "Subcontractor Work Order",
 			"width": 160,
 		},
-		{
-			"label": _("Subcontractor"),
-			"fieldname": "subcontractor",
-			"fieldtype": "Link",
-			"options": "Supplier",
-			"width": 180,
-		},
-		{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
+		# Subcontractor / Project show the NAME (plain text) — only the WO is a link, per the
+		# prototype registers.
+		{"label": _("Subcontractor"), "fieldname": "subcontractor", "fieldtype": "Data", "width": 180},
+		{"label": _("Project"), "fieldname": "project", "fieldtype": "Data", "width": 180},
 		{"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
 		{"label": _("Type"), "fieldname": "delivery_type", "fieldtype": "Data", "width": 110},
 		{"label": _("Value"), "fieldname": "total_value", "fieldtype": "Currency", "width": 130},
@@ -48,14 +44,19 @@ def execute(filters=None):
 
 	data = frappe.db.sql(
 		"""
-		SELECT wo.name AS work_order, wo.subcontractor, wo.project, wo.date,
-			wo.delivery_type, wo.total_value, wo.status,
+		SELECT wo.name AS work_order, sup.supplier_name AS subcontractor,
+			prj.project_name AS project, wo.date, wo.delivery_type, wo.total_value, wo.status,
 			LEAST(100, ROUND(IFNULL(
 				(SELECT SUM(sb.gross) FROM `tabSubcontractor Bill` sb
 					WHERE sb.work_order = wo.name AND sb.docstatus = 1), 0)
 				/ NULLIF(wo.total_value, 0) * 100, 1)) AS percent_billed
 		FROM `tabSubcontractor Work Order` wo
-		WHERE wo.docstatus = 1 """ + conditions + """
+		LEFT JOIN `tabSupplier` sup ON sup.name = wo.subcontractor
+		LEFT JOIN `tabProject` prj ON prj.name = wo.project
+		-- Exclude drafts. The WO is submittable, but its `status` can still read Draft at
+		-- docstatus 1 (the workflow state lags docstatus) — the register should list only
+		-- progressed work orders, not draft ones.
+		WHERE wo.docstatus = 1 AND wo.status != 'Draft' """ + conditions + """
 		ORDER BY wo.date DESC, wo.name DESC
 		""",
 		filters,
