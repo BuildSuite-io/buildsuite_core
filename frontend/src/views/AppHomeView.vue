@@ -173,7 +173,14 @@ const quickActions = computed(() => {
 				</header>
 				<div class="p-5">
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
-						<div v-for="m in snapshot" :key="m.label">
+						<component
+							:is="m.to ? 'RouterLink' : 'div'"
+							v-for="m in snapshot"
+							:key="m.label"
+							:to="m.to || undefined"
+							class="block -m-2 p-2 rounded-lg"
+							:class="m.to ? 'cursor-pointer hover:bg-ink-50 transition-colors' : ''"
+						>
 							<div
 								class="w-11 h-11 rounded-lg flex items-center justify-center mb-3"
 								:class="toneClass(m.tone)"
@@ -202,7 +209,7 @@ const quickActions = computed(() => {
 							>
 								{{ m.label }}
 							</div>
-						</div>
+						</component>
 					</div>
 				</div>
 			</section>

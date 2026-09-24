@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -43,6 +43,18 @@ const companiesResource = useDocTypeList("Company", {
 });
 
 const isMultiCompany = computed(() => (companiesResource.data?.length ?? 0) > 1);
+
+// Honor ?status= deep links (Home "Active projects" tile). "active" = the live project statuses
+// (base filter); a real status seeds the status chip. Mirrors home.py's _ACTIVE set.
+const route = useRoute();
+const ACTIVE_PROJECT_STATUSES = ["New", "Ongoing", "Delayed"];
+const queryStatus = route.query.status || "";
+if (queryStatus && queryStatus !== "active") statusFilter.value = queryStatus;
+const baseFilters = computed(() => {
+	const f = [["parent_project", "is", "not set"]];
+	if (queryStatus === "active") f.push(["project_status", "in", ACTIVE_PROJECT_STATUSES]);
+	return f;
+});
 
 const filterValues = computed(() => ({
 	status: statusFilter.value,
@@ -105,7 +117,7 @@ function onRowClick(row) {
 				{ key: 'company', label: 'Company' },
 			]"
 			:search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
-			:base-filters="[['parent_project', 'is', 'not set']]"
+			:base-filters="baseFilters"
 			:filter-values="filterValues"
 			:filter-field-map="{
 				status: 'project_status',
