@@ -241,6 +241,17 @@ CUSTOM_FIELD = {
 			"in_standard_filter": 1,
 			"module": "BuildSuite Core",
 		},
+		{
+			# Sparse per-project override of the Project Settings tab template: one row per tab
+			# the project explicitly Shows/Hides; absent = inherit the template. SPA-managed via
+			# the project view's "..." menu (buildsuite_core.api.project_settings).
+			"fieldname": "custom_tab_overrides",
+			"fieldtype": "Table",
+			"label": "Tab Overrides",
+			"options": "Project Tab Visibility",
+			"insert_after": "project_category",
+			"module": "BuildSuite Core",
+		},
 	],
 	"Task": [
 		{

@@ -26,6 +26,8 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { createDataAdapter } from "@/data/adapters";
 import { addProjectTeamMember, removeProjectTeamMember } from "@/data/projectTeamApi";
+import { PROJECT_TABS } from "@/data/projectTabs";
+import { getProjectTabOverrides, setProjectTabOverrides } from "@/data/projectSettingsApi";
 import { toDateInputValue } from "@/utils/dateInput";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
@@ -1026,6 +1028,31 @@ const subprojectsEnabled = computed(() => !isSubproject.value && project.value?.
 
 const projectReports = PROJECT_REPORTS;
 
+// --- Configurable page tabs (two-level, S387) --------------------------------------------
+// This project's sparse overrides of the site-wide tab template ({ tabId: shown } for tabs it
+// explicitly Shows/Hides). Fetched per project; a tab left on Default follows the site template.
+const tabOverrides = ref({});
+async function loadTabOverrides() {
+	const id = project.value?.id;
+	if (!id) {
+		tabOverrides.value = {};
+		return;
+	}
+	try {
+		tabOverrides.value = (await getProjectTabOverrides(id)) || {};
+	} catch {
+		tabOverrides.value = {};
+	}
+}
+watch(() => project.value?.id, loadTabOverrides, { immediate: true });
+
+// Resolve a tab: the project's own opinion (a real boolean) wins; otherwise the site default.
+function tabVisible(tabId) {
+	const own = tabOverrides.value[tabId];
+	if (own === true || own === false) return own;
+	return store.siteProjectTabVisible(tabId);
+}
+
 const tabs = computed(() => {
 	// Each tab carries a count when it corresponds to a list of child records.
 	// Counts render as " (N)" appended to the label. Overview / Activity have
@@ -1041,8 +1068,50 @@ const tabs = computed(() => {
 		{ id: "attachments", label: "Attachments", count: attachmentCount.value },
 		{ id: "team", label: "Team", count: projectTeam.value.length },
 	];
-	return subprojectsEnabled.value ? all : all.filter((t) => t.id !== "subprojects");
+	// Overview is always shown (landing + fallback). Subprojects also needs the group flag.
+	// Every other tab follows its resolved (project-over-site) visibility.
+	return all.filter((t) => {
+		if (t.id === "overview") return true;
+		if (t.id === "subprojects" && !subprojectsEnabled.value) return false;
+		return tabVisible(t.id);
+	});
 });
+
+// The "..." → Page tabs modal: a three-state choice per tab (default / show / hide).
+const tabSettingsOpen = ref(false);
+const tabChoices = ref({});
+const savingTabs = ref(false);
+const overriddenTabCount = computed(
+	() => PROJECT_TABS.filter((t) => tabOverrides.value[t.id] === true || tabOverrides.value[t.id] === false).length,
+);
+function tabChoiceOf(id) {
+	const own = tabOverrides.value[id];
+	return own === true ? "show" : own === false ? "hide" : "default";
+}
+function openTabSettings() {
+	const c = {};
+	for (const t of PROJECT_TABS) c[t.id] = tabChoiceOf(t.id);
+	tabChoices.value = c;
+	tabSettingsOpen.value = true;
+}
+async function saveTabSettings() {
+	savingTabs.value = true;
+	const overrides = {};
+	for (const t of PROJECT_TABS) {
+		const c = tabChoices.value[t.id];
+		if (c === "show") overrides[t.id] = true;
+		else if (c === "hide") overrides[t.id] = false;
+	}
+	try {
+		tabOverrides.value = (await setProjectTabOverrides(project.value.id, overrides)) || {};
+		tabSettingsOpen.value = false;
+		showToast("Project tabs updated", "success");
+	} catch (e) {
+		showToast(e.message || "Could not update tabs", "error");
+	} finally {
+		savingTabs.value = false;
+	}
+}
 
 // Reflect the active tab in the URL hash (#tasks, #team, …) so tab changes are
 // browser-history entries: Back returns to the previous tab, and a hashed URL
@@ -1185,6 +1254,18 @@ usePageTitle(() => project.value?.name);
 						"
 					>
 						Import project template
+					</button>
+					<button
+						v-if="canEdit('project')"
+						type="button"
+						role="menuitem"
+						class="w-full text-left px-3 py-1.5 text-xs text-ink-700 hover:bg-ink-50"
+						@click="
+							menuOpen = false;
+							openTabSettings();
+						"
+					>
+						Page tabs
 					</button>
 					<div
 						v-if="canEdit('project') && canDelete('project')"
@@ -1988,6 +2069,101 @@ usePageTitle(() => project.value?.name);
 							@click="runImportTemplate"
 						>
 							{{ importSaving ? "Importing…" : "Import" }}
+						</button>
+					</footer>
+				</div>
+			</div>
+		</Teleport>
+
+		<!-- Page tabs — per-project override of the site tab template (three states per tab) -->
+		<Teleport to="body">
+			<div
+				v-if="tabSettingsOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6"
+				@click.self="tabSettingsOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-md shadow-xl flex flex-col"
+					style="border-radius: 12px"
+					@click.stop
+				>
+					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between">
+						<h2 class="text-sm font-semibold text-ink-900">Page tabs</h2>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-900"
+							aria-label="Close"
+							@click="tabSettingsOpen = false"
+						>
+							✕
+						</button>
+					</header>
+
+					<div class="px-4 py-3">
+						<p class="text-xs text-ink-600 mb-3">
+							Which tabs this project shows. Leave a tab on <strong>Default</strong> and it
+							follows
+							<RouterLink
+								v-if="store.isAdmin"
+								to="/settings/project"
+								class="text-brand-600 hover:underline"
+								>Project Settings</RouterLink
+							><span v-else>the site template</span>.
+						</p>
+						<div class="border border-ink-200 rounded-lg overflow-hidden">
+							<div
+								v-for="(t, i) in PROJECT_TABS"
+								:key="t.id"
+								class="flex items-center gap-3 px-3 py-2.5"
+								:class="i ? 'border-t border-ink-100' : ''"
+							>
+								<div class="flex-1 min-w-0">
+									<div class="text-sm text-ink-900">{{ t.label }}</div>
+									<div
+										v-if="t.id === 'subprojects' && !subprojectsEnabled"
+										class="text-[11px] text-warning-700 mt-0.5"
+									>
+										Hidden anyway until this is a parent project.
+									</div>
+								</div>
+								<div class="flex-shrink-0 flex rounded-md border border-ink-200 overflow-hidden">
+									<button
+										v-for="opt in [
+											{ k: 'default', label: store.siteProjectTabVisible(t.id) ? 'Default (shown)' : 'Default (hidden)' },
+											{ k: 'show', label: 'Show' },
+											{ k: 'hide', label: 'Hide' },
+										]"
+										:key="opt.k"
+										type="button"
+										class="text-[11px] px-2 py-1 whitespace-nowrap border-l border-ink-200 first:border-l-0"
+										:class="tabChoices[t.id] === opt.k
+											? 'bg-brand-600 text-white'
+											: 'bg-white text-ink-600 hover:bg-ink-50'"
+										@click="tabChoices[t.id] = opt.k"
+									>
+										{{ opt.label }}
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
+							@click="tabSettingsOpen = false"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="text-xs desk-save-btn"
+							:disabled="savingTabs"
+							:class="{ 'opacity-50 cursor-not-allowed': savingTabs }"
+							@click="saveTabSettings"
+						>
+							{{ savingTabs ? "Saving…" : "Save" }}
 						</button>
 					</footer>
 				</div>

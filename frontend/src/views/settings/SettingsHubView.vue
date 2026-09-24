@@ -88,6 +88,14 @@ const groups = computed(() => [
 				adminOnly: true,
 			},
 			{
+				slug: "project",
+				icon: "clipboard-list",
+				label: "Project Settings",
+				desc: "The standard project page — which tabs every project offers by default. Each project can overrule it.",
+				to: "/settings/project",
+				adminOnly: true,
+			},
+			{
 				slug: "finance-accounts",
 				icon: "wallet",
 				label: "Bank & Cash Accounts",

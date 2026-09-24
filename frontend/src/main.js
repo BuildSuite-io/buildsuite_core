@@ -66,6 +66,7 @@ async function mountApp() {
 	// first paint has the correct nav. Only for a user who can open the app; guarded internally.
 	if (sessionStore.access?.allowed) {
 		await dataStore.loadWorkspaces();
+		await dataStore.loadProjectSettings();
 	}
 
 	app.use(router);

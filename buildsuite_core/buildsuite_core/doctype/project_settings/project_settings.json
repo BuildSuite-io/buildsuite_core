@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "creation": "2026-09-24 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "tabs_section",
+  "tab_defaults"
+ ],
+ "fields": [
+  {
+   "fieldname": "tabs_section",
+   "fieldtype": "Section Break",
+   "label": "Project page tabs"
+  },
+  {
+   "description": "The default set of tabs every project offers. A project can overrule any of these for itself. Overview is always shown and is not listed here.",
+   "fieldname": "tab_defaults",
+   "fieldtype": "Table",
+   "label": "Tab Defaults",
+   "options": "Project Tab Visibility"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-24 00:00:00",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Project Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "BuildSuite Administrator",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
