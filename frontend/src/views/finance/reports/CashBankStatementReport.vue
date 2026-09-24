@@ -100,19 +100,19 @@ const closing = computed(() => statement.value?.closing || 0);
 
 			<div class="flex items-center gap-4 flex-wrap text-xs justify-end">
 				<div>
-					<span class="text-ink-500">In</span>
+					<span class="text-ink-500 mr-1">In</span>
 					<span class="tabular-nums text-success-700 font-medium">
 						{{ fmtINR(totalIn) }}</span
 					>
 				</div>
 				<div>
-					<span class="text-ink-500">Out</span>
+					<span class="text-ink-500 mr-1">Out</span>
 					<span class="tabular-nums text-danger-700 font-medium">
 						{{ fmtINR(totalOut) }}</span
 					>
 				</div>
 				<div>
-					<span class="text-ink-500">Closing</span>
+					<span class="text-ink-500 mr-1">Closing</span>
 					<span class="tabular-nums text-ink-900 font-semibold">
 						{{ fmtINR(closing) }}</span
 					>
