@@ -133,7 +133,7 @@ const shownCount = computed(
 						Receivables (aged)
 					</h3>
 					<div class="text-sm pr-4">
-						<span class="text-ink-500">Total</span>
+						<span class="text-ink-500 mr-1">Total</span>
 						<span class="font-semibold text-ink-900 tabular-nums">
 							{{ fmtINR(recvTotal) }}</span
 						>
@@ -199,7 +199,7 @@ const shownCount = computed(
 						Payables (aged)
 					</h3>
 					<div class="text-sm pr-4">
-						<span class="text-ink-500">Total</span>
+						<span class="text-ink-500 mr-1">Total</span>
 						<span class="font-semibold text-ink-900 tabular-nums">
 							{{ fmtINR(payTotal) }}</span
 						>
