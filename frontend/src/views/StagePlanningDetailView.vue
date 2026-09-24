@@ -75,7 +75,6 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StageTaskPicker from "@/components/StageTaskPicker.vue";
-import StageDelayReasonModal from "@/components/StageDelayReasonModal.vue";
 import { fmtDate } from "@/utils/format";
 import { toDateInputValue } from "@/utils/dateInput";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
@@ -336,19 +335,9 @@ const workflowActing = ref(null);
 const showRejectModal = ref(false);
 const rejectReason = ref("");
 const rejectError = ref("");
-const reviewGateOpen = ref(false);
-
-// Stage Review entry. If the stage is running behind and no delay reason is on
-// file yet, require one first (gate); otherwise open the review directly.
+// Stage Review entry — open the review page directly. Any delay reason is captured on
+// the review page itself, so there's no gating modal here.
 function onStageReview() {
-	if (!stage.value) return;
-	if (isStageDelayed.value && (stage.value.delayReasonsCount || 0) === 0) {
-		reviewGateOpen.value = true;
-		return;
-	}
-	router.push(`/stage-plannings/${stage.value.id}/review`);
-}
-function onGateSaved() {
 	if (stage.value) router.push(`/stage-plannings/${stage.value.id}/review`);
 }
 
@@ -805,35 +794,6 @@ const stageTaskStats = computed(() => {
 });
 
 const dependencyCount = computed(() => (stage.value?.dependencies || []).length);
-
-// Stage Review gate — is this stage running behind? (a) past planned end with
-// unfinished work, or (b) calendar-expected beats actual mean progress by > 15 pts.
-const meanActualProgress = computed(() => {
-	const rows = stage.value?.stagePlanningTasks || [];
-	if (!rows.length) return 0;
-	const sum = rows.reduce((acc, r) => acc + (Number(tasksById.value[r.task]?.progress) || 0), 0);
-	return Math.round(sum / rows.length);
-});
-const expectedProgressNow = computed(() => {
-	const s = stage.value;
-	if (!s?.plannedStart || !s?.plannedEnd) return null;
-	const total = (new Date(s.plannedEnd) - new Date(s.plannedStart)) / 86400000;
-	if (total <= 0) return 0;
-	const elapsed = (new Date(TODAY_ISO) - new Date(s.plannedStart)) / 86400000;
-	return Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
-});
-const isStageDelayed = computed(() => {
-	const s = stage.value;
-	if (!s) return false;
-	if (s.plannedEnd && s.plannedEnd < TODAY_ISO && meanActualProgress.value < 100) return true;
-	if (
-		expectedProgressNow.value !== null &&
-		expectedProgressNow.value > 0 &&
-		expectedProgressNow.value - meanActualProgress.value > 15
-	)
-		return true;
-	return false;
-});
 
 const breadcrumbs = computed(() => {
 	const out = [
@@ -1431,15 +1391,6 @@ usePageTitle(() => stage.value?.stageName);
 			:existing-task-rows="stage.stagePlanningTasks || []"
 			mode="modal"
 			@save="onPickerSave"
-		/>
-
-		<!-- Stage Review delay gate -->
-		<StageDelayReasonModal
-			v-model:open="reviewGateOpen"
-			:stage-id="stage.id"
-			:stage-name="stage.stageName"
-			:is-gate="true"
-			@saved="onGateSaved"
 		/>
 
 		<!-- Reject modal -->
