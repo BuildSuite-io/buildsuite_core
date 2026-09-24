@@ -268,10 +268,16 @@
 /* Print rules for report surfaces that live inside DeskShell (currently the
    Subcontractor Work Order print view). When the user prints from a .report-root
    page we hide the app chrome so the PDF captures only the document. */
+/* Rendered only when printing (e.g. the report's applied-filters summary — the interactive
+   filter bar is print-hidden, so this carries which filters produced the printout). */
+.report-print-only { display: none; }
+
 @media print {
   /* Force a light background regardless of dark-mode preference — PDFs read
      better on white. */
   html, body, .report-root { background: #fff !important; color: #000 !important; }
+
+  .report-print-only { display: block !important; }
 
   /* Hide DeskShell chrome: the sidebar aside, the sticky topbar header, and any
      element explicitly tagged .print:hidden (the report's own control bar). */

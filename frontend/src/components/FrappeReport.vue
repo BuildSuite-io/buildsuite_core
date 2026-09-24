@@ -99,6 +99,21 @@ function selectOptions(f) {
 		.map((o) => o.trim())
 		.filter(Boolean);
 }
+// The applied (non-empty) filters as {label, value}, for the print-only summary — so a printed
+// report states which filters produced it. Dates/checks are formatted; Link ids show as-is.
+function filterDisplay(f) {
+	const v = filterValues[f.fieldname];
+	if (v === "" || v === null || v === undefined) return null;
+	if (f.fieldtype === "Check") return v ? "Yes" : null;
+	if (f.fieldtype === "Date" || f.fieldtype === "Datetime") return fmtDate(v);
+	return String(v);
+}
+const activeFilters = computed(() =>
+	filterDefs.value
+		.map((f) => ({ label: f.label, value: filterDisplay(f) }))
+		.filter((x) => x.value !== null)
+);
+
 const missingRequired = computed(() =>
 	filterDefs.value.filter(
 		(f) =>
@@ -354,10 +369,23 @@ const inputClass =
 
 <template>
 	<div>
-		<!-- Report filter bar (report-defined filters) -->
+		<!-- Applied filters — shown only when printing (the interactive bar below is print-hidden),
+		     so the printout states which filters produced it. -->
+		<div
+			v-if="activeFilters.length"
+			class="report-print-only mb-3 text-xs border border-ink-300 rounded px-3 py-2"
+		>
+			<span class="font-semibold">Filters:</span>
+			<span v-for="(af, i) in activeFilters" :key="af.label">
+				{{ af.label }}: <strong>{{ af.value }}</strong
+				><span v-if="i < activeFilters.length - 1"> · </span>
+			</span>
+		</div>
+
+		<!-- Report filter bar (report-defined filters) — interactive; hidden when printing -->
 		<div
 			v-if="filterDefs.length"
-			class="bg-ink-50 border border-ink-200 rounded-lg px-3 py-2.5 mb-3 flex items-end gap-3 flex-wrap"
+			class="bg-ink-50 border border-ink-200 rounded-lg px-3 py-2.5 mb-3 flex items-end gap-3 flex-wrap print:hidden"
 		>
 			<div v-for="f in filterDefs" :key="f.fieldname" class="flex flex-col gap-1 min-w-0">
 				<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -461,7 +489,7 @@ const inputClass =
 		<ReportChart v-if="!loading && !error && chart" :chart="chart" />
 
 		<!-- Search + count -->
-		<div class="flex items-center gap-3 mb-3 flex-wrap">
+		<div class="flex items-center gap-3 mb-3 flex-wrap print:hidden">
 			<input
 				v-model="search"
 				type="text"
@@ -575,7 +603,7 @@ const inputClass =
 			<!-- Pagination -->
 			<div
 				v-if="pageCount > 1"
-				class="flex items-center justify-end gap-3 mt-3 text-xs text-ink-500"
+				class="flex items-center justify-end gap-3 mt-3 text-xs text-ink-500 print:hidden"
 			>
 				<button
 					type="button"
