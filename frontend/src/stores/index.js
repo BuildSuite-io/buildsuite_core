@@ -7,6 +7,7 @@ import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
 import { ROLES } from "@/data/roles";
 import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
+import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
@@ -170,6 +171,9 @@ function addDaysISO(isoDate, days) {
 export const useDataStore = defineStore("data", {
 	state: () => ({
 		hydrated: false,
+		// Site-wide Project page-tab template (api.project_settings). { tabs: { tabId: shown } };
+		// a tab is shown unless explicitly false. Per-project overrides live on the project itself.
+		projectSettings: { tabs: {} },
 		// Set once loadCompanies() has populated `companies` from the REAL Company
 		// DocType. hydrate() (which runs post-mount, after loadCompanies) checks this
 		// so it never clobbers the backend data with the seed fixture. Stays false if
@@ -422,6 +426,10 @@ export const useDataStore = defineStore("data", {
 		// registry (api.workspace_setting.get_visible_workspaces), loaded on boot into
 		// `workspaces`. Replaces the old client WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
 		visibleWorkspaces: (s) => s.workspaces.map((w) => w.slug),
+		// A tab's site-wide default: shown unless the template explicitly says false. Unknown tabs
+		// fail OPEN so a later-added tab never silently vanishes. A project overrides this for
+		// itself (resolved in the project view from its own tabOverrides).
+		siteProjectTabVisible: (s) => (tabId) => s.projectSettings?.tabs?.[tabId] !== false,
 		// Function getter: the cosmetic access hint ('full' | 'read' | …) for a workspace, or
 		// null if the user can't see it. Visibility itself is the backend's call, not this.
 		workspaceAccess: (s) => (slug) =>
@@ -714,6 +722,25 @@ export const useDataStore = defineStore("data", {
 				this.workspaces = [];
 				console.warn("Failed to load workspaces:", e);
 			}
+		},
+
+		// Load the site-wide Project tab template on boot. On failure the template is left empty,
+		// so every tab shows (fail-open) rather than the project view rendering blank.
+		async loadProjectSettings() {
+			try {
+				this.projectSettings = (await getProjectSettings()) || { tabs: {} };
+				if (!this.projectSettings.tabs) this.projectSettings.tabs = {};
+			} catch (e) {
+				this.projectSettings = { tabs: {} };
+				console.warn("Failed to load project settings:", e);
+			}
+		},
+
+		// Persist the template (admin only) and reflect it locally.
+		async updateProjectSettings(tabs) {
+			this.projectSettings = (await setProjectSettings(tabs)) || { tabs: { ...tabs } };
+			if (!this.projectSettings.tabs) this.projectSettings.tabs = { ...tabs };
+			return this.projectSettings;
 		},
 
 		async loadCompanies() {

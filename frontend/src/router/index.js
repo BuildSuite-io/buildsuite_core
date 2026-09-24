@@ -951,6 +951,11 @@ const routes = [
 				component: () => import("@/views/settings/CoreSettingsView.vue"),
 			},
 			{
+				path: "settings/project",
+				name: "settings-project",
+				component: () => import("@/views/settings/ProjectSettingsView.vue"),
+			},
+			{
 				path: "settings/finance-accounts",
 				name: "settings-finance-accounts",
 				component: () => import("@/views/settings/FinanceAccountsView.vue"),

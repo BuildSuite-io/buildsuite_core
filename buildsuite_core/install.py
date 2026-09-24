@@ -142,6 +142,12 @@ def seed_master_data():
 
 	sync_global_search_doctypes()
 
+	# Seed the Project Settings tab template (every toggleable tab shown) so the project view has a
+	# baseline to resolve against. Create-if-missing — an admin's edits survive.
+	from buildsuite_core.api.project_settings import seed_project_settings
+
+	seed_project_settings()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [

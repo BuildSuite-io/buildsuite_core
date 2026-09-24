@@ -57,3 +57,4 @@ buildsuite_core.patches.seed_workspace_shortcuts # 2026-09-15 workspace shortcut
 buildsuite_core.patches.drop_party_company_field # 2026-09-19 Supplier/Customer are global ERPNext parties
 buildsuite_core.patches.rebaseline_report_role_matrix # 2026-09-23 re-baseline report roles to access matrix
 buildsuite_core.patches.tile_rate_check_in_estimation # 2026-09-24 rate-check also an Estimation tile
+buildsuite_core.patches.seed_project_settings # 2026-09-24 seed the project page-tab template
