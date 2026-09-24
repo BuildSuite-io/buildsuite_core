@@ -36,6 +36,17 @@ REPORTS = (
 # Former hardcoded workspace tiles (functional ones only — the "coming soon" placeholder
 # tiles had no destination and are dropped). Seeded as explicit routes / report references.
 _SEED = {
+	# Rate check is a Procurement report also surfaced in Estimation (matrix: "procurement +
+	# estimation") — the Estimator/QS who own the Rate Master see it here, since they can't see
+	# the Procurement workspace. Same bespoke route; a second tile, in a workspace they can open.
+	"estimation": (
+		{
+			"label": "Purchase rate vs estimate",
+			"icon": "chart-bar",
+			"route": "/procurement/report/rate-check",
+			"description": "What you are paying against the QS rate in the Rate Master.",
+		},
+	),
 	"subcontract": (
 		{
 			"label": "Work Order Register",
