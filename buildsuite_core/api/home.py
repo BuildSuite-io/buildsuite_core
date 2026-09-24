@@ -138,8 +138,10 @@ def _cash_and_bank(company):
 # --------------------------------------------------------------------------- #
 # snapshot / CTA / alerts — per role
 # --------------------------------------------------------------------------- #
-def _tile(label, value, slug, tone="brand", fmt="int"):
-	return {"label": label, "value": value, "slug": slug, "tone": tone, "format": fmt}
+def _tile(label, value, slug, tone="brand", fmt="int", to=None):
+	# `to` makes a snapshot tile clickable — it opens the matching SPA list (with a filter query),
+	# so the number and the list it drills into stay in step.
+	return {"label": label, "value": value, "slug": slug, "tone": tone, "format": fmt, "to": to}
 
 
 def _alert(key, title, value, sub, slug, to, active, tone="warning"):
@@ -267,9 +269,12 @@ def get_home_dashboard():
 	week_ago = str(add_days(today, -7))
 
 	# --- scoped project set (permission query conditions apply via get_list) ---
-	project_ids = frappe.get_list(
-		"Project", filters={"company": company}, pluck="name", limit_page_length=0
-	) or ["__none__"]
+	# Scope task / stage / SCO counts by the user's READABLE projects, NOT by default_company.
+	# Those doctypes have no company field and their SPA lists aren't company-scoped, so a
+	# company filter here made an admin's tile under-count vs the very list the tile drills into
+	# (e.g. tasks/stages living under a sibling company were dropped). get_list still applies the
+	# permission query conditions, so a team-scoped user is still limited to their own projects.
+	project_ids = frappe.get_list("Project", pluck="name", limit_page_length=0) or ["__none__"]
 	proj_in = {"project": ["in", project_ids]}
 
 	roots = frappe.get_list(
@@ -336,7 +341,9 @@ def get_home_dashboard():
 		"Task", {**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]}
 	)
 	progress_today = _count("Task Progress Entry", {"entry_date": str(today)})
-	users = _count("User", {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]})
+	# Count the team — enabled users carrying a BuildSuite persona (what Settings › Users lists) —
+	# not every enabled Frappe user (which pulled in integration/system accounts).
+	users = _count("User", {"enabled": 1, "persona": ["is", "set"]})
 	stage_pending = _count("Stage Planning", {**proj_in, "workflow_state": "Pending Approval"})
 	pending_scos_ct = _count("Scope Change Order", {**proj_in, "status": "Pending Approval"})
 
@@ -446,14 +453,15 @@ def get_home_dashboard():
 
 	if role in _ADMIN_ROLES:
 		snapshot = [
-			_tile("Active projects", active_ct, "clipboard-list"),
-			_tile("Open tasks", open_tasks, "check-circle", "info"),
-			_tile("Users", users, "users", "success"),
+			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
+			_tile("Users", users, "users", "success", to="/settings/users"),
 			_tile(
 				"Pending stage approvals",
 				stage_pending,
 				"check-circle",
 				"warning" if stage_pending else "brand",
+				to="/stage-plannings?status=Pending Approval",
 			),
 		]
 		alerts = [
@@ -495,12 +503,22 @@ def get_home_dashboard():
 	elif role == "pm":
 		on_order, on_order_ct, overdue_del, mrs_pending, _rw = procurement()
 		snapshot = [
-			_tile("Active projects", active_ct, "clipboard-list"),
-			_tile("Open tasks", open_tasks, "check-circle", "info"),
+			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
 			_tile(
-				"Stage approvals", stage_pending, "check-circle", "warning" if stage_pending else "success"
+				"Stage approvals",
+				stage_pending,
+				"check-circle",
+				"warning" if stage_pending else "success",
+				to="/stage-plannings?status=Pending Approval",
 			),
-			_tile("MRs awaiting approval", mrs_pending, "procurement", "warning" if mrs_pending else "muted"),
+			_tile(
+				"MRs awaiting approval",
+				mrs_pending,
+				"procurement",
+				"warning" if mrs_pending else "muted",
+				to="/procurement/material-requests?status=Pending Approval",
+			),
 		]
 		alerts = [
 			stage_alert,

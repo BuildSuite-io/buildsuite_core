@@ -3,7 +3,7 @@
 // consistent with other meta-backed list screens.
 
 import { ref, computed } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter, useRoute, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
@@ -83,6 +83,27 @@ function assignedUser(row) {
 	}
 }
 
+// Honor ?status= deep links from the Home dashboard tiles. "open" = every non-closed task,
+// "overdue" = non-closed and past its end date — both become base filters; any real status just
+// seeds the status chip. Mirrors home.py's _OPEN_TASK closed set.
+const route = useRoute();
+const CLOSED_TASK_STATUSES = ["Completed", "Cancelled", "Template"];
+const queryStatus = route.query.status || "";
+if (queryStatus && queryStatus !== "open" && queryStatus !== "overdue") {
+	statusFilter.value = queryStatus;
+}
+const baseFilters = computed(() => {
+	if (queryStatus === "open") return [["task_status", "not in", CLOSED_TASK_STATUSES]];
+	if (queryStatus === "overdue") {
+		const today = new Date().toISOString().slice(0, 10);
+		return [
+			["task_status", "not in", CLOSED_TASK_STATUSES],
+			["exp_end_date", "<", today],
+		];
+	}
+	return [];
+});
+
 const filterValues = computed(() => ({
 	status: statusFilter.value,
 	priority: priorityFilter.value,
@@ -108,6 +129,7 @@ function onRowClick(row) {
 
 		<DocTypeListView
 			doctype="Task"
+			:base-filters="baseFilters"
 			:field-order="[
 				'subject',
 				'project',
