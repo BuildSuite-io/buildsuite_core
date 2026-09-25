@@ -73,10 +73,15 @@ def restore_default_role_permissions():
 
 @frappe.whitelist()
 def export_role_permissions():
-	"""The site's CURRENT DocPerms for the BuildSuite roles, grouped by doctype.
+	"""The site's CURRENT BuildSuite permission state — a complete snapshot the client hands back so
+	the shipped defaults can be aligned to their edits. Three layers:
 
-	A snapshot the client hands back so the shipped defaults can be aligned to their edits.
-	Only BuildSuite roles are included (System Manager's blanket grant is noise for alignment).
+	- ``permissions`` — doctype-level Custom DocPerm rows, per doctype. BuildSuite roles only
+	  (System Manager's blanket grant is noise for alignment).
+	- ``workspaces`` — each BuildSuite Workspace's Visible-To roles (the sidebar-visibility layer).
+	- ``reports`` — each BuildSuite report's roles (the report-access layer: the anchors + the
+	  file-based Script Reports). ALL roles are kept here (incl. admin), since they ARE the report's
+	  access list — unlike DocPerms.
 	"""
 	_require_admin()
 	roles = list(BUILDSUITE_ROLES)
@@ -91,9 +96,31 @@ def export_role_permissions():
 		by_doctype.setdefault(r.parent, []).append(
 			{"role": r.role, **{f: int(r.get(f) or 0) for f in _PERM_FIELDS}}
 		)
+
+	# Workspace visibility — the BuildSuite Workspace registry's Visible-To roles.
+	workspaces = {}
+	if frappe.db.exists("DocType", "BuildSuite Workspace"):
+		for ws in frappe.get_all("BuildSuite Workspace", pluck="name", order_by="sort_order asc"):
+			workspaces[ws] = sorted(
+				frappe.get_all(
+					"BuildSuite Workspace Role",
+					filters={"parent": ws, "parenttype": "BuildSuite Workspace"},
+					pluck="role",
+				)
+			)
+
+	# Report access — the roles on every BuildSuite report (anchors + file-based), grouped by report.
+	reports = {}
+	for name in frappe.get_all("Report", filters={"module": "BuildSuite Core"}, pluck="name", order_by="name asc"):
+		reports[name] = sorted(
+			frappe.get_all("Has Role", filters={"parent": name, "parenttype": "Report"}, pluck="role")
+		)
+
 	return {
 		"site": frappe.local.site,
 		"roles": roles,
 		"doctypes": sorted(by_doctype),
 		"permissions": by_doctype,
+		"workspaces": workspaces,
+		"reports": reports,
 	}
