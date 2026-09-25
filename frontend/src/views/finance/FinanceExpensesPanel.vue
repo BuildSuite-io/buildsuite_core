@@ -117,9 +117,42 @@ function clearFilters() {
 function inPeriod(d) {
 	return (!from.value || d >= from.value) && (!to.value || d <= to.value);
 }
+
+// ---- sorting (prototype S385) ----
+// Default to the order expenses were ENTERED, not spent: a receipt logged days after its spend
+// date lands mid-list under a date sort and reads as though it never saved. The name (EXP-…) runs
+// in entry sequence, so it breaks ties the way a human expects.
+const SORT_OPTIONS = [
+	{ key: "created-desc", label: "Entered — newest first" },
+	{ key: "created-asc", label: "Entered — oldest first" },
+	{ key: "date-desc", label: "Expense date — newest first" },
+	{ key: "date-asc", label: "Expense date — oldest first" },
+	{ key: "amount-desc", label: "Amount — highest first" },
+	{ key: "amount-asc", label: "Amount — lowest first" },
+];
+const sortBy = ref("created-desc");
+const cmpText = (x, y) => (x || "").localeCompare(y || "");
+function applySort(arr) {
+	const rows = arr.slice();
+	switch (sortBy.value) {
+		case "created-asc":
+			return rows.sort((a, b) => cmpText(a.created, b.created) || cmpText(a.name, b.name));
+		case "date-desc":
+			return rows.sort((a, b) => cmpText(b.date, a.date) || cmpText(b.name, a.name));
+		case "date-asc":
+			return rows.sort((a, b) => cmpText(a.date, b.date) || cmpText(a.name, b.name));
+		case "amount-desc":
+			return rows.sort((a, b) => (b.amount || 0) - (a.amount || 0) || cmpText(b.name, a.name));
+		case "amount-asc":
+			return rows.sort((a, b) => (a.amount || 0) - (b.amount || 0) || cmpText(a.name, b.name));
+		default: // created-desc — Entered, newest first
+			return rows.sort((a, b) => cmpText(b.created, a.created) || cmpText(b.name, a.name));
+	}
+}
+
 const allExpenses = computed(() => {
 	const term = search.value.trim().toLowerCase();
-	return expenses.value.filter(
+	const rows = expenses.value.filter(
 		(e) =>
 			(!statusFilter.value || e.status === statusFilter.value) &&
 			inPeriod(e.date) &&
@@ -130,8 +163,9 @@ const allExpenses = computed(() => {
 				(e.expense_account || "").toLowerCase().includes(term) ||
 				e.name.toLowerCase().includes(term)),
 	);
+	return applySort(rows);
 });
-const myExpenses = computed(() => myExpensesAll.value.filter((e) => inPeriod(e.date)));
+const myExpenses = computed(() => applySort(myExpensesAll.value.filter((e) => inPeriod(e.date))));
 
 // Client-side pagers for the three bespoke expense tables (they render raw <table>s, not DeskList).
 const toSubmitPager = usePagination(toSubmit);
@@ -374,6 +408,12 @@ const expenseAccountFilters = computed(() => [
 						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
 						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
 					</div>
+					<div class="flex items-center gap-1.5">
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Sort</span>
+						<select v-model="sortBy" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
+							<option v-for="o in SORT_OPTIONS" :key="o.key" :value="o.key">{{ o.label }}</option>
+						</select>
+					</div>
 					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">Clear filters</button>
 					<span class="text-[11px] text-ink-400 ml-auto">{{ allExpenses.length }} expense{{ allExpenses.length === 1 ? "" : "s" }}</span>
 				</div>
@@ -407,6 +447,12 @@ const expenseAccountFilters = computed(() => [
 						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
 						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
 						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
+					</div>
+					<div class="flex items-center gap-1.5">
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Sort</span>
+						<select v-model="sortBy" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
+							<option v-for="o in SORT_OPTIONS" :key="o.key" :value="o.key">{{ o.label }}</option>
+						</select>
 					</div>
 					<button v-if="from || to" type="button" class="text-[11px] text-danger-600 hover:underline" @click="from = ''; to = ''">Clear</button>
 					<span class="text-[11px] text-ink-400 ml-auto">{{ myExpenses.length }} expense{{ myExpenses.length === 1 ? "" : "s" }}</span>

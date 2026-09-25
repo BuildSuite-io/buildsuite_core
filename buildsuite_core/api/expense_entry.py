@@ -68,7 +68,7 @@ def list_expenses():
 	list: date, description, holder, source, account, cost type, amount, status."""
 	entries = frappe.get_all(
 		DOCTYPE,
-		fields=["name", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description"],
+		fields=["name", "creation", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description"],
 		order_by="date desc, creation desc",
 		limit_page_length=0,
 	)
@@ -97,6 +97,9 @@ def list_expenses():
 		out.append(
 			{
 				"name": e.name,
+				# Entry timestamp — the "Entered" sort in the panel (differs from `date`, the spend
+				# date, whenever a receipt is logged days later).
+				"created": str(e.creation) if e.creation else None,
 				"date": str(e.date) if e.date else None,
 				"description": fr.get("description") or e.description or e.name,
 				"project": e.project,
