@@ -2,7 +2,7 @@ import { frappeRequest } from "frappe-ui-frappe-request";
 
 import { parseFrappeError } from "@/utils/frappeError";
 
-// Thin wrappers over buildsuite_core.api.todo.* — the user's personal to-do list (Frappe ToDo).
+// Thin wrappers over buildsuite_core.api.todo.* — the user's to-dos (Frappe ToDo).
 
 async function call(method, args) {
 	try {
@@ -15,7 +15,8 @@ async function call(method, args) {
 	}
 }
 
-export const listMyTodos = () => call("list_my_todos");
+// { me, can_see_all, todos: [...] } — the current user's visible to-dos, enriched with names + refs.
+export const listTodos = () => call("list_todos");
 export const myOpenTodoCount = () => call("my_open_todo_count");
 export const saveTodo = (payload) => call("save_todo", payload || {});
 export const setTodoStatus = (name, status) => call("set_todo_status", { name, status });

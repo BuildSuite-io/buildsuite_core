@@ -148,6 +148,11 @@ def seed_master_data():
 
 	seed_project_settings()
 
+	# Add the 'In Progress' status option to Frappe's ToDo (the top-nav to-do board's third column).
+	from buildsuite_core.api.todo import ensure_todo_status_option
+
+	ensure_todo_status_option()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [
