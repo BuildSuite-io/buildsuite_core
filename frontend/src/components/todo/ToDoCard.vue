@@ -20,6 +20,8 @@ const title = computed(() => todoTitle(props.todo, props.variant === "row" ? 140
 const due = computed(() => todoDue(props.todo, props.today));
 const reference = computed(() => todoReference(props.todo));
 const isDone = computed(() => TODO_DONE_STATUSES.includes(props.todo.status));
+// Unread = the Frappe _seen read-receipt hasn't recorded me yet (backend `read`).
+const isUnread = computed(() => props.todo.read === false);
 
 const PRIORITY_EDGE = { High: "bg-danger-500", Medium: "bg-warning-500", Low: "bg-ink-300" };
 const edge = computed(() => PRIORITY_EDGE[props.todo.priority] || "bg-ink-300");
@@ -58,7 +60,9 @@ const nextStatus = computed(() => {
 				class="flex-1 min-w-0 text-left flex flex-col justify-center min-h-[40px]"
 				@click="emit('open', todo)"
 			>
-				<div class="text-sm text-ink-900 font-medium truncate" :class="isDone ? 'line-through decoration-ink-400' : ''">{{ title }}</div>
+				<div class="text-sm text-ink-900 truncate" :class="[isDone ? 'line-through decoration-ink-400' : '', isUnread ? 'font-semibold' : 'font-medium']">
+					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" title="Unread"></span>{{ title }}
+				</div>
 				<div class="flex items-center gap-2 mt-0.5 text-[11px] text-ink-500 min-w-0">
 					<span v-if="due" class="px-1.5 py-0.5 rounded-full shrink-0" :class="DUE_TONE[due.tone]">{{ due.text || todo.date }}</span>
 					<span v-else-if="todo.date" class="shrink-0">{{ fmtDate(todo.date) }}</span>
@@ -90,7 +94,9 @@ const nextStatus = computed(() => {
 		<!-- CARD -->
 		<template v-else>
 			<button type="button" class="w-full text-left" @click="emit('open', todo)">
-				<div class="text-sm text-ink-900 leading-snug" :class="isDone ? 'line-through decoration-ink-400' : ''">{{ title }}</div>
+				<div class="text-sm text-ink-900 leading-snug" :class="[isDone ? 'line-through decoration-ink-400' : '', isUnread ? 'font-semibold' : '']">
+					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" title="Unread"></span>{{ title }}
+				</div>
 				<div v-if="reference" class="flex items-center gap-1 mt-2 text-[11px] text-ink-500 min-w-0">
 					<WorkspaceIcon :slug="reference.icon" :size="11" class="shrink-0" />
 					<span class="truncate">{{ reference.label }}</span>

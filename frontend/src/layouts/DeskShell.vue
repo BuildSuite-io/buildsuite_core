@@ -552,7 +552,7 @@ const navGroups = computed(() => {
 				<RouterLink
 					to="/todo"
 					class="flex items-center gap-2 h-8 px-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-50 shrink-0"
-					:title="store.openTodoCount ? `To-dos — ${store.openTodoCount} open` : 'To-dos — your to-do list'"
+					:title="store.unreadTodoCount ? `To-dos — ${store.unreadTodoCount} unread` : 'To-dos — your to-do list'"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
 						<path
@@ -563,9 +563,9 @@ const navGroups = computed(() => {
 					</svg>
 					<span class="text-sm hidden sm:inline">To-dos</span>
 					<span
-						v-if="store.openTodoCount"
+						v-if="store.unreadTodoCount"
 						class="text-[10px] font-semibold tabular-nums leading-none px-1.5 py-1 rounded-full bg-brand-700 text-white"
-						>{{ store.openTodoCount }}</span
+						>{{ store.unreadTodoCount }}</span
 					>
 				</RouterLink>
 

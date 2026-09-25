@@ -8,6 +8,8 @@ director / admin roles see everyone's. Frappe's own ToDo row permissions still a
 One deliberate extension mirrors the prototype: an 'In Progress' status (a Select option added via
 a property setter), so the board is three columns — Open → In Progress → Closed — not two."""
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import strip_html
@@ -52,6 +54,23 @@ def _can_see_all():
 	return bool(_CAN_SEE_ALL & set(frappe.get_roles()))
 
 
+def _seen_list(raw):
+	try:
+		val = json.loads(raw or "[]")
+		return val if isinstance(val, list) else []
+	except (ValueError, TypeError):
+		return []
+
+
+def _mark_read(name, user=None):
+	"""Add a user to the ToDo's Frappe `_seen` read-receipt (idempotent, no modified bump)."""
+	user = user or frappe.session.user
+	seen = _seen_list(frappe.db.get_value(DOCTYPE, name, "_seen"))
+	if user not in seen:
+		seen.append(user)
+		frappe.db.set_value(DOCTYPE, name, "_seen", json.dumps(seen), update_modified=False)
+
+
 def _ref_label(ref_type, ref_name):
 	if not (ref_type and ref_name) or not frappe.db.exists("DocType", ref_type):
 		return ref_name
@@ -70,7 +89,7 @@ def list_todos():
 	can_all = _can_see_all()
 	fields = [
 		"name", "description", "status", "priority", "date", "color",
-		"allocated_to", "assigned_by", "reference_type", "reference_name", "creation",
+		"allocated_to", "assigned_by", "reference_type", "reference_name", "creation", "_seen",
 	]
 	if can_all:
 		rows = frappe.get_all(DOCTYPE, fields=fields, order_by="modified desc", limit_page_length=0)
@@ -97,13 +116,31 @@ def list_todos():
 		r["allocated_to_name"] = names.get(r.allocated_to) or r.allocated_to
 		r["assigned_by_name"] = names.get(r.assigned_by) or r.assigned_by
 		r["reference_label"] = _ref_label(r.get("reference_type"), r.get("reference_name"))
+		# Frappe read-receipt: have I seen this to-do? (the `read` dot + unread badge)
+		r["read"] = me in _seen_list(r.pop("_seen", None))
 	return {"me": me, "can_see_all": can_all, "todos": rows}
 
 
 @frappe.whitelist()
-def my_open_todo_count():
-	"""Count of the current user's OPEN / In-Progress to-dos allocated to them — the top-nav badge."""
-	return frappe.db.count(DOCTYPE, {"status": ["in", ["Open", "In Progress"]], "allocated_to": frappe.session.user})
+def my_unread_todo_count():
+	"""The top-nav badge: to-dos allocated to me that I haven't opened yet (Frappe `_seen`).
+	Cancelled ones don't count. My own to-dos are marked read on creation, so this is really
+	'things other people put on my plate that I haven't looked at'."""
+	me = frappe.session.user
+	rows = frappe.get_all(
+		DOCTYPE,
+		filters={"allocated_to": me, "status": ["!=", "Cancelled"]},
+		fields=["_seen"],
+		limit_page_length=0,
+	)
+	return sum(1 for r in rows if me not in _seen_list(r.get("_seen")))
+
+
+@frappe.whitelist()
+def mark_todo_read(name):
+	"""Mark a to-do read for the current user (its Frappe `_seen`) — called when it's opened."""
+	_mark_read(name)
+	return {"name": name, "read": True}
 
 
 @frappe.whitelist()
@@ -136,6 +173,8 @@ def save_todo(name=None, description=None, priority="Medium", date=None, status=
 			}
 		)
 		doc.insert()
+		# A to-do I raise is already "read" by me — only ones others assign me start unread.
+		_mark_read(doc.name)
 	return {"name": doc.name}
 
 

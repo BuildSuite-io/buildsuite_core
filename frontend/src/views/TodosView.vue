@@ -12,7 +12,7 @@ import {
 	TODO_DONE_STATUSES,
 	todoDue,
 } from "@/data/todo";
-import { listTodos, setTodoStatus } from "@/data/todoApi";
+import { listTodos, setTodoStatus, markTodoRead } from "@/data/todoApi";
 import ToDoCard from "@/components/todo/ToDoCard.vue";
 import ToDoFormModal from "@/components/todo/ToDoFormModal.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -137,8 +137,18 @@ function clearFilters() {
 	personFilter.value = "";
 }
 
-function open(todo) {
+async function open(todo) {
 	editTodo.value = todo;
+	// Opening a to-do marks it read (Frappe _seen) and drops the unread badge.
+	if (!todo.read) {
+		todo.read = true;
+		try {
+			await markTodoRead(todo.name);
+			store.loadTodoCount();
+		} catch {
+			/* a failed read-receipt shouldn't block opening */
+		}
+	}
 }
 async function advance(todo) {
 	const i = TODO_BOARD_STATUSES.indexOf(todo.status);
