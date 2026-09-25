@@ -548,6 +548,27 @@ const navGroups = computed(() => {
 						/>
 					</svg>
 				</button>
+				<!-- To-dos — a permanent slot in the top nav; the badge counts your open items. -->
+				<RouterLink
+					to="/todo"
+					class="flex items-center gap-2 h-8 px-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-50 shrink-0"
+					:title="store.openTodoCount ? `To-dos — ${store.openTodoCount} open` : 'To-dos — your to-do list'"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					<span class="text-sm hidden sm:inline">To-dos</span>
+					<span
+						v-if="store.openTodoCount"
+						class="text-[10px] font-semibold tabular-nums leading-none px-1.5 py-1 rounded-full bg-brand-700 text-white"
+						>{{ store.openTodoCount }}</span
+					>
+				</RouterLink>
+
 				<div class="ml-auto flex items-center gap-1 sm:gap-2">
 					<!-- Theme toggle — sun in dark mode, moon in light mode -->
 					<button

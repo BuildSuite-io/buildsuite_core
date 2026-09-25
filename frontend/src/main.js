@@ -67,6 +67,7 @@ async function mountApp() {
 	if (sessionStore.access?.allowed) {
 		await dataStore.loadWorkspaces();
 		await dataStore.loadProjectSettings();
+		dataStore.loadTodoCount();
 	}
 
 	app.use(router);

@@ -7,6 +7,7 @@ import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
 import { ROLES } from "@/data/roles";
 import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
+import { myOpenTodoCount } from "@/data/todoApi";
 import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
@@ -171,6 +172,8 @@ function addDaysISO(isoDate, days) {
 export const useDataStore = defineStore("data", {
 	state: () => ({
 		hydrated: false,
+		// Open to-dos allocated to the current user — the top-nav To-dos badge (api.todo).
+		openTodoCount: 0,
 		// Site-wide Project page-tab template (api.project_settings). { tabs: { tabId: shown } };
 		// a tab is shown unless explicitly false. Per-project overrides live on the project itself.
 		projectSettings: { tabs: {} },
@@ -721,6 +724,15 @@ export const useDataStore = defineStore("data", {
 			} catch (e) {
 				this.workspaces = [];
 				console.warn("Failed to load workspaces:", e);
+			}
+		},
+
+		// Refresh the open to-do badge count. Called on boot and after the To-dos view mutates.
+		async loadTodoCount() {
+			try {
+				this.openTodoCount = (await myOpenTodoCount()) || 0;
+			} catch {
+				this.openTodoCount = 0;
 			}
 		},
 
