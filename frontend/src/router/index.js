@@ -11,6 +11,7 @@ import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
 const PAGE_TITLES = {
 	"app-home": "Home",
 	dashboard: "Dashboard",
+	todo: "To-dos",
 	projects: "Projects",
 	"project-new": "New Project",
 	"project-detail": "Project",
@@ -181,6 +182,7 @@ const routes = [
 				props: true,
 			},
 			{ path: "tasks", name: "tasks", component: () => import("@/views/TasksView.vue") },
+			{ path: "todo", name: "todo", component: () => import("@/views/TodosView.vue") },
 			{
 				path: "tasks/new",
 				name: "task-new",
