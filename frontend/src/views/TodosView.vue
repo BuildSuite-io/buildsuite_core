@@ -3,6 +3,7 @@
 // ToDo via api.todo; a to-do is visible when it's allocated to you or you raised it (directors /
 // admins see everyone's). The top-nav badge (store.openTodoCount) refreshes on every change.
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import {
@@ -21,6 +22,7 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 
 const store = useDataStore();
+const router = useRouter();
 
 const todos = ref([]);
 const me = ref("");
@@ -42,7 +44,6 @@ const personFilter = ref("");
 const filtersOpen = ref(false);
 
 const newOpen = ref(false);
-const editTodo = ref(null);
 
 async function load() {
 	loading.value = true;
@@ -137,18 +138,18 @@ function clearFilters() {
 	personFilter.value = "";
 }
 
-async function open(todo) {
-	editTodo.value = todo;
-	// Opening a to-do marks it read (Frappe _seen) and drops the unread badge.
+function open(todo) {
+	// Open the to-do's own page (a route, not a modal — so it can be linked at and reads well on a
+	// phone). Optimistically clear the unread dot + badge; the detail page marks it read server-side.
 	if (!todo.read) {
 		todo.read = true;
-		try {
-			await markTodoRead(todo.name);
-			store.loadTodoCount();
-		} catch {
-			/* a failed read-receipt shouldn't block opening */
-		}
+		markTodoRead(todo.name)
+			.then(() => store.loadTodoCount())
+			.catch(() => {
+				/* a failed read-receipt shouldn't block opening */
+			});
 	}
+	router.push({ name: "todo-detail", params: { id: todo.name } });
 }
 async function advance(todo) {
 	const i = TODO_BOARD_STATUSES.indexOf(todo.status);
@@ -165,7 +166,6 @@ async function move(todo, status) {
 }
 function onSaved() {
 	newOpen.value = false;
-	editTodo.value = null;
 	load();
 }
 
@@ -334,6 +334,5 @@ function onDrop(status) {
 		</div>
 
 		<ToDoFormModal :open="newOpen" @close="newOpen = false" @saved="onSaved" />
-		<ToDoFormModal :open="!!editTodo" :todo="editTodo" @close="editTodo = null" @saved="onSaved" />
 	</div>
 </template>

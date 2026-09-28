@@ -18,6 +18,9 @@ async function call(method, args) {
 // { me, can_see_all, todos: [...] } — the current user's visible to-dos, enriched with names + refs
 // + a `read` flag (Frappe `_seen`).
 export const listTodos = () => call("list_todos");
+// { todo, activity: [...] } — one to-do plus its Frappe activity timeline (creation, tracked field
+// changes, comments). Marks it read as a side effect.
+export const getTodo = (name) => call("get_todo", { name });
 // Unread to-dos allocated to me — the top-nav badge.
 export const myUnreadTodoCount = () => call("my_unread_todo_count");
 // Mark a to-do read (its `_seen`) — called when it's opened.

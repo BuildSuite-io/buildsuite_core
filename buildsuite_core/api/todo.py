@@ -80,6 +80,20 @@ def _ref_label(ref_type, ref_name):
 	return ref_name
 
 
+def _enrich_row(r, me, names):
+	"""Shape a raw ToDo row (dict) for the SPA: plain-text description, ISO dates, assignee/author
+	names, the referenced record's label, and the `read` flag. `names` is a user→full_name cache."""
+	r["description"] = strip_html(r.get("description") or "").strip()
+	r["date"] = str(r.date) if r.get("date") else None
+	r["created_at"] = str(r.creation) if r.get("creation") else None
+	r.pop("creation", None)
+	r["allocated_to_name"] = names.get(r.allocated_to) or r.allocated_to
+	r["assigned_by_name"] = names.get(r.assigned_by) or r.assigned_by
+	r["reference_label"] = _ref_label(r.get("reference_type"), r.get("reference_name"))
+	r["read"] = me in _seen_list(r.pop("_seen", None))
+	return r
+
+
 @frappe.whitelist()
 def list_todos():
 	"""The current user's visible to-dos (all, for a director/admin; else allocated to or raised by
@@ -109,15 +123,7 @@ def list_todos():
 		else {}
 	)
 	for r in rows:
-		r["description"] = strip_html(r.get("description") or "").strip()
-		r["date"] = str(r.date) if r.get("date") else None
-		r["created_at"] = str(r.creation) if r.get("creation") else None
-		r.pop("creation", None)
-		r["allocated_to_name"] = names.get(r.allocated_to) or r.allocated_to
-		r["assigned_by_name"] = names.get(r.assigned_by) or r.assigned_by
-		r["reference_label"] = _ref_label(r.get("reference_type"), r.get("reference_name"))
-		# Frappe read-receipt: have I seen this to-do? (the `read` dot + unread badge)
-		r["read"] = me in _seen_list(r.pop("_seen", None))
+		_enrich_row(r, me, names)
 	return {"me": me, "can_see_all": can_all, "todos": rows}
 
 
@@ -141,6 +147,159 @@ def mark_todo_read(name):
 	"""Mark a to-do read for the current user (its Frappe `_seen`) — called when it's opened."""
 	_mark_read(name)
 	return {"name": name, "read": True}
+
+
+def _visible_to_me(row, me):
+	"""Same visibility as list_todos: mine, raised by me, or I'm a director/admin."""
+	return _can_see_all() or me in (row.get("allocated_to"), row.get("assigned_by"), row.get("owner"))
+
+
+# Fields whose Version-tracked changes are worth a timeline line, and the label to show for each.
+# Anything not listed (internal / bookkeeping fields) is skipped.
+_ACTIVITY_FIELDS = {
+	"status": "status",
+	"priority": "priority",
+	"date": "due date",
+	"description": "description",
+	"allocated_to": "assignee",
+}
+# The icon key each change maps to on the frontend (WorkspaceIcon slugs, mirrors the prototype).
+_FIELD_ACTION = {
+	"status": "status",
+	"priority": "status",
+	"date": "due",
+	"description": "edited",
+	"allocated_to": "assigned",
+}
+
+
+def _describe_change(field, old, new, uname):
+	"""A human sentence for one Version field change, or None to skip it."""
+	label = _ACTIVITY_FIELDS.get(field)
+	if not label:
+		return None
+	if field == "description":
+		return "edited the description"
+	if field == "allocated_to":
+		return f"reassigned it to {uname(new)}" if new else "removed the assignee"
+	old_txt = old if old not in (None, "") else "—"
+	new_txt = new if new not in (None, "") else "—"
+	if field == "date":
+		old_txt, new_txt = (old or "no due date"), (new or "no due date")
+	return f"changed {label} from “{old_txt}” to “{new_txt}”"
+
+
+def get_todo_activity(name):
+	"""The to-do's Frappe activity timeline, oldest first: its creation, every tracked field change
+	(from Version — ToDo has track_changes on), and any comments left on it. Each entry is
+	{id, action, by, by_name, at, text, is_comment}."""
+	name_cache = {}
+
+	def uname(user):
+		if not user:
+			return user
+		if user not in name_cache:
+			name_cache[user] = frappe.db.get_value("User", user, "full_name") or user
+		return name_cache[user]
+
+	meta = frappe.db.get_value(DOCTYPE, name, ["owner", "creation"], as_dict=True) or {}
+	acts = [
+		{
+			"id": f"created-{name}",
+			"action": "created",
+			"by": meta.get("owner"),
+			"by_name": uname(meta.get("owner")),
+			"at": str(meta.get("creation")) if meta.get("creation") else None,
+			"text": "raised this to-do",
+			"is_comment": False,
+		}
+	]
+
+	# Field changes — ToDo.track_changes is on, so Version rows carry the edit history.
+	versions = frappe.get_all(
+		"Version",
+		filters={"ref_doctype": DOCTYPE, "docname": name},
+		fields=["name", "owner", "creation", "data"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
+	for v in versions:
+		try:
+			data = json.loads(v.data or "{}")
+		except (ValueError, TypeError):
+			continue
+		for change in data.get("changed", []):
+			field = change[0] if change else None
+			old = change[1] if len(change) > 1 else None
+			new = change[2] if len(change) > 2 else None
+			text = _describe_change(field, old, new, uname)
+			if not text:
+				continue
+			acts.append(
+				{
+					"id": f"{v.name}-{field}",
+					"action": _FIELD_ACTION.get(field, "edited"),
+					"by": v.owner,
+					"by_name": uname(v.owner),
+					"at": str(v.creation),
+					"text": text,
+					"is_comment": False,
+				}
+			)
+
+	# Comments left on the to-do (user comments + Frappe's own info/activity comments).
+	comments = frappe.get_all(
+		"Comment",
+		filters={
+			"reference_doctype": DOCTYPE,
+			"reference_name": name,
+			"comment_type": ["in", ["Comment", "Info", "Edit", "Label", "Relinked", "Attachment"]],
+		},
+		fields=["name", "owner", "creation", "content", "comment_type", "comment_by"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
+	for c in comments:
+		is_comment = c.comment_type == "Comment"
+		acts.append(
+			{
+				"id": c.name,
+				"action": "comment" if is_comment else "info",
+				"by": c.owner,
+				"by_name": uname(c.comment_by or c.owner),
+				"at": str(c.creation),
+				"text": strip_html(c.content or "").strip(),
+				"is_comment": is_comment,
+			}
+		)
+
+	acts.sort(key=lambda a: a.get("at") or "")
+	return acts
+
+
+@frappe.whitelist()
+def get_todo(name):
+	"""One to-do — enriched exactly like a list row — plus its Frappe activity timeline. Marks it
+	read (its `_seen`). A to-do you may not see is reported as not-found, not forbidden, so the
+	response never confirms that a to-do you can't read exists."""
+	me = frappe.session.user
+	fields = [
+		"name", "description", "status", "priority", "date", "color",
+		"allocated_to", "assigned_by", "reference_type", "reference_name", "creation", "_seen", "owner",
+	]
+	row = frappe.db.get_value(DOCTYPE, name, fields, as_dict=True) if frappe.db.exists(DOCTYPE, name) else None
+	if not row or not _visible_to_me(row, me):
+		frappe.throw(_("This to-do no longer exists, or it belongs to someone else."), frappe.DoesNotExistError)
+
+	activity = get_todo_activity(name)
+	_mark_read(name)
+
+	names = {}
+	for u in {row.get("allocated_to"), row.get("assigned_by")} - {None}:
+		names[u] = frappe.db.get_value("User", u, "full_name") or u
+	row.pop("owner", None)
+	_enrich_row(row, me, names)
+	return {"todo": row, "activity": activity}
 
 
 @frappe.whitelist()
