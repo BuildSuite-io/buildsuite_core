@@ -272,6 +272,19 @@
    filter bar is print-hidden, so this carries which filters produced the printout). */
 .report-print-only { display: none; }
 
+/* A server-rendered print document (Purchase Order, Work Order, Sales Invoice, …) is always a
+   LIGHT document — white page, dark ink — even while the app runs in dark mode, so the on-screen
+   preview and the printout read identically regardless of theme. Without this the injected print
+   HTML inherits the app's light-on-dark body colour and reads faintly. Scoped to .print-document
+   so the theme-following report views are never forced light on screen. Elements that set their
+   own colour (the print format's own CSS) still win — only inherited text is corrected. */
+.print-document { background: #fff; color: #0f172a; color-scheme: light; }
+html.dark .print-document,
+html.dark .print-document .report-content {
+  background: #fff !important;
+  color: #0f172a !important;
+}
+
 @media print {
   /* Force a light background regardless of dark-mode preference — PDFs read
      better on white. */

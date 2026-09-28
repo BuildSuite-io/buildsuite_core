@@ -56,7 +56,7 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 </script>
 
 <template>
-	<div class="bg-white min-h-full report-root">
+	<div class="bg-white min-h-full report-root print-document">
 		<!-- ===== Control bar (hidden in print) ===== -->
 		<header class="border-b border-ink-200 bg-white sticky top-0 z-10 print:hidden">
 			<div class="max-w-4xl mx-auto px-6 py-3 flex items-center gap-3">
