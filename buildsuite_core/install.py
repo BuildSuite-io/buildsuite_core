@@ -153,6 +153,12 @@ def seed_master_data():
 
 	ensure_todo_status_option()
 
+	# Custom print formats for Sales Invoice + Subcontractor Work Order matching the prototype layout,
+	# seeded as each doctype's default so the SPA's print view picks them up. See print_formats.
+	from buildsuite_core.print_formats import seed_print_formats
+
+	seed_print_formats()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [
