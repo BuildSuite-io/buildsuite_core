@@ -12,6 +12,7 @@ const PAGE_TITLES = {
 	"app-home": "Home",
 	dashboard: "Dashboard",
 	todo: "To-dos",
+	"todo-detail": "To-do",
 	projects: "Projects",
 	"project-new": "New Project",
 	"project-detail": "Project",
@@ -183,6 +184,12 @@ const routes = [
 			},
 			{ path: "tasks", name: "tasks", component: () => import("@/views/TasksView.vue") },
 			{ path: "todo", name: "todo", component: () => import("@/views/TodosView.vue") },
+			{
+				path: "todo/:id",
+				name: "todo-detail",
+				component: () => import("@/views/TodoDetailView.vue"),
+				props: true,
+			},
 			{
 				path: "tasks/new",
 				name: "task-new",
