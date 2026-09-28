@@ -19,7 +19,11 @@ const props = defineProps({
 	open: { type: Boolean, default: false },
 	// A list row — it carries every field the form needs, so no extra fetch.
 	item: { type: Object, default: null },
+	// Seed text for create mode — the search text typed in the picker that opened this modal.
+	initialCode: { type: String, default: "" },
 });
+// `saved` carries the item's code (its id) so a caller opening this from a picker can select the
+// new item into its line; the Items-list caller ignores the arg and just reloads.
 const emit = defineEmits(["close", "saved"]);
 
 const adapter = createDataAdapter(useDataStore());
@@ -100,7 +104,7 @@ watch(
 					is_stock_item: row.is_stock_item != null ? !!row.is_stock_item : true,
 					disabled: !!row.disabled,
 			  }
-			: blank();
+			: { ...blank(), item_code: props.initialCode || "", item_name: props.initialCode || "" };
 	},
 	{ immediate: true }
 );
@@ -142,7 +146,7 @@ async function save() {
 			await adapter.create("Item", { item_code: form.value.item_code.trim(), ...payload() });
 		}
 		showToast(editing.value ? "Item updated" : "Item created");
-		emit("saved");
+		emit("saved", editing.value ? props.item.name : form.value.item_code.trim());
 		emit("close");
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? "Failed to save the item", "error");

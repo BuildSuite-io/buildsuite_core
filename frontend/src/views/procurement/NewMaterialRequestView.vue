@@ -16,6 +16,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 
@@ -47,6 +48,25 @@ async function onPickItem(line) {
 }
 function inDays(n) {
 	return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+}
+
+// Create a new Item straight from a line's item picker (reuses the shared ItemFormModal). The line
+// the picker belongs to is held so the created item can be selected back into it.
+const itemModalOpen = ref(false);
+const itemModalInitial = ref("");
+let itemModalLine = null;
+function openItemCreate(line, text) {
+	itemModalLine = line;
+	itemModalInitial.value = text || "";
+	itemModalOpen.value = true;
+}
+async function onItemCreated(code) {
+	if (itemModalLine && code) {
+		itemModalLine.item_code = code;
+		await onPickItem(itemModalLine);
+	}
+	itemModalOpen.value = false;
+	itemModalLine = null;
 }
 
 const form = ref({
@@ -238,6 +258,10 @@ const saveLabel = computed(() =>
 										value-field="name"
 										:search-fields="['item_name', 'item_code', 'name']"
 										placeholder="— Item —"
+										:allow-create="canCreate('item')"
+										create-label="item"
+										@update:model-value="onPickItem(line)"
+										@create="(text) => openItemCreate(line, text)"
 									/>
 								</td>
 								<td class="px-3 py-2">
@@ -308,5 +332,12 @@ const saveLabel = computed(() =>
 				<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">{{ errors.lines }}</p>
 			</section>
 		</DeskForm>
+
+		<ItemFormModal
+			:open="itemModalOpen"
+			:initial-code="itemModalInitial"
+			@close="itemModalOpen = false"
+			@saved="onItemCreated"
+		/>
 	</DeskPage>
 </template>

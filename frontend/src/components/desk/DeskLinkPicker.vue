@@ -27,9 +27,14 @@ const props = defineProps({
 	size: { type: String, default: "sm" },
 	error: { type: String, default: "" },
 	dataTest: { type: String, default: "" }, // stable test hook on the trigger button
+	// Opt-in inline "create new" affordance: when set, the dropdown gains a footer row that emits
+	// `create` with the current search text, so the parent can open its own create modal (e.g. the
+	// Item form on a PO / MR line). Off by default, so every existing picker is unchanged.
+	allowCreate: { type: Boolean, default: false },
+	createLabel: { type: String, default: "record" },
 });
 
-const emit = defineEmits(["update:modelValue", "change"]);
+const emit = defineEmits(["update:modelValue", "change", "create"]);
 
 const query = ref("");
 
@@ -315,6 +320,12 @@ function onChange(option) {
 function onQueryUpdate(value) {
 	query.value = value || "";
 }
+
+// Emit the typed search text so the parent can seed its create modal, then close the dropdown.
+function onCreate(togglePopover) {
+	emit("create", query.value.trim());
+	if (typeof togglePopover === "function") togglePopover();
+}
 </script>
 
 <template>
@@ -355,6 +366,33 @@ function onQueryUpdate(value) {
 						{{ selectedOption?.label || placeholder }}
 					</span>
 					<span class="text-[10px] text-ink-400">▾</span>
+				</button>
+			</template>
+
+			<!-- Inline "create new" row: only when allow-create is set. Reuses the parent's create
+			     modal via the `create` event; prefills it with whatever was typed. -->
+			<template v-if="allowCreate" #footer="{ togglePopover }">
+				<button
+					type="button"
+					class="desk-link-picker-create flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left font-medium text-brand-700 hover:bg-brand-50"
+					@click="onCreate(togglePopover)"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="h-3.5 w-3.5 shrink-0"
+						aria-hidden="true"
+					>
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+					<span class="truncate">
+						{{ query.trim() ? `Create “${query.trim()}”` : `New ${createLabel}` }}
+					</span>
 				</button>
 			</template>
 		</Autocomplete>
