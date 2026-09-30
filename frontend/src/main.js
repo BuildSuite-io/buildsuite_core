@@ -68,6 +68,7 @@ async function mountApp() {
 		await dataStore.loadWorkspaces();
 		await dataStore.loadProjectSettings();
 		dataStore.loadTodoCount();
+		dataStore.loadNotificationCount();
 	}
 
 	app.use(router);

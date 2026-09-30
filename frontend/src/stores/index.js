@@ -8,6 +8,7 @@ import { seedData } from "@/data/seed";
 import { ROLES } from "@/data/roles";
 import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
 import { myUnreadTodoCount } from "@/data/todoApi";
+import { myUnseenNotificationCount } from "@/data/notificationApi";
 import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
@@ -174,6 +175,8 @@ export const useDataStore = defineStore("data", {
 		hydrated: false,
 		// Unread to-dos allocated to the current user — the top-nav To-dos badge (api.todo).
 		unreadTodoCount: 0,
+		// Unseen (unread) notifications for the current user — the top-nav bell badge (api.notification).
+		unseenNotificationCount: 0,
 		// Site-wide Project page-tab template (api.project_settings). { tabs: { tabId: shown } };
 		// a tab is shown unless explicitly false. Per-project overrides live on the project itself.
 		projectSettings: { tabs: {} },
@@ -734,6 +737,16 @@ export const useDataStore = defineStore("data", {
 				this.unreadTodoCount = (await myUnreadTodoCount()) || 0;
 			} catch {
 				this.unreadTodoCount = 0;
+			}
+		},
+
+		// Refresh the unseen-notification badge. Called on boot, on opening a notification, and after
+		// the bell / notifications view marks things read.
+		async loadNotificationCount() {
+			try {
+				this.unseenNotificationCount = (await myUnseenNotificationCount()) || 0;
+			} catch {
+				this.unseenNotificationCount = 0;
 			}
 		},
 

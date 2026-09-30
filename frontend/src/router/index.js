@@ -13,6 +13,8 @@ const PAGE_TITLES = {
 	dashboard: "Dashboard",
 	todo: "To-dos",
 	"todo-detail": "To-do",
+	notifications: "Notifications",
+	"notification-detail": "Notification",
 	projects: "Projects",
 	"project-new": "New Project",
 	"project-detail": "Project",
@@ -188,6 +190,17 @@ const routes = [
 				path: "todo/:id",
 				name: "todo-detail",
 				component: () => import("@/views/TodoDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "notifications",
+				name: "notifications",
+				component: () => import("@/views/NotificationsListView.vue"),
+			},
+			{
+				path: "notifications/:id",
+				name: "notification-detail",
+				component: () => import("@/views/NotificationDetailView.vue"),
 				props: true,
 			},
 			{
