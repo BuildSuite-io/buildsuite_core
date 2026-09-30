@@ -19,6 +19,43 @@ _FIELDS = [
 	"name", "subject", "type", "document_type", "document_name",
 	"from_user", "read", "creation", "link", "email_content",
 ]
+_TYPES = ("Assignment", "Mention", "Share", "Alert")
+
+
+def emit(
+	for_user,
+	subject,
+	*,
+	type="Alert",
+	document_type=None,
+	document_name=None,
+	from_user=None,
+	link=None,
+):
+	"""Create a Notification Log addressed to `for_user` — the app's own in-app notification emitter.
+	Use this wherever a BuildSuite event should raise a notification (its `after_insert` publishes the
+	realtime badge event + optional email). Best-effort: a notification must never break the action
+	that triggered it, so failures are logged and swallowed. Returns the new log name, or None."""
+	if not (for_user and subject):
+		return None
+	try:
+		note = frappe.get_doc(
+			{
+				"doctype": DOCTYPE,
+				"for_user": for_user,
+				"from_user": from_user or frappe.session.user,
+				"subject": subject,
+				"type": type if type in _TYPES else "Alert",
+				"document_type": document_type,
+				"document_name": document_name,
+				"link": link,
+			}
+		)
+		note.insert(ignore_permissions=True)
+		return note.name
+	except Exception:
+		frappe.log_error(title="Notification emit failed")
+		return None
 
 
 def _doc_label(doctype, docname):
