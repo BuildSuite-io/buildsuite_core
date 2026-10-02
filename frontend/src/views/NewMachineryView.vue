@@ -17,6 +17,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { currencySymbol } from "@/utils/format";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
@@ -130,7 +131,7 @@ const breadcrumbs = [
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField label="Rate (₹)">
+				<DeskField :label="`Rate (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
 				<DeskField label="Rate unit">

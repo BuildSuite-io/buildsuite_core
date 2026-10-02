@@ -21,6 +21,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { currencySymbol } from "@/utils/format";
 
 const route = useRoute();
 const router = useRouter();
@@ -138,7 +139,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 				<DeskField
-					label="Cost impact (₹)"
+					:label="`Cost impact (${currencySymbol()})`"
 					hint="Positive = added cost to the project; negative = a saving."
 				>
 					<DeskInput v-model.number="form.impact" type="number" step="1000" />

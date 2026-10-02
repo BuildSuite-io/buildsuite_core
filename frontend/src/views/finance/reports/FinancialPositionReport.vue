@@ -7,7 +7,7 @@ import { computed, ref, onMounted } from "vue";
 
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getFinancialPosition } from "@/data/financeReportApi";
-import { fmtINR } from "@/utils/format";
+import { fmtINR, currencySymbol } from "@/utils/format";
 
 const breadcrumbs = [
 	{ label: "Project Finance", to: "/project-finance" },
@@ -132,7 +132,7 @@ const net = computed(() => totalHave.value - totalOwe.value);
 
 			<p class="text-[11px] text-ink-400 print:hidden">
 				Supplier/customer advances and own-pocket reimbursements aren't broken out yet —
-				shown as ₹0 until modelled.
+				shown as {{ currencySymbol() }}0 until modelled.
 			</p>
 		</div>
 	</DeskPage>

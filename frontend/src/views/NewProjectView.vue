@@ -23,6 +23,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CustomerCreateModal from "@/components/CustomerCreateModal.vue";
+import { currencySymbol } from "@/utils/format";
 
 const router = useRouter();
 const route = useRoute();
@@ -565,7 +566,7 @@ const breadcrumbs = computed(() => {
 					<DeskField label="Expected end date" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField label="Project budget (₹)">
+					<DeskField :label="`Project budget (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
 					<DeskField label="Priority">

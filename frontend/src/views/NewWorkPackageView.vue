@@ -22,6 +22,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { createDataAdapter } from "@/data/adapters";
 import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
+import { currencySymbol } from "@/utils/format";
 
 const router = useRouter();
 const route = useRoute();
@@ -187,7 +188,7 @@ const subtitle = computed(() =>
 					<DeskField label="Expected end date" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField label="Budget (₹)">
+					<DeskField :label="`Budget (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
 					<DeskField label="Status">

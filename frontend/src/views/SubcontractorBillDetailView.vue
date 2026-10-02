@@ -34,7 +34,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { usePermissions } from "@/composables/usePermissions";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtINR, currencySymbol } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -1061,7 +1061,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Advance recovery (₹)</label
+								>Advance recovery ({{ currencySymbol() }})</label
 							>
 							<input
 								v-model.number="bill.advance_recovery"
@@ -1183,7 +1183,7 @@ const accountFilters = computed(() =>
 									"
 									@click="discType = '₹'"
 								>
-									₹
+									{{ currencySymbol() }}
 								</button>
 							</div>
 						</div>

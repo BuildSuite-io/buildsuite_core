@@ -20,7 +20,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
-import { fmtCompactINR, fmtINR } from "@/utils/format";
+import { fmtCompactINR, fmtINR, currencySymbol } from "@/utils/format";
 
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
@@ -185,7 +185,7 @@ const subtitle = computed(
 				to="/rate-master"
 				class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 				style="border-radius: 2px"
-				>₹ Rate Master</DeskLink
+				>{{ currencySymbol() }} Rate Master</DeskLink
 			>
 			<button v-if="canCreate('boq')" type="button" class="desk-save-btn" @click="openNew">
 				+ New BOQ

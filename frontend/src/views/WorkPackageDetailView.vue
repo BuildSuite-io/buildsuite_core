@@ -28,7 +28,7 @@ import TaskFormModal from "@/components/TaskFormModal.vue";
 import { createDataAdapter } from "@/data/adapters";
 import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
-import { fmtCompactINR, fmtDate } from "@/utils/format";
+import { fmtCompactINR, fmtDate, currencySymbol } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const store = useDataStore();
@@ -461,7 +461,7 @@ usePageTitle(() => wp.value?.name);
 					<DeskField label="Expected end date" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField label="Budget (₹)">
+					<DeskField :label="`Budget (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" />
 					</DeskField>
 					<DeskField label="Status">

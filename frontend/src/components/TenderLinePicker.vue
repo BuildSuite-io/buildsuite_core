@@ -13,7 +13,7 @@
 
 import { computed, ref, watch } from "vue";
 import { useDocTypeList } from "@/composables/useDocTypeList";
-import { fmtCurrency } from "@/utils/format";
+import { fmtCurrency, currencySymbol } from "@/utils/format";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
@@ -165,7 +165,7 @@ function add() {
 							<DeskField label="Quantity" required>
 								<DeskInput v-model="qty" type="number" min="0" step="any" />
 							</DeskField>
-							<DeskField label="Rate (₹)" required>
+							<DeskField :label="`Rate (${currencySymbol()})`" required>
 								<DeskInput v-model="rate" type="number" min="0" step="any" />
 							</DeskField>
 						</div>

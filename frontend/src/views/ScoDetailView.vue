@@ -21,7 +21,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
-import { fmtINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -427,7 +427,7 @@ const breadcrumbs = computed(() => [
 					><DeskInput v-model="form.title"
 				/></DeskField>
 				<DeskField
-					label="Cost impact (₹)"
+					:label="`Cost impact (${currencySymbol()})`"
 					hint="Positive = added cost; negative = a saving."
 					><DeskInput v-model.number="form.impact" type="number" step="1000"
 				/></DeskField>

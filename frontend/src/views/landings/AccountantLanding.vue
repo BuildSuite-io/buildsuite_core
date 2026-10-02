@@ -5,7 +5,7 @@ import { ROLES } from "@/data/roles";
 import { ACCESS_LABEL, workspaceMetric } from "@/data/workspaces";
 import { useDataStore } from "@/stores";
 import LandingShell from "@/layouts/LandingShell.vue";
-import { fmtCompactINR } from "@/utils/format";
+import { fmtCompactINR, currencySymbol } from "@/utils/format";
 
 const ROLE_ID = "accountant";
 const role = ROLES.find((r) => r.id === ROLE_ID);
@@ -29,7 +29,7 @@ const todayLabel = today.toLocaleDateString("en-IN", {
 const orderBookCompact = computed(() => fmtCompactINR(store.totalOrderBook));
 
 const ILLUSTRATIVE_KPIS = computed(() => [
-	{ label: "Petty cash open", value: "₹4.8 L", sub: "Project Finance" },
+	{ label: "Petty cash open", value: `${currencySymbol()}4.8 L`, sub: "Project Finance" },
 	{ label: "RA bills to pay", value: "11", sub: "Subcontract" },
 	{
 		label: "Project P&L (month)",

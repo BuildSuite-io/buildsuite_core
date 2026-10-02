@@ -13,6 +13,7 @@ import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsAp
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
+import { setDisplayCurrency } from "@/utils/format";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
 import {
 	setActiveCompany as setActiveCompanyScope,
@@ -775,6 +776,8 @@ export const useDataStore = defineStore("data", {
 			try {
 				const ctx = await getCompanyContext();
 				this.multiCompanyEnabled = !!ctx?.multi_company_enabled;
+				// Set the display currency early (before the list loads) so the first paint is right.
+				if (ctx?.default_currency) setDisplayCurrency(ctx.default_currency);
 			} catch {
 				this.multiCompanyEnabled = false;
 			}
@@ -787,6 +790,7 @@ export const useDataStore = defineStore("data", {
 				description: "",
 				color: colourForId(r.id),
 				logo: r.logo,
+				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,
 			}));
 			this.companies = mapped;
@@ -800,6 +804,9 @@ export const useDataStore = defineStore("data", {
 					: defaultRow?.id || mapped[0]?.id || null;
 			// Keep the picker-scope seam in step with the resolved active company.
 			if (this.activeCompany) setActiveCompanyScope(this.activeCompany);
+			// Render all amounts in the resolved company's currency (authoritative over the early ctx set).
+			const activeRow = mapped.find((c) => c.id === this.activeCompany);
+			if (activeRow?.currency) setDisplayCurrency(activeRow.currency);
 			// Reconcile the server-side default to the resolved choice — otherwise a stored
 			// (localStorage) preference that differs from the backend is_default leaves the
 			// frontend on B while default_company() still returns A, so backend-scoped reads
@@ -833,6 +840,9 @@ export const useDataStore = defineStore("data", {
 			this.activeCompany = companyId;
 			saveCompanyToStorage(companyId);
 			setActiveCompanyScope(companyId);
+			// Switch the display currency to the newly-selected company's.
+			const picked = this.companies.find((c) => c.id === companyId);
+			if (picked?.currency) setDisplayCurrency(picked.currency);
 		},
 
 		// ===== Settings DocTypes (Session 34) =====

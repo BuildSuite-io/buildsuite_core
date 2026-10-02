@@ -32,9 +32,13 @@ def active_company():
 def company_context():
 	"""Working company + whether company awareness is enabled — for every signed-in user. The SPA
 	gates the topbar switcher and all list/picker company-scoping on `multi_company_enabled`."""
+	company = default_company()
 	return {
-		"company": default_company(),
+		"company": company,
 		"multi_company_enabled": is_multi_company_enabled(),
+		# The working company's currency — the SPA renders all amounts in it (single-currency per
+		# company; no multicurrency). Sent here too so the first paint has it before the list loads.
+		"default_currency": frappe.db.get_value("Company", company, "default_currency") if company else None,
 	}
 
 
@@ -126,7 +130,7 @@ def list_companies() -> list:
 	derives shortName/colour from these; `is_default` marks the resolved working company."""
 	rows = frappe.get_all(
 		"Company",
-		fields=["name", "company_name", "abbr", "custom_company_logo"],
+		fields=["name", "company_name", "abbr", "custom_company_logo", "default_currency"],
 		order_by="company_name asc",
 	)
 	default = default_company()
@@ -136,6 +140,7 @@ def list_companies() -> list:
 			"name": r.company_name or r.name,
 			"abbr": r.abbr or "",
 			"logo": r.get("custom_company_logo") or "",
+			"currency": r.default_currency or "",
 			"is_default": r.name == default,
 			"project_count": frappe.db.count("Project", {"company": r.name}),
 		}

@@ -867,7 +867,7 @@ function applyValueFilters(spec, text, store, understood) {
 		if (/\bcrore|\bcr\b/.test(text) && v < 1000) return v * 10000000;
 		return v;
 	};
-	const over = text.match(/\b(?:over|above|more than|greater than|exceeding)\s+₹?\s*([\d,]+)/);
+	const over = text.match(/\b(?:over|above|more than|greater than|exceeding)\s+[₹₦]?\s*([\d,]+)/);
 	if (over) {
 		const v = num(over[1]);
 		if (v != null) {
@@ -875,7 +875,7 @@ function applyValueFilters(spec, text, store, understood) {
 			understood.push(`over ${over[1]}`);
 		}
 	}
-	const under = text.match(/\b(?:under|below|less than|up to)\s+₹?\s*([\d,]+)/);
+	const under = text.match(/\b(?:under|below|less than|up to)\s+[₹₦]?\s*([\d,]+)/);
 	if (under) {
 		const v = num(under[1]);
 		if (v != null) {
