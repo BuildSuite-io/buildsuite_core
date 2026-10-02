@@ -1,0 +1,101 @@
+To-dos,Tâches
+to-do,tâche
+to-dos,tâches
+overdue,en retard
+New to-do,Nouvelle tâche
+List,Liste
+Board,Tableau
+Mine,Les miennes
+I raised,Créées par moi
+Everyone,Tout le monde
+All,Toutes
+Search to-dos…,Rechercher des tâches…
+Filters,Filtres
+Any status,Tout statut
+Any priority,Toute priorité
+Anyone,N'importe qui
+Clear filters,Effacer les filtres
+Loading…,Chargement…
+Nothing matches those filters.,Aucun résultat pour ces filtres.
+Nothing on your plate.,Rien à votre charge.
+Nothing here yet.,Rien pour l'instant.
+Clear them to see the rest.,Effacez-les pour voir le reste.
+To-dos are the office jobs that aren't on a project.,Les tâches sont les travaux de bureau qui ne relèvent pas d'un projet.
+Nothing here,Rien ici
+{0} cancelled to-do is not shown — switch to the list to see them.,{0} tâche annulée n'est pas affichée — passez à la liste pour la voir.
+{0} cancelled to-dos are not shown — switch to the list to see them.,{0} tâches annulées ne sont pas affichées — passez à la liste pour les voir.
+assigned to you,qui vous sont attribuées
+you raised for other people,que vous avez créées pour d'autres
+everyone's,de tout le monde
+"yours, and ones you raised","les vôtres, et celles que vous avez créées"
+Failed to load to-dos,Échec du chargement des tâches
+Could not update the to-do,Impossible de mettre à jour la tâche
+Open,Ouverte
+In Progress,En cours
+Closed,Fermée
+Cancelled,Annulée
+High,Haute
+Medium,Moyenne
+Low,Basse
+priority,priorité
+Unread,Non lu
+Move to {0},Déplacer vers {0}
+Yesterday,Hier
+{0}d overdue,{0}j de retard
+Today,Aujourd'hui
+Tomorrow,Demain
+In {0}d,Dans {0}j
+Edit to-do,Modifier la tâche
+Close,Fermer
+What needs doing,Ce qu'il faut faire
+The first line becomes the heading on the board.,La première ligne devient le titre sur le tableau.
+e.g. Renew the company GST registration certificate,p. ex. Renouveler le certificat d'enregistrement TVA de l'entreprise
+Assigned to,Attribuée à
+Pick a person…,Choisir une personne…
+Due date,Échéance
+Optional.,Facultatif.
+Priority,Priorité
+Status,Statut
+About,À propos
+Set by the record this was raised from.,Défini par l'enregistrement d'origine.
+Cancel,Annuler
+Saving…,Enregistrement…
+Save,Enregistrer
+Add to-do,Ajouter la tâche
+Write what needs doing — it is the only required field.,Décrivez ce qu'il faut faire — c'est le seul champ obligatoire.
+Could not save that.,Impossible d'enregistrer.
+All to-dos,Toutes les tâches
+That to-do is not here.,Cette tâche est introuvable.
+"It may have been deleted, or it belongs to someone else.","Elle a peut-être été supprimée, ou appartient à quelqu'un d'autre."
+Nobody,Personne
+Raised by,Créée par
+Due,Échéance
+No due date,Aucune échéance
+Raised,Créée le
+Edit,Modifier
+Delete,Supprimer
+Activity,Activité
+Nothing has happened to this to-do yet.,Rien ne s'est encore passé pour cette tâche.
+Someone,Quelqu'un
+Delete this to-do,Supprimer cette tâche
+"Delete ""{0}""?\n\nThis removes it for everyone, including whoever it's assigned to. If you only want to stop work on it, cancel it instead — that keeps the record that it was raised.","Supprimer « {0} » ?\n\nCela la supprime pour tout le monde, y compris la personne à qui elle est attribuée. Si vous voulez seulement arrêter le travail, annulez-la plutôt — cela conserve la trace qu'elle a été créée."
+Could not delete the to-do,Impossible de supprimer la tâche
+Could not mark notifications read,Impossible de marquer les notifications comme lues
+just now,à l'instant
+{0}m ago,il y a {0} min
+{0}h ago,il y a {0} h
+{0}d ago,il y a {0} j
+{0} unread notifications,{0} notifications non lues
+Notifications,Notifications
+Mark all as read,Tout marquer comme lu
+"Assignments, mentions, shares and alerts addressed to you land here.","Les affectations, mentions, partages et alertes qui vous sont adressés apparaissent ici."
+See all notifications,Voir toutes les notifications
+Go to Desktop,Aller au Bureau
+Logout,Déconnexion
+Search (⌘K),Rechercher (⌘K)
+Search or jump to...,Rechercher ou accéder à…
+To-dos — {0} unread,Tâches — {0} non lues
+To-dos — your to-do list,Tâches — votre liste de tâches
+Switch to light theme,Passer au thème clair
+Switch to dark theme,Passer au thème sombre
+Settings,Paramètres

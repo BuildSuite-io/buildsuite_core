@@ -12,6 +12,7 @@ import NotificationPanel from "@/components/NotificationPanel.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getDeskUrl, logout, getSessionUser } from "@/utils/session";
+import { __ } from "@/utils/translate";
 import { searchPlaces, decorateRecord, decorateDoctype } from "@/data/search";
 import { commandPalette } from "@/data/searchApi";
 
@@ -346,7 +347,7 @@ const navGroups = computed(() => {
 								d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM13 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM13 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z"
 							/>
 						</svg>
-						<span>Go to Desktop</span>
+						<span>{{ __("Go to Desktop") }}</span>
 					</button>
 					<button
 						type="button"
@@ -366,7 +367,7 @@ const navGroups = computed(() => {
 								d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
 							/>
 						</svg>
-						<span>Logout</span>
+						<span>{{ __("Logout") }}</span>
 					</button>
 				</div>
 			</div>
@@ -376,7 +377,7 @@ const navGroups = computed(() => {
 					@click="openSearch"
 					class="w-full px-2.5 py-1.5 text-xs bg-ink-50 text-ink-600 rounded flex items-center gap-2 hover:bg-ink-100"
 					:class="collapsed ? 'lg:justify-center lg:px-0' : ''"
-					:title="collapsed ? 'Search (⌘K)' : ''"
+					:title="collapsed ? __('Search (⌘K)') : ''"
 				>
 					<svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -386,7 +387,7 @@ const navGroups = computed(() => {
 							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 						/>
 					</svg>
-					<span :class="collapsed ? 'lg:hidden' : ''">Search or jump to...</span>
+					<span :class="collapsed ? 'lg:hidden' : ''">{{ __("Search or jump to...") }}</span>
 					<span
 						class="ml-auto text-[10px] text-ink-400 font-mono bg-white px-1.5 py-0.5 rounded border border-ink-200"
 						:class="collapsed ? 'lg:hidden' : ''"
@@ -553,7 +554,7 @@ const navGroups = computed(() => {
 				<RouterLink
 					to="/todo"
 					class="flex items-center gap-2 h-8 px-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-50 shrink-0"
-					:title="store.unreadTodoCount ? `To-dos — ${store.unreadTodoCount} unread` : 'To-dos — your to-do list'"
+					:title="store.unreadTodoCount ? __('To-dos — {0} unread', [store.unreadTodoCount]) : __('To-dos — your to-do list')"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
 						<path
@@ -562,7 +563,7 @@ const navGroups = computed(() => {
 							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					</svg>
-					<span class="text-sm hidden sm:inline">To-dos</span>
+					<span class="text-sm hidden sm:inline">{{ __("To-dos") }}</span>
 					<span
 						v-if="store.unreadTodoCount"
 						class="text-[10px] font-semibold tabular-nums leading-none px-1.5 py-1 rounded-full bg-brand-700 text-white"
@@ -577,13 +578,13 @@ const navGroups = computed(() => {
 						class="text-ink-500 hover:text-ink-900 hover:bg-ink-50 p-1.5 rounded"
 						:aria-label="
 							store.theme === 'dark'
-								? 'Switch to light theme'
-								: 'Switch to dark theme'
+								? __('Switch to light theme')
+								: __('Switch to dark theme')
 						"
 						:title="
 							store.theme === 'dark'
-								? 'Switch to light theme'
-								: 'Switch to dark theme'
+								? __('Switch to light theme')
+								: __('Switch to dark theme')
 						"
 						@click="toggleTheme"
 					>
@@ -629,7 +630,7 @@ const navGroups = computed(() => {
 								? 'text-brand-700 bg-brand-50'
 								: 'text-ink-400 hover:text-ink-700'
 						"
-						title="Settings"
+						:title="__('Settings')"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path

@@ -4,6 +4,7 @@
 // assignee name + reference label, so no store lookups here.
 import { computed } from "vue";
 import { todoTitle, todoDue, todoReference, TODO_BOARD_STATUSES, TODO_DONE_STATUSES } from "@/data/todo";
+import { __ } from "@/utils/translate";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -51,7 +52,7 @@ const nextStatus = computed(() => {
 		@dragstart="emit('dragstart', todo)"
 		@dragend="emit('dragend')"
 	>
-		<span class="absolute left-0 inset-y-0 w-1" :class="edge" :title="`${todo.priority} priority`"></span>
+		<span class="absolute left-0 inset-y-0 w-1" :class="edge" :title="`${__(todo.priority)} ${__('priority')}`"></span>
 
 		<!-- ROW -->
 		<template v-if="variant === 'row'">
@@ -61,7 +62,7 @@ const nextStatus = computed(() => {
 				@click="emit('open', todo)"
 			>
 				<div class="text-sm text-ink-900 truncate" :class="[isDone ? 'line-through decoration-ink-400' : '', isUnread ? 'font-semibold' : 'font-medium']">
-					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" title="Unread"></span>{{ title }}
+					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" :title="__('Unread')"></span>{{ title }}
 				</div>
 				<div class="flex items-center gap-2 mt-0.5 text-[11px] text-ink-500 min-w-0">
 					<span v-if="due" class="px-1.5 py-0.5 rounded-full shrink-0" :class="DUE_TONE[due.tone]">{{ due.text || todo.date }}</span>
@@ -83,8 +84,8 @@ const nextStatus = computed(() => {
 				v-if="nextStatus"
 				type="button"
 				class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-ink-500 hover:text-brand-700 hover:bg-brand-50"
-				:title="`Move to ${nextStatus}`"
-				:aria-label="`Move to ${nextStatus}`"
+				:title="__('Move to {0}', [__(nextStatus)])"
+				:aria-label="__('Move to {0}', [__(nextStatus)])"
 				@click.stop="emit('advance', todo)"
 			>
 				<WorkspaceIcon slug="check-circle" :size="16" />
@@ -95,7 +96,7 @@ const nextStatus = computed(() => {
 		<template v-else>
 			<button type="button" class="w-full text-left" @click="emit('open', todo)">
 				<div class="text-sm text-ink-900 leading-snug" :class="[isDone ? 'line-through decoration-ink-400' : '', isUnread ? 'font-semibold' : '']">
-					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" title="Unread"></span>{{ title }}
+					<span v-if="isUnread" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-600 align-middle mr-1.5" :title="__('Unread')"></span>{{ title }}
 				</div>
 				<div v-if="reference" class="flex items-center gap-1 mt-2 text-[11px] text-ink-500 min-w-0">
 					<WorkspaceIcon :slug="reference.icon" :size="11" class="shrink-0" />
@@ -110,8 +111,8 @@ const nextStatus = computed(() => {
 					v-if="nextStatus"
 					type="button"
 					class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-ink-500 hover:text-brand-700 hover:bg-brand-50"
-					:title="`Move to ${nextStatus}`"
-					:aria-label="`Move to ${nextStatus}`"
+					:title="__('Move to {0}', [__(nextStatus)])"
+					:aria-label="__('Move to {0}', [__(nextStatus)])"
 					@click.stop="emit('advance', todo)"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>

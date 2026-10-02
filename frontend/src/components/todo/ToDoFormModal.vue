@@ -5,6 +5,7 @@ import { ref, reactive, computed, watch } from "vue";
 import { getSessionUser } from "@/utils/session";
 import { TODO_STATUSES, TODO_PRIORITIES, todoReference } from "@/data/todo";
 import { saveTodo } from "@/data/todoApi";
+import { __ } from "@/utils/translate";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -73,7 +74,7 @@ watch(
 async function save() {
 	const text = form.description.trim();
 	if (!text) {
-		error.value = "Write what needs doing — it is the only required field.";
+		error.value = __("Write what needs doing — it is the only required field.");
 		return;
 	}
 	saving.value = true;
@@ -88,7 +89,7 @@ async function save() {
 		});
 		emit("saved", saved);
 	} catch (e) {
-		error.value = e.message || "Could not save that.";
+		error.value = e.message || __("Could not save that.");
 	} finally {
 		saving.value = false;
 	}
@@ -107,11 +108,11 @@ async function save() {
 				@click.stop
 			>
 				<header class="px-4 sm:px-5 py-3 border-b border-ink-200 flex items-center justify-between gap-3 shrink-0">
-					<h2 class="text-sm font-semibold text-ink-900">{{ editing ? "Edit to-do" : "New to-do" }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ editing ? __("Edit to-do") : __("New to-do") }}</h2>
 					<button
 						type="button"
 						class="w-9 h-9 -mr-1.5 flex items-center justify-center text-ink-500 hover:text-ink-900 hover:bg-ink-50 rounded-lg"
-						aria-label="Close"
+						:aria-label="__('Close')"
 						@click="emit('close')"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -119,43 +120,43 @@ async function save() {
 				</header>
 
 				<div class="px-4 sm:px-5 py-4 overflow-y-auto flex-1 space-y-4">
-					<DeskField label="What needs doing" required hint="The first line becomes the heading on the board.">
-						<DeskTextarea v-model="form.description" :rows="3" placeholder="e.g. Renew the company GST registration certificate" />
+					<DeskField :label="__('What needs doing')" required :hint="__('The first line becomes the heading on the board.')">
+						<DeskTextarea v-model="form.description" :rows="3" :placeholder="__('e.g. Renew the company GST registration certificate')" />
 					</DeskField>
 
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<DeskField label="Assigned to">
+						<DeskField :label="__('Assigned to')">
 							<DeskLinkPicker
 								v-model="form.allocated_to"
 								doctype="User"
 								label-field="full_name"
 								value-field="name"
-								placeholder="Pick a person…"
+								:placeholder="__('Pick a person…')"
 							/>
 						</DeskField>
-						<DeskField label="Due date" hint="Optional.">
+						<DeskField :label="__('Due date')" :hint="__('Optional.')">
 							<DeskInput v-model="form.date" type="date" />
 						</DeskField>
 					</div>
 
 					<div class="grid grid-cols-2 gap-4">
-						<DeskField label="Priority">
+						<DeskField :label="__('Priority')">
 							<DeskSelect v-model="form.priority">
-								<option v-for="p in TODO_PRIORITIES" :key="p" :value="p">{{ p }}</option>
+								<option v-for="p in TODO_PRIORITIES" :key="p" :value="p">{{ __(p) }}</option>
 							</DeskSelect>
 						</DeskField>
-						<DeskField v-if="editing" label="Status">
+						<DeskField v-if="editing" :label="__('Status')">
 							<DeskSelect v-model="form.status">
-								<option v-for="st in TODO_STATUSES" :key="st" :value="st">{{ st }}</option>
+								<option v-for="st in TODO_STATUSES" :key="st" :value="st">{{ __(st) }}</option>
 							</DeskSelect>
 						</DeskField>
 					</div>
 
-					<DeskField v-if="reference" label="About" hint="Set by the record this was raised from.">
+					<DeskField v-if="reference" :label="__('About')" :hint="__('Set by the record this was raised from.')">
 						<div class="flex items-center gap-2 text-sm text-ink-700 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2">
 							<WorkspaceIcon :slug="reference.icon" :size="14" class="text-ink-500 shrink-0" />
 							<span class="truncate">{{ reference.label }}</span>
-							<span class="text-[11px] text-ink-500 shrink-0">{{ reference.type }}</span>
+							<span class="text-[11px] text-ink-500 shrink-0">{{ __(reference.type) }}</span>
 						</div>
 					</DeskField>
 
@@ -168,10 +169,10 @@ async function save() {
 						class="text-xs font-medium px-3 h-10 sm:h-8 border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 rounded-md"
 						@click="emit('close')"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button type="button" class="desk-save-btn !h-10 sm:!h-8 !px-4" :disabled="saving" @click="save">
-						{{ saving ? "Saving…" : editing ? "Save" : "Add to-do" }}
+						{{ saving ? __("Saving…") : editing ? __("Save") : __("Add to-do") }}
 					</button>
 				</footer>
 			</div>

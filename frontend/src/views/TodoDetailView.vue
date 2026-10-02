@@ -8,6 +8,7 @@ import { showToast } from "@/utils/appToast";
 import { useConfirm } from "@/composables/useConfirm";
 import { TODO_STATUSES, todoTitle, todoBody, todoDue, todoReference } from "@/data/todo";
 import { getTodo, setTodoStatus, deleteTodo } from "@/data/todoApi";
+import { __ } from "@/utils/translate";
 import { fmtDate } from "@/utils/format";
 import { useDataStore } from "@/stores";
 import ToDoFormModal from "@/components/todo/ToDoFormModal.vue";
@@ -96,9 +97,12 @@ function onEdited() {
 
 async function remove() {
 	const ok = await confirmDialog({
-		title: "Delete this to-do",
-		message: `Delete "${title.value}"?\n\nThis removes it for everyone, including whoever it's assigned to. If you only want to stop work on it, cancel it instead — that keeps the record that it was raised.`,
-		confirmLabel: "Delete",
+		title: __("Delete this to-do"),
+		message: __(
+			'Delete "{0}"?\n\nThis removes it for everyone, including whoever it\'s assigned to. If you only want to stop work on it, cancel it instead — that keeps the record that it was raised.',
+			[title.value]
+		),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -107,7 +111,7 @@ async function remove() {
 		store.loadTodoCount?.();
 		router.push({ name: "todo" });
 	} catch (err) {
-		showToast(err.message || "Could not delete the to-do", "error");
+		showToast(err.message || __("Could not delete the to-do"), "error");
 	}
 }
 </script>
@@ -121,18 +125,18 @@ async function remove() {
 			<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 			</svg>
-			All to-dos
+			{{ __("All to-dos") }}
 		</RouterLink>
 
-		<div v-if="loading" class="text-sm text-ink-500 px-1 py-14 text-center">Loading…</div>
+		<div v-if="loading" class="text-sm text-ink-500 px-1 py-14 text-center">{{ __("Loading…") }}</div>
 
 		<div
 			v-else-if="notFound || !todo"
 			class="border border-dashed border-ink-200 rounded-xl px-4 py-14 text-center"
 		>
-			<div class="text-sm text-ink-700">That to-do is not here.</div>
+			<div class="text-sm text-ink-700">{{ __("That to-do is not here.") }}</div>
 			<div class="text-xs text-ink-500 mt-1">
-				It may have been deleted, or it belongs to someone else.
+				{{ __("It may have been deleted, or it belongs to someone else.") }}
 			</div>
 		</div>
 
@@ -176,7 +180,7 @@ async function remove() {
 					>
 						<WorkspaceIcon :slug="reference.icon" :size="14" class="text-ink-500 shrink-0" />
 						<span class="text-ink-900 font-medium truncate">{{ reference.label }}</span>
-						<span class="text-ink-500 shrink-0">{{ reference.type }} →</span>
+						<span class="text-ink-500 shrink-0">{{ __(reference.type) }} →</span>
 					</RouterLink>
 				</div>
 
@@ -186,7 +190,7 @@ async function remove() {
 				>
 					<div>
 						<dt class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Assigned to
+							{{ __("Assigned to") }}
 						</dt>
 						<dd class="flex items-center gap-1.5 mt-1 min-w-0">
 							<UserAvatar
@@ -196,13 +200,13 @@ async function remove() {
 								class="shrink-0"
 							/>
 							<span class="text-sm text-ink-900 truncate">
-								{{ todo.allocated_to_name || "Nobody" }}
+								{{ todo.allocated_to_name || __("Nobody") }}
 							</span>
 						</dd>
 					</div>
 					<div>
 						<dt class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Raised by
+							{{ __("Raised by") }}
 						</dt>
 						<dd class="flex items-center gap-1.5 mt-1 min-w-0">
 							<UserAvatar
@@ -218,15 +222,15 @@ async function remove() {
 					</div>
 					<div>
 						<dt class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Due
+							{{ __("Due") }}
 						</dt>
 						<dd class="text-sm text-ink-900 mt-1">
-							{{ todo.date ? fmtDate(todo.date) : "No due date" }}
+							{{ todo.date ? fmtDate(todo.date) : __("No due date") }}
 						</dd>
 					</div>
 					<div>
 						<dt class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Raised
+							{{ __("Raised") }}
 						</dt>
 						<dd class="text-sm text-ink-900 mt-1">{{ when(todo.created_at) }}</dd>
 					</div>
@@ -236,7 +240,7 @@ async function remove() {
 				<div
 					class="px-4 sm:px-5 py-3 border-t border-ink-100 flex flex-wrap items-center gap-2"
 				>
-					<label class="text-xs text-ink-600 shrink-0" for="todo-status">Status</label>
+					<label class="text-xs text-ink-600 shrink-0" for="todo-status">{{ __("Status") }}</label>
 					<select
 						id="todo-status"
 						class="desk-input !w-auto"
@@ -244,21 +248,21 @@ async function remove() {
 						:disabled="savingStatus"
 						@change="onStatus"
 					>
-						<option v-for="s in TODO_STATUSES" :key="s" :value="s">{{ s }}</option>
+						<option v-for="s in TODO_STATUSES" :key="s" :value="s">{{ __(s) }}</option>
 					</select>
 					<button
 						type="button"
 						class="ml-auto text-xs font-medium px-3 py-1.5 border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 rounded-md"
 						@click="editOpen = true"
 					>
-						Edit
+						{{ __("Edit") }}
 					</button>
 					<button
 						type="button"
 						class="text-xs font-medium px-3 py-1.5 border border-danger-200 text-danger-700 hover:bg-danger-50 rounded-md"
 						@click="remove"
 					>
-						Delete
+						{{ __("Delete") }}
 					</button>
 				</div>
 			</div>
@@ -269,11 +273,11 @@ async function remove() {
 					class="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100"
 				>
 					<h2 class="text-[11px] uppercase tracking-wider text-ink-600 font-medium">
-						Activity
+						{{ __("Activity") }}
 					</h2>
 				</header>
 				<div v-if="!timeline.length" class="px-4 sm:px-5 py-6 text-sm text-ink-500">
-					Nothing has happened to this to-do yet.
+					{{ __("Nothing has happened to this to-do yet.") }}
 				</div>
 				<ul v-else class="divide-y divide-ink-100">
 					<li v-for="a in timeline" :key="a.id" class="px-4 sm:px-5 py-3 flex gap-3">
@@ -288,7 +292,7 @@ async function remove() {
 								class="text-sm"
 								:class="a.is_comment ? 'text-ink-900 whitespace-pre-line' : 'text-ink-700'"
 							>
-								<span class="font-medium text-ink-900">{{ a.by_name || "Someone" }}</span>
+								<span class="font-medium text-ink-900">{{ a.by_name || __("Someone") }}</span>
 								<template v-if="!a.is_comment"> {{ a.text }}</template>
 							</div>
 							<div

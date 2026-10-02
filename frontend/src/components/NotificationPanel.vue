@@ -18,6 +18,7 @@ import { notificationType } from "@/data/notificationTypes";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const router = useRouter();
@@ -60,7 +61,7 @@ async function markAll() {
 		store.loadNotificationCount();
 		await refresh();
 	} catch (err) {
-		showToast(err.message || "Could not mark notifications read", "error");
+		showToast(err.message || __("Could not mark notifications read"), "error");
 	}
 }
 
@@ -74,12 +75,12 @@ function ago(dt) {
 	if (!dt) return "";
 	const iso = String(dt).replace(" ", "T");
 	const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-	if (mins < 1) return "just now";
-	if (mins < 60) return `${mins}m ago`;
+	if (mins < 1) return __("just now");
+	if (mins < 60) return __("{0}m ago", [mins]);
 	const hrs = Math.round(mins / 60);
-	if (hrs < 24) return `${hrs}h ago`;
+	if (hrs < 24) return __("{0}h ago", [hrs]);
 	const days = Math.round(hrs / 24);
-	if (days <= 14) return `${days}d ago`;
+	if (days <= 14) return __("{0}d ago", [days]);
 	return fmtDate(iso.slice(0, 10));
 }
 </script>
@@ -91,11 +92,11 @@ function ago(dt) {
 			class="relative text-ink-500 hover:text-ink-900 hover:bg-ink-50 p-1.5 rounded"
 			:aria-label="
 				store.unseenNotificationCount
-					? `${store.unseenNotificationCount} unread notifications`
-					: 'Notifications'
+					? __('{0} unread notifications', [store.unseenNotificationCount])
+					: __('Notifications')
 			"
 			:aria-expanded="String(open)"
-			title="Notifications"
+			:title="__('Notifications')"
 			@click="toggle"
 		>
 			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,19 +124,19 @@ function ago(dt) {
 		>
 			<!-- Header -->
 			<div class="px-3 py-2.5 flex items-center gap-2 border-b border-ink-100">
-				<div class="text-sm font-semibold text-ink-900">Notifications</div>
+				<div class="text-sm font-semibold text-ink-900">{{ __("Notifications") }}</div>
 				<button
 					v-if="store.unseenNotificationCount"
 					type="button"
 					class="ml-auto text-[11px] text-brand-700 hover:underline"
 					@click="markAll"
 				>
-					Mark all as read
+					{{ __("Mark all as read") }}
 				</button>
 			</div>
 
 			<div class="max-h-96 overflow-y-auto">
-				<div v-if="loading" class="px-3 py-8 text-center text-xs text-ink-500">Loading…</div>
+				<div v-if="loading" class="px-3 py-8 text-center text-xs text-ink-500">{{ __("Loading…") }}</div>
 
 				<button
 					v-for="n in rows"
@@ -173,9 +174,9 @@ function ago(dt) {
 				</button>
 
 				<div v-if="!loading && !rows.length" class="px-3 py-8 text-center">
-					<div class="text-xs text-ink-500">Nothing here yet.</div>
+					<div class="text-xs text-ink-500">{{ __("Nothing here yet.") }}</div>
 					<div class="text-[11px] text-ink-400 mt-1">
-						Assignments, mentions, shares and alerts addressed to you land here.
+						{{ __("Assignments, mentions, shares and alerts addressed to you land here.") }}
 					</div>
 				</div>
 			</div>
@@ -187,7 +188,7 @@ function ago(dt) {
 				class="w-full px-3 py-2 text-center text-[11px] text-brand-700 hover:bg-ink-50 border-t border-ink-100"
 				@click="seeAll"
 			>
-				See all notifications
+				{{ __("See all notifications") }}
 			</button>
 		</div>
 	</div>
