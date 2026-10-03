@@ -6,6 +6,7 @@ import App from "./App.vue";
 import router from "./router";
 import "./style.css";
 import { applyBootToWindow, syncSessionFromCookie } from "./utils/session";
+import { __, installGlobalTranslate } from "./utils/translate";
 import { useSessionStore } from "./stores/session";
 import { useDataStore } from "./stores";
 import { DEV_BOOT_METHOD } from "./utils/appRoute";
@@ -43,6 +44,12 @@ async function mountApp() {
 
 	const app = createApp(App);
 	const pinia = createPinia();
+
+	// i18n (Frappe translation system). Reads window.translated_messages from boot. Exposed both as
+	// a Frappe-compatible window.__ (so frappe-ui translates too) and a Vue global so any template
+	// can call __('…') without importing it per component.
+	installGlobalTranslate();
+	app.config.globalProperties.__ = __;
 
 	setConfig("resourceFetcher", frappeRequest);
 

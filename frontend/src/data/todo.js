@@ -1,6 +1,8 @@
 // The to-do vocabulary — a 1:1 mirror of Frappe's ToDo doctype, with one deliberate extension
 // ('In Progress') so the board is three columns, not two. Ported from the prototype (S365).
 
+import { __ } from "@/utils/translate";
+
 /** Every status a to-do can hold; order is the workflow order. */
 export const TODO_STATUSES = ["Open", "In Progress", "Closed", "Cancelled"];
 
@@ -54,9 +56,9 @@ export function todoDue(todo, todayISO) {
 	const days = Math.round(
 		(new Date(todo.date + "T00:00:00") - new Date(todayISO + "T00:00:00")) / 86400000
 	);
-	if (days < 0) return { days, tone: "overdue", text: days === -1 ? "Yesterday" : `${-days}d overdue` };
-	if (days === 0) return { days, tone: "today", text: "Today" };
-	if (days === 1) return { days, tone: "soon", text: "Tomorrow" };
-	if (days <= 7) return { days, tone: "soon", text: `In ${days}d` };
+	if (days < 0) return { days, tone: "overdue", text: days === -1 ? __("Yesterday") : __("{0}d overdue", [-days]) };
+	if (days === 0) return { days, tone: "today", text: __("Today") };
+	if (days === 1) return { days, tone: "soon", text: __("Tomorrow") };
+	if (days <= 7) return { days, tone: "soon", text: __("In {0}d", [days]) };
 	return { days, tone: "later", text: null };
 }

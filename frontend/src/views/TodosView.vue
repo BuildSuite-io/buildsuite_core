@@ -14,6 +14,7 @@ import {
 	todoDue,
 } from "@/data/todo";
 import { listTodos, setTodoStatus, markTodoRead } from "@/data/todoApi";
+import { __ } from "@/utils/translate";
 import ToDoCard from "@/components/todo/ToDoCard.vue";
 import ToDoFormModal from "@/components/todo/ToDoFormModal.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -53,7 +54,7 @@ async function load() {
 		me.value = res.me || "";
 		canSeeAll.value = !!res.can_see_all;
 	} catch (e) {
-		showToast(e.message || "Failed to load to-dos", "error");
+		showToast(e.message || __("Failed to load to-dos"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -121,9 +122,9 @@ const overdueCount = computed(
 	() => rows.value.filter((t) => todoDue(t, today.value)?.tone === "overdue").length
 );
 const scopeNote = computed(() => {
-	if (scope.value === "mine") return "assigned to you";
-	if (scope.value === "raised") return "you raised for other people";
-	return canSeeAll.value ? "everyone's" : "yours, and ones you raised";
+	if (scope.value === "mine") return __("assigned to you");
+	if (scope.value === "raised") return __("you raised for other people");
+	return canSeeAll.value ? __("everyone's") : __("yours, and ones you raised");
 });
 const anyFilter = computed(
 	() => !!(search.value || statusFilter.value || priorityFilter.value || personFilter.value)
@@ -161,7 +162,7 @@ async function move(todo, status) {
 		await setTodoStatus(todo.name, status);
 		await load();
 	} catch (e) {
-		showToast(e.message || "Could not update the to-do", "error");
+		showToast(e.message || __("Could not update the to-do"), "error");
 	}
 }
 function onSaved() {
@@ -185,20 +186,20 @@ function onDrop(status) {
 		<!-- Header -->
 		<div class="flex flex-wrap items-start gap-3 mb-4">
 			<div class="min-w-0">
-				<h1 class="text-lg font-semibold text-ink-900">To-dos</h1>
+				<h1 class="text-lg font-semibold text-ink-900">{{ __("To-dos") }}</h1>
 				<p class="text-xs text-ink-500 mt-0.5">
-					{{ rows.length }} {{ rows.length === 1 ? "to-do" : "to-dos" }} · {{ scopeNote
+					{{ rows.length }} {{ rows.length === 1 ? __("to-do") : __("to-dos") }} · {{ scopeNote
 					}}<template v-if="overdueCount">
-						· <span class="text-danger-700 font-medium">{{ overdueCount }} overdue</span></template
+						· <span class="text-danger-700 font-medium">{{ overdueCount }} {{ __("overdue") }}</span></template
 					>
 				</p>
 			</div>
-			<button type="button" class="desk-save-btn !h-9" @click="newOpen = true">+ New to-do</button>
+			<button type="button" class="desk-save-btn !h-9" @click="newOpen = true">+ {{ __("New to-do") }}</button>
 			<div class="ml-auto flex items-center gap-1 bg-ink-100 rounded-lg p-0.5 shrink-0">
 				<button
 					v-for="v in [
-						{ id: 'list', label: 'List', icon: 'clipboard-list' },
-						{ id: 'board', label: 'Board', icon: 'layout-grid' },
+						{ id: 'list', label: __('List'), icon: 'clipboard-list' },
+						{ id: 'board', label: __('Board'), icon: 'layout-grid' },
 					]"
 					:key="v.id"
 					type="button"
@@ -219,9 +220,9 @@ function onDrop(status) {
 			<div class="flex items-center gap-1 bg-ink-100 rounded-lg p-0.5">
 				<button
 					v-for="s in [
-						{ id: 'mine', label: 'Mine' },
-						{ id: 'raised', label: 'I raised' },
-						{ id: 'all', label: canSeeAll ? 'Everyone' : 'All' },
+						{ id: 'mine', label: __('Mine') },
+						{ id: 'raised', label: __('I raised') },
+						{ id: 'all', label: canSeeAll ? __('Everyone') : __('All') },
 					]"
 					:key="s.id"
 					type="button"
@@ -234,7 +235,7 @@ function onDrop(status) {
 				</button>
 			</div>
 
-			<DeskInput v-model="search" class="!w-full sm:!w-56" placeholder="Search to-dos…" />
+			<DeskInput v-model="search" class="!w-full sm:!w-56" :placeholder="__('Search to-dos…')" />
 
 			<button
 				type="button"
@@ -242,17 +243,17 @@ function onDrop(status) {
 				:aria-expanded="filtersOpen"
 				@click="filtersOpen = !filtersOpen"
 			>
-				<span>Filters</span>
+				<span>{{ __("Filters") }}</span>
 				<span v-if="activeFilterCount" class="text-[10px] tabular-nums px-1.5 py-0.5 rounded-full bg-brand-700 text-white">{{ activeFilterCount }}</span>
 			</button>
 
 			<DeskSelect v-model="statusFilter" class="!w-auto" :class="filtersOpen ? '' : 'hidden sm:block'">
-				<option value="">Any status</option>
-				<option v-for="s in TODO_STATUSES" :key="s" :value="s">{{ s }}</option>
+				<option value="">{{ __("Any status") }}</option>
+				<option v-for="s in TODO_STATUSES" :key="s" :value="s">{{ __(s) }}</option>
 			</DeskSelect>
 			<DeskSelect v-model="priorityFilter" class="!w-auto" :class="filtersOpen ? '' : 'hidden sm:block'">
-				<option value="">Any priority</option>
-				<option v-for="p in TODO_PRIORITIES" :key="p" :value="p">{{ p }}</option>
+				<option value="">{{ __("Any priority") }}</option>
+				<option v-for="p in TODO_PRIORITIES" :key="p" :value="p">{{ __(p) }}</option>
 			</DeskSelect>
 			<DeskSearchableSelect
 				v-if="scope !== 'mine' && peopleOptions.length > 1"
@@ -262,23 +263,23 @@ function onDrop(status) {
 				touch
 				class="!w-48"
 				:class="filtersOpen ? '' : 'hidden sm:block'"
-				placeholder="Anyone"
+				:placeholder="__('Anyone')"
 			/>
-			<button v-if="anyFilter" type="button" class="text-xs text-brand-700 hover:underline px-1" @click="clearFilters">Clear filters</button>
+			<button v-if="anyFilter" type="button" class="text-xs text-brand-700 hover:underline px-1" @click="clearFilters">{{ __("Clear filters") }}</button>
 		</div>
 
-		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Loading…</div>
+		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">{{ __("Loading…") }}</div>
 
 		<!-- Empty -->
 		<div v-else-if="!rows.length" class="border border-dashed border-ink-200 rounded-xl px-4 py-14 text-center">
 			<WorkspaceIcon slug="check-circle" :size="28" class="text-ink-300 mx-auto mb-3" />
 			<div class="text-sm text-ink-700">
-				{{ anyFilter ? "Nothing matches those filters." : scope === "mine" ? "Nothing on your plate." : "Nothing here yet." }}
+				{{ anyFilter ? __("Nothing matches those filters.") : scope === "mine" ? __("Nothing on your plate.") : __("Nothing here yet.") }}
 			</div>
 			<div class="text-xs text-ink-500 mt-1">
-				{{ anyFilter ? "Clear them to see the rest." : "To-dos are the office jobs that aren't on a project." }}
+				{{ anyFilter ? __("Clear them to see the rest.") : __("To-dos are the office jobs that aren't on a project.") }}
 			</div>
-			<button v-if="!anyFilter" type="button" class="desk-save-btn !h-10 !px-4 mt-4" @click="newOpen = true">+ New to-do</button>
+			<button v-if="!anyFilter" type="button" class="desk-save-btn !h-10 !px-4 mt-4" @click="newOpen = true">+ {{ __("New to-do") }}</button>
 		</div>
 
 		<!-- List -->
@@ -309,7 +310,7 @@ function onDrop(status) {
 					@drop.prevent="onDrop(col.status)"
 				>
 					<header class="px-3 py-2.5 flex items-center gap-2 border-b border-ink-200">
-						<span class="text-xs font-semibold uppercase tracking-wider text-ink-600">{{ col.status }}</span>
+						<span class="text-xs font-semibold uppercase tracking-wider text-ink-600">{{ __(col.status) }}</span>
 						<span class="text-xs text-ink-600 tabular-nums ml-auto">{{ col.items.length }}</span>
 					</header>
 					<div class="p-2 space-y-2 flex-1 min-h-[6rem]">
@@ -324,12 +325,16 @@ function onDrop(status) {
 							@dragstart="dragging = $event"
 							@dragend="dragging = null"
 						/>
-						<p v-if="!col.items.length" class="text-xs text-ink-600 text-center py-6">Nothing here</p>
+						<p v-if="!col.items.length" class="text-xs text-ink-600 text-center py-6">{{ __("Nothing here") }}</p>
 					</div>
 				</section>
 			</div>
 			<p v-if="hiddenOnBoard" class="text-xs text-ink-500 mt-3">
-				{{ hiddenOnBoard }} cancelled {{ hiddenOnBoard === 1 ? "to-do is" : "to-dos are" }} not shown — switch to the list to see them.
+				{{
+					hiddenOnBoard === 1
+						? __("{0} cancelled to-do is not shown — switch to the list to see them.", [hiddenOnBoard])
+						: __("{0} cancelled to-dos are not shown — switch to the list to see them.", [hiddenOnBoard])
+				}}
 			</p>
 		</div>
 
