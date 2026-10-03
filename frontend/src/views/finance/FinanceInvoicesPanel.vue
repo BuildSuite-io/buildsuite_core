@@ -24,8 +24,12 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Invoices" }];
+const breadcrumbs = [
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Invoices") },
+];
 const router = useRouter();
 const { canCreate } = usePermissions();
 const { projectName } = useProjectNames();
@@ -77,10 +81,10 @@ function aging(row) {
 		return null;
 	if (!row.due_date) return null;
 	const d = Math.floor((Date.now() - new Date(row.due_date).getTime()) / 86400000);
-	if (d <= 0) return { label: "Not due", cls: "bg-ink-100 text-ink-500" };
+	if (d <= 0) return { label: __("Not due"), cls: "bg-ink-100 text-ink-500" };
 	const bucket = d <= 30 ? "0–30" : d <= 60 ? "31–60" : d <= 90 ? "61–90" : "90+";
 	const cls = d <= 30 ? "bg-warning-50 text-warning-700" : "bg-danger-50 text-danger-700";
-	return { label: `${bucket} d`, cls };
+	return { label: __("{0} d", [bucket]), cls };
 }
 
 const statusFilter = ref("");
@@ -154,10 +158,13 @@ async function openReceive(row) {
 }
 async function saveReceive() {
 	const amt = Number(rec.amount) || 0;
-	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(rec.inv.outstanding) + 0.01)
-		return showToast(`Can't exceed the outstanding ${fmtINR(rec.inv.outstanding)}.`, "error");
-	if (!rec.deposit_to) return showToast("Pick the account to deposit into.", "error");
+		return showToast(
+			__("Can't exceed the outstanding {0}.", [fmtINR(rec.inv.outstanding)]),
+			"error"
+		);
+	if (!rec.deposit_to) return showToast(__("Pick the account to deposit into."), "error");
 	rec.saving = true;
 	try {
 		await recordInvoiceReceipt({
@@ -170,9 +177,9 @@ async function saveReceive() {
 		});
 		rec.open = false;
 		refreshList();
-		showToast("Payment received.");
+		showToast(__("Payment received."));
 	} catch (err) {
-		showToast(err.message || "Receipt failed", "error");
+		showToast(err.message || __("Receipt failed"), "error");
 	} finally {
 		rec.saving = false;
 	}
@@ -206,9 +213,9 @@ async function openAdvance() {
 	});
 }
 async function saveAdvance() {
-	if (!adv.customer) return showToast("Pick a customer.", "error");
-	if (!(Number(adv.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
-	if (!adv.deposit_to) return showToast("Pick the account to deposit into.", "error");
+	if (!adv.customer) return showToast(__("Pick a customer."), "error");
+	if (!(Number(adv.amount) > 0)) return showToast(__("Enter an amount greater than zero."), "error");
+	if (!adv.deposit_to) return showToast(__("Pick the account to deposit into."), "error");
 	adv.saving = true;
 	try {
 		await recordCustomerAdvance({
@@ -221,9 +228,9 @@ async function saveAdvance() {
 		});
 		adv.open = false;
 		refreshList();
-		showToast("Advance recorded.");
+		showToast(__("Advance recorded."));
 	} catch (err) {
-		showToast(err.message || "Failed to record advance", "error");
+		showToast(err.message || __("Failed to record advance"), "error");
 	} finally {
 		adv.saving = false;
 	}
@@ -231,7 +238,7 @@ async function saveAdvance() {
 </script>
 
 <template>
-	<DeskPage title="Invoices" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Invoices')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<div class="flex items-center gap-2">
 				<button
@@ -240,22 +247,22 @@ async function saveAdvance() {
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="openAdvance"
 				>
-					Record advance
+					{{ __("Record advance") }}
 				</button>
-				<button v-if="canCreate('salesInvoice')" type="button" class="desk-save-btn" @click="openNew">+ New invoice</button>
+				<button v-if="canCreate('salesInvoice')" type="button" class="desk-save-btn" @click="openNew">{{ __("+ New invoice") }}</button>
 			</div>
 		</template>
 
 		<div class="space-y-4">
 			<div class="flex items-center gap-6 text-sm">
 				<div class="flex items-center gap-1.5">
-					<span class="text-ink-500">Outstanding</span>
+					<span class="text-ink-500">{{ __("Outstanding") }}</span>
 					<span class="font-semibold text-ink-900 tabular-nums">{{
 						fmtINR(summary.outstanding)
 					}}</span>
 				</div>
 				<div v-if="summary.advances > 0" class="flex items-center gap-1.5">
-					<span class="text-ink-500">Advances held</span>
+					<span class="text-ink-500">{{ __("Advances held") }}</span>
 					<span class="font-semibold text-info-700 tabular-nums">{{
 						fmtINR(summary.advances)
 					}}</span>
@@ -276,19 +283,19 @@ async function saveAdvance() {
 					'status',
 				]"
 				:columns="[
-					{ key: 'name', label: 'Invoice' },
-					{ key: 'customer_name', label: 'Customer' },
-					{ key: 'project', label: 'Project' },
-					{ key: 'posting_date', label: 'Date' },
-					{ key: 'due_date', label: 'Due' },
+					{ key: 'name', label: __('Invoice') },
+					{ key: 'customer_name', label: __('Customer') },
+					{ key: 'project', label: __('Project') },
+					{ key: 'posting_date', label: __('Date') },
+					{ key: 'due_date', label: __('Due') },
 					{
 						key: 'aging',
-						label: 'Aging',
+						label: __('Aging'),
 						fields: ['due_date', 'outstanding_amount', 'status'],
 					},
-					{ key: 'grand_total', label: 'Total', align: 'right' },
-					{ key: 'outstanding_amount', label: 'Outstanding', align: 'right' },
-					{ key: 'status', label: 'Status', fields: ['status', 'outstanding_amount'] },
+					{ key: 'grand_total', label: __('Total'), align: 'right' },
+					{ key: 'outstanding_amount', label: __('Outstanding'), align: 'right' },
+					{ key: 'status', label: __('Status'), fields: ['status', 'outstanding_amount'] },
 					{ key: 'actions', label: '', align: 'right' },
 				]"
 				:search-fields="['name', 'customer_name']"
@@ -298,19 +305,19 @@ async function saveAdvance() {
 				cache-key="buildsuite-invoice-list"
 				row-key="name"
 				initial-order-by="posting_date desc"
-				search-placeholder="Search invoice, customer…"
-				empty-message="No invoices yet."
+				:search-placeholder="__('Search invoice, customer…')"
+				:empty-message="__('No invoices yet.')"
 				@row-click="openDetail"
 			>
 				<template #filter-chips>
 					<DeskSelect v-model="statusFilter" class="!w-40">
-						<option value="">Status: Any</option>
-						<option>Draft</option>
-						<option>Unpaid</option>
-						<option>Overdue</option>
-						<option>Partly Paid</option>
-						<option>Paid</option>
-						<option>Cancelled</option>
+						<option value="">{{ __("Status: Any") }}</option>
+						<option value="Draft">{{ __("Draft") }}</option>
+						<option value="Unpaid">{{ __("Unpaid") }}</option>
+						<option value="Overdue">{{ __("Overdue") }}</option>
+						<option value="Partly Paid">{{ __("Partly Paid") }}</option>
+						<option value="Paid">{{ __("Paid") }}</option>
+						<option value="Cancelled">{{ __("Cancelled") }}</option>
 					</DeskSelect>
 					<div class="w-48">
 						<DeskLinkPicker
@@ -318,19 +325,19 @@ async function saveAdvance() {
 							doctype="Project"
 							label-field="project_name"
 							value-field="name"
-							placeholder="All projects"
+							:placeholder="__('All projects')"
 						/>
 					</div>
 					<input
 						v-model="fromDate"
 						type="date"
-						title="From date (posting date)"
+						:title="__('From date (posting date)')"
 						class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
 					<input
 						v-model="toDate"
 						type="date"
-						title="To date (posting date)"
+						:title="__('To date (posting date)')"
 						class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
 				</template>
@@ -398,7 +405,7 @@ async function saveAdvance() {
 						class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded"
 						@click.stop="openReceive(row)"
 					>
-						Receive
+						{{ __("Receive") }}
 					</button>
 				</template>
 			</DocTypeListView>
@@ -417,7 +424,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Receive payment</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Receive payment") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -437,23 +444,23 @@ async function saveAdvance() {
 						>.
 					</div>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Amount" required
+						<DeskField :label="__('Amount')" required
 							><DeskInput v-model.number="rec.amount" type="number" min="0"
 						/></DeskField>
-						<DeskField label="Date"
+						<DeskField :label="__('Date')"
 							><DeskInput v-model="rec.date" type="date"
 						/></DeskField>
 					</div>
-					<DeskField label="Deposit into" required>
+					<DeskField :label="__('Deposit into')" required>
 						<DeskSelect v-model="rec.deposit_to"
-							><option value="" disabled>Bank / Cash account…</option>
+							><option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in depositAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option></DeskSelect
 						>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Mode of payment"
+						<DeskField :label="__('Mode of payment')"
 							><DeskSelect v-model="rec.mode_of_payment"
 								><option value="">—</option>
 								<option v-for="m in payModes" :key="m" :value="m">
@@ -461,8 +468,8 @@ async function saveAdvance() {
 								</option></DeskSelect
 							></DeskField
 						>
-						<DeskField label="Reference no."
-							><DeskInput v-model="rec.reference_no" placeholder="UTR / cheque no."
+						<DeskField :label="__('Reference no.')"
+							><DeskInput v-model="rec.reference_no" :placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -474,7 +481,7 @@ async function saveAdvance() {
 						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 						@click="rec.open = false"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						type="button"
@@ -482,7 +489,7 @@ async function saveAdvance() {
 						:disabled="rec.saving"
 						@click="saveReceive"
 					>
-						{{ rec.saving ? "Receiving…" : "Record receipt" }}
+						{{ rec.saving ? __("Receiving…") : __("Record receipt") }}
 					</button>
 				</footer>
 			</div>
@@ -501,7 +508,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Record customer advance</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Record customer advance") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -512,39 +519,42 @@ async function saveAdvance() {
 				</header>
 				<div class="px-4 py-4 space-y-3">
 					<p class="text-[11px] text-ink-500">
-						Money received before (or without) an invoice — it stays on the customer's
-						account until a later invoice draws it down.
+						{{
+							__(
+								"Money received before (or without) an invoice — it stays on the customer's account until a later invoice draws it down."
+							)
+						}}
 					</p>
-					<DeskField label="Customer" required
+					<DeskField :label="__('Customer')" required
 						><DeskLinkPicker
 							v-model="adv.customer"
 							doctype="Customer"
 							label-field="customer_name"
 							value-field="name"
-							placeholder="Pick a customer…"
+							:placeholder="__('Pick a customer…')"
 					/></DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Amount" required
+						<DeskField :label="__('Amount')" required
 							><DeskInput
 								v-model.number="adv.amount"
 								type="number"
 								min="0"
 								placeholder="0"
 						/></DeskField>
-						<DeskField label="Date"
+						<DeskField :label="__('Date')"
 							><DeskInput v-model="adv.date" type="date"
 						/></DeskField>
 					</div>
-					<DeskField label="Deposit into" required>
+					<DeskField :label="__('Deposit into')" required>
 						<DeskSelect v-model="adv.deposit_to"
-							><option value="" disabled>Bank / Cash account…</option>
+							><option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in depositAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option></DeskSelect
 						>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Mode of payment"
+						<DeskField :label="__('Mode of payment')"
 							><DeskSelect v-model="adv.mode_of_payment"
 								><option value="">—</option>
 								<option v-for="m in payModes" :key="m" :value="m">
@@ -552,8 +562,8 @@ async function saveAdvance() {
 								</option></DeskSelect
 							></DeskField
 						>
-						<DeskField label="Reference no."
-							><DeskInput v-model="adv.reference_no" placeholder="UTR / cheque no."
+						<DeskField :label="__('Reference no.')"
+							><DeskInput v-model="adv.reference_no" :placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -565,7 +575,7 @@ async function saveAdvance() {
 						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 						@click="adv.open = false"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						type="button"
@@ -573,7 +583,7 @@ async function saveAdvance() {
 						:disabled="adv.saving"
 						@click="saveAdvance"
 					>
-						{{ adv.saving ? "Recording…" : "Record advance" }}
+						{{ adv.saving ? __("Recording…") : __("Record advance") }}
 					</button>
 				</footer>
 			</div>

@@ -7,10 +7,11 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
 import { getReceivablesPayables } from "@/data/financeReportApi";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const breadcrumbs = [
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Receivables & Payables" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Receivables & Payables") },
 ];
 const BUCKETS = ["Current", "0-30", "31-60", "61-90", "90+"];
 
@@ -25,7 +26,7 @@ onMounted(async () => {
 		allRecv.value = d.receivables || [];
 		allPay.value = d.payables || [];
 	} catch (e) {
-		error.value = e.message || "Failed to load.";
+		error.value = e.message || __("Failed to load.");
 	} finally {
 		loading.value = false;
 	}
@@ -89,39 +90,39 @@ const shownCount = computed(
 </script>
 
 <template>
-	<DeskPage title="Receivables & Payables" :breadcrumbs="breadcrumbs" printable>
-		<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">Loading…</div>
+	<DeskPage :title="__('Receivables & Payables')" :breadcrumbs="breadcrumbs" printable>
+		<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">{{ __("Loading…") }}</div>
 		<div v-else-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
 		<div v-else class="space-y-6">
 			<ReportFilters
 				:active="anyFilter"
 				:shown="shownCount"
-				noun="rows"
+				:noun="__('rows')"
 				@clear="clearFilters"
 			>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Find</span
+						>{{ __("Find") }}</span
 					>
-					<DeskInput v-model="f.q" placeholder="Party or document…" class="!w-52" />
+					<DeskInput v-model="f.q" :placeholder="__('Party or document…')" class="!w-52" />
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Bucket</span
+						>{{ __("Bucket") }}</span
 					>
 					<DeskSelect v-model="f.bucket" class="!w-32">
-						<option value="">All</option>
+						<option value="">{{ __("All") }}</option>
 						<option v-for="b in BUCKETS" :key="b" :value="b">{{ b }}</option>
 					</DeskSelect>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Show</span
+						>{{ __("Show") }}</span
 					>
 					<DeskSelect v-model="f.side" class="!w-40">
-						<option value="">Both</option>
-						<option value="receivables">Receivables only</option>
-						<option value="payables">Payables only</option>
+						<option value="">{{ __("Both") }}</option>
+						<option value="receivables">{{ __("Receivables only") }}</option>
+						<option value="payables">{{ __("Payables only") }}</option>
 					</DeskSelect>
 				</label>
 			</ReportFilters>
@@ -130,10 +131,10 @@ const shownCount = computed(
 			<section v-if="showRecv">
 				<div class="flex items-center justify-between mb-2">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Receivables (aged)
+						{{ __("Receivables (aged)") }}
 					</h3>
 					<div class="text-sm pr-4">
-						<span class="text-ink-500 mr-1">Total</span>
+						<span class="text-ink-500 mr-1">{{ __("Total") }}</span>
 						<span class="font-semibold text-ink-900 tabular-nums">
 							{{ fmtINR(recvTotal) }}</span
 						>
@@ -157,10 +158,10 @@ const shownCount = computed(
 							class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-100"
 						>
 							<tr>
-								<th class="text-left px-4 py-2">Customer</th>
-								<th class="text-left px-4 py-2">Due</th>
-								<th class="text-left px-4 py-2">Bucket</th>
-								<th class="text-right px-4 py-2">Outstanding</th>
+								<th class="text-left px-4 py-2">{{ __("Customer") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Due") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Bucket") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Outstanding") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -187,7 +188,7 @@ const shownCount = computed(
 						</tbody>
 					</table>
 					<div v-else class="px-4 py-6 text-center text-xs text-ink-400 italic">
-						No outstanding receivables.
+						{{ __("No outstanding receivables.") }}
 					</div>
 				</div>
 			</section>
@@ -196,10 +197,10 @@ const shownCount = computed(
 			<section v-if="showPay">
 				<div class="flex items-center justify-between mb-2">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Payables (aged)
+						{{ __("Payables (aged)") }}
 					</h3>
 					<div class="text-sm pr-4">
-						<span class="text-ink-500 mr-1">Total</span>
+						<span class="text-ink-500 mr-1">{{ __("Total") }}</span>
 						<span class="font-semibold text-ink-900 tabular-nums">
 							{{ fmtINR(payTotal) }}</span
 						>
@@ -223,11 +224,11 @@ const shownCount = computed(
 							class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-100"
 						>
 							<tr>
-								<th class="text-left px-4 py-2">Supplier</th>
-								<th class="text-left px-4 py-2">Due</th>
-								<th class="text-left px-4 py-2">Bucket</th>
-								<th class="text-right px-4 py-2">Retention</th>
-								<th class="text-right px-4 py-2">Outstanding</th>
+								<th class="text-left px-4 py-2">{{ __("Supplier") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Due") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Bucket") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Retention") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Outstanding") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -242,7 +243,7 @@ const shownCount = computed(
 										<span
 											v-if="r.kind === 'subcontractor'"
 											class="text-[9px] px-1.5 py-0.5 bg-info-50 text-info-700 rounded-full uppercase tracking-wider"
-											>Subcontractor</span
+											>{{ __("Subcontractor") }}</span
 										>
 									</div>
 								</td>
@@ -266,7 +267,7 @@ const shownCount = computed(
 						</tbody>
 					</table>
 					<div v-else class="px-4 py-6 text-center text-xs text-ink-400 italic">
-						No outstanding payables.
+						{{ __("No outstanding payables.") }}
 					</div>
 				</div>
 			</section>

@@ -25,6 +25,7 @@ import { activeCompanyFilter, useActiveCompany } from "@/composables/useActiveCo
 import { usePermissions } from "@/composables/usePermissions";
 import { useAutosave } from "@/composables/useAutosave";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
@@ -104,7 +105,7 @@ if (isEdit.value) {
 				ready.value = true;
 			});
 		})
-		.catch((err) => showToast(err.message || "Failed to load invoice", "error"))
+		.catch((err) => showToast(err.message || __("Failed to load invoice"), "error"))
 		.finally(() => (loading.value = false));
 } else {
 	// New invoice: pre-select the company's default tax template so the tax section
@@ -137,7 +138,7 @@ async function applyTemplate(tpl) {
 	try {
 		form.taxes = await getInvoiceTaxTemplateRows(tpl);
 	} catch (err) {
-		showToast(err.message || "Failed to load tax template", "error");
+		showToast(err.message || __("Failed to load tax template"), "error");
 	}
 }
 function addTaxRow() {
@@ -182,9 +183,9 @@ const wf = computed(() => {
 });
 
 const breadcrumbs = computed(() => [
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Invoices", to: "/project-finance/invoices" },
-	{ label: isEdit.value ? `Edit ${props.id}` : "New" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Invoices"), to: "/project-finance/invoices" },
+	{ label: isEdit.value ? __("Edit {0}", [props.id]) : __("New") },
 ]);
 
 // Payload shared by the explicit Save and the quiet auto-save.
@@ -228,18 +229,18 @@ function isSaveable() {
 async function save() {
 	errors.customer = "";
 	errors.lines = "";
-	if (!form.customer) errors.customer = "Customer is required.";
+	if (!form.customer) errors.customer = __("Customer is required.");
 	const lines = form.lines.filter((l) => (l.description || "").trim() && lineAmount(l) > 0);
-	if (!lines.length) errors.lines = "Add at least one item with a quantity and rate.";
+	if (!lines.length) errors.lines = __("Add at least one item with a quantity and rate.");
 	if (errors.customer || errors.lines) return;
 
 	saving.value = true;
 	try {
 		const res = await saveInvoice(buildPayload());
-		showToast(isEdit.value ? "Invoice updated." : "Invoice saved as draft.");
+		showToast(isEdit.value ? __("Invoice updated.") : __("Invoice saved as draft."));
 		router.push(`/project-finance/invoices/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -257,21 +258,25 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 
 <template>
 	<DeskPage
-		:title="isEdit ? `Edit ${id}` : 'New Invoice'"
+		:title="isEdit ? __('Edit {0}', [id]) : __('New Invoice')"
 		:breadcrumbs="breadcrumbs"
-		subtitle="Bills the customer — Submit posts it as a receivable."
+		:subtitle="__('Bills the customer — Submit posts it as a receivable.')"
 	>
 		<div
 			v-if="!canSaveInvoice"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this invoice" : "create an invoice" }}.
+			{{
+				isEdit
+					? __("You don't have permission to edit this invoice.")
+					: __("You don't have permission to create an invoice.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="isEdit ? 'Save invoice' : 'Create invoice'"
+					:save-label="isEdit ? __('Save invoice') : __('Create invoice')"
 					:saving="saving"
 					@save="save"
 					@cancel="router.back()"
@@ -281,50 +286,50 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							v-if="isEdit && autosaveStatus !== 'idle'"
 							class="text-xs text-ink-400"
 						>
-							{{ autosaveStatus === "saving" ? "Saving…" : "Saved" }}
+							{{ autosaveStatus === "saving" ? __("Saving…") : __("Saved") }}
 						</span>
 					</template>
 				</DeskActionBar>
 			</template>
 
-			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Loading…</div>
+			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">{{ __("Loading…") }}</div>
 			<template v-else>
-				<DeskSection title="Invoice details" :cols="4">
-					<DeskField label="Customer" required :error="errors.customer">
+				<DeskSection :title="__('Invoice details')" :cols="4">
+					<DeskField :label="__('Customer')" required :error="errors.customer">
 						<DeskLinkPicker
 							v-model="form.customer"
 							doctype="Customer"
 							label-field="customer_name"
 							value-field="name"
-							placeholder="Pick a customer…"
+							:placeholder="__('Pick a customer…')"
 						/>
 					</DeskField>
-					<DeskField label="Project" hint="Optional — tags the income to a project.">
+					<DeskField :label="__('Project')" :hint="__('Optional — tags the income to a project.')">
 						<DeskLinkPicker
 							v-model="form.project"
 							doctype="Project"
 							label-field="project_name"
 							value-field="name"
 							:filters="companyFilter"
-							placeholder="None"
+							:placeholder="__('None')"
 						/>
 					</DeskField>
-					<DeskField label="Invoice date"
+					<DeskField :label="__('Invoice date')"
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField label="Due date"
+					<DeskField :label="__('Due date')"
 						><DeskInput v-model="form.due_date" type="date"
 					/></DeskField>
 				</DeskSection>
 
-				<DeskSection title="Items" :cols="1">
+				<DeskSection :title="__('Items')" :cols="1">
 					<div>
 						<div
 							class="hidden md:grid grid-cols-[1fr_110px_140px_140px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"
 						>
-							<span>Description</span><span class="text-right">Qty</span
-							><span class="text-right">Rate</span
-							><span class="text-right">Amount</span><span></span>
+							<span>{{ __("Description") }}</span><span class="text-right">{{ __("Qty") }}</span
+							><span class="text-right">{{ __("Rate") }}</span
+							><span class="text-right">{{ __("Amount") }}</span><span></span>
 						</div>
 						<div
 							v-for="(l, idx) in form.lines"
@@ -333,21 +338,21 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						>
 							<DeskInput
 								v-model="l.description"
-								placeholder="e.g. Block A — RA-4 milestone"
+								:placeholder="__('e.g. Block A — RA-4 milestone')"
 								class="col-span-2 md:col-span-1"
 							/>
 							<DeskInput
 								v-model.number="l.qty"
 								type="number"
 								min="0"
-								placeholder="Qty"
+								:placeholder="__('Qty')"
 								class="text-right"
 							/>
 							<DeskInput
 								v-model.number="l.rate"
 								type="number"
 								min="0"
-								placeholder="Rate"
+								:placeholder="__('Rate')"
 								class="text-right"
 							/>
 							<div class="text-xs tabular-nums text-ink-700 text-right">
@@ -356,7 +361,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							<button
 								type="button"
 								class="text-ink-400 hover:text-danger-600 text-sm"
-								aria-label="Remove line"
+								:aria-label="__('Remove line')"
 								@click="removeLine(idx)"
 							>
 								✕
@@ -370,7 +375,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							class="text-xs text-brand-700 hover:underline"
 							@click="addLine"
 						>
-							+ Add item
+							{{ __("+ Add item") }}
 						</button>
 					</div>
 				</DeskSection>
@@ -380,7 +385,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					<div class="space-y-5 min-w-0">
 						<!-- taxes & discount (template-driven, Bill pattern) -->
 						<div>
-							<h3 class="desk-section-title">Taxes &amp; discount</h3>
+							<h3 class="desk-section-title">{{ __("Taxes & discount") }}</h3>
 							<hr class="desk-divider" />
 							<div class="flex items-center gap-2 mb-2 mt-2">
 								<div class="w-64">
@@ -390,7 +395,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										label-field="title"
 										value-field="name"
 										:filters="companyFilter"
-										placeholder="Tax template…"
+										:placeholder="__('Tax template…')"
 										@update:model-value="applyTemplate"
 									/>
 								</div>
@@ -399,7 +404,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 									class="text-[11px] text-brand-700 hover:underline whitespace-nowrap"
 									@click="addTaxRow"
 								>
-									+ Add row
+									{{ __("+ Add row") }}
 								</button>
 							</div>
 							<div v-if="form.taxes.length" class="space-y-1.5">
@@ -415,7 +420,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 											label-field="name"
 											value-field="name"
 											:filters="accountFilters"
-											placeholder="Tax account…"
+											:placeholder="__('Tax account…')"
 										/>
 									</div>
 									<input
@@ -436,13 +441,13 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								</div>
 							</div>
 							<div class="flex items-center gap-2 flex-wrap mt-3">
-								<span class="text-xs text-ink-500">Discount</span>
+								<span class="text-xs text-ink-500">{{ __("Discount") }}</span>
 								<select
 									v-model="form.discount_on"
 									class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 								>
-									<option value="Net Total">On Net Total</option>
-									<option value="Grand Total">On Grand Total</option>
+									<option value="Net Total">{{ __("On Net Total") }}</option>
+									<option value="Grand Total">{{ __("On Grand Total") }}</option>
 								</select>
 								<input
 									v-model.number="form.discount_value"
@@ -488,11 +493,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								class="w-full flex items-center gap-2 text-left"
 								@click="termsOpen = !termsOpen"
 							>
-								<h3 class="desk-section-title">Terms &amp; conditions</h3>
+								<h3 class="desk-section-title">{{ __("Terms & conditions") }}</h3>
 								<span
 									v-if="form.terms && !termsOpen"
 									class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-full"
-									>set</span
+									>{{ __("set") }}</span
 								>
 								<svg
 									width="14"
@@ -517,14 +522,18 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										doctype="Terms and Conditions"
 										label-field="name"
 										value-field="name"
-										placeholder="Import from template…"
+										:placeholder="__('Import from template…')"
 										@update:model-value="onPickTerms"
 									/>
 								</div>
 								<textarea
 									v-model="form.terms"
 									rows="5"
-									placeholder="Terms printed on the invoice — import a template above or write your own."
+									:placeholder="
+										__(
+											'Terms printed on the invoice — import a template above or write your own.'
+										)
+									"
 									class="w-full text-xs px-3 py-2 border border-ink-200 rounded-md leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 								></textarea>
 							</div>
@@ -534,11 +543,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					<!-- live totals waterfall -->
 					<div class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
 						<div class="flex justify-between text-ink-600">
-							<span>Net total</span
+							<span>{{ __("Net total") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.net) }}</span>
 						</div>
 						<div v-if="wf.netDiscount > 0" class="flex justify-between text-ink-600">
-							<span>Discount (on net)</span
+							<span>{{ __("Discount (on net)") }}</span
 							><span class="tabular-nums text-danger-700"
 								>− {{ fmtINR(wf.netDiscount) }}</span
 							>
@@ -547,7 +556,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							v-if="wf.taxable !== wf.net"
 							class="flex justify-between text-ink-600"
 						>
-							<span>Taxable value</span
+							<span>{{ __("Taxable value") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.taxable) }}</span>
 						</div>
 						<div
@@ -555,11 +564,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							:key="idx"
 							class="flex justify-between text-ink-600"
 						>
-							<span>{{ row.account_head || "Tax" }} ({{ row.rate }}%)</span
+							<span>{{ row.account_head || __("Tax") }} ({{ row.rate }}%)</span
 							><span class="tabular-nums">{{ fmtINR(row.amount) }}</span>
 						</div>
 						<div v-if="wf.grandDiscount > 0" class="flex justify-between text-ink-600">
-							<span>Discount (on grand total)</span
+							<span>{{ __("Discount (on grand total)") }}</span
 							><span class="tabular-nums text-danger-700"
 								>− {{ fmtINR(wf.grandDiscount) }}</span
 							>
@@ -567,7 +576,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						<div
 							class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
 						>
-							<span>Invoice total</span
+							<span>{{ __("Invoice total") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.invoiceTotal) }}</span>
 						</div>
 					</div>

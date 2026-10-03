@@ -10,18 +10,19 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
 import { listExpenses } from "@/data/expenseEntryApi";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const breadcrumbs = [
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Expense Summary" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Expense Summary") },
 ];
 
 const GROUPINGS = [
-	{ key: "project", label: "Project" },
-	{ key: "expense_account", label: "Expense account" },
-	{ key: "cost_code", label: "Cost code" },
-	{ key: "source", label: "Paid from" },
-	{ key: "holder", label: "Person" },
+	{ key: "project", label: __("Project") },
+	{ key: "expense_account", label: __("Expense account") },
+	{ key: "cost_code", label: __("Cost code") },
+	{ key: "source", label: __("Paid from") },
+	{ key: "holder", label: __("Person") },
 ];
 
 const all = ref([]);
@@ -33,7 +34,7 @@ onMounted(async () => {
 		const rows = await listExpenses();
 		all.value = (rows || []).filter((e) => e.status === "Submitted");
 	} catch (e) {
-		error.value = e.message || "Failed to load expenses.";
+		error.value = e.message || __("Failed to load expenses.");
 	} finally {
 		loading.value = false;
 	}
@@ -61,7 +62,7 @@ const hit = (hay, needle) =>
 		.includes(needle.trim().toLowerCase());
 
 function projectName(e) {
-	return e.project ? e.project_name || e.project : "No project";
+	return e.project ? e.project_name || e.project : __("No project");
 }
 function holderName(e) {
 	return e.employee_name || e.employee || "—";
@@ -133,76 +134,76 @@ function toggle(k) {
 </script>
 
 <template>
-	<DeskPage title="Expense Summary" :breadcrumbs="breadcrumbs" printable>
-		<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">Loading…</div>
+	<DeskPage :title="__('Expense Summary')" :breadcrumbs="breadcrumbs" printable>
+		<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">{{ __("Loading…") }}</div>
 		<div v-else-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
 		<div v-else class="space-y-4">
 			<ReportFilters
 				:active="anyFilter"
 				:shown="filtered.length"
 				:total="all.length"
-				noun="expenses"
+				:noun="__('expenses')"
 				@clear="clearFilters"
 			>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Find</span
+						>{{ __("Find") }}</span
 					>
-					<DeskInput v-model="f.q" placeholder="Description or id…" class="!w-48" />
+					<DeskInput v-model="f.q" :placeholder="__('Description or id…')" class="!w-48" />
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Project</span
+						>{{ __("Project") }}</span
 					>
 					<span class="w-48 inline-block">
 						<DeskSearchableSelect
 							v-model="f.project"
 							:options="projectOptions"
 							allow-clear
-							placeholder="All projects"
-							search-placeholder="Search…"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Account</span
+						>{{ __("Account") }}</span
 					>
 					<span class="w-52 inline-block">
 						<DeskSearchableSelect
 							v-model="f.account"
 							:options="accountOptions"
 							allow-clear
-							placeholder="All accounts"
-							search-placeholder="Search…"
+							:placeholder="__('All accounts')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Paid from</span
+						>{{ __("Paid from") }}</span
 					>
 					<span class="w-44 inline-block">
 						<DeskSearchableSelect
 							v-model="f.source"
 							:options="sourceOptions"
 							allow-clear
-							placeholder="Any source"
-							search-placeholder="Search…"
+							:placeholder="__('Any source')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Person</span
+						>{{ __("Person") }}</span
 					>
 					<span class="w-44 inline-block">
 						<DeskSearchableSelect
 							v-model="f.holder"
 							:options="holderOptions"
 							allow-clear
-							placeholder="Anyone"
-							search-placeholder="Search…"
+							:placeholder="__('Anyone')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
@@ -212,7 +213,7 @@ function toggle(k) {
 			<div class="flex items-center gap-3 flex-wrap">
 				<div class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Group by</span
+						>{{ __("Group by") }}</span
 					>
 					<select
 						v-model="groupBy"
@@ -225,16 +226,16 @@ function toggle(k) {
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>From</span
+						>{{ __("From") }}</span
 					>
 					<DeskInput v-model="from" type="date" class="!w-36" />
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>To</span
+						>{{ __("To") }}</span
 					>
 					<DeskInput v-model="to" type="date" class="!w-36" />
 				</div>
 				<div class="ml-auto text-sm pr-4">
-					<span class="text-ink-500 mr-1">Total</span>
+					<span class="text-ink-500 mr-1">{{ __("Total") }}</span>
 					<span class="font-semibold text-ink-900 tabular-nums">
 						{{ fmtINR(grandTotal) }}</span
 					>
@@ -248,8 +249,8 @@ function toggle(k) {
 					>
 						<tr>
 							<th class="text-left px-4 py-2">{{ groupLabel }}</th>
-							<th class="text-right px-4 py-2">Entries</th>
-							<th class="text-right px-4 py-2">Total</th>
+							<th class="text-right px-4 py-2">{{ __("Entries") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Total") }}</th>
 							<th class="px-4 py-2"></th>
 						</tr>
 					</thead>
@@ -316,7 +317,7 @@ function toggle(k) {
 					</tbody>
 				</table>
 				<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-					No submitted expenses in this period.
+					{{ __("No submitted expenses in this period.") }}
 				</div>
 			</div>
 		</div>
