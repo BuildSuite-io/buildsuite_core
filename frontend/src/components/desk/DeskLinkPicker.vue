@@ -5,6 +5,7 @@ import Autocomplete from "../../../node_modules/frappe-ui/src/components/Autocom
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { companyFilterForDoctype } from "@/composables/useActiveCompany";
 import { useHiddenUsers } from "@/composables/useHiddenUsers";
+import { __ } from "@/utils/translate";
 
 // Users that BuildSuite Core's own UI must never surface (Administrator, Guest,
 // platform System-Manager admins). Applied to every User picker centrally.
@@ -391,7 +392,7 @@ function onCreate(togglePopover) {
 						<line x1="5" y1="12" x2="19" y2="12" />
 					</svg>
 					<span class="truncate">
-						{{ query.trim() ? `Create “${query.trim()}”` : `New ${createLabel}` }}
+						{{ query.trim() ? __("Create “{0}”", [query.trim()]) : __("New {0}", [__(createLabel)]) }}
 					</span>
 				</button>
 			</template>
