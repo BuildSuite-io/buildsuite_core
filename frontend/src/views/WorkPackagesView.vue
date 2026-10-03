@@ -12,6 +12,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtCompactINR } from "@/utils/format";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const router = useRouter();
@@ -68,7 +69,7 @@ function progressBarColor(row) {
 	return "bg-success-500";
 }
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Work Package" }];
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Work Package") }];
 
 function onRowClick(row) {
 	router.push(`/work-packages/${row.name}`);
@@ -76,13 +77,13 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Work Package" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Work Package')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('workPackage')"
 				to="/work-packages/new"
 				class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -99,15 +100,15 @@ function onRowClick(row) {
 				'end_date',
 			]"
 			:columns="[
-				{ key: 'code', label: 'Code' },
-				{ key: 'work_package_name', label: 'Name' },
-				{ key: 'project', label: 'Project' },
-				{ key: 'status', label: 'Status', preset: 'status' },
-				{ key: 'budget', label: 'Budget' },
-				{ key: 'progress', label: 'Progress', preset: 'progress' },
+				{ key: 'code', label: __('Code') },
+				{ key: 'work_package_name', label: __('Name') },
+				{ key: 'project', label: __('Project') },
+				{ key: 'status', label: __('Status'), preset: 'status' },
+				{ key: 'budget', label: __('Budget') },
+				{ key: 'progress', label: __('Progress'), preset: 'progress' },
 				{
 					key: 'timeline',
-					label: 'Timeline',
+					label: __('Timeline'),
 					preset: 'timeline',
 					fields: ['start_date', 'end_date'],
 				},
@@ -117,7 +118,7 @@ function onRowClick(row) {
 			:filter-field-map="{ project: 'project' }"
 			cache-key="buildsuite-work-package-list-generic"
 			row-key="name"
-			search-placeholder="Search by name or code…"
+			:search-placeholder="__('Search by name or code…')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -129,7 +130,7 @@ function onRowClick(row) {
 					value-field="name"
 					:search-fields="['project_name', 'custom_project_id', 'name']"
 					:page-length="10"
-					placeholder="Project: Any"
+					:placeholder="__('Project: Any')"
 				/>
 			</template>
 
@@ -171,7 +172,7 @@ function onRowClick(row) {
 				</div>
 			</template>
 			<template #empty>
-				<div class="text-sm text-ink-500">No work packages match these filters.</div>
+				<div class="text-sm text-ink-500">{{ __("No work packages match these filters.") }}</div>
 			</template>
 		</DocTypeListView>
 	</DeskPage>

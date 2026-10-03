@@ -21,6 +21,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 const router = useRouter();
@@ -54,8 +55,8 @@ const saving = ref(false);
 
 function validate() {
 	const e = {};
-	if (!form.project) e.project = "Pick a project.";
-	if (!form.title.trim()) e.title = "Title is required.";
+	if (!form.project) e.project = __("Pick a project.");
+	if (!form.title.trim()) e.title = __("Title is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -78,23 +79,23 @@ async function onSave() {
 		});
 		router.push(`/sco/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to raise scope change order", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to raise scope change order"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Scope Change Orders", to: "/sco" },
-	{ label: "Raise" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Scope Change Orders"), to: "/sco" },
+	{ label: __("Raise") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="Raise Scope Change Order"
-		subtitle="Raising submits it for PM / Director approval"
+		:title="__('Raise Scope Change Order')"
+		:subtitle="__('Raising submits it for PM / Director approval')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<div
@@ -102,20 +103,20 @@ const breadcrumbs = [
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to raise a scope change order.
+			{{ __("You don't have permission to raise a scope change order.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Raising…' : 'Raise SCO'"
+					:save-label="saving ? __('Raising…') : __('Raise SCO')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"
 				/>
 			</template>
 
-			<DeskSection title="Change order" :cols="2">
-				<DeskField label="Project" required :error="errors.project">
+			<DeskSection :title="__('Change order')" :cols="2">
+				<DeskField :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
@@ -123,37 +124,37 @@ const breadcrumbs = [
 						value-field="name"
 						:search-fields="['project_name', 'name']"
 						:filters="companyFilter"
-						placeholder="Pick a project…"
+						:placeholder="__('Pick a project…')"
 					/>
 				</DeskField>
-				<DeskField label="Type">
+				<DeskField :label="__('Type')">
 					<DeskSelect v-model="form.type">
-						<option v-for="t in TYPES" :key="t">{{ t }}</option>
+						<option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Title" required :error="errors.title" class="md:col-span-2">
+				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2">
 					<DeskInput
 						v-model="form.title"
-						placeholder="e.g. Foundation depth revision — soil report"
+						:placeholder="__('e.g. Foundation depth revision — soil report')"
 					/>
 				</DeskField>
 				<DeskField
-					label="Cost impact (₹)"
-					hint="Positive = added cost to the project; negative = a saving."
+					:label="__('Cost impact (₹)')"
+					:hint="__('Positive = added cost to the project; negative = a saving.')"
 				>
 					<DeskInput v-model.number="form.impact" type="number" step="1000" />
 				</DeskField>
-				<DeskField label="Cost recovery">
+				<DeskField :label="__('Cost recovery')">
 					<DeskSelect v-model="form.recoverable">
-						<option value="1">Recoverable from client</option>
-						<option value="0">Internal — absorbed by us</option>
+						<option value="1">{{ __("Recoverable from client") }}</option>
+						<option value="0">{{ __("Internal — absorbed by us") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Reason / justification" class="md:col-span-2">
+				<DeskField :label="__('Reason / justification')" class="md:col-span-2">
 					<DeskTextarea
 						v-model="form.reason"
 						:rows="4"
-						placeholder="Why is this change needed?"
+						:placeholder="__('Why is this change needed?')"
 					/>
 				</DeskField>
 			</DeskSection>
