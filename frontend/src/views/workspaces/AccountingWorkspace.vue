@@ -13,6 +13,7 @@
 
 import DeskPage from "@/components/desk/DeskPage.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
+import { currencySymbol } from "@/utils/format";
 
 const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Accounting" }];
 
@@ -20,10 +21,10 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Accounting
 // illustrative — no accounting data exists in seed (M8 Project Finance handles petty
 // cash only). Real values would come from GL aggregation.
 const numberCards = [
-	{ label: "Outstanding receivables", value: "₹—", sub: "AR aging" },
-	{ label: "Outstanding payables", value: "₹—", sub: "AP aging" },
-	{ label: "Total bank balance", value: "₹—", sub: "all bank accounts" },
-	{ label: "Net profit (YTD)", value: "₹—", sub: "fiscal year to date" },
+	{ label: "Outstanding receivables", value: `${currencySymbol()}—`, sub: "AR aging" },
+	{ label: "Outstanding payables", value: `${currencySymbol()}—`, sub: "AP aging" },
+	{ label: "Total bank balance", value: `${currencySymbol()}—`, sub: "all bank accounts" },
+	{ label: "Net profit (YTD)", value: `${currencySymbol()}—`, sub: "fiscal year to date" },
 ];
 
 // Shortcuts: large primary-action tiles. ERPNext picks the 5–6 most frequent docs.

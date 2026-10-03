@@ -12,7 +12,7 @@ import { ref, computed, onMounted } from "vue";
 import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
-import { fmtINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { listFinancePayments, cancelFinancePayment } from "@/data/financePaymentApi";
@@ -215,7 +215,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>₹</span
+						>{{ currencySymbol() }}</span
 					>
 					<input
 						v-model.number="amtMin"

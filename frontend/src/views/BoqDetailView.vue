@@ -28,7 +28,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtCompactINR, fmtDate, currencySymbol } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 
 const props = defineProps({ id: { type: String, required: true } });
@@ -1388,7 +1388,7 @@ const breadcrumbs = computed(() => {
 					<div class="px-3 py-2">Description</div>
 					<div class="px-3 py-2">Unit</div>
 					<div class="px-3 py-2 text-right">Plan Qty</div>
-					<div class="px-3 py-2 text-right">Rate (₹)</div>
+					<div class="px-3 py-2 text-right">Rate ({{ currencySymbol() }})</div>
 					<div class="px-3 py-2 text-right">Planned</div>
 					<div class="px-3 py-2 text-right">Committed</div>
 					<div class="px-3 py-2 text-right">Actual</div>
@@ -2059,7 +2059,7 @@ const breadcrumbs = computed(() => {
 								<DeskInput v-model="itemForm.plannedQty" type="number" />
 							</DeskField>
 							<DeskField
-								label="Rate (₹)"
+								:label="`Rate (${currencySymbol()})`"
 								:hint="itemForm.assemblyId ? 'Auto from Assembly' : ''"
 							>
 								<DeskInput v-model="itemForm.rate" type="number" />
@@ -2190,7 +2190,7 @@ const breadcrumbs = computed(() => {
 									:key="rm.id"
 									:value="rm.id"
 								>
-									{{ rm.code }} · {{ rm.description }} · ₹{{
+									{{ rm.code }} · {{ rm.description }} · {{ currencySymbol() }}{{
 										rm.currentRate
 									}}
 									per {{ rm.unit }}
@@ -2211,7 +2211,7 @@ const breadcrumbs = computed(() => {
 							>
 								<DeskInput v-model="subItemForm.qtyPerUnit" type="number" />
 							</DeskField>
-							<DeskField label="Rate (₹)">
+							<DeskField :label="`Rate (${currencySymbol()})`">
 								<DeskInput v-model="subItemForm.rate" type="number" />
 							</DeskField>
 							<DeskField label="Amount" hint="qty × rate (auto)">

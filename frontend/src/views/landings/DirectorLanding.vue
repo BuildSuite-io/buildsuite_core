@@ -5,7 +5,7 @@ import { ROLES } from "@/data/roles";
 import { useDataStore } from "@/stores";
 import LandingShell from "@/layouts/LandingShell.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
-import { fmtCompactINR, fmtDate } from "@/utils/format";
+import { fmtCompactINR, fmtDate, currencySymbol } from "@/utils/format";
 
 const ROLE_ID = "director";
 const role = ROLES.find((r) => r.id === ROLE_ID);
@@ -311,7 +311,7 @@ const highValueApprovals = computed(() =>
 			<div class="bg-white border border-ink-200 rounded-xl overflow-hidden mt-6">
 				<div class="px-4 py-3 border-b border-ink-200 flex items-center justify-between">
 					<h2 class="font-semibold text-ink-900 text-sm">High-value approvals</h2>
-					<span class="text-[11px] text-ink-500">SCO impact &gt; ₹10 L</span>
+					<span class="text-[11px] text-ink-500">SCO impact &gt; {{ currencySymbol() }}10 L</span>
 				</div>
 				<div class="divide-y divide-ink-100">
 					<RouterLink

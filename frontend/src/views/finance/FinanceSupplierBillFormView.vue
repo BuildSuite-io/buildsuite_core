@@ -27,7 +27,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { useAutosave } from "@/composables/useAutosave";
-import { fmtINR } from "@/utils/format";
+import { fmtINR, currencySymbol } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
@@ -633,7 +633,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										"
 										@click="form.discount_type = '₹'"
 									>
-										₹
+										{{ currencySymbol() }}
 									</button>
 									<button
 										type="button"

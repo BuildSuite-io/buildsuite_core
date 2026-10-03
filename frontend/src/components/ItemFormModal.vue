@@ -9,7 +9,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
-import { fmtINR } from "@/utils/format";
+import { fmtINR, currencySymbol } from "@/utils/format";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
@@ -256,7 +256,7 @@ async function onDelete() {
 					</div>
 
 					<DeskField
-						label="Standard rate (₹)"
+						:label="`Standard rate (${currencySymbol()})`"
 						:error="errors.standard_rate"
 						hint="Default rate pre-filled on MR / PO lines — editable per document."
 					>

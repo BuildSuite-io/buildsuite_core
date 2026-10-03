@@ -11,7 +11,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
-import { fmtINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -286,10 +286,10 @@ const breadcrumbs = computed(() => [
 					>
 				</DeskField>
 
-				<DeskField label="Rate (₹)"
+				<DeskField :label="`Rate (${currencySymbol()})`"
 					><DeskInput v-model.number="form.rate" type="number" min="0"
 				/></DeskField>
-				<DeskField label="Fuel cost (₹)"
+				<DeskField :label="`Fuel cost (${currencySymbol()})`"
 					><DeskInput v-model.number="form.fuel_cost" type="number" min="0"
 				/></DeskField>
 			</DeskSection>

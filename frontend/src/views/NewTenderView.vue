@@ -21,6 +21,7 @@ import TenderLinePicker from "@/components/TenderLinePicker.vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { toDateInputValue } from "@/utils/dateInput";
+import { currencySymbol } from "@/utils/format";
 
 const props = defineProps({ id: { type: String, default: "" } });
 
@@ -223,7 +224,7 @@ async function onSave() {
 			</DeskSection>
 
 			<DeskSection title="Earnest money and guarantee" :cols="2">
-				<DeskField label="EMD amount (₹)" :error="errors.emd_amount"
+				<DeskField :label="`EMD amount (${currencySymbol()})`" :error="errors.emd_amount"
 					hint="Money genuinely lodged — it shows as at stake until the bid is decided.">
 					<DeskInput v-model="form.emd_amount" type="number" min="0" step="any" placeholder="blank if none" />
 				</DeskField>

@@ -10,7 +10,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { createDataAdapter } from "@/data/adapters";
-import { fmtINR } from "@/utils/format";
+import { fmtINR, currencySymbol } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -192,10 +192,10 @@ const breadcrumbs = [
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField label="Rate (₹)">
+				<DeskField :label="`Rate (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField label="Fuel cost (₹)">
+				<DeskField :label="`Fuel cost (${currencySymbol()})`">
 					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
 				</DeskField>
 				<DeskField label="Total">

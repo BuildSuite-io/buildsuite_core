@@ -9,7 +9,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
 import { parseFrappeError } from "@/utils/frappeError";
 import { showToast } from "@/utils/appToast";
-import { fmtINR, fmtDate } from "@/utils/format";
+import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -483,7 +483,7 @@ async function removeRate() {
 								@change="formError = ''"
 							/>
 						</DeskField>
-						<DeskField label="Current rate (₹)" required>
+						<DeskField :label="`Current rate (${currencySymbol()})`" required>
 							<DeskInput
 								v-model.number="form.currentRate"
 								type="number"
