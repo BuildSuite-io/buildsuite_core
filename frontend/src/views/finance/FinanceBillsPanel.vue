@@ -26,7 +26,7 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useActiveCompany } from "@/composables/useActiveCompany";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtINR, fmtCurrency } from "@/utils/format";
 
 const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Bills" }];
 const router = useRouter();
@@ -191,7 +191,10 @@ async function savePay() {
 	const amt = Number(pay.amount) || 0;
 	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
 	if (amt > Number(pay.row.outstanding) + 0.01)
-		return showToast(`Can't exceed the outstanding ${fmtINR(pay.row.outstanding)}.`, "error");
+		return showToast(
+			`Can't exceed the outstanding ${fmtCurrency(pay.row.outstanding, pay.row.currency)}.`,
+			"error"
+		);
 	if (!pay.pay_from) return showToast("Pick the account to pay from.", "error");
 	pay.saving = true;
 	try {
@@ -443,13 +446,13 @@ async function saveAdvance() {
 								><span v-else class="text-ink-300">—</span>
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
-								{{ fmtINR(r.total) }}
+								{{ fmtCurrency(r.total, r.currency) }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums font-medium"
 								:class="r.outstanding > 0.01 ? 'text-ink-900' : 'text-ink-400'"
 							>
-								{{ fmtINR(r.outstanding) }}
+								{{ fmtCurrency(r.outstanding, r.currency) }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums"
@@ -592,7 +595,7 @@ async function saveAdvance() {
 						<span class="font-mono text-xs">{{ pay.row?.name }}</span
 						>. Outstanding
 						<span class="font-semibold text-ink-900 tabular-nums">{{
-							fmtINR(pay.row?.outstanding)
+							fmtCurrency(pay.row?.outstanding, pay.row?.currency)
 						}}</span
 						>.
 					</div>

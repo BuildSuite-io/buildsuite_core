@@ -5,6 +5,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 from buildsuite_core.utils.project import default_company, is_multi_company_enabled
 
@@ -26,6 +27,22 @@ def active_company():
 	dev server), so the SPA fetches this instead.
 	"""
 	return default_company()
+
+
+@frappe.whitelist()
+def exchange_rate(from_currency: str, to_currency: str, date: str | None = None):
+	"""The exchange rate ERPNext would apply converting `from_currency` → `to_currency` on `date`
+	(buying side — these feed supplier/purchase documents). A thin, forgiving wrapper over
+	ERPNext's own Currency Exchange lookup so the SPA can pre-fill a foreign bill's rate; returns
+	1.0 for same-currency or when no rate is configured (the user can still type one)."""
+	if not from_currency or from_currency == to_currency:
+		return 1.0
+	try:
+		from erpnext.setup.utils import get_exchange_rate
+
+		return flt(get_exchange_rate(from_currency, to_currency, date, "for_buying")) or 1.0
+	except Exception:
+		return 1.0
 
 
 @frappe.whitelist()
