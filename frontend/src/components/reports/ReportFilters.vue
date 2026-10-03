@@ -5,6 +5,8 @@
 // set) and a Clear that appears only when something is actually filtering. Reports pass
 // their own controls through the default slot. print:hidden — a filter row is a control,
 // not part of the printed document.
+import { __ } from "@/utils/translate";
+
 defineProps({
 	active: { type: Boolean, default: false }, // true when ≥1 filter is set → Clear appears
 	shown: { type: Number, default: null }, // rows currently shown
@@ -24,9 +26,9 @@ defineEmits(["clear"]);
 		<div class="ml-auto flex items-center gap-3">
 			<span v-if="shown !== null" class="text-[11px] text-ink-500 tabular-nums">
 				<template v-if="total !== null && shown !== total"
-					>{{ shown }} of {{ total }} {{ noun }}</template
+					>{{ __("{0} of {1} {2}", [shown, total, __(noun)]) }}</template
 				>
-				<template v-else>{{ shown }} {{ noun }}</template>
+				<template v-else>{{ shown }} {{ __(noun) }}</template>
 			</span>
 			<button
 				v-if="active"
@@ -34,7 +36,7 @@ defineEmits(["clear"]);
 				class="text-[11px] text-brand-700 hover:underline"
 				@click="$emit('clear')"
 			>
-				Clear filters
+				{{ __("Clear filters") }}
 			</button>
 		</div>
 	</div>

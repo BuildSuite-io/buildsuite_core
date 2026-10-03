@@ -15,6 +15,7 @@ import { useProjectOptions } from "@/composables/useProjectOptions";
 import { usePermissions } from "@/composables/usePermissions";
 import { DOCSTATUS_LABELS } from "@/utils/workforceForms";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { projectOptions, projectLabel } = useProjectOptions();
@@ -43,29 +44,29 @@ function onRowClick(row) {
 }
 
 const columns = [
-	{ key: "name", label: "ID" },
-	{ key: "project", label: "Project" },
-	{ key: "date", label: "Date" },
-	{ key: "employees_count", label: "Employees", align: "right" },
-	{ key: "docstatus", label: "Status" },
+	{ key: "name", label: __("ID") },
+	{ key: "project", label: __("Project") },
+	{ key: "date", label: __("Date") },
+	{ key: "employees_count", label: __("Employees"), align: "right" },
+	{ key: "docstatus", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Field Attendance" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Field Attendance") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Field Attendance" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Field Attendance')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('fieldAttendance')"
 				to="/field-attendance/new"
 				class="desk-save-btn !text-xs"
 			>
-				+ New
+				{{ __("+ New") }}
 			</RouterLink>
 		</template>
 
@@ -80,7 +81,7 @@ const breadcrumbs = [
 			cache-key="buildsuite-field-attendance"
 			row-key="name"
 			initial-order-by="date desc"
-			search-placeholder="Search attendance…"
+			:search-placeholder="__('Search attendance…')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -88,8 +89,8 @@ const breadcrumbs = [
 					<DeskSearchableSelect
 						v-model="projectFilter"
 						:options="projectOptions"
-						placeholder="All projects"
-						search-placeholder="Search projects…"
+						:placeholder="__('All projects')"
+						:search-placeholder="__('Search projects…')"
 						allow-clear
 					/>
 				</div>
@@ -98,17 +99,17 @@ const breadcrumbs = [
 					<DeskSearchableSelect
 						v-model="employeeFilter"
 						:options="workerOptions"
-						placeholder="All employees"
-						search-placeholder="Search employees…"
+						:placeholder="__('All employees')"
+						:search-placeholder="__('Search employees…')"
 						allow-clear
 					/>
 				</div>
 
 				<DeskSelect v-model="statusFilter" class="!w-36">
-					<option value="">All statuses</option>
-					<option value="0">Draft</option>
-					<option value="1">Submitted</option>
-					<option value="2">Cancelled</option>
+					<option value="">{{ __("All statuses") }}</option>
+					<option value="0">{{ __("Draft") }}</option>
+					<option value="1">{{ __("Submitted") }}</option>
+					<option value="2">{{ __("Cancelled") }}</option>
 				</DeskSelect>
 			</template>
 
