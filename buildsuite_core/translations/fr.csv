@@ -1282,3 +1282,253 @@ Partly Billed,Partiellement facturé
 Return,Retour
 New {0},Nouveau {0}
 Create “{0}”,Créer « {0} »
+% Billed,% facturé
+(optional),(facultatif)
++ Add entry,+ Ajouter une entrée
++ Add line,+ Ajouter une ligne
++ Bill progress,+ Facturer l’avancement
++ Create Subcontractor bill,+ Créer une facture de sous-traitant
++ Raise new work order,+ Créer un ordre de travaux
++ Record measurement,+ Enregistrer une mesure
+Account Head,Compte comptable
+Account…,Compte…
+Add at least one line with an amount.,Ajoutez au moins une ligne avec un montant.
+Add at least one measurement entry.,Ajoutez au moins une entrée de mesure.
+Add at least one schedule-of-values line.,Ajoutez au moins une ligne de décomposition du prix.
+Add: Taxes,Plus : taxes
+Additional Discount,Remise supplémentaire
+Advance,Avance
+Advance amount,Montant de l’avance
+Advance recovery (₹),Récupération d’avance (₹)
+All subcontractors,Tous les sous-traitants
+All trades,Tous les corps de métier
+Apply TDS (withholding),Appliquer la retenue à la source (TDS)
+B,B
+Back to work order,Retour à l’ordre de travaux
+Bill #,N° de facture
+Bill ID,ID de la facture
+Bill cancelled.,Facture annulée.
+Bill progress against this work order (derives this period from certified Measurement Books),Facturer l’avancement sur cet ordre de travaux (la période est dérivée des carnets de mesures certifiés)
+Bill type,Type de facture
+Bill {0},Facture {0}
+Billed to date,Facturé à ce jour
+Billing saved.,Facturation enregistrée.
+Bills ({0}),Factures ({0})
+Cancel Bill {0}?,Annuler la facture {0} ?
+Cancel work order,Annuler l’ordre de travaux
+Capture a site measurement (Nos × L × B × D → qty) against this WO,Saisir une mesure de chantier (Nos × L × B × D → qté) pour cet OT
+Certified by,Certifié par
+Certified measurement books become the source of measured-to-date on the work order. Revert to Draft to retract.,Les carnets de mesures certifiés deviennent la source du mesuré à ce jour sur l’ordre de travaux. Repassez en brouillon pour les retirer.
+Certify,Certifier
+Certify failed,Échec de la certification
+Certify {0}?,Certifier {0} ?
+Charge lines,Lignes de charges
+Cost code (optional),Code de coût (facultatif)
+Create MB,Créer un carnet de mesures
+Create Subcontractor bill,Créer une facture de sous-traitant
+Create subcontractor,Créer un sous-traitant
+Create work order,Créer l’ordre de travaux
+D,D
+Deduct,Déduire
+Deduction,Déduction
+Default (Subcontractor Charges),Par défaut (charges de sous-traitance)
+"Delete ""{0}""?",Supprimer « {0} » ?
+Delete Bill {0}?,Supprimer la facture {0} ?
+Delivery type,Type de prestation
+Derived from Nos × L × B × D — type to override.,Dérivé de Nos × L × B × D — saisissez pour remplacer.
+Derived from the work order.,Dérivé de l’ordre de travaux.
+Describe the work — free text,Décrivez les travaux — texte libre
+Details,Détails
+Direct (no work order),Direct (sans ordre de travaux)
+Direct bill,Facture directe
+Direct bill — for one-off / lump-sum charges. Taxes are applied on the detail page.,Facture directe — pour des charges ponctuelles / forfaitaires. Les taxes sont appliquées sur la page de détail.
+"Each entry needs a description, WO line and UOM.","Chaque entrée nécessite une description, une ligne d’OT et une unité."
+Edit in work order,Modifier dans l’ordre de travaux
+Email id,Adresse e-mail
+"Entries — Quantity = Nos × L × B × D, or type directly","Entrées — Quantité = Nos × L × B × D, ou saisie directe"
+Exceeds awarded qty — flag for variation,Dépasse la quantité attribuée — à signaler pour avenant
+Failed to create subcontractor,Échec de la création du sous-traitant
+Failed to delete measurement book,Échec de la suppression du carnet de mesures
+Failed to delete work order,Échec de la suppression de l’ordre de travaux
+Failed to load measurement book,Échec du chargement du carnet de mesures
+Failed to load subcontractor,Échec du chargement du sous-traitant
+Failed to load template rows,Échec du chargement des lignes du modèle
+Failed to load work order,Échec du chargement de l’ordre de travaux
+Failed to save bill,Échec de l’enregistrement de la facture
+Failed to save measurement book,Échec de l’enregistrement du carnet de mesures
+Failed to save work order,Échec de l’enregistrement de l’ordre de travaux
+Failed to update subcontractor,Échec de la mise à jour du sous-traitant
+Filter by trade,Filtrer par corps de métier
+Final (release retention),Finale (libération de la retenue)
+From Work Order,Depuis un ordre de travaux
+Fully paid — {0} of {1},Entièrement payé — {0} sur {1}
+Grand Total,Total général
+Grand total,Total général
+Gross,Brut
+Gross bill value,Valeur brute de la facture
+Gross this period,Brut de la période
+Header,En-tête
+"Held on your books, released on the final bill.","Retenu dans vos comptes, libéré sur la facture finale."
+How qty is computed:,Comment la quantité est calculée :
+Import from template,Importer depuis un modèle
+Invoice value,Valeur de la facture
+"Invoices, measurement sheets, and site photos go here.","Les factures, feuilles de mesures et photos de chantier vont ici."
+L,L
+Less retention ({0}%),Moins retenue ({0} %)
+Less: Advance recovery,Moins : récupération d’avance
+Less: Discount (on Grand Total),Moins : remise (sur le total général)
+Less: Discount (on Net Total),Moins : remise (sur le total net)
+Less: Retention held @ {0}%,Moins : retenue de garantie @ {0} %
+Less: TDS withheld @ {0}%,Moins : retenue à la source @ {0} %
+Line value,Valeur de la ligne
+Lines — claimed against schedule of values,Lignes — réclamées sur la décomposition du prix
+Loading bills…,Chargement des factures…
+Loading measurement book…,Chargement du carnet de mesures…
+Loading subcontractors…,Chargement des sous-traitants…
+Loading subcontractor…,Chargement du sous-traitant…
+Loading work order…,Chargement de l’ordre de travaux…
+MB,CM
+MB ID,ID du carnet de mesures
+Make Payment,Effectuer un paiement
+Make payment,Effectuer un paiement
+Mark as a deduction (subtracts from measured total),Marquer comme déduction (soustrait du total mesuré)
+Measured,Mesuré
+Measured by,Mesuré par
+Measured to date,Mesuré à ce jour
+Measured total,Total mesuré
+Measurement Books,Carnets de mesures
+Measurement book certified.,Carnet de mesures certifié.
+Measurement book not found.,Carnet de mesures introuvable.
+Measurement books ({0}),Carnets de mesures ({0})
+Measurements,Mesures
+Mode,Mode
+Net Total,Total net
+Net payable,Net à payer
+Net payable to subcontractor,Net à payer au sous-traitant
+New Measurement Book,Nouveau carnet de mesures
+New Subcontractor,Nouveau sous-traitant
+New Subcontractor Bill,Nouvelle facture de sous-traitant
+New Work Order,Nouvel ordre de travaux
+No attachments yet.,Aucune pièce jointe pour l’instant.
+No bills raised yet against this WO.,Aucune facture émise pour l’instant sur cet OT.
+No fresh measured quantity to bill — certify a Measurement Book first.,Aucune nouvelle quantité mesurée à facturer — certifiez d’abord un carnet de mesures.
+No measurement books recorded yet.,Aucun carnet de mesures enregistré pour l’instant.
+No measurements recorded yet against this WO.,Aucune mesure enregistrée pour l’instant sur cet OT.
+No subcontractor bills yet.,Aucune facture de sous-traitant pour l’instant.
+No subcontractors yet.,Aucun sous-traitant pour l’instant.
+No tax,Aucune taxe
+No tax. Pick a template or add a row.,Aucune taxe. Choisissez un modèle ou ajoutez une ligne.
+No terms set. Edit the work order to import a template or type custom terms.,Aucune condition définie. Modifiez l’ordre de travaux pour importer un modèle ou saisir des conditions.
+No unlinked advances left for this subcontractor.,Plus d’avances non liées pour ce sous-traitant.
+No work orders raised against this subcontractor yet.,Aucun ordre de travaux émis pour ce sous-traitant pour l’instant.
+No work orders raised yet.,Aucun ordre de travaux émis pour l’instant.
+Normal,Normale
+Nos,Nbre
+Nothing to bill — add a line with an amount.,Rien à facturer — ajoutez une ligne avec un montant.
+Open the new Subcontractor Bill form pre-filled to this Work Order,Ouvrir le formulaire de facture de sous-traitant pré-rempli pour cet ordre de travaux
+Open the printable work order (Save as PDF from the browser print dialog),Ouvrir l’ordre de travaux imprimable (Enregistrer en PDF depuis la boîte d’impression)
+Override active (clear to re-derive).,Remplacement actif (effacer pour recalculer).
+Paid from account,Compte débité
+Paid on,Payé le
+Payment recorded.,Paiement enregistré.
+Phone number,Numéro de téléphone
+Pick a delivery type…,Choisissez un type de prestation…
+Pick a standard template to fill the box below. You can edit the text after importing.,Choisissez un modèle standard pour remplir le champ ci-dessous. Vous pourrez modifier le texte après l’import.
+Pick a subcontractor.,Choisissez un sous-traitant.
+Pick a subcontractor…,Choisissez un sous-traitant…
+Pick a work order to derive this period's lines.,Choisissez un ordre de travaux pour dériver les lignes de la période.
+Pick a work order.,Choisissez un ordre de travaux.
+Pick a work order…,Choisissez un ordre de travaux…
+Pick category…,Choisissez une catégorie…
+Pick code…,Choisissez un code…
+Prev. billed,Préc. facturé
+Previously billed,Précédemment facturé
+Purchase Invoice,Facture d’achat
+Purchase Invoice {0} generated — bill submitted.,Facture d’achat {0} générée — facture soumise.
+Purchase Invoice {0} generated.,Facture d’achat {0} générée.
+Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract.,Quantité = Nos × L × B × D (ou saisie directe). Les lignes de déduction se soustraient.
+Recovered here,Récupéré ici
+Reference,Référence
+Remarks,Remarques
+Retention %,Retenue %
+Retention (%),Retenue (%)
+Retention {0}%,Retenue {0} %
+"Retention, TDS & discount","Retenue, TDS et remise"
+Revert failed,Échec du retour en brouillon
+Revert to Draft,Repasser en brouillon
+Save billing,Enregistrer la facturation
+Schedule of values,Décomposition du prix
+Scope,Périmètre
+Scope / description,Périmètre / description
+"Search MB, WO, project…","Rechercher CM, OT, projet…"
+"Search WO, subcontractor, project…","Rechercher OT, sous-traitant, projet…"
+"Search bill, subcontractor, project…","Rechercher facture, sous-traitant, projet…"
+"Search name, trade, contact…","Rechercher nom, corps de métier, contact…"
+Sets the accounting company.,Définit la société comptable.
+Settles the payable — advance payments linked below.,Règle la dette — paiements d’avance liés ci-dessous.
+Settles the payable — advance payments linked below; reflects in the outstanding.,Règle la dette — paiements d’avance liés ci-dessous ; se reflète dans l’encours.
+State,État
+Subcontractor Bill {0},Facture de sous-traitant {0}
+Subcontractor Invoice Date,Date de la facture du sous-traitant
+Subcontractor Invoice No,N° de facture du sous-traitant
+Subcontractor inv:,Facture sous-traitant :
+Submit Bill {0}?,Soumettre la facture {0} ?
+Submit this work order for {0}? It becomes committed cost and its schedule of values is locked.,Soumettre cet ordre de travaux pour {0} ? Il devient un coût engagé et sa décomposition du prix est verrouillée.
+Sum across certified Measurement Books for this line,Somme sur les carnets de mesures certifiés pour cette ligne
+Tax Rate,Taux de taxe
+Taxes and Charges,Taxes et charges
+Template,Modèle
+Terms,Conditions
+Terms & conditions printed on the work order…,Conditions générales imprimées sur l’ordre de travaux…
+The entries are removed permanently. Measured-to-date on the work order will recompute against the remaining certified books.,Les entrées sont supprimées définitivement. Le mesuré à ce jour sur l’ordre de travaux sera recalculé d’après les carnets certifiés restants.
+This cancelled bill will be removed permanently.,Cette facture annulée sera supprimée définitivement.
+"This cancels the bill and its Purchase Invoice, reversing the postings.","Cela annule la facture et sa facture d’achat, en contre-passant les écritures."
+This cancels the work order. It's blocked if measurement books or bills exist against it.,Cela annule l’ordre de travaux. C’est bloqué si des carnets de mesures ou des factures y sont rattachés.
+This draft bill will be removed permanently.,Cette facture en brouillon sera supprimée définitivement.
+This period,Cette période
+This period (derived from certified Measurement Books),Cette période (dérivée des carnets de mesures certifiés)
+This period amount,Montant de la période
+This period qty,Qté de la période
+This period qty = (Measured to date from Certified MBs) − (Previously billed qty). Read-only on this bill.,Qté de la période = (mesuré à ce jour des CM certifiés) − (qté précédemment facturée). En lecture seule sur cette facture.
+This posts the bill and generates the Purchase Invoice for {0} net payable. A submitted bill is read-only.,Cela enregistre la facture et génère la facture d’achat pour {0} net à payer. Une facture soumise est en lecture seule.
+This subcontractor master record will be removed permanently.,Cette fiche sous-traitant sera supprimée définitivement.
+This work order and its schedule of values will be removed permanently.,Cet ordre de travaux et sa décomposition du prix seront supprimés définitivement.
+Total advance recovered,Total des avances récupérées
+Total taxes,Total des taxes
+Total value,Valeur totale
+Trade,Corps de métier
+Trade is required.,Le corps de métier est obligatoire.
+WO,OT
+WO ID,ID de l’OT
+WO line,Ligne d’OT
+WO total,Total de l’OT
+What is being billed,Ce qui est facturé
+What was measured,Ce qui a été mesuré
+Withheld,Retenu
+Withholding category,Catégorie de retenue
+Work Order,Ordre de travaux
+Work order,Ordre de travaux
+Work order cancelled.,Ordre de travaux annulé.
+Work order not found.,Ordre de travaux introuvable.
+Work order submitted.,Ordre de travaux soumis.
+Work orders ({0}),Ordres de travaux ({0})
+You don't have permission to create a measurement book.,Vous n’avez pas la permission de créer un carnet de mesures.
+You don't have permission to create a subcontractor.,Vous n’avez pas la permission de créer un sous-traitant.
+You don't have permission to create a work order.,Vous n’avez pas la permission de créer un ordre de travaux.
+You don't have permission to edit this measurement book.,Vous n’avez pas la permission de modifier ce carnet de mesures.
+You don't have permission to edit this work order.,Vous n’avez pas la permission de modifier cet ordre de travaux.
+across {0} entries,sur {0} entrées
+across {0} entry,sur {0} entrée
+bills,factures
+clear override,effacer le remplacement
+direct,direct
+"e.g. GSTIN (India), VAT No, TIN","p. ex. GSTIN (Inde), n° TVA, TIN"
+e.g. SI-2026-0042,p. ex. SI-2026-0042
+"manual charge lines, not tied to a Work Order.","lignes de charges manuelles, non liées à un ordre de travaux."
+paid {0} of {1},payé {0} sur {1}
+{0} work order reference this subcontractor and would be left dangling.,{0} ordre de travaux référence ce sous-traitant et resterait orphelin.
+{0} work orders reference this subcontractor and would be left dangling.,{0} ordres de travaux référencent ce sous-traitant et resteraient orphelins.
+{0}% withheld,{0} % retenu
+— Choose a terms template —,— Choisir un modèle de conditions —
+— No tax —,— Aucune taxe —
+— Optional —,— Facultatif —

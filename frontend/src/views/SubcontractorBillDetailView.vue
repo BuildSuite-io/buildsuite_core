@@ -35,6 +35,7 @@ import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -76,7 +77,7 @@ async function load() {
 		}
 		await refreshWorkflow(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load bill", "error");
+		showToast(err.message || __("Failed to load bill"), "error");
 	}
 }
 watch(() => props.id, load, { immediate: true });
@@ -152,7 +153,7 @@ async function onPickTemplate(tpl) {
 	try {
 		bill.value.taxes = await getTaxTemplateRows(tpl);
 	} catch (err) {
-		showToast(err.message || "Failed to load template rows", "error");
+		showToast(err.message || __("Failed to load template rows"), "error");
 	}
 }
 function addTaxRow() {
@@ -199,9 +200,9 @@ async function saveBilling() {
 			}));
 		const saved = await saveBill(payload);
 		bill.value = { ...saved };
-		showToast("Billing saved.");
+		showToast(__("Billing saved."));
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		savingBilling.value = false;
 	}
@@ -213,23 +214,26 @@ function onEdit() {
 }
 async function onSubmit() {
 	if (wf.value.gross <= 0) {
-		showToast("Nothing to bill — add a line with an amount.", "error");
+		showToast(__("Nothing to bill — add a line with an amount."), "error");
 		return;
 	}
 	const ok = await confirmDialog({
-		title: `Submit Bill ${bill.value.ra_no}?`,
-		message: `This posts the bill and generates the Purchase Invoice for ${fmtINR(
-			wf.value.netPayable
-		)} net payable. A submitted bill is read-only.`,
-		confirmLabel: "Submit",
+		title: __("Submit Bill {0}?", [bill.value.ra_no]),
+		message: __(
+			"This posts the bill and generates the Purchase Invoice for {0} net payable. A submitted bill is read-only.",
+			[fmtINR(wf.value.netPayable)]
+		),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		bill.value = await submitBill(bill.value.name);
-		submitMsg.value = `Purchase Invoice ${bill.value.purchase_invoice} generated — bill submitted.`;
+		submitMsg.value = __("Purchase Invoice {0} generated — bill submitted.", [
+			bill.value.purchase_invoice,
+		]);
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -242,11 +246,11 @@ async function onWorkflowAction(action) {
 		await applyWorkflowAction(bill.value.name, action);
 		await load();
 		if (bill.value?.purchase_invoice) {
-			submitMsg.value = `Purchase Invoice ${bill.value.purchase_invoice} generated.`;
+			submitMsg.value = __("Purchase Invoice {0} generated.", [bill.value.purchase_invoice]);
 		}
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -306,13 +310,13 @@ async function onMakePayment() {
 }
 async function savePayment() {
 	const amt = Number(pay.value.amount) || 0;
-	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(payment.value.outstanding) + 0.01)
 		return showToast(
-			`Can't exceed the outstanding ${fmtINR(payment.value.outstanding)}.`,
+			__("Can't exceed the outstanding {0}.", [fmtINR(payment.value.outstanding)]),
 			"error"
 		);
-	if (!pay.value.account) return showToast("Pick the account to pay from.", "error");
+	if (!pay.value.account) return showToast(__("Pick the account to pay from."), "error");
 	pay.value.saving = true;
 	try {
 		await recordBillPayment({
@@ -326,9 +330,9 @@ async function savePayment() {
 		pay.value.open = false;
 		await load();
 		await loadPayments();
-		showToast("Payment recorded.");
+		showToast(__("Payment recorded."));
 	} catch (err) {
-		showToast(err.message || "Payment failed", "error");
+		showToast(err.message || __("Payment failed"), "error");
 	} finally {
 		pay.value.saving = false;
 	}
@@ -378,11 +382,14 @@ function openLinkAdvance() {
 async function doLink(a) {
 	const amt = Number(advAlloc[a.payment_entry]) || 0;
 	if (amt <= 0) {
-		adv.value.error = "Enter an amount greater than zero.";
+		adv.value.error = __("Enter an amount greater than zero.");
 		return;
 	}
 	if (amt > Number(a.unallocated) + 0.01) {
-		adv.value.error = `Only ${fmtINR(a.unallocated)} is unadjusted on ${a.payment_entry}.`;
+		adv.value.error = __("Only {0} is unadjusted on {1}.", [
+			fmtINR(a.unallocated),
+			a.payment_entry,
+		]);
 		return;
 	}
 	adv.value.saving = a.payment_entry;
@@ -397,23 +404,26 @@ async function doLink(a) {
 		await load();
 		await loadPayments();
 		await loadAdvances();
-		adv.value.msg = `Linked ${fmtINR(amt)} from ${
-			a.payment_entry
-		} — outstanding is now ${fmtINR(payment.value.outstanding)}.`;
-		showToast("Advance linked.");
+		adv.value.msg = __("Linked {0} from {1} — outstanding is now {2}.", [
+			fmtINR(amt),
+			a.payment_entry,
+			fmtINR(payment.value.outstanding),
+		]);
+		showToast(__("Advance linked."));
 	} catch (err) {
-		adv.value.error = err.message || "Could not link the advance.";
+		adv.value.error = err.message || __("Could not link the advance.");
 	} finally {
 		adv.value.saving = "";
 	}
 }
 async function unlinkAdvance(row) {
 	const ok = await confirmDialog({
-		title: "Unlink advance?",
-		message: `Return ${fmtINR(row.allocated)} to ${
-			row.payment_entry
-		}'s unallocated balance? The net payable goes back up.`,
-		confirmLabel: "Unlink",
+		title: __("Unlink advance?"),
+		message: __("Return {0} to {1}'s unallocated balance? The net payable goes back up.", [
+			fmtINR(row.allocated),
+			row.payment_entry,
+		]),
+		confirmLabel: __("Unlink"),
 	});
 	if (!ok) return;
 	adv.value.msg = "";
@@ -422,25 +432,25 @@ async function unlinkAdvance(row) {
 		await load();
 		await loadPayments();
 		await loadAdvances();
-		showToast("Advance unlinked.");
+		showToast(__("Advance unlinked."));
 	} catch (err) {
-		showToast(err.message || "Unlink failed", "error");
+		showToast(err.message || __("Unlink failed"), "error");
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: `Cancel Bill ${bill.value.ra_no}?`,
-		message: "This cancels the bill and its Purchase Invoice, reversing the postings.",
-		confirmLabel: "Cancel bill",
+		title: __("Cancel Bill {0}?", [bill.value.ra_no]),
+		message: __("This cancels the bill and its Purchase Invoice, reversing the postings."),
+		confirmLabel: __("Cancel bill"),
 		destructive: true,
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		bill.value = await cancelBill(bill.value.name);
-		showToast("Bill cancelled.");
+		showToast(__("Bill cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -449,21 +459,21 @@ async function onAmend() {
 	busy.value = true;
 	try {
 		const res = await amendBill(bill.value.name);
-		showToast("Amended — a fresh draft was created.");
+		showToast(__("Amended — a fresh draft was created."));
 		router.push(`/subcontractor-bills/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Amend failed", "error");
+		showToast(err.message || __("Amend failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete Bill ${bill.value.ra_no}?`,
+		title: __("Delete Bill {0}?", [bill.value.ra_no]),
 		message: isCancelled.value
-			? "This cancelled bill will be removed permanently."
-			: "This draft bill will be removed permanently.",
-		confirmLabel: "Delete",
+			? __("This cancelled bill will be removed permanently.")
+			: __("This draft bill will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -471,7 +481,7 @@ async function onDelete() {
 		await deleteBill(bill.value.name);
 		router.push("/subcontractor-bills");
 	} catch (err) {
-		showToast(err.message || "Delete failed", "error");
+		showToast(err.message || __("Delete failed"), "error");
 	}
 }
 
@@ -501,7 +511,7 @@ async function onFilesPicked(e) {
 				private: false,
 			});
 		} catch (err) {
-			showToast(`Failed to upload ${f.name}`, "error");
+			showToast(__("Failed to upload {0}", [f.name]), "error");
 		} finally {
 			uploading.value--;
 		}
@@ -511,9 +521,9 @@ async function onFilesPicked(e) {
 }
 async function onDeleteFile(row) {
 	const ok = await confirmDialog({
-		title: "Delete attachment",
-		message: `Delete "${row.file_name}"?`,
-		confirmLabel: "Delete",
+		title: __("Delete attachment"),
+		message: __('Delete "{0}"?', [row.file_name]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -521,7 +531,7 @@ async function onDeleteFile(row) {
 		await adapter.remove("File", row.name);
 		filesRes.reload?.();
 	} catch (err) {
-		showToast(err.message || "Failed to delete attachment", "error");
+		showToast(err.message || __("Failed to delete attachment"), "error");
 	}
 }
 function fileIcon(url) {
@@ -548,8 +558,8 @@ function formatFileSize(bytes) {
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractor Bills", to: "/subcontractor-bills" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractor Bills"), to: "/subcontractor-bills" },
 	{ label: bill.value?.name || props.id },
 ]);
 const accountFilters = computed(() =>
@@ -565,7 +575,7 @@ const accountFilters = computed(() =>
 <template>
 	<DeskPage
 		v-if="bill"
-		:title="`Subcontractor Bill ${bill.ra_no}`"
+		:title="__('Subcontractor Bill {0}', [bill.ra_no])"
 		:subtitle="`${bill.name} · ${bill.subcontractor_name || bill.subcontractor} · ${
 			bill.project_name || bill.project
 		}`"
@@ -581,7 +591,7 @@ const accountFilters = computed(() =>
 				:disabled="busy"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
@@ -592,7 +602,7 @@ const accountFilters = computed(() =>
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="isSubmitted && payment.status !== 'Paid' && canCreate('advance')"
@@ -601,7 +611,7 @@ const accountFilters = computed(() =>
 				style="border-radius: 6px"
 				@click="onMakePayment"
 			>
-				Make Payment
+				{{ __("Make Payment") }}
 			</button>
 			<button
 				v-if="!wfActive && isSubmitted && canSubmit('subcontractorBill')"
@@ -611,7 +621,7 @@ const accountFilters = computed(() =>
 				:disabled="busy"
 				@click="onCancel"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<!-- Workflow transitions (active workflow) -->
 			<button
@@ -623,7 +633,7 @@ const accountFilters = computed(() =>
 				:disabled="busy"
 				@click="onWorkflowAction(t.action)"
 			>
-				{{ t.action }}
+				{{ __(t.action) }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('subcontractorBill')"
@@ -631,10 +641,10 @@ const accountFilters = computed(() =>
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				title="Create a fresh editable draft copy (the original stays cancelled)"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				v-if="!isSubmitted && canDelete('subcontractorBill')"
@@ -644,7 +654,7 @@ const accountFilters = computed(() =>
 				:disabled="busy"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -656,7 +666,7 @@ const accountFilters = computed(() =>
 			<span class="text-sm">✓</span><span class="font-medium">{{ submitMsg }}</span>
 		</div>
 		<div v-else-if="bill.purchase_invoice" class="mb-4 text-xs text-ink-600">
-			Purchase Invoice
+			{{ __("Purchase Invoice") }}
 			<DeskLink
 				:to="`/app/purchase-invoice/${bill.purchase_invoice}`"
 				class="font-mono font-medium text-ink-900"
@@ -664,19 +674,19 @@ const accountFilters = computed(() =>
 			>
 		</div>
 		<div v-if="isSubmitted && payment.status !== 'Paid'" class="mb-4 text-xs text-ink-600">
-			Outstanding
+			{{ __("Outstanding") }}
 			<span class="font-semibold text-ink-900 tabular-nums">{{
 				fmtINR(payment.outstanding)
 			}}</span>
 			<span v-if="payment.paid > 0">
-				· paid {{ fmtINR(payment.paid) }} of {{ fmtINR(payment.invoiced) }}</span
+				· {{ __("paid {0} of {1}", [fmtINR(payment.paid), fmtINR(payment.invoiced)]) }}</span
 			>
 		</div>
 		<div
 			v-else-if="isSubmitted && payment.status === 'Paid'"
 			class="mb-4 text-xs text-success-700"
 		>
-			Fully paid — {{ fmtINR(payment.paid) }} of {{ fmtINR(payment.invoiced) }}
+			{{ __("Fully paid — {0} of {1}", [fmtINR(payment.paid), fmtINR(payment.invoiced)]) }}
 		</div>
 
 		<!-- advance linked confirmation -->
@@ -704,7 +714,7 @@ const accountFilters = computed(() =>
 				class="text-xs px-2.5 py-1 border border-info-200 bg-white hover:bg-info-50 text-info-700 font-medium flex-shrink-0 rounded-md"
 				@click="openLinkAdvance"
 			>
-				Link advance →
+				{{ __("Link advance →") }}
 			</button>
 		</div>
 
@@ -715,17 +725,17 @@ const accountFilters = computed(() =>
 		>
 			<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 				<h3 class="text-[11px] uppercase tracking-wider font-semibold text-ink-700">
-					Payments
+					{{ __("Payments") }}
 				</h3>
 			</div>
 			<table class="w-full text-xs">
 				<thead class="text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-4 py-2">Date</th>
-						<th class="text-left px-4 py-2">Mode</th>
-						<th class="text-left px-4 py-2">Reference</th>
-						<th class="text-left px-4 py-2">Entry</th>
-						<th class="text-right px-4 py-2">Amount</th>
+						<th class="text-left px-4 py-2">{{ __("Date") }}</th>
+						<th class="text-left px-4 py-2">{{ __("Mode") }}</th>
+						<th class="text-left px-4 py-2">{{ __("Reference") }}</th>
+						<th class="text-left px-4 py-2">{{ __("Entry") }}</th>
+						<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -758,7 +768,7 @@ const accountFilters = computed(() =>
 		<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					{{ bill.is_direct ? "Subcontractor" : "Work Order" }}
+					{{ bill.is_direct ? __("Subcontractor") : __("Work Order") }}
 				</div>
 				<DeskLink
 					v-if="!bill.is_direct"
@@ -770,14 +780,14 @@ const accountFilters = computed(() =>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Date
+					{{ __("Date") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5">{{ fmtDate(bill.date) }}</div>
 				<div
 					v-if="bill.supplier_invoice_no || bill.supplier_invoice_date"
 					class="text-[10px] text-ink-500 mt-0.5"
 				>
-					Subcontractor inv:
+					{{ __("Subcontractor inv:") }}
 					<span class="text-ink-700 font-medium">{{
 						bill.supplier_invoice_no || "—"
 					}}</span>
@@ -788,7 +798,7 @@ const accountFilters = computed(() =>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Gross this period
+					{{ __("Gross this period") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(wf.gross) }}
@@ -796,16 +806,16 @@ const accountFilters = computed(() =>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Retention
+					{{ __("Retention") }}
 				</div>
 				<div class="text-base font-semibold text-warning-700 tabular-nums mt-0.5">
 					{{ fmtINR(wf.retention) }}
 				</div>
-				<div class="text-[10px] text-ink-500">{{ retPct }}% withheld</div>
+				<div class="text-[10px] text-ink-500">{{ __("{0}% withheld", [retPct]) }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Net payable
+					{{ __("Net payable") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(wf.netPayable) }}
@@ -817,35 +827,38 @@ const accountFilters = computed(() =>
 		<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 			<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Lines — claimed against schedule of values
+					{{ __("Lines — claimed against schedule of values") }}
 				</h3>
 			</div>
 			<div
 				v-if="!bill.is_direct"
 				class="px-4 py-2 bg-info-50 border-b border-info-200 text-[11px] text-ink-700"
 			>
-				<span class="font-medium text-ink-900">How qty is computed:</span>
-				This period qty = (Measured to date from Certified MBs) − (Previously billed qty).
-				Read-only on this bill.
+				<span class="font-medium text-ink-900">{{ __("How qty is computed:") }}</span>
+				{{
+					__(
+						"This period qty = (Measured to date from Certified MBs) − (Previously billed qty). Read-only on this bill."
+					)
+				}}
 			</div>
 			<div
 				v-else
 				class="px-4 py-2 bg-info-50 border-b border-info-200 text-[11px] text-ink-700"
 			>
-				<span class="font-medium text-ink-900">Direct bill</span> — manual charge lines,
-				not tied to a Work Order.
+				<span class="font-medium text-ink-900">{{ __("Direct bill") }}</span> —
+				{{ __("manual charge lines, not tied to a Work Order.") }}
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-xs" style="min-width: 640px">
 					<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
-							<th class="text-left px-3 py-2">Scope</th>
-							<th class="text-left px-3 py-2">Cost code</th>
-							<th class="text-right px-3 py-2">Rate</th>
-							<th class="text-right px-3 py-2">Measured to date</th>
-							<th class="text-right px-3 py-2">Previously billed</th>
-							<th class="text-right px-3 py-2">This period qty</th>
-							<th class="text-right px-3 py-2">This period amount</th>
+							<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Measured to date") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Previously billed") }}</th>
+							<th class="text-right px-3 py-2">{{ __("This period qty") }}</th>
+							<th class="text-right px-3 py-2">{{ __("This period amount") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -900,7 +913,7 @@ const accountFilters = computed(() =>
 								colspan="6"
 								class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 							>
-								Gross bill value
+								{{ __("Gross bill value") }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -919,11 +932,11 @@ const accountFilters = computed(() =>
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between gap-3"
 			>
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Taxes and Charges
+					{{ __("Taxes and Charges") }}
 				</h3>
 				<div v-if="editable" class="flex items-center gap-2">
 					<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-						>Template</label
+						>{{ __("Template") }}</label
 					>
 					<div class="w-48">
 						<DeskLinkPicker
@@ -932,13 +945,13 @@ const accountFilters = computed(() =>
 							label-field="name"
 							value-field="name"
 							:filters="bill.company ? [['company', '=', bill.company]] : []"
-							placeholder="— No tax —"
+							:placeholder="__('— No tax —')"
 							@update:model-value="onPickTemplate"
 						/>
 					</div>
 				</div>
 				<span v-else class="text-[11px] text-ink-500">{{
-					bill.taxes_and_charges || "No tax"
+					bill.taxes_and_charges || __("No tax")
 				}}</span>
 			</div>
 			<div class="overflow-x-auto">
@@ -946,9 +959,9 @@ const accountFilters = computed(() =>
 					<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
 							<th class="text-left px-3 py-2 w-8">#</th>
-							<th class="text-left px-3 py-2">Account Head</th>
-							<th class="text-right px-3 py-2 w-24">Tax Rate</th>
-							<th class="text-right px-3 py-2 w-32">Amount</th>
+							<th class="text-left px-3 py-2">{{ __("Account Head") }}</th>
+							<th class="text-right px-3 py-2 w-24">{{ __("Tax Rate") }}</th>
+							<th class="text-right px-3 py-2 w-32">{{ __("Amount") }}</th>
 							<th v-if="editable" class="w-8"></th>
 						</tr>
 					</thead>
@@ -963,7 +976,7 @@ const accountFilters = computed(() =>
 									label-field="name"
 									value-field="name"
 									:filters="accountFilters"
-									placeholder="Account…"
+									:placeholder="__('Account…')"
 								/>
 								<span v-else class="text-ink-900">{{
 									t.account_head || "—"
@@ -1000,7 +1013,7 @@ const accountFilters = computed(() =>
 								:colspan="editable ? 5 : 4"
 								class="px-3 py-3 text-center text-ink-400 italic"
 							>
-								No tax. Pick a template or add a row.
+								{{ __("No tax. Pick a template or add a row.") }}
 							</td>
 						</tr>
 					</tbody>
@@ -1010,7 +1023,7 @@ const accountFilters = computed(() =>
 								colspan="3"
 								class="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-700"
 							>
-								Total taxes
+								{{ __("Total taxes") }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -1028,7 +1041,7 @@ const accountFilters = computed(() =>
 					class="text-xs text-brand-700 hover:underline"
 					@click="addTaxRow"
 				>
-					+ Add row
+					{{ __("+ Add row") }}
 				</button>
 			</div>
 		</section>
@@ -1038,7 +1051,7 @@ const accountFilters = computed(() =>
 			<div class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 				<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Retention, TDS &amp; discount
+						{{ __("Retention, TDS & discount") }}
 					</h3>
 				</div>
 				<div class="p-4 space-y-3 text-xs">
@@ -1046,7 +1059,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Retention %</label
+								>{{ __("Retention %") }}</label
 							>
 							<input
 								v-model.number="bill.retention_percent"
@@ -1061,7 +1074,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Advance recovery (₹)</label
+								>{{ __("Advance recovery (₹)") }}</label
 							>
 							<input
 								v-model.number="bill.advance_recovery"
@@ -1077,21 +1090,21 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Bill type</label
+								>{{ __("Bill type") }}</label
 							>
 							<select
 								v-model="bill.bill_type"
 								:disabled="!editable"
 								class="desk-input"
 							>
-								<option value="Normal">Normal</option>
-								<option value="Final">Final (release retention)</option>
+								<option value="Normal">{{ __("Normal") }}</option>
+								<option value="Final">{{ __("Final (release retention)") }}</option>
 							</select>
 						</div>
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Expense account</label
+								>{{ __("Expense account") }}</label
 							>
 							<DeskLinkPicker
 								v-model="bill.expense_account"
@@ -1107,7 +1120,7 @@ const accountFilters = computed(() =>
 										  ]
 										: []
 								"
-								placeholder="Default (Subcontractor Charges)"
+								:placeholder="__('Default (Subcontractor Charges)')"
 								:disabled="!editable"
 							/>
 						</div>
@@ -1119,19 +1132,19 @@ const accountFilters = computed(() =>
 								v-model="bill.apply_tds"
 								:disabled="!editable"
 								class="accent-brand-600"
-							/><span class="text-ink-800">Apply TDS (withholding)</span></label
+							/><span class="text-ink-800">{{ __("Apply TDS (withholding)") }}</span></label
 						>
 						<div v-if="bill.apply_tds" class="mt-1.5">
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Withholding category</label
+								>{{ __("Withholding category") }}</label
 							>
 							<DeskLinkPicker
 								v-model="bill.tax_withholding_category"
 								doctype="Tax Withholding Category"
 								label-field="name"
 								value-field="name"
-								placeholder="Pick category…"
+								:placeholder="__('Pick category…')"
 								:disabled="!editable"
 							/>
 						</div>
@@ -1139,7 +1152,7 @@ const accountFilters = computed(() =>
 					<div>
 						<label
 							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Additional Discount</label
+							>{{ __("Additional Discount") }}</label
 						>
 						<div class="flex items-center gap-2">
 							<select
@@ -1147,8 +1160,8 @@ const accountFilters = computed(() =>
 								:disabled="!editable"
 								class="desk-input !w-32"
 							>
-								<option>Net Total</option>
-								<option>Grand Total</option>
+								<option value="Net Total">{{ __("Net Total") }}</option>
+								<option value="Grand Total">{{ __("Grand Total") }}</option>
 							</select>
 							<input
 								v-model.number="discValue"
@@ -1198,7 +1211,7 @@ const accountFilters = computed(() =>
 						:disabled="savingBilling"
 						@click="saveBilling"
 					>
-						{{ savingBilling ? "Saving…" : "Save billing" }}
+						{{ savingBilling ? __("Saving…") : __("Save billing") }}
 					</button>
 				</div>
 			</div>
@@ -1206,37 +1219,38 @@ const accountFilters = computed(() =>
 			<div class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 				<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Net payable
+						{{ __("Net payable") }}
 					</h3>
 				</div>
 				<div class="p-4 text-xs">
 					<div class="flex justify-between py-1">
-						<span class="text-ink-600">Gross bill value</span
+						<span class="text-ink-600">{{ __("Gross bill value") }}</span
 						><span class="tabular-nums font-medium">{{ fmtINR(wf.gross) }}</span>
 					</div>
 					<div
 						v-if="bill.additional_discount_on === 'Net Total' && wf.netDiscount"
 						class="flex justify-between py-1"
 					>
-						<span class="text-ink-500">Less: Discount (on Net Total)</span
+						<span class="text-ink-500">{{ __("Less: Discount (on Net Total)") }}</span
 						><span class="tabular-nums text-ink-600"
 							>({{ fmtINR(wf.netDiscount) }})</span
 						>
 					</div>
 					<div class="flex justify-between py-1 border-t border-ink-100">
-						<span class="text-ink-700 font-medium">Taxable value</span
+						<span class="text-ink-700 font-medium">{{ __("Taxable value") }}</span
 						><span class="tabular-nums font-medium">{{ fmtINR(wf.taxable) }}</span>
 					</div>
 					<div class="flex justify-between py-1">
 						<span class="text-ink-500"
-							>Add: Taxes<span v-if="taxRatePct"> (@ {{ taxRatePct }}%)</span></span
+							>{{ __("Add: Taxes")
+							}}<span v-if="taxRatePct"> (@ {{ taxRatePct }}%)</span></span
 						><span class="tabular-nums text-ink-700">+ {{ fmtINR(wf.tax) }}</span>
 					</div>
 					<div class="flex justify-between py-1 border-t border-ink-100">
 						<span class="text-ink-700 font-medium">{{
 							bill.additional_discount_on === "Grand Total"
-								? "Grand total"
-								: "Invoice value"
+								? __("Grand total")
+								: __("Invoice value")
 						}}</span
 						><span class="tabular-nums font-medium">{{ fmtINR(wf.grandTotal) }}</span>
 					</div>
@@ -1244,40 +1258,40 @@ const accountFilters = computed(() =>
 						v-if="bill.additional_discount_on === 'Grand Total' && wf.grandDiscount"
 					>
 						<div class="flex justify-between py-1">
-							<span class="text-ink-500">Less: Discount (on Grand Total)</span
+							<span class="text-ink-500">{{ __("Less: Discount (on Grand Total)") }}</span
 							><span class="tabular-nums text-ink-600"
 								>({{ fmtINR(wf.grandDiscount) }})</span
 							>
 						</div>
 						<div class="flex justify-between py-1 border-t border-ink-100">
-							<span class="text-ink-700 font-medium">Invoice value</span
+							<span class="text-ink-700 font-medium">{{ __("Invoice value") }}</span
 							><span class="tabular-nums font-medium">{{
 								fmtINR(wf.invoiceValue)
 							}}</span>
 						</div>
 					</template>
 					<div v-if="wf.tds" class="flex justify-between py-1">
-						<span class="text-ink-500">Less: TDS withheld @ {{ bill.tds_rate }}%</span
+						<span class="text-ink-500">{{ __("Less: TDS withheld @ {0}%", [bill.tds_rate]) }}</span
 						><span class="tabular-nums text-ink-600">({{ fmtINR(wf.tds) }})</span>
 					</div>
 					<div class="flex justify-between py-1">
 						<span class="text-ink-500"
-							>Less: Retention held @ {{ bill.retention_percent }}%</span
+							>{{ __("Less: Retention held @ {0}%", [bill.retention_percent]) }}</span
 						>
 						<span class="tabular-nums text-warning-700"
 							>({{ fmtINR(wf.retention) }})</span
 						>
 					</div>
 					<div class="text-[10px] text-ink-400 -mt-0.5 mb-0.5">
-						Held on your books, released on the final bill.
+						{{ __("Held on your books, released on the final bill.") }}
 					</div>
 					<div v-if="wf.advance" class="flex justify-between py-1">
-						<span class="text-ink-500">Less: Advance recovery</span
+						<span class="text-ink-500">{{ __("Less: Advance recovery") }}</span
 						><span class="tabular-nums text-ink-600">({{ fmtINR(wf.advance) }})</span>
 					</div>
 					<div class="flex justify-between py-2 border-t-2 border-ink-200 mt-1">
 						<span class="font-semibold text-ink-900"
-							>Net payable to subcontractor</span
+							>{{ __("Net payable to subcontractor") }}</span
 						>
 						<span class="tabular-nums font-bold text-base text-brand-700">{{
 							fmtINR(wf.netPayable)
@@ -1285,19 +1299,23 @@ const accountFilters = computed(() =>
 					</div>
 					<!-- advances settle the payable (like payments), shown below the total -->
 					<div v-if="advanceAdjusted > 0" class="flex justify-between py-1">
-						<span class="text-ink-500">Advance adjusted</span
+						<span class="text-ink-500">{{ __("Advance adjusted") }}</span
 						><span class="tabular-nums text-info-700"
 							>− {{ fmtINR(advanceAdjusted) }}</span
 						>
 					</div>
 					<div v-if="advanceAdjusted > 0" class="text-[10px] text-ink-400 -mt-0.5">
-						Settles the payable — advance payments linked below{{
-							isSubmitted ? "" : "; reflects in the outstanding"
-						}}.
+						{{
+							isSubmitted
+								? __("Settles the payable — advance payments linked below.")
+								: __(
+										"Settles the payable — advance payments linked below; reflects in the outstanding."
+								  )
+						}}
 					</div>
 					<template v-if="isSubmitted && advanceAdjusted > 0">
 						<div class="flex justify-between py-1">
-							<span class="text-ink-500">Paid</span
+							<span class="text-ink-500">{{ __("Paid") }}</span
 							><span class="tabular-nums text-ink-600">{{
 								fmtINR(payment.paid)
 							}}</span>
@@ -1310,7 +1328,7 @@ const accountFilters = computed(() =>
 										? 'text-danger-700'
 										: 'text-success-700'
 								"
-								>Outstanding</span
+								>{{ __("Outstanding") }}</span
 							><span
 								class="tabular-nums font-medium"
 								:class="
@@ -1336,7 +1354,7 @@ const accountFilters = computed(() =>
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between gap-3"
 			>
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Advance Payments
+					{{ __("Advance Payments") }}
 				</h3>
 				<button
 					v-if="availableAdvances.length"
@@ -1344,17 +1362,17 @@ const accountFilters = computed(() =>
 					class="text-xs text-brand-700 hover:underline"
 					@click="openLinkAdvance"
 				>
-					+ Link advance
+					{{ __("+ Link advance") }}
 				</button>
 			</div>
 			<table v-if="linkedAdvances.length" class="w-full text-xs">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Advance</th>
-						<th class="text-left px-3 py-2 w-28">Paid on</th>
-						<th class="text-left px-3 py-2 w-44">Paid from</th>
-						<th class="text-right px-3 py-2 w-32">Advance amount</th>
-						<th class="text-right px-3 py-2 w-32">Recovered here</th>
+						<th class="text-left px-3 py-2">{{ __("Advance") }}</th>
+						<th class="text-left px-3 py-2 w-28">{{ __("Paid on") }}</th>
+						<th class="text-left px-3 py-2 w-44">{{ __("Paid from") }}</th>
+						<th class="text-right px-3 py-2 w-32">{{ __("Advance amount") }}</th>
+						<th class="text-right px-3 py-2 w-32">{{ __("Recovered here") }}</th>
 						<th class="w-8"></th>
 					</tr>
 				</thead>
@@ -1379,7 +1397,7 @@ const accountFilters = computed(() =>
 							<button
 								type="button"
 								class="text-ink-400 hover:text-danger-600"
-								:title="`Unlink ${row.payment_entry}`"
+								:title="__('Unlink {0}', [row.payment_entry])"
 								@click="unlinkAdvance(row)"
 							>
 								✕
@@ -1393,7 +1411,7 @@ const accountFilters = computed(() =>
 							colspan="4"
 							class="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-700"
 						>
-							Total advance recovered
+							{{ __("Total advance recovered") }}
 						</td>
 						<td
 							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -1405,8 +1423,12 @@ const accountFilters = computed(() =>
 				</tfoot>
 			</table>
 			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">
-				No advances linked yet — {{ bill.subcontractor_name }} has
-				{{ fmtINR(unlinkedTotal) }} unallocated.
+				{{
+					__("No advances linked yet — {0} has {1} unallocated.", [
+						bill.subcontractor_name,
+						fmtINR(unlinkedTotal),
+					])
+				}}
 			</div>
 		</section>
 
@@ -1415,7 +1437,7 @@ const accountFilters = computed(() =>
 			<input ref="fileInput" type="file" multiple class="hidden" @change="onFilesPicked" />
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Attachments
+					{{ __("Attachments") }}
 					<span v-if="attachments.length" class="text-ink-400 font-normal"
 						>({{ attachments.length }})</span
 					>
@@ -1426,7 +1448,7 @@ const accountFilters = computed(() =>
 					:disabled="uploading > 0"
 					@click="fileInput?.click()"
 				>
-					{{ uploading > 0 ? `Uploading… (${uploading})` : "+ Upload" }}
+					{{ uploading > 0 ? __("Uploading… ({0})", [uploading]) : __("+ Upload") }}
 				</button>
 			</div>
 			<div
@@ -1437,10 +1459,10 @@ const accountFilters = computed(() =>
 					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
 							<th class="w-8"></th>
-							<th class="text-left px-3 py-1.5">File</th>
-							<th class="text-right px-3 py-1.5">Size</th>
-							<th class="text-left px-3 py-1.5">Uploaded</th>
-							<th class="text-left px-3 py-1.5">By</th>
+							<th class="text-left px-3 py-1.5">{{ __("File") }}</th>
+							<th class="text-right px-3 py-1.5">{{ __("Size") }}</th>
+							<th class="text-left px-3 py-1.5">{{ __("Uploaded") }}</th>
+							<th class="text-left px-3 py-1.5">{{ __("By") }}</th>
 							<th class="w-8"></th>
 						</tr>
 					</thead>
@@ -1477,7 +1499,7 @@ const accountFilters = computed(() =>
 									type="button"
 									class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 text-danger-700"
 									style="border-radius: 4px"
-									:title="`Delete ${att.file_name}`"
+									:title="__('Delete {0}', [att.file_name])"
 									@click="onDeleteFile(att)"
 								>
 									✕
@@ -1488,9 +1510,9 @@ const accountFilters = computed(() =>
 				</table>
 			</div>
 			<div v-else class="py-6 text-center border border-dashed border-ink-200 rounded-lg">
-				<div class="text-sm text-ink-500 mb-1">No attachments yet.</div>
+				<div class="text-sm text-ink-500 mb-1">{{ __("No attachments yet.") }}</div>
 				<div class="text-xs text-ink-400 italic">
-					Invoices, measurement sheets, and site photos go here.
+					{{ __("Invoices, measurement sheets, and site photos go here.") }}
 				</div>
 			</div>
 		</section>
@@ -1508,7 +1530,7 @@ const accountFilters = computed(() =>
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Make payment</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Make payment") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -1531,7 +1553,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Amount <span class="text-danger-600">*</span></label
+								>{{ __("Amount") }} <span class="text-danger-600">*</span></label
 							>
 							<input
 								v-model.number="pay.amount"
@@ -1543,7 +1565,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Date</label
+								>{{ __("Date") }}</label
 							>
 							<input
 								v-model="pay.date"
@@ -1555,13 +1577,13 @@ const accountFilters = computed(() =>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Paid from account <span class="text-danger-600">*</span></label
+							>{{ __("Paid from account") }} <span class="text-danger-600">*</span></label
 						>
 						<select
 							v-model="pay.account"
 							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 						>
-							<option value="" disabled>Bank / Cash account…</option>
+							<option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in payAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option>
@@ -1571,7 +1593,7 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Mode of payment</label
+								>{{ __("Mode of payment") }}</label
 							>
 							<select
 								v-model="pay.mode_of_payment"
@@ -1583,13 +1605,13 @@ const accountFilters = computed(() =>
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Reference no.
-								<span class="text-ink-400 normal-case">(optional)</span></label
+								>{{ __("Reference no.") }}
+								<span class="text-ink-400 normal-case">{{ __("(optional)") }}</span></label
 							>
 							<input
 								v-model="pay.reference_no"
 								type="text"
-								placeholder="UTR / cheque no."
+								:placeholder="__('UTR / cheque no.')"
 								class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 							/>
 						</div>
@@ -1603,7 +1625,7 @@ const accountFilters = computed(() =>
 						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 						@click="pay.open = false"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						type="button"
@@ -1611,7 +1633,7 @@ const accountFilters = computed(() =>
 						:disabled="pay.saving"
 						@click="savePayment"
 					>
-						{{ pay.saving ? "Recording…" : "Record payment" }}
+						{{ pay.saving ? __("Recording…") : __("Record payment") }}
 					</button>
 				</footer>
 			</div>
@@ -1630,7 +1652,7 @@ const accountFilters = computed(() =>
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Link advance payment</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Link advance payment") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -1668,7 +1690,7 @@ const accountFilters = computed(() =>
 									</div>
 								</div>
 								<div class="text-right flex-shrink-0">
-									<div class="text-xs text-ink-500">Unallocated</div>
+									<div class="text-xs text-ink-500">{{ __("Unallocated") }}</div>
 									<div class="text-sm font-semibold text-ink-900 tabular-nums">
 										{{ fmtINR(a.unallocated) }}
 									</div>
@@ -1677,7 +1699,7 @@ const accountFilters = computed(() =>
 							<div class="flex items-center gap-2 mt-2">
 								<label
 									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex-shrink-0"
-									>Adjust</label
+									>{{ __("Adjust") }}</label
 								>
 								<input
 									v-model.number="advAlloc[a.payment_entry]"
@@ -1692,13 +1714,13 @@ const accountFilters = computed(() =>
 									:disabled="adv.saving === a.payment_entry"
 									@click="doLink(a)"
 								>
-									{{ adv.saving === a.payment_entry ? "Linking…" : "Link" }}
+									{{ adv.saving === a.payment_entry ? __("Linking…") : __("Link") }}
 								</button>
 							</div>
 						</div>
 					</div>
 					<div v-else class="text-xs text-ink-400 italic py-2">
-						No unlinked advances left for this subcontractor.
+						{{ __("No unlinked advances left for this subcontractor.") }}
 					</div>
 					<div v-if="adv.error" class="text-[11px] text-danger-600">{{ adv.error }}</div>
 				</div>

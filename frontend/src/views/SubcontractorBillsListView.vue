@@ -9,6 +9,7 @@ import { listBills } from "@/data/subcontractApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -44,7 +45,7 @@ async function load() {
 			payment_status: b.payment_status,
 		}));
 	} catch (err) {
-		showToast(err.message || "Failed to load bills", "error");
+		showToast(err.message || __("Failed to load bills"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -96,21 +97,21 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "id", label: "Bill ID" },
-	{ key: "ra_no", label: "Bill #" },
-	{ key: "subcontractor", label: "Subcontractor" },
-	{ key: "project", label: "Project" },
-	{ key: "date", label: "Date" },
-	{ key: "gross", label: "Gross", align: "right" },
-	{ key: "retention", label: "Retention", align: "right" },
-	{ key: "net", label: "Net payable", align: "right" },
-	{ key: "status", label: "Status" },
+	{ key: "id", label: __("Bill ID") },
+	{ key: "ra_no", label: __("Bill #") },
+	{ key: "subcontractor", label: __("Subcontractor") },
+	{ key: "project", label: __("Project") },
+	{ key: "date", label: __("Date") },
+	{ key: "gross", label: __("Gross"), align: "right" },
+	{ key: "retention", label: __("Retention"), align: "right" },
+	{ key: "net", label: __("Net payable"), align: "right" },
+	{ key: "status", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractor Bills" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractor Bills") },
 ];
 
 function onRowClick(row) {
@@ -119,13 +120,13 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Subcontractor Bills" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Subcontractor Bills')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('subcontractorBill')"
 				to="/subcontractor-bills/new"
 				class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -133,54 +134,54 @@ function onRowClick(row) {
 			:active="anyFilter"
 			:shown="rows.length"
 			:total="allBills.length"
-			noun="bills"
+			:noun="__('bills')"
 			@clear="clearFilters"
 		>
 			<label class="flex items-center gap-1.5">
 				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>Subcontractor</span
+					>{{ __("Subcontractor") }}</span
 				>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.sub"
 						:options="subOptions"
 						allow-clear
-						placeholder="All subcontractors"
-						search-placeholder="Search…"
+						:placeholder="__('All subcontractors')"
+						:search-placeholder="__('Search…')"
 					/>
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
 				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>Project</span
+					>{{ __("Project") }}</span
 				>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.project"
 						:options="projectOptions"
 						allow-clear
-						placeholder="All projects"
-						search-placeholder="Search…"
+						:placeholder="__('All projects')"
+						:search-placeholder="__('Search…')"
 					/>
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
 				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>State</span
+					>{{ __("State") }}</span
 				>
 				<DeskSelect v-model="f.state" class="!w-36">
-					<option value="">Any</option>
-					<option value="Draft">Draft</option>
-					<option value="Submitted">Submitted</option>
-					<option value="Cancelled">Cancelled</option>
+					<option value="">{{ __("Any") }}</option>
+					<option value="Draft">{{ __("Draft") }}</option>
+					<option value="Submitted">{{ __("Submitted") }}</option>
+					<option value="Cancelled">{{ __("Cancelled") }}</option>
 				</DeskSelect>
 			</label>
 			<label class="flex items-center gap-1.5">
 				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>Billed</span
+					>{{ __("Billed") }}</span
 				>
 				<DeskInput v-model="f.from" type="date" class="!w-36" />
-				<span class="text-[11px] text-ink-400">to</span>
+				<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 				<DeskInput v-model="f.to" type="date" class="!w-36" />
 			</label>
 		</ReportFilters>
@@ -190,7 +191,7 @@ function onRowClick(row) {
 			:rows="rows"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search bill, subcontractor, project…"
+			:search-placeholder="__('Search bill, subcontractor, project…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-id="{ row }">
@@ -203,8 +204,8 @@ function onRowClick(row) {
 			</template>
 			<template #cell-ra_no="{ row }">
 				<span class="text-xs text-ink-700"
-					>Bill {{ row.ra_no
-					}}<span v-if="row.is_direct" class="text-ink-400"> · direct</span></span
+					>{{ __("Bill") }} {{ row.ra_no
+					}}<span v-if="row.is_direct" class="text-ink-400"> · {{ __("direct") }}</span></span
 				>
 			</template>
 			<template #cell-subcontractor="{ row }">
@@ -240,7 +241,7 @@ function onRowClick(row) {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ loading ? "Loading bills…" : "No subcontractor bills yet." }}
+					{{ loading ? __("Loading bills…") : __("No subcontractor bills yet.") }}
 				</div>
 			</template>
 		</DeskList>
