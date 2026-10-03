@@ -18,6 +18,7 @@ import {
 import { setCompanyAwareness } from "@/composables/useActiveCompany";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import {
 	restoreDefaultRolePermissions,
 	exportRolePermissions,
@@ -46,12 +47,11 @@ const permBusy = ref("");
 
 async function onRestoreDefaults() {
 	const ok = await confirmDialog({
-		title: "Restore default permissions?",
-		message:
-			"This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. " +
-			"Any permission changes made in Desk will be lost. This cannot be undone — export the " +
-			"current permissions first if you want to keep them.",
-		confirmLabel: "Restore defaults",
+		title: __("Restore default permissions?"),
+		message: __(
+			"This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. Any permission changes made in Desk will be lost. This cannot be undone — export the current permissions first if you want to keep them."
+		),
+		confirmLabel: __("Restore defaults"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -59,11 +59,12 @@ async function onRestoreDefaults() {
 	try {
 		await restoreDefaultRolePermissions();
 		showToast(
-			"Restore started — default permissions are being re-applied in the background. " +
-				"This can take a few minutes; refresh once it completes."
+			__(
+				"Restore started — default permissions are being re-applied in the background. This can take a few minutes; refresh once it completes."
+			)
 		);
 	} catch (err) {
-		showToast(err.message || "Failed to restore default permissions", "error");
+		showToast(err.message || __("Failed to restore default permissions"), "error");
 	} finally {
 		permBusy.value = "";
 	}
@@ -83,9 +84,9 @@ async function onExportPermissions() {
 		a.click();
 		a.remove();
 		URL.revokeObjectURL(url);
-		showToast("Role permissions exported.");
+		showToast(__("Role permissions exported."));
 	} catch (err) {
-		showToast(err.message || "Failed to export permissions", "error");
+		showToast(err.message || __("Failed to export permissions"), "error");
 	} finally {
 		permBusy.value = "";
 	}
@@ -162,7 +163,7 @@ async function saveEdit() {
 		}
 		editing.value = false;
 	} catch (err) {
-		showToast(err.message || "Failed to save settings", "error");
+		showToast(err.message || __("Failed to save settings"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -172,9 +173,9 @@ function onPrimary() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "BuildSuite Core Settings" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("BuildSuite Core Settings") },
 ];
 
 const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industrial", "Renovation"];
@@ -182,18 +183,18 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 
 <template>
 	<DeskPage
-		title="BuildSuite Core Settings"
-		subtitle="Org-wide BuildSuite toggles"
+		:title="__('BuildSuite Core Settings')"
+		:subtitle="__('Org-wide BuildSuite toggles')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
 					v-if="store.isAdmin"
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
+					:save-label="editing ? (saving ? __('Saving…') : __('Save')) : __('Edit')"
 					:show-cancel="editing"
 					:saving="saving"
-					cancel-label="Cancel"
+					:cancel-label="__('Cancel')"
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				/>
@@ -201,18 +202,22 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					v-else
 					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
 				>
-					Read-only. Editing requires Admin or BuildSuite Administrator role.
+					{{ __("Read-only. Editing requires Admin or BuildSuite Administrator role.") }}
 				</div>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Multi-company">
+				<DeskSection :title="__('Multi-company')">
 					<DeskField
-						label="Enable company awareness"
-						hint="Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company."
+						:label="__('Enable company awareness')"
+						:hint="
+							__(
+								'Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.',
+							)
+						"
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ multiCompanyEnabled ? "Enabled" : "Disabled" }}
+							{{ multiCompanyEnabled ? __("Enabled") : __("Disabled") }}
 						</div>
 						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
 							<input
@@ -220,12 +225,16 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								v-model="form.multi_company_enabled"
 								class="accent-brand-600"
 							/>
-							<span>{{ form.multi_company_enabled ? "Enabled" : "Disabled" }}</span>
+							<span>{{ form.multi_company_enabled ? __("Enabled") : __("Disabled") }}</span>
 						</label>
 					</DeskField>
 					<DeskField
-						label="Default company"
-						hint="The company pre-selected on Project create when the user doesn't pick one explicitly. Must exist in the Companies fixture."
+						:label="__('Default company')"
+						:hint="
+							__(
+								'The company pre-selected on Project create when the user doesn\'t pick one explicitly. Must exist in the Companies fixture.',
+							)
+						"
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
 							{{
@@ -241,41 +250,49 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Project defaults">
+				<DeskSection :title="__('Project defaults')">
 					<DeskField
-						label="Default project type"
-						hint="Pre-fills the Project type field on new projects."
+						:label="__('Default project type')"
+						:hint="__('Pre-fills the Project type field on new projects.')"
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ store.coreSettings.default_project_type }}
+							{{ __(store.coreSettings.default_project_type) }}
 						</div>
 						<DeskSelect v-else v-model="form.default_project_type">
-							<option v-for="t in PROJECT_TYPES" :key="t">{{ t }}</option>
+							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">{{ __(t) }}</option>
 						</DeskSelect>
 					</DeskField>
 					<DeskField
-						label="Project naming"
-						hint="How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form."
+						:label="__('Project naming')"
+						:hint="
+							__(
+								'How a new project\'s record ID is generated. \'Project ID\' uses the entered Project ID as the record name; \'Name Series\' lets the creator pick a naming series on the New Project form.',
+							)
+						"
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ projectNaming }}
+							{{ __(projectNaming) }}
 						</div>
 						<DeskSelect v-else v-model="form.naming_mode">
-							<option v-for="m in namingModes" :key="m" :value="m">{{ m }}</option>
+							<option v-for="m in namingModes" :key="m" :value="m">{{ __(m) }}</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Accounting">
+				<DeskSection :title="__('Accounting')">
 					<DeskField
-						label="Petty Cash Account"
-						hint="The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded 'Petty Cash' account; change it to post to a different float."
+						:label="__('Petty Cash Account')"
+						:hint="
+							__(
+								'The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded \'Petty Cash\' account; change it to post to a different float.',
+							)
+						"
 					>
 						<div v-if="!editing" class="text-sm text-ink-900 py-1">
 							{{ pettyCashAccount || "—" }}
 						</div>
 						<DeskSelect v-else v-model="form.petty_cash_account">
-							<option value="">— None —</option>
+							<option value="">{{ __("— None —") }}</option>
 							<option v-for="a in pettyCashOptions" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option>
@@ -283,10 +300,14 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection v-if="store.isAdmin" title="Role permissions">
+				<DeskSection v-if="store.isAdmin" :title="__('Role permissions')">
 					<DeskField
-						label="Default permission matrix"
-						hint="App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes."
+						:label="__('Default permission matrix')"
+						:hint="
+							__(
+								'App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.',
+							)
+						"
 					>
 						<div class="flex flex-wrap items-center gap-2 py-1">
 							<button
@@ -296,7 +317,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								:disabled="!!permBusy"
 								@click="onExportPermissions"
 							>
-								{{ permBusy === "export" ? "Exporting…" : "Export permissions" }}
+								{{ permBusy === "export" ? __("Exporting…") : __("Export permissions") }}
 							</button>
 							<button
 								type="button"
@@ -305,15 +326,16 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								:disabled="!!permBusy"
 								@click="onRestoreDefaults"
 							>
-								{{ permBusy === "restore" ? "Restoring…" : "Restore defaults" }}
+								{{ permBusy === "restore" ? __("Restoring…") : __("Restore defaults") }}
 							</button>
 						</div>
 						<p class="text-[11px] text-warning-700 mt-1.5 flex items-start gap-1">
 							<span aria-hidden="true">⚠</span>
-							<span
-								>Restoring overwrites every BuildSuite role permission on this site
-								back to the shipped defaults and cannot be undone.</span
-							>
+							<span>{{
+								__(
+									"Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone.",
+								)
+							}}</span>
 						</p>
 					</DeskField>
 				</DeskSection>

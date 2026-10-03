@@ -2564,3 +2564,420 @@ unit,unité
 ← Back to tenders,← Retour aux soumissions
 ✓ Comparing R{0},✓ Comparaison avec R{0}
 "The per-unit basis — component coefficients mean ""how much per one of this unit"".",La base à l’unité — les coefficients des composants signifient « combien par unité ».
+(none checked = everyone who can see this workspace),(aucun coché = tous ceux qui voient cet espace de travail)
+(off),(désactivé)
++ Add record,+ Ajouter un enregistrement
++ Add report,+ Ajouter un rapport
++ Add shortcut,+ Ajouter un raccourci
++ New Persona,+ Nouveau persona
++ New User,+ Nouvel utilisateur
++91 98xxx xxxxx,+91 98xxx xxxxx
+/path or /app/…,/chemin ou /app/…
+/route,/route
+"API keys, webhooks, OAuth apps and social login providers.","Clés API, webhooks, applications OAuth et fournisseurs de connexion sociale."
+Abbreviation,Abréviation
+Abbreviation is required (ERPNext prefixes accounts with it),L’abréviation est obligatoire (ERPNext en préfixe les comptes)
+Account name,Nom du compte
+Account name is required.,Le nom du compte est obligatoire.
+Account no.,N° de compte
+Account status,Statut du compte
+Accounts shown across Project Finance — balances derive from movements,Comptes affichés dans Finances de projet — les soldes dérivent des mouvements
+Add at least one role,Ajoutez au moins un rôle
+Add fields to existing DocTypes.,Ajouter des champs aux DocTypes existants.
+Add stage,Ajouter une étape
+Add task,Ajouter une tâche
+Add work package,Ajouter un lot de travaux
+All machines,Toutes les machines
+Amber,Ambre
+"App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.","Les mises à jour de l’application ne réinitialisent plus les permissions ; les modifications apportées aux permissions des rôles BuildSuite dans Desk sont donc conservées lors des mises à niveau. Exportez les permissions actuelles pour les transmettre afin d’aligner les valeurs par défaut, ou restaurez les valeurs par défaut livrées pour abandonner les modifications locales."
+"Approval chains for BOQ, SCO, Petty Cash and RA Bills.","Circuits d’approbation pour le devis, l’OM, la petite caisse et les factures d’avancement."
+Asset,Immobilisation
+Assigning this persona to a user grants these Frappe roles.,Attribuer ce persona à un utilisateur lui accorde ces rôles Frappe.
+Audit Log,Journal d’audit
+Back to Settings,Retour aux paramètres
+Bank,Banque
+Bank & Cash Accounts,Comptes banque et caisse
+"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances.","Comptes banque, caisse et petite caisse affichés dans Finances de projet — avec soldes d’ouverture et soldes courants dérivés."
+Blue,Bleu
+Brand colour,Couleur de marque
+Branding & Letter Head,Image de marque et en-tête de lettre
+Branding saved — this company's letter head updated.,Image de marque enregistrée — l’en-tête de lettre de cette société est mis à jour.
+"Brief intro to BuildSuite Core, link to set up their profile.","Brève introduction à BuildSuite Core, lien pour configurer leur profil."
+BuildSuite Core Settings,Paramètres de BuildSuite Core
+BuildSuite product settings,Paramètres du produit BuildSuite
+"Can't delete ""{0}"" — records still reference it. Reassign or remove them first.",Impossible de supprimer « {0} » — des enregistrements y font encore référence. Réaffectez-les ou supprimez-les d’abord.
+Cash,Caisse
+Category name,Nom de la catégorie
+Category saved,Catégorie enregistrée
+Companies,Sociétés
+"Companies, addresses, fiscal year per entity.","Sociétés, adresses, exercice fiscal par entité."
+Company Name,Nom de la société
+Company is required.,La société est obligatoire.
+Company logo,Logo de la société
+Company name is required,Le nom de la société est obligatoire
+Company not found ·,Société introuvable ·
+Company…,Société…
+Configure the quick-nav shortcut tiles shown on each workspace,Configurez les tuiles de raccourci de navigation rapide affichées sur chaque espace de travail
+Configure workspaces and per-role shortcut grids.,Configurez les espaces de travail et les grilles de raccourcis par rôle.
+"Construction categories that drive project templating, each with its own Work Package label.","Catégories de construction qui pilotent le modèle de projet, chacune avec son propre libellé de lot de travaux."
+Could not create the user.,Impossible de créer l’utilisateur.
+Could not delete persona,Impossible de supprimer le persona
+Could not delete user.,Impossible de supprimer l’utilisateur.
+Could not load persona.,Impossible de charger le persona.
+Could not load personas.,Impossible de charger les personas.
+Could not load users.,Impossible de charger les utilisateurs.
+Could not load workspace shortcuts.,Impossible de charger les raccourcis d’espace de travail.
+Could not save Project Settings,Impossible d’enregistrer les paramètres du projet
+Could not save the company.,Impossible d’enregistrer la société.
+Could not save.,Impossible d’enregistrer.
+Could not send reset link,Impossible d’envoyer le lien de réinitialisation
+Could not send welcome email,Impossible d’envoyer l’e-mail de bienvenue
+Country,Pays
+Create a company →,Créer une société →
+Create category,Créer la catégorie
+Create company,Créer la société
+Create machinery,Créer la machine
+Create persona,Créer le persona
+Create user,Créer l’utilisateur
+Creating users is restricted to administrators.,La création d’utilisateurs est réservée aux administrateurs.
+Current balance,Solde courant
+"Current balance = opening balance ± every recorded movement (receipts, payments, disbursements, advances). Accounts with history can't be deleted.","Solde courant = solde d’ouverture ± chaque mouvement enregistré (encaissements, paiements, décaissements, avances). Les comptes avec historique ne peuvent pas être supprimés."
+Custom Fields,Champs personnalisés
+Cyan,Cyan
+Danger zone,Zone sensible
+Data & Diagnostics,Données et diagnostics
+Data Tools,Outils de données
+"Date format, currency, time zone, default company, fiscal year.","Format de date, devise, fuseau horaire, société par défaut, exercice fiscal."
+Day,Jour
+Default company,Société par défaut
+Default currency,Devise par défaut
+Default permission matrix,Matrice de permissions par défaut
+Default project type,Type de projet par défaut
+Default template,Modèle par défaut
+Defaults imported when a project is created under this category,Valeurs par défaut importées lorsqu’un projet est créé sous cette catégorie
+Defaults to India.,Par défaut : Inde.
+"Delete ""{0}""? Accounts with recorded movements can't be deleted.",Supprimer « {0} » ? Les comptes avec des mouvements enregistrés ne peuvent pas être supprimés.
+"Delete ""{0}""? Users must be reassigned first.",Supprimer « {0} » ? Les utilisateurs doivent d’abord être réaffectés.
+Delete account?,Supprimer le compte ?
+Delete company,Supprimer la société
+"Delete company ""{0}""?\n\nThis is permanent and only succeeds if no record still references this company.",Supprimer la société « {0} » ?\n\nCette action est permanente et n’aboutit que si aucun enregistrement ne référence encore cette société.
+Delete is refused while any project links to this company (Frappe-standard LinkExistsError pattern).,La suppression est refusée tant qu’un projet est lié à cette société (modèle LinkExistsError standard de Frappe).
+Delete persona,Supprimer le persona
+Delete usage entry?,Supprimer l’entrée d’utilisation ?
+Delete user,Supprimer l’utilisateur
+Delete {0}? They can no longer log in or be assigned new work.,Supprimer {0} ? Il ne pourra plus se connecter ni se voir attribuer de nouveaux travaux.
+Deleting a persona is permanent and only allowed when no user is assigned it.,La suppression d’un persona est permanente et n’est autorisée que lorsqu’aucun utilisateur ne lui est attribué.
+Disabled users keep their record but cannot log in.,Les utilisateurs désactivés conservent leur fiche mais ne peuvent pas se connecter.
+Disabled — hidden from the new-project dropdown,Désactivé — masqué de la liste de nouveau projet
+DocType,DocType
+Download the full payload as JSON — useful for sharing a snapshot with the dev team or attaching to a bug report. Includes every slice from saveToStorage plus the active role + company.,Téléchargez la charge complète en JSON — utile pour partager un instantané avec l’équipe de développement ou l’attacher à un rapport de bug. Inclut chaque tranche de saveToStorage plus le rôle et la société actifs.
+Each task is assigned to a Work Package and a Stage. On import it becomes a project task and lands in that stage's plan.,"Chaque tâche est affectée à un lot de travaux et à une étape. À l’import, elle devient une tâche de projet et rejoint le plan de cette étape."
+Each task needs a subject and a valid Work Package / Stage.,Chaque tâche nécessite un objet et un lot de travaux / une étape valides.
+Edit account,Modifier le compte
+Edit default template,Modifier le modèle par défaut
+Email & Notifications,E-mail et notifications
+Email actions,Actions e-mail
+Email is required.,L’e-mail est obligatoire.
+Emails,E-mails
+Emerald,Émeraude
+Enable company awareness,Activer la prise en compte des sociétés
+Enabled — appears in the new-project dropdown,Activé — apparaît dans la liste de nouveau projet
+Enabled — user can log in immediately,Activé — l’utilisateur peut se connecter immédiatement
+End (day),Fin (jour)
+Enter a valid email address.,Saisissez une adresse e-mail valide.
+Every record row needs a DocType.,Chaque ligne d’enregistrement nécessite un DocType.
+Every report row needs a report or a route.,Chaque ligne de rapport nécessite un rapport ou une route.
+Export,Exporter
+Export as JSON,Exporter en JSON
+Export permissions,Exporter les permissions
+"Export the dataset, reset to defaults, inspect local storage.","Exportez le jeu de données, réinitialisez aux valeurs par défaut, inspectez le stockage local."
+Exporting…,Exportation…
+Failed to create category,Échec de la création de la catégorie
+Failed to create company,Échec de la création de la société
+Failed to create machinery,Échec de la création de la machine
+Failed to create persona,Échec de la création du persona
+Failed to delete machinery,Échec de la suppression de la machine
+Failed to delete the account.,Échec de la suppression du compte.
+Failed to delete usage,Échec de la suppression de l’utilisation
+Failed to export permissions,Échec de l’export des permissions
+Failed to load branding,Échec du chargement de l’image de marque
+Failed to load machinery.,Échec du chargement des machines.
+Failed to load settings,Échec du chargement des paramètres
+Failed to load template,Échec du chargement du modèle
+Failed to load the usage log.,Échec du chargement du journal d’utilisation.
+Failed to log usage,Échec de l’enregistrement de l’utilisation
+Failed to restore default permissions,Échec de la restauration des permissions par défaut
+Failed to save category,Échec de l’enregistrement de la catégorie
+Failed to save persona,Échec de l’enregistrement du persona
+Failed to save settings,Échec de l’enregistrement des paramètres
+Failed to save template,Échec de l’enregistrement du modèle
+Failed to save the account.,Échec de l’enregistrement du compte.
+Failed to update machinery,Échec de la mise à jour de la machine
+Failed to update usage,Échec de la mise à jour de l’utilisation
+Filter {0}…,Filtrer {0}…
+Frappe Roles are auto-assigned from the persona on the production side.,Les rôles Frappe sont attribués automatiquement d’après le persona côté production.
+Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work.,Les rôles Frappe sont attribués automatiquement d’après le persona côté production. Choisissez celui qui correspond au travail quotidien de l’utilisateur.
+Frontend id (auto-filled from the name if left blank).,Id frontend (rempli automatiquement d’après le nom si laissé vide).
+Fuel cost,Coût du carburant
+Fuel cost (₹),Coût du carburant (₹)
+Full name,Nom complet
+Full name is required.,Le nom complet est obligatoire.
+General Settings,Paramètres généraux
+Granted roles,Rôles accordés
+Green,Vert
+Hidden,Masqué
+Hide all,Tout masquer
+Hired,Loué
+Hour,Heure
+Hours,Heures
+How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form.,Comment l’ID d’enregistrement d’un nouveau projet est généré. « Project ID » utilise l’ID de projet saisi comme nom d’enregistrement ; « Name Series » laisse le créateur choisir une série de nommage sur le formulaire de nouveau projet.
+"ID prefixes for Project, Task, BOQ, SCO etc.","Préfixes d’ID pour Projet, Tâche, devis, OM, etc."
+ISO code. Defaults to INR.,Code ISO. Par défaut : INR.
+Icon,Icône
+Identity,Identité
+Integrations,Intégrations
+"Job roles users pick from, each mapping to the Frappe roles it grants.","Fonctions parmi lesquelles les utilisateurs choisissent, chacune correspondant aux rôles Frappe qu’elle accorde."
+Label,Libellé
+Legal entity for project / accounting segregation (§14),Entité juridique pour la séparation projet / comptabilité (§14)
+Legal entity name. Becomes the company's name and appears on invoices / contracts.,Nom de l’entité juridique. Devient le nom de la société et apparaît sur les factures / contrats.
+Lets the user set their own password instead of you assigning one.,Permet à l’utilisateur de définir son propre mot de passe au lieu que vous lui en attribuiez un.
+Letter head subtext,Sous-texte de l’en-tête de lettre
+"Letter heads, print formats per DocType, page sizes.","En-têtes de lettre, formats d’impression par DocType, tailles de page."
+Link an asset…,Lier une immobilisation…
+Linked asset (ERPNext),Immobilisation liée (ERPNext)
+Linked projects,Projets liés
+Loading accounts…,Chargement des comptes…
+Loading machinery…,Chargement des machines…
+Loading persona…,Chargement du persona…
+Loading usage log…,Chargement du journal d’utilisation…
+Loading usage…,Chargement de l’utilisation…
+Loading users…,Chargement des utilisateurs…
+Locked after create per Frappe Naming Series convention.,Verrouillé après création selon la convention de série de nommage Frappe.
+Log Machinery Usage,Enregistrer l’utilisation de la machine
+Log usage,Enregistrer l’utilisation
+Log usage →,Enregistrer l’utilisation →
+Login id — cannot be changed after the user is created.,Identifiant de connexion — non modifiable après la création de l’utilisateur.
+Logo uploaded — Save branding to apply.,Logo téléversé — enregistrez l’image de marque pour l’appliquer.
+Machine,Machine
+Machine is required.,La machine est obligatoire.
+Machinery,Machines
+Machinery Register,Registre des machines
+Machinery Usage,Utilisation des machines
+Machinery Usage Log,Journal d’utilisation des machines
+"Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.","Interrupteur principal. Désactivé → expérience mono-société : le sélecteur de société de la barre supérieure est masqué et les listes/sélecteurs ne sont pas limités à une société. Activé → le sélecteur limite chaque liste, sélecteur Link/Select et la société par défaut des nouveaux enregistrements à la société sélectionnée."
+Mobile,Mobile
+Month,Mois
+Move down,Descendre
+Move up,Monter
+Multi-company,Multi-société
+Naming Series,Série de nommage
+New Account,Nouveau compte
+New Category,Nouvelle catégorie
+New Company,Nouvelle société
+New Machinery,Nouvelle machine
+New Persona,Nouveau persona
+New Project Category,Nouvelle catégorie de projet
+New User,Nouvel utilisateur
+New account,Nouveau compte
+No accounts yet — add your bank and cash accounts.,Aucun compte pour l’instant — ajoutez vos comptes banque et caisse.
+No companies match this search.,Aucune société ne correspond à cette recherche.
+No logo,Aucun logo
+No machinery yet.,Aucune machine pour l’instant.
+No projects reference this company · safe to delete,Aucun projet ne référence cette société · suppression sûre
+No projects reference this company. Safe to delete.,Aucun projet ne référence cette société. Suppression sûre.
+No records configured for {0} yet.,Aucun enregistrement configuré pour {0} pour l’instant.
+No reports configured for {0} yet.,Aucun rapport configuré pour {0} pour l’instant.
+No roles,Aucun rôle
+No shortcuts.,Aucun raccourci.
+No stages yet.,Aucune étape pour l’instant.
+No tasks yet.,Aucune tâche pour l’instant.
+No usage logged yet.,Aucune utilisation enregistrée pour l’instant.
+No users match this search.,Aucun utilisateur ne correspond à cette recherche.
+No workspaces configured.,Aucun espace de travail configuré.
+On,Activé
+Onboarding,Intégration
+Only the System Manager role can create companies.,Seul le rôle System Manager peut créer des sociétés.
+Optional — contact number for this user.,Facultatif — numéro de contact de cet utilisateur.
+Optional — owned fixed asset.,Facultatif — immobilisation en propriété.
+Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant.,Facultatif — l’immobilisation en propriété dans ERPNext Assets. Laissez vide pour du matériel loué.
+Org-wide BuildSuite toggles,Options BuildSuite à l’échelle de l’organisation
+"Org-wide BuildSuite toggles — company segregation, default project type, default company.","Options BuildSuite à l’échelle de l’organisation — séparation des sociétés, type de projet par défaut, société par défaut."
+Organisation,Organisation
+"Organisation, system, data and diagnostics","Organisation, système, données et diagnostics"
+Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.,L’e-mail sortant n’est pas configuré — ces e-mails ne seront pas envoyés tant qu’un compte e-mail sortant n’est pas configuré.
+Owned,Propriété
+Owner / Vendor,Propriétaire / fournisseur
+Ownership,Propriété
+Password reset link,Lien de réinitialisation du mot de passe
+Password-reset link queued,Lien de réinitialisation du mot de passe en file d’attente
+People who can log in. Role assignment and enabled status.,Personnes pouvant se connecter. Attribution des rôles et statut d’activation.
+Persistence model,Modèle de persistance
+Persona,Persona
+Persona created,Persona créé
+Persona deleted,Persona supprimé
+Persona name,Nom du persona
+Persona saved,Persona enregistré
+Personas,Personas
+Petty Cash Account,Compte de petite caisse
+Pick a machine…,Choisissez une machine…
+Pick a persona.,Choisissez un persona.
+Pick a type…,Choisissez un type…
+Pill colour,Couleur de la pastille
+Planned tasks,Tâches planifiées
+Please choose an image file.,Veuillez choisir un fichier image.
+Plural,Pluriel
+Position in the new-project dropdown.,Position dans la liste de nouveau projet.
+Position in the persona dropdown.,Position dans la liste des personas.
+Pre-fills the Project type field on new projects.,Pré-remplit le champ Type de projet sur les nouveaux projets.
+Preview,Aperçu
+Print Templates,Modèles d’impression
+Project Categories,Catégories de projet
+Project Settings saved,Paramètres du projet enregistrés
+Project defaults,Valeurs par défaut du projet
+Project is required.,Le projet est obligatoire.
+Project naming,Nommage des projets
+Project page tabs,Onglets de la page projet
+Prototype dataset · export · reset · localStorage inspector,Jeu de données prototype · export · réinitialisation · inspecteur localStorage
+Quantity,Quantité
+Rate (₹),Tarif (₹)
+Rate Unit,Unité de tarif
+Rate unit,Unité de tarif
+Read-only view. Creating / editing / deleting companies requires the System Manager role.,Vue en lecture seule. Créer / modifier / supprimer des sociétés nécessite le rôle System Manager.
+Read-only view. Editing requires the System Manager role.,Vue en lecture seule. La modification nécessite le rôle System Manager.
+Read-only. Editing requires Admin or BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle Admin ou BuildSuite Administrator.
+Read-only. Editing requires the Admin or BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle Admin ou BuildSuite Administrator.
+Read-only. Editing requires the BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle BuildSuite Administrator.
+Recent user actions across the system — who changed what when.,Actions récentes des utilisateurs dans le système — qui a changé quoi et quand.
+Registered address · GSTIN · phone / email,Adresse enregistrée · GSTIN · téléphone / e-mail
+Replace logo,Remplacer le logo
+Report-style shortcut tiles shown in each workspace,Tuiles de raccourci de type rapport affichées dans chaque espace de travail
+Report-style shortcut tiles shown in each workspace — one tab per workspace.,Tuiles de raccourci de type rapport affichées dans chaque espace de travail — un onglet par espace de travail.
+Reset,Réinitialiser
+Reset all data,Réinitialiser toutes les données
+"Reset all data to initial seed values?\n\nAny projects, tasks, SCOs, attachments, and stage plannings you created will be lost. Role and active-company preferences are preserved (they live under separate localStorage keys).","Réinitialiser toutes les données aux valeurs initiales ?\n\nTous les projets, tâches, OM, pièces jointes et planifications d’étapes que vous avez créés seront perdus. Les préférences de rôle et de société active sont conservées (elles se trouvent sous des clés localStorage distinctes)."
+Restore default permissions?,Restaurer les permissions par défaut ?
+Restore defaults,Restaurer les valeurs par défaut
+Restore started — default permissions are being re-applied in the background. This can take a few minutes; refresh once it completes.,Restauration démarrée — les permissions par défaut sont réappliquées en arrière-plan. Cela peut prendre quelques minutes ; actualisez une fois terminé.
+Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone.,La restauration écrase toutes les permissions des rôles BuildSuite de ce site par les valeurs par défaut livrées et est irréversible.
+Restoring…,Restauration…
+"Role definitions, workspace visibility and record-level permissions.","Définitions des rôles, visibilité des espaces de travail et permissions au niveau des enregistrements."
+Role permissions,Permissions des rôles
+Role permissions exported.,Permissions des rôles exportées.
+Roles,Rôles
+Roles & Permissions,Rôles et permissions
+Rose,Rose
+Route,Route
+"SMTP, notification rules, email templates, recipients.","SMTP, règles de notification, modèles d’e-mail, destinataires."
+Save branding,Enregistrer l’image de marque
+Save failed,Échec de l’enregistrement
+Save template,Enregistrer le modèle
+Save {0},Enregistrer {0}
+"Search by id, name, description…","Rechercher par id, nom, description…"
+"Search by name, email, persona…","Rechercher par nom, e-mail, persona…"
+Search categories…,Rechercher des catégories…
+Search machinery…,Rechercher des machines…
+Search machine…,Rechercher une machine…
+Search personas…,Rechercher des personas…
+Search project…,Rechercher un projet…
+Search usage…,Rechercher une utilisation…
+Select DocType,Sélectionner un DocType
+Select persona,Sélectionner un persona
+Select report,Sélectionner un rapport
+Send password reset link,Envoyer le lien de réinitialisation du mot de passe
+Send reset link,Envoyer le lien de réinitialisation
+Send welcome,Envoyer la bienvenue
+Send welcome email,Envoyer l’e-mail de bienvenue
+Sending…,Envoi…
+Settings is restricted to administrators.,Les paramètres sont réservés aux administrateurs.
+Short code ERPNext prefixes onto the company's accounts (e.g. ARP).,Code court qu’ERPNext préfixe aux comptes de la société (p. ex. ARP).
+Short description,Description courte
+Short name,Nom court
+Show all,Tout afficher
+Showing {0} of {1} — open the Projects list to see them all.,Affichage de {0} sur {1} — ouvrez la liste des projets pour tous les voir.
+Shown,Affiché
+Shown under the company name in the letter head; line breaks preserved.,Affiché sous le nom de la société dans l’en-tête de lettre ; les sauts de ligne sont conservés.
+Singular,Singulier
+Site-wide defaults for the Project record,Valeurs par défaut du site pour l’enregistrement Projet
+Slate,Ardoise
+Slug,Slug
+Sort order,Ordre de tri
+Stable identifier — locked after create.,Identifiant stable — verrouillé après création.
+Start (day),Début (jour)
+Subject,Objet
+System,Système
+Task…,Tâche…
+Template saved,Modèle enregistré
+The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded 'Petty Cash' account; change it to post to a different float.,"Le grand livre Caisse / Banque dans lequel la petite caisse est décaissée et depuis lequel les dépenses sont payées. Par défaut, le compte « Petty Cash » initialisé ; modifiez-le pour imputer à un autre fonds."
+"The Work Packages, Stages and Tasks a project inherits when it's created under this category. Tasks are assigned to their Stage, so imported stage plans arrive with their tasks.","Les lots de travaux, étapes et tâches qu’un projet hérite lorsqu’il est créé sous cette catégorie. Les tâches sont affectées à leur étape, de sorte que les plans d’étapes importés arrivent avec leurs tâches."
+The company pre-selected on Project create when the user doesn't pick one explicitly. Must exist in the Companies fixture.,La société pré-sélectionnée à la création d’un projet lorsque l’utilisateur n’en choisit pas explicitement. Doit exister dans la fixture Sociétés.
+The label users pick. Can't be changed later.,Le libellé que les utilisateurs choisissent. Non modifiable ultérieurement.
+The name is the key and can't be changed.,Le nom est la clé et ne peut pas être modifié.
+The standard project page — which tabs every project offers by default. Each project can overrule it.,La page projet standard — les onglets que chaque projet propose par défaut. Chaque projet peut la surcharger.
+This is a BuildSuite default persona.,Ceci est un persona BuildSuite par défaut.
+This machinery record will be removed permanently. Its usage logs will remain.,Cette fiche machine sera supprimée définitivement. Ses journaux d’utilisation seront conservés.
+This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. Any permission changes made in Desk will be lost. This cannot be undone — export the current permissions first if you want to keep them.,Cela écrase TOUTES les permissions des rôles BuildSuite de ce site par les valeurs par défaut livrées. Toute modification de permission effectuée dans Desk sera perdue. Cette action est irréversible — exportez d’abord les permissions actuelles si vous souhaitez les conserver.
+This record type isn't available here.,Ce type d’enregistrement n’est pas disponible ici.
+This usage log entry will be removed permanently.,Cette entrée du journal d’utilisation sera supprimée définitivement.
+Three independent keys:,Trois clés indépendantes :
+Tile title,Titre de la tuile
+Tile title (defaults to DocType),Titre de la tuile (par défaut le DocType)
+Topbar pill text.,Texte de la pastille de la barre supérieure.
+Total cost,Coût total
+Type is required.,Le type est obligatoire.
+Unsaved branding changes,Modifications d’image de marque non enregistrées
+Upload failed,Échec du téléversement
+Upload logo,Téléverser un logo
+Upload returned no file URL.,Le téléversement n’a renvoyé aucune URL de fichier.
+Usage,Utilisation
+Usage logs ({0}),Journaux d’utilisation ({0})
+Used,Utilisé
+Used as the login id + destination for the welcome and password-reset emails.,Utilisé comme identifiant de connexion + destination des e-mails de bienvenue et de réinitialisation.
+User deleted,Utilisateur supprimé
+User updated,Utilisateur mis à jour
+User {0} created,Utilisateur {0} créé
+Users management is restricted to administrators.,La gestion des utilisateurs est réservée aux administrateurs.
+Violet,Violet
+Visible to:,Visible par :
+WP-XXX,WP-XXX
+Welcome email,E-mail de bienvenue
+Welcome email queued,E-mail de bienvenue en file d’attente
+What this persona is for,À quoi sert ce persona
+"Which tabs every project offers. Overview is always shown, so it is not listed here. Any project can overrule these for itself from its own ""…"" menu.","Les onglets que chaque projet propose. L’aperçu est toujours affiché, il n’est donc pas listé ici. Chaque projet peut les surcharger depuis son propre menu « … »."
+Work Package label,Libellé du lot de travaux
+Workflows,Flux de travail
+Workspace,Espace de travail
+Workspace Setting,Paramètres d’espace de travail
+Workspace Structure,Structure des espaces de travail
+Workspace shortcuts saved.,Raccourcis d’espace de travail enregistrés.
+You don't have permission to create machinery.,Vous n’avez pas la permission de créer une machine.
+You don't have permission to log machinery usage.,Vous n’avez pas la permission d’enregistrer l’utilisation d’une machine.
+You don't have permission to manage finance accounts.,Vous n’avez pas la permission de gérer les comptes financiers.
+companies,sociétés
+company,société
+e.g. ARP,p. ex. ARP
+e.g. Acme Realty Pvt Ltd,p. ex. Acme Realty Pvt Ltd
+e.g. Asha Menon,p. ex. Asha Menon
+"e.g. Commercial, Residential, Infrastructure, EPC, Interiors.","p. ex. Commercial, Résidentiel, Infrastructure, EPC, Intérieurs."
+e.g. ICICI Current A/c,p. ex. ICICI compte courant
+e.g. Industrial,p. ex. Industriel
+e.g. Planner,p. ex. Planificateur
+e.g. planner,p. ex. planificateur
+letter head,en-tête de lettre
+name@company.com,nom@societe.com
+users,utilisateurs
+{0} of {1} tabs shown by default.,{0} sur {1} onglets affichés par défaut.
+{0} of {1} · multi-company per CLAUDE.md §14,{0} sur {1} · multi-société selon CLAUDE.md §14
+{0} project references this company,{0} projet référence cette société
+{0} projects reference this company,{0} projets référencent cette société
+{0} records,{0} enregistrements
+{0} reports,{0} rapports
+{0} saved,{0} enregistré
+{0} shortcuts,{0} raccourcis
+{0} template,modèle {0}
+{0} workspace,{0} espace de travail
+{0} workspaces,{0} espaces de travail
+— No linked asset —,— Aucune immobilisation liée —
+— None —,— Aucun —
+— not linked —,— non lié —
+"e.g. ""Block"", ""Tower"", ""Package"". Defaults to ""Work Package"".","p. ex. « Block », « Tower », « Package ». Par défaut « Work Package »."
+Search {0}…,Rechercher {0}…
