@@ -159,3 +159,332 @@ Crews,Équipes
 Labour Register,Registre de main-d'œuvre
 Users,Utilisateurs
 Project Dashboard,Tableau de bord projet
++ Add Member,+ Ajouter un membre
++ Add Stage,+ Ajouter une étape
++ Add Task,+ Ajouter une tâche
++ Add Work Package,+ Ajouter un lot de travaux
++ New,+ Nouveau
++ New Subproject,+ Nouveau sous-projet
++ Plan first stage,+ Planifier la première étape
++ Raise SCO,+ Créer un OM
++ Seed from {0} template,+ Initialiser depuis le modèle {0}
++ Upload,+ Téléverser
+About this project,À propos de ce projet
+Acknowledged by client,Accusé de réception du client
+Actual,Réel
+Actual vs Planned,Réel vs planifié
+Add member,Ajouter un membre
+Add team member,Ajouter un membre d’équipe
+Add the first one →,Ajouter le premier →
+Adding…,Ajout…
+Allow subprojects under this project,Autoriser des sous-projets sous ce projet
+Approved chargeable this period,Facturable approuvé cette période
+As of,Au
+Attachment deleted,Pièce jointe supprimée
+Attachments,Pièces jointes
+Attachments added,Pièces jointes ajoutées
+BOQ revision,Révision du devis quantitatif
+BOQ revisions,Révisions du devis quantitatif
+Back to Projects,Retour aux projets
+Back to project,Retour au projet
+Back to projects,Retour aux projets
+Basic information,Informations de base
+Blocked,Bloqué
+Blockers raised,Blocages signalés
+Brief description of project scope,Brève description du périmètre du projet
+Budget,Budget
+Building report…,Génération du rapport…
+By,Par
+Category,Catégorie
+Category: Any,Catégorie : toutes
+Chargeable,Facturable
+Client,Client
+Coming up,À venir
+Commercial,Commercial
+Company,Société
+Company: Any,Société : toutes
+Completed,Terminé
+Completed tasks / total tasks in stage,Tâches terminées / total des tâches de l’étape
+Completion,Achèvement
+Contains supplier pricing and procurement commitments — not for issue to the client. Switch to the client audience before sharing.,Contient les prix fournisseurs et les engagements d’approvisionnement — à ne pas diffuser au client. Passez à l’audience client avant de partager.
+Contract completion,Achèvement contractuel
+Contract programme,Planning contractuel
+Contract start,Début contractuel
+Cost impact,Impact sur les coûts
+Could not update tabs,Impossible de mettre à jour les onglets
+Create one in the BOQ module →,Créez-en un dans le module Devis quantitatif →
+Create one →,En créer un →
+Create project,Créer le projet
+Create the first one →,Créer le premier →
+Create the first task →,Créer la première tâche →
+Created,Créé le
+Creating…,Création…
+Current stage,Étape actuelle
+Daily report,Rapport quotidien
+Date,Date
+Default,Par défaut
+Default (hidden),Par défaut (masqué)
+Default (shown),Par défaut (affiché)
+Defaults to your default company. This is locked after the project is created.,"Par défaut, votre société par défaut. Verrouillé après la création du projet."
+Delayed,En retard
+Delayed by {0}d,En retard de {0} j
+Delays & constraints,Retards et contraintes
+"Delete '{0}' and all its subprojects, work packages, and tasks? This cannot be undone.","Supprimer « {0} » et tous ses sous-projets, lots de travaux et tâches ? Cette action est irréversible."
+Delete attachment,Supprimer la pièce jointe
+Delete project,Supprimer le projet
+Delete {0},Supprimer {0}
+Deliveries received,Livraisons reçues
+Description,Description
+Edit project,Modifier le projet
+End,Fin
+End date,Date de fin
+Executive summary,Résumé exécutif
+Expected end date,Date de fin prévue
+Export PDF,Exporter en PDF
+Failed to add team member,Échec de l’ajout du membre d’équipe
+Failed to create project,Échec de la création du projet
+Failed to delete attachment,Échec de la suppression de la pièce jointe
+Failed to delete project,Échec de la suppression du projet
+Failed to import template,Échec de l’import du modèle
+Failed to load the progress report.,Échec du chargement du rapport d’avancement.
+Failed to remove team member,Échec du retrait du membre d’équipe
+Failed to save project,Échec de l’enregistrement du projet
+Failed to seed stages,Échec de l’initialisation des étapes
+Failed to upload {0},Échec du téléversement de {0}
+File,Fichier
+From the,Depuis le
+Generated,Généré
+Generated using,Généré avec
+Goods received on site,Marchandises reçues sur site
+Hidden anyway until this is a parent project.,Masqué de toute façon jusqu’à ce que ce soit un projet parent.
+Hide,Masquer
+ID,ID
+Impact,Impact
+Import,Importer
+Import default tasks,Importer les tâches par défaut
+Import project template,Importer un modèle de projet
+Import work packages,Importer les lots de travaux
+"Imported {0} work packages, {1} tasks and {2} stages.","{0} lots de travaux, {1} tâches et {2} étapes importés."
+Importing…,Import…
+In Delay,En retard
+In INR,En INR
+Industrial,Industriel
+Infrastructure,Infrastructure
+Inherited from the parent project — locked.,Hérité du projet parent — verrouillé.
+Initial status,Statut initial
+Inspection,Inspection
+Internal or External (ERPNext).,Interne ou externe (ERPNext).
+Internal report.,Rapport interne.
+Issues raised,Problèmes signalés
+Item,Article
+Key metrics,Indicateurs clés
+Labour-days,Jours-homme
+Last update,Dernière mise à jour
+Loading template…,Chargement du modèle…
+Location,Emplacement
+Locked after create — a project can't be moved between companies.,Verrouillé après création — un projet ne peut pas être déplacé entre sociétés.
+Locked on - this project has {0} subproject. Delete or move them out before turning this off.,Verrouillé activé - ce projet a {0} sous-projet. Supprimez-le ou déplacez-le avant de désactiver.
+Locked on - this project has {0} subprojects. Delete or move them out before turning this off.,Verrouillé activé - ce projet a {0} sous-projets. Supprimez-les ou déplacez-les avant de désactiver.
+Material requests raised,Demandes de matériel créées
+Materials,Matériaux
+Materials ordered,Matériaux commandés
+Materials received on site,Matériaux reçus sur site
+Milestone,Jalon
+Monthly report,Rapport mensuel
+More actions,Plus d’actions
+Moved,Déplacé
+Name series,Série de nommage
+Name · Signature · Date,Nom · Signature · Date
+New,Nouveau
+New Project,Nouveau projet
+No,Non
+No BOQ on this project ·,Aucun devis quantitatif sur ce projet ·
+"No attachments yet. Upload drawings, contracts, or site documents.","Aucune pièce jointe. Téléversez des plans, contrats ou documents de chantier."
+No deliveries received in this period.,Aucune livraison reçue sur cette période.
+No description provided yet.,Aucune description fournie pour l’instant.
+No project data available.,Aucune donnée de projet disponible.
+No project manager assigned.,Aucun chef de projet assigné.
+No projects match your filters,Aucun projet ne correspond à vos filtres
+No scope changes on this project.,Aucune modification de périmètre sur ce projet.
+No site photographs were recorded in this period.,Aucune photo de chantier enregistrée sur cette période.
+No stages planned yet.,Aucune étape planifiée pour l’instant.
+No stages touch this period.,Aucune étape ne concerne cette période.
+No subprojects yet ·,Aucun sous-projet pour l’instant ·
+No task activity recorded in this period.,Aucune activité de tâche enregistrée sur cette période.
+No tasks due in the look-ahead window.,Aucune tâche à échéance dans la fenêtre à venir.
+No tasks yet ·,Aucune tâche pour l’instant ·
+No team members yet.,Aucun membre d’équipe pour l’instant.
+No template configured for,Aucun modèle configuré pour
+"No template configured for project type ""{0}"" — plan stages manually.",Aucun modèle configuré pour le type de projet « {0} » — planifiez les étapes manuellement.
+No template is configured for this project's category,Aucun modèle n’est configuré pour la catégorie de ce projet
+No work packages yet.,Aucun lot de travaux pour l’instant.
+Note,Note
+On programme,Dans les délais
+On track,Sur la bonne voie
+Ongoing,En cours
+Open BOQ module →,Ouvrir le module Devis quantitatif →
+Open parent →,Ouvrir le parent →
+Open →,Ouvrir →
+Opens the browser print dialog. Pick 'Save as PDF' to export.,Ouvre la boîte d’impression du navigateur. Choisissez « Enregistrer en PDF » pour exporter.
+"Optional. If given, it becomes the project's record ID; otherwise the naming series is used.","Facultatif. S’il est fourni, il devient l’ID d’enregistrement du projet ; sinon la série de nommage est utilisée."
+Other stages in this period,Autres étapes sur cette période
+Overview,Aperçu
+Page tabs,Onglets de la page
+Photograph on file,Photo au dossier
+"Pick a customer, or create one inline.","Choisissez un client, ou créez-en un directement."
+Pick a user to add to this project's team.,Choisissez un utilisateur à ajouter à l’équipe de ce projet.
+Planned,Planifié
+Position,Position
+Prepared by,Préparé par
+Priority: Any,Priorité : toutes
+Programme,Planning
+Progress,Avancement
+Progress against programme,Avancement par rapport au planning
+Progress entries,Saisies d’avancement
+Project,Projet
+Project Category,Catégorie de projet
+Project ID,ID du projet
+Project Manager,Chef de projet
+Project Name,Nom du projet
+Project Settings,Paramètres du projet
+Project Type,Type de projet
+Project budget (₹),Budget du projet (₹)
+Project category,Catégorie de projet
+Project created,Projet créé
+Project deleted,Projet supprimé
+Project details,Détails du projet
+Project name,Nom du projet
+Project name is required,Le nom du projet est obligatoire
+Project not found,Projet introuvable
+Project progress & schedule position,Avancement du projet et position au planning
+Project tabs updated,Onglets du projet mis à jour
+Project type,Type de projet
+Project updated,Projet mis à jour
+Project: Any,Projet : tous
+Purchase orders placed,Bons de commande passés
+Qty,Qté
+Recoverable,Récupérable
+Registered office address · GSTIN · Contact,Adresse du siège · GSTIN · Contact
+Remove,Retirer
+Remove team member,Retirer le membre d’équipe
+Remove {0} from this project,Retirer {0} de ce projet
+Remove {0} from this project's team?,Retirer {0} de l’équipe de ce projet ?
+Renovation,Rénovation
+Reporting period,Période de reporting
+Reports,Rapports
+Residential,Résidentiel
+Reviewed by,Revu par
+Schedule & cost,Planning et coûts
+Scope Changes,Modifications de périmètre
+Scope changes,Modifications de périmètre
+Search BOQ revisions…,Rechercher des révisions de devis…
+"Search by name, code, client…","Rechercher par nom, code, client…"
+Search files…,Rechercher des fichiers…
+Search scope changes…,Rechercher des modifications de périmètre…
+Search stages…,Rechercher des étapes…
+Search subprojects…,Rechercher des sous-projets…
+Search tasks…,Rechercher des tâches…
+Search users…,Rechercher des utilisateurs…
+Search work packages…,Rechercher des lots de travaux…
+Seed default stages,Initialiser les étapes par défaut
+Seed stages,Initialiser les étapes
+Seed {0} default stages from the {1} template?\n\nThis creates {0} stages on top of any existing ones — it does not replace or merge.,Initialiser {0} étapes par défaut depuis le modèle {1} ?\n\nCela crée {0} étapes en plus de celles existantes — sans les remplacer ni les fusionner.
+Seeded {0} stages,{0} étapes initialisées
+Select company,Sélectionner une société
+Select customer,Sélectionner un client
+Select project category,Sélectionner une catégorie de projet
+Select project manager,Sélectionner un chef de projet
+Select project type,Sélectionner un type de projet
+Show,Afficher
+Show a selection ({0}),Afficher une sélection ({0})
+Show all {0},Afficher tout ({0})
+Show less ▴,Afficher moins ▴
+Show more ▾,Afficher plus ▾
+Site address,Adresse du chantier
+Site photographs,Photos de chantier
+Size,Taille
+Stage,Étape
+Stage progress,Avancement de l’étape
+Stages,Étapes
+Start,Début
+Start date,Date de début
+Status: Any,Statut : tous
+Subproject of,Sous-projet de
+Subproject under {0},Sous-projet sous {0}
+Subprojects,Sous-projets
+Supplier,Fournisseur
+Task,Tâche
+Task Type: Any,Type de tâche : tous
+Task activity,Activité des tâches
+Tasks completed,Tâches terminées
+Team,Équipe
+Team & status,Équipe et statut
+Team member added,Membre d’équipe ajouté
+Team member removed,Membre d’équipe retiré
+Template seeds,Le modèle initialise
+The naming series used to generate this project's record ID.,La série de nommage utilisée pour générer l’ID d’enregistrement de ce projet.
+Timeline,Chronologie
+Title,Titre
+Top-level project,Projet de premier niveau
+Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).,Activez pour diviser ce projet en sous-projets (p. ex. Bloc A / Bloc B / Tour 1).
+Type,Type
+Uploaded,Téléversé
+Uploading… ({0}),Téléversement… ({0})
+Variance,Écart
+Variation,Variation
+Variations,Variations
+Variations raised,Variations créées
+Weekly report,Rapport hebdomadaire
+Which tabs this project shows. Leave a tab on,Les onglets affichés par ce projet. Laissez un onglet sur
+Will seed {0} stages —,Initialisera {0} étapes —
+Work Packages,Lots de travaux
+Work progressed this period,Travaux avancés cette période
+Yes,Oui
+Yet To Start,Pas encore commencé
+You don't have access to this project,Vous n’avez pas accès à ce projet
+You don't have permission to create a project.,Vous n’avez pas la permission de créer un projet.
+You'll plan stages manually after create.,Vous planifierez les étapes manuellement après la création.
+active:,actif :
+actual,réel
+and it follows,et il suit
+approved,approuvé
+avg progress,avancement moyen
+committed,engagé
+complete,terminé
+completed,terminé
+contract completion,achèvement contractuel
+days past,jours écoulés
+days to,jours avant
+default stages,étapes par défaut
+e.g. BTP-P2 (optional),p. ex. BTP-P2 (facultatif)
+e.g. Bangalore Tech Park Phase 2,p. ex. Bangalore Tech Park Phase 2
+end date,date de fin
+files uploaded,fichiers téléversés
+from this template can also be imported.,de ce modèle peuvent aussi être importés.
+from this template can be imported.,de ce modèle peuvent être importés.
+goods receipts,bons de réception
+in progress,en cours
+in this period,sur cette période
+or plan one manually →,ou en planifier une manuellement →
+over,en dépassement
+package,lot
+packages,lots
+pending,en attente
+placed,passés
+plan,planifier
+planned,planifié
+site updates filed,mises à jour de chantier déposées
+skilled,qualifié
+subproject,sous-projet
+subprojects,sous-projets
+"template. Your existing tasks, stages and work packages are kept — the template is added on top.","modèle. Vos tâches, étapes et lots de travaux existants sont conservés — le modèle s’ajoute par-dessus."
+the site template,le modèle du site
+under,sous
+unskilled,non qualifié
+via progress entries,via les saisies d’avancement
+work packages,lots de travaux
+yet to start,pas encore commencé
+{0}d behind,{0} j de retard
+{0}d remaining,{0} j restants
+{0}d total,{0} j au total
+tasks,tâches
