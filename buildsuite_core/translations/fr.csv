@@ -725,3 +725,538 @@ to,à
 — Select project —,— Sélectionner un projet —
 — Select supplier —,— Sélectionner un fournisseur —
 — Select warehouse —,— Sélectionner un entrepôt —
++ Add row,+ Ajouter une ligne
++ Issue directly,+ Émettre directement
++ Link advance,+ Lier une avance
++ New Customer,+ Nouveau client
++ New Supplier,+ Nouveau fournisseur
++ New bill,+ Nouvelle facture fournisseur
++ New expense,+ Nouvelle dépense
++ New invoice,+ Nouvelle facture
++ Request petty cash,+ Demander de la petite caisse
+A cancelled invoice can't be printed,Une facture annulée ne peut pas être imprimée
+"A direct purchase from a supplier (materials, services) — an ERPNext Purchase Invoice.","Un achat direct auprès d’un fournisseur (matériaux, services) — une facture d’achat ERPNext."
+A short reason is required.,Un motif court est requis.
+A supplier payable — Submit posts it; then pay from a Bank/Cash account.,Une dette fournisseur — Soumettre l’enregistre ; payez ensuite depuis un compte Banque/Caisse.
+Account,Compte
+Account name…,Nom du compte…
+Accounts,Comptes
+Add at least one item with a quantity and rate.,Ajoutez au moins un article avec une quantité et un tarif.
+Add one →,En ajouter un →
+Adjust,Ajuster
+Adjusted {0} from {1} — outstanding is now {2}.,{0} ajusté depuis {1} — l’encours est maintenant {2}.
+Advance Payments,Paiements d’avance
+Advance adjusted,Avance ajustée
+Advance adjusted.,Avance ajustée.
+Advance held,Avance détenue
+Advance linked.,Avance liée.
+Advance paid,Avance versée
+Advance recorded.,Avance enregistrée.
+Advance unlinked.,Avance déliée.
+Advances held,Avances détenues
+Advances paid,Avances versées
+Advances paid to suppliers,Avances versées aux fournisseurs
+Advances received from customers,Avances reçues des clients
+Advances to site holders. Spend is logged separately under,Avances aux titulaires de chantier. Les dépenses sont enregistrées séparément sous
+Against purchase order,Sur bon de commande
+Aging,Ancienneté
+All Expenses,Toutes les dépenses
+All Requests,Toutes les demandes
+All accounts,Tous les comptes
+All bills →,Toutes les factures fournisseurs →
+All clear — nothing pending.,Tout est clair — rien en attente.
+All dates,Toutes les dates
+All entries,Toutes les écritures
+All expense accounts,Tous les comptes de dépense
+All invoices →,Toutes les factures →
+All parties,Tous les tiers
+All payments →,Tous les paiements →
+All statuses,Tous les statuts
+All types,Tous les types
+Amount — highest first,Montant — décroissant
+Amount — lowest first,Montant — croissant
+An RA / work-done bill against a Subcontractor Work Order (with retention).,Une facture d’avancement (RA) sur un ordre de travaux de sous-traitant (avec retenue).
+Any source,Toute source
+Assets − liabilities,Actif − passif
+Back to invoice,Retour à la facture
+Balance,Solde
+Balance in hand (all-time),Solde disponible (cumul)
+Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.,Solde disponible = fonds décaissés − dépenses approuvées (onglet Dépenses). Un solde négatif signifie que le titulaire a avancé son propre argent — il lui est dû et réglé au prochain décaissement.
+Balances,Soldes
+Bank / Cash account…,Compte Banque / Caisse…
+Bank balance,Solde bancaire
+Beginning,Début
+Bill,Facture fournisseur
+Bill date,Date de la facture
+Bill details,Détails de la facture fournisseur
+Bill not found.,Facture fournisseur introuvable.
+Bill saved as draft.,Facture fournisseur enregistrée en brouillon.
+Bill total,Total de la facture fournisseur
+Bill updated.,Facture fournisseur mise à jour.
+Billed {0} · due {1},Facturé {0} · échéance {1}
+Bills the customer — Submit posts it as a receivable.,Facture le client — Soumettre l’enregistre comme créance.
+Both,Les deux
+Bucket,Tranche
+Can't exceed the outstanding {0}.,Ne peut pas dépasser l’encours de {0}.
+"Cancel ""{0}"" ({1})? Its effect on balances and reports is reversed. A cancelled expense can then be deleted.",Annuler « {0} » ({1}) ? Son effet sur les soldes et les rapports est inversé. Une dépense annulée peut ensuite être supprimée.
+Cancel bill,Annuler la facture fournisseur
+Cancel bill?,Annuler la facture fournisseur ?
+Cancel disbursement,Annuler le décaissement
+Cancel disbursement?,Annuler le décaissement ?
+Cancel expense,Annuler la dépense
+Cancel expense?,Annuler la dépense ?
+Cancel invoice,Annuler la facture
+Cancel invoice?,Annuler la facture ?
+Cancel petty cash request {0} for {1}?,Annuler la demande de petite caisse {0} pour {1} ?
+Cancel request?,Annuler la demande ?
+Cancel this {0}?,Annuler ce {0} ?
+Cancel transaction,Annuler la transaction
+Cancel your petty cash request {0}?,Annuler votre demande de petite caisse {0} ?
+Cancel {0}? Its payable and any allocations are reversed.,Annuler {0} ? Sa dette et ses allocations sont inversées.
+Cancel {0}? Its receivable and any allocations are reversed.,Annuler {0} ? Sa créance et ses allocations sont inversées.
+Cancelled — Journal Entry reversed.,Annulé — écriture de journal contre-passée.
+Cancelled — no longer a payable and excluded from costs.,Annulé — n’est plus une dette et exclu des coûts.
+Cancelled — no longer a receivable and excluded from income.,Annulé — n’est plus une créance et exclu des produits.
+Cancelled — this expense no longer affects balances or reports. It can be deleted.,Annulé — cette dépense n’affecte plus les soldes ni les rapports. Elle peut être supprimée.
+Cancelled.,Annulé.
+Cash & Bank,Caisse et banque
+Cash & Bank Statement,Relevé caisse et banque
+Cash & bank,Caisse et banque
+Cash in hand,Espèces en caisse
+Clear,Effacer
+Closing,Clôture
+Closing balance,Solde de clôture
+Company account,Compte de la société
+Contact,Contact
+Contact person,Personne à contacter
+Could not link the advance.,Impossible de lier l’avance.
+Create bill,Créer la facture fournisseur
+Create invoice,Créer la facture
+Customer,Client
+Customer deleted.,Client supprimé.
+Customer is required.,Le client est obligatoire.
+Customer type,Type de client
+Customers,Clients
+Customers owe us,Les clients nous doivent
+Defaults to you…,"Par défaut, vous…"
+Delete draft?,Supprimer le brouillon ?
+Delete expense?,Supprimer la dépense ?
+Delete failed,Échec de la suppression
+Delete failed — the customer may have linked transactions.,Échec de la suppression — le client a peut-être des transactions liées.
+Delete failed — the supplier may have linked transactions.,Échec de la suppression — le fournisseur a peut-être des transactions liées.
+Delete invoice?,Supprimer la facture ?
+Deleted.,Supprimé.
+Deposit into,Déposer sur
+Description is required.,La description est obligatoire.
+Description or id…,Description ou id…
+Direct,Direct
+Direct Expenses,Charges directes
+Direct Income,Produits directs
+Direct expenses,Charges directes
+Disburse,Décaisser
+Disburse failed,Échec du décaissement
+Disburse {0},Décaisser {0}
+Disbursed,Décaissé
+Disbursed (period),Décaissé (période)
+Disbursed — Journal Entry posted.,Décaissé — écriture de journal enregistrée.
+Disbursement reversed.,Décaissement contre-passé.
+"Disbursement rows hide automatically when an expense-only filter (account / status) is applied. Balance in hand is all-time; the other totals respect the filters. A negative balance is money the holder fronted — owed back to them, cleared on the next disbursement.",Les lignes de décaissement se masquent automatiquement lorsqu’un filtre dépenses uniquement (compte / statut) est appliqué. Le solde disponible est cumulé ; les autres totaux respectent les filtres. Un solde négatif correspond à de l’argent avancé par le titulaire — qui lui est dû et réglé au prochain décaissement.
+Disbursements only,Décaissements uniquement
+Discount,Remise
+Discount (on grand total),Remise (sur le total général)
+Discount (on net),Remise (sur le net)
+Draft — not posted yet. Submit it to make it a payable and enable payment.,Brouillon — pas encore enregistré. Soumettez-le pour en faire une dette et permettre le paiement.
+Draft — not posted yet. Submit it to make it a receivable and enable payment receipt.,Brouillon — pas encore enregistré. Soumettez-le pour en faire une créance et permettre l’encaissement.
+Draft/expense counts are sample data pending live finance registers.,Les compteurs de brouillons/dépenses sont des données d’exemple en attendant les registres financiers réels.
+Edit Customer,Modifier le client
+Edit Supplier,Modifier le fournisseur
+Edit expense,Modifier la dépense
+Email,E-mail
+Enter a purpose.,Saisissez un objet.
+Enter an amount greater than zero.,Saisissez un montant supérieur à zéro.
+Enter an amount.,Saisissez un montant.
+Entered — newest first,Saisie — plus récentes d’abord
+Entered — oldest first,Saisie — plus anciennes d’abord
+Entries,Écritures
+Entry,Écriture
+Expense Account,Compte de dépense
+Expense Summary,Récapitulatif des dépenses
+Expense account,Compte de dépense
+Expense date — newest first,Date de dépense — plus récentes d’abord
+Expense date — oldest first,Date de dépense — plus anciennes d’abord
+Expense saved.,Dépense enregistrée.
+Expense updated.,Dépense mise à jour.
+Expenses only,Dépenses uniquement
+Export CSV,Exporter en CSV
+Failed to load PO lines,Échec du chargement des lignes du bon de commande
+Failed to load accounts,Échec du chargement des comptes
+Failed to load accounts.,Échec du chargement des comptes.
+Failed to load balances,Échec du chargement des soldes
+Failed to load bill,Échec du chargement de la facture fournisseur
+Failed to load bills,Échec du chargement des factures fournisseurs
+Failed to load customers,Échec du chargement des clients
+Failed to load expenses,Échec du chargement des dépenses
+Failed to load expenses.,Échec du chargement des dépenses.
+Failed to load invoice,Échec du chargement de la facture
+Failed to load payments,Échec du chargement des paiements
+Failed to load statement,Échec du chargement du relevé
+Failed to load suppliers,Échec du chargement des fournisseurs
+Failed to load tax template,Échec du chargement du modèle de taxe
+Failed to load the statement.,Échec du chargement du relevé.
+Failed to load.,Échec du chargement.
+Failed to record advance,Échec de l’enregistrement de l’avance
+Failed to save,Échec de l’enregistrement
+Finance Overview,Aperçu financier
+Financial Position,Situation financière
+From,De
+From Purchase Order,Depuis un bon de commande
+From account,Compte débité
+From date,Date de début
+From date (posting date),Date de début (date de comptabilisation)
+From {0},De {0}
+Group by,Grouper par
+Hide empty accounts,Masquer les comptes vides
+Holder,Titulaire
+Holder (petty cash float),Titulaire (fonds de petite caisse)
+Import from template…,Importer depuis un modèle…
+In,Entrée
+In & out,Entrées et sorties
+Income,Produits
+"Income and expenses are posted GL entries, grouped by ledger account and scoped to the selected project and period. Direct vs indirect follows the chart of accounts' cost-of-sales boundary. Click an account to list its vouchers.","Les produits et charges sont des écritures de grand livre comptabilisées, regroupées par compte et limitées au projet et à la période sélectionnés. Direct vs indirect suit la frontière du coût des ventes du plan comptable. Cliquez sur un compte pour lister ses pièces."
+Indirect Expenses,Charges indirectes
+Indirect expenses,Charges indirectes
+Invoice,Facture
+Invoice date,Date de la facture
+Invoice details,Détails de la facture
+Invoice not found.,Facture introuvable.
+Invoice saved as draft.,Facture enregistrée en brouillon.
+Invoice total,Total de la facture
+Invoice updated.,Facture mise à jour.
+Invoiced {0} · due {1},Facturé {0} · échéance {1}
+Issue failed,Échec de l’émission
+Issue float,Émettre les fonds
+Issue petty cash directly,Émettre la petite caisse directement
+Issue to,Émettre à
+"Issued directly to the holder, no request behind it","Émis directement au titulaire, sans demande préalable"
+Issuing…,Émission…
+Lines pre-fill from the PO's unbilled quantities.,Les lignes se pré-remplissent à partir des quantités non facturées du bon de commande.
+Link,Lier
+Link advance payment,Lier un paiement d’avance
+Link advance →,Lier une avance →
+Linked {0} from {1} — outstanding is now {2}.,{0} lié depuis {1} — l’encours est maintenant {2}.
+Linking…,Liaison…
+Loading customers…,Chargement des clients…
+Loading payments…,Chargement des paiements…
+Loading suppliers…,Chargement des fournisseurs…
+Log site spend. It hits balances & reports once,Enregistrez les dépenses de chantier. Elles impactent les soldes et rapports une fois
+Manage,Gérer
+Max,Max
+Min,Min
+Mode of payment,Mode de paiement
+Money In,Entrées
+Money Out,Sorties
+Money in,Entrées
+Money out,Sorties
+Money paid to a supplier or subcontractor before (or without) a bill — it stays on the party's account until a later bill draws it down.,Argent versé à un fournisseur ou sous-traitant avant (ou sans) facture — il reste sur le compte du tiers jusqu’à ce qu’une facture ultérieure l’impute.
+Money received before (or without) an invoice — it stays on the customer's account until a later invoice draws it down.,Argent reçu avant (ou sans) facture — il reste sur le compte du client jusqu’à ce qu’une facture ultérieure l’impute.
+My Expenses,Mes dépenses
+My Requests,Mes demandes
+Name,Nom
+Name is required.,Le nom est obligatoire.
+Needs attention,À surveiller
+Net position,Position nette
+Net total,Total net
+New Bill,Nouvelle facture fournisseur
+New Customer,Nouveau client
+New Expense,Nouvelle dépense
+New Invoice,Nouvelle facture
+New Supplier,Nouveau fournisseur
+New bill,Nouvelle facture fournisseur
+New expense,Nouvelle dépense
+New party,Nouveau tiers
+New supplier bill,Nouvelle facture fournisseur
+Next →,Suivant →
+No accounts defined.,Aucun compte défini.
+No advances adjusted yet — {0} has {1} unallocated.,Aucune avance ajustée pour l’instant — {0} a {1} non alloué.
+No advances linked yet — {0} has {1} unallocated.,Aucune avance liée pour l’instant — {0} a {1} non alloué.
+No bills yet.,Aucune facture fournisseur pour l’instant.
+No contributing vouchers.,Aucune pièce contributrice.
+No customers yet.,Aucun client pour l’instant.
+No draft expenses awaiting submission.,Aucune dépense en brouillon en attente de soumission.
+No entries match the filters.,Aucune écriture ne correspond aux filtres.
+No expenses match.,Aucune dépense ne correspond.
+No invoices yet.,Aucune facture pour l’instant.
+No movements in this period.,Aucun mouvement sur cette période.
+No outstanding payables.,Aucune dette en cours.
+No outstanding receivables.,Aucune créance en cours.
+No petty-cash activity yet.,Aucune activité de petite caisse pour l’instant.
+No project,Aucun projet
+No purchase order — enter charge lines manually.,Aucun bon de commande — saisissez les lignes de charges manuellement.
+No receipt attached.,Aucun reçu joint.
+No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request.,Aucune demande ne précède ceci — l’enregistrement créé ici est la seule trace. À utiliser lorsque l’argent a réellement circulé avant toute demande.
+No submitted expenses in this period.,Aucune dépense soumise sur cette période.
+No suppliers yet.,Aucun fournisseur pour l’instant.
+No transactions match the filters.,Aucune transaction ne correspond aux filtres.
+No transactions recorded yet.,Aucune transaction enregistrée pour l’instant.
+No transactions yet.,Aucune transaction pour l’instant.
+No unadjusted advances left for this customer.,Plus d’avances non ajustées pour ce client.
+No unlinked advances left for this supplier.,Plus d’avances non liées pour ce fournisseur.
+None,Aucun
+Not due,Non échu
+Nothing here.,Rien ici.
+Nothing overdue.,Rien en retard.
+Nothing payable.,Rien à payer.
+On Grand Total,Sur le total général
+On Net Total,Sur le total net
+Only {0} is unadjusted on {1}.,Seul {0} est non ajusté sur {1}.
+Open {0}'s petty-cash report,Ouvrir le rapport de petite caisse de {0}
+Opening balance,Solde d’ouverture
+Opening carries everything before this date.,L’ouverture reprend tout ce qui précède cette date.
+Optional — tags the income to a project.,Facultatif — rattache le produit à un projet.
+Optional — ties the cost to a project's books.,Facultatif — rattache le coût à la comptabilité d’un projet.
+Out,Sortie
+Outstanding,Encours
+Overdue,En retard
+Overdue receivables,Créances en retard
+Page {0} / {1},Page {0} / {1}
+Paid from,Payé depuis
+"Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.","Payé depuis le fonds de petite caisse du titulaire. S’il a avancé l’argent lui-même, cela rend simplement son solde négatif — le montant qui lui est dû, réglé au prochain décaissement."
+Particulars,Libellé
+Partly Paid,Partiellement payé
+Party,Tiers
+Party name,Nom du tiers
+Party or document…,Tiers ou document…
+Pay,Payer
+Pay bill,Payer la facture fournisseur
+Pay from,Payer depuis
+Payable,À payer
+Payables,Dettes fournisseurs
+Payables (aged),Dettes fournisseurs (âgées)
+Payables due,Dettes à échéance
+Payables only,Dettes uniquement
+Paying…,Paiement…
+Payment failed,Échec du paiement
+Payment made.,Paiement effectué.
+Payment received.,Paiement reçu.
+Payments ({0}),Paiements ({0})
+Pending spend (period),Dépenses en attente (période)
+Period,Période
+"Permanently delete ""{0}"" ({1}) — already cancelled, no balance impact?","Supprimer définitivement « {0} » ({1}) — déjà annulé, sans impact sur les soldes ?"
+"Permanently delete ""{0}"" ({1})?",Supprimer définitivement « {0} » ({1}) ?
+Permanently delete {0}?,Supprimer définitivement {0} ?
+Person,Personne
+Petty Cash Statement,Relevé de petite caisse
+Petty cash holder,Titulaire de petite caisse
+Petty cash issued — Journal Entry posted.,Petite caisse émise — écriture de journal enregistrée.
+Petty cash requested.,Petite caisse demandée.
+Petty cash with holders,Petite caisse chez les titulaires
+Phone,Téléphone
+Pick a customer.,Choisissez un client.
+Pick a customer…,Choisissez un client…
+Pick a party.,Choisissez un tiers.
+"Pick a petty cash holder to see their personal statement — disbursements received, spend logged, and balance in hand.","Choisissez un titulaire de petite caisse pour voir son relevé personnel — décaissements reçus, dépenses enregistrées et solde disponible."
+Pick a project…,Choisissez un projet…
+Pick a supplier or subcontractor…,Choisissez un fournisseur ou sous-traitant…
+Pick a supplier…,Choisissez un fournisseur…
+Pick an account…,Choisissez un compte…
+Pick an expense account.,Choisissez un compte de dépense.
+Pick an item…,Choisissez un article…
+Pick the account to deposit into.,Choisissez le compte de dépôt.
+Pick the account to pay from.,Choisissez le compte à débiter.
+Pick the company account to pay from.,Choisissez le compte de la société à débiter.
+Pick the holder…,Choisissez le titulaire…
+Pick who is receiving the float.,Choisissez qui reçoit les fonds.
+"Posted transactions are cancelled, not edited — cancel the wrong entry and record a fresh one. All balances and outstandings recompute automatically.","Les transactions comptabilisées s’annulent, elles ne se modifient pas — annulez l’écriture erronée et enregistrez-en une nouvelle. Tous les soldes et encours se recalculent automatiquement."
+Posting…,Comptabilisation…
+Preview and print the invoice,Prévisualiser et imprimer la facture
+Profit,Résultat
+Profit & Loss,Compte de résultat
+Purpose,Objet
+Reason,Motif
+Receipt (optional),Reçu (facultatif)
+Receipt attached.,Reçu joint.
+Receipt failed,Échec du reçu
+Receipts ({0}),Réceptions ({0})
+Receivables,Créances
+Receivables & Payables,Créances et dettes
+Receivables (aged),Créances (âgées)
+Receivables only,Créances uniquement
+Receive,Encaisser
+Receive payment,Encaisser un paiement
+Receiving…,Encaissement…
+Recent transactions,Transactions récentes
+"Record a fresh transaction if it was entered wrongly — posted entries are cancelled, not edited.","Enregistrez une nouvelle transaction en cas d’erreur de saisie — les écritures comptabilisées s’annulent, elles ne se modifient pas."
+Record advance,Enregistrer une avance
+Record customer advance,Enregistrer une avance client
+Record payment,Enregistrer un paiement
+Record receipt,Enregistrer un encaissement
+Recording…,Enregistrement…
+Ref,Réf.
+Reference no.,N° de référence
+Remove line,Supprimer la ligne
+Report,Rapport
+Request Petty Cash,Demander de la petite caisse
+Request petty cash,Demander de la petite caisse
+Request withdrawn.,Demande retirée.
+Requested,Demandé
+Retention,Retenue de garantie
+Retention held,Retenue de garantie détenue
+Return {0} to {1}'s unallocated balance? The invoice's outstanding goes back up.,Rendre {0} au solde non alloué de {1} ? L’encours de la facture remonte.
+Return {0} to {1}'s unallocated balance? The net payable goes back up.,Rendre {0} au solde non alloué de {1} ? La dette nette remonte.
+Reversal failed,Échec de la contre-passation
+Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.,Contre-passer les {0} décaissés à {1} ? La demande retourne dans la file de décaissement et ses fonds diminuent.
+"Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.","Contre-passer les {0} émis à {1} ? Émis directement, l’enregistrement est supprimé et ses fonds diminuent."
+Sample,Exemple
+Sample data pending a live payments register.,Données d’exemple en attendant un registre de paiements réel.
+Save as draft,Enregistrer en brouillon
+Save bill,Enregistrer la facture fournisseur
+Save failed.,Échec de l’enregistrement.
+Save invoice,Enregistrer la facture
+Saved,Enregistré
+Search accounts…,Rechercher des comptes…
+"Search bill, party, project…","Rechercher facture, tiers, projet…"
+"Search description, holder, project, account…","Rechercher description, titulaire, projet, compte…"
+Search holders…,Rechercher des titulaires…
+"Search invoice, customer…","Rechercher facture, client…"
+"Search name, contact, tax ID…","Rechercher nom, contact, n° fiscal…"
+"Search name, contact, trade, tax ID…","Rechercher nom, contact, métier, n° fiscal…"
+Search parties…,Rechercher des tiers…
+Search requests…,Rechercher des demandes…
+"Search type, party, account, reference…","Rechercher type, tiers, compte, référence…"
+Select a PO with something to bill…,Sélectionnez un bon de commande à facturer…
+Settles against the receivable when the invoice is submitted.,S’impute sur la créance à la soumission de la facture.
+Settles the payable when the bill is submitted.,Règle la dette à la soumission de la facture fournisseur.
+Showing {0}–{1} of {2},Affichage de {0}–{1} sur {2}
+Sort,Trier
+Source,Source
+Sub,ST
+Subcontractor,Sous-traitant
+Subcontractor bill,Facture de sous-traitant
+Subcontractors,Sous-traitants
+"Subcontractors are suppliers of type ""Subcontractor"" — click one to open its master in the Subcontract module.",Les sous-traitants sont des fournisseurs de type « Sous-traitant » — cliquez sur l’un d’eux pour ouvrir sa fiche dans le module Sous-traitance.
+"Submit ""{0}"" ({1})? Submitting posts it — it will hit the {2} balance and the reports.",Soumettre « {0} » ({1}) ? La soumission l’enregistre — elle impactera le solde {2} et les rapports.
+Submit bill?,Soumettre la facture fournisseur ?
+Submit expense?,Soumettre la dépense ?
+Submit invoice?,Soumettre la facture ?
+Submit {0} ({1})? It posts the payable and can then be paid.,"Soumettre {0} ({1}) ? Elle enregistre la dette, qui peut ensuite être payée."
+Submit {0} ({1})? It posts the receivable and counts as income.,Soumettre {0} ({1}) ? Elle enregistre la créance et compte comme produit.
+Submitted,Soumis
+Submitted spend,Dépenses soumises
+Submitted spend (period),Dépenses soumises (période)
+Submitted — Journal Entry posted.,Soumis — écriture de journal enregistrée.
+Submitted.,Soumis.
+Supplier bill,Facture fournisseur
+Supplier deleted.,Fournisseur supprimé.
+Supplier invoice,Facture du fournisseur
+Supplier invoice date,Date de la facture du fournisseur
+Supplier invoice no.,N° de facture du fournisseur
+Supplier is required.,Le fournisseur est obligatoire.
+Supplier type,Type de fournisseur
+Supplier · project,Fournisseur · projet
+Supplier/customer advances and own-pocket reimbursements aren't broken out yet — shown as ₹0 until modelled.,Les avances fournisseurs/clients et les remboursements de frais personnels ne sont pas encore détaillés — affichés à ₹0 en attendant leur modélisation.
+Tax,Taxe
+Tax ID,N° fiscal
+Tax account…,Compte de taxe…
+Tax template…,Modèle de taxe…
+Taxable value,Base imposable
+Taxes & discount,Taxes et remise
+Terms & conditions,Conditions générales
+Terms printed on the invoice — import a template above or write your own.,Conditions imprimées sur la facture — importez un modèle ci-dessus ou saisissez les vôtres.
+Terms — import a template above or write your own.,Conditions — importez un modèle ci-dessus ou saisissez les vôtres.
+The bill's outstanding goes back up (or the advance paid is removed).,L’encours de la facture fournisseur remonte (ou l’avance versée est retirée).
+The invoice's outstanding goes back up (or the customer advance is removed).,L’encours de la facture remonte (ou l’avance client est retirée).
+Their reference,Leur référence
+"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments).","Cette fiche client sera supprimée définitivement. La suppression est bloquée en présence de transactions liées (factures, paiements)."
+"This supplier master record will be removed permanently. Deletion is blocked if it has linked transactions (bills, payments, work orders).","Cette fiche fournisseur sera supprimée définitivement. La suppression est bloquée en présence de transactions liées (factures, paiements, ordres de travaux)."
+To,À
+To Disburse,À décaisser
+To Submit,À soumettre
+To date,Date de fin
+To date (posting date),Date de fin (date de comptabilisation)
+To reimburse (own-pocket),À rembourser (frais personnels)
+To {0},À {0}
+Total Expense (Debit),Total des charges (débit)
+Total Income (Credit),Total des produits (crédit)
+Total advance adjusted,Total des avances ajustées
+Total assets,Total de l’actif
+Total income,Total des produits
+Total liabilities,Total du passif
+Transaction cancelled.,Transaction annulée.
+Type: {0},Type : {0}
+UTR / cheque no.,UTR / n° de chèque
+Unallocated,Non alloué
+Unknown finance section.,Section financière inconnue.
+Unknown report.,Rapport inconnu.
+Unlink,Délier
+Unlink advance?,Délier l’avance ?
+Unlink failed,Échec de la déliaison
+Unlink {0},Délier {0}
+Unpaid,Impayé
+Updated,Mis à jour
+Upload failed.,Échec du téléversement.
+Uploading…,Téléversement…
+View Customer,Voir le client
+View Supplier,Voir le fournisseur
+View receipt,Voir le reçu
+What is it for?,À quoi cela sert-il ?
+What was bought?,Qu’a-t-on acheté ?
+What we have,Ce que nous avons
+What we owe,Ce que nous devons
+What's it for?,À quoi cela sert-il ?
+"Whole company, as it stands right now — this one has no period or project filter.","Toute la société, à l’instant présent — sans filtre de période ni de projet."
+Withdraw,Retirer
+Withdraw failed,Échec du retrait
+Withdraw request?,Retirer la demande ?
+You don't have permission to create a supplier bill.,Vous n’avez pas la permission de créer une facture fournisseur.
+You don't have permission to create an invoice.,Vous n’avez pas la permission de créer une facture.
+You don't have permission to edit this bill.,Vous n’avez pas la permission de modifier cette facture fournisseur.
+You don't have permission to edit this invoice.,Vous n’avez pas la permission de modifier cette facture.
+You haven't logged any expenses.,Vous n’avez enregistré aucune dépense.
+"Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.","Votre compte utilisateur n’est pas lié à un employé, les dépenses ne peuvent donc pas être enregistrées. Demandez à un administrateur de renseigner l’ID utilisateur de l’employé."
+accounts,comptes
+cost of sales,coût des ventes
+due,échéance
+e.g. Block A — RA-4 milestone,p. ex. Bloc A — jalon RA-4
+expenses,dépenses
+have − owe · report →,avoir − devoir · rapport →
+movements,mouvements
+no income in period,aucun produit sur la période
+none overdue,aucun en retard
+overheads,frais généraux
+posted invoices,factures comptabilisées
+retention,retenue de garantie
+set,définir
+to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).,à {0} · enregistre une écriture de journal (Dr Petite caisse / Cr le compte source).
+withheld on sub-bills,retenu sur les factures de sous-traitants
+{0} account,{0} compte
+{0} accounts,{0} comptes
+{0} bill,{0} facture fournisseur
+{0} bills,{0} factures fournisseurs
+{0} d,{0} j
+{0} draft invoice not yet posted,{0} facture en brouillon non comptabilisée
+{0} draft invoices not yet posted,{0} factures en brouillon non comptabilisées
+{0} entries,{0} écritures
+{0} entry,{0} écriture
+{0} expense awaiting submit,{0} dépense en attente de soumission
+{0} expenses awaiting submit,{0} dépenses en attente de soumission
+{0} has {1} in unlinked advance payment,{0} a {1} en paiement d’avance non lié
+{0} has {1} in unlinked advance payments,{0} a {1} en paiements d’avance non liés
+{0} in hand,{0} disponible
+{0} invoice overdue — chase receivables,{0} facture en retard — relancer les créances
+{0} invoices overdue — chase receivables,{0} factures en retard — relancer les créances
+{0} of {1} — {2} ({3}).,{0} sur {1} — {2} ({3}).
+{0} owed,{0} dû
+{0} owed to holder,{0} dû au titulaire
+{0} to {1},{0} à {1}
+{0} transaction,{0} transaction
+{0} transactions,{0} transactions
+{0} → {1},{0} → {1}
+{0}% margin,{0} % de marge
+{0}% of income,{0} % des produits
+— Pick a holder —,— Choisir un titulaire —
+— Pick cost code —,— Choisir un code de coût —
+— link it to this bill to settle the payable.,— liez-le à cette facture fournisseur pour régler la dette.
+— link them to this bill to settle the payable.,— liez-les à cette facture fournisseur pour régler la dette.
+← Prev,← Préc.
+✓ Receipt attached,✓ Reçu joint
+📷 Attach receipt,📷 Joindre un reçu

@@ -12,8 +12,9 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Petty Cash Statement" }];
+const breadcrumbs = [{ label: __("Project Finance"), to: "/project-finance" }, { label: __("Petty Cash Statement") }];
 const route = useRoute();
 const router = useRouter();
 
@@ -23,7 +24,7 @@ pettyCashHolderBalances()
 	.then((r) => (holders.value = r))
 	.catch(() => {});
 const holderOptions = computed(() =>
-	holders.value.map((h) => ({ value: h.employee, label: h.holder, hint: h.balance < 0 ? `${fmtINR(-h.balance)} owed` : `${fmtINR(h.balance)} in hand` })),
+	holders.value.map((h) => ({ value: h.employee, label: h.holder, hint: h.balance < 0 ? __("{0} owed", [fmtINR(-h.balance)]) : __("{0} in hand", [fmtINR(h.balance)]) })),
 );
 const holder = ref(route.query.holder || null);
 const selectedHolder = computed(() => holders.value.find((h) => h.employee === holder.value) || null);
@@ -44,7 +45,7 @@ async function loadStatement() {
 		rows.value = await pettyCashStatement(holder.value);
 	} catch (err) {
 		rows.value = [];
-		showToast(err.message || "Failed to load statement", "error");
+		showToast(err.message || __("Failed to load statement"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -125,20 +126,20 @@ function csvCell(v) {
 function exportCsv() {
 	if (!holder.value) return;
 	const lines = [];
-	lines.push(["Petty Cash Statement"].map(csvCell).join(","));
-	lines.push(["Holder", holderName(holder.value)].map(csvCell).join(","));
-	lines.push(["Period", `${from.value || "Beginning"} to ${to.value || "Today"}`].map(csvCell).join(","));
-	if (projectFilter.value) lines.push(["Project", projectName(projectFilter.value)].map(csvCell).join(","));
-	if (accountFilter.value) lines.push(["Expense account", accountFilter.value].map(csvCell).join(","));
-	if (statusFilter.value) lines.push(["Status", statusFilter.value].map(csvCell).join(","));
-	lines.push(["Generated", new Date().toLocaleString("en-IN")].map(csvCell).join(","));
+	lines.push([__("Petty Cash Statement")].map(csvCell).join(","));
+	lines.push([__("Holder"), holderName(holder.value)].map(csvCell).join(","));
+	lines.push([__("Period"), __("{0} to {1}", [from.value || __("Beginning"), to.value || __("Today")])].map(csvCell).join(","));
+	if (projectFilter.value) lines.push([__("Project"), projectName(projectFilter.value)].map(csvCell).join(","));
+	if (accountFilter.value) lines.push([__("Expense account"), accountFilter.value].map(csvCell).join(","));
+	if (statusFilter.value) lines.push([__("Status"), statusFilter.value].map(csvCell).join(","));
+	lines.push([__("Generated"), new Date().toLocaleString("en-IN")].map(csvCell).join(","));
 	lines.push("");
-	lines.push(["Disbursed (period)", totalIn.value].map(csvCell).join(","));
-	lines.push(["Submitted spend (period)", verifiedOut.value].map(csvCell).join(","));
-	lines.push(["Pending spend (period)", pendingOut.value].map(csvCell).join(","));
-	lines.push(["Balance in hand (all-time)", balanceInHand.value].map(csvCell).join(","));
+	lines.push([__("Disbursed (period)"), totalIn.value].map(csvCell).join(","));
+	lines.push([__("Submitted spend (period)"), verifiedOut.value].map(csvCell).join(","));
+	lines.push([__("Pending spend (period)"), pendingOut.value].map(csvCell).join(","));
+	lines.push([__("Balance in hand (all-time)"), balanceInHand.value].map(csvCell).join(","));
 	lines.push("");
-	lines.push(["Date", "Entry", "Description", "Project", "Expense Account", "Status", "Money In", "Money Out", "Ref"].map(csvCell).join(","));
+	lines.push([__("Date"), __("Entry"), __("Description"), __("Project"), __("Expense Account"), __("Status"), __("Money In"), __("Money Out"), __("Ref")].map(csvCell).join(","));
 	for (const r of filteredRows.value.slice().reverse()) {
 		lines.push([r.date, r.kind, r.description, projectName(r.project), r.account || "", r.status, r.in || "", r.out || "", r.ref].map(csvCell).join(","));
 	}
@@ -152,40 +153,40 @@ function exportCsv() {
 </script>
 
 <template>
-	<DeskPage title="Petty Cash Statement" :breadcrumbs="breadcrumbs" printable>
+	<DeskPage :title="__('Petty Cash Statement')" :breadcrumbs="breadcrumbs" printable>
 		<div class="space-y-4">
 			<!-- Holder picker -->
 			<div class="flex items-end gap-3 flex-wrap">
 				<div class="w-72">
-					<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">Petty cash holder <span class="text-danger-600">*</span></label>
-					<DeskSearchableSelect v-model="holder" :options="holderOptions" placeholder="— Pick a holder —" search-placeholder="Search holders…" />
+					<label class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1">{{ __("Petty cash holder") }} <span class="text-danger-600">*</span></label>
+					<DeskSearchableSelect v-model="holder" :options="holderOptions" :placeholder="__('— Pick a holder —')" :search-placeholder="__('Search holders…')" />
 				</div>
-				<button v-if="holder" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md mb-0.5" @click="exportCsv">⇩ Export CSV</button>
+				<button v-if="holder" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md mb-0.5" @click="exportCsv">⇩ {{ __("Export CSV") }}</button>
 			</div>
 
 			<div v-if="!holder" class="bg-white border border-ink-200 rounded-lg px-4 py-16 text-center text-sm text-ink-500">
-				Pick a petty cash holder to see their personal statement — disbursements received, spend logged, and balance in hand.
+				{{ __("Pick a petty cash holder to see their personal statement — disbursements received, spend logged, and balance in hand.") }}
 			</div>
 
 			<template v-else>
 				<!-- Summary strip -->
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 					<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Disbursed (period)</div>
+						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Disbursed (period)") }}</div>
 						<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(totalIn) }}</div>
 					</div>
 					<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Submitted spend (period)</div>
+						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Submitted spend (period)") }}</div>
 						<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">{{ fmtINR(verifiedOut) }}</div>
 					</div>
 					<div class="bg-white border border-ink-200 px-3 py-2 rounded-md">
-						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Pending spend (period)</div>
+						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Pending spend (period)") }}</div>
 						<div class="text-base font-semibold tabular-nums mt-0.5" :class="pendingOut > 0 ? 'text-warning-700' : 'text-ink-900'">{{ fmtINR(pendingOut) }}</div>
 					</div>
 					<div class="border px-3 py-2 rounded-md" :class="balanceInHand < 0 ? 'bg-danger-50 border-danger-200' : 'bg-brand-50 border-brand-200'">
-						<div class="text-[10px] uppercase tracking-wider font-medium" :class="balanceInHand < 0 ? 'text-danger-700' : 'text-brand-700'">Balance in hand (all-time)</div>
+						<div class="text-[10px] uppercase tracking-wider font-medium" :class="balanceInHand < 0 ? 'text-danger-700' : 'text-brand-700'">{{ __("Balance in hand (all-time)") }}</div>
 						<div class="text-base font-semibold tabular-nums mt-0.5" :class="balanceInHand < 0 ? 'text-danger-700' : 'text-ink-900'">
-							<template v-if="balanceInHand < 0">{{ fmtINR(-balanceInHand) }} owed</template>
+							<template v-if="balanceInHand < 0">{{ __("{0} owed", [fmtINR(-balanceInHand)]) }}</template>
 							<template v-else>{{ fmtINR(balanceInHand) }}</template>
 						</div>
 					</div>
@@ -194,25 +195,25 @@ function exportCsv() {
 				<!-- Filters -->
 				<div class="flex items-center gap-2 flex-wrap">
 					<div class="flex items-center gap-1.5">
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">From</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("From") }}</span>
 						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("To") }}</span>
 						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
 					</div>
-					<div class="w-48"><DeskSearchableSelect v-model="projectFilter" :options="projectOptions" placeholder="All projects" search-placeholder="Search projects…" allow-clear /></div>
-					<div class="w-52"><DeskSearchableSelect v-model="accountFilter" :options="accountOptions" placeholder="All expense accounts" search-placeholder="Search accounts…" allow-clear /></div>
+					<div class="w-48"><DeskSearchableSelect v-model="projectFilter" :options="projectOptions" :placeholder="__('All projects')" :search-placeholder="__('Search projects…')" allow-clear /></div>
+					<div class="w-52"><DeskSearchableSelect v-model="accountFilter" :options="accountOptions" :placeholder="__('All expense accounts')" :search-placeholder="__('Search accounts…')" allow-clear /></div>
 					<select v-model="statusFilter" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
-						<option value="">All statuses</option>
-						<option value="Draft">Draft</option>
-						<option value="Submitted">Submitted</option>
+						<option value="">{{ __("All statuses") }}</option>
+						<option value="Draft">{{ __("Draft") }}</option>
+						<option value="Submitted">{{ __("Submitted") }}</option>
 					</select>
 					<select v-model="entryType" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
-						<option value="">All entries</option>
-						<option value="disbursement">Disbursements only</option>
-						<option value="expense">Expenses only</option>
+						<option value="">{{ __("All entries") }}</option>
+						<option value="disbursement">{{ __("Disbursements only") }}</option>
+						<option value="expense">{{ __("Expenses only") }}</option>
 					</select>
-					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">Clear filters</button>
-					<span class="text-[11px] text-ink-400 ml-auto">{{ filteredRows.length }} entr{{ filteredRows.length === 1 ? "y" : "ies" }}</span>
+					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">{{ __("Clear filters") }}</button>
+					<span class="text-[11px] text-ink-400 ml-auto">{{ filteredRows.length === 1 ? __("{0} entry", [filteredRows.length]) : __("{0} entries", [filteredRows.length]) }}</span>
 				</div>
 
 				<!-- Ledger -->
@@ -220,14 +221,14 @@ function exportCsv() {
 					<table v-if="filteredRows.length" class="w-full text-xs">
 						<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
 							<tr>
-								<th class="text-left px-4 py-2">Date</th>
-								<th class="text-left px-4 py-2">Entry</th>
-								<th class="text-left px-4 py-2">Description</th>
-								<th class="text-left px-4 py-2">Project</th>
-								<th class="text-left px-4 py-2">Expense account</th>
-								<th class="text-left px-4 py-2">Status</th>
-								<th class="text-right px-4 py-2">In</th>
-								<th class="text-right px-4 py-2">Out</th>
+								<th class="text-left px-4 py-2">{{ __("Date") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Entry") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Description") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Project") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Expense account") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Status") }}</th>
+								<th class="text-right px-4 py-2">{{ __("In") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Out") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -243,11 +244,10 @@ function exportCsv() {
 							</tr>
 						</tbody>
 					</table>
-					<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "No entries match the filters." }}</div>
+					<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">{{ loading ? __("Loading…") : __("No entries match the filters.") }}</div>
 				</section>
 				<p class="text-[11px] text-ink-400">
-					Disbursement rows hide automatically when an expense-only filter (account / status) is applied. Balance in hand is all-time; the other totals respect the filters.
-					A negative balance is money the holder fronted — owed back to them, cleared on the next disbursement.
+					{{ __("Disbursement rows hide automatically when an expense-only filter (account / status) is applied. Balance in hand is all-time; the other totals respect the filters. A negative balance is money the holder fronted — owed back to them, cleared on the next disbursement.") }}
 				</p>
 			</template>
 		</div>

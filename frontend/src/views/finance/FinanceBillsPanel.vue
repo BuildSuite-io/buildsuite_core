@@ -27,8 +27,9 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Bills" }];
+const breadcrumbs = [{ label: __("Project Finance"), to: "/project-finance" }, { label: __("Bills") }];
 const router = useRouter();
 const { canCreate } = usePermissions();
 // "+ New bill" opens a chooser for a Supplier bill (Purchase Invoice) or a Subcontractor
@@ -53,7 +54,7 @@ async function load() {
 			)
 			.catch(() => {});
 	} catch (err) {
-		showToast(err.message || "Failed to load bills", "error");
+		showToast(err.message || __("Failed to load bills"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -120,10 +121,10 @@ watch([rows, pageSize], () => {
 function aging(row) {
 	if (!(Number(row.outstanding) > 0.01) || !row.due_date) return null;
 	const d = Math.floor((Date.now() - new Date(row.due_date).getTime()) / 86400000);
-	if (d <= 0) return { label: "Not due", cls: "bg-ink-100 text-ink-500" };
+	if (d <= 0) return { label: __("Not due"), cls: "bg-ink-100 text-ink-500" };
 	const bucket = d <= 30 ? "0–30" : d <= 60 ? "31–60" : d <= 90 ? "61–90" : "90+";
 	const cls = d <= 30 ? "bg-warning-50 text-warning-700" : "bg-danger-50 text-danger-700";
-	return { label: `${bucket} d`, cls };
+	return { label: __("{0} d", [bucket]), cls };
 }
 
 function openDetail(row) {
@@ -189,10 +190,10 @@ async function openPay(row) {
 }
 async function savePay() {
 	const amt = Number(pay.amount) || 0;
-	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(pay.row.outstanding) + 0.01)
-		return showToast(`Can't exceed the outstanding ${fmtINR(pay.row.outstanding)}.`, "error");
-	if (!pay.pay_from) return showToast("Pick the account to pay from.", "error");
+		return showToast(__("Can't exceed the outstanding {0}.", [fmtINR(pay.row.outstanding)]), "error");
+	if (!pay.pay_from) return showToast(__("Pick the account to pay from."), "error");
 	pay.saving = true;
 	try {
 		await recordSupplierBillPayment({
@@ -205,9 +206,9 @@ async function savePay() {
 		});
 		pay.open = false;
 		load();
-		showToast("Payment made.");
+		showToast(__("Payment made."));
 	} catch (err) {
-		showToast(err.message || "Payment failed", "error");
+		showToast(err.message || __("Payment failed"), "error");
 	} finally {
 		pay.saving = false;
 	}
@@ -231,8 +232,8 @@ const advancePartyOptions = computed(() => {
 	const subs = [];
 	for (const s of parties.value) {
 		const opt = { value: s.name, label: s.supplier_name || s.name };
-		if (s.supplier_type === "Subcontractor") subs.push({ ...opt, group: "Subcontractors" });
-		else suppliers.push({ ...opt, group: "Suppliers" });
+		if (s.supplier_type === "Subcontractor") subs.push({ ...opt, group: __("Subcontractors") });
+		else suppliers.push({ ...opt, group: __("Suppliers") });
 	}
 	return [...suppliers, ...subs];
 });
@@ -264,9 +265,9 @@ async function openAdvance() {
 	});
 }
 async function saveAdvance() {
-	if (!adv.supplier) return showToast("Pick a party.", "error");
-	if (!(Number(adv.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
-	if (!adv.pay_from) return showToast("Pick the account to pay from.", "error");
+	if (!adv.supplier) return showToast(__("Pick a party."), "error");
+	if (!(Number(adv.amount) > 0)) return showToast(__("Enter an amount greater than zero."), "error");
+	if (!adv.pay_from) return showToast(__("Pick the account to pay from."), "error");
 	adv.saving = true;
 	try {
 		await recordSupplierAdvance({
@@ -279,9 +280,9 @@ async function saveAdvance() {
 		});
 		adv.open = false;
 		load();
-		showToast("Advance recorded.");
+		showToast(__("Advance recorded."));
 	} catch (err) {
-		showToast(err.message || "Failed to record advance", "error");
+		showToast(err.message || __("Failed to record advance"), "error");
 	} finally {
 		adv.saving = false;
 	}
@@ -289,7 +290,7 @@ async function saveAdvance() {
 </script>
 
 <template>
-	<DeskPage title="Bills" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Bills')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<div class="flex items-center gap-2">
 				<button
@@ -298,10 +299,10 @@ async function saveAdvance() {
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="openAdvance"
 				>
-					Record advance
+					{{ __("Record advance") }}
 				</button>
 				<button v-if="canNewBill" type="button" class="desk-save-btn" @click="newOpen = true">
-					+ New bill
+					{{ __("+ New bill") }}
 				</button>
 			</div>
 		</template>
@@ -309,19 +310,19 @@ async function saveAdvance() {
 		<div class="space-y-4">
 			<div class="flex items-center gap-6 text-sm">
 				<div class="flex items-center gap-1.5">
-					<span class="text-ink-500">Payable</span>
+					<span class="text-ink-500">{{ __("Payable") }}</span>
 					<span class="font-semibold text-ink-900 tabular-nums">{{
 						fmtINR(summary.outstanding)
 					}}</span>
 				</div>
 				<div v-if="summary.retention > 0" class="flex items-center gap-1.5">
-					<span class="text-ink-500">Retention held</span>
+					<span class="text-ink-500">{{ __("Retention held") }}</span>
 					<span class="font-semibold text-warning-700 tabular-nums">{{
 						fmtINR(summary.retention)
 					}}</span>
 				</div>
 				<div v-if="summary.advances > 0" class="flex items-center gap-1.5">
-					<span class="text-ink-500">Advances paid</span>
+					<span class="text-ink-500">{{ __("Advances paid") }}</span>
 					<span class="font-semibold text-info-700 tabular-nums">{{
 						fmtINR(summary.advances)
 					}}</span>
@@ -332,25 +333,25 @@ async function saveAdvance() {
 				<input
 					v-model="search"
 					type="text"
-					placeholder="Search bill, party, project…"
+					:placeholder="__('Search bill, party, project…')"
 					class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-64 max-w-full"
 				/>
 				<select
 					v-model="typeFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">All types</option>
-					<option value="supplier">Supplier</option>
-					<option value="subcontractor">Subcontractor</option>
+					<option value="">{{ __("All types") }}</option>
+					<option value="supplier">{{ __("Supplier") }}</option>
+					<option value="subcontractor">{{ __("Subcontractor") }}</option>
 				</select>
 				<select
 					v-model="statusFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">All statuses</option>
-					<option>Unpaid</option>
-					<option>Partly Paid</option>
-					<option>Paid</option>
+					<option value="">{{ __("All statuses") }}</option>
+					<option value="Unpaid">{{ __("Unpaid") }}</option>
+					<option value="Partly Paid">{{ __("Partly Paid") }}</option>
+					<option value="Paid">{{ __("Paid") }}</option>
 				</select>
 				<div class="w-44">
 					<DeskLinkPicker
@@ -358,19 +359,19 @@ async function saveAdvance() {
 						doctype="Project"
 						label-field="project_name"
 						value-field="name"
-						placeholder="All projects"
+						:placeholder="__('All projects')"
 					/>
 				</div>
 				<input
 					v-model="fromDate"
 					type="date"
-					title="From date"
+					:title="__('From date')"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				/>
 				<input
 					v-model="toDate"
 					type="date"
-					title="To date"
+					:title="__('To date')"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				/>
 				<button
@@ -379,11 +380,11 @@ async function saveAdvance() {
 					class="text-[11px] text-danger-600 hover:underline"
 					@click="clearFilters"
 				>
-					Clear filters
+					{{ __("Clear filters") }}
 				</button>
-				<span class="text-[11px] text-ink-400 ml-auto"
-					>{{ rows.length }} bill{{ rows.length === 1 ? "" : "s" }}</span
-				>
+				<span class="text-[11px] text-ink-400 ml-auto">{{
+					rows.length === 1 ? __("{0} bill", [rows.length]) : __("{0} bills", [rows.length])
+				}}</span>
 			</div>
 
 			<section class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
@@ -392,16 +393,16 @@ async function saveAdvance() {
 						class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200"
 					>
 						<tr>
-							<th class="text-left px-3 py-2">Bill</th>
-							<th class="text-left px-3 py-2">Party</th>
-							<th class="text-left px-3 py-2">Project</th>
-							<th class="text-left px-3 py-2">Date</th>
-							<th class="text-left px-3 py-2">Due</th>
-							<th class="text-left px-3 py-2">Aging</th>
-							<th class="text-right px-3 py-2">Total</th>
-							<th class="text-right px-3 py-2">Outstanding</th>
-							<th class="text-right px-3 py-2">Retention</th>
-							<th class="text-left px-3 py-2">Status</th>
+							<th class="text-left px-3 py-2">{{ __("Bill") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Party") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Project") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Due") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Aging") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Total") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Outstanding") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Retention") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 							<th class="px-3 py-2"></th>
 						</tr>
 					</thead>
@@ -420,7 +421,7 @@ async function saveAdvance() {
 									<span
 										v-if="r.kind === 'subcontractor'"
 										class="text-[9px] px-1.5 py-0.5 bg-info-50 text-info-700 rounded-full uppercase tracking-wider whitespace-nowrap"
-										>Subcontractor</span
+										>{{ __("Subcontractor") }}</span
 									>
 								</div>
 							</td>
@@ -469,14 +470,14 @@ async function saveAdvance() {
 									class="text-[11px] px-2 py-0.5 border border-brand-300 bg-brand-50 text-brand-700 rounded"
 									@click.stop="openPay(r)"
 								>
-									Pay
+									{{ __("Pay") }}
 								</button>
 							</td>
 						</tr>
 					</tbody>
 				</table>
 				<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">
-					{{ loading ? "Loading…" : "No bills yet." }}
+					{{ loading ? __("Loading…") : __("No bills yet.") }}
 				</div>
 			</section>
 
@@ -485,12 +486,13 @@ async function saveAdvance() {
 				v-if="totalPages > 1"
 				class="flex items-center justify-between text-xs text-ink-500"
 			>
-				<span
-					>Showing {{ (page - 1) * pageSize + 1 }}–{{
-						Math.min(page * pageSize, rows.length)
-					}}
-					of {{ rows.length }}</span
-				>
+				<span>{{
+					__("Showing {0}–{1} of {2}", [
+						(page - 1) * pageSize + 1,
+						Math.min(page * pageSize, rows.length),
+						rows.length,
+					])
+				}}</span>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
@@ -498,16 +500,16 @@ async function saveAdvance() {
 						:disabled="page <= 1"
 						@click="page--"
 					>
-						← Prev
+						{{ __("← Prev") }}
 					</button>
-					<span>Page {{ page }} / {{ totalPages }}</span>
+					<span>{{ __("Page {0} / {1}", [page, totalPages]) }}</span>
 					<button
 						type="button"
 						class="px-2 py-1 border border-ink-200 rounded-md disabled:opacity-40 hover:bg-ink-50"
 						:disabled="page >= totalPages"
 						@click="page++"
 					>
-						Next →
+						{{ __("Next →") }}
 					</button>
 				</div>
 			</div>
@@ -526,7 +528,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">New bill</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("New bill") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -542,10 +544,11 @@ async function saveAdvance() {
 						class="w-full text-left border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 rounded-lg px-4 py-3 transition-colors"
 						@click="newSupplierBill"
 					>
-						<div class="text-sm font-medium text-ink-900">Supplier bill</div>
+						<div class="text-sm font-medium text-ink-900">{{ __("Supplier bill") }}</div>
 						<div class="text-[11px] text-ink-500 mt-0.5">
-							A direct purchase from a supplier (materials, services) — an ERPNext
-							Purchase Invoice.
+							{{
+								__("A direct purchase from a supplier (materials, services) — an ERPNext Purchase Invoice.")
+							}}
 						</div>
 					</button>
 					<button
@@ -554,10 +557,11 @@ async function saveAdvance() {
 						class="w-full text-left border border-ink-200 hover:border-brand-400 hover:bg-brand-50/40 rounded-lg px-4 py-3 transition-colors"
 						@click="newSubcontractorBill"
 					>
-						<div class="text-sm font-medium text-ink-900">Subcontractor bill</div>
+						<div class="text-sm font-medium text-ink-900">{{ __("Subcontractor bill") }}</div>
 						<div class="text-[11px] text-ink-500 mt-0.5">
-							An RA / work-done bill against a Subcontractor Work Order (with
-							retention).
+							{{
+								__("An RA / work-done bill against a Subcontractor Work Order (with retention).")
+							}}
 						</div>
 					</button>
 				</div>
@@ -577,7 +581,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Pay bill</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Pay bill") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -597,23 +601,23 @@ async function saveAdvance() {
 						>.
 					</div>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Amount" required
+						<DeskField :label="__('Amount')" required
 							><DeskInput v-model.number="pay.amount" type="number" min="0"
 						/></DeskField>
-						<DeskField label="Date"
+						<DeskField :label="__('Date')"
 							><DeskInput v-model="pay.date" type="date"
 						/></DeskField>
 					</div>
-					<DeskField label="Pay from" required>
+					<DeskField :label="__('Pay from')" required>
 						<DeskSelect v-model="pay.pay_from"
-							><option value="" disabled>Bank / Cash account…</option>
+							><option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in payAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option></DeskSelect
 						>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Mode of payment"
+						<DeskField :label="__('Mode of payment')"
 							><DeskSelect v-model="pay.mode_of_payment"
 								><option value="">—</option>
 								<option v-for="m in payModes" :key="m" :value="m">
@@ -621,8 +625,8 @@ async function saveAdvance() {
 								</option></DeskSelect
 							></DeskField
 						>
-						<DeskField label="Reference no."
-							><DeskInput v-model="pay.reference_no" placeholder="UTR / cheque no."
+						<DeskField :label="__('Reference no.')"
+							><DeskInput v-model="pay.reference_no" :placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -642,7 +646,7 @@ async function saveAdvance() {
 						:disabled="pay.saving"
 						@click="savePay"
 					>
-						{{ pay.saving ? "Paying…" : "Record payment" }}
+						{{ pay.saving ? __("Paying…") : __("Record payment") }}
 					</button>
 				</footer>
 			</div>
@@ -661,7 +665,7 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Record advance</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Record advance") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -672,39 +676,40 @@ async function saveAdvance() {
 				</header>
 				<div class="px-4 py-4 space-y-3">
 					<p class="text-[11px] text-ink-500">
-						Money paid to a supplier or subcontractor before (or without) a bill — it
-						stays on the party's account until a later bill draws it down.
+						{{
+							__("Money paid to a supplier or subcontractor before (or without) a bill — it stays on the party's account until a later bill draws it down.")
+						}}
 					</p>
-					<DeskField label="Party" required>
+					<DeskField :label="__('Party')" required>
 						<DeskSearchableSelect
 							v-model="adv.supplier"
 							:options="advancePartyOptions"
-							placeholder="Pick a supplier or subcontractor…"
-							search-placeholder="Search parties…"
+							:placeholder="__('Pick a supplier or subcontractor…')"
+							:search-placeholder="__('Search parties…')"
 						/>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Amount" required
+						<DeskField :label="__('Amount')" required
 							><DeskInput
 								v-model.number="adv.amount"
 								type="number"
 								min="0"
 								placeholder="0"
 						/></DeskField>
-						<DeskField label="Date"
+						<DeskField :label="__('Date')"
 							><DeskInput v-model="adv.date" type="date"
 						/></DeskField>
 					</div>
-					<DeskField label="Pay from" required>
+					<DeskField :label="__('Pay from')" required>
 						<DeskSelect v-model="adv.pay_from"
-							><option value="" disabled>Bank / Cash account…</option>
+							><option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in payAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option></DeskSelect
 						>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Mode of payment"
+						<DeskField :label="__('Mode of payment')"
 							><DeskSelect v-model="adv.mode_of_payment"
 								><option value="">—</option>
 								<option v-for="m in payModes" :key="m" :value="m">
@@ -712,8 +717,8 @@ async function saveAdvance() {
 								</option></DeskSelect
 							></DeskField
 						>
-						<DeskField label="Reference no."
-							><DeskInput v-model="adv.reference_no" placeholder="UTR / cheque no."
+						<DeskField :label="__('Reference no.')"
+							><DeskInput v-model="adv.reference_no" :placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -733,7 +738,7 @@ async function saveAdvance() {
 						:disabled="adv.saving"
 						@click="saveAdvance"
 					>
-						{{ adv.saving ? "Recording…" : "Record advance" }}
+						{{ adv.saving ? __("Recording…") : __("Record advance") }}
 					</button>
 				</footer>
 			</div>
