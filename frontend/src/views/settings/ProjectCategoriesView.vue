@@ -5,6 +5,7 @@
 import { onMounted } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 
@@ -12,17 +13,17 @@ const store = useDataStore();
 const router = useRouter();
 
 const columns = [
-	{ key: "category_name", label: "Category" },
-	{ key: "work_package_label", label: "Work Package label" },
-	{ key: "work_package_label_plural", label: "Plural" },
-	{ key: "sort_order", label: "Sort", align: "right" },
-	{ key: "enabled", label: "Enabled" },
+	{ key: "category_name", label: __("Category") },
+	{ key: "work_package_label", label: __("Work Package label") },
+	{ key: "work_package_label_plural", label: __("Plural") },
+	{ key: "sort_order", label: __("Sort"), align: "right" },
+	{ key: "enabled", label: __("Enabled") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Project Categories" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Project Categories") },
 ];
 
 function onRowClick(row) {
@@ -35,10 +36,10 @@ onMounted(() => {
 </script>
 
 <template>
-	<DeskPage title="Project Categories" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Project Categories')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink to="/settings/project-categories/new" class="desk-save-btn">
-				+ New Category
+				+ {{ __("New Category") }}
 			</RouterLink>
 		</template>
 
@@ -56,7 +57,7 @@ onMounted(() => {
 			cache-key="buildsuite-project-categories"
 			row-key="name"
 			initial-order-by="sort_order asc"
-			search-placeholder="Search categories…"
+			:search-placeholder="__('Search categories…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-enabled="{ row }">
@@ -66,7 +67,7 @@ onMounted(() => {
 						row.enabled ? 'bg-success-50 text-success-700' : 'bg-ink-100 text-ink-500'
 					"
 					style="border-radius: 9999px"
-					>{{ row.enabled ? "Enabled" : "Disabled" }}</span
+					>{{ row.enabled ? __("Enabled") : __("Disabled") }}</span
 				>
 			</template>
 		</DocTypeListView>

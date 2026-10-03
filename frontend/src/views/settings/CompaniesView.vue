@@ -7,6 +7,7 @@
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -34,21 +35,25 @@ const items = computed(() => {
 });
 
 const columns = [
-	{ key: "id", label: "ID" },
-	{ key: "name", label: "Company" },
-	{ key: "description", label: "Description" },
-	{ key: "projects", label: "Projects", align: "right" },
-	{ key: "active", label: "Active" },
+	{ key: "id", label: __("ID") },
+	{ key: "name", label: __("Company") },
+	{ key: "description", label: __("Description") },
+	{ key: "projects", label: __("Projects"), align: "right" },
+	{ key: "active", label: __("Active") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Companies" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Companies") },
 ];
 
 const subtitle = computed(
-	() => `${items.value.length} of ${store.companies.length} · multi-company per CLAUDE.md §14`
+	() =>
+		__("{0} of {1} · multi-company per CLAUDE.md §14", [
+			items.value.length,
+			store.companies.length,
+		])
 );
 
 function onRowClick(row) {
@@ -57,10 +62,10 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Company" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Company')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink v-if="store.isAdmin" to="/settings/companies/new" class="desk-save-btn"
-				>+ New Company</RouterLink
+				>+ {{ __("New Company") }}</RouterLink
 			>
 		</template>
 
@@ -71,8 +76,9 @@ function onRowClick(row) {
 			class="mb-3 px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700"
 			style="border-radius: 2px"
 		>
-			Read-only view. Creating / editing / deleting companies requires the System Manager
-			role.
+			{{
+				__("Read-only view. Creating / editing / deleting companies requires the System Manager role.")
+			}}
 		</div>
 
 		<DeskList
@@ -80,7 +86,7 @@ function onRowClick(row) {
 			:rows="items"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search by id, name, description…"
+			:search-placeholder="__('Search by id, name, description…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-id="{ row }">
@@ -120,16 +126,16 @@ function onRowClick(row) {
 					v-if="row.id === store.activeCompany"
 					class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 font-medium"
 					style="border-radius: 2px"
-					>Active</span
+					>{{ __("Active") }}</span
 				>
 				<span v-else class="text-[10px] text-ink-400">—</span>
 			</template>
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					No companies match this search.
+					{{ __("No companies match this search.") }}
 					<RouterLink v-if="store.isAdmin" to="/settings/companies/new" class="desk-link"
-						>Create a company →</RouterLink
+						>{{ __("Create a company →") }}</RouterLink
 					>
 				</div>
 			</template>

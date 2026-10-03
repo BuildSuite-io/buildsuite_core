@@ -12,6 +12,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { getDoctypeListConfig, getDoctypePermissions } from "@/data/workspaceSettingApi";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ doctype: { type: String, required: true } });
 const router = useRouter();
@@ -34,7 +35,7 @@ async function load() {
 		for (const f of config.value.filters || []) filterState[f.fieldname] = "";
 		perms.value = await getDoctypePermissions(props.doctype).catch(() => perms.value);
 	} catch (err) {
-		error.value = err.message || "This record type isn't available here.";
+		error.value = err.message || __("This record type isn't available here.");
 	} finally {
 		loading.value = false;
 	}
@@ -66,7 +67,7 @@ function selectOptions(f) {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
+	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: config.value?.label || props.doctype },
 ]);
 
@@ -82,14 +83,14 @@ function onRow(row) {
 	<DeskPage :title="config?.label || doctype" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<button v-if="perms.create" type="button" class="desk-save-btn" @click="onNew">
-				+ New
+				+ {{ __("New") }}
 			</button>
 		</template>
 
 		<div v-if="error" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-6 text-sm text-warning-700">
 			{{ error }}
 		</div>
-		<div v-else-if="loading" class="text-sm text-ink-500 py-10 text-center">Loading…</div>
+		<div v-else-if="loading" class="text-sm text-ink-500 py-10 text-center">{{ __("Loading…") }}</div>
 		<DocTypeListView
 			v-else-if="config"
 			:doctype="doctype"
@@ -99,7 +100,7 @@ function onRow(row) {
 			:filter-values="filterState"
 			:filter-field-map="filterFieldMap"
 			:cache-key="doctype"
-			:search-placeholder="`Search ${config.label}…`"
+			:search-placeholder="__('Search {0}…', [config.label])"
 			@row-click="onRow"
 		>
 			<template v-if="filters.length" #filter-chips>
@@ -114,7 +115,7 @@ function onRow(row) {
 						class="!w-44"
 						:doctype="f.options || 'DocType'"
 						:page-length="10"
-						:placeholder="`Any`"
+						:placeholder="__('Any')"
 					/>
 					<!-- Select -->
 					<DeskSelect
@@ -122,7 +123,7 @@ function onRow(row) {
 						v-model="filterState[f.fieldname]"
 						class="!w-40"
 					>
-						<option value="">Any</option>
+						<option value="">{{ __("Any") }}</option>
 						<option v-for="o in selectOptions(f)" :key="o" :value="o">{{ o }}</option>
 					</DeskSelect>
 					<!-- Check -->
@@ -131,9 +132,9 @@ function onRow(row) {
 						v-model="filterState[f.fieldname]"
 						class="!w-28"
 					>
-						<option value="">Any</option>
-						<option value="1">Yes</option>
-						<option value="0">No</option>
+						<option value="">{{ __("Any") }}</option>
+						<option value="1">{{ __("Yes") }}</option>
+						<option value="0">{{ __("No") }}</option>
 					</DeskSelect>
 					<!-- Date / Datetime -->
 					<DeskInput
@@ -147,7 +148,7 @@ function onRow(row) {
 						v-else
 						v-model="filterState[f.fieldname]"
 						class="!w-40"
-						:placeholder="`Filter ${f.label.toLowerCase()}…`"
+						:placeholder="__('Filter {0}…', [f.label.toLowerCase()])"
 					/>
 				</div>
 				<button
@@ -156,7 +157,7 @@ function onRow(row) {
 					class="text-[11px] text-ink-500 hover:text-ink-800 underline"
 					@click="clearFilters"
 				>
-					Clear
+					{{ __("Clear") }}
 				</button>
 			</template>
 		</DocTypeListView>

@@ -12,6 +12,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -42,7 +43,7 @@ const machineryOptions = computed(() =>
 	(machineryRes.data || []).map((m) => ({
 		value: m.name,
 		label: m.machinery_name,
-		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
+		hint: [m.machinery_type, __(m.ownership)].filter(Boolean).join(" · "),
 	}))
 );
 // Machinery is hash-named, so show its label instead — like projectName() below.
@@ -106,7 +107,7 @@ function cancelEdit() {
 }
 function validate() {
 	const e = {};
-	if (!form.value.machine) e.machine = "Machine is required.";
+	if (!form.value.machine) e.machine = __("Machine is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -128,7 +129,7 @@ async function saveEdit() {
 		await resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update usage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update usage"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -136,9 +137,9 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: "Delete usage entry?",
-		message: "This usage log entry will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete usage entry?"),
+		message: __("This usage log entry will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -146,14 +147,14 @@ async function onDelete() {
 		await adapter.remove("Machinery Usage", props.id);
 		router.push("/machinery-usage");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete usage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete usage"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery Usage", to: "/machinery-usage" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery Usage"), to: "/machinery-usage" },
 	{ label: doc.value ? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}` : props.id },
 ]);
 </script>
@@ -173,7 +174,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && canDelete('machineryUsage')"
@@ -182,7 +183,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="editing"
@@ -191,7 +192,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing && canEdit('machineryUsage')"
@@ -200,43 +201,43 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Usage" :cols="3">
-				<DeskField label="Machine">
+			<DeskSection :title="__('Usage')" :cols="3">
+				<DeskField :label="__('Machine')">
 					<DeskLink :to="`/machinery/${doc.machine}`">{{ machineName(doc.machine) }}</DeskLink>
 				</DeskField>
-				<DeskField label="Project"
+				<DeskField :label="__('Project')"
 					><div class="text-sm text-ink-700">
 						{{ projectName(doc.project) || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Task"
+				<DeskField :label="__('Task')"
 					><div class="text-sm text-ink-700">{{ doc.task || "—" }}</div></DeskField
 				>
-				<DeskField label="Date"
+				<DeskField :label="__('Date')"
 					><div class="text-sm text-ink-800">{{ fmtDate(doc.date) }}</div></DeskField
 				>
-				<DeskField label="Quantity"
+				<DeskField :label="__('Quantity')"
 					><div class="text-sm text-ink-800 tabular-nums">
 						{{ doc.quantity }} {{ doc.unit }}
 					</div></DeskField
 				>
-				<DeskField label="Rate"
+				<DeskField :label="__('Rate')"
 					><div class="text-sm text-ink-800 tabular-nums">
 						{{ fmtINR(doc.rate) }}
 					</div></DeskField
 				>
-				<DeskField label="Fuel cost"
+				<DeskField :label="__('Fuel cost')"
 					><div class="text-sm text-ink-800 tabular-nums">
 						{{ fmtINR(doc.fuel_cost) }}
 					</div></DeskField
 				>
-				<DeskField label="Total"
+				<DeskField :label="__('Total')"
 					><div class="text-sm text-ink-900 font-medium tabular-nums">
 						{{ viewTotal }}
 					</div></DeskField
@@ -246,55 +247,55 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection title="Usage" :cols="3">
-				<DeskField label="Machine" required :error="errors.machine">
+			<DeskSection :title="__('Usage')" :cols="3">
+				<DeskField :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
 						:options="machineryOptions"
-						placeholder="Pick a machine…"
-						search-placeholder="Search machine…"
+						:placeholder="__('Pick a machine…')"
+						:search-placeholder="__('Search machine…')"
 					/>
 				</DeskField>
-				<DeskField label="Project">
+				<DeskField :label="__('Project')">
 					<DeskSearchableSelect
 						v-model="form.project"
 						:options="projectOptions"
-						placeholder="Pick a project…"
-						search-placeholder="Search project…"
+						:placeholder="__('Pick a project…')"
+						:search-placeholder="__('Search project…')"
 						allow-clear
 					/>
 				</DeskField>
-				<DeskField label="Task">
+				<DeskField :label="__('Task')">
 					<DeskLinkPicker
 						v-model="form.task"
 						doctype="Task"
 						label-field="subject"
 						value-field="name"
 						:filters="form.project ? [['project', '=', form.project]] : []"
-						placeholder="Task…"
+						:placeholder="__('Task…')"
 					/>
 				</DeskField>
 
-				<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
-				<DeskField label="Quantity"
+				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Quantity')"
 					><DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5"
 				/></DeskField>
-				<DeskField label="Unit">
+				<DeskField :label="__('Unit')">
 					<DeskSelect v-model="form.unit"
-						><option>Days</option>
-						<option>Hours</option></DeskSelect
+						><option value="Days">{{ __("Days") }}</option>
+						<option value="Hours">{{ __("Hours") }}</option></DeskSelect
 					>
 				</DeskField>
 
-				<DeskField label="Rate (₹)"
+				<DeskField :label="__('Rate (₹)')"
 					><DeskInput v-model.number="form.rate" type="number" min="0"
 				/></DeskField>
-				<DeskField label="Fuel cost (₹)"
+				<DeskField :label="__('Fuel cost (₹)')"
 					><DeskInput v-model.number="form.fuel_cost" type="number" min="0"
 				/></DeskField>
 			</DeskSection>
 		</div>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading usage…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading usage…") }}</div>
 </template>

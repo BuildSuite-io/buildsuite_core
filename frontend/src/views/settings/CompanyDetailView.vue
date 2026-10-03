@@ -24,6 +24,7 @@ import {
 	getCompanyProjects,
 } from "@/data/companyApi";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -31,14 +32,14 @@ const store = useDataStore();
 const confirmDialog = useConfirm();
 
 const COLOR_OPTIONS = [
-	{ value: "bg-brand-600", label: "Green" },
-	{ value: "bg-blue-600", label: "Blue" },
-	{ value: "bg-violet-600", label: "Violet" },
-	{ value: "bg-amber-600", label: "Amber" },
-	{ value: "bg-emerald-600", label: "Emerald" },
-	{ value: "bg-rose-600", label: "Rose" },
-	{ value: "bg-cyan-600", label: "Cyan" },
-	{ value: "bg-ink-600", label: "Slate" },
+	{ value: "bg-brand-600", label: __("Green") },
+	{ value: "bg-blue-600", label: __("Blue") },
+	{ value: "bg-violet-600", label: __("Violet") },
+	{ value: "bg-amber-600", label: __("Amber") },
+	{ value: "bg-emerald-600", label: __("Emerald") },
+	{ value: "bg-rose-600", label: __("Rose") },
+	{ value: "bg-cyan-600", label: __("Cyan") },
+	{ value: "bg-ink-600", label: __("Slate") },
 ];
 
 const company = computed(() => store.companyById(props.id));
@@ -87,7 +88,7 @@ async function saveEdit() {
 		});
 		editing.value = false;
 	} catch (err) {
-		showToast(err.message || "Could not save the company.", "error");
+		showToast(err.message || __("Could not save the company."), "error");
 	}
 }
 function onPrimary() {
@@ -101,9 +102,12 @@ async function deleteCompany() {
 	// which can't see every real link and would give a false "safe to delete".
 	if (
 		!(await confirmDialog({
-			title: "Delete company",
-			message: `Delete company "${company.value.name}"?\n\nThis is permanent and only succeeds if no record still references this company.`,
-			confirmLabel: "Delete",
+			title: __("Delete company"),
+			message: __(
+				'Delete company "{0}"?\n\nThis is permanent and only succeeds if no record still references this company.',
+				[company.value.name]
+			),
+			confirmLabel: __("Delete"),
 			destructive: true,
 		}))
 	)
@@ -113,21 +117,24 @@ async function deleteCompany() {
 		router.push("/settings/companies");
 	} else {
 		showToast(
-			`Can't delete "${company.value.name}" — records still reference it. Reassign or remove them first.`,
+			__(
+				'Can\'t delete "{0}" — records still reference it. Reassign or remove them first.',
+				[company.value.name]
+			),
 			"error"
 		);
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Companies", to: "/settings/companies" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Companies"), to: "/settings/companies" },
 ]);
 
 const titleStatus = computed(() => {
 	const out = [];
-	if (company.value && company.value.id === store.activeCompany) out.push("Active");
+	if (company.value && company.value.id === store.activeCompany) out.push(__("Active"));
 	return out;
 });
 
@@ -177,7 +184,7 @@ async function loadBrand() {
 		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
 		brandForm.value = { ...brandLoaded.value };
 	} catch (err) {
-		showToast(err.message || "Failed to load branding", "error");
+		showToast(err.message || __("Failed to load branding"), "error");
 	} finally {
 		brand.value.loading = false;
 	}
@@ -190,17 +197,17 @@ async function onLogoSelected(e) {
 	e.target.value = ""; // allow re-selecting the same file
 	if (!file) return;
 	if (!file.type.startsWith("image/")) {
-		showToast("Please choose an image file.", "error");
+		showToast(__("Please choose an image file."), "error");
 		return;
 	}
 	brand.value.uploading = true;
 	try {
 		const url = await uploadCompanyLogo(file);
-		if (!url) throw new Error("Upload returned no file URL.");
+		if (!url) throw new Error(__("Upload returned no file URL."));
 		brandForm.value.logo = url;
-		showToast("Logo uploaded — Save branding to apply.", "success");
+		showToast(__("Logo uploaded — Save branding to apply."), "success");
 	} catch (err) {
-		showToast(err.message || "Upload failed", "error");
+		showToast(err.message || __("Upload failed"), "error");
 	} finally {
 		brand.value.uploading = false;
 	}
@@ -219,9 +226,9 @@ async function saveBrand() {
 		});
 		brandLoaded.value = { logo: b.logo || "", subtext: b.letter_head_subtext || "" };
 		brandForm.value = { ...brandLoaded.value };
-		showToast("Branding saved — this company's letter head updated.", "success");
+		showToast(__("Branding saved — this company's letter head updated."), "success");
 	} catch (err) {
-		showToast(err.message || "Save failed", "error");
+		showToast(err.message || __("Save failed"), "error");
 	} finally {
 		brand.value.saving = false;
 	}
@@ -251,21 +258,24 @@ watch(
 			<template #action-bar>
 				<DeskActionBar
 					v-if="store.isAdmin"
-					:save-label="editing ? 'Save' : 'Edit'"
+					:save-label="editing ? __('Save') : __('Edit')"
 					:show-cancel="editing"
-					cancel-label="Cancel"
+					:cancel-label="__('Cancel')"
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				>
 					<template #left>
 						<span v-if="linkedProjectsTotal" class="text-[11px] text-ink-500">
-							{{ linkedProjectsTotal }} project{{
-								linkedProjectsTotal === 1 ? "" : "s"
+							{{
+								linkedProjectsTotal === 1
+									? __("{0} project references this company", [linkedProjectsTotal])
+									: __("{0} projects reference this company", [
+											linkedProjectsTotal,
+										])
 							}}
-							reference this company
 						</span>
 						<span v-else class="text-[11px] text-ink-400"
-							>No projects reference this company · safe to delete</span
+							>{{ __("No projects reference this company · safe to delete") }}</span
 						>
 					</template>
 					<template #menu>
@@ -275,7 +285,7 @@ watch(
 							style="border-radius: 2px; color: #b91c1c"
 							@click="deleteCompany"
 						>
-							Delete
+							{{ __("Delete") }}
 						</button>
 					</template>
 				</DeskActionBar>
@@ -284,46 +294,46 @@ watch(
 					v-else
 					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
 				>
-					Read-only view. Editing requires the System Manager role.
+					{{ __("Read-only view. Editing requires the System Manager role.") }}
 				</div>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
 				<!-- Identity -->
-				<DeskSection title="Identity" v-if="!editing">
-					<DeskField label="Name">
+				<DeskSection :title="__('Identity')" v-if="!editing">
+					<DeskField :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ company.name }}</div>
 					</DeskField>
-					<DeskField label="Short name" hint="Topbar pill text.">
+					<DeskField :label="__('Short name')" :hint="__('Topbar pill text.')">
 						<div class="text-sm text-ink-900 py-1">{{ company.shortName }}</div>
 					</DeskField>
-					<DeskField label="ID" hint="Stable identifier — locked after create.">
+					<DeskField :label="__('ID')" :hint="__('Stable identifier — locked after create.')">
 						<div class="text-sm text-ink-500 py-1 font-mono">{{ company.id }}</div>
 					</DeskField>
-					<DeskField label="Description">
+					<DeskField :label="__('Description')">
 						<div class="text-sm text-ink-700 py-1">
 							{{ company.description || "—" }}
 						</div>
 					</DeskField>
 				</DeskSection>
-				<DeskSection title="Identity" v-else>
-					<DeskField label="Name" required>
+				<DeskSection :title="__('Identity')" v-else>
+					<DeskField :label="__('Name')" required>
 						<DeskInput v-model="form.name" />
 					</DeskField>
-					<DeskField label="Short name" required hint="Topbar pill text.">
+					<DeskField :label="__('Short name')" required :hint="__('Topbar pill text.')">
 						<DeskInput v-model="form.shortName" />
 					</DeskField>
 					<DeskField
-						label="ID"
-						hint="Locked after create per Frappe Naming Series convention."
+						:label="__('ID')"
+						:hint="__('Locked after create per Frappe Naming Series convention.')"
 					>
 						<DeskInput :model-value="company.id" disabled class="font-mono" />
 					</DeskField>
 				</DeskSection>
 
 				<!-- Brand colour -->
-				<DeskSection title="Brand colour" v-if="!editing" :cols="2">
-					<DeskField label="Pill colour">
+				<DeskSection :title="__('Brand colour')" v-if="!editing" :cols="2">
+					<DeskField :label="__('Pill colour')">
 						<div class="flex items-center gap-2 py-1">
 							<span
 								:class="company.color"
@@ -335,12 +345,12 @@ watch(
 					</DeskField>
 				</DeskSection>
 				<!-- Branding & Letter Head — real Company fields; drives print letter heads -->
-				<DeskSection title="Branding & Letter Head">
+				<DeskSection :title="__('Branding & Letter Head')">
 					<div class="md:col-span-2 space-y-4">
 						<p class="text-[11px] text-ink-500">
 							Logo and subtext for
 							<b>{{ brandCompanyName || company.name }}</b>, materialised into the
-							<span class="font-mono">{{ letterHeadName || "letter head" }}</span>
+							<span class="font-mono">{{ letterHeadName || __("letter head") }}</span>
 							that fronts every print of this company's documents (Work Order, Purchase
 							Order, Invoice…). No logo? The letter head shows the company's initials.
 						</p>
@@ -353,10 +363,10 @@ watch(
 								<img
 									v-if="brandForm.logo"
 									:src="brandForm.logo"
-									alt="Company logo"
+									:alt="__('Company logo')"
 									class="max-w-full max-h-full object-contain"
 								/>
-								<span v-else class="text-[10px] text-ink-400">No logo</span>
+								<span v-else class="text-[10px] text-ink-400">{{ __("No logo") }}</span>
 							</div>
 							<div v-if="store.isAdmin" class="flex flex-col gap-2">
 								<button
@@ -367,10 +377,10 @@ watch(
 								>
 									{{
 										brand.uploading
-											? "Uploading…"
+											? __("Uploading…")
 											: brandForm.logo
-												? "Replace logo"
-												: "Upload logo"
+												? __("Replace logo")
+												: __("Upload logo")
 									}}
 								</button>
 								<button
@@ -379,7 +389,7 @@ watch(
 									class="text-xs px-3 py-1.5 rounded border border-ink-200 hover:bg-ink-50"
 									@click="removeLogo"
 								>
-									Remove
+									{{ __("Remove") }}
 								</button>
 								<input
 									ref="brandFileInput"
@@ -394,23 +404,25 @@ watch(
 						<!-- Subtext -->
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
-								Letter head subtext
+								{{ __("Letter head subtext") }}
 							</div>
 							<DeskTextarea
 								v-model="brandForm.subtext"
 								:rows="3"
 								:disabled="!store.isAdmin"
-								placeholder="Registered address · GSTIN · phone / email"
+								:placeholder="__('Registered address · GSTIN · phone / email')"
 							/>
 							<p class="text-[11px] text-ink-500 mt-1">
-								Shown under the company name in the letter head; line breaks preserved.
+								{{
+									__("Shown under the company name in the letter head; line breaks preserved.")
+								}}
 							</p>
 						</div>
 
 						<!-- Live preview -->
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
-								Preview
+								{{ __("Preview") }}
 							</div>
 							<div class="border border-ink-200 rounded p-4 bg-white">
 								<div class="flex items-center gap-3">
@@ -450,17 +462,17 @@ watch(
 								:disabled="!brandDirty || brand.saving"
 								@click="saveBrand"
 							>
-								{{ brand.saving ? "Saving…" : "Save branding" }}
+								{{ brand.saving ? __("Saving…") : __("Save branding") }}
 							</button>
 							<span v-if="brandDirty" class="text-[11px] text-warning-700"
-								>Unsaved branding changes</span
+								>{{ __("Unsaved branding changes") }}</span
 							>
 						</div>
 					</div>
 				</DeskSection>
 
 				<!-- Linked projects (always visible — informs delete safety) -->
-				<DeskSection title="Linked projects">
+				<DeskSection :title="__('Linked projects')">
 					<div class="md:col-span-2">
 						<div
 							v-if="linkedProjects.length"
@@ -471,9 +483,9 @@ watch(
 								class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 								style="grid-template-columns: 140px 1fr 100px"
 							>
-								<div class="px-3 py-1.5">Code</div>
-								<div class="px-3 py-1.5">Project</div>
-								<div class="px-3 py-1.5">Status</div>
+								<div class="px-3 py-1.5">{{ __("Code") }}</div>
+								<div class="px-3 py-1.5">{{ __("Project") }}</div>
+								<div class="px-3 py-1.5">{{ __("Status") }}</div>
 							</div>
 							<div
 								v-for="p in linkedProjects"
@@ -493,16 +505,21 @@ watch(
 								v-if="linkedProjectsTotal > linkedProjects.length"
 								class="px-3 py-1.5 text-[11px] text-ink-500 bg-ink-50 border-t border-ink-200"
 							>
-								Showing {{ linkedProjects.length }} of {{ linkedProjectsTotal }} — open the
-								Projects list to see them all.
+								{{
+									__("Showing {0} of {1} — open the Projects list to see them all.", [
+										linkedProjects.length,
+										linkedProjectsTotal,
+									])
+								}}
 							</div>
 						</div>
 						<div v-else class="text-xs text-ink-400 italic">
-							No projects reference this company. Safe to delete.
+							{{ __("No projects reference this company. Safe to delete.") }}
 						</div>
 						<div class="text-[11px] text-ink-500 mt-2">
-							Delete is refused while any project links to this company
-							(Frappe-standard LinkExistsError pattern).
+							{{
+								__("Delete is refused while any project links to this company (Frappe-standard LinkExistsError pattern).")
+							}}
 						</div>
 					</div>
 				</DeskSection>
@@ -511,7 +528,7 @@ watch(
 	</DeskPage>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
-		Company not found ·
-		<RouterLink to="/settings/companies" class="desk-link">Back to list →</RouterLink>
+		{{ __("Company not found ·") }}
+		<RouterLink to="/settings/companies" class="desk-link">{{ __("Back to list →") }}</RouterLink>
 	</div>
 </template>
