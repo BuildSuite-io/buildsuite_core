@@ -30,6 +30,7 @@ import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
@@ -440,7 +441,7 @@ async function openActualsDrill({ groupCode = null, itemCode = null, title, subt
 			loading: false,
 		};
 	} catch (err) {
-		showToast(err.message || "Failed to load actuals", "error");
+		showToast(err.message || __("Failed to load actuals"), "error");
 		actualsDrill.value = null;
 	}
 }
@@ -449,7 +450,7 @@ function openGroupActuals(group) {
 	openActualsDrill({
 		groupCode: group.code,
 		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
-		subtitle: "Group actual — contributing documents",
+		subtitle: __("Group actual — contributing documents"),
 	});
 }
 function openItemActuals(item) {
@@ -457,7 +458,7 @@ function openItemActuals(item) {
 	openActualsDrill({
 		itemCode: item.code,
 		title: `${item.code} · ${(item.description || "").slice(0, 60)}`,
-		subtitle: "Item actual — contributing documents",
+		subtitle: __("Item actual — contributing documents"),
 	});
 }
 function closeActualsDrill() {
@@ -522,23 +523,23 @@ async function recalculate() {
 	try {
 		await boqApi.recalculateActuals(boq.value.id);
 		reloadTree();
-		showToast("Actuals recalculated");
+		showToast(__("Actuals recalculated"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to recalculate", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to recalculate"), "error");
 	}
 }
 async function submit() {
 	const ok = await confirmDialog({
-		title: "Submit for approval",
-		message: `Submit BOQ ${boq.value.id} for approval?`,
-		confirmLabel: "Submit",
+		title: __("Submit for approval"),
+		message: __("Submit BOQ {0} for approval?", [boq.value.id]),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	try {
 		await boqApi.submitBoq(boq.value.id);
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to submit", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to submit"), "error");
 	}
 }
 async function approve() {
@@ -547,16 +548,16 @@ async function approve() {
 	);
 	void others;
 	const ok = await confirmDialog({
-		title: "Approve revision",
-		message: `Approve revision ${boq.value.revision}? Any other approved revision on this project is superseded.`,
-		confirmLabel: "Approve",
+		title: __("Approve revision"),
+		message: __("Approve revision {0}? Any other approved revision on this project is superseded.", [boq.value.revision]),
+		confirmLabel: __("Approve"),
 	});
 	if (!ok) return;
 	try {
 		await boqApi.approveBoq(boq.value.id);
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to approve", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to approve"), "error");
 	}
 }
 // Revision popup (mirrors the prototype's S134 modal — a styled dialog with an
@@ -585,14 +586,14 @@ async function submitRevision() {
 		revisionModal.value = null;
 		if (name) router.push(`/boq/${name}`);
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to create revision", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to create revision"), "error");
 	}
 }
 async function removeBoq() {
 	const ok = await confirmDialog({
-		title: "Delete BOQ",
-		message: `Delete BOQ ${boq.value.id} and all its rows? This cannot be undone.`,
-		confirmLabel: "Delete",
+		title: __("Delete BOQ"),
+		message: __("Delete BOQ {0} and all its rows? This cannot be undone.", [boq.value.id]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -600,20 +601,20 @@ async function removeBoq() {
 		await adapter.remove("BOQ", boq.value.id);
 		router.push("/boq");
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to delete BOQ", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete BOQ"), "error");
 	}
 }
 async function explode(item) {
 	if (!item.assemblyId) {
-		showToast("Link an Assembly to this item first.", "error");
+		showToast(__("Link an Assembly to this item first."), "error");
 		return;
 	}
 	try {
 		await boqApi.explodeItem(item.id);
 		reloadTree();
-		showToast("Exploded from assembly");
+		showToast(__("Exploded from assembly"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to explode", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to explode"), "error");
 	}
 }
 
@@ -697,9 +698,9 @@ async function doImport() {
 		await boqApi.importTemplate(boq.value.id, importForm.value.template);
 		importModal.value = false;
 		reloadTree();
-		showToast("Template imported");
+		showToast(__("Template imported"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to import template", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to import template"), "error");
 	}
 }
 
@@ -731,9 +732,9 @@ async function doClone() {
 		cloneModal.value = false;
 		if (res?.boq && res.boq !== boq.value.id) router.push(`/boq/${res.boq}`);
 		else reloadTree();
-		showToast("Cloned");
+		showToast(__("Cloned"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to clone", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to clone"), "error");
 	}
 }
 
@@ -789,7 +790,7 @@ function nextItemCode(groupId) {
 
 async function saveGroup() {
 	if (!groupForm.value.name.trim()) {
-		showToast("Name is required.", "error");
+		showToast(__("Name is required."), "error");
 		return;
 	}
 	const code = groupForm.value.code.trim() || nextGroupCode();
@@ -803,21 +804,21 @@ async function saveGroup() {
 		groupModal.value = null;
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to save group", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to save group"), "error");
 	}
 }
 async function deleteGroupConfirm(g) {
 	const items = boqItemsByGroup(g.id);
-	const msg = items.length
-		? `Delete group "${g.code} — ${g.name}" with ${items.length} item${
-				items.length === 1 ? "" : "s"
-		  } and their sub-items?`
-		: `Delete group "${g.code} — ${g.name}"?`;
+	const msg = !items.length
+			? __('Delete group "{0} — {1}"?', [g.code, g.name])
+			: items.length === 1
+			? __('Delete group "{0} — {1}" with {2} item and their sub-items?', [g.code, g.name, items.length])
+			: __('Delete group "{0} — {1}" with {2} items and their sub-items?', [g.code, g.name, items.length]);
 	if (
 		!(await confirmDialog({
-			title: "Delete group",
+			title: __("Delete group"),
 			message: msg,
-			confirmLabel: "Delete",
+			confirmLabel: __("Delete"),
 			destructive: true,
 		}))
 	)
@@ -826,7 +827,7 @@ async function deleteGroupConfirm(g) {
 		await adapter.remove("BOQ Group", g.id);
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to delete group", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete group"), "error");
 	}
 }
 
@@ -910,7 +911,7 @@ function openEditItem(item) {
 async function saveItem() {
 	const f = itemForm.value;
 	if (!f.description.trim() || !f.unit) {
-		showToast("Description and unit are required.", "error");
+		showToast(__("Description and unit are required."), "error");
 		return;
 	}
 	const groupId =
@@ -944,7 +945,7 @@ async function saveItem() {
 					await boqApi.explodeItem(created.name);
 				} catch (e) {
 					showToast(
-						parseFrappeError(e).summary ?? "Item saved, but explode failed",
+						parseFrappeError(e).summary ?? __("Item saved, but explode failed"),
 						"error"
 					);
 				}
@@ -956,21 +957,21 @@ async function saveItem() {
 			reloadTree();
 		}
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to save item", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to save item"), "error");
 	}
 }
 async function deleteItemConfirm(item) {
 	const subs = boqSubItemsByItem(item.id);
-	const msg = subs.length
-		? `Delete item "${item.code} — ${item.description}" with ${subs.length} sub-item${
-				subs.length === 1 ? "" : "s"
-		  }?`
-		: `Delete item "${item.code} — ${item.description}"?`;
+	const msg = !subs.length
+			? __('Delete item "{0} — {1}"?', [item.code, item.description])
+			: subs.length === 1
+			? __('Delete item "{0} — {1}" with {2} sub-item?', [item.code, item.description, subs.length])
+			: __('Delete item "{0} — {1}" with {2} sub-items?', [item.code, item.description, subs.length]);
 	if (
 		!(await confirmDialog({
-			title: "Delete item",
+			title: __("Delete item"),
 			message: msg,
-			confirmLabel: "Delete",
+			confirmLabel: __("Delete"),
 			destructive: true,
 		}))
 	)
@@ -979,7 +980,7 @@ async function deleteItemConfirm(item) {
 		await adapter.remove("BOQ Item", item.id);
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to delete item", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete item"), "error");
 	}
 }
 
@@ -1034,7 +1035,7 @@ const subItemAmountPreview = computed(
 async function saveSubItem() {
 	const f = subItemForm.value;
 	if (!f.description.trim() || Number(f.qtyPerUnit) <= 0) {
-		showToast("Description and a non-zero quantity per unit are required.", "error");
+		showToast(__("Description and a non-zero quantity per unit are required."), "error");
 		return;
 	}
 	const payload = {
@@ -1056,15 +1057,15 @@ async function saveSubItem() {
 		subItemModal.value = null;
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to save sub-item", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to save sub-item"), "error");
 	}
 }
 async function deleteSubItemConfirm(si) {
 	if (
 		!(await confirmDialog({
-			title: "Delete sub-item",
-			message: `Delete sub-item "${si.description}"?`,
-			confirmLabel: "Delete",
+			title: __("Delete sub-item"),
+			message: __('Delete sub-item "{0}"?', [si.description]),
+			confirmLabel: __("Delete"),
 			destructive: true,
 		}))
 	)
@@ -1073,7 +1074,7 @@ async function deleteSubItemConfirm(si) {
 		await adapter.remove("BOQ Sub Item", si.id);
 		reloadTree();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to delete sub-item", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete sub-item"), "error");
 	}
 }
 
@@ -1082,7 +1083,7 @@ const showPrimary = computed(
 	() => (canSubmit.value || canApprove.value) && canSubmitCap("boq")
 );
 const primaryLabel = computed(() =>
-	canSubmit.value ? "Submit for approval" : canApprove.value ? "Approve" : ""
+	canSubmit.value ? __("Submit for approval") : canApprove.value ? __("Approve") : ""
 );
 function primaryAction() {
 	if (canSubmit.value) submit();
@@ -1096,7 +1097,7 @@ const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.re
 const breadcrumbs = computed(() => {
 	const out = [
 		{ label: "BuildSuite Core", to: "/" },
-		{ label: "BOQ", to: "/boq" },
+		{ label: __("BOQ"), to: "/boq" },
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
@@ -1109,7 +1110,7 @@ const breadcrumbs = computed(() => {
 		<div class="text-sm">
 			BOQ <span class="font-mono">{{ id }}</span> not found.
 		</div>
-		<DeskLink to="/boq" class="text-sm mt-2 inline-block">← Back to BOQ list</DeskLink>
+		<DeskLink to="/boq" class="text-sm mt-2 inline-block">{{ __("← Back to BOQ list") }}</DeskLink>
 	</div>
 
 	<DeskPage
@@ -1129,7 +1130,7 @@ const breadcrumbs = computed(() => {
 				>
 					<template #left>
 						<span v-if="sourceSco" class="text-xs text-ink-500">
-							from SCO
+							{{ __("from SCO") }}
 							<DeskLink to="/sco" class="font-mono">{{ sourceSco.id }}</DeskLink>
 						</span>
 					</template>
@@ -1147,8 +1148,8 @@ const breadcrumbs = computed(() => {
 						>
 							{{
 								compareMode
-									? "✓ Comparing R" + baseBoq.revision
-									: "Compare to R" + baseBoq.revision
+									? __("✓ Comparing R{0}", [baseBoq.revision])
+									: __("Compare to R{0}", [baseBoq.revision])
 							}}
 						</button>
 
@@ -1159,7 +1160,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px"
 							@click="recalculate"
 						>
-							↻ Recalc actuals
+							↻ {{ __("Recalc actuals") }}
 						</button>
 
 						<button
@@ -1169,7 +1170,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px"
 							@click="openRevisionModal"
 						>
-							+ Revision
+							+ {{ __("Revision") }}
 						</button>
 
 						<button
@@ -1178,7 +1179,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px"
 							@click="exportCsv"
 						>
-							⬇ Export CSV
+							⬇ {{ __("Export CSV") }}
 						</button>
 
 						<button
@@ -1188,7 +1189,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px"
 							@click="openImport"
 						>
-							Import Template…
+							{{ __("Import Template…") }}
 						</button>
 
 						<button
@@ -1198,7 +1199,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px"
 							@click="openClone"
 						>
-							Clone…
+							{{ __("Clone…") }}
 						</button>
 
 						<button
@@ -1208,7 +1209,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 2px; color: #b91c1c"
 							@click="removeBoq"
 						>
-							Delete
+							{{ __("Delete") }}
 						</button>
 					</template>
 				</DeskActionBar>
@@ -1218,31 +1219,31 @@ const breadcrumbs = computed(() => {
 			<div class="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Revision
+						{{ __("Revision") }}
 					</div>
 					<div class="text-base font-semibold text-ink-900 mt-0.5">
 						R{{ boq.revision }}
 					</div>
 					<div v-if="baseBoq" class="text-[10px] text-ink-500 mt-0.5">
-						from
+						{{ __("from") }}
 						<DeskLink :to="`/boq/${baseBoq.id}`" class="font-mono"
 							>R{{ baseBoq.revision }}</DeskLink
 						>
 					</div>
-					<div v-else class="text-[10px] text-ink-400 mt-0.5">original</div>
+					<div v-else class="text-[10px] text-ink-400 mt-0.5">{{ __("original") }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Groups · Items
+						{{ __("Groups · Items") }}
 					</div>
 					<div class="text-base font-semibold text-ink-900 mt-0.5">
 						{{ groups.length }} · {{ totals.itemCount }}
 					</div>
-					<div class="text-[10px] text-ink-500 mt-0.5">across this BOQ</div>
+					<div class="text-[10px] text-ink-500 mt-0.5">{{ __("across this BOQ") }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Planned
+						{{ __("Planned") }}
 					</div>
 					<div class="text-base font-semibold text-ink-900 mt-0.5 tabular-nums">
 						{{ fmtCompactINR(totals.planned) }}
@@ -1253,18 +1254,18 @@ const breadcrumbs = computed(() => {
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Actual
+						{{ __("Actual") }}
 					</div>
 					<div class="text-base font-semibold text-ink-700 mt-0.5 tabular-nums">
 						{{ fmtCompactINR(totals.actual) }}
 					</div>
 					<div class="text-[10px] text-ink-500 mt-0.5">
-						{{ pctOf(totals.actual, totals.planned).toFixed(1) }}% of plan
+						{{ pctOf(totals.actual, totals.planned).toFixed(1) }}% {{ __("of plan") }}
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Variance
+						{{ __("Variance") }}
 					</div>
 					<div
 						class="text-base font-semibold mt-0.5 tabular-nums"
@@ -1273,12 +1274,12 @@ const breadcrumbs = computed(() => {
 						{{ totals.variancePct > 0 ? "+" : "" }}{{ totals.variancePct.toFixed(1) }}%
 					</div>
 					<div class="text-[10px] text-ink-500 mt-0.5 tabular-nums">
-						{{ fmtCompactINR(totals.variance) }} delta
+						{{ fmtCompactINR(totals.variance) }} {{ __("delta") }}
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Prepared
+						{{ __("Prepared") }}
 					</div>
 					<div class="flex items-center gap-1 mt-1">
 						<UserAvatar :user-id="boq.preparedBy" size="xs" />
@@ -1292,18 +1293,18 @@ const breadcrumbs = computed(() => {
 							fmtDate(boq.approvedDate)
 						}}</span>
 					</div>
-					<div v-else class="text-[10px] text-ink-400 mt-1">awaiting approval</div>
+					<div v-else class="text-[10px] text-ink-400 mt-1">{{ __("awaiting approval") }}</div>
 				</div>
 			</div>
 
 			<!-- Toolbar above the tree -->
 			<div class="flex items-center gap-2 mb-1.5">
 				<button type="button" @click="expandAll" class="desk-link text-xs">
-					Expand all
+					{{ __("Expand all") }}
 				</button>
 				<span class="text-ink-300 text-xs">·</span>
 				<button type="button" @click="collapseAll" class="desk-link text-xs">
-					Collapse all
+					{{ __("Collapse all") }}
 				</button>
 				<!-- Tree search — filters to matching paths + auto-expands -->
 				<div class="relative ml-2">
@@ -1322,8 +1323,8 @@ const breadcrumbs = computed(() => {
 					<input
 						v-model="search"
 						type="text"
-						aria-label="Search BOQ tree by code or description"
-						placeholder="Search code / description…"
+						:aria-label="__('Search BOQ tree by code or description')"
+						:placeholder="__('Search code / description…')"
 						class="desk-input !py-1 !text-xs"
 						style="width: 240px; padding-left: 26px; padding-right: 22px"
 					/>
@@ -1343,24 +1344,25 @@ const breadcrumbs = computed(() => {
 				>
 					{{
 						filterState?.matchCount
-							? filterState.matchCount +
-							  (filterState.matchCount === 1 ? " match" : " matches")
-							: "No matches"
+							? (filterState.matchCount === 1
+								? __("{0} match", [filterState.matchCount])
+								: __("{0} matches", [filterState.matchCount]))
+							: __("No matches")
 					}}
 				</span>
 				<div v-if="compareMode && baseBoq" class="ml-2 text-[11px] text-ink-500">
-					Δ vs R{{ baseBoq.revision }} shown on each item row
+					{{ __("Δ vs R{0} shown on each item row", [baseBoq.revision]) }}
 				</div>
 				<div class="ml-auto flex items-center gap-2">
 					<span v-if="!isEditable" class="text-[11px] text-ink-400 italic">
-						{{ boq.status }} — read-only · use
+						{{ __(boq.status) }} — read-only · use
 						<button
 							v-if="canCreate('boq')"
 							type="button"
 							@click="createRevision"
 							class="desk-link"
 						>
-							+ Revision
+							+ {{ __("Revision") }}
 						</button>
 						to make changes
 					</span>
@@ -1370,7 +1372,7 @@ const breadcrumbs = computed(() => {
 						class="desk-save-btn"
 						@click="openAddGroup"
 					>
-						+ Add Group
+						+ {{ __("Add Group") }}
 					</button>
 				</div>
 			</div>
@@ -1384,18 +1386,18 @@ const breadcrumbs = computed(() => {
 					:style="treeGridStyle"
 				>
 					<div></div>
-					<div class="px-3 py-2">Code</div>
-					<div class="px-3 py-2">Description</div>
-					<div class="px-3 py-2">Unit</div>
-					<div class="px-3 py-2 text-right">Plan Qty</div>
-					<div class="px-3 py-2 text-right">Rate (₹)</div>
-					<div class="px-3 py-2 text-right">Planned</div>
-					<div class="px-3 py-2 text-right">Committed</div>
-					<div class="px-3 py-2 text-right">Actual</div>
-					<div class="px-3 py-2 text-right">Variance</div>
-					<div class="px-3 py-2">WP</div>
-					<div class="px-3 py-2 text-center">Task</div>
-					<div class="px-3 py-2">Cost Head</div>
+					<div class="px-3 py-2">{{ __("Code") }}</div>
+					<div class="px-3 py-2">{{ __("Description") }}</div>
+					<div class="px-3 py-2">{{ __("Unit") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Plan Qty") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Rate") }} (₹)</div>
+					<div class="px-3 py-2 text-right">{{ __("Planned") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Committed") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Actual") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Variance") }}</div>
+					<div class="px-3 py-2">{{ __("WP") }}</div>
+					<div class="px-3 py-2 text-center">{{ __("Task") }}</div>
+					<div class="px-3 py-2">{{ __("Cost Head") }}</div>
 				</div>
 
 				<template v-for="g in visibleGroupsList" :key="g.id">
@@ -1420,7 +1422,7 @@ const breadcrumbs = computed(() => {
 						<div></div>
 						<div></div>
 						<div class="px-3 py-2 text-right text-[11px] text-ink-500">
-							{{ groupTotals(g.id).count }} items
+							{{ groupTotals(g.id).count }} {{ __("items") }}
 						</div>
 						<div
 							class="px-3 py-2 text-right tabular-nums text-sm font-medium text-ink-900"
@@ -1429,7 +1431,7 @@ const breadcrumbs = computed(() => {
 						</div>
 						<div
 							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
-							:title="`Open subcontractor work orders mapped to cost code ${g.code}`"
+							:title="__('Open subcontractor work orders mapped to cost code {0}', [g.code])"
 						>
 							{{ fmtCompactINR(groupCommitted(g)) }}
 						</div>
@@ -1438,7 +1440,7 @@ const breadcrumbs = computed(() => {
 								<button
 									type="button"
 									class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
-									:title="`Actual for ${g.code} — click to see the source documents`"
+									:title="__('Actual for {0} — click to see the source documents', [g.code])"
 									@click.stop="openGroupActuals(g)"
 								>
 									{{ fmtCompactINR(groupActual(g)) }}
@@ -1448,8 +1450,7 @@ const breadcrumbs = computed(() => {
 									v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
 									class="pointer-events-none absolute right-0 bottom-full mb-1 hidden group-hover/cov:block z-30 whitespace-nowrap bg-ink-900 text-white text-[10px] px-2 py-1 rounded shadow-lg"
 								>
-									{{ fmtCompactINR(groupCoverage(g).itemCoded) }} of
-									{{ fmtCompactINR(groupCoverage(g).actual) }} at item level
+									{{ __("{0} of {1} at item level", [fmtCompactINR(groupCoverage(g).itemCoded), fmtCompactINR(groupCoverage(g).actual)]) }}
 								</span>
 							</span>
 							<span v-else class="text-ink-300">—</span>
@@ -1488,7 +1489,7 @@ const breadcrumbs = computed(() => {
 								type="button"
 								@click.stop="openEditGroup(g)"
 								class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
-								title="Edit group"
+								:title="__('Edit group')"
 							>
 								<svg
 									class="w-3.5 h-3.5"
@@ -1506,7 +1507,7 @@ const breadcrumbs = computed(() => {
 								type="button"
 								@click.stop="deleteGroupConfirm(g)"
 								class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
-								title="Delete group"
+								:title="__('Delete group')"
 							>
 								<svg
 									class="w-3.5 h-3.5"
@@ -1545,7 +1546,7 @@ const breadcrumbs = computed(() => {
 										type="button"
 										@click.stop="explode(item)"
 										class="px-1.5 py-0.5 text-xs text-brand-700 hover:bg-brand-50"
-										title="Explode from assembly into sub-items"
+										:title="__('Explode from assembly into sub-items')"
 									>
 										⚡
 									</button>
@@ -1553,7 +1554,7 @@ const breadcrumbs = computed(() => {
 										type="button"
 										@click.stop="openEditItem(item)"
 										class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
-										title="Edit item"
+										:title="__('Edit item')"
 									>
 										<svg
 											class="w-3.5 h-3.5"
@@ -1571,7 +1572,7 @@ const breadcrumbs = computed(() => {
 										type="button"
 										@click.stop="deleteItemConfirm(item)"
 										class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
-										title="Delete item"
+										:title="__('Delete item')"
 									>
 										<svg
 											class="w-3.5 h-3.5"
@@ -1772,7 +1773,7 @@ const breadcrumbs = computed(() => {
 									</div>
 									<div></div>
 									<div class="px-3 py-1 text-right text-[10px] text-ink-400">
-										per {{ item.unit }}
+										{{ __("per") }} {{ item.unit }}
 									</div>
 									<div></div>
 									<div></div>
@@ -1789,7 +1790,7 @@ const breadcrumbs = computed(() => {
 											type="button"
 											@click.stop="openEditSubItem(si, item)"
 											class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
-											title="Edit sub-item"
+											:title="__('Edit sub-item')"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -1807,7 +1808,7 @@ const breadcrumbs = computed(() => {
 											type="button"
 											@click.stop="deleteSubItemConfirm(si)"
 											class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
-											title="Delete sub-item"
+											:title="__('Delete sub-item')"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -1831,7 +1832,7 @@ const breadcrumbs = computed(() => {
 									<div></div>
 									<div></div>
 									<div class="px-3 py-1 pl-10">
-										No rate analysis recorded for this item.
+										{{ __("No rate analysis recorded for this item.") }}
 									</div>
 									<div></div>
 									<div></div>
@@ -1857,7 +1858,7 @@ const breadcrumbs = computed(() => {
 									<div
 										class="px-3 py-1 pl-10 text-[11px] text-brand-700 font-medium"
 									>
-										+ Add sub-item to {{ item.code }}
+										+ {{ __("Add sub-item to {0}", [item.code]) }}
 									</div>
 									<div></div>
 									<div></div>
@@ -1883,7 +1884,7 @@ const breadcrumbs = computed(() => {
 							<div></div>
 							<div></div>
 							<div class="px-3 py-1.5 text-xs text-brand-700 font-medium">
-								+ Add item to {{ g.code }} — {{ g.name }}
+								+ {{ __("Add item to {0} — {1}", [g.code, g.name]) }}
 							</div>
 							<div></div>
 							<div></div>
@@ -1900,14 +1901,14 @@ const breadcrumbs = computed(() => {
 				</template>
 
 				<div v-if="!groups.length" class="px-4 py-12 text-center text-sm text-ink-400">
-					This BOQ has no groups yet.
+					{{ __("This BOQ has no groups yet.") }}
 					<button
 						v-if="isEditable && canEdit('boq')"
 						type="button"
 						class="desk-link ml-1"
 						@click="openAddGroup"
 					>
-						+ Add the first group
+						+ {{ __("Add the first group") }}
 					</button>
 				</div>
 			</div>
@@ -1925,13 +1926,13 @@ const breadcrumbs = computed(() => {
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
 						<h2 class="text-sm font-semibold text-ink-900">
-							{{ groupModal.mode === "add" ? "New group" : "Edit group" }}
+							{{ groupModal.mode === "add" ? __("New group") : __("Edit group") }}
 						</h2>
 						<button
 							type="button"
 							@click="groupModal = null"
 							class="ml-auto text-ink-400 hover:text-ink-900"
-							aria-label="Close"
+							:aria-label="__('Close')"
 						>
 							<svg
 								class="w-4 h-4"
@@ -1948,14 +1949,14 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<div class="grid grid-cols-3 gap-3">
-							<DeskField label="Code" hint="Leave blank to auto-generate (A, B, C…)">
-								<DeskInput v-model="groupForm.code" placeholder="Auto" />
+							<DeskField :label="__('Code')" :hint="__('Leave blank to auto-generate (A, B, C…)')">
+								<DeskInput v-model="groupForm.code" :placeholder="__('Auto')" />
 							</DeskField>
 							<div class="col-span-2">
-								<DeskField label="Name" required>
+								<DeskField :label="__('Name')" required>
 									<DeskInput
 										v-model="groupForm.name"
-										placeholder="e.g. Civil Works — RCC"
+										:placeholder="__('e.g. Civil Works — RCC')"
 									/>
 								</DeskField>
 							</div>
@@ -1969,10 +1970,10 @@ const breadcrumbs = computed(() => {
 							@click="groupModal = null"
 							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button v-if="canEdit('boq')" type="button" @click="saveGroup" class="desk-save-btn">
-							{{ groupModal.mode === "add" ? "Create group" : "Save changes" }}
+							{{ groupModal.mode === "add" ? __("Create group") : __("Save changes") }}
 						</button>
 					</div>
 				</div>
@@ -1991,13 +1992,13 @@ const breadcrumbs = computed(() => {
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
 						<h2 class="text-sm font-semibold text-ink-900">
-							{{ itemModal.mode === "add" ? "New item" : "Edit item" }}
+							{{ itemModal.mode === "add" ? __("New item") : __("Edit item") }}
 						</h2>
 						<button
 							type="button"
 							@click="itemModal = null"
 							class="ml-auto text-ink-400 hover:text-ink-900"
-							aria-label="Close"
+							:aria-label="__('Close')"
 						>
 							<svg
 								class="w-4 h-4"
@@ -2014,8 +2015,8 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<DeskField
-							label="Source — Assembly"
-							hint="Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line."
+							:label="__('Source — Assembly')"
+							:hint="__('Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.')"
 						>
 							<DeskLinkPicker
 								v-model="itemForm.assemblyId"
@@ -2023,48 +2024,48 @@ const breadcrumbs = computed(() => {
 								label-field="assembly_name"
 								value-field="name"
 								:search-fields="['assembly_code', 'assembly_name', 'name']"
-								placeholder="— Manual line —"
+								:placeholder="__('— Manual line —')"
 								@change="onAssemblyPicked"
 							/>
 						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
 							<DeskField
-								label="Code"
-								hint="Leave blank to auto-generate (e.g. A.05)"
+								:label="__('Code')"
+								:hint="__('Leave blank to auto-generate (e.g. A.05)')"
 							>
-								<DeskInput v-model="itemForm.code" placeholder="Auto" />
+								<DeskInput v-model="itemForm.code" :placeholder="__('Auto')" />
 							</DeskField>
 							<div class="col-span-2">
-								<DeskField label="Unit" required>
+								<DeskField :label="__('Unit')" required>
 									<DeskLinkPicker
 										v-model="itemForm.unit"
 										doctype="UOM"
 										label-field="name"
 										value-field="name"
 										:search-fields="['name']"
-										placeholder="m³, kg, nos…"
+										:placeholder="__('m³, kg, nos…')"
 									/>
 								</DeskField>
 							</div>
 						</div>
-						<DeskField label="Description" required>
+						<DeskField :label="__('Description')" required>
 							<DeskTextarea
 								v-model="itemForm.description"
 								:rows="2"
-								placeholder="What does this line of work include?"
+								:placeholder="__('What does this line of work include?')"
 							/>
 						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
-							<DeskField label="Planned qty">
+							<DeskField :label="__('Planned qty')">
 								<DeskInput v-model="itemForm.plannedQty" type="number" />
 							</DeskField>
 							<DeskField
-								label="Rate (₹)"
-								:hint="itemForm.assemblyId ? 'Auto from Assembly' : ''"
+								:label="`${__('Rate')} (₹)`"
+								:hint="itemForm.assemblyId ? __('Auto from Assembly') : ''"
 							>
 								<DeskInput v-model="itemForm.rate" type="number" />
 							</DeskField>
-							<DeskField label="Planned amount" hint="qty × rate (auto)">
+							<DeskField :label="__('Planned amount')" :hint="__('qty × rate (auto)')">
 								<div class="desk-input bg-ink-50 text-right tabular-nums">
 									{{ fmtINR(itemPlannedAmountPreview) }}
 								</div>
@@ -2072,8 +2073,8 @@ const breadcrumbs = computed(() => {
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<DeskField
-								label="Work Package (tag)"
-								hint="Optional. Drives per-WP roll-up in the BOQ summary."
+								:label="__('Work Package (tag)')"
+								:hint="__('Optional. Drives per-WP roll-up in the BOQ summary.')"
 							>
 								<DeskLinkPicker
 									v-model="itemForm.workPackageId"
@@ -2082,27 +2083,27 @@ const breadcrumbs = computed(() => {
 									value-field="name"
 									:search-fields="['work_package_name', 'code', 'name']"
 									:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
-									placeholder="— Unscoped —"
+									:placeholder="__('— Unscoped —')"
 								/>
 							</DeskField>
 							<DeskField
-								label="Cost head"
-								hint="Material / Labour / Equipment / Subcontract / Preliminaries / Other"
+								:label="__('Cost head')"
+								:hint="__('Material / Labour / Equipment / Subcontract / Preliminaries / Other')"
 							>
 								<DeskSelect v-model="itemForm.costHead">
 									<option value="">—</option>
-									<option>Material</option>
-									<option>Labour</option>
-									<option>Equipment</option>
-									<option>Subcontract</option>
-									<option>Preliminaries</option>
-									<option>Other</option>
+									<option value="Material">{{ __("Material") }}</option>
+									<option value="Labour">{{ __("Labour") }}</option>
+									<option value="Equipment">{{ __("Equipment") }}</option>
+									<option value="Subcontract">{{ __("Subcontract") }}</option>
+									<option value="Preliminaries">{{ __("Preliminaries") }}</option>
+									<option value="Other">{{ __("Other") }}</option>
 								</DeskSelect>
 							</DeskField>
 						</div>
 						<DeskField
-							label="Link to task"
-							hint="Optional · drives live actuals from task progress"
+							:label="__('Link to task')"
+							:hint="__('Optional · drives live actuals from task progress')"
 						>
 							<DeskLinkPicker
 								v-model="itemForm.taskId"
@@ -2111,7 +2112,7 @@ const breadcrumbs = computed(() => {
 								value-field="name"
 								:search-fields="['subject', 'name']"
 								:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
-								placeholder="— Not linked —"
+								:placeholder="__('— Not linked —')"
 							/>
 						</DeskField>
 					</div>
@@ -2123,10 +2124,10 @@ const breadcrumbs = computed(() => {
 							@click="itemModal = null"
 							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button v-if="canEdit('boq')" type="button" @click="saveItem" class="desk-save-btn">
-							{{ itemModal.mode === "add" ? "Create item" : "Save changes" }}
+							{{ itemModal.mode === "add" ? __("Create item") : __("Save changes") }}
 						</button>
 					</div>
 				</div>
@@ -2147,15 +2148,15 @@ const breadcrumbs = computed(() => {
 						<h2 class="text-sm font-semibold text-ink-900">
 							{{
 								subItemModal.mode === "add"
-									? "New sub-item · rate analysis"
-									: "Edit sub-item"
+									? __("New sub-item · rate analysis")
+									: __("Edit sub-item")
 							}}
 						</h2>
 						<button
 							type="button"
 							@click="subItemModal = null"
 							class="ml-auto text-ink-400 hover:text-ink-900"
-							aria-label="Close"
+							:aria-label="__('Close')"
 						>
 							<svg
 								class="w-4 h-4"
@@ -2172,8 +2173,8 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<DeskField
-							label="From Rate Master"
-							hint="Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it."
+							:label="__('From Rate Master')"
+							:hint="__('Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.')"
 						>
 							<DeskSelect
 								:model-value="subItemForm.rateMasterId"
@@ -2184,7 +2185,7 @@ const breadcrumbs = computed(() => {
 									}
 								"
 							>
-								<option :value="null">— Manual entry —</option>
+								<option :value="null">{{ __("— Manual entry —") }}</option>
 								<option
 									v-for="rm in rateMasterOptions"
 									:key="rm.id"
@@ -2193,28 +2194,28 @@ const breadcrumbs = computed(() => {
 									{{ rm.code }} · {{ rm.description }} · ₹{{
 										rm.currentRate
 									}}
-									per {{ rm.unit }}
+									{{ __("per") }} {{ rm.unit }}
 								</option>
 							</DeskSelect>
 						</DeskField>
-						<DeskField label="Description" required>
+						<DeskField :label="__('Description')" required>
 							<DeskInput
 								v-model="subItemForm.description"
-								placeholder="e.g. Mason (skilled), Cement OPC 53, Vibrator needle…"
+								:placeholder="__('e.g. Mason (skilled), Cement OPC 53, Vibrator needle…')"
 							/>
 						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
 							<DeskField
-								label="Qty per unit"
+								:label="__('Qty per unit')"
 								required
-								:hint="`per ${subItemModal.parentUnit || 'unit'}`"
+								:hint="__('per {0}', [subItemModal.parentUnit || __('unit')])"
 							>
 								<DeskInput v-model="subItemForm.qtyPerUnit" type="number" />
 							</DeskField>
-							<DeskField label="Rate (₹)">
+							<DeskField :label="`${__('Rate')} (₹)`">
 								<DeskInput v-model="subItemForm.rate" type="number" />
 							</DeskField>
-							<DeskField label="Amount" hint="qty × rate (auto)">
+							<DeskField :label="__('Amount')" :hint="__('qty × rate (auto)')">
 								<div class="desk-input bg-ink-50 text-right tabular-nums">
 									{{ fmtINR(subItemAmountPreview) }}
 								</div>
@@ -2229,10 +2230,10 @@ const breadcrumbs = computed(() => {
 							@click="subItemModal = null"
 							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button v-if="canEdit('boq')" type="button" @click="saveSubItem" class="desk-save-btn">
-							{{ subItemModal.mode === "add" ? "Create sub-item" : "Save changes" }}
+							{{ subItemModal.mode === "add" ? __("Create sub-item") : __("Save changes") }}
 						</button>
 					</div>
 				</div>
@@ -2254,10 +2255,9 @@ const breadcrumbs = computed(() => {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div>
-							<h2 class="text-sm font-semibold text-ink-900">Create new revision</h2>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Create new revision") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5">
-								A new Draft revision is cloned from this one. Optionally reference
-								a Scope Change Order.
+								{{ __("A new Draft revision is cloned from this one. Optionally reference a Scope Change Order.") }}
 							</p>
 						</div>
 						<button
@@ -2270,8 +2270,8 @@ const breadcrumbs = computed(() => {
 					</header>
 					<div class="p-5 overflow-y-auto flex-1 space-y-4">
 						<DeskField
-							label="Linked SCO"
-							hint="Optional reference to a Scope Change Order this revision addresses."
+							:label="__('Linked SCO')"
+							:hint="__('Optional reference to a Scope Change Order this revision addresses.')"
 						>
 							<DeskLinkPicker
 								v-model="revisionModal.sourceSco"
@@ -2281,23 +2281,23 @@ const breadcrumbs = computed(() => {
 								:search-fields="['title', 'name']"
 								:filters="[['project', '=', boq.projectId]]"
 								order-by="creation desc"
-								placeholder="Search this project's SCOs…"
+								:placeholder="__('Search this project\'s SCOs…')"
 							/>
 						</DeskField>
 						<DeskField
-							label="Revision title"
+							:label="__('Revision title')"
 							:hint="
-								revisionTitleConflict ? '' : 'Optional. Auto-generated if blank.'
+								revisionTitleConflict ? '' : __('Optional. Auto-generated if blank.')
 							"
 							:error="
 								revisionTitleConflict
-									? `A revision titled “${revisionModal.title.trim()}” already exists on this project. Pick a different title.`
+									? __('A revision titled “{0}” already exists on this project. Pick a different title.', [revisionModal.title.trim()])
 									: ''
 							"
 						>
 							<DeskInput
 								v-model="revisionModal.title"
-								placeholder="e.g. Façade scope upgrade — R3"
+								:placeholder="__('e.g. Façade scope upgrade — R3')"
 							/>
 						</DeskField>
 					</div>
@@ -2311,7 +2311,7 @@ const breadcrumbs = computed(() => {
 							style="border-radius: 6px"
 							@click="closeRevisionModal"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canCreate('boq')"
@@ -2320,7 +2320,7 @@ const breadcrumbs = computed(() => {
 							:disabled="revisionTitleConflict"
 							@click="submitRevision"
 						>
-							Create revision
+							{{ __("Create revision") }}
 						</button>
 					</footer>
 				</div>
@@ -2338,7 +2338,7 @@ const breadcrumbs = computed(() => {
 					@click.stop
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
-						<h2 class="text-sm font-semibold text-ink-900">Import from template</h2>
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Import from template") }}</h2>
 						<button
 							type="button"
 							@click="importModal = false"
@@ -2348,19 +2348,18 @@ const breadcrumbs = computed(() => {
 						</button>
 					</div>
 					<div class="p-4 space-y-3">
-						<DeskField label="Estimate template" required>
+						<DeskField :label="__('Estimate template')" required>
 							<DeskLinkPicker
 								v-model="importForm.template"
 								doctype="Estimate Template"
 								label-field="template_name"
 								value-field="name"
 								:search-fields="['template_code', 'template_name', 'name']"
-								placeholder="Pick a template"
+								:placeholder="__('Pick a template')"
 							/>
 						</DeskField>
 						<p class="text-[11px] text-ink-500">
-							Adds the template's rows to this BOQ. Assembly lines explode into
-							sub-items.
+							{{ __("Adds the template's rows to this BOQ. Assembly lines explode into sub-items.") }}
 						</p>
 					</div>
 					<div
@@ -2371,7 +2370,7 @@ const breadcrumbs = computed(() => {
 							@click="importModal = false"
 							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canEdit('boq')"
@@ -2379,7 +2378,7 @@ const breadcrumbs = computed(() => {
 							@click="doImport"
 							class="desk-save-btn"
 						>
-							Import
+							{{ __("Import") }}
 						</button>
 					</div>
 				</div>
@@ -2397,7 +2396,7 @@ const breadcrumbs = computed(() => {
 					@click.stop
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
-						<h2 class="text-sm font-semibold text-ink-900">Clone BOQ</h2>
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Clone BOQ") }}</h2>
 						<button
 							type="button"
 							@click="cloneModal = false"
@@ -2408,8 +2407,8 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<DeskField
-							label="To project"
-							hint="Leave blank to clone within this project (WP → WP)."
+							:label="__('To project')"
+							:hint="__('Leave blank to clone within this project (WP → WP).')"
 						>
 							<DeskLinkPicker
 								v-model="cloneForm.toProject"
@@ -2417,14 +2416,14 @@ const breadcrumbs = computed(() => {
 								label-field="project_name"
 								value-field="name"
 								:search-fields="['project_name', 'custom_project_id', 'name']"
-								placeholder="— Same project —"
+								:placeholder="__('— Same project —')"
 							/>
 						</DeskField>
 						<div
 							v-if="!cloneForm.toProject || cloneForm.toProject === boq.projectId"
 							class="grid grid-cols-2 gap-3"
 						>
-							<DeskField label="From WP" required>
+							<DeskField :label="__('From WP')" required>
 								<DeskLinkPicker
 									v-model="cloneForm.fromWorkPackage"
 									doctype="Work Package"
@@ -2432,10 +2431,10 @@ const breadcrumbs = computed(() => {
 									value-field="name"
 									:search-fields="['work_package_name', 'code', 'name']"
 									:filters="[['project', '=', boq.projectId]]"
-									placeholder="Source WP"
+									:placeholder="__('Source WP')"
 								/>
 							</DeskField>
-							<DeskField label="To WP" required>
+							<DeskField :label="__('To WP')" required>
 								<DeskLinkPicker
 									v-model="cloneForm.toWorkPackage"
 									doctype="Work Package"
@@ -2443,12 +2442,12 @@ const breadcrumbs = computed(() => {
 									value-field="name"
 									:search-fields="['work_package_name', 'code', 'name']"
 									:filters="[['project', '=', boq.projectId]]"
-									placeholder="Target WP"
+									:placeholder="__('Target WP')"
 								/>
 							</DeskField>
 						</div>
-						<DeskField v-else label="Title">
-							<DeskInput v-model="cloneForm.title" placeholder="Cloned BOQ title" />
+						<DeskField v-else :label="__('Title')">
+							<DeskInput v-model="cloneForm.title" :placeholder="__('Cloned BOQ title')" />
 						</DeskField>
 					</div>
 					<div
@@ -2459,7 +2458,7 @@ const breadcrumbs = computed(() => {
 							@click="cloneModal = false"
 							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canCreate('boq')"
@@ -2467,7 +2466,7 @@ const breadcrumbs = computed(() => {
 							@click="doClone"
 							class="desk-save-btn"
 						>
-							Clone
+							{{ __("Clone") }}
 						</button>
 					</div>
 				</div>
@@ -2487,8 +2486,8 @@ const breadcrumbs = computed(() => {
 							stroke-linejoin="round"
 							aria-hidden="true"
 							v-html="getWorkspaceIconPath('message-circle')"
-						/><span>Comments — <span class="font-medium text-ink-700">0</span></span>
-						<span class="text-ink-400 italic ml-1">stub</span>
+						/><span>{{ __("Comments") }} — <span class="font-medium text-ink-700">0</span></span>
+						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<svg
@@ -2502,9 +2501,9 @@ const breadcrumbs = computed(() => {
 							aria-hidden="true"
 							v-html="getWorkspaceIconPath('paperclip')"
 						/><span
-							>Attachments — <span class="font-medium text-ink-700">0</span></span
+							>{{ __("Attachments") }} — <span class="font-medium text-ink-700">0</span></span
 						>
-						<span class="text-ink-400 italic ml-1">stub</span>
+						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<svg
@@ -2517,7 +2516,7 @@ const breadcrumbs = computed(() => {
 							stroke-linejoin="round"
 							aria-hidden="true"
 							v-html="getWorkspaceIconPath('users')"
-						/><span>Prepared by —</span>
+						/><span>{{ __("Prepared by") }} —</span>
 						<UserAvatar :user-id="boq.preparedBy" size="xs" />
 					</div>
 				</div>
@@ -2553,24 +2552,24 @@ const breadcrumbs = computed(() => {
 				</header>
 				<div class="px-4 py-3">
 					<div v-if="actualsDrill.loading" class="py-8 text-center text-xs text-ink-400">
-						Loading…
+						{{ __("Loading…") }}
 					</div>
 					<div
 						v-else-if="!actualsDrill.entries.length"
 						class="py-8 text-center text-xs text-ink-400"
 					>
-						No source documents yet — this actual is “— pending”.
+						{{ __("No source documents yet — this actual is “— pending”.") }}
 					</div>
 					<table v-else class="w-full text-xs">
 						<thead
 							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
 						>
 							<tr>
-								<th class="text-left py-2 pr-2">Type</th>
-								<th class="text-left py-2 pr-2">Source document</th>
-								<th class="text-left py-2 pr-2">Party</th>
-								<th class="text-left py-2 pr-2">Date</th>
-								<th class="text-right py-2">Amount</th>
+								<th class="text-left py-2 pr-2">{{ __("Type") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Source document") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Party") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Date") }}</th>
+								<th class="text-right py-2">{{ __("Amount") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -2586,7 +2585,7 @@ const breadcrumbs = computed(() => {
 											COST_TYPE_TONE[e.cost_type] ||
 											'bg-ink-100 text-ink-700'
 										"
-										>{{ e.cost_type }}</span
+										>{{ __(e.cost_type) }}</span
 									>
 								</td>
 								<td class="py-2 pr-2">
@@ -2617,7 +2616,7 @@ const breadcrumbs = computed(() => {
 									colspan="4"
 									class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
 								>
-									Total actual
+									{{ __("Total actual") }}
 								</td>
 								<td
 									class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -2628,8 +2627,7 @@ const breadcrumbs = computed(() => {
 						</tfoot>
 					</table>
 					<p class="text-[10px] text-ink-400 mt-3">
-						Every rail resolves through the cost code. Cancelling a source removes its
-						entry — the log shows live cost only.
+						{{ __("Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only.") }}
 					</p>
 				</div>
 			</div>

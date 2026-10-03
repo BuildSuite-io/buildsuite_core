@@ -10,6 +10,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { parseFrappeError } from "@/utils/frappeError";
 import { showToast } from "@/utils/appToast";
 import { fmtINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
@@ -29,9 +30,9 @@ const { canCreate, canEdit, canDelete } = usePermissions();
 const { selectOptions } = useDoctypeMeta("Construction Rate Master");
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Estimation", to: "/estimation" },
-	{ label: "Rate Master" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Rate Master") },
 ];
 
 // Server-side pagination: one page of rows + counts per fetch.
@@ -81,7 +82,7 @@ async function reload({ withCounts = false } = {}) {
 			categoryCounts.value = res.category_counts || {};
 		}
 	} catch (err) {
-		if (my === reqId) showToast(err.message || "Could not load rates.", "error");
+		if (my === reqId) showToast(err.message || __("Could not load rates."), "error");
 	} finally {
 		if (my === reqId) loading.value = false;
 	}
@@ -121,21 +122,21 @@ const kpis = computed(() => {
 	};
 });
 const kpiCards = computed(() => [
-	{ label: "Total rates", value: kpis.value.total, color: "text-ink-900" },
-	{ label: "Materials", value: kpis.value.Material, color: "text-blue-700" },
-	{ label: "Labour", value: kpis.value.Labour, color: "text-amber-700" },
-	{ label: "Equipment", value: kpis.value.Equipment, color: "text-violet-700" },
+	{ label: __("Total rates"), value: kpis.value.total, color: "text-ink-900" },
+	{ label: __("Materials"), value: kpis.value.Material, color: "text-blue-700" },
+	{ label: __("Labour"), value: kpis.value.Labour, color: "text-amber-700" },
+	{ label: __("Equipment"), value: kpis.value.Equipment, color: "text-violet-700" },
 ]);
 const drawerHistory = computed(() => (drawer.value?.history || []).slice().reverse()); // latest first
 
 const columns = [
-	{ key: "code", label: "Code" },
-	{ key: "description", label: "Description" },
-	{ key: "category", label: "Category" },
-	{ key: "unit", label: "UOM" },
-	{ key: "currentRate", label: "Current Rate", align: "right" },
-	{ key: "trend", label: "Trend", align: "center" },
-	{ key: "updatedAt", label: "Last Updated" },
+	{ key: "code", label: __("Code") },
+	{ key: "description", label: __("Description") },
+	{ key: "category", label: __("Category") },
+	{ key: "unit", label: __("UOM") },
+	{ key: "currentRate", label: __("Current Rate"), align: "right" },
+	{ key: "trend", label: __("Trend"), align: "center" },
+	{ key: "updatedAt", label: __("Last Updated") },
 ];
 
 // Last-change %: current vs the previous rate (denormalized on the record). Null until a rate changes.
@@ -173,19 +174,19 @@ function cancel() {
 async function save() {
 	formError.value = "";
 	if (editing.value === "new" && !form.value.code.trim()) {
-		formError.value = "Code is required.";
+		formError.value = __("Code is required.");
 		return;
 	}
 	if (!form.value.description.trim()) {
-		formError.value = "Resource name is required.";
+		formError.value = __("Resource name is required.");
 		return;
 	}
 	if (!form.value.uom) {
-		formError.value = "UOM is required.";
+		formError.value = __("UOM is required.");
 		return;
 	}
 	if (Number(form.value.currentRate) < 0) {
-		formError.value = "Current rate cannot be negative.";
+		formError.value = __("Current rate cannot be negative.");
 		return;
 	}
 	saving.value = true;
@@ -198,7 +199,7 @@ async function save() {
 				uom: form.value.uom,
 				current_rate: Number(form.value.currentRate),
 			});
-			showToast("Rate created");
+			showToast(__("Rate created"));
 		} else {
 			await adapter.update("Construction Rate Master", editing.value.id, {
 				rate_name: form.value.description.trim(),
@@ -206,13 +207,13 @@ async function save() {
 				uom: form.value.uom,
 				current_rate: Number(form.value.currentRate),
 			});
-			showToast("Rate updated");
+			showToast(__("Rate updated"));
 			if (rateRes.value) rateRes.value.reload();
 		}
 		editing.value = null;
 		await reload({ withCounts: true });
 	} catch (err) {
-		formError.value = parseFrappeError(err).summary || "Could not save the rate.";
+		formError.value = parseFrappeError(err).summary || __("Could not save the rate.");
 	} finally {
 		saving.value = false;
 	}
@@ -285,25 +286,25 @@ async function removeRate() {
 	const target = drawer.value;
 	if (!target) return;
 	const ok = await confirmDialog({
-		title: "Delete rate",
-		message: `Delete ${target.code}? This also removes its rate history.`,
-		confirmLabel: "Delete",
+		title: __("Delete rate"),
+		message: __("Delete {0}? This also removes its rate history.", [target.code]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await adapter.remove("Construction Rate Master", target.id);
-		showToast("Rate deleted");
+		showToast(__("Rate deleted"));
 		closeDrawer();
 		await reload({ withCounts: true });
 	} catch (err) {
-		showToast(parseFrappeError(err).summary || "Could not delete the rate.", "error");
+		showToast(parseFrappeError(err).summary || __("Could not delete the rate."), "error");
 	}
 }
 </script>
 
 <template>
-	<DeskPage title="Construction Rate Master" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Construction Rate Master')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<button
 				v-if="canCreate('rateMaster')"
@@ -311,7 +312,7 @@ async function removeRate() {
 				class="desk-save-btn"
 				@click="startAdd"
 			>
-				+ New rate
+				{{ __("+ New rate") }}
 			</button>
 		</template>
 
@@ -335,7 +336,7 @@ async function removeRate() {
 			:rows="rows"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search code or description…"
+			:search-placeholder="__('Search code or description…')"
 			:server-paginated="true"
 			:total-rows="totalCount"
 			:current-page="page"
@@ -359,13 +360,13 @@ async function removeRate() {
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
-					<option value="">Category: Any</option>
-					<option v-for="c in categoryOptions" :key="c">{{ c }}</option>
+					<option value="">{{ __("Category: Any") }}</option>
+					<option v-for="c in categoryOptions" :key="c" :value="c">{{ __(c) }}</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Category"
-					:value="categoryFilter"
+					:label="__('Category')"
+					:value="__(categoryFilter)"
 					@remove="categoryFilter = ''"
 				/>
 			</template>
@@ -382,7 +383,7 @@ async function removeRate() {
 				<span
 					:class="['text-[10px] px-1.5 py-0.5 font-medium', categoryColor(row.category)]"
 					style="border-radius: 2px"
-					>{{ row.category }}</span
+					>{{ __(row.category) }}</span
 				>
 			</template>
 			<template #cell-unit="{ row }">
@@ -413,7 +414,7 @@ async function removeRate() {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ loading ? "Loading rates…" : "No rates match your filters." }}
+					{{ loading ? __("Loading rates…") : __("No rates match your filters.") }}
 				</div>
 			</template>
 		</DeskList>
@@ -431,13 +432,13 @@ async function removeRate() {
 			>
 				<div class="px-4 py-3 border-b border-ink-200 flex items-center">
 					<h2 class="text-sm font-semibold text-ink-900">
-						{{ editing === "new" ? "New rate" : `Edit rate · ${editing.code}` }}
+						{{ editing === "new" ? __("New rate") : __("Edit rate · {0}", [editing.code]) }}
 					</h2>
 					<button
 						type="button"
 						@click="cancel"
 						class="ml-auto text-ink-400 hover:text-ink-900"
-						aria-label="Close"
+						:aria-label="__('Close')"
 					>
 						✕
 					</button>
@@ -451,39 +452,39 @@ async function removeRate() {
 						{{ formError }}
 					</div>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Code" required>
+						<DeskField :label="__('Code')" required>
 							<DeskInput
 								v-model="form.code"
 								:disabled="editing !== 'new'"
-								placeholder="e.g. CEM-OPC53"
+								:placeholder="__('e.g. CEM-OPC53')"
 								@input="formError = ''"
 							/>
 						</DeskField>
-						<DeskField label="Category">
+						<DeskField :label="__('Category')">
 							<DeskSelect v-model="form.category">
-								<option v-for="c in categoryOptions" :key="c">{{ c }}</option>
+								<option v-for="c in categoryOptions" :key="c" :value="c">{{ __(c) }}</option>
 							</DeskSelect>
 						</DeskField>
 					</div>
-					<DeskField label="Description" required>
+					<DeskField :label="__('Description')" required>
 						<DeskInput
 							v-model="form.description"
-							placeholder="Cement — OPC 53 Grade"
+							:placeholder="__('Cement — OPC 53 Grade')"
 							@input="formError = ''"
 						/>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="UOM" required>
+						<DeskField :label="__('UOM')" required>
 							<DeskLinkPicker
 								v-model="form.uom"
 								doctype="UOM"
 								label-field="name"
 								value-field="name"
-								placeholder="— Select UOM —"
+								:placeholder="__('— Select UOM —')"
 								@change="formError = ''"
 							/>
 						</DeskField>
-						<DeskField label="Current rate (₹)" required>
+						<DeskField :label="__('Current rate (₹)')" required>
 							<DeskInput
 								v-model.number="form.currentRate"
 								type="number"
@@ -492,8 +493,8 @@ async function removeRate() {
 						</DeskField>
 					</div>
 					<DeskField
-						label="Source"
-						hint="Manual edits stamp 'Manual'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page."
+						:label="__('Source')"
+						:hint="__('Manual edits stamp \'Manual\'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.')"
 					>
 						<DeskInput :model-value="'Manual'" disabled />
 					</DeskField>
@@ -505,7 +506,7 @@ async function removeRate() {
 						@click="cancel"
 						class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						v-if="editing === 'new' ? canCreate('rateMaster') : canEdit('rateMaster')"
@@ -515,7 +516,7 @@ async function removeRate() {
 						class="desk-save-btn"
 					>
 						{{
-							saving ? "Saving…" : editing === "new" ? "Create rate" : "Save changes"
+							saving ? __("Saving…") : editing === "new" ? __("Create rate") : __("Save changes")
 						}}
 					</button>
 				</div>
@@ -536,7 +537,7 @@ async function removeRate() {
 					v-if="!drawer"
 					class="flex-1 flex items-center justify-center text-sm text-ink-500"
 				>
-					Loading…
+					{{ __("Loading…") }}
 				</div>
 				<template v-else>
 					<div class="px-4 py-3 border-b border-ink-200">
@@ -548,13 +549,13 @@ async function removeRate() {
 									categoryColor(drawer.category),
 								]"
 								style="border-radius: 2px"
-								>{{ drawer.category }}</span
+								>{{ __(drawer.category) }}</span
 							>
 							<button
 								type="button"
 								@click="closeDrawer"
 								class="ml-auto text-ink-400 hover:text-ink-900"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								✕
 							</button>
@@ -564,7 +565,7 @@ async function removeRate() {
 							<span class="text-xl font-semibold text-ink-900 tabular-nums">{{
 								fmtINR(drawer.currentRate)
 							}}</span>
-							<span class="text-xs text-ink-500">per {{ drawer.unit }}</span>
+							<span class="text-xs text-ink-500">{{ __("per {0}", [drawer.unit]) }}</span>
 						</div>
 					</div>
 
@@ -572,16 +573,16 @@ async function removeRate() {
 						<div
 							class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-semibold"
 						>
-							Rate history
+							{{ __("Rate history") }}
 						</div>
 						<table class="w-full text-xs">
 							<thead>
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="px-3 py-1.5 text-right font-semibold">Rate</th>
-									<th class="px-3 py-1.5 text-left font-semibold">Effective</th>
-									<th class="px-3 py-1.5 text-left font-semibold">Source</th>
+									<th class="px-3 py-1.5 text-right font-semibold">{{ __("Rate") }}</th>
+									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Effective") }}</th>
+									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Source") }}</th>
 									<th class="px-3 py-1.5"></th>
 								</tr>
 							</thead>
@@ -625,7 +626,7 @@ async function removeRate() {
 										colspan="4"
 										class="px-4 py-6 text-center text-xs text-ink-400 italic"
 									>
-										No history recorded yet.
+										{{ __("No history recorded yet.") }}
 									</td>
 								</tr>
 							</tbody>
@@ -638,7 +639,7 @@ async function removeRate() {
 						<div
 							class="flex items-center gap-1.5 text-[10px] text-ink-500 min-w-0 truncate"
 						>
-							<span>By</span>
+							<span>{{ __("By") }}</span>
 							<FrappeUserBadge :user-id="drawer.updatedBy" size="xs" />
 							<span class="flex-shrink-0">· {{ fmtDate(drawer.updatedAt) }}</span>
 						</div>
@@ -650,7 +651,7 @@ async function removeRate() {
 								style="border-radius: 6px"
 								@click="removeRate"
 							>
-								Delete
+								{{ __("Delete") }}
 							</button>
 							<button
 								v-if="canEdit('rateMaster')"
@@ -658,7 +659,7 @@ async function removeRate() {
 								class="desk-save-btn"
 								@click="editRate"
 							>
-								Edit
+								{{ __("Edit") }}
 							</button>
 						</div>
 					</div>
