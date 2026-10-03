@@ -29,6 +29,75 @@ def _company_for(project=None):
 	return default_company()
 
 
+def _company_currency(company):
+	return frappe.db.get_value("Company", company, "default_currency")
+
+
+def _resolve_conversion_rate(currency, company_currency, posting_date, supplied=None):
+	"""The transaction→company exchange rate ERPNext stores on the bill. 1 when the bill is
+	already in company currency. Otherwise honour a rate the user typed; failing that, ask
+	ERPNext's Currency Exchange (buying side) for the rate on the posting date. We don't invent
+	FX — this just surfaces the rate ERPNext itself would use."""
+	if not currency or currency == company_currency:
+		return 1.0
+	if supplied:
+		return flt(supplied)
+	try:
+		from erpnext.setup.utils import get_exchange_rate
+
+		return flt(get_exchange_rate(currency, company_currency, posting_date, "for_buying")) or 1.0
+	except Exception:
+		return 1.0
+
+
+def _payable_account(company, currency):
+	"""The Creditors account a foreign-currency bill posts to. ERPNext won't let a USD invoice
+	settle against an NGN payable — the party account's currency must match the bill's. Reuse an
+	existing payable account already in that currency, else create one under the company's payable
+	group. Returns None for company-currency bills (ERPNext picks the default)."""
+	company_currency = _company_currency(company)
+	if not currency or currency == company_currency:
+		return None
+	existing = frappe.db.get_value(
+		"Account",
+		{"company": company, "account_currency": currency, "account_type": "Payable", "is_group": 0},
+		"name",
+	)
+	if existing:
+		return existing
+	default_payable = frappe.db.get_value("Company", company, "default_payable_account")
+	parent = frappe.db.get_value("Account", default_payable, "parent_account") if default_payable else None
+	if not parent:
+		parent = frappe.db.get_value(
+			"Account", {"company": company, "root_type": "Liability", "is_group": 1}, "name"
+		)
+	return (
+		frappe.get_doc(
+			{
+				"doctype": "Account",
+				"account_name": f"Creditors ({currency})",
+				"parent_account": parent,
+				"company": company,
+				"account_type": "Payable",
+				"account_currency": currency,
+				"root_type": "Liability",
+			}
+		)
+		.insert(ignore_permissions=True)
+		.name
+	)
+
+
+def _base_outstanding(grand_total, outstanding, base_grand_total):
+	"""Outstanding in COMPANY currency. There is no base_outstanding_amount field, so scale the
+	reliable base_grand_total by the unpaid fraction — currency-agnostic and identical to the
+	raw outstanding when the bill is already in company currency (rate = 1)."""
+	grand_total = flt(grand_total)
+	if not grand_total:
+		return 0.0
+	return flt(base_grand_total) * flt(outstanding) / grand_total
+
+
 def ensure_bill_item():
 	"""A generic non-stock purchase Item that bill lines hang off (the description carries the
 	real detail)."""
@@ -194,6 +263,14 @@ def _serialize(doc):
 		"net_total": doc.net_total,
 		"total_taxes_and_charges": doc.total_taxes_and_charges,
 		"grand_total": doc.grand_total,
+		# Currency as ERPNext holds it: the bill's own transaction currency + the rate to the
+		# company currency, plus the company-currency (base_*) equivalents it computed.
+		"currency": doc.currency,
+		"conversion_rate": doc.conversion_rate,
+		"company_currency": _company_currency(doc.company),
+		"base_net_total": doc.base_net_total,
+		"base_total_taxes_and_charges": doc.base_total_taxes_and_charges,
+		"base_grand_total": doc.base_grand_total,
 		"advance_adjusted": adjusted,
 		"advances": advances,
 		"items": [
@@ -260,13 +337,16 @@ def list_payables(company: str | None = None):
 			"project",
 			"posting_date",
 			"due_date",
+			"currency",
 			"grand_total",
+			"base_grand_total",
 			"outstanding_amount",
 			"status",
 			"docstatus",
 		],
 		order_by="posting_date desc, creation desc",
 	):
+		outstanding = flt(pi.outstanding_amount) if pi.docstatus == 1 else 0
 		rows.append(
 			{
 				"kind": "supplier",
@@ -275,8 +355,13 @@ def list_payables(company: str | None = None):
 				"project": pi.project,
 				"date": str(pi.posting_date) if pi.posting_date else None,
 				"due_date": str(pi.due_date) if pi.due_date else None,
+				# `total`/`outstanding` are in the bill's own currency (for per-row display);
+				# `base_*` are company currency (for the header total that sums across bills).
+				"currency": pi.currency,
 				"total": flt(pi.grand_total),
-				"outstanding": flt(pi.outstanding_amount) if pi.docstatus == 1 else 0,
+				"base_total": flt(pi.base_grand_total),
+				"outstanding": outstanding,
+				"base_outstanding": _base_outstanding(pi.grand_total, outstanding, pi.base_grand_total),
 				"retention": 0,  # direct supplier bills carry no retention
 				"docstatus": pi.docstatus,
 				"status": _pay_status(pi.docstatus, flt(pi.grand_total), flt(pi.outstanding_amount)),
@@ -293,6 +378,7 @@ def list_payables(company: str | None = None):
 		fields=[
 			"name",
 			"subcontractor_name",
+			"company",
 			"project",
 			"date",
 			"net_payable",
@@ -304,11 +390,20 @@ def list_payables(company: str | None = None):
 	):
 		grand = flt(sb.net_payable)
 		outstanding = grand
+		# Subcontractor bills are raised in the company currency; read the generated PI's own
+		# currency + base total when one exists so the figures line up with ERPNext.
+		currency = _company_currency(sb.company) if sb.company else None
+		base_grand = grand
 		if sb.purchase_invoice and frappe.db.exists(PI, sb.purchase_invoice):
 			pi = frappe.db.get_value(
-				PI, sb.purchase_invoice, ["grand_total", "outstanding_amount"], as_dict=True
+				PI,
+				sb.purchase_invoice,
+				["currency", "grand_total", "base_grand_total", "outstanding_amount"],
+				as_dict=True,
 			)
+			currency = pi.currency or currency
 			grand = flt(pi.grand_total)
+			base_grand = flt(pi.base_grand_total)
 			outstanding = flt(pi.outstanding_amount)
 		rows.append(
 			{
@@ -318,8 +413,11 @@ def list_payables(company: str | None = None):
 				"project": sb.project,
 				"date": str(sb.date) if sb.date else None,
 				"due_date": None,
+				"currency": currency,
 				"total": grand,
+				"base_total": base_grand,
 				"outstanding": outstanding,
+				"base_outstanding": _base_outstanding(grand, outstanding, base_grand),
 				"retention": flt(sb.retention_amount),
 				"docstatus": 1,
 				"status": _pay_status(1, grand, outstanding),
@@ -350,7 +448,9 @@ def payables_summary(company: str | None = None):
 
 	company = company or company_scope()  # None when awareness off → all companies
 	cond = "AND company = %(company)s" if company else ""
-	total = sum(flt(r["outstanding"]) for r in list_payables(company))
+	# Sum in COMPANY currency (base_outstanding) — bills may be in different currencies, so the
+	# raw outstanding figures can't be added directly.
+	total = sum(flt(r["base_outstanding"]) for r in list_payables(company))
 	retention = frappe.db.sql(
 		f"""
 		SELECT COALESCE(SUM(retention_amount), 0)
@@ -487,9 +587,20 @@ def save_bill(payload: str):
 	pi.company = company
 	# Supplier is a global ERPNext party — usable across companies (no cross-company guard).
 	pi.supplier = supplier
-	pi.currency = frappe.db.get_value("Company", company, "default_currency")
 	pi.set_posting_time = 1
 	pi.posting_date = data.get("date") or nowdate()
+	# Bill currency: default to the company currency (unchanged behaviour), but honour a currency
+	# the form sends so a foreign-supplier bill can be raised in the supplier's currency. ERPNext
+	# then computes every base_* amount from this rate — we don't pre-compute any amounts.
+	company_currency = _company_currency(company)
+	pi.currency = data.get("currency") or company_currency
+	pi.conversion_rate = _resolve_conversion_rate(
+		pi.currency, company_currency, pi.posting_date, data.get("conversion_rate")
+	)
+	# A foreign-currency bill must post to a payable account in that currency (ERPNext rule).
+	credit_to = _payable_account(company, pi.currency)
+	if credit_to:
+		pi.credit_to = credit_to
 	pi.bill_no = data.get("bill_no") or None
 	pi.bill_date = data.get("bill_date") or None
 	pi.due_date = data.get("due_date") or pi.posting_date

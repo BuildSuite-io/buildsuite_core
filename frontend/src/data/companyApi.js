@@ -21,6 +21,11 @@ export const listCompanies = () => call("list_companies");
 // Set the working company server-side (persists it as the user's default Company). Returns the name.
 export const setActiveCompanyRemote = (company) => call("set_active_company", { company });
 
+// The buying-side exchange rate ERPNext would apply (from → to) on an optional date — used to
+// pre-fill a foreign-currency bill's rate. Returns 1.0 for same-currency / no rate configured.
+export const getExchangeRate = (from, to, date) =>
+	call("exchange_rate", { from_currency: from, to_currency: to, date });
+
 // Company branding — logo + letter-head subtext for the default company. These drive the
 // shared Letter Head that every print format renders, so editing them here re-brands all
 // prints (server rebuilds the letter head on save).

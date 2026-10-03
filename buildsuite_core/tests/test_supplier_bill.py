@@ -79,6 +79,68 @@ class TestSupplierBill(BuildSuiteTestCase):
 		self.assertEqual(mine[0]["kind"], "supplier")
 		self.assertEqual(mine[0]["status"], "Partly Paid")
 
+	def test_foreign_currency_bill(self):
+		"""A bill raised in a currency other than the company's carries that currency + the
+		supplied exchange rate, and ERPNext computes the company-currency (base_*) total. The
+		payables list surfaces the bill's own currency and sums outstanding in company currency."""
+		from buildsuite_core.api.supplier_bill import get_bill, list_payables, save_bill, submit_bill
+
+		company_currency = frappe.db.get_value("Company", self.company, "default_currency")
+		foreign = "USD" if company_currency != "USD" else "EUR"
+		supp = self._supplier()
+		res = save_bill(
+			json.dumps(
+				{
+					"supplier": supp,
+					"project": self.project,
+					"date": "2026-07-20",
+					"currency": foreign,
+					"conversion_rate": 1500,
+					"items": [{"description": "Imported valves", "qty": 2, "rate": 200}],
+				}
+			)
+		)
+		name = res["name"]
+		pi = frappe.get_doc("Purchase Invoice", name)
+		# Document currency + rate are what we sent; ERPNext derived the base total — not us.
+		self.assertEqual(pi.currency, foreign)
+		self.assertAlmostEqual(flt(pi.conversion_rate), 1500, places=2)
+		self.assertAlmostEqual(flt(pi.grand_total), 400, places=2)  # 2 × 200, in USD
+		self.assertAlmostEqual(flt(pi.base_grand_total), 600000, places=2)  # × 1500, in company ccy
+
+		bill = get_bill(name)
+		self.assertEqual(bill["currency"], foreign)
+		self.assertEqual(bill["company_currency"], company_currency)
+		self.assertAlmostEqual(flt(bill["base_grand_total"]), 600000, places=2)
+
+		submit_bill(name)
+		row = next(p for p in list_payables(company=self.company) if p["name"] == name)
+		self.assertEqual(row["currency"], foreign)
+		self.assertAlmostEqual(flt(row["total"]), 400, places=2)  # own currency
+		self.assertAlmostEqual(flt(row["base_outstanding"]), 600000, places=2)  # company currency
+
+	def test_company_currency_bill_rate_is_one(self):
+		"""The default path is unchanged: a bill with no currency sent stays in company currency
+		at rate 1, and base_grand_total equals grand_total."""
+		from buildsuite_core.api.supplier_bill import get_bill, save_bill
+
+		supp = self._supplier()
+		name = save_bill(
+			json.dumps(
+				{
+					"supplier": supp,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "Local sand", "qty": 10, "rate": 500}],
+				}
+			)
+		)["name"]
+		pi = frappe.get_doc("Purchase Invoice", name)
+		self.assertEqual(pi.currency, frappe.db.get_value("Company", self.company, "default_currency"))
+		self.assertAlmostEqual(flt(pi.conversion_rate), 1, places=6)
+		bill = get_bill(name)
+		self.assertAlmostEqual(flt(bill["base_grand_total"]), flt(bill["grand_total"]), places=2)
+
 	def test_supplier_advance(self):
 		from buildsuite_core.api.supplier_bill import payables_summary, record_advance
 
