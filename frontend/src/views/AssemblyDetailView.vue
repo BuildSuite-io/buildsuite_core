@@ -8,6 +8,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useDocTypeList } from "@/composables/useDocTypeList";
+import { __ } from "@/utils/translate";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR } from "@/utils/format";
@@ -34,9 +35,9 @@ const resource = adapter.read("Assembly", props.id, { fields: ["*"] });
 const doc = computed(() => resource?.doc || null);
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Estimation", to: "/estimation" },
-	{ label: "Assembly", to: "/assembly" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Assembly"), to: "/assembly" },
 	{ label: doc.value?.assembly_name || props.id },
 ]);
 
@@ -44,11 +45,11 @@ const cards = computed(() => {
 	const d = doc.value;
 	if (!d) return [];
 	return [
-		{ label: "Code", value: d.assembly_code, cls: "font-mono" },
-		{ label: "Category", value: d.category || "—" },
-		{ label: "Unit", value: d.uom },
+		{ label: __("Code"), value: d.assembly_code, cls: "font-mono" },
+		{ label: __("Category"), value: d.category || "—" },
+		{ label: __("Unit"), value: d.uom },
 		{
-			label: "Rate / unit (live)",
+			label: __("Rate / unit (live)"),
 			value: fmtINR(d.rate_per_unit),
 			cls: "font-medium tabular-nums",
 		},
@@ -87,8 +88,8 @@ function cancelEdit() {
 }
 function validate() {
 	const e = {};
-	if (!form.value.assemblyName?.trim()) e.assemblyName = "Name is required";
-	if (!form.value.uom) e.uom = "Unit is required";
+	if (!form.value.assemblyName?.trim()) e.assemblyName = __("Name is required");
+	if (!form.value.uom) e.uom = __("Unit is required");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -105,7 +106,7 @@ async function saveEdit() {
 		resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update assembly", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update assembly"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -113,9 +114,12 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: "Delete assembly",
-		message: `Delete "${doc.value?.assembly_name}" (${doc.value?.assembly_code})? This cannot be undone.`,
-		confirmLabel: "Delete",
+		title: __("Delete assembly"),
+		message: __('Delete "{0}" ({1})? This cannot be undone.', [
+			doc.value?.assembly_name,
+			doc.value?.assembly_code,
+		]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -123,7 +127,7 @@ async function onDelete() {
 		await adapter.remove("Assembly", props.id);
 		router.push("/assembly");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete assembly", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete assembly"), "error");
 	}
 }
 
@@ -147,7 +151,7 @@ const rateMasterOptions = computed(() =>
 		value: r.name,
 		label: `${r.name} · ${r.rate_name}`,
 		group: r.category,
-		hint: `${fmtINR(r.current_rate)} per ${r.uom}`,
+		hint: __("{0} per {1}", [fmtINR(r.current_rate), r.uom]),
 	})),
 );
 
@@ -175,7 +179,7 @@ async function persistComponents(rows) {
 		await adapter.update("Assembly", props.id, { components: rows });
 		await resource?.reload?.();
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update components", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update components"), "error");
 	} finally {
 		savingComponents.value = false;
 	}
@@ -210,9 +214,9 @@ function changeCoefficient(index, value) {
 
 async function removeComponent(index) {
 	const ok = await confirmDialog({
-		title: "Remove component",
-		message: "Remove this component from the assembly?",
-		confirmLabel: "Remove",
+		title: __("Remove component"),
+		message: __("Remove this component from the assembly?"),
+		confirmLabel: __("Remove"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -225,7 +229,7 @@ async function removeComponent(index) {
 	<DeskPage
 		v-if="doc"
 		:title="doc.assembly_name"
-		:subtitle="`${doc.assembly_code} · per ${doc.uom}`"
+		:subtitle="__('{0} · per {1}', [doc.assembly_code, doc.uom])"
 		:breadcrumbs="breadcrumbs"
 		:status="doc.category"
 	>
@@ -237,7 +241,7 @@ async function removeComponent(index) {
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="canDelete('assembly')"
@@ -246,7 +250,7 @@ async function removeComponent(index) {
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -272,7 +276,7 @@ async function removeComponent(index) {
 			style="border-radius: 6px"
 		>
 			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
-				Notes
+				{{ __("Notes") }}
 			</div>
 			<div class="text-sm text-ink-800 leading-snug whitespace-pre-line">
 				{{ doc.notes }}
@@ -283,12 +287,13 @@ async function removeComponent(index) {
 		<section>
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<div class="text-xs text-ink-500">
-					<span class="text-ink-900 font-medium"
-						>{{ components.length }} component{{
-							components.length === 1 ? "" : "s"
-						}}</span
-					>
-					· linked to Rate Master · coefficient × rate
+					<span class="text-ink-900 font-medium">{{
+						__(
+							components.length === 1 ? "{0} component" : "{0} components",
+							[components.length],
+						)
+					}}</span>
+					{{ __("· linked to Rate Master · coefficient × rate") }}
 				</div>
 				<button
 					v-if="!addingRow && canEdit('assembly')"
@@ -297,7 +302,7 @@ async function removeComponent(index) {
 					:disabled="savingComponents"
 					@click="startAddRow"
 				>
-					+ Add Component
+					{{ __("+ Add Component") }}
 				</button>
 			</div>
 
@@ -307,11 +312,11 @@ async function removeComponent(index) {
 					class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
 				>
-					<div class="px-3 py-1.5">Resource</div>
-					<div class="px-3 py-1.5 text-right whitespace-nowrap">Coefficient</div>
-					<div class="px-3 py-1.5">Unit</div>
-					<div class="px-3 py-1.5 text-right whitespace-nowrap">Rate</div>
-					<div class="px-3 py-1.5 text-right whitespace-nowrap">Amount</div>
+					<div class="px-3 py-1.5">{{ __("Resource") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Coefficient") }}</div>
+					<div class="px-3 py-1.5">{{ __("Unit") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Rate") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Amount") }}</div>
 					<div class="px-3 py-1.5"></div>
 				</div>
 
@@ -354,7 +359,7 @@ async function removeComponent(index) {
 							v-if="canEdit('assembly')"
 							type="button"
 							class="text-ink-400 hover:text-danger-700 text-base leading-none"
-							title="Remove"
+							:title="__('Remove')"
 							:disabled="savingComponents"
 							@click="removeComponent(i)"
 						>
@@ -368,7 +373,7 @@ async function removeComponent(index) {
 					v-if="!components.length && !addingRow"
 					class="px-3 py-4 text-xs text-ink-500"
 				>
-					No components yet — add one to price this assembly.
+					{{ __("No components yet — add one to price this assembly.") }}
 				</div>
 
 				<!-- Add row -->
@@ -381,11 +386,11 @@ async function removeComponent(index) {
 						<DeskSearchableSelect
 							v-model="newRow.resource"
 							:options="rateMasterOptions"
-							placeholder="Pick a rate master…"
-							search-placeholder="Search rate master…"
+							:placeholder="__('Pick a rate master…')"
+							:search-placeholder="__('Search rate master…')"
 						/>
 						<div class="mt-1">
-							<DeskInput v-model="newRow.remarks" placeholder="Remarks (optional)" />
+							<DeskInput v-model="newRow.remarks" :placeholder="__('Remarks (optional)')" />
 						</div>
 					</div>
 					<div class="px-2 py-2">
@@ -400,12 +405,12 @@ async function removeComponent(index) {
 						{{ newRowResource?.uom || "—" }}
 					</div>
 					<div class="px-3 py-2 text-right text-sm tabular-nums text-ink-700">
-						{{ newRowResource ? fmtINR(newRowResource.current_rate) : "— auto —" }}
+						{{ newRowResource ? fmtINR(newRowResource.current_rate) : __("— auto —") }}
 					</div>
 					<div
 						class="px-3 py-2 text-right text-sm font-medium tabular-nums text-ink-900"
 					>
-						{{ newRowResource ? fmtINR(newRowAmount) : "— auto —" }}
+						{{ newRowResource ? fmtINR(newRowAmount) : __("— auto —") }}
 					</div>
 					<div class="px-2 py-2 flex items-center gap-1 justify-end">
 						<button
@@ -415,7 +420,7 @@ async function removeComponent(index) {
 							:disabled="savingComponents"
 							@click="saveAddRow"
 						>
-							Add
+							{{ __("Add") }}
 						</button>
 						<button
 							type="button"
@@ -436,7 +441,7 @@ async function removeComponent(index) {
 						class="px-3 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 						style="grid-column: 1 / span 4"
 					>
-						Rate / unit (Assembly)
+						{{ __("Rate / unit (Assembly)") }}
 					</div>
 					<div class="px-3 py-2 text-right font-semibold text-ink-900 tabular-nums">
 						{{ fmtINR(doc.rate_per_unit) }}
@@ -463,7 +468,7 @@ async function removeComponent(index) {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">Edit assembly</h2>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit assembly") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ doc.assembly_name }}
 							</p>
@@ -471,7 +476,7 @@ async function removeComponent(index) {
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="cancelEdit"
 						>
 							×
@@ -479,22 +484,22 @@ async function removeComponent(index) {
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection title="Assembly details">
+						<DeskSection :title="__('Assembly details')">
 							<DeskField
-								label="Code"
-								hint="The assembly's identifier — not editable."
+								:label="__('Code')"
+								:hint="__('The assembly\'s identifier — not editable.')"
 							>
 								<span class="text-sm font-mono text-ink-700">{{
 									doc.assembly_code
 								}}</span>
 							</DeskField>
-							<DeskField label="Name" required :error="errors.assemblyName">
+							<DeskField :label="__('Name')" required :error="errors.assemblyName">
 								<DeskInput v-model="form.assemblyName" />
 							</DeskField>
 							<DeskField
-								label="Unit (per)"
+								:label="__('Unit (per)')"
 								required
-								hint='The per-unit basis — component coefficients mean "how much per one of this unit".'
+								:hint="__('The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.')"
 								:error="errors.uom"
 							>
 								<DeskLinkPicker
@@ -502,19 +507,19 @@ async function removeComponent(index) {
 									doctype="UOM"
 									label-field="name"
 									value-field="name"
-									placeholder="— Select unit —"
+									:placeholder="__('— Select unit —')"
 								/>
 							</DeskField>
-							<DeskField label="Category">
+							<DeskField :label="__('Category')">
 								<DeskLinkPicker
 									v-model="form.category"
 									doctype="Assembly Category"
 									label-field="name"
 									value-field="name"
-									placeholder="— Select category —"
+									:placeholder="__('— Select category —')"
 								/>
 							</DeskField>
-							<DeskField label="Notes">
+							<DeskField :label="__('Notes')">
 								<DeskTextarea v-model="form.notes" :rows="3" />
 							</DeskField>
 						</DeskSection>
@@ -531,7 +536,7 @@ async function removeComponent(index) {
 							:disabled="saving"
 							@click="cancelEdit"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canEdit('assembly')"
@@ -540,7 +545,7 @@ async function removeComponent(index) {
 							:disabled="saving"
 							@click="saveEdit"
 						>
-							{{ saving ? "Saving…" : "Save" }}
+							{{ saving ? __("Saving…") : __("Save") }}
 						</button>
 					</footer>
 				</div>
@@ -548,5 +553,5 @@ async function removeComponent(index) {
 		</Teleport>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading assembly…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading assembly…") }}</div>
 </template>

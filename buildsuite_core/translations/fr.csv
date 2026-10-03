@@ -2129,3 +2129,438 @@ task,tâche
 − = lead / overlap,− = avance / chevauchement
 🚩 Blocker flagged,🚩 Blocage signalé
 "Delete ""{0}""? Dependencies in other stages pointing at this one will be cleaned up automatically.",Supprimer « {0} » ? Les dépendances d’autres étapes pointant vers celle-ci seront nettoyées automatiquement.
++ Add Component,+ Ajouter un composant
++ Add from library,+ Ajouter depuis la bibliothèque
++ Add group,+ Ajouter un groupe
+"+ Add item to ""{0}""",+ Ajouter un article à « {0} »
++ New BOQ,+ Nouveau devis quantitatif
++ New Item,+ Nouvel article
++ New rate,+ Nouveau tarif
++{0}% margin,+{0} % de marge
+A group with that name already exists.,Un groupe portant ce nom existe déjà.
+A new Draft revision is cloned from this one. Optionally reference a Scope Change Order.,Une nouvelle révision brouillon est clonée à partir de celle-ci. Référencez éventuellement un ordre de modification.
+A quote past validity can be chased. A tender past its deadline cannot be entered at all.,Un devis au-delà de sa validité peut être relancé. Une soumission au-delà de sa date limite ne peut plus être déposée.
+A reusable BOQ skeleton — add rows after creating,Un squelette de devis réutilisable — ajoutez les lignes après la création
+A revision titled “{0}” already exists on this project. Pick a different title.,Une révision intitulée « {0} » existe déjà sur ce projet. Choisissez un autre titre.
+"A tender usually carries several — general conditions, payment, eligibility, defect liability.","Une soumission en comporte généralement plusieurs — conditions générales, paiement, éligibilité, garantie des défauts."
+ASM-...,ASM-...
+Actual for {0} — click to see the source documents,Réel pour {0} — cliquez pour voir les documents sources
+Actuals recalculated,Réels recalculés
+Add Group,Ajouter un groupe
+Add at least one item.,Ajoutez au moins un article.
+Add at least one line with a description.,Ajoutez au moins une ligne avec une description.
+Add group,Ajouter un groupe
+Add item to {0} — {1},Ajouter un article à {0} — {1}
+Add sub-item to {0},Ajouter un sous-article à {0}
+Add the first group,Ajouter le premier groupe
+Adds the template's rows to this BOQ. Assembly lines explode into sub-items.,Ajoute les lignes du modèle à ce devis. Les lignes d’assemblage s’éclatent en sous-articles.
+An issue date is required.,Une date d’émission est requise.
+Applied to the subtotal.,Appliqué au sous-total.
+Approve revision,Approuver la révision
+Approve revision {0}? Any other approved revision on this project is superseded.,Approuver la révision {0} ? Toute autre révision approuvée sur ce projet est remplacée.
+Assembly details,Détails de l’assemblage
+Auto,Auto
+Auto from Assembly,Auto depuis l’assemblage
+Available in pickers,Disponible dans les sélecteurs
+Back to the register →,Retour au registre →
+"Bank guarantee, DD, online transfer.","Garantie bancaire, traite, virement en ligne."
+Basic,Général
+Before the items,Avant les articles
+Bid before tax,Offre hors taxe
+Bid value,Valeur de l’offre
+Bill of Quantities,Devis quantitatif
+Can't be before the date issued.,Ne peut pas être antérieur à la date d’émission.
+Cannot be negative — a price cannot expire before it is offered.,Ne peut pas être négatif — un prix ne peut pas expirer avant d’être proposé.
+Cannot be negative.,Ne peut pas être négatif.
+Cement — OPC 53 Grade,Ciment — OPC 53
+Charged on subtotal plus margin.,Facturé sur le sous-total plus la marge.
+Clone,Cloner
+Clone BOQ,Cloner le devis
+Cloned,Cloné
+Cloned BOQ title,Titre du devis cloné
+Clone…,Cloner…
+Code is required,Le code est obligatoire
+Code is required.,Le code est obligatoire.
+Coefficient,Coefficient
+Collapse all,Tout réduire
+Committed,Engagé
+Compare to R{0},Comparer à R{0}
+Components,Composants
+Construction Rate Master,Référentiel de prix construction
+Cost Head,Poste de coût
+Cost head,Poste de coût
+Could not delete the quotation,Impossible de supprimer le devis
+Could not delete the rate.,Impossible de supprimer le tarif.
+Could not load rates.,Impossible de charger les tarifs.
+Could not read that terms template.,Impossible de lire ce modèle de conditions.
+Could not save the quotation.,Impossible d’enregistrer le devis.
+Could not save the rate.,Impossible d’enregistrer le tarif.
+Counted from the issue date. Leave blank for no expiry.,Compté à partir de la date d’émission. Laissez vide pour aucune expiration.
+"Create a group first, then map items under it — same as a BOQ.","Créez d’abord un groupe, puis rattachez-y les articles — comme pour un devis."
+Create assembly,Créer l’assemblage
+Create draft,Créer le brouillon
+Create group,Créer le groupe
+Create item,Créer l’article
+Create new revision,Créer une nouvelle révision
+Create quotation,Créer le devis
+Create rate,Créer le tarif
+Create revision,Créer la révision
+Create sub-item,Créer le sous-article
+Create template,Créer le modèle
+Create tender,Créer la soumission
+Current Rate,Tarif actuel
+Current rate (₹),Tarif actuel (₹)
+Current rate cannot be negative.,Le tarif actuel ne peut pas être négatif.
+Date issued,Date d’émission
+Dates,Dates
+Deadline,Date limite
+"Delete ""{0}"" ({1})? This cannot be undone.",Supprimer « {0} » ({1}) ? Cette action est irréversible.
+"Delete ""{0}"" and its {1} row? This cannot be undone.",Supprimer « {0} » et sa {1} ligne ? Cette action est irréversible.
+"Delete ""{0}"" and its {1} rows? This cannot be undone.",Supprimer « {0} » et ses {1} lignes ? Cette action est irréversible.
+"Delete ""{0}""? This cannot be undone.",Supprimer « {0} » ? Cette action est irréversible.
+Delete BOQ,Supprimer le devis
+Delete BOQ {0} and all its rows? This cannot be undone.,Supprimer le devis {0} et toutes ses lignes ? Cette action est irréversible.
+Delete assembly,Supprimer l’assemblage
+Delete estimate template,Supprimer le modèle d’estimation
+Delete group,Supprimer le groupe
+"Delete group ""{0} — {1}"" with {2} item and their sub-items?",Supprimer le groupe « {0} — {1} » avec {2} article et ses sous-articles ?
+"Delete group ""{0} — {1}"" with {2} items and their sub-items?",Supprimer le groupe « {0} — {1} » avec {2} articles et leurs sous-articles ?
+"Delete group ""{0} — {1}""?",Supprimer le groupe « {0} — {1} » ?
+Delete item,Supprimer l’article
+"Delete item ""{0} — {1}"" with {2} sub-item?",Supprimer l’article « {0} — {1} » avec {2} sous-article ?
+"Delete item ""{0} — {1}"" with {2} sub-items?",Supprimer l’article « {0} — {1} » avec {2} sous-articles ?
+"Delete item ""{0} — {1}""?",Supprimer l’article « {0} — {1} » ?
+Delete rate,Supprimer le tarif
+Delete sub-item,Supprimer le sous-article
+"Delete sub-item ""{0}""?",Supprimer le sous-article « {0} » ?
+Delete tender,Supprimer la soumission
+"Delete the empty group ""{0}""?",Supprimer le groupe vide « {0} » ?
+Delete {0}? This also removes its rate history.,Supprimer {0} ? Cela supprime aussi son historique de tarifs.
+Description and a non-zero quantity per unit are required.,Une description et une quantité par unité non nulle sont requises.
+Description and unit are required.,Une description et une unité sont requises.
+Disabled,Désactivé
+Drafts,Brouillons
+EMD,EMD
+EMD amount (₹),Montant EMD (₹)
+EMD instrument,Instrument EMD
+EMD valid to,EMD valable jusqu’au
+EMD valid until,EMD valable jusqu’au
+Earnest money,Garantie de soumission
+Earnest money and guarantee,Garantie de soumission et caution
+Edit assembly,Modifier l’assemblage
+Edit group,Modifier le groupe
+Edit item,Modifier l’article
+Edit rate · {0},Modifier le tarif · {0}
+Edit sub-item,Modifier le sous-article
+Edit template,Modifier le modèle
+Effective,Effectif
+Empty = universal.,Vide = universel.
+Enabled,Activé
+Envelope,Enveloppe
+Envelope structure,Structure d’enveloppe
+Estimate Template,Modèle d’estimation
+Estimate template,Modèle d’estimation
+Estimated,Estimé
+Estimated total,Total estimé
+Every item needs a description.,Chaque article nécessite une description.
+Every line needs a quantity above zero.,Chaque ligne nécessite une quantité supérieure à zéro.
+Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only.,Chaque flux se résout via le code de coût. Annuler une source supprime son entrée — le journal n’affiche que le coût réel.
+Expand all,Tout développer
+Explode from assembly into sub-items,Éclater l’assemblage en sous-articles
+Exploded from assembly,Éclaté depuis l’assemblage
+Failed to approve,Échec de l’approbation
+Failed to clone,Échec du clonage
+Failed to create BOQ,Échec de la création du devis
+Failed to create assembly,Échec de la création de l’assemblage
+Failed to create estimate template,Échec de la création du modèle d’estimation
+Failed to create revision,Échec de la création de la révision
+Failed to delete BOQ,Échec de la suppression du devis
+Failed to delete assembly,Échec de la suppression de l’assemblage
+Failed to delete group,Échec de la suppression du groupe
+Failed to delete item,Échec de la suppression de l’article
+Failed to delete sub-item,Échec de la suppression du sous-article
+Failed to delete template,Échec de la suppression du modèle
+Failed to delete tender,Échec de la suppression de la soumission
+Failed to explode,Échec de l’éclatement
+Failed to load actuals,Échec du chargement des réels
+Failed to recalculate,Échec du recalcul
+Failed to save group,Échec de l’enregistrement du groupe
+Failed to save item,Échec de l’enregistrement de l’article
+Failed to save sub-item,Échec de l’enregistrement du sous-article
+Failed to save tender,Échec de l’enregistrement de la soumission
+Failed to submit,Échec de la soumission
+Failed to update assembly,Échec de la mise à jour de l’assemblage
+Failed to update components,Échec de la mise à jour des composants
+Failed to update sections,Échec de la mise à jour des sections
+Failed to update template,Échec de la mise à jour du modèle
+For,Pour
+Formal bids against published invitations. Nothing here touches an estimate — a bid you lose must cost the estimate nothing.,Offres formelles en réponse à des invitations publiées. Rien ici ne touche à une estimation — une offre perdue ne doit rien coûter à l’estimation.
+From Rate Master,Depuis le référentiel de prix
+From WP,Depuis le lot
+Group,Groupe
+Group actual — contributing documents,Réel du groupe — documents contributeurs
+"Group name — e.g. Substructure, Finishes…","Nom du groupe — p. ex. Infrastructure, Finitions…"
+Group: Any,Groupe : tous
+Groups are created first; items are mapped under them — same structure as a BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.,Les groupes sont créés d’abord ; les articles sont rattachés en dessous — même structure qu’un devis. Les lignes issues d’un assemblage s’éclatent automatiquement en sous-articles figés à l’import.
+Groups · Items,Groupes · articles
+Homebuyer,Acquéreur
+"How the bid is packaged: technical and financial together, or opened in stages.","Comment l’offre est présentée : technique et financière ensemble, ou ouvertes par étapes."
+Import Template…,Importer un modèle…
+Internal note — not printed,Note interne — non imprimée
+Internal notes,Notes internes
+Issued by,Émis par
+Issuing body,Organisme émetteur
+Item actual — contributing documents,Réel de l’article — documents contributeurs
+"Item saved, but explode failed","Article enregistré, mais échec de l’éclatement"
+Item source,Source de l’article
+"Leave blank to auto-generate (A, B, C…)","Laissez vide pour générer automatiquement (A, B, C…)"
+Leave blank to auto-generate (e.g. A.05),Laissez vide pour générer automatiquement (p. ex. A.05)
+Leave blank to auto-name.,Laissez vide pour nommer automatiquement.
+Leave blank to clone within this project (WP → WP).,Laissez vide pour cloner au sein de ce projet (lot → lot).
+Link an Assembly to this item first.,Liez d’abord un assemblage à cet article.
+Link to task,Lier à une tâche
+Linked SCO,OM lié
+Load standard terms from the library…,Charger des conditions standard depuis la bibliothèque…
+Loading assembly…,Chargement de l’assemblage…
+Loading estimate template…,Chargement du modèle d’estimation…
+Loading quotation…,Chargement du devis…
+Loading rates…,Chargement des tarifs…
+Loading tender…,Chargement de la soumission…
+Main Contractor,Entreprise générale
+Manual edits stamp 'Manual'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.,Les modifications manuelles portent la mention « Manuel ». Les mises à jour de tarif déclenchées par un bon de commande approuvé portent automatiquement le n° de BC — ce flux se trouve sur la page du BC.
+Margin %,Marge %
+Margin and tax are applied to the subtotal — sell rate and amount are worked out on save.,La marge et la taxe sont appliquées au sous-total — le prix de vente et le montant sont calculés à l’enregistrement.
+Margin {0}%,Marge {0} %
+Material,Matériau
+Material / Labour / Equipment / Subcontract / Preliminaries / Other,Matériau / Main-d’œuvre / Équipement / Sous-traitance / Installations de chantier / Autre
+Money genuinely lodged — it shows as at stake until the bid is decided.,Argent réellement déposé — affiché comme engagé jusqu’à la décision sur l’offre.
+Name is required,Le nom est obligatoire
+Needs a deadline. Miss it and the bid cannot be entered.,"Nécessite une date limite. Dépassée, l’offre ne peut plus être déposée."
+New Assembly,Nouvel assemblage
+New BOQ,Nouveau devis quantitatif
+New Estimate Template,Nouveau modèle d’estimation
+New Quotation,Nouveau devis
+New Tender,Nouvelle soumission
+New group,Nouveau groupe
+New item,Nouvel article
+New rate,Nouveau tarif
+New sub-item · rate analysis,Nouveau sous-article · analyse de prix
+No BOQs match these filters.,Aucun devis ne correspond à ces filtres.
+No assemblies match your filters.,Aucun assemblage ne correspond à vos filtres.
+No components yet — add one to price this assembly.,Aucun composant pour l’instant — ajoutez-en un pour chiffrer cet assemblage.
+No estimate templates yet.,Aucun modèle d’estimation pour l’instant.
+No groups yet.,Aucun groupe pour l’instant.
+No history recorded yet.,Aucun historique enregistré pour l’instant.
+No items in this group yet.,Aucun article dans ce groupe pour l’instant.
+No items on this tender.,Aucun article sur cette soumission.
+No lines on this quotation.,Aucune ligne sur ce devis.
+No matches,Aucune correspondance
+No quotation with that id.,Aucun devis avec cet id.
+No quotations yet. Build one when a customer asks you for a price.,Aucun devis pour l’instant. Créez-en un lorsqu’un client vous demande un prix.
+No rate analysis recorded for this item.,Aucune analyse de prix enregistrée pour cet article.
+No rates match your filters.,Aucun tarif ne correspond à vos filtres.
+No source documents yet — this actual is “— pending”.,Aucun document source pour l’instant — ce réel est « — en attente ».
+No tenders yet. Start one when an invitation to bid comes in.,Aucune soumission pour l’instant. Démarrez-en une à la réception d’une invitation à soumissionner.
+No terms recorded.,Aucune condition enregistrée.
+No terms sections yet.,Aucune section de conditions pour l’instant.
+Not linked to a project,Non lié à un projet
+Not linked yet,Pas encore lié
+Not printed — for whoever picks this up next.,Non imprimé — pour la personne qui reprendra le dossier.
+Nothing ahead of the item table.,Rien avant le tableau des articles.
+Open subcontractor work orders mapped to cost code {0},Ordres de travaux de sous-traitant ouverts rattachés au code de coût {0}
+Optional reference to a Scope Change Order this revision addresses.,Référence facultative à un ordre de modification que cette révision traite.
+Optional · drives live actuals from task progress,Facultatif · alimente les réels en direct depuis l’avancement des tâches
+Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.,Facultatif · choisissez pour pré-remplir la description + le tarif. Les mises à jour du référentiel se propagent aux devis qui l’utilisent.
+Optional — a quotation usually goes out before there is a project.,Facultatif — un devis part généralement avant qu’un projet n’existe.
+Optional — a tender is bid long before there is a project.,Facultatif — une soumission est déposée bien avant qu’un projet n’existe.
+"Optional — scope of work, preamble or method of measurement, printed above the priced schedule.","Facultatif — périmètre des travaux, préambule ou méthode de métré, imprimé au-dessus du bordereau chiffré."
+Optional. Auto-generated if blank.,Facultatif. Généré automatiquement si vide.
+Optional. Drives per-WP roll-up in the BOQ summary.,Facultatif. Alimente la consolidation par lot dans le récapitulatif du devis.
+Other,Autre
+Performance guarantee,Garantie de bonne exécution
+Performance guarantee %,Garantie de bonne exécution %
+Pick a rate master…,Choisissez un référentiel de prix…
+Pick a source…,Choisissez une source…
+Pick a template,Choisissez un modèle
+Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.,Choisissez un assemblage pour pré-remplir l’unité / le tarif et l’éclater en sous-articles figés à l’enregistrement. Laissez vide pour une ligne manuelle.
+Pick the customer this is for.,Choisissez le client concerné.
+Plan Qty,Qté planifiée
+Planned amount,Montant planifié
+Planned qty,Qté planifiée
+Portal,Portail
+Portal:,Portail :
+Preliminaries,Installations de chantier
+Prepared,Préparé
+Price before tax,Prix hors taxe
+Priced offers to customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.,Offres chiffrées aux clients qui vous ont demandé un prix. Rien ici ne touche à une estimation — un prix proposé n’est pas un travail engagé.
+Pricing,Tarification
+Private Client,Client privé
+Project Category tag,Étiquette de catégorie de projet
+Project:,Projet :
+Pulled from a template. Editing it here does not change the library.,Importé d’un modèle. Le modifier ici ne change pas la bibliothèque.
+Pulls the clause in as editable text — change it afterwards and it stays yours.,Importe la clause en texte modifiable — modifiez-la ensuite et elle vous appartient.
+Qty per unit,Qté par unité
+Quotation,Devis
+Quotation not found,Devis introuvable
+Quotations,Devis
+Rate / unit,Tarif / unité
+Rate / unit (Assembly),Tarif / unité (assemblage)
+Rate / unit (live),Tarif / unité (en direct)
+Rate created,Tarif créé
+Rate deleted,Tarif supprimé
+Rate history,Historique des tarifs
+Rate updated,Tarif mis à jour
+Rate-analysis recipe priced per unit,Recette d’analyse de prix chiffrée à l’unité
+Recalc actuals,Recalculer les réels
+Remarks (optional),Remarques (facultatif)
+Remove component,Retirer le composant
+Remove this component from the assembly?,Retirer ce composant de l’assemblage ?
+Remove this line from the template?,Retirer cette ligne du modèle ?
+Rename group,Renommer le groupe
+Resource,Ressource
+Resource name is required.,Le nom de la ressource est obligatoire.
+Rev.,Rév.
+Revision,Révision
+Revision title,Titre de la révision
+Rows,Lignes
+Say what the quotation is for.,Indiquez l’objet du devis.
+Say what the tender is for.,Indiquez l’objet de la soumission.
+Search BOQ id or title…,Rechercher un id ou un titre de devis…
+Search BOQ tree by code or description,Rechercher dans l’arbre du devis par code ou description
+Search assemblies / rate master…,Rechercher assemblages / référentiel de prix…
+Search by code or name…,Rechercher par code ou nom…
+Search code / description…,Rechercher code / description…
+Search code or description…,Rechercher code ou description…
+Search customers…,Rechercher des clients…
+"Search item, code, group…","Rechercher article, code, groupe…"
+Search quotation / customer / scope…,Rechercher devis / client / périmètre…
+Search rate master…,Rechercher dans le référentiel de prix…
+Search tender / reference / issuing body,Rechercher soumission / référence / organisme émetteur
+Search this project's SCOs…,Rechercher les OM de ce projet…
+Select a project,Sélectionner un projet
+Sell rate,Prix de vente
+Short stable identifier (e.g. ASM-RCC-M25).,Identifiant court et stable (p. ex. ASM-RCC-M25).
+Short stable identifier (e.g. ET-RES-TOWER).,Identifiant court et stable (p. ex. ET-RES-TOWER).
+Source WP,Lot source
+Source document,Document source
+Source — Assembly,Source — assemblage
+Standard rate,Tarif standard
+Start from a template,Partir d’un modèle
+Submission,Soumission
+Submission deadline,Date limite de soumission
+Submit BOQ {0} for approval?,Soumettre le devis {0} pour approbation ?
+Subtotal,Sous-total
+Target WP,Lot cible
+Tax %,Taxe %
+Tax {0}%,Taxe {0} %
+Template details,Détails du modèle
+Template imported,Modèle importé
+Template rows,Lignes du modèle
+Tender,Soumission
+Tender created,Soumission créée
+Tender reference,Référence de la soumission
+Tender saved,Soumission enregistrée
+Tenders,Soumissions
+The assembly's identifier — not editable.,L’identifiant de l’assemblage — non modifiable.
+The issuing body's reference — a bid can be rejected on this alone.,La référence de l’organisme émetteur — une offre peut être rejetée sur ce seul motif.
+The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.,La base à l’unité — les coefficients des composants signifient « combien par unité ».
+The submission deadline passed on {0}.,La date limite de soumission est passée le {0}.
+The template's identifier — not editable.,L’identifiant du modèle — non modifiable.
+This BOQ has no groups yet.,Ce devis n’a pas encore de groupes.
+This cannot be undone.,Cette action est irréversible.
+To WP,Vers le lot
+To project,Vers le projet
+Total actual,Total réel
+Total planned,Total planifié
+Total rates,Total des tarifs
+Trend,Tendance
+"Type the items straight in, or pull them from an assembly or an estimate. Terms sections are added on the tender itself.","Saisissez les articles directement, ou importez-les depuis un assemblage ou une estimation. Les sections de conditions sont ajoutées sur la soumission elle-même."
+"Type the items straight in, or pull them from an assembly.","Saisissez les articles directement, ou importez-les depuis un assemblage."
+"Type the terms, or load a standard set above.","Saisissez les conditions, ou chargez un ensemble standard ci-dessus."
+Typed for this quotation.,Saisi pour ce devis.
+UOM is required.,L’unité est obligatoire.
+Unit (per),Unité (par)
+Unit is required,L’unité est obligatoire
+"Unlike a quotation past its validity, this cannot be chased — the bid can no longer be entered.","Contrairement à un devis au-delà de sa validité, celle-ci ne peut pas être relancée — l’offre ne peut plus être déposée."
+Used to suggest this template for matching project types.,Utilisé pour suggérer ce modèle aux types de projet correspondants.
+Valid for (days),Valable (jours)
+Valid to,Valable jusqu’au
+View Assemblies →,Voir les assemblages →
+View Rate Master →,Voir le référentiel de prix →
+WP,Lot
+What does this line of work include?,Qu’inclut cette ligne de travaux ?
+What the line is for,Objet de la ligne
+What we would have to furnish on award.,Ce que nous devrions fournir en cas d’attribution.
+Where the bid is uploaded.,Où l’offre est téléversée.
+Who and what,Qui et quoi
+Who issued it?,Qui l’a émis ?
+Work Package (tag),Lot de travaux (étiquette)
+You don't have permission to create an assembly.,Vous n’avez pas la permission de créer un assemblage.
+You don't have permission to create an estimate template.,Vous n’avez pas la permission de créer un modèle d’estimation.
+across this BOQ,sur l’ensemble de ce devis
+an assembly,un assemblage
+an assembly from the catalogue,un assemblage du catalogue
+approved BOQs,devis approuvés
+auto,auto
+awaiting approval,en attente d’approbation
+blank if none,vide si aucun
+cost {0},coût {0}
+delta,delta
+e.g. Bank guarantee — Federal Bank,p. ex. Garantie bancaire — Federal Bank
+e.g. CEM-OPC53,p. ex. CEM-OPC53
+e.g. Civil Works — RCC,p. ex. Travaux de génie civil — béton armé
+e.g. Façade scope upgrade — R3,p. ex. Extension du périmètre façade — R3
+e.g. GePNIC / state e-procurement,p. ex. GePNIC / e-approvisionnement de l’État
+"e.g. Interior fit-out — Level 8, Brigade Tech Gardens","p. ex. Aménagement intérieur — niveau 8, Brigade Tech Gardens"
+e.g. KMRL,p. ex. KMRL
+e.g. KMRL/P2/CIV/2026/17,p. ex. KMRL/P2/CIV/2026/17
+"e.g. Mason (skilled), Cement OPC 53, Vibrator needle…","p. ex. Maçon (qualifié), ciment OPC 53, aiguille vibrante…"
+e.g. Station finishes package — Kochi Metro Phase 2,p. ex. Lot de finitions de station — Kochi Metro Phase 2
+e.g. Tender draft…,p. ex. Brouillon de soumission…
+expired {0} day ago,expiré il y a {0} jour
+expired {0} days ago,expiré il y a {0} jours
+expires today,expire aujourd’hui
+from,de
+from SCO,depuis l’OM
+incl. tax,TTC
+line,ligne
+"m³, kg, nos…","m³, kg, u…"
+of plan,du plan
+of which cost {0} · margin {1},dont coût {0} · marge {1}
+original,original
+per,par
+per {0},par {0}
+qty × rate (auto),qté × tarif (auto)
+unassigned,non assigné
+unit,unité
+{0} day left,{0} jour restant
+{0} days left,{0} jours restants
+{0} delta,{0} delta
+{0} item,{0} article
+{0} items,{0} articles
+{0} line,{0} ligne
+{0} match,{0} correspondance
+{0} matches,{0} correspondances
+{0} of {1} at item level,{0} sur {1} au niveau article
+{0} of {1} · estimation,{0} sur {1} · estimation
+{0} on award,{0} à l’attribution
+{0} per {1},{0} par {1}
+{0} · per {1},{0} · par {1}
+· linked to Rate Master · coefficient × rate,· lié au référentiel de prix · coefficient × tarif
+Δ vs R{0} shown on each item row,Δ vs R{0} affiché sur chaque ligne d’article
+— Any project type —,— Tout type de projet —
+— Manual entry —,— Saisie manuelle —
+— Manual line —,— Ligne manuelle —
+— Not linked —,— Non lié —
+— Same project —,— Même projet —
+— Select UOM —,— Sélectionner une unité —
+— Select category —,— Sélectionner une catégorie —
+— Select unit —,— Sélectionner une unité —
+— Select —,— Sélectionner —
+— Universal —,— Universel —
+— Unscoped —,— Sans périmètre —
+— auto —,— auto —
+← Back to BOQ list,← Retour à la liste des devis
+← Back to tenders,← Retour aux soumissions
+✓ Comparing R{0},✓ Comparaison avec R{0}
+"The per-unit basis — component coefficients mean ""how much per one of this unit"".",La base à l’unité — les coefficients des composants signifient « combien par unité ».
