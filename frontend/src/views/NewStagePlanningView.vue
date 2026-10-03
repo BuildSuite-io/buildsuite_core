@@ -24,6 +24,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StageTaskPicker from "@/components/StageTaskPicker.vue";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const route = useRoute();
@@ -104,12 +105,12 @@ function toggleDependency(id) {
 
 function validate() {
 	const e = {};
-	if (!form.stageName.trim()) e.stageName = "Stage name is required";
-	if (!form.project) e.project = "Project is required";
+	if (!form.stageName.trim()) e.stageName = __("Stage name is required");
+	if (!form.project) e.project = __("Project is required");
 	const endErr = endBeforeStartError(form.plannedStart, form.plannedEnd);
 	if (endErr) e.plannedEnd = endErr;
 	if (form.plannedEnd && form.plannedStart && form.plannedEnd < form.plannedStart) {
-		e.plannedEnd = "End must be on or after start";
+		e.plannedEnd = __("End must be on or after start");
 	}
 	setErrors(e);
 	return Object.keys(e).length === 0;
@@ -177,16 +178,16 @@ async function save() {
 			"";
 
 		if (!createdStageId) {
-			showToast("Stage created, but could not resolve its ID for navigation", "error");
+			showToast(__("Stage created, but could not resolve its ID for navigation"), "error");
 			await router.push("/stage-plannings");
 			return;
 		}
 
 		await router.push(`/stage-plannings/${createdStageId}`);
 		await nextTick();
-		showToast("Stage created");
+		showToast(__("Stage created"));
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create stage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create stage"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -197,20 +198,20 @@ function cancel() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Stage Planning", to: "/stage-plannings" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Stage Planning"), to: "/stage-plannings" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="New Stage" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Stage')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('stagePlanning')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create a stage.
+			{{ __("You don't have permission to create a stage.") }}
 		</div>
 		<template v-else>
 			<!-- Step indicator — bone-simple breadcrumb-style pills. -->
@@ -225,7 +226,7 @@ const breadcrumbs = [
 					style="border-radius: 9999px"
 				>
 					<span class="tabular-nums">1.</span>
-					<span>Details</span>
+					<span>{{ __("Details") }}</span>
 				</span>
 				<span class="text-ink-400">›</span>
 				<span
@@ -238,7 +239,7 @@ const breadcrumbs = [
 					style="border-radius: 9999px"
 				>
 					<span class="tabular-nums">2.</span>
-					<span>Tasks</span>
+					<span>{{ __("Tasks") }}</span>
 				</span>
 			</div>
 
@@ -246,7 +247,7 @@ const breadcrumbs = [
 			<DeskForm v-if="step === 1">
 				<template #action-bar>
 					<DeskActionBar
-						save-label="Next: Add Tasks"
+						:save-label="__('Next: Add Tasks')"
 						@save="goToStep2"
 						@cancel="cancel"
 					/>
@@ -254,19 +255,19 @@ const breadcrumbs = [
 
 				<!-- Full-width Layout -->
 				<div class="pb-12">
-					<DeskSection title="Stage details" :cols="1">
-						<DeskField label="Stage name" required :error="errors.stageName">
+					<DeskSection :title="__('Stage details')" :cols="1">
+						<DeskField :label="__('Stage name')" required :error="errors.stageName">
 							<DeskInput
 								v-model="form.stageName"
 								data-test="field-stage-name"
-								placeholder="e.g. Substructure Stage"
+								:placeholder="__('e.g. Substructure Stage')"
 							/>
 						</DeskField>
 						<DeskField
-							label="Project"
+							:label="__('Project')"
 							required
 							:error="errors.project"
-							:hint="lockedProject ? 'Pre-selected — locked.' : ''"
+							:hint="lockedProject ? __('Pre-selected — locked.') : ''"
 						>
 							<DeskLinkPicker
 								v-model="form.project"
@@ -277,33 +278,33 @@ const breadcrumbs = [
 								:search-fields="['project_name', 'custom_project_id', 'name']"
 								:filters="[['is_group', '=', 1]]"
 								:page-length="20"
-								placeholder="— Select project —"
+								:placeholder="__('— Select project —')"
 								:disabled="lockedProject"
 								:error="errors.project"
 							/>
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Schedule" :cols="2">
-						<DeskField label="Planned start">
+					<DeskSection :title="__('Schedule')" :cols="2">
+						<DeskField :label="__('Planned start')">
 							<DeskInput v-model="form.plannedStart" type="date" />
 						</DeskField>
-						<DeskField label="Planned end" :error="errors.plannedEnd">
+						<DeskField :label="__('Planned end')" :error="errors.plannedEnd">
 							<DeskInput v-model="form.plannedEnd" type="date" />
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Description" :cols="1">
-						<DeskField label="Description">
+					<DeskSection :title="__('Description')" :cols="1">
+						<DeskField :label="__('Description')">
 							<DeskTextarea
 								v-model="form.description"
 								:rows="3"
-								placeholder="Scope, gates, hand-off notes…"
+								:placeholder="__('Scope, gates, hand-off notes…')"
 							/>
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Dependencies" v-if="form.project" :cols="1">
+					<DeskSection :title="__('Dependencies')" v-if="form.project" :cols="1">
 						<div class="md:col-span-1">
 							<div v-if="siblingStages.length" class="flex flex-wrap gap-2">
 								<label
@@ -325,12 +326,18 @@ const breadcrumbs = [
 								</label>
 							</div>
 							<div v-else class="text-xs text-ink-400 italic">
-								No other stages on this project yet · create them first, then come
-								back to wire dependencies.
+								{{
+									__(
+										"No other stages on this project yet · create them first, then come back to wire dependencies."
+									)
+								}}
 							</div>
 							<div class="text-[11px] text-ink-500 mt-1.5">
-								Optional · pick stages that must complete before this one can
-								start.
+								{{
+									__(
+										"Optional · pick stages that must complete before this one can start."
+									)
+								}}
 							</div>
 						</div>
 					</DeskSection>
@@ -341,9 +348,9 @@ const breadcrumbs = [
 			<DeskForm v-else>
 				<template #action-bar>
 					<DeskActionBar
-						save-label="Create Stage"
+						:save-label="__('Create Stage')"
 						:saving="saving"
-						saving-label="Creating stage…"
+						:saving-label="__('Creating stage…')"
 						@save="save"
 						@cancel="cancel"
 					>
@@ -354,7 +361,7 @@ const breadcrumbs = [
 								style="border-radius: 6px"
 								@click="goBackToStep1"
 							>
-								← Back
+								{{ __("← Back") }}
 							</button>
 						</template>
 					</DeskActionBar>

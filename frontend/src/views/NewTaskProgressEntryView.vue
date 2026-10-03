@@ -5,6 +5,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import FileUploadHandler from "frappe-ui-file-upload-handler";
@@ -219,16 +220,22 @@ watch(
 		}
 		const pct = Number(raw);
 		if (Number.isNaN(pct) || pct > 100) {
-			errors.value = { ...errors.value, progressPct: "Progress must be between 0 and 100" };
+			errors.value = {
+				...errors.value,
+				progressPct: __("Progress must be between 0 and 100"),
+			};
 		} else if (pct <= 0) {
 			errors.value = {
 				...errors.value,
-				progressPct: "A progress entry can't be 0% — record the progress actually made.",
+				progressPct: __("A progress entry can't be 0% — record the progress actually made."),
 			};
 		} else if (pct <= progressFloor.value) {
 			errors.value = {
 				...errors.value,
-				progressPct: `Progress must increase — enter a value above the current ${progressFloor.value}%. Entries are cumulative.`,
+				progressPct: __(
+					"Progress must increase — enter a value above the current {0}%. Entries are cumulative.",
+					[progressFloor.value]
+				),
 			};
 		} else {
 			clearError("progressPct");
@@ -246,20 +253,23 @@ function clampProgress() {
 
 function validate() {
 	const e = {};
-	if (!form.projectId) e.projectId = "Project is required";
-	if (!form.taskId) e.taskId = "Task is required";
+	if (!form.projectId) e.projectId = __("Project is required");
+	if (!form.taskId) e.taskId = __("Task is required");
 	else if (selectedTask.value && Number(selectedTask.value.progress) >= 100)
-		e.taskId = "This task is already Completed — no further progress entries can be added.";
+		e.taskId = __("This task is already Completed — no further progress entries can be added.");
 	const pct = Number(form.progressPct);
 	if (Number.isNaN(pct) || pct > 100) {
-		e.progressPct = "Progress must be between 0 and 100";
+		e.progressPct = __("Progress must be between 0 and 100");
 	} else if (pct <= 0) {
-		e.progressPct = "A progress entry can't be 0% — record the progress actually made.";
+		e.progressPct = __("A progress entry can't be 0% — record the progress actually made.");
 	} else if (pct <= progressFloor.value) {
-		e.progressPct = `Progress must increase — enter a value above the current ${progressFloor.value}%. Entries are cumulative.`;
+		e.progressPct = __(
+			"Progress must increase — enter a value above the current {0}%. Entries are cumulative.",
+			[progressFloor.value]
+		);
 	}
 	if (form.blockerFlag && !form.blockerNote.trim()) {
-		e.blockerNote = "Describe the blocker";
+		e.blockerNote = __("Describe the blocker");
 	}
 	setErrors(e);
 	return Object.keys(e).length === 0;
@@ -293,7 +303,7 @@ async function save() {
 					private: true,
 				});
 			} catch (uploadErr) {
-				showToast(`Filed entry, but failed to attach ${f.fileName}`, "error");
+				showToast(__("Filed entry, but failed to attach {0}", [f.fileName]), "error");
 				console.error("attachment upload failed:", uploadErr);
 			}
 		}
@@ -305,7 +315,7 @@ async function save() {
 			router.push(`/progress-entries/${created.name || created.id}`);
 		}
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to file progress entry", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to file progress entry"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -317,16 +327,16 @@ function cancel() {
 const WEATHER_OPTIONS = ["Clear", "Rainy", "Hot", "Cold", "Storm"];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Task Progress Entry", to: "/progress-entries" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Task Progress Entry"), to: "/progress-entries" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="New Progress Entry"
-		subtitle="File today's progress against a task — labour, weather, blockers"
+		:title="__('New Progress Entry')"
+		:subtitle="__('File today\'s progress against a task — labour, weather, blockers')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<div
@@ -334,12 +344,12 @@ const breadcrumbs = [
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to file a progress entry.
+			{{ __("You don't have permission to file a progress entry.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Filing…' : 'File entry'"
+					:save-label="saving ? __('Filing…') : __('File entry')"
 					:saving="saving"
 					@save="save"
 					@cancel="cancel"
@@ -347,8 +357,8 @@ const breadcrumbs = [
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Project, task &amp; date" :cols="2">
-					<DeskField label="Project" required :error="errors.projectId">
+				<DeskSection :title="__('Project, task & date')" :cols="2">
+					<DeskField :label="__('Project')" required :error="errors.projectId">
 						<DeskLinkPicker
 							v-model="form.projectId"
 							doctype="Project"
@@ -356,11 +366,11 @@ const breadcrumbs = [
 							value-field="name"
 							:search-fields="['project_name', 'custom_project_id', 'name']"
 							:page-length="20"
-							placeholder="— Select project —"
+							:placeholder="__('— Select project —')"
 							@change="onProjectChange"
 						/>
 					</DeskField>
-					<DeskField label="Task" required :error="errors.taskId">
+					<DeskField :label="__('Task')" required :error="errors.taskId">
 						<DeskLinkPicker
 							v-model="form.taskId"
 							doctype="Task"
@@ -371,11 +381,11 @@ const breadcrumbs = [
 							:disabled="!form.projectId"
 							:page-length="20"
 							:placeholder="
-								form.projectId ? '— Select task —' : '— Select a project first —'
+								form.projectId ? __('— Select task —') : __('— Select a project first —')
 							"
 						/>
 					</DeskField>
-					<DeskField label="Entry date">
+					<DeskField :label="__('Entry date')">
 						<DeskInput v-model="form.entryDate" type="date" />
 					</DeskField>
 					<div
@@ -393,11 +403,11 @@ const breadcrumbs = [
 					</div>
 				</DeskSection>
 
-				<DeskSection title="Progress" :cols="2">
+				<DeskSection :title="__('Progress')" :cols="2">
 					<DeskField
-						label="Cumulative progress (%)"
+						:label="__('Cumulative progress (%)')"
 						required
-						:hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${progressFloor}%.`"
+						:hint="__('The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.', [progressFloor])"
 						:error="errors.progressPct"
 					>
 						<DeskInput
@@ -412,43 +422,43 @@ const breadcrumbs = [
 					</DeskField>
 					<div class="md:col-span-2">
 						<DeskField
-							label="Narrative"
-							hint="What was completed today? Any context worth recording?"
+							:label="__('Narrative')"
+							:hint="__('What was completed today? Any context worth recording?')"
 						>
 							<DeskTextarea
 								v-model="form.narrative"
 								:rows="3"
-								placeholder="e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken."
+								:placeholder="__('e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.')"
 							/>
 						</DeskField>
 					</div>
 				</DeskSection>
 
-				<DeskSection title="Labour deployed today" :cols="2">
+				<DeskSection :title="__('Labour deployed today')" :cols="2">
 					<DeskField
-						label="Skilled labour"
-						hint="Count of skilled workers on site today"
+						:label="__('Skilled labour')"
+						:hint="__('Count of skilled workers on site today')"
 					>
 						<DeskInput v-model="form.skilledLabour" type="number" />
 					</DeskField>
 					<DeskField
-						label="Unskilled labour"
-						hint="Count of unskilled workers / helpers"
+						:label="__('Unskilled labour')"
+						:hint="__('Count of unskilled workers / helpers')"
 					>
 						<DeskInput v-model="form.unskilledLabour" type="number" />
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Site conditions" :cols="2">
-					<DeskField label="Weather" hint="Optional · only if it's worth recording">
+				<DeskSection :title="__('Site conditions')" :cols="2">
+					<DeskField :label="__('Weather')" :hint="__('Optional · only if it\'s worth recording')">
 						<DeskSelect v-model="form.weather">
-							<option value="">— No record —</option>
+							<option value="">{{ __("— No record —") }}</option>
 							<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
-								{{ w }}
+								{{ __(w) }}
 							</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField label="Blocker">
+					<DeskField :label="__('Blocker')">
 						<label
 							class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
 						>
@@ -457,26 +467,26 @@ const breadcrumbs = [
 								type="checkbox"
 								class="h-3.5 w-3.5"
 							/>
-							Flag a blocker on this entry
+							{{ __("Flag a blocker on this entry") }}
 						</label>
 					</DeskField>
 					<div v-if="form.blockerFlag" class="md:col-span-2">
 						<DeskField
-							label="Blocker detail"
+							:label="__('Blocker detail')"
 							required
-							hint="What blocked progress today?"
+							:hint="__('What blocked progress today?')"
 							:error="errors.blockerNote"
 						>
 							<DeskTextarea
 								v-model="form.blockerNote"
 								:rows="2"
-								placeholder="e.g. Afternoon shower delayed final bay by 2 hours"
+								:placeholder="__('e.g. Afternoon shower delayed final bay by 2 hours')"
 							/>
 						</DeskField>
 					</div>
 				</DeskSection>
 
-				<DeskSection title="Attachments" :cols="1">
+				<DeskSection :title="__('Attachments')" :cols="1">
 					<input
 						ref="progressFileInput"
 						type="file"
@@ -493,8 +503,8 @@ const breadcrumbs = [
 						@change="onProgressFilesPicked"
 					/>
 					<DeskField
-						label="Files"
-						hint="Site photos, QC reports, drawings — picked here and saved with the entry."
+						:label="__('Files')"
+						:hint="__('Site photos, QC reports, drawings — picked here and saved with the entry.')"
 					>
 						<div class="space-y-2 py-1">
 							<ul v-if="pendingAttachments.length" class="space-y-1.5">
@@ -532,7 +542,7 @@ const breadcrumbs = [
 									<button
 										type="button"
 										class="text-ink-400 hover:text-danger-700 text-base leading-none"
-										aria-label="Remove"
+										:aria-label="__('Remove')"
 										@click="removePendingAttachment(idx)"
 									>
 										×
@@ -547,11 +557,9 @@ const breadcrumbs = [
 									@click="openProgressFilePicker"
 								>
 									<span class="text-sm leading-none">+</span>
-									<span
-										>Attach file{{
-											pendingAttachments.length ? "s" : ""
-										}}</span
-									>
+									<span>{{
+										pendingAttachments.length ? __("Attach files") : __("Attach file")
+									}}</span>
 								</button>
 								<button
 									type="button"
@@ -570,7 +578,7 @@ const breadcrumbs = [
 										aria-hidden="true"
 										v-html="getWorkspaceIconPath('camera')"
 									/>
-									<span>Capture photo</span>
+									<span>{{ __("Capture photo") }}</span>
 								</button>
 							</div>
 						</div>

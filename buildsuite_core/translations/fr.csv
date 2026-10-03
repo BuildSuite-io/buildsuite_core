@@ -1677,3 +1677,455 @@ workers,ouvriers
 {0} members,{0} membres
 {0} of {1} {2},{0} sur {1} {2}
 {0} selected,{0} sélectionné(s)
+% vs plan,% vs plan
++ Add,+ Ajouter
++ Attach file,+ Joindre un fichier
++ New Project,+ Nouveau projet
++ New Stage,+ Nouvelle étape
++ New Task,+ Nouvelle tâche
++ Raise BOQ revision,+ Créer une révision du devis
++{0}d LATE,+{0} j DE RETARD
+A BOQ revision can be raised once this change order is approved.,Une révision du devis peut être créée une fois cet ordre de modification approuvé.
+A new draft copy will be created from this rejected stage so you can edit and resubmit it. The rejected stage is kept as a record.,Une nouvelle copie brouillon sera créée à partir de cette étape rejetée pour que vous puissiez la modifier et la resoumettre. L’étape rejetée est conservée comme trace.
+A progress entry can't be 0% — record the progress actually made.,Une saisie d’avancement ne peut pas être à 0 % — enregistrez l’avancement réellement réalisé.
+Active projects,Projets actifs
+Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate.,Activité = travail standard avec saisies d’avancement ; Jalon = point de contrôle sans avancement de quantité ; Inspection = point de passage conforme/non conforme.
+Actual {0}% · Planned {1}%,Réel {0} % · Planifié {1} %
+Add,Ajouter
+Add a task that depends on this one,Ajouter une tâche qui dépend de celle-ci
+Add a task this one depends on,Ajouter une tâche dont celle-ci dépend
+Add predecessor,Ajouter un prédécesseur
+Add successor,Ajouter un successeur
+Add/Remove Tasks,Ajouter / retirer des tâches
+Apply cascade,Appliquer la cascade
+Approve,Approuver
+Approve failed,Échec de l’approbation
+Approve stage,Approuver l’étape
+Approve {0}?,Approuver {0} ?
+Approving lets a BOQ revision be raised from this change order.,L’approbation permet de créer une révision du devis à partir de cet ordre de modification.
+"Approving will lock the stage scope, dates, and task list. Subsequent edits require Revise.","L’approbation verrouille le périmètre, les dates et la liste des tâches de l’étape. Les modifications ultérieures nécessitent une révision."
+Assignee,Assigné à
+Assignee: Any,Assigné à : tous
+Assignment,Affectation
+Assignment & status,Affectation et statut
+Attach file,Joindre un fichier
+Attach files,Joindre des fichiers
+Awaiting PM / Director approval.,En attente de l’approbation du chef de projet / directeur.
+BOQ impact,Impact sur le devis
+BOQ revision raised:,Révision du devis créée :
+Back to Progress Entries,Retour aux saisies d’avancement
+Back to Stage Planning,Retour à la planification des étapes
+Back to Tasks,Retour aux tâches
+Back to Work Packages,Retour aux lots de travaux
+Back to list,Retour à la liste
+Back to list →,Retour à la liste →
+Blocker,Blocage
+Blocker detail,Détail du blocage
+Blocker flagged,Blocage signalé
+Blockers,Blocages
+Blockers only,Blocages uniquement
+Budget (₹),Budget (₹)
+By Stage,Par étape
+By WP,Par lot
+Cancel keeps your dragged task at its new dates but leaves dependents flagged for conflict — you can resolve them manually or reschedule again later.,Annuler conserve la tâche déplacée à ses nouvelles dates mais laisse les dépendantes signalées en conflit — vous pourrez les résoudre manuellement ou replanifier plus tard.
+Cancel stage,Annuler l’étape
+Capture photo,Prendre une photo
+Cascade failed.,Échec de la cascade.
+Change order,Ordre de modification
+Clear search,Effacer la recherche
+Client recoverable,Récupérable auprès du client
+Collapse,Réduire
+Collapse all groups,Réduire tous les groupes
+Cost / control boundary inside a project,Frontière de coût / contrôle au sein d’un projet
+Cost impact (₹),Impact sur les coûts (₹)
+Cost recovery,Récupération des coûts
+Could not create dependency.,Impossible de créer la dépendance.
+Could not delete dependency.,Impossible de supprimer la dépendance.
+Could not delete revision.,Impossible de supprimer la révision.
+Could not reschedule.,Impossible de replanifier.
+Could not save revision.,Impossible d’enregistrer la révision.
+Could not update dependency.,Impossible de mettre à jour la dépendance.
+Count of skilled workers on site today,Nombre d’ouvriers qualifiés sur site aujourd’hui
+Count of unskilled workers / helpers,Nombre d’ouvriers non qualifiés / aides
+Create Stage,Créer l’étape
+Create a task and assign it to a project or work package,Créer une tâche et l’affecter à un projet ou un lot de travaux
+Create a task →,Créer une tâche →
+Create task,Créer la tâche
+Create work package,Créer le lot de travaux
+Creating stage…,Création de l’étape…
+Creating this dependency would close a cycle.,Créer cette dépendance fermerait un cycle.
+Ctrl + scroll to zoom,Ctrl + molette pour zoomer
+Cumulative progress,Avancement cumulé
+Cumulative progress (%),Avancement cumulé (%)
+Currently,Actuellement
+Dashboard,Tableau de bord
+Delay reasons,Motifs de retard
+"Delete ""{0}""? This will also delete 1 task and any progress entries on them.",Supprimer « {0} » ? Cela supprimera aussi 1 tâche et toutes les saisies d’avancement associées.
+"Delete ""{0}""? This will also delete {1} tasks and any progress entries on them.",Supprimer « {0} » ? Cela supprimera aussi {1} tâches et toutes les saisies d’avancement associées.
+Delete &quot;{0}&quot;? Dependencies in other stages pointing at this one will be cleaned up automatically.,Supprimer « {0} » ? Les dépendances d’autres étapes pointant vers celle-ci seront nettoyées automatiquement.
+Delete '{0}'? This cannot be undone.,Supprimer « {0} » ? Cette action est irréversible.
+Delete progress entry,Supprimer la saisie d’avancement
+Delete revision,Supprimer la révision
+Delete revision?,Supprimer la révision ?
+Delete stage,Supprimer l’étape
+Delete task,Supprimer la tâche
+"Delete the saved revision ""{0}""? This does not change the schedule.",Supprimer la révision enregistrée « {0} » ? Cela ne modifie pas le planning.
+Delete this entry? It's a historical entry; the task's current progress will not change.,Supprimer cette saisie ? C’est une saisie historique ; l’avancement actuel de la tâche ne changera pas.
+Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).,Supprimer cette saisie ? C’est la plus récente sur la tâche — l’avancement de la tâche reviendra à la saisie précédente (ou 0 % si c’est la seule).
+Delete work package,Supprimer le lot de travaux
+Dependencies,Dépendances
+Dependency,Dépendance
+Dependency removed,Dépendance retirée
+Dependency saved,Dépendance enregistrée
+Describe the blocker,Décrivez le blocage
+"Details about the task, location, scope…","Détails sur la tâche, l’emplacement, le périmètre…"
+Direct project tasks,Tâches de projet directes
+Drag to another task to create a Finish-to-Start dependency,Glissez vers une autre tâche pour créer une dépendance fin-à-début
+Drives workflow + Gantt rendering. Milestone = zero-duration.,Pilote le flux de travail + le rendu Gantt. Jalon = durée nulle.
+Drives workflow.,Pilote le flux de travail.
+Duration,Durée
+Edit dependency,Modifier la dépendance
+Edit stage,Modifier l’étape
+Edit task,Modifier la tâche
+End must be on or after start,La fin doit être à la date de début ou après
+Ended,Terminé
+Entered By,Saisi par
+Entered by,Saisi par
+Entered by —,Saisi par —
+Entered by: Any,Saisi par : tous
+Entry Date,Date de saisie
+Entry date,Date de saisie
+Estimated hours,Heures estimées
+Expand,Développer
+Expand all groups,Développer tous les groupes
+Explain why this stage is being rejected…,Expliquez pourquoi cette étape est rejetée…
+FF — Finish to Finish,FF — Fin à fin
+FS — Finish to Start,FS — Fin à début
+Failed to apply {0},Échec de l’application de {0}
+Failed to create stage,Échec de la création de l’étape
+Failed to create task,Échec de la création de la tâche
+Failed to create work package,Échec de la création du lot de travaux
+Failed to delete change order,Échec de la suppression de l’ordre de modification
+Failed to delete progress entry,Échec de la suppression de la saisie d’avancement
+Failed to delete stage,Échec de la suppression de l’étape
+Failed to delete task,Échec de la suppression de la tâche
+Failed to delete work package,Échec de la suppression du lot de travaux
+Failed to file progress entry,Échec de l’enregistrement de la saisie d’avancement
+Failed to load dependencies,Échec du chargement des dépendances
+Failed to load the schedule.,Échec du chargement du planning.
+Failed to raise BOQ revision,Échec de la création de la révision du devis
+Failed to raise scope change order,Échec de la création de l’ordre de modification
+Failed to reject stage,Échec du rejet de l’étape
+Failed to remove dependency,Échec du retrait de la dépendance
+Failed to revise stage,Échec de la révision de l’étape
+Failed to save dependency,Échec de l’enregistrement de la dépendance
+Failed to save planned progress,Échec de l’enregistrement de l’avancement planifié
+Failed to save progress entry,Échec de l’enregistrement de la saisie d’avancement
+Failed to save task,Échec de l’enregistrement de la tâche
+Failed to update change order,Échec de la mise à jour de l’ordre de modification
+Failed to update stage,Échec de la mise à jour de l’étape
+Failed to update stage tasks,Échec de la mise à jour des tâches de l’étape
+Failed to update task status,Échec de la mise à jour du statut de la tâche
+Failed to update work package,Échec de la mise à jour du lot de travaux
+File a new entry,Saisir une nouvelle entrée
+File entry,Enregistrer la saisie
+File progress entry,Enregistrer une saisie d’avancement
+"File today's progress against a task — labour, weather, blockers","Enregistrez l’avancement du jour sur une tâche — main-d’œuvre, météo, blocages"
+"Filed entry, but failed to attach {0}","Saisie enregistrée, mais échec de la pièce jointe {0}"
+Filed today,Saisi aujourd’hui
+Files,Fichiers
+Filing…,Enregistrement…
+Finish to Finish,Fin à fin
+Finish to Start,Fin à début
+Flag a blocker on this entry,Signaler un blocage sur cette saisie
+Flagged blockers,Blocages signalés
+Flags,Signalements
+Gantt timeline — view the schedule and adjust task dates from the list,Chronologie Gantt — consultez le planning et ajustez les dates des tâches depuis la liste
+Give the revision a name first.,Donnez d’abord un nom à la révision.
+Hierarchy,Hiérarchie
+Hover and click to place a 1-{0} block · drag the edges after to extend,Survolez et cliquez pour placer un bloc de 1-{0} · tirez ensuite les bords pour l’étendre
+Internal,Interne
+Internal — absorbed by us,Interne — absorbé par nous
+Justification,Justification
+Labour,Main-d’œuvre
+Labour deployed,Main-d’œuvre déployée
+Labour deployed today,Main-d’œuvre déployée aujourd’hui
+Labour movement,Mouvement de main-d’œuvre
+Lag,Décalage
+Lag (days),Décalage (jours)
+Last 7 days,7 derniers jours
+Last Updated,Dernière mise à jour
+Latest on task,Dernier sur la tâche
+Loading schedule…,Chargement du planning…
+Loading scope change order…,Chargement de l’ordre de modification…
+Locked after create — move tasks instead of reparenting a stage.,Verrouillé après création — déplacez les tâches plutôt que de rattacher une étape ailleurs.
+Locked after create — moving a work package across projects isn't supported.,Verrouillé après création — déplacer un lot de travaux entre projets n’est pas pris en charge.
+Locked — stage is approved,Verrouillé — l’étape est approuvée
+Logged,Enregistré
+Mark complete,Marquer terminé
+Material planned-vs-actual cost (from this stage's BOQ lines) will appear here once Estimation / BOQ is available.,Le coût planifié vs réel des matériaux (d’après les lignes de devis de cette étape) apparaîtra ici une fois l’Estimation / le devis disponible.
+Materials — planned vs actual,Matériaux — planifié vs réel
+Milestone date (due),Date du jalon (échéance)
+Must finish/start before this task.,Doit se terminer/commencer avant cette tâche.
+Name this revision…,Nommez cette révision…
+Narrative,Compte rendu
+Negative lag = lead (overlap allowed).,Décalage négatif = avance (chevauchement autorisé).
+Net cost impact,Impact net sur les coûts
+New Entry,Nouvelle saisie
+New Progress Entry,Nouvelle saisie d’avancement
+New Stage,Nouvelle étape
+New Task,Nouvelle tâche
+New Work Package,Nouveau lot de travaux
+Next: Add Tasks,Suivant : ajouter des tâches
+No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ.,Aucune révision du devis pour l’instant — utilisez « + Créer une révision du devis » ci-dessus pour dériver le devis du projet.
+No activity yet.,Aucune activité pour l’instant.
+No blocker,Aucun blocage
+No changes made,Aucune modification effectuée
+No dependencies · this stage can start independently.,Aucune dépendance · cette étape peut démarrer de façon autonome.
+No other stages on this project yet · add one to create a dependency.,Aucune autre étape sur ce projet · ajoutez-en une pour créer une dépendance.
+"No other stages on this project yet · create them first, then come back to wire dependencies.","Aucune autre étape sur ce projet · créez-les d’abord, puis revenez définir les dépendances."
+No pending SCOs,Aucun OM en attente
+No progress entries filed yet — progress derives from the latest entry.,Aucune saisie d’avancement pour l’instant — l’avancement dérive de la dernière saisie.
+No progress entries match these filters,Aucune saisie d’avancement ne correspond à ces filtres
+No projects yet.,Aucun projet pour l’instant.
+No reason recorded.,Aucun motif enregistré.
+No saved revisions yet. Save one to snapshot the current schedule.,Aucune révision enregistrée pour l’instant. Enregistrez-en une pour figer le planning actuel.
+No scope change orders yet.,Aucun ordre de modification pour l’instant.
+No stages match these filters,Aucune étape ne correspond à ces filtres
+No task linked,Aucune tâche liée
+"No task rows yet · click ""Add/Remove Tasks"" above to pick tasks for this stage.",Aucune ligne de tâche pour l’instant · cliquez sur « Ajouter / retirer des tâches » ci-dessus pour choisir les tâches de cette étape.
+No tasks in progress,Aucune tâche en cours
+No tasks in this project yet.,Aucune tâche dans ce projet pour l’instant.
+No tasks in this work package yet.,Aucune tâche dans ce lot de travaux pour l’instant.
+No tasks linked to this stage yet.,Aucune tâche liée à cette étape pour l’instant.
+No tasks match these filters,Aucune tâche ne correspond à ces filtres
+No timeline set,Aucune chronologie définie
+No work packages match these filters.,Aucun lot de travaux ne correspond à ces filtres.
+None yet,Aucun pour l’instant
+Not in a stage,Hors étape
+Nothing to undo — undo captures cascading (multi-task) changes,Rien à annuler — l’annulation capture les modifications en cascade (multi-tâches)
+OVERDUE,EN RETARD
+On window,Dans la fenêtre
+Open Gantt,Ouvrir le Gantt
+Open tasks,Tâches ouvertes
+Operations overview · live,Vue d’ensemble des opérations · en direct
+Optional · direct project tasks leave blank,Facultatif · laissez vide pour les tâches de projet directes
+Optional · only if it's worth recording,Facultatif · uniquement si cela vaut la peine d’être enregistré
+Optional · pick stages that must complete before this one can start.,Facultatif · choisissez les étapes devant se terminer avant que celle-ci puisse commencer.
+Optional — leave blank for a direct project task.,Facultatif — laissez vide pour une tâche de projet directe.
+Optional — only if it's worth recording.,Facultatif — uniquement si cela vaut la peine d’être enregistré.
+Pending SCOs,OM en attente
+Pending approval,En attente d’approbation
+Pick a task,Choisissez une tâche
+Pick a task.,Choisissez une tâche.
+Pick the stages that must complete before this one can start.,Choisissez les étapes devant se terminer avant que celle-ci puisse commencer.
+Plan a stage →,Planifier une étape →
+Planned End,Fin planifiée
+Planned Progress (%),Avancement planifié (%)
+Planned Start,Début planifié
+Planned end,Fin planifiée
+Planned start,Début planifié
+Planned: {0}%,Planifié : {0} %
+Please enter a rejection reason.,Veuillez saisir un motif de rejet.
+Positive = added cost to the project; negative = a saving.,Positif = coût ajouté au projet ; négatif = une économie.
+Positive = added cost; negative = a saving.,Positif = coût ajouté ; négatif = une économie.
+Pre-selected from where you came in — locked.,Pré-sélectionné depuis votre point d’entrée — verrouillé.
+Pre-selected — locked.,Pré-sélectionné — verrouillé.
+Predecessor task,Tâche prédécesseure
+Predecessors,Prédécesseurs
+Progress %,Avancement %
+Progress (actual / planned),Avancement (réel / planifié)
+Progress can't go below the recorded {0}%. Entries are cumulative.,L’avancement ne peut pas descendre sous les {0} % enregistrés. Les saisies sont cumulatives.
+Progress entry deleted,Saisie d’avancement supprimée
+Progress entry filed,Saisie d’avancement enregistrée
+Progress entry not found.,Saisie d’avancement introuvable.
+Progress entry updated,Saisie d’avancement mise à jour
+Progress must be between 0 and 100,L’avancement doit être compris entre 0 et 100
+Progress must increase — enter a value above the current {0}%. Entries are cumulative.,L’avancement doit augmenter — saisissez une valeur supérieure aux {0} % actuels. Les saisies sont cumulatives.
+Project is required,Le projet est obligatoire
+Project · WP,Projet · lot
+"Project, task & date","Projet, tâche et date"
+Raise,Créer
+Raise BOQ revision?,Créer une révision du devis ?
+Raise SCO,Créer un OM
+Raise Scope Change Order,Créer un ordre de modification
+Raise revision,Créer la révision
+Raising submits it for PM / Director approval,La création le soumet à l’approbation du chef de projet / directeur
+Raising…,Création…
+Read-only — your role cannot edit tasks,Lecture seule — votre rôle ne peut pas modifier les tâches
+Reason / justification,Motif / justification
+Recent entries,Saisies récentes
+Recoverable from client,Récupérable auprès du client
+Reject,Rejeter
+Reject failed,Échec du rejet
+Reject stage,Rejeter l’étape
+Reject {0},Rejeter {0}
+Rejecting…,Rejet…
+Rejection,Rejet
+Rejection reason,Motif du rejet
+Reopened for revision.,Rouvert pour révision.
+Reschedule downstream?,Replanifier l’aval ?
+Responsible,Responsable
+Restore,Restaurer
+Restore failed.,Échec de la restauration.
+Restore revision?,Restaurer la révision ?
+"Restore the schedule to ""{0}""? Current dates are saved to Undo first, so you can revert this.","Restaurer le planning à « {0} » ? Les dates actuelles sont d’abord enregistrées dans Annuler, vous pourrez donc revenir en arrière."
+"Restored ""{0}"".",Restauré à « {0} ».
+Review,Revue
+Revise,Réviser
+Revise failed,Échec de la révision
+Revise stage,Réviser l’étape
+Revision name,Nom de la révision
+Revisions,Révisions
+SS — Start to Start,SS — Début à début
+"Saved revision ""{0}"".",Révision « {0} » enregistrée.
+Schedule conflict,Conflit de planning
+Scope Change Orders,Ordres de modification
+Scope change order approved.,Ordre de modification approuvé.
+Scope change order rejected.,Ordre de modification rejeté.
+"Scope, gates, hand-off notes…","Périmètre, points de passage, notes de transfert…"
+Search SCO id or title…,Rechercher un id ou un titre d’OM…
+Search by name or code…,Rechercher par nom ou code…
+"Search narrative, task, blocker note…","Rechercher compte rendu, tâche, note de blocage…"
+"Search stages, projects, descriptions…","Rechercher étapes, projets, descriptions…"
+See all →,Tout voir →
+Select a project to view its schedule.,Sélectionnez un projet pour voir son planning.
+Select assignee,Sélectionner l’assigné
+Select project,Sélectionner un projet
+Short identifier — auto-generated if left blank.,Identifiant court — généré automatiquement si laissé vide.
+Site conditions,Conditions de chantier
+"Site photos, QC reports, drawings — picked here and saved with the entry.","Photos de chantier, rapports qualité, plans — choisis ici et enregistrés avec la saisie."
+Skilled,Qualifié
+Skilled labour,Main-d’œuvre qualifiée
+Stage Review,Revue d’étape
+Stage activity,Activité de l’étape
+"Stage activity (submissions, approvals, edits) will appear here.","L’activité de l’étape (soumissions, approbations, modifications) apparaîtra ici."
+Stage created,Étape créée
+"Stage created, but could not resolve its ID for navigation","Étape créée, mais impossible de résoudre son ID pour la navigation"
+Stage details,Détails de l’étape
+Stage name,Nom de l’étape
+Stage name is required,Le nom de l’étape est obligatoire
+Stage not found,Étape introuvable
+Stage planned end,Fin planifiée de l’étape
+Stage rejected,Étape rejetée
+Stage revised — editing the new draft,Étape révisée — modification du nouveau brouillon
+Stage tasks updated,Tâches de l’étape mises à jour
+Stage updated,Étape mise à jour
+Stamped automatically from the signed-in user.,Horodaté automatiquement d’après l’utilisateur connecté.
+Start to Start,Début à début
+State: Any,État : tous
+Submit for approval,Soumettre pour approbation
+Successor task,Tâche successeure
+Successors,Successeurs
+TBD,À définir
+Task Progress Entry,Saisie d’avancement de tâche
+Task Type,Type de tâche
+Task created,Tâche créée
+"Task created, but could not resolve its ID for navigation","Tâche créée, mais impossible de résoudre son ID pour la navigation"
+Task deleted,Tâche supprimée
+Task details,Détails de la tâche
+Task is required,La tâche est obligatoire
+Task name,Nom de la tâche
+Task name is required,Le nom de la tâche est obligatoire
+Task not found,Tâche introuvable
+Task progress,Avancement de la tâche
+Task updated,Tâche mise à jour
+Task: Any,Tâche : toutes
+Tasks (done / total),Tâches (terminées / total)
+Tasks in progress,Tâches en cours
+Tasks in this stage,Tâches de cette étape
+The NEW cumulative % after this entry — not a delta. 0–100.,Le NOUVEAU % cumulé après cette saisie — pas un delta. 0–100.
+The NEW cumulative % after this entry — not a delta. Can't go below the current {0}%.,Le NOUVEAU % cumulé après cette saisie — pas un delta. Ne peut pas descendre sous les {0} % actuels.
+This clones the project's current BOQ into a new Draft revision linked to this change order.,Cela clone le devis actuel du projet dans une nouvelle révision brouillon liée à cet ordre de modification.
+This reason is recorded on the stage. Rejection is final — the stage cannot be revised afterwards.,Ce motif est enregistré sur l’étape. Le rejet est définitif — l’étape ne peut plus être révisée ensuite.
+This scope change order will be removed permanently.,Cet ordre de modification sera supprimé définitivement.
+This stage will be sent for approval. You won't be able to edit it while it is pending.,Cette étape sera envoyée pour approbation. Vous ne pourrez pas la modifier tant qu’elle est en attente.
+This stage will move back to Draft. You can keep editing and resubmit for approval when ready.,Cette étape repassera en brouillon. Vous pouvez continuer à la modifier et la resoumettre pour approbation une fois prête.
+This task is already Completed — no further progress entries can be added.,Cette tâche est déjà terminée — aucune nouvelle saisie d’avancement ne peut être ajoutée.
+This will cancel the stage.,Cela annulera l’étape.
+Title is required.,Le titre est obligatoire.
+Total SCOs,Total des OM
+Total entries,Total des saisies
+Total labour,Main-d’œuvre totale
+Total order book,Carnet de commandes total
+Unassigned,Non assigné
+Under {0},Sous {0}
+Undo,Annuler
+Undo failed.,Échec de l’annulation.
+Undo the last cascade ({0} step available),Annuler la dernière cascade ({0} étape disponible)
+Undo the last cascade ({0} steps available),Annuler la dernière cascade ({0} étapes disponibles)
+Undone: {0} ({1} tasks),Annulé : {0} ({1} tâches)
+Unskilled,Non qualifié
+Unskilled labour,Main-d’œuvre non qualifiée
+Untitled stage,Étape sans titre
+Untitled task,Tâche sans titre
+Urgent,Urgent
+View all {0},Tout voir ({0})
+Waits on this task.,Dépend de cette tâche.
+Weather,Météo
+What blocked progress today?,Qu’est-ce qui a bloqué l’avancement aujourd’hui ?
+What this work package covers.,Ce que couvre ce lot de travaux.
+What was completed today? Any context worth recording?,Qu’a-t-on terminé aujourd’hui ? Un contexte à noter ?
+Why is this change needed?,Pourquoi ce changement est-il nécessaire ?
+Why is this change order rejected?,Pourquoi cet ordre de modification est-il rejeté ?
+Window,Fenêtre
+Work Package,Lot de travaux
+Work Package name,Nom du lot de travaux
+Work package name is required,Le nom du lot de travaux est obligatoire
+Work package not found,Lot de travaux introuvable
+Yes · from client,Oui · du client
+You don't have access to Stage Planning.,Vous n’avez pas accès à la planification des étapes.
+You don't have access to Task Progress Entries.,Vous n’avez pas accès aux saisies d’avancement de tâche.
+You don't have access to this progress entry,Vous n’avez pas accès à cette saisie d’avancement
+You don't have access to this stage,Vous n’avez pas accès à cette étape
+You don't have access to this task,Vous n’avez pas accès à cette tâche
+You don't have access to this work package,Vous n’avez pas accès à ce lot de travaux
+You don't have permission to create a stage.,Vous n’avez pas la permission de créer une étape.
+You don't have permission to create a task.,Vous n’avez pas la permission de créer une tâche.
+You don't have permission to create a work package.,Vous n’avez pas la permission de créer un lot de travaux.
+You don't have permission to file a progress entry.,Vous n’avez pas la permission d’enregistrer une saisie d’avancement.
+You don't have permission to raise a scope change order.,Vous n’avez pas la permission de créer un ordre de modification.
+by,par
+by {0},par {0}
+currently,actuellement
+day,jour
+days,jours
+e.g. Afternoon shower delayed final bay by 2 hours,p. ex. Une averse l’après-midi a retardé la dernière travée de 2 heures
+e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.,p. ex. Travées 3-4 terminées ; 285 sur 380 m² réalisés. Éprouvette prélevée.
+e.g. Block A — Level 6 column casting,p. ex. Bloc A — coulage des poteaux niveau 6
+e.g. Foundation Works,p. ex. Travaux de fondation
+e.g. Foundation depth revision — soil report,p. ex. Révision de la profondeur des fondations — rapport de sol
+e.g. Substructure Stage,p. ex. Étape d’infrastructure
+e.g. WP-FND,p. ex. WP-FND
+finish {0},fin {0}
+last cascade,dernière cascade
+milestone,jalon
+no dates,aucune date
+on plan,conforme au plan
+stage must complete first,l’étape doit se terminer d’abord
+stages must complete first,les étapes doivent se terminer d’abord
+starts independently,démarre de façon autonome
+stub,stub
+task,tâche
+{0} applied,{0} appliqué
+{0} dependencies,{0} dépendances
+{0} downstream task would shift forward,{0} tâche en aval serait décalée
+{0} downstream tasks would shift forward,{0} tâches en aval seraient décalées
+{0} of {1},{0} sur {1}
+{0} task in stage,{0} tâche dans l’étape
+{0} task in this work package,{0} tâche dans ce lot de travaux
+{0} tasks,{0} tâches
+{0} tasks in stage,{0} tâches dans l’étape
+{0} tasks in this work package,{0} tâches dans ce lot de travaux
+{0}% cumulative,{0} % cumulé
+— No record —,— Aucun enregistrement —
+— None · Direct project task —,— Aucun · tâche de projet directe —
+— Pick a project —,— Choisir un projet —
+— Select a project first —,— Choisissez d’abord un projet —
+— Select assignee —,— Sélectionner l’assigné —
+— Select task —,— Sélectionner une tâche —
+← Back,← Retour
+← Back to stage,← Retour à l’étape
+− = lead / overlap,− = avance / chevauchement
+🚩 Blocker flagged,🚩 Blocage signalé
+"Delete ""{0}""? Dependencies in other stages pointing at this one will be cleaned up automatically.",Supprimer « {0} » ? Les dépendances d’autres étapes pointant vers celle-ci seront nettoyées automatiquement.
