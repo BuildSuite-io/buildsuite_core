@@ -12,6 +12,7 @@ import {
 	outgoingEmailConfigured,
 } from "@/data/usersApi";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -50,18 +51,18 @@ onMounted(() => {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Users", to: "/settings/users" },
-	{ label: "New User" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Users"), to: "/settings/users" },
+	{ label: __("New User") },
 ];
 
 function validate() {
 	const e = {};
-	if (!form.fullName.trim()) e.fullName = "Full name is required.";
-	if (!form.email.trim()) e.email = "Email is required.";
-	else if (!EMAIL_RE.test(form.email.trim())) e.email = "Enter a valid email address.";
-	if (!form.persona) e.persona = "Pick a persona.";
+	if (!form.fullName.trim()) e.fullName = __("Full name is required.");
+	if (!form.email.trim()) e.email = __("Email is required.");
+	else if (!EMAIL_RE.test(form.email.trim())) e.email = __("Enter a valid email address.");
+	if (!form.persona) e.persona = __("Pick a persona.");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -87,31 +88,31 @@ async function save() {
 				/* email queue handles it */
 			}
 		}
-		showToast(`User ${user.full_name} created`);
+		showToast(__("User {0} created", [user.full_name]));
 		router.push({ path: "/settings/users", query: { created: user.name } });
 	} catch (err) {
-		formError.value = err.message || "Could not create the user.";
+		formError.value = err.message || __("Could not create the user.");
 		saving.value = false;
 	}
 }
 </script>
 
 <template>
-	<DeskPage title="New User" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New User')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!store.isAdmin"
 			class="mb-3 px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			Creating users is restricted to administrators.
+			{{ __("Creating users is restricted to administrators.") }}
 		</div>
 
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
 					:saving="saving"
-					save-label="Create user"
-					saving-label="Creating…"
+					:save-label="__('Create user')"
+					:saving-label="__('Creating…')"
 					@save="save"
 					@cancel="router.push('/settings/users')"
 				/>
@@ -125,11 +126,11 @@ async function save() {
 				>
 					{{ formError }}
 				</div>
-				<DeskSection title="Account">
-					<DeskField label="Full name" required :error="errors.fullName">
+				<DeskSection :title="__('Account')">
+					<DeskField :label="__('Full name')" required :error="errors.fullName">
 						<DeskInput
 							v-model="form.fullName"
-							placeholder="e.g. Asha Menon"
+							:placeholder="__('e.g. Asha Menon')"
 							@input="
 								errors.fullName = '';
 								formError = '';
@@ -137,27 +138,27 @@ async function save() {
 						/>
 					</DeskField>
 					<DeskField
-						label="Email"
+						:label="__('Email')"
 						required
 						:error="errors.email"
-						hint="Used as the login id + destination for the welcome and password-reset emails."
+						:hint="__('Used as the login id + destination for the welcome and password-reset emails.')"
 					>
 						<DeskInput
 							v-model="form.email"
 							type="email"
-							placeholder="name@company.com"
+							:placeholder="__('name@company.com')"
 							@input="
 								errors.email = '';
 								formError = '';
 							"
 						/>
 					</DeskField>
-					<DeskField label="Mobile" hint="Optional — contact number for this user.">
-						<DeskInput v-model="form.mobile" type="tel" placeholder="+91 98xxx xxxxx" />
+					<DeskField :label="__('Mobile')" :hint="__('Optional — contact number for this user.')">
+						<DeskInput v-model="form.mobile" type="tel" :placeholder="__('+91 98xxx xxxxx')" />
 					</DeskField>
 					<DeskField
-						label="Account status"
-						hint="Disabled users keep their record but cannot log in."
+						:label="__('Account status')"
+						:hint="__('Disabled users keep their record but cannot log in.')"
 					>
 						<label
 							class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-ink-700 dark:text-ink-200"
@@ -167,22 +168,22 @@ async function save() {
 								type="checkbox"
 								class="accent-brand-600"
 							/>
-							Enabled — user can log in immediately
+							{{ __("Enabled — user can log in immediately") }}
 						</label>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Persona">
+				<DeskSection :title="__('Persona')">
 					<DeskField
-						label="Persona"
+						:label="__('Persona')"
 						required
 						:error="errors.persona"
-						hint="Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work."
+						:hint="__('Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user\'s day-to-day work.')"
 					>
 						<DeskLinkPicker
 							v-model="form.persona"
 							doctype="Persona"
-							placeholder="Select persona"
+							:placeholder="__('Select persona')"
 							label-field="persona_name"
 							value-field="name"
 							:search-fields="['persona_name', 'name']"
@@ -197,15 +198,18 @@ async function save() {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Onboarding">
-					<DeskField label="Emails">
+				<DeskSection :title="__('Onboarding')">
+					<DeskField :label="__('Emails')">
 						<div
 							v-if="mailConfigured === false"
 							class="mb-2 px-3 py-2 bg-warning-50 border border-warning-100 text-[11px] text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 							style="border-radius: 6px"
 						>
-							Outgoing email isn't configured — these emails won't be sent until an
-							outgoing Email Account is set up.
+							{{
+								__(
+									"Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.",
+								)
+							}}
 						</div>
 						<label class="flex items-start gap-2 cursor-pointer select-none">
 							<input
@@ -215,10 +219,10 @@ async function save() {
 							/>
 							<div>
 								<div class="text-sm text-ink-900 dark:text-[#F5F5F5]">
-									Send welcome email
+									{{ __("Send welcome email") }}
 								</div>
 								<div class="text-[11px] text-ink-500">
-									Brief intro to BuildSuite Core, link to set up their profile.
+									{{ __("Brief intro to BuildSuite Core, link to set up their profile.") }}
 								</div>
 							</div>
 						</label>
@@ -230,11 +234,14 @@ async function save() {
 							/>
 							<div>
 								<div class="text-sm text-ink-900 dark:text-[#F5F5F5]">
-									Send password reset link
+									{{ __("Send password reset link") }}
 								</div>
 								<div class="text-[11px] text-ink-500">
-									Lets the user set their own password instead of you assigning
-									one.
+									{{
+										__(
+											"Lets the user set their own password instead of you assigning one.",
+										)
+									}}
 								</div>
 							</div>
 						</label>

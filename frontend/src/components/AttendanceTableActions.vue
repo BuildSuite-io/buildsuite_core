@@ -1,6 +1,8 @@
 <script setup>
 // The buttons above the Employee List, shared by both attendance forms.
 
+import { __ } from "@/utils/translate";
+
 defineProps({
 	hasProject: { type: Boolean, default: false },
 	rosterToAdd: { type: Number, default: 0 },
@@ -19,21 +21,21 @@ defineEmits(["add-roster", "open-bulk", "add-row"]);
 			:title="rosterTitle"
 			@click="$emit('add-roster')"
 		>
-			+ Project roster ({{ rosterToAdd }})
+			+ {{ __("Project roster ({0})", [rosterToAdd]) }}
 		</button>
 		<button
 			type="button"
 			class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 			@click="$emit('open-bulk')"
 		>
-			Bulk Select
+			{{ __("Bulk Select") }}
 		</button>
 		<button
 			type="button"
 			class="text-xs text-brand-700 hover:underline"
 			@click="$emit('add-row')"
 		>
-			+ Add Row
+			+ {{ __("Add Row") }}
 		</button>
 	</div>
 </template>

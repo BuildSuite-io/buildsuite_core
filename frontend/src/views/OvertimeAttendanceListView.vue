@@ -12,6 +12,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import { frappeRequest } from "frappe-ui-frappe-request";
 
 const { projectOptions, projectLabel } = useProjectOptions();
@@ -75,29 +76,29 @@ async function loadTotals() {
 }
 watch(filterValues, loadTotals, { immediate: true, deep: true });
 
-const subtitle = computed(
-	() => `Total OT hours ${totalHours.value} · Total amount ${fmtINR(totalAmount.value)}`
+const subtitle = computed(() =>
+	__("Total OT hours {0} · Total amount {1}", [totalHours.value, fmtINR(totalAmount.value)])
 );
 
 const columns = [
-	{ key: "overtime_date", label: "Date" },
-	{ key: "employee_name", label: "Worker" },
-	{ key: "task", label: "Task" },
-	{ key: "project", label: "Project" },
-	{ key: "overtime_hours", label: "OT hrs", align: "right" },
-	{ key: "overtime_rate", label: "OT rate", align: "right" },
-	{ key: "overtime_wage_calculated", label: "OT wage", align: "right" },
+	{ key: "overtime_date", label: __("Date") },
+	{ key: "employee_name", label: __("Worker") },
+	{ key: "task", label: __("Task") },
+	{ key: "project", label: __("Project") },
+	{ key: "overtime_hours", label: __("OT hrs"), align: "right" },
+	{ key: "overtime_rate", label: __("OT rate"), align: "right" },
+	{ key: "overtime_wage_calculated", label: __("OT wage"), align: "right" },
 ];
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Overtime Attendance Register" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Overtime Attendance Register") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Overtime Attendance Register" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Overtime Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<DocTypeListView
 			doctype="Overtime Attendance Register"
 			:field-order="[
@@ -118,8 +119,8 @@ const breadcrumbs = [
 			cache-key="buildsuite-overtime-attendance"
 			row-key="name"
 			initial-order-by="overtime_date desc"
-			search-placeholder="Search worker / project…"
-			empty-message="No overtime yet — submit a Field Attendance with overtime hours."
+			:search-placeholder="__('Search worker / project…')"
+			:empty-message="__('No overtime yet — submit a Field Attendance with overtime hours.')"
 		>
 			<template #filter-chips>
 				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -127,8 +128,8 @@ const breadcrumbs = [
 						<DeskSearchableSelect
 							v-model="projectFilter"
 							:options="projectOptions"
-							placeholder="All projects"
-							search-placeholder="Search projects…"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search projects…')"
 							allow-clear
 						/>
 					</div>
@@ -136,14 +137,14 @@ const breadcrumbs = [
 						<DeskSearchableSelect
 							v-model="workerFilter"
 							:options="workerOptions"
-							placeholder="Everyone"
-							search-placeholder="Search workers…"
+							:placeholder="__('Everyone')"
+							:search-placeholder="__('Search workers…')"
 							allow-clear
 						/>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<DeskInput v-model="fromFilter" type="date" class="!w-36" />
-						<span class="text-[11px] text-ink-400">to</span>
+						<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 						<DeskInput v-model="toFilter" type="date" class="!w-36" />
 					</div>
 					<button
@@ -152,7 +153,7 @@ const breadcrumbs = [
 						class="text-[11px] text-ink-500 hover:text-ink-800 px-1"
 						@click="clearFilters"
 					>
-						Clear
+						{{ __("Clear") }}
 					</button>
 				</div>
 			</template>

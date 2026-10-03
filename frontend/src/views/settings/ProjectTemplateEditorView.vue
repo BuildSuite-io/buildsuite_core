@@ -9,6 +9,7 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { getProjectTemplate, saveProjectTemplate } from "@/utils/projectTemplateApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -71,7 +72,7 @@ async function load() {
 		stages.splice(0, stages.length, ...(data?.stages || []));
 		tasks.splice(0, tasks.length, ...(data?.tasks || []));
 	} catch (err) {
-		showToast(err.message || "Failed to load template", "error");
+		showToast(err.message || __("Failed to load template"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -87,7 +88,7 @@ async function save() {
 			(t.work_package_code && !wpCodes.value.includes(t.work_package_code)),
 	);
 	if (badTask) {
-		showToast("Each task needs a subject and a valid Work Package / Stage.", "error");
+		showToast(__("Each task needs a subject and a valid Work Package / Stage."), "error");
 		return;
 	}
 	saving.value = true;
@@ -103,9 +104,9 @@ async function save() {
 		workPackages.splice(0, workPackages.length, ...(data?.work_packages || []));
 		stages.splice(0, stages.length, ...(data?.stages || []));
 		tasks.splice(0, tasks.length, ...(data?.tasks || []));
-		showToast("Template saved");
+		showToast(__("Template saved"));
 	} catch (err) {
-		showToast(err.message || "Failed to save template", "error");
+		showToast(err.message || __("Failed to save template"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -115,11 +116,11 @@ function cancel() {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Project Categories", to: "/settings/project-categories" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Project Categories"), to: "/settings/project-categories" },
 	{ label: props.id, to: `/settings/project-categories/${props.id}` },
-	{ label: "Template" },
+	{ label: __("Template") },
 ]);
 
 onMounted(() => {
@@ -133,14 +134,14 @@ onMounted(() => {
 
 <template>
 	<DeskPage
-		:title="`${props.id} template`"
-		subtitle="Defaults imported when a project is created under this category"
+		:title="__('{0} template', [props.id])"
+		:subtitle="__('Defaults imported when a project is created under this category')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Saving…' : 'Save template'"
+					:save-label="saving ? __('Saving…') : __('Save template')"
 					:saving="saving"
 					@save="save"
 					@cancel="cancel"
@@ -148,20 +149,20 @@ onMounted(() => {
 			</template>
 
 			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">
-				Loading template…
+				{{ __("Loading template…") }}
 			</div>
 
 			<div v-else class="space-y-6">
 				<!-- Work Packages -->
-				<DeskSection title="Work Packages" :cols="1">
+				<DeskSection :title="__('Work Packages')" :cols="1">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
-									<th class="py-1.5 pr-2 font-medium">Code</th>
-									<th class="py-1.5 pr-2 font-medium">Name</th>
-									<th class="py-1.5 pr-2 font-medium w-32">Budget</th>
-									<th class="py-1.5 pr-2 font-medium w-16">Sort</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Code") }}</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Name") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-32">{{ __("Budget") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-16">{{ __("Sort") }}</th>
 									<th class="w-8"></th>
 								</tr>
 							</thead>
@@ -172,7 +173,7 @@ onMounted(() => {
 									class="border-b border-ink-50"
 								>
 									<td class="py-1 pr-2">
-										<DeskInput v-model="w.code" placeholder="WP-XXX" />
+										<DeskInput v-model="w.code" :placeholder="__('WP-XXX')" />
 									</td>
 									<td class="py-1 pr-2">
 										<DeskInput v-model="w.work_package_name" />
@@ -194,7 +195,7 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!workPackages.length">
 									<td colspan="5" class="py-3 text-center text-ink-400">
-										No work packages yet.
+										{{ __("No work packages yet.") }}
 									</td>
 								</tr>
 							</tbody>
@@ -204,20 +205,20 @@ onMounted(() => {
 						class="mt-2 text-sm text-brand-600 hover:underline"
 						@click="addWorkPackage"
 					>
-						+ Add work package
+						+ {{ __("Add work package") }}
 					</button>
 				</DeskSection>
 
 				<!-- Stages -->
-				<DeskSection title="Stages" :cols="1">
+				<DeskSection :title="__('Stages')" :cols="1">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
-									<th class="py-1.5 pr-2 font-medium">Stage name</th>
-									<th class="py-1.5 pr-2 font-medium w-24">Start (day)</th>
-									<th class="py-1.5 pr-2 font-medium w-24">End (day)</th>
-									<th class="py-1.5 pr-2 font-medium w-28">Planned tasks</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Stage name") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-24">{{ __("Start (day)") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-24">{{ __("End (day)") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Planned tasks") }}</th>
 									<th class="w-8"></th>
 								</tr>
 							</thead>
@@ -260,32 +261,31 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!stages.length">
 									<td colspan="5" class="py-3 text-center text-ink-400">
-										No stages yet.
+										{{ __("No stages yet.") }}
 									</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 					<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addStage">
-						+ Add stage
+						+ {{ __("Add stage") }}
 					</button>
 				</DeskSection>
 
 				<!-- Tasks -->
-				<DeskSection title="Tasks" :cols="1">
+				<DeskSection :title="__('Tasks')" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
-						Each task is assigned to a Work Package and a Stage. On import it becomes a
-						project task and lands in that stage's plan.
+						{{ __("Each task is assigned to a Work Package and a Stage. On import it becomes a project task and lands in that stage's plan.") }}
 					</p>
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
-									<th class="py-1.5 pr-2 font-medium">Subject</th>
-									<th class="py-1.5 pr-2 font-medium w-28">Priority</th>
-									<th class="py-1.5 pr-2 font-medium w-24">Hours</th>
-									<th class="py-1.5 pr-2 font-medium w-40">Work Package</th>
-									<th class="py-1.5 pr-2 font-medium w-40">Stage</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Subject") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Priority") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-24">{{ __("Hours") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-40">{{ __("Work Package") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-40">{{ __("Stage") }}</th>
 									<th class="w-8"></th>
 								</tr>
 							</thead>
@@ -299,7 +299,7 @@ onMounted(() => {
 									<td class="py-1 pr-2">
 										<DeskSelect v-model="t.priority">
 											<option v-for="p in PRIORITIES" :key="p" :value="p">
-												{{ p }}
+												{{ __(p) }}
 											</option>
 										</DeskSelect>
 									</td>
@@ -333,7 +333,7 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!tasks.length">
 									<td colspan="6" class="py-3 text-center text-ink-400">
-										No tasks yet.
+										{{ __("No tasks yet.") }}
 									</td>
 								</tr>
 							</tbody>
@@ -344,7 +344,7 @@ onMounted(() => {
 						:disabled="!stageNames.length && !wpCodes.length"
 						@click="addTask"
 					>
-						+ Add task
+						+ {{ __("Add task") }}
 					</button>
 				</DeskSection>
 			</div>

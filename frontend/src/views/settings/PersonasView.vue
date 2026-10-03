@@ -7,6 +7,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { listPersonas } from "@/data/personaApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -20,10 +21,10 @@ const loadError = ref("");
 const search = ref("");
 
 const columns = [
-	{ key: "persona_name", label: "Persona" },
-	{ key: "slug", label: "Slug" },
-	{ key: "roles", label: "Roles" },
-	{ key: "enabled", label: "Status" },
+	{ key: "persona_name", label: __("Persona") },
+	{ key: "slug", label: __("Slug") },
+	{ key: "roles", label: __("Roles") },
+	{ key: "enabled", label: __("Status") },
 ];
 
 const items = computed(() => {
@@ -40,7 +41,7 @@ async function load() {
 	try {
 		personas.value = await listPersonas();
 	} catch (err) {
-		loadError.value = err.message || "Could not load personas.";
+		loadError.value = err.message || __("Could not load personas.");
 	} finally {
 		loading.value = false;
 	}
@@ -51,9 +52,9 @@ function onRowClick(row) {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Personas" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Personas") },
 ];
 
 onMounted(() => {
@@ -66,9 +67,9 @@ onMounted(() => {
 </script>
 
 <template>
-	<DeskPage title="Personas" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Personas')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<DeskLink to="/settings/personas/new" class="desk-save-btn">+ New Persona</DeskLink>
+			<DeskLink to="/settings/personas/new" class="desk-save-btn">{{ __("+ New Persona") }}</DeskLink>
 		</template>
 
 		<div
@@ -84,7 +85,7 @@ onMounted(() => {
 			:rows="items"
 			:columns="columns"
 			row-key="name"
-			search-placeholder="Search personas…"
+			:search-placeholder="__('Search personas…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-persona_name="{ row }">
@@ -104,7 +105,7 @@ onMounted(() => {
 						>{{ role }}</span
 					>
 					<span v-if="!row.roles || !row.roles.length" class="text-[10px] text-ink-400"
-						>No roles</span
+						>{{ __("No roles") }}</span
 					>
 				</span>
 			</template>
@@ -115,7 +116,7 @@ onMounted(() => {
 						row.enabled ? 'bg-success-50 text-success-700' : 'bg-ink-100 text-ink-500'
 					"
 					style="border-radius: 9999px"
-					>{{ row.enabled ? "Enabled" : "Disabled" }}</span
+					>{{ row.enabled ? __("Enabled") : __("Disabled") }}</span
 				>
 			</template>
 		</DeskList>

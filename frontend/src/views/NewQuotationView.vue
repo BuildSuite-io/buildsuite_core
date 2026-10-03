@@ -22,6 +22,7 @@ import { showToast } from "@/utils/appToast";
 // A terms template is the same record whoever pulls it in; invoice.py owns the reader.
 import { getInvoiceTerms } from "@/data/invoiceApi";
 import { daysBetween, fmtCurrency } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 // Same form for both: with an id it edits that draft, without one it creates.
 const props = defineProps({ id: { type: String, default: "" } });
@@ -122,7 +123,7 @@ async function onPickTerms(name) {
 	try {
 		form.terms = (await getInvoiceTerms(name)).terms || "";
 	} catch {
-		showToast("Could not read that terms template.", "error");
+		showToast(__("Could not read that terms template."), "error");
 	}
 }
 
@@ -146,19 +147,19 @@ const saving = ref(false);
 
 function validate() {
 	const found = {};
-	if (!form.party_name) found.party_name = "Pick the customer this is for.";
-	if (!form.title.trim()) found.title = "Say what the quotation is for.";
-	if (!form.transaction_date) found.transaction_date = "An issue date is required.";
+	if (!form.party_name) found.party_name = __("Pick the customer this is for.");
+	if (!form.title.trim()) found.title = __("Say what the quotation is for.");
+	if (!form.transaction_date) found.transaction_date = __("An issue date is required.");
 	if (form.validity_days !== "" && Number(form.validity_days) < 0)
-		found.validity_days = "Cannot be negative — a price cannot expire before it is offered.";
+		found.validity_days = __("Cannot be negative — a price cannot expire before it is offered.");
 	// Rows with no description are dropped on save, so only the ones that will be sent count.
 	const lines = form.items.filter((l) => l.description.trim());
 	if (!lines.length) {
-		found.items = "Add at least one line with a description.";
+		found.items = __("Add at least one line with a description.");
 	} else if (lines.some((l) => !(Number(l.qty) > 0))) {
 		// The library modal already refuses this; a typed row would otherwise save a line
 		// priced at nothing, which reads as an offer to do the work free.
-		found.items = "Every line needs a quantity above zero.";
+		found.items = __("Every line needs a quantity above zero.");
 	}
 	setErrors(found);
 	return Object.keys(found).length === 0;
@@ -204,87 +205,87 @@ async function onSave() {
 			: await adapter.create("Quotation", payload);
 		router.push(`/quotations/${encodeURIComponent(doc?.name || props.id)}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Could not save the quotation.", "error");
+		showToast(applyServerErrors(err) ?? __("Could not save the quotation."), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Estimation", to: "/estimation" },
-	{ label: "Quotations", to: "/quotations" },
-	{ label: editing.value ? props.id : "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Quotations"), to: "/quotations" },
+	{ label: editing.value ? props.id : __("New") },
 ]);
 </script>
 
 <template>
-	<DeskPage :title="editing ? `Edit ${id}` : 'New Quotation'"
-		subtitle="Type the items straight in, or pull them from an assembly."
+	<DeskPage :title="editing ? __('Edit {0}', [id]) : __('New Quotation')"
+		:subtitle="__('Type the items straight in, or pull them from an assembly.')"
 		:breadcrumbs="breadcrumbs">
 		<DeskForm>
 			<template #action-bar>
-				<DeskActionBar :save-label="editing ? 'Save changes' : 'Create quotation'"
-					:saving-label="editing ? 'Saving…' : 'Creating…'" :saving="saving" @save="onSave"
+				<DeskActionBar :save-label="editing ? __('Save changes') : __('Create quotation')"
+					:saving-label="editing ? __('Saving…') : __('Creating…')" :saving="saving" @save="onSave"
 					@cancel="router.back()" />
 			</template>
 
-			<DeskSection title="Who and what" :cols="2">
+			<DeskSection :title="__('Who and what')" :cols="2">
 				<div class="md:col-span-2">
-					<DeskField label="For" required :error="errors.title">
+					<DeskField :label="__('For')" required :error="errors.title">
 						<DeskInput
 							v-model="form.title"
-							placeholder="e.g. Interior fit-out — Level 8, Brigade Tech Gardens"
+							:placeholder="__('e.g. Interior fit-out — Level 8, Brigade Tech Gardens')"
 						/>
 					</DeskField>
 				</div>
 
-				<DeskField label="Customer" required :error="errors.party_name">
+				<DeskField :label="__('Customer')" required :error="errors.party_name">
 					<DeskSearchableSelect
 						v-model="form.party_name"
 						:options="customerOptions"
-						placeholder="Pick a customer…"
-						search-placeholder="Search customers…"
+						:placeholder="__('Pick a customer…')"
+						:search-placeholder="__('Search customers…')"
 					/>
 				</DeskField>
 
-				<DeskField label="Customer type">
+				<DeskField :label="__('Customer type')">
 					<DeskSelect v-model="form.customer_type">
-						<option value="">— Select —</option>
-						<option>Homebuyer</option>
-						<option>Private Client</option>
-						<option>Main Contractor</option>
+						<option value="">{{ __("— Select —") }}</option>
+						<option value="Homebuyer">{{ __("Homebuyer") }}</option>
+						<option value="Private Client">{{ __("Private Client") }}</option>
+						<option value="Main Contractor">{{ __("Main Contractor") }}</option>
 					</DeskSelect>
 				</DeskField>
 
 				<DeskField
-					label="Project"
-					hint="Optional — a quotation usually goes out before there is a project."
+					:label="__('Project')"
+					:hint="__('Optional — a quotation usually goes out before there is a project.')"
 				>
 					<DeskSearchableSelect
 						v-model="form.project"
 						:options="projectOptions"
 						allow-clear
-						placeholder="Not linked to a project"
-						search-placeholder="Search projects…"
+						:placeholder="__('Not linked to a project')"
+						:search-placeholder="__('Search projects…')"
 					/>
 				</DeskField>
 			</DeskSection>
 
 			<!-- No margin or tax fields: neither is applied yet, and a number on screen reads as
 				 a number in the price. They arrive with the working that uses them. -->
-			<DeskSection title="Dates" :cols="2">
-				<DeskField label="Date issued" required :error="errors.transaction_date">
+			<DeskSection :title="__('Dates')" :cols="2">
+				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
 					<DeskInput v-model="form.transaction_date" type="date" />
 				</DeskField>
 
-				<DeskField label="Valid for (days)" :error="errors.validity_days"
-					hint="Counted from the issue date. Leave blank for no expiry.">
+				<DeskField :label="__('Valid for (days)')" :error="errors.validity_days"
+					:hint="__('Counted from the issue date. Leave blank for no expiry.')">
 					<DeskInput v-model="form.validity_days" type="number" min="0" />
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection title="Items" :cols="1">
+			<DeskSection :title="__('Items')" :cols="1">
 				<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm" style="min-width: 780px">
@@ -292,12 +293,12 @@ const breadcrumbs = computed(() => [
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2 w-24">Source</th>
-									<th class="text-left font-medium px-3 py-2">Description</th>
-									<th class="text-left font-medium px-3 py-2 w-32">Unit</th>
-									<th class="text-right font-medium px-3 py-2 w-24">Qty</th>
-									<th class="text-right font-medium px-3 py-2 w-32">Rate</th>
-									<th class="text-right font-medium px-3 py-2 w-36">Amount</th>
+									<th class="text-left font-medium px-3 py-2 w-24">{{ __("Source") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Description") }}</th>
+									<th class="text-left font-medium px-3 py-2 w-32">{{ __("Unit") }}</th>
+									<th class="text-right font-medium px-3 py-2 w-24">{{ __("Qty") }}</th>
+									<th class="text-right font-medium px-3 py-2 w-32">{{ __("Rate") }}</th>
+									<th class="text-right font-medium px-3 py-2 w-36">{{ __("Amount") }}</th>
 									<th class="w-10"></th>
 								</tr>
 							</thead>
@@ -315,7 +316,7 @@ const breadcrumbs = computed(() => [
 										<input
 											v-model="l.description"
 											class="w-full bg-transparent text-sm text-ink-900 py-1 focus:outline-none"
-											placeholder="What the line is for"
+											:placeholder="__('What the line is for')"
 										/>
 									</td>
 									<td class="px-3 py-2">
@@ -324,7 +325,7 @@ const breadcrumbs = computed(() => [
 											doctype="UOM"
 											label-field="name"
 											value-field="name"
-											placeholder="Unit"
+											:placeholder="__('Unit')"
 										/>
 									</td>
 									<td class="px-3 py-2">
@@ -352,7 +353,7 @@ const breadcrumbs = computed(() => [
 										<button
 											type="button"
 											class="text-ink-400 hover:text-danger-700"
-											title="Remove line"
+											:title="__('Remove line')"
 											@click="removeLine(i)"
 										>
 											&times;
@@ -370,7 +371,7 @@ const breadcrumbs = computed(() => [
 												class="text-xs text-brand-700 hover:underline font-medium"
 												@click="addLine"
 											>
-												+ Add row
+												{{ __("+ Add row") }}
 											</button>
 											<span class="text-ink-300 text-xs">·</span>
 											<button
@@ -378,10 +379,10 @@ const breadcrumbs = computed(() => [
 												class="text-xs text-ink-600 hover:text-brand-700 hover:underline"
 												@click="pickerOpen = true"
 											>
-												+ Add from library
+												{{ __("+ Add from library") }}
 											</button>
 											<span class="text-[11px] text-ink-400"
-												>an assembly</span
+												>{{ __("an assembly") }}</span
 											>
 										</div>
 									</td>
@@ -394,7 +395,7 @@ const breadcrumbs = computed(() => [
 										colspan="5"
 										class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider"
 									>
-										Subtotal
+										{{ __("Subtotal") }}
 									</td>
 									<td
 										class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -410,40 +411,40 @@ const breadcrumbs = computed(() => [
 				<p v-if="errors.items" class="text-xs text-danger-700 mt-2">{{ errors.items }}</p>
 			</DeskSection>
 
-			<DeskSection title="Terms" :cols="1">
+			<DeskSection :title="__('Terms')" :cols="1">
 				<DeskField
-					label="Start from a template"
-					hint="Pulls the clause in as editable text — change it afterwards and it stays yours."
+					:label="__('Start from a template')"
+					:hint="__('Pulls the clause in as editable text — change it afterwards and it stays yours.')"
 				>
 					<DeskLinkPicker
 						:model-value="form.tc_name"
 						doctype="Terms and Conditions"
 						label-field="name"
 						value-field="name"
-						placeholder="Load standard terms from the library…"
+						:placeholder="__('Load standard terms from the library…')"
 						@update:model-value="onPickTerms"
 					/>
 				</DeskField>
 
 				<DeskField
-					label="Terms &amp; conditions"
+					:label="__('Terms & conditions')"
 					:hint="
 						form.tc_name
-							? 'Pulled from a template. Editing it here does not change the library.'
-							: 'Typed for this quotation.'
+							? __('Pulled from a template. Editing it here does not change the library.')
+							: __('Typed for this quotation.')
 					"
 				>
 					<DeskTextarea
 						v-model="form.terms"
 						:rows="6"
-						placeholder="Type the terms, or load a standard set above."
+						:placeholder="__('Type the terms, or load a standard set above.')"
 						@input="onTermsEdited"
 					/>
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection title="Internal notes" :cols="1">
-				<DeskField label="Notes" hint="Not printed — for whoever picks this up next.">
+			<DeskSection :title="__('Internal notes')" :cols="1">
+				<DeskField :label="__('Notes')" :hint="__('Not printed — for whoever picks this up next.')">
 					<DeskTextarea v-model="form.internal_note" :rows="3" />
 				</DeskField>
 			</DeskSection>

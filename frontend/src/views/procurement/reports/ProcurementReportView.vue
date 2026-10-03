@@ -18,6 +18,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { PROCUREMENT_REPORTS } from "@/data/procurementReportApi";
 import { fmtCompactINR, fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 const router = useRouter();
@@ -30,28 +31,36 @@ const daysSince = (iso) =>
 
 const META = {
 	"requests-to-order": {
-		title: "Requests waiting to be ordered",
-		desc: "What site has asked for that is not yet on a purchase order — the gap between the request book and the order book.",
+		title: __("Requests waiting to be ordered"),
+		desc: __(
+			"What site has asked for that is not yet on a purchase order — the gap between the request book and the order book."
+		),
 	},
 	"delivery-followup": {
-		title: "Delivery follow-up",
-		desc: "Open orders by the date they were needed, how much has landed, and what is still outstanding.",
+		title: __("Delivery follow-up"),
+		desc: __(
+			"Open orders by the date they were needed, how much has landed, and what is still outstanding."
+		),
 	},
 	"site-stock": {
-		title: "Material at site",
-		desc: "Received minus consumed, per item, at each project store.",
+		title: __("Material at site"),
+		desc: __("Received minus consumed, per item, at each project store."),
 	},
 	"rate-check": {
-		title: "Purchase rate vs estimate",
-		desc: "What you are paying against the QS rate in the Rate Master. Only lines carrying a rate code can be compared.",
+		title: __("Purchase rate vs estimate"),
+		desc: __(
+			"What you are paying against the QS rate in the Rate Master. Only lines carrying a rate code can be compared."
+		),
 	},
 	"purchase-register": {
-		title: "Purchase register",
-		desc: "Every purchase order line — supplier, item, quantity and rate — so last paid is one search away.",
+		title: __("Purchase register"),
+		desc: __(
+			"Every purchase order line — supplier, item, quantity and rate — so last paid is one search away."
+		),
 	},
 	"consumption-by-cost-code": {
-		title: "Consumption by cost code",
-		desc: "Material issued to site, grouped by the cost code it was booked against.",
+		title: __("Consumption by cost code"),
+		desc: __("Material issued to site, grouped by the cost code it was booked against."),
 	},
 };
 
@@ -80,7 +89,7 @@ async function load() {
 	try {
 		raw.value = await PROCUREMENT_REPORTS[slug.value](projectId.value || undefined);
 	} catch (e) {
-		error.value = e.message || "Failed to load the report.";
+		error.value = e.message || __("Failed to load the report.");
 		raw.value = null;
 	} finally {
 		loading.value = false;
@@ -234,56 +243,56 @@ const COUNTS = {
 	"requests-to-order": () => ({
 		shown: requestsToOrder.value.length,
 		total: rowsArr.value.length,
-		noun: "requests",
-		date: "Needed by",
-		find: "Request, project…",
+		noun: __("requests"),
+		date: __("Needed by"),
+		find: __("Request, project…"),
 	}),
 	"delivery-followup": () => ({
 		shown: deliveryFollowup.value.length,
 		total: rowsArr.value.length,
-		noun: "orders",
-		date: "Needed by",
-		find: "Order, supplier, project…",
+		noun: __("orders"),
+		date: __("Needed by"),
+		find: __("Order, supplier, project…"),
 	}),
 	"site-stock": () => ({
 		shown: siteStock.value.length,
 		total: rowsArr.value.length,
-		noun: "items",
+		noun: __("items"),
 		date: "",
-		find: "Item or store…",
+		find: __("Item or store…"),
 	}),
 	"rate-check": () => ({
 		shown: rateCheckRows.value.length,
 		total: (raw.value?.rows || []).length,
-		noun: "items",
+		noun: __("items"),
 		date: "",
-		find: "Item, code, supplier…",
+		find: __("Item, code, supplier…"),
 	}),
 	"purchase-register": () => ({
 		shown: purchaseRegister.value.length,
 		total: rowsArr.value.length,
-		noun: "lines",
-		date: "Ordered",
-		find: "Item, order, supplier…",
+		noun: __("lines"),
+		date: __("Ordered"),
+		find: __("Item, order, supplier…"),
 	}),
 	"consumption-by-cost-code": () => ({
 		shown: consumptionByCostCode.value.length,
 		total: null,
-		noun: "lines",
-		date: "Issued",
-		find: "Item or cost code…",
+		noun: __("lines"),
+		date: __("Issued"),
+		find: __("Item or cost code…"),
 	}),
 };
 const counts = computed(() =>
 	COUNTS[slug.value]
 		? COUNTS[slug.value]()
-		: { shown: null, total: null, noun: "rows", date: "", find: "Search…" }
+		: { shown: null, total: null, noun: __("rows"), date: "", find: __("Search…") }
 );
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: meta.value?.title || "Reports" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: meta.value?.title || __("Reports") },
 ]);
 
 const tone = (v) => (v > 0.5 ? "text-danger-700" : v < -0.5 ? "text-success-700" : "text-ink-700");
@@ -292,8 +301,8 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 
 <template>
 	<DeskPage
-		:title="meta ? meta.title : 'Report not found'"
-		:subtitle="meta ? meta.desc : `No report registered for '${slug}'`"
+		:title="meta ? meta.title : __('Report not found')"
+		:subtitle="meta ? meta.desc : __('No report registered for \'{0}\'', [slug])"
 		:breadcrumbs="breadcrumbs"
 		:printable="!!meta"
 	>
@@ -301,9 +310,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 			v-if="!meta"
 			class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-500 rounded-lg"
 		>
-			No report is registered under that name.
+			{{ __("No report is registered under that name.") }}
 			<RouterLink to="/procurement" class="text-brand-700 hover:underline ml-1"
-				>Back to Procurement →</RouterLink
+				>{{ __("Back to Procurement →") }}</RouterLink
 			>
 		</div>
 
@@ -317,15 +326,15 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 			>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Project</span
+						>{{ __("Project") }}</span
 					>
 					<span class="w-56 inline-block">
 						<DeskSearchableSelect
 							:model-value="projectId"
 							:options="projectOptions"
 							allow-clear
-							placeholder="All projects"
-							search-placeholder="Search projects…"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search projects…')"
 							@update:model-value="setProject"
 						/>
 					</span>
@@ -333,17 +342,17 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Find</span
+						>{{ __("Find") }}</span
 					>
 					<DeskInput v-model="f.q" :placeholder="counts.find" class="!w-52" />
 				</label>
 
 				<label v-if="slug === 'requests-to-order'" class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Status</span
+						>{{ __("Status") }}</span
 					>
 					<DeskSelect v-model="f.status" class="!w-44">
-						<option value="">Any</option>
+						<option value="">{{ __("Any") }}</option>
 						<option v-for="o in statusOptions" :key="o.value" :value="o.value">
 							{{ o.label }}
 						</option>
@@ -355,15 +364,15 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					class="flex items-center gap-1.5"
 				>
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Supplier</span
+						>{{ __("Supplier") }}</span
 					>
 					<span class="w-52 inline-block">
 						<DeskSearchableSelect
 							v-model="f.supplier"
 							:options="supplierOptions"
 							allow-clear
-							placeholder="All suppliers"
-							search-placeholder="Search suppliers…"
+							:placeholder="__('All suppliers')"
+							:search-placeholder="__('Search suppliers…')"
 						/>
 					</span>
 				</label>
@@ -373,15 +382,15 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					class="flex items-center gap-1.5"
 				>
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Cost code</span
+						>{{ __("Cost code") }}</span
 					>
 					<span class="w-56 inline-block">
 						<DeskSearchableSelect
 							v-model="f.code"
 							:options="costCodeOptions"
 							allow-clear
-							placeholder="All cost codes"
-							search-placeholder="Search cost codes…"
+							:placeholder="__('All cost codes')"
+							:search-placeholder="__('Search cost codes…')"
 						/>
 					</span>
 				</label>
@@ -391,7 +400,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						counts.date
 					}}</span>
 					<DeskInput v-model="f.from" type="date" class="!w-36" />
-					<span class="text-[11px] text-ink-400">to</span>
+					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 					<DeskInput v-model="f.to" type="date" class="!w-36" />
 				</label>
 
@@ -400,30 +409,30 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					class="flex items-center gap-1.5 cursor-pointer"
 				>
 					<input v-model="f.lateOnly" type="checkbox" class="accent-brand-600" />
-					<span class="text-[11px] text-ink-600">Overdue only</span>
+					<span class="text-[11px] text-ink-600">{{ __("Overdue only") }}</span>
 				</label>
 				<label
 					v-if="slug === 'rate-check'"
 					class="flex items-center gap-1.5 cursor-pointer"
 				>
 					<input v-model="f.overOnly" type="checkbox" class="accent-brand-600" />
-					<span class="text-[11px] text-ink-600">Over estimate only</span>
+					<span class="text-[11px] text-ink-600">{{ __("Over estimate only") }}</span>
 				</label>
 				<label
 					v-if="slug === 'site-stock'"
 					class="flex items-center gap-1.5 cursor-pointer"
 				>
 					<input v-model="f.inStockOnly" type="checkbox" class="accent-brand-600" />
-					<span class="text-[11px] text-ink-600">Hide emptied items</span>
+					<span class="text-[11px] text-ink-600">{{ __("Hide emptied items") }}</span>
 				</label>
 			</ReportFilters>
 
 			<p v-if="projectId" class="text-[11px] text-ink-500 -mt-1 mb-3">
-				Includes sub-projects.
+				{{ __("Includes sub-projects.") }}
 			</p>
 
 			<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">
-				Loading…
+				{{ __("Loading…") }}
 			</div>
 			<div v-else-if="error" class="text-sm text-danger-600 py-10 text-center">
 				{{ error }}
@@ -441,13 +450,13 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Request</th>
-									<th class="text-left font-medium px-3 py-2">Project</th>
-									<th class="text-left font-medium px-3 py-2">Raised</th>
-									<th class="text-left font-medium px-3 py-2">Needed by</th>
-									<th class="text-right font-medium px-3 py-2">Items</th>
-									<th class="text-right font-medium px-3 py-2">Value</th>
-									<th class="text-left font-medium px-3 py-2">Status</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Request") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Raised") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Needed by") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Items") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Value") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Status") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -463,7 +472,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 											>{{ m.name }}</RouterLink
 										>
 										<div class="text-[10px] text-ink-500">
-											{{ m.age }}d old
+											{{ __("{0}d old", [m.age]) }}
 										</div>
 									</td>
 									<td class="px-3 py-2 text-ink-700">{{ m.project_name }}</td>
@@ -480,7 +489,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									>
 										{{ fmtDate(m.required_by) }}
 										<span v-if="m.lateBy > 0" class="text-[10px]">
-											· {{ m.lateBy }}d late</span
+											· {{ __("{0}d late", [m.lateBy]) }}</span
 										>
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums text-ink-700">
@@ -499,10 +508,11 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									class="bg-ink-50 border-t border-ink-200 font-semibold text-ink-900"
 								>
 									<td class="px-3 py-2" colspan="5">
-										{{ requestsToOrder.length }} request{{
-											requestsToOrder.length === 1 ? "" : "s"
+										{{
+											requestsToOrder.length === 1
+												? __("{0} request waiting", [requestsToOrder.length])
+												: __("{0} requests waiting", [requestsToOrder.length])
 										}}
-										waiting
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums">
 										{{ fmtINR(requestsValue) }}
@@ -516,10 +526,12 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No requests match these filters.</template>
-						<template v-else
-							>Nothing waiting — every request in scope has been ordered.</template
-						>
+						<template v-if="anyFilter">{{
+							__("No requests match these filters.")
+						}}</template>
+						<template v-else>{{
+							__("Nothing waiting — every request in scope has been ordered.")
+						}}</template>
 					</div>
 				</div>
 
@@ -534,12 +546,12 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Order</th>
-									<th class="text-left font-medium px-3 py-2">Supplier</th>
-									<th class="text-left font-medium px-3 py-2">Project</th>
-									<th class="text-left font-medium px-3 py-2">Needed by</th>
-									<th class="text-right font-medium px-3 py-2">Received</th>
-									<th class="text-right font-medium px-3 py-2">Still due</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Order") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Supplier") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Needed by") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Received") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Still due") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -569,7 +581,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									>
 										{{ fmtDate(p.required_by) }}
 										<span v-if="p.lateBy > 0" class="text-[10px]">
-											· {{ p.lateBy }}d late</span
+											· {{ __("{0}d late", [p.lateBy]) }}</span
 										>
 									</td>
 									<td class="px-3 py-2 text-right">
@@ -604,11 +616,13 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									class="bg-ink-50 border-t border-ink-200 font-semibold text-ink-900"
 								>
 									<td class="px-3 py-2" colspan="5">
-										{{ deliveryFollowup.length }} open order{{
-											deliveryFollowup.length === 1 ? "" : "s"
+										{{
+											deliveryFollowup.length === 1
+												? __("{0} open order", [deliveryFollowup.length])
+												: __("{0} open orders", [deliveryFollowup.length])
 										}}
 										<span v-if="overdueCount" class="text-danger-700">
-											· {{ overdueCount }} overdue</span
+											· {{ __("{0} overdue", [overdueCount]) }}</span
 										>
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums">
@@ -622,8 +636,10 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No orders match these filters.</template>
-						<template v-else>No open orders in scope.</template>
+						<template v-if="anyFilter">{{
+							__("No orders match these filters.")
+						}}</template>
+						<template v-else>{{ __("No open orders in scope.") }}</template>
 					</div>
 				</div>
 
@@ -638,12 +654,12 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Project store</th>
-									<th class="text-left font-medium px-3 py-2">Item</th>
-									<th class="text-right font-medium px-3 py-2">Received</th>
-									<th class="text-right font-medium px-3 py-2">Consumed</th>
-									<th class="text-right font-medium px-3 py-2">At site</th>
-									<th class="text-left font-medium px-3 py-2">Unit</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Project store") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Received") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Consumed") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("At site") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Unit") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -677,12 +693,17 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No items match these filters.</template>
-						<template v-else>Nothing received at site yet in scope.</template>
+						<template v-if="anyFilter">{{
+							__("No items match these filters.")
+						}}</template>
+						<template v-else>{{ __("Nothing received at site yet in scope.") }}</template>
 					</div>
 					<p class="text-[11px] text-ink-500 mt-2">
-						Received counts posted purchase receipts; consumed counts posted
-						consumption. A cancelled receipt never entered stock.
+						{{
+							__(
+								"Received counts posted purchase receipts; consumed counts posted consumption. A cancelled receipt never entered stock."
+							)
+						}}
 					</p>
 				</div>
 
@@ -697,13 +718,13 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Item</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
 									<th class="text-left font-medium px-3 py-2">
-										Last bought from
+										{{ __("Last bought from") }}
 									</th>
-									<th class="text-right font-medium px-3 py-2">Paid</th>
-									<th class="text-right font-medium px-3 py-2">Rate Master</th>
-									<th class="text-right font-medium px-3 py-2">Variance</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Paid") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Rate Master") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Variance") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -753,16 +774,26 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No items match these filters.</template>
-						<template v-else
-							>No order line in scope carries a rate code, so there is nothing to
-							compare.</template
-						>
+						<template v-if="anyFilter">{{
+							__("No items match these filters.")
+						}}</template>
+						<template v-else>{{
+							__(
+								"No order line in scope carries a rate code, so there is nothing to compare."
+							)
+						}}</template>
 					</div>
 					<p v-if="rateUnlinked" class="text-[11px] text-ink-500 mt-2">
-						{{ rateUnlinked }} order line{{ rateUnlinked === 1 ? "" : "s" }} could not
-						be checked — no rate code on the line. Linking the item to a Rate Master
-						entry under
+						{{
+							rateUnlinked === 1
+								? __("{0} order line could not be checked — no rate code on the line.", [
+										rateUnlinked,
+								  ])
+								: __("{0} order lines could not be checked — no rate code on the line.", [
+										rateUnlinked,
+								  ])
+						}}
+						Linking the item to a Rate Master entry under
 						<RouterLink to="/items" class="text-brand-700 hover:underline"
 							>Items</RouterLink
 						>
@@ -781,13 +812,13 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Date</th>
-									<th class="text-left font-medium px-3 py-2">Order</th>
-									<th class="text-left font-medium px-3 py-2">Supplier</th>
-									<th class="text-left font-medium px-3 py-2">Item</th>
-									<th class="text-right font-medium px-3 py-2">Qty</th>
-									<th class="text-right font-medium px-3 py-2">Rate</th>
-									<th class="text-right font-medium px-3 py-2">Amount</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Date") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Order") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Supplier") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Qty") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Rate") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Amount") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -830,7 +861,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									class="bg-ink-50 border-t border-ink-200 font-semibold text-ink-900"
 								>
 									<td class="px-3 py-2" colspan="6">
-										{{ purchaseRegister.length }} lines
+										{{ __("{0} lines", [purchaseRegister.length]) }}
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums">
 										{{ fmtCompactINR(registerTotal) }}
@@ -843,8 +874,10 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No lines match these filters.</template>
-						<template v-else>No purchase orders in scope.</template>
+						<template v-if="anyFilter">{{
+							__("No lines match these filters.")
+						}}</template>
+						<template v-else>{{ __("No purchase orders in scope.") }}</template>
 					</div>
 				</div>
 
@@ -859,12 +892,12 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">Cost code</th>
-									<th class="text-left font-medium px-3 py-2">Project</th>
-									<th class="text-left font-medium px-3 py-2">Item</th>
-									<th class="text-right font-medium px-3 py-2">Issued</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Cost code") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
+									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
+									<th class="text-right font-medium px-3 py-2">{{ __("Issued") }}</th>
 									<th class="text-right font-medium px-3 py-2">
-										At standard rate
+										{{ __("At standard rate") }}
 									</th>
 								</tr>
 							</thead>
@@ -893,7 +926,7 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									class="bg-ink-50 border-t border-ink-200 font-semibold text-ink-900"
 								>
 									<td class="px-3 py-2" colspan="4">
-										{{ consumptionByCostCode.length }} lines
+										{{ __("{0} lines", [consumptionByCostCode.length]) }}
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums">
 										{{ fmtINR(consumptionValue) }}
@@ -906,13 +939,17 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						v-else
 						class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic rounded-lg"
 					>
-						<template v-if="anyFilter">No lines match these filters.</template>
-						<template v-else>Nothing issued to site yet in scope.</template>
+						<template v-if="anyFilter">{{
+							__("No lines match these filters.")
+						}}</template>
+						<template v-else>{{ __("Nothing issued to site yet in scope.") }}</template>
 					</div>
 					<p class="text-[11px] text-ink-500 mt-2">
-						Valued at the item master's standard rate — a list price, not what this
-						particular material cost. Issue valuation needs stock rates, which are not
-						modelled.
+						{{
+							__(
+								"Valued at the item master's standard rate — a list price, not what this particular material cost. Issue valuation needs stock rates, which are not modelled."
+							)
+						}}
 					</p>
 				</div>
 			</template>

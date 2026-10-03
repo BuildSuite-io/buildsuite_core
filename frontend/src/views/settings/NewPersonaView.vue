@@ -7,6 +7,7 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { savePersona, listAssignableRoles } from "@/data/personaApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -32,8 +33,8 @@ const assignableRoles = ref([]);
 
 function validate() {
 	const e = {};
-	if (!form.personaName.trim()) e.personaName = "Name is required";
-	if (!form.roles.length) e.roles = "Add at least one role";
+	if (!form.personaName.trim()) e.personaName = __("Name is required");
+	if (!form.roles.length) e.roles = __("Add at least one role");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -50,10 +51,10 @@ async function save() {
 			sort_order: Number(form.sortOrder) || 0,
 			roles: form.roles,
 		});
-		showToast("Persona created");
+		showToast(__("Persona created"));
 		router.push(`/settings/personas/${encodeURIComponent(res.name)}`);
 	} catch (err) {
-		showToast(err.message || "Failed to create persona", "error");
+		showToast(err.message || __("Failed to create persona"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -63,10 +64,10 @@ function cancel() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Personas", to: "/settings/personas" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Personas"), to: "/settings/personas" },
+	{ label: __("New") },
 ];
 
 onMounted(async () => {
@@ -83,11 +84,11 @@ onMounted(async () => {
 </script>
 
 <template>
-	<DeskPage title="New Persona" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Persona')" :breadcrumbs="breadcrumbs">
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create persona'"
+					:save-label="saving ? __('Creating…') : __('Create persona')"
 					:saving="saving"
 					@save="save"
 					@cancel="cancel"
@@ -95,52 +96,52 @@ onMounted(async () => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Basic">
+				<DeskSection :title="__('Basic')">
 					<DeskField
-						label="Persona name"
+						:label="__('Persona name')"
 						required
 						:error="errors.personaName"
-						hint="The label users pick. Can't be changed later."
+						:hint="__('The label users pick. Can\'t be changed later.')"
 					>
-						<DeskInput v-model="form.personaName" placeholder="e.g. Planner" />
+						<DeskInput v-model="form.personaName" :placeholder="__('e.g. Planner')" />
 					</DeskField>
 					<DeskField
-						label="Slug"
-						hint="Frontend id (auto-filled from the name if left blank)."
+						:label="__('Slug')"
+						:hint="__('Frontend id (auto-filled from the name if left blank).')"
 					>
-						<DeskInput v-model="form.slug" placeholder="e.g. planner" />
+						<DeskInput v-model="form.slug" :placeholder="__('e.g. planner')" />
 					</DeskField>
-					<DeskField label="Sort order" hint="Position in the persona dropdown.">
-						<DeskInput v-model="form.sortOrder" type="number" placeholder="auto" />
+					<DeskField :label="__('Sort order')" :hint="__('Position in the persona dropdown.')">
+						<DeskInput v-model="form.sortOrder" type="number" :placeholder="__('auto')" />
 					</DeskField>
-					<DeskField label="Enabled">
+					<DeskField :label="__('Enabled')">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
 							<input
 								type="checkbox"
 								v-model="form.enabled"
 								class="accent-brand-600"
 							/>
-							<span>{{ form.enabled ? "Enabled" : "Disabled" }}</span>
+							<span>{{ form.enabled ? __("Enabled") : __("Disabled") }}</span>
 						</label>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Roles" :cols="1">
+				<DeskSection :title="__('Roles')" :cols="1">
 					<DeskField
-						label="Granted roles"
+						:label="__('Granted roles')"
 						required
 						:error="errors.roles"
-						hint="Assigning this persona to a user grants these Frappe roles."
+						:hint="__('Assigning this persona to a user grants these Frappe roles.')"
 					>
 						<PersonaRolesField v-model="form.roles" :available="assignableRoles" />
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Description" :cols="1">
-					<DeskField label="Notes">
+				<DeskSection :title="__('Description')" :cols="1">
+					<DeskField :label="__('Notes')">
 						<DeskInput
 							v-model="form.description"
-							placeholder="What this persona is for"
+							:placeholder="__('What this persona is for')"
 						/>
 					</DeskField>
 				</DeskSection>
