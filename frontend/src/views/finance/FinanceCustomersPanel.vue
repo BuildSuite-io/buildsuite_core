@@ -15,6 +15,7 @@ import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import PartyFormModal from "./PartyFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const { canCreate, canDelete, canRead } = usePermissions();
@@ -33,7 +34,7 @@ async function load() {
 	try {
 		customers.value = await listCustomers();
 	} catch (err) {
-		showToast(err.message || "Failed to load customers", "error");
+		showToast(err.message || __("Failed to load customers"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -58,20 +59,20 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "name", label: "Name" },
-	{ key: "type", label: "Type" },
-	{ key: "contactPerson", label: "Contact" },
-	{ key: "phone", label: "Phone" },
-	{ key: "gstin", label: "Tax ID" },
-	{ key: "advance", label: "Advance held", align: "right" },
+	{ key: "name", label: __("Name") },
+	{ key: "type", label: __("Type") },
+	{ key: "contactPerson", label: __("Contact") },
+	{ key: "phone", label: __("Phone") },
+	{ key: "gstin", label: __("Tax ID") },
+	{ key: "advance", label: __("Advance held"), align: "right" },
 ];
 
 // Sort by Updated (most-recently-touched first) by default; Created and Updated are always
 // offered alongside the column sorts. Rows carry `updated`/`created` from the API.
 const sortOptions = [
 	...columns.map((c) => ({ value: c.key, label: c.label })),
-	{ value: "updated", label: "Updated" },
-	{ value: "created", label: "Created" },
+	{ value: "updated", label: __("Updated") },
+	{ value: "created", label: __("Created") },
 ];
 const sortField = ref("updated");
 const sortDirection = ref("desc");
@@ -102,16 +103,17 @@ async function onSave(payload) {
 		modalOpen.value = false;
 		await load();
 	} catch (err) {
-		modalError.value = err.message || "Save failed.";
+		modalError.value = err.message || __("Save failed.");
 	}
 }
 async function onDelete() {
 	if (!editing.value) return;
 	const ok = await confirmDialog({
-		title: `Delete ${editing.value.name}?`,
-		message:
-			"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments).",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [editing.value.name]),
+		message: __(
+			"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments)."
+		),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -120,22 +122,25 @@ async function onDelete() {
 		await adapter.remove("Customer", editing.value.id);
 		modalOpen.value = false;
 		await load();
-		showToast("Customer deleted.");
+		showToast(__("Customer deleted."));
 	} catch (err) {
 		modalError.value =
-			err.message || "Delete failed — the customer may have linked transactions.";
+			err.message || __("Delete failed — the customer may have linked transactions.");
 	}
 }
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Customers" }];
+const breadcrumbs = [
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Customers") },
+];
 </script>
 
 <template>
-	<DeskPage title="Customers" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Customers')" :breadcrumbs="breadcrumbs">
 		<div>
 			<div v-if="canManage" class="flex items-center justify-end mb-2">
 				<button type="button" class="desk-save-btn" @click="openCreate">
-					+ New Customer
+					{{ __("+ New Customer") }}
 				</button>
 			</div>
 
@@ -144,7 +149,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				:rows="rows"
 				:columns="columns"
 				row-key="id"
-				search-placeholder="Search name, contact, tax ID…"
+				:search-placeholder="__('Search name, contact, tax ID…')"
 				:sort-options="sortOptions"
 				:sort-field="sortField"
 				:sort-direction="sortDirection"
@@ -155,12 +160,12 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				<template #filter-chips>
 					<DeskFilterChip
 						v-if="typeFilter"
-						:label="`Type: ${typeFilter}`"
+						:label="__('Type: {0}', [__(typeFilter)])"
 						@remove="typeFilter = ''"
 					/>
 					<DeskSelect v-else v-model="typeFilter" class="!w-40">
-						<option value="">All types</option>
-						<option v-for="t in TYPE_OPTIONS" :key="t">{{ t }}</option>
+						<option value="">{{ __("All types") }}</option>
+						<option v-for="t in TYPE_OPTIONS" :key="t" :value="t">{{ __(t) }}</option>
 					</DeskSelect>
 				</template>
 
@@ -195,11 +200,11 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 
 				<template #empty>
 					<div class="text-sm text-ink-500">
-						{{ loading ? "Loading customers…" : "No customers yet." }}
+						{{ loading ? __("Loading customers…") : __("No customers yet.") }}
 						<template v-if="canManage && !loading">
 							·
 							<button type="button" class="desk-link" @click="openCreate">
-								Add one →
+								{{ __("Add one →") }}
 							</button>
 						</template>
 					</div>
@@ -208,8 +213,14 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 
 			<PartyFormModal
 				:open="modalOpen"
-				:title="editing ? (canManage ? 'Edit Customer' : 'View Customer') : 'New Customer'"
-				type-label="Customer type"
+				:title="
+					editing
+						? canManage
+							? __('Edit Customer')
+							: __('View Customer')
+						: __('New Customer')
+				"
+				:type-label="__('Customer type')"
 				:type-options="TYPE_OPTIONS"
 				:initial="editing"
 				:server-error="modalError"

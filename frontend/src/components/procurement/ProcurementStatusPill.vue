@@ -4,6 +4,8 @@
 // StatusBadge can't be reused here because the same status word (e.g. "Completed")
 // carries a different colour in other modules (Task Completed is brand, a completed
 // PO is success), so these business statuses live in their own map.
+import { __ } from "@/utils/translate";
+
 defineProps({
 	status: { type: String, default: "" },
 });
@@ -40,6 +42,6 @@ const PILL = {
 	<span
 		class="text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap"
 		:class="PILL[status] || 'bg-ink-100 text-ink-700'"
-		>{{ status }}</span
+		>{{ __(status) }}</span
 	>
 </template>

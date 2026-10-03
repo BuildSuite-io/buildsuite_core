@@ -10,13 +10,14 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { fmtCurrency, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Estimation", to: "/estimation" },
-	{ label: "Tenders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Tenders") },
 ];
 
 
@@ -54,26 +55,26 @@ const TODAY = new Date().toISOString().slice(0, 10);
 // `field-order` entirely (it derives the query from the columns), so the sub-lines below have
 // to name the extra fields they read or they render blank.
 const columns = [
-	{ key: "name", label: "Tender", fields: ["name", "tender_reference", "issued_by"] },
+	{ key: "name", label: __("Tender"), fields: ["name", "tender_reference", "issued_by"] },
 	{
 		key: "title",
-		label: "For",
+		label: __("For"),
 		fields: ["title", "envelope_structure", "items_count", "margin_percent"],
 	},
-	{ key: "issuing_body", label: "Issuing body" },
-	{ key: "submission_deadline", label: "Deadline" },
-	{ key: "emd_amount", label: "EMD", align: "right" },
-	{ key: "bid_value", label: "Bid value", align: "right" },
+	{ key: "issuing_body", label: __("Issuing body") },
+	{ key: "submission_deadline", label: __("Deadline") },
+	{ key: "emd_amount", label: __("EMD"), align: "right" },
+	{ key: "bid_value", label: __("Bid value"), align: "right" },
 ];
 
 </script>
 
 <template>
-	<DeskPage title="Tenders"
-		subtitle="Formal bids against published invitations. Nothing here touches an estimate — a bid you lose must cost the estimate nothing."
+	<DeskPage :title="__('Tenders')"
+		:subtitle="__('Formal bids against published invitations. Nothing here touches an estimate — a bid you lose must cost the estimate nothing.')"
 		:breadcrumbs="breadcrumbs" printable>
 		<template #actions>
-			<RouterLink to="/tenders/new" class="desk-save-btn !text-xs">+ New</RouterLink>
+			<RouterLink to="/tenders/new" class="desk-save-btn !text-xs">{{ __("+ New") }}</RouterLink>
 		</template>
 
 
@@ -85,22 +86,22 @@ const columns = [
 				to: { field: 'submission_deadline', op: '<=' },
 			}"
 			:search-fields="['name', 'title', 'tender_reference', 'issuing_body']" cache-key="buildsuite-tender-list"
-			row-key="name" search-placeholder="Search tender / reference / issuing body"
-			empty-message="No tenders yet. Start one when an invitation to bid comes in."
+			row-key="name" :search-placeholder="__('Search tender / reference / issuing body')"
+			:empty-message="__('No tenders yet. Start one when an invitation to bid comes in.')"
 			@row-click="(row) => router.push(`/tenders/${row.name}`)">
 			<template #filter-chips>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Envelope</span>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Envelope") }}</span>
 					<DeskSelect v-model="envelopeFilter" class="!w-40">
-						<option value="">Any</option>
-						<option v-for="o in envelopeOptions" :key="o" :value="o">{{ o }}</option>
+						<option value="">{{ __("Any") }}</option>
+						<option v-for="o in envelopeOptions" :key="o" :value="o">{{ __(o) }}</option>
 					</DeskSelect>
 				</label>
 
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Deadline</span>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Deadline") }}</span>
 					<DeskInput v-model="fromFilter" type="date" class="!w-36" />
-					<span class="text-[11px] text-ink-400">to</span>
+					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 					<DeskInput v-model="toFilter" type="date" class="!w-36" />
 				</label>
 			</template>
@@ -117,8 +118,8 @@ const columns = [
 			<template #cell-title="{ row }">
 				<div class="text-ink-900 font-medium">{{ row.title }}</div>
 				<div class="text-[10px] text-ink-500">
-					{{ row.envelope_structure }} · {{ row.items_count || 0 }}
-					line{{ row.items_count === 1 ? "" : "s" }} · {{ row.margin_percent || 0 }}% margin
+					{{ __(row.envelope_structure) }} · {{ row.items_count || 0 }}
+					{{ row.items_count === 1 ? __("line") : __("lines") }} · {{ __("{0}% margin", [row.margin_percent || 0]) }}
 				</div>
 			</template>
 

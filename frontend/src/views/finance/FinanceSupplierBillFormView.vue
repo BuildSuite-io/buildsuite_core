@@ -28,6 +28,7 @@ import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { useAutosave } from "@/composables/useAutosave";
 import { fmtINR, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
@@ -135,7 +136,7 @@ if (isEdit.value) {
 				ready.value = true;
 			});
 		})
-		.catch((err) => showToast(err.message || "Failed to load bill", "error"))
+		.catch((err) => showToast(err.message || __("Failed to load bill"), "error"))
 		.finally(() => (loading.value = false));
 }
 
@@ -159,7 +160,7 @@ async function onPickPo(po) {
 		}));
 		if (!form.lines.length) form.lines = [blankLine()];
 	} catch (err) {
-		showToast(err.message || "Failed to load PO lines", "error");
+		showToast(err.message || __("Failed to load PO lines"), "error");
 	}
 }
 function switchMode(m) {
@@ -204,7 +205,7 @@ async function applyTemplate(tpl) {
 	try {
 		form.taxes = await getSupplierBillTaxRows(tpl);
 	} catch (err) {
-		showToast(err.message || "Failed to load tax template", "error");
+		showToast(err.message || __("Failed to load tax template"), "error");
 	}
 }
 function addTaxRow() {
@@ -246,9 +247,9 @@ const wf = computed(() => {
 });
 
 const breadcrumbs = computed(() => [
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Bills", to: "/project-finance/bills" },
-	{ label: isEdit.value ? `Edit ${props.id}` : "New supplier bill" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Bills"), to: "/project-finance/bills" },
+	{ label: isEdit.value ? __("Edit {0}", [props.id]) : __("New supplier bill") },
 ]);
 
 // Payload shared by the explicit Save and the quiet auto-save.
@@ -302,19 +303,19 @@ async function save() {
 	errors.supplier = "";
 	errors.po = "";
 	errors.lines = "";
-	if (mode.value === "po" && !form.purchase_order) errors.po = "Pick a purchase order.";
-	if (!form.supplier) errors.supplier = "Supplier is required.";
+	if (mode.value === "po" && !form.purchase_order) errors.po = __("Pick a purchase order.");
+	if (!form.supplier) errors.supplier = __("Supplier is required.");
 	const lines = form.lines.filter((l) => (l.item_code || l.description) && lineAmount(l) > 0);
-	if (!lines.length) errors.lines = "Add at least one item with a quantity and rate.";
+	if (!lines.length) errors.lines = __("Add at least one item with a quantity and rate.");
 	if (errors.supplier || errors.po || errors.lines) return;
 
 	saving.value = true;
 	try {
 		const res = await saveSupplierBill(buildPayload());
-		showToast(isEdit.value ? "Bill updated." : "Bill saved as draft.");
+		showToast(isEdit.value ? __("Bill updated.") : __("Bill saved as draft."));
 		router.push(`/project-finance/supplier-bills/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -332,21 +333,25 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 
 <template>
 	<DeskPage
-		:title="isEdit ? `Edit ${id}` : 'New supplier bill'"
+		:title="isEdit ? __('Edit {0}', [id]) : __('New supplier bill')"
 		:breadcrumbs="breadcrumbs"
-		subtitle="A supplier payable — Submit posts it; then pay from a Bank/Cash account."
+		:subtitle="__('A supplier payable — Submit posts it; then pay from a Bank/Cash account.')"
 	>
 		<div
 			v-if="!canSaveBill"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this bill" : "create a supplier bill" }}.
+			{{
+				isEdit
+					? __("You don't have permission to edit this bill.")
+					: __("You don't have permission to create a supplier bill.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="isEdit ? 'Save bill' : 'Create bill'"
+					:save-label="isEdit ? __('Save bill') : __('Create bill')"
 					:saving="saving"
 					@save="save"
 					@cancel="router.back()"
@@ -356,13 +361,15 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							v-if="isEdit && autosaveStatus !== 'idle'"
 							class="text-xs text-ink-400"
 						>
-							{{ autosaveStatus === "saving" ? "Saving…" : "Saved" }}
+							{{ autosaveStatus === "saving" ? __("Saving…") : __("Saved") }}
 						</span>
 					</template>
 				</DeskActionBar>
 			</template>
 
-			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Loading…</div>
+			<div v-if="loading" class="py-16 text-center text-sm text-ink-400">
+				{{ __("Loading…") }}
+			</div>
 			<template v-else>
 				<!-- mode toggle (locked while editing — the source can't change) -->
 				<div class="flex items-center gap-2 mb-4">
@@ -377,7 +384,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						:disabled="isEdit"
 						@click="switchMode('po')"
 					>
-						From Purchase Order
+						{{ __("From Purchase Order") }}
 					</button>
 					<button
 						type="button"
@@ -390,18 +397,18 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						:disabled="isEdit"
 						@click="switchMode('direct')"
 					>
-						Direct
+						{{ __("Direct") }}
 					</button>
 					<span class="text-[11px] text-ink-400">{{
 						mode === "po"
-							? "Lines pre-fill from the PO's unbilled quantities."
-							: "No purchase order — enter charge lines manually."
+							? __("Lines pre-fill from the PO's unbilled quantities.")
+							: __("No purchase order — enter charge lines manually.")
 					}}</span>
 				</div>
 
 				<!-- PO mode header -->
-				<DeskSection v-if="mode === 'po'" title="Against purchase order" :cols="2">
-					<DeskField label="Purchase order" required :error="errors.po">
+				<DeskSection v-if="mode === 'po'" :title="__('Against purchase order')" :cols="2">
+					<DeskField :label="__('Purchase order')" required :error="errors.po">
 						<DeskLinkPicker
 							v-if="!isEdit"
 							:model-value="form.purchase_order"
@@ -409,14 +416,14 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							label-field="name"
 							value-field="name"
 							:filters="poFilters"
-							placeholder="Select a PO with something to bill…"
+							:placeholder="__('Select a PO with something to bill…')"
 							@update:model-value="onPickPo"
 						/>
 						<div v-else class="text-sm text-ink-900 pt-1.5 font-mono">
 							{{ form.purchase_order }}
 						</div>
 					</DeskField>
-					<DeskField v-if="form.supplier" label="Supplier · project">
+					<DeskField v-if="form.supplier" :label="__('Supplier · project')">
 						<div class="text-sm text-ink-900 pt-1.5">
 							{{ form.supplier_name || form.supplier
 							}}<span v-if="form.project" class="text-ink-500">
@@ -427,19 +434,19 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 				</DeskSection>
 
 				<!-- Direct mode header -->
-				<DeskSection v-if="mode === 'direct'" title="Supplier" :cols="2">
-					<DeskField label="Supplier" required :error="errors.supplier">
+				<DeskSection v-if="mode === 'direct'" :title="__('Supplier')" :cols="2">
+					<DeskField :label="__('Supplier')" required :error="errors.supplier">
 						<DeskLinkPicker
 							v-model="form.supplier"
 							doctype="Supplier"
 							label-field="supplier_name"
 							value-field="name"
-							placeholder="Pick a supplier…"
+							:placeholder="__('Pick a supplier…')"
 						/>
 					</DeskField>
 					<DeskField
-						label="Project"
-						hint="Optional — ties the cost to a project's books."
+						:label="__('Project')"
+						:hint="__('Optional — ties the cost to a project\'s books.')"
 					>
 						<DeskLinkPicker
 							v-model="form.project"
@@ -447,34 +454,34 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							label-field="project_name"
 							value-field="name"
 							:filters="companyFilter"
-							placeholder="None"
+							:placeholder="__('None')"
 						/>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Bill details" :cols="4">
-					<DeskField label="Supplier invoice no."
-						><DeskInput v-model="form.bill_no" placeholder="Their reference"
+				<DeskSection :title="__('Bill details')" :cols="4">
+					<DeskField :label="__('Supplier invoice no.')"
+						><DeskInput v-model="form.bill_no" :placeholder="__('Their reference')"
 					/></DeskField>
-					<DeskField label="Supplier invoice date"
+					<DeskField :label="__('Supplier invoice date')"
 						><DeskInput v-model="form.bill_date" type="date"
 					/></DeskField>
-					<DeskField label="Bill date"
+					<DeskField :label="__('Bill date')"
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField label="Due date"
+					<DeskField :label="__('Due date')"
 						><DeskInput v-model="form.due_date" type="date"
 					/></DeskField>
 				</DeskSection>
 
-				<DeskSection title="Items" :cols="1">
+				<DeskSection :title="__('Items')" :cols="1">
 					<div>
 						<div
 							class="hidden md:grid grid-cols-[1fr_100px_120px_120px_120px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"
 						>
-							<span>Item</span><span class="text-right">Qty</span><span>UOM</span
-							><span class="text-right">Rate</span
-							><span class="text-right">Amount</span><span></span>
+							<span>{{ __("Item") }}</span><span class="text-right">{{ __("Qty") }}</span
+							><span>{{ __("UOM") }}</span><span class="text-right">{{ __("Rate") }}</span
+							><span class="text-right">{{ __("Amount") }}</span><span></span>
 						</div>
 						<div
 							v-for="(l, idx) in form.lines"
@@ -492,7 +499,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 									label-field="item_name"
 									value-field="name"
 									:search-fields="['item_name', 'item_code', 'name']"
-									placeholder="Pick an item…"
+									:placeholder="__('Pick an item…')"
 									@update:model-value="onPickItem(l)"
 								/>
 							</div>
@@ -500,7 +507,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								v-model.number="l.qty"
 								type="number"
 								min="0"
-								placeholder="Qty"
+								:placeholder="__('Qty')"
 								class="text-right"
 							/>
 							<span v-if="mode === 'po'" class="text-xs text-ink-500 truncate">{{
@@ -512,13 +519,13 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								doctype="UOM"
 								label-field="name"
 								value-field="name"
-								placeholder="UOM"
+								:placeholder="__('UOM')"
 							/>
 							<DeskInput
 								v-model.number="l.rate"
 								type="number"
 								min="0"
-								placeholder="Rate"
+								:placeholder="__('Rate')"
 								class="text-right"
 							/>
 							<div class="text-xs tabular-nums text-ink-700 text-right">
@@ -527,7 +534,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							<button
 								type="button"
 								class="text-ink-400 hover:text-danger-600 text-sm"
-								aria-label="Remove line"
+								:aria-label="__('Remove line')"
 								@click="removeLine(idx)"
 							>
 								✕
@@ -542,7 +549,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							class="text-xs text-brand-700 hover:underline"
 							@click="addLine"
 						>
-							+ Add item
+							{{ __("+ Add item") }}
 						</button>
 					</div>
 				</DeskSection>
@@ -550,7 +557,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 				<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mb-6">
 					<div class="space-y-5 min-w-0">
 						<div>
-							<h3 class="desk-section-title">Taxes &amp; discount</h3>
+							<h3 class="desk-section-title">{{ __("Taxes & discount") }}</h3>
 							<hr class="desk-divider" />
 							<div class="flex items-center gap-2 mb-2 mt-2">
 								<div class="w-64">
@@ -560,7 +567,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										label-field="title"
 										value-field="name"
 										:filters="companyFilter"
-										placeholder="Tax template…"
+										:placeholder="__('Tax template…')"
 										@update:model-value="applyTemplate"
 									/>
 								</div>
@@ -569,7 +576,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 									class="text-[11px] text-brand-700 hover:underline whitespace-nowrap"
 									@click="addTaxRow"
 								>
-									+ Add row
+									{{ __("+ Add row") }}
 								</button>
 							</div>
 							<div v-if="form.taxes.length" class="space-y-1.5">
@@ -585,7 +592,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 											label-field="name"
 											value-field="name"
 											:filters="accountFilters"
-											placeholder="Tax account…"
+											:placeholder="__('Tax account…')"
 										/>
 									</div>
 									<input
@@ -606,13 +613,13 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								</div>
 							</div>
 							<div class="flex items-center gap-2 flex-wrap mt-3">
-								<span class="text-xs text-ink-500">Discount</span>
+								<span class="text-xs text-ink-500">{{ __("Discount") }}</span>
 								<select
 									v-model="form.discount_on"
 									class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 								>
-									<option value="Net Total">On Net Total</option>
-									<option value="Grand Total">On Grand Total</option>
+									<option value="Net Total">{{ __("On Net Total") }}</option>
+									<option value="Grand Total">{{ __("On Grand Total") }}</option>
 								</select>
 								<input
 									v-model.number="form.discount_value"
@@ -657,11 +664,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								class="w-full flex items-center gap-2 text-left"
 								@click="termsOpen = !termsOpen"
 							>
-								<h3 class="desk-section-title">Terms &amp; conditions</h3>
+								<h3 class="desk-section-title">{{ __("Terms & conditions") }}</h3>
 								<span
 									v-if="form.terms && !termsOpen"
 									class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-full"
-									>set</span
+									>{{ __("set") }}</span
 								>
 								<svg
 									width="14"
@@ -686,14 +693,14 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										doctype="Terms and Conditions"
 										label-field="name"
 										value-field="name"
-										placeholder="Import from template…"
+										:placeholder="__('Import from template…')"
 										@update:model-value="onPickTerms"
 									/>
 								</div>
 								<textarea
 									v-model="form.terms"
 									rows="5"
-									placeholder="Terms — import a template above or write your own."
+									:placeholder="__('Terms — import a template above or write your own.')"
 									class="w-full text-xs px-3 py-2 border border-ink-200 rounded-md leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 								></textarea>
 							</div>
@@ -702,11 +709,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 
 					<div class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
 						<div class="flex justify-between text-ink-600">
-							<span>Net total</span
+							<span>{{ __("Net total") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.net) }}</span>
 						</div>
 						<div v-if="wf.netDiscount > 0" class="flex justify-between text-ink-600">
-							<span>Discount (on net)</span
+							<span>{{ __("Discount (on net)") }}</span
 							><span class="tabular-nums text-danger-700"
 								>− {{ fmtINR(wf.netDiscount) }}</span
 							>
@@ -715,7 +722,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							v-if="wf.taxable !== wf.net"
 							class="flex justify-between text-ink-600"
 						>
-							<span>Taxable value</span
+							<span>{{ __("Taxable value") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.taxable) }}</span>
 						</div>
 						<div
@@ -723,11 +730,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							:key="idx"
 							class="flex justify-between text-ink-600"
 						>
-							<span>{{ row.account_head || "Tax" }} ({{ row.rate }}%)</span
+							<span>{{ row.account_head || __("Tax") }} ({{ row.rate }}%)</span
 							><span class="tabular-nums">{{ fmtINR(row.amount) }}</span>
 						</div>
 						<div v-if="wf.grandDiscount > 0" class="flex justify-between text-ink-600">
-							<span>Discount (on grand total)</span
+							<span>{{ __("Discount (on grand total)") }}</span
 							><span class="tabular-nums text-danger-700"
 								>− {{ fmtINR(wf.grandDiscount) }}</span
 							>
@@ -735,7 +742,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						<div
 							class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
 						>
-							<span>Bill total</span
+							<span>{{ __("Bill total") }}</span
 							><span class="tabular-nums">{{ fmtINR(wf.billTotal) }}</span>
 						</div>
 					</div>

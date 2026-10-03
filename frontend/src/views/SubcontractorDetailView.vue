@@ -15,6 +15,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { getSubcontractor, updateSubcontractor } from "@/data/subcontractApi";
+import { __ } from "@/utils/translate";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
@@ -45,7 +46,7 @@ async function load() {
 	try {
 		sub.value = await getSubcontractor(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load subcontractor", "error");
+		showToast(err.message || __("Failed to load subcontractor"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -119,8 +120,8 @@ function cancelEdit() {
 }
 function validate() {
 	const e = {};
-	if (!form.value.subcontractor_name?.trim()) e.subcontractor_name = "Name is required.";
-	if (!form.value.trade) e.trade = "Trade is required.";
+	if (!form.value.subcontractor_name?.trim()) e.subcontractor_name = __("Name is required.");
+	if (!form.value.trade) e.trade = __("Trade is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -140,7 +141,7 @@ async function saveEdit() {
 		await load();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update subcontractor", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update subcontractor"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -149,13 +150,13 @@ async function saveEdit() {
 async function onDelete() {
 	const n = linkedWOs.value.length;
 	const ok = await confirmDialog({
-		title: `Delete ${sub.value?.subcontractor_name}?`,
+		title: __("Delete {0}?", [sub.value?.subcontractor_name]),
 		message: n
-			? `${n} work order${
-					n === 1 ? "" : "s"
-			  } reference this subcontractor and would be left dangling.`
-			: "This subcontractor master record will be removed permanently.",
-		confirmLabel: "Delete",
+			? n === 1
+				? __("{0} work order reference this subcontractor and would be left dangling.", [n])
+				: __("{0} work orders reference this subcontractor and would be left dangling.", [n])
+			: __("This subcontractor master record will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -168,9 +169,9 @@ async function onDelete() {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractors", to: "/subcontractors" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractors"), to: "/subcontractors" },
 	{ label: sub.value?.subcontractor_name || props.id },
 ]);
 </script>
@@ -191,7 +192,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && canDelete('subcontractor')"
@@ -200,7 +201,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="editing"
@@ -209,7 +210,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing && canEdit('subcontractor')"
@@ -218,43 +219,43 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Details" :cols="3">
-				<DeskField label="Name"
+			<DeskSection :title="__('Details')" :cols="3">
+				<DeskField :label="__('Name')"
 					><div class="text-sm text-ink-900">
 						{{ sub.subcontractor_name }}
 					</div></DeskField
 				>
-				<DeskField label="Trade"
+				<DeskField :label="__('Trade')"
 					><div class="text-sm text-ink-700">
 						{{ sub.trade || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Status"><StatusBadge :status="sub.status" /></DeskField>
-				<DeskField label="Tax ID"
+				<DeskField :label="__('Status')"><StatusBadge :status="sub.status" /></DeskField>
+				<DeskField :label="__('Tax ID')"
 					><div class="text-sm font-mono text-ink-700">
 						{{ sub.tax_id || "—" }}
 					</div></DeskField
 				>
 			</DeskSection>
 
-			<DeskSection title="Contact" :cols="3">
-				<DeskField label="Contact person"
+			<DeskSection :title="__('Contact')" :cols="3">
+				<DeskField :label="__('Contact person')"
 					><div class="text-sm text-ink-900">
 						{{ sub.contact_person || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Phone number"
+				<DeskField :label="__('Phone number')"
 					><div class="text-sm text-ink-700">
 						{{ sub.phone || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Email id"
+				<DeskField :label="__('Email id')"
 					><div class="text-sm text-ink-700">
 						{{ sub.email || "—" }}
 					</div></DeskField
@@ -265,13 +266,13 @@ const breadcrumbs = computed(() => [
 			<section class="mt-6">
 				<div class="flex items-center justify-between mb-2 gap-3">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Work orders ({{ linkedWOs.length }})
+						{{ __("Work orders ({0})", [linkedWOs.length]) }}
 					</h3>
 					<RouterLink
 						v-if="canCreate('subcontractorWorkOrder')"
 						:to="`/subcontractor-work-orders/new?subcontractor=${sub.name}`"
 						class="text-xs text-brand-700 hover:underline"
-						>+ Raise new work order</RouterLink
+						>{{ __("+ Raise new work order") }}</RouterLink
 					>
 				</div>
 				<div
@@ -281,12 +282,12 @@ const breadcrumbs = computed(() => [
 					<table class="w-full text-xs">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
-								<th class="text-left px-3 py-2">WO</th>
-								<th class="text-left px-3 py-2">Project</th>
-								<th class="text-left px-3 py-2">Date</th>
-								<th class="text-right px-3 py-2">Value</th>
-								<th class="text-right px-3 py-2">% Billed</th>
-								<th class="text-left px-3 py-2">Status</th>
+								<th class="text-left px-3 py-2">{{ __("WO") }}</th>
+								<th class="text-left px-3 py-2">{{ __("Project") }}</th>
+								<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+								<th class="text-right px-3 py-2">{{ __("Value") }}</th>
+								<th class="text-right px-3 py-2">{{ __("% Billed") }}</th>
+								<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -330,44 +331,44 @@ const breadcrumbs = computed(() => [
 					</table>
 				</div>
 				<div v-else class="text-xs text-ink-400 italic">
-					No work orders raised against this subcontractor yet.
+					{{ __("No work orders raised against this subcontractor yet.") }}
 				</div>
 			</section>
 		</div>
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection title="Details" :cols="3">
-				<DeskField label="Name" required :error="errors.subcontractor_name"
+			<DeskSection :title="__('Details')" :cols="3">
+				<DeskField :label="__('Name')" required :error="errors.subcontractor_name"
 					><DeskInput v-model="form.subcontractor_name"
 				/></DeskField>
-				<DeskField label="Trade" required :error="errors.trade">
+				<DeskField :label="__('Trade')" required :error="errors.trade">
 					<TradePicker v-model="form.trade" :error="errors.trade" />
 				</DeskField>
-				<DeskField label="Status">
+				<DeskField :label="__('Status')">
 					<DeskSelect v-model="form.status"
-						><option>Active</option>
-						<option>Inactive</option></DeskSelect
+						><option value="Active">{{ __("Active") }}</option>
+						<option value="Inactive">{{ __("Inactive") }}</option></DeskSelect
 					>
 				</DeskField>
-				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
+				<DeskField :label="__('Tax ID')" :hint="__('e.g. GSTIN (India), VAT No, TIN')"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
 			</DeskSection>
 
-			<DeskSection title="Contact" :cols="3">
-				<DeskField label="Contact person">
+			<DeskSection :title="__('Contact')" :cols="3">
+				<DeskField :label="__('Contact person')">
 					<DeskInput v-model="form.contact_person" />
 				</DeskField>
-				<DeskField label="Phone number">
+				<DeskField :label="__('Phone number')">
 					<DeskInput v-model="form.phone" />
 				</DeskField>
-				<DeskField label="Email id">
+				<DeskField :label="__('Email id')">
 					<DeskInput v-model="form.email" type="email" />
 				</DeskField>
 			</DeskSection>
 		</div>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading subcontractor…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading subcontractor…") }}</div>
 </template>

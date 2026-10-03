@@ -33,6 +33,7 @@ import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const session = useSessionStore();
 // Funding-source accounts are scoped to the working company (default when awareness is off,
@@ -79,11 +80,11 @@ const search = ref("");
 const statusFilter = ref(""); // All Requests tab status dropdown
 const tabs = computed(() => [
 	...(canDisburse.value
-		? [{ id: "disburse", label: "To Disburse", count: requested.value.length }]
+		? [{ id: "disburse", label: __("To Disburse"), count: requested.value.length }]
 		: []),
-	{ id: "all", label: "All Requests", count: all.value.length },
-	{ id: "balances", label: "Balances", count: null },
-	{ id: "mine", label: "My Requests", count: mine.value.length },
+	{ id: "all", label: __("All Requests"), count: all.value.length },
+	{ id: "balances", label: __("Balances"), count: null },
+	{ id: "mine", label: __("My Requests"), count: mine.value.length },
 ]);
 if (!canDisburse.value) tab.value = "mine";
 
@@ -108,29 +109,29 @@ const filteredAll = computed(() => {
 const columns = computed(() => {
 	if (tab.value === "all")
 		return [
-			{ key: "name", label: "ID" },
-			{ key: "requested_by", label: "Holder" },
-			{ key: "purpose", label: "Purpose" },
-			{ key: "request_date", label: "Date" },
-			{ key: "from_account", label: "From account" },
-			{ key: "amount", label: "Amount", align: "right" },
-			{ key: "status", label: "Status" },
+			{ key: "name", label: __("ID") },
+			{ key: "requested_by", label: __("Holder") },
+			{ key: "purpose", label: __("Purpose") },
+			{ key: "request_date", label: __("Date") },
+			{ key: "from_account", label: __("From account") },
+			{ key: "amount", label: __("Amount"), align: "right" },
+			{ key: "status", label: __("Status") },
 			{ key: "actions", label: "" },
 		];
 	if (tab.value === "mine")
 		return [
-			{ key: "request_date", label: "Date" },
-			{ key: "purpose", label: "Purpose" },
-			{ key: "amount", label: "Amount", align: "right" },
-			{ key: "status", label: "Status" },
+			{ key: "request_date", label: __("Date") },
+			{ key: "purpose", label: __("Purpose") },
+			{ key: "amount", label: __("Amount"), align: "right" },
+			{ key: "status", label: __("Status") },
 			{ key: "actions", label: "" },
 		];
 	// disburse queue
 	return [
-		{ key: "requested_by", label: "Holder" },
-		{ key: "purpose", label: "Purpose" },
-		{ key: "request_date", label: "Date" },
-		{ key: "amount", label: "Amount", align: "right" },
+		{ key: "requested_by", label: __("Holder") },
+		{ key: "purpose", label: __("Purpose") },
+		{ key: "request_date", label: __("Date") },
+		{ key: "amount", label: __("Amount"), align: "right" },
 		{ key: "actions", label: "" },
 	];
 });
@@ -143,7 +144,7 @@ async function loadBalances() {
 	try {
 		balances.value = await pettyCashHolderBalances();
 	} catch (err) {
-		showToast(err.message || "Failed to load balances", "error");
+		showToast(err.message || __("Failed to load balances"), "error");
 	}
 }
 loadBalances();
@@ -154,16 +155,16 @@ function openRequest() {
 	Object.assign(reqForm, { open: true, amount: 0, purpose: "", saving: false });
 }
 async function submitRequest() {
-	if (!(Number(reqForm.amount) > 0)) return showToast("Enter an amount.", "error");
-	if (!reqForm.purpose.trim()) return showToast("Enter a purpose.", "error");
+	if (!(Number(reqForm.amount) > 0)) return showToast(__("Enter an amount."), "error");
+	if (!reqForm.purpose.trim()) return showToast(__("Enter a purpose."), "error");
 	reqForm.saving = true;
 	try {
 		await savePettyCash({ amount: reqForm.amount, purpose: reqForm.purpose });
 		reqForm.open = false;
 		res.reload?.();
-		showToast("Petty cash requested.");
+		showToast(__("Petty cash requested."));
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		reqForm.saving = false;
 	}
@@ -192,17 +193,17 @@ async function openDirect() {
 	try {
 		direct.accounts = await listCashBankAccounts(activeCompany.value);
 	} catch (err) {
-		showToast(err.message || "Failed to load accounts", "error");
+		showToast(err.message || __("Failed to load accounts"), "error");
 	}
 }
 const accountOptions = computed(() =>
 	(direct.accounts || []).map((a) => ({ value: a.name, label: a.name, hint: a.account_type }))
 );
 async function submitDirect() {
-	if (!direct.holder) return showToast("Pick who is receiving the float.", "error");
-	if (!(Number(direct.amount) > 0)) return showToast("Enter an amount.", "error");
-	if (!direct.paidFrom) return showToast("Pick the account to pay from.", "error");
-	if (!direct.purpose.trim()) return showToast("A short reason is required.", "error");
+	if (!direct.holder) return showToast(__("Pick who is receiving the float."), "error");
+	if (!(Number(direct.amount) > 0)) return showToast(__("Enter an amount."), "error");
+	if (!direct.paidFrom) return showToast(__("Pick the account to pay from."), "error");
+	if (!direct.purpose.trim()) return showToast(__("A short reason is required."), "error");
 	direct.saving = true;
 	try {
 		await issueDirectPettyCash({
@@ -214,9 +215,9 @@ async function submitDirect() {
 		direct.open = false;
 		res.reload?.();
 		loadBalances();
-		showToast("Petty cash issued — Journal Entry posted.");
+		showToast(__("Petty cash issued — Journal Entry posted."));
 	} catch (err) {
-		showToast(err.message || "Issue failed", "error");
+		showToast(err.message || __("Issue failed"), "error");
 	} finally {
 		direct.saving = false;
 	}
@@ -235,16 +236,16 @@ async function openDisburse(row) {
 	}
 }
 async function confirmDisburse() {
-	if (!disb.paidFrom) return showToast("Pick the account to pay from.", "error");
+	if (!disb.paidFrom) return showToast(__("Pick the account to pay from."), "error");
 	disb.saving = true;
 	try {
 		await disbursePettyCash(disb.row.name, disb.paidFrom);
 		disb.open = false;
 		res.reload?.();
 		loadBalances();
-		showToast("Disbursed — Journal Entry posted.");
+		showToast(__("Disbursed — Journal Entry posted."));
 	} catch (err) {
-		showToast(err.message || "Disburse failed", "error");
+		showToast(err.message || __("Disburse failed"), "error");
 	} finally {
 		disb.saving = false;
 	}
@@ -252,22 +253,21 @@ async function confirmDisburse() {
 
 async function onWithdraw(row) {
 	const mine = row.requested_by === session.user;
-	const verb = mine ? "Withdraw" : "Cancel";
 	const ok = await confirmDialog({
-		title: `${verb} request?`,
+		title: mine ? __("Withdraw request?") : __("Cancel request?"),
 		message: mine
-			? `Cancel your petty cash request ${row.name}?`
-			: `Cancel petty cash request ${row.name} for ${userName(row.requested_by)}?`,
-		confirmLabel: verb,
+			? __("Cancel your petty cash request {0}?", [row.name])
+			: __("Cancel petty cash request {0} for {1}?", [row.name, userName(row.requested_by)]),
+		confirmLabel: mine ? __("Withdraw") : __("Cancel"),
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await cancelPettyCash(row.name);
 		res.reload?.();
-		showToast(mine ? "Request withdrawn." : "Request cancelled.");
+		showToast(mine ? __("Request withdrawn.") : __("Request cancelled."));
 	} catch (err) {
-		showToast(err.message || `${verb} failed`, "error");
+		showToast(err.message || (mine ? __("Withdraw failed") : __("Cancel failed")), "error");
 	}
 }
 
@@ -276,16 +276,12 @@ async function onWithdraw(row) {
 // queue. Only petty-cash managers (canDisburse) see this.
 async function onUndisburse(row) {
 	const ok = await confirmDialog({
-		title: "Cancel disbursement?",
+		title: __("Cancel disbursement?"),
 		message: row.is_direct
-			? `Reverse the ${fmtINR(row.amount)} issued to ${userName(
-					row.requested_by
-			  )}? It was issued directly, so the record is removed and their float drops.`
-			: `Reverse the ${fmtINR(row.amount)} disbursed to ${userName(
-					row.requested_by
-			  )}? The request returns to the disburse queue and their float drops.`,
-		confirmLabel: "Cancel disbursement",
-		cancelLabel: "Keep",
+			? __("Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.", [fmtINR(row.amount), userName(row.requested_by)])
+			: __("Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.", [fmtINR(row.amount), userName(row.requested_by)]),
+		confirmLabel: __("Cancel disbursement"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -293,16 +289,16 @@ async function onUndisburse(row) {
 		await undisbursePettyCash(row.name);
 		res.reload?.();
 		loadBalances();
-		showToast("Disbursement reversed.");
+		showToast(__("Disbursement reversed."));
 	} catch (err) {
-		showToast(err.message || "Reversal failed", "error");
+		showToast(err.message || __("Reversal failed"), "error");
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Petty Cash" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Petty Cash") },
 ];
 const rowsForTab = computed(() => {
 	if (tab.value === "disburse") return requested.value;
@@ -312,11 +308,11 @@ const rowsForTab = computed(() => {
 </script>
 
 <template>
-	<DeskPage title="Petty Cash" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Petty Cash')" :breadcrumbs="breadcrumbs">
 		<div class="flex items-center justify-between gap-3 mb-4">
 			<div class="text-sm text-ink-600">
-				Advances to site holders. Spend is logged separately under
-				<span class="font-medium">Expenses</span>.
+				{{ __("Advances to site holders. Spend is logged separately under") }}
+				<span class="font-medium">{{ __("Expenses") }}</span>.
 			</div>
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<button
@@ -326,7 +322,7 @@ const rowsForTab = computed(() => {
 					style="border-radius: 6px"
 					@click="openDirect"
 				>
-					+ Issue directly
+					{{ __("+ Issue directly") }}
 				</button>
 				<button
 					v-if="canCreate('pettyCash')"
@@ -334,7 +330,7 @@ const rowsForTab = computed(() => {
 					class="text-xs desk-save-btn whitespace-nowrap"
 					@click="openRequest"
 				>
-					+ Request petty cash
+					{{ __("+ Request petty cash") }}
 				</button>
 			</div>
 		</div>
@@ -369,10 +365,10 @@ const rowsForTab = computed(() => {
 			<table class="w-full text-xs">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Holder</th>
-						<th class="text-right px-3 py-2">Disbursed</th>
-						<th class="text-right px-3 py-2">Submitted spend</th>
-						<th class="text-right px-3 py-2">Balance</th>
+						<th class="text-left px-3 py-2">{{ __("Holder") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Disbursed") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Submitted spend") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Balance") }}</th>
 						<th class="px-3 py-2"></th>
 					</tr>
 				</thead>
@@ -381,7 +377,7 @@ const rowsForTab = computed(() => {
 						v-for="b in balancesPager.pagedRows"
 						:key="b.employee || b.holder"
 						class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
-						:title="`Open ${b.holder}'s petty-cash report`"
+						:title="__('Open {0}\'s petty-cash report', [b.holder])"
 						@click="openHolderReport(b.employee)"
 					>
 						<td class="px-3 py-2 text-ink-900">
@@ -402,26 +398,24 @@ const rowsForTab = computed(() => {
 							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
 						>
 							<template v-if="b.balance < 0"
-								>{{ fmtINR(-b.balance) }} owed to holder</template
+								>{{ __("{0} owed to holder", [fmtINR(-b.balance)]) }}</template
 							>
 							<template v-else>{{ fmtINR(b.balance) }}</template>
 						</td>
 						<td class="px-3 py-2 text-right whitespace-nowrap">
-							<span class="text-[11px] text-brand-700">Report →</span>
+							<span class="text-[11px] text-brand-700">{{ __("Report") }} →</span>
 						</td>
 					</tr>
 					<tr v-if="!balances.length">
 						<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
-							No petty-cash activity yet.
+							{{ __("No petty-cash activity yet.") }}
 						</td>
 					</tr>
 				</tbody>
 			</table>
 			<DeskPaginationFooter :pager="balancesPager" />
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				Balance in hand = disbursed float − approved expenses (from the Expenses tab). A
-				negative balance means the holder fronted their own money — it's owed back to them
-				and cleared on the next disbursement.
+				{{ __("Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.") }}
 			</p>
 		</div>
 
@@ -432,17 +426,17 @@ const rowsForTab = computed(() => {
 			:rows="rowsForTab"
 			:columns="columns"
 			row-key="name"
-			:search-placeholder="tab === 'all' ? 'Search requests…' : ''"
+			:search-placeholder="tab === 'all' ? __('Search requests…') : ''"
 		>
 			<template v-if="tab === 'all'" #filter-chips>
 				<select
 					v-model="statusFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">All statuses</option>
-					<option value="Requested">Requested</option>
-					<option value="Disbursed">Disbursed</option>
-					<option value="Cancelled">Cancelled</option>
+					<option value="">{{ __("All statuses") }}</option>
+					<option value="Requested">{{ __("Requested") }}</option>
+					<option value="Disbursed">{{ __("Disbursed") }}</option>
+					<option value="Cancelled">{{ __("Cancelled") }}</option>
 				</select>
 			</template>
 			<template #cell-name="{ row }">
@@ -476,8 +470,8 @@ const rowsForTab = computed(() => {
 					<span
 						v-if="row.is_direct"
 						class="text-[9px] px-1 py-0.5 rounded bg-info-50 text-info-700 font-medium uppercase tracking-wider"
-						title="Issued directly to the holder, no request behind it"
-						>Direct</span
+						:title="__('Issued directly to the holder, no request behind it')"
+						>{{ __("Direct") }}</span
 					>
 				</div>
 			</template>
@@ -489,7 +483,7 @@ const rowsForTab = computed(() => {
 						class="text-[11px] px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-md"
 						@click.stop="openDisburse(row)"
 					>
-						Disburse
+						{{ __("Disburse") }}
 					</button>
 					<button
 						v-if="
@@ -500,7 +494,7 @@ const rowsForTab = computed(() => {
 						class="text-[11px] px-2 py-0.5 border border-ink-200 text-ink-600 rounded"
 						@click.stop="onWithdraw(row)"
 					>
-						{{ row.requested_by === session.user ? "Withdraw" : "Cancel" }}
+						{{ row.requested_by === session.user ? __("Withdraw") : __("Cancel") }}
 					</button>
 					<button
 						v-if="row.status === 'Disbursed' && canDisburse"
@@ -508,13 +502,13 @@ const rowsForTab = computed(() => {
 						class="text-[11px] px-2 py-1 text-danger-600 hover:text-danger-700 hover:underline"
 						@click.stop="onUndisburse(row)"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 				</div>
 			</template>
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ res.loading ? "Loading…" : "Nothing here." }}
+					{{ res.loading ? __("Loading…") : __("Nothing here.") }}
 				</div>
 			</template>
 		</DeskList>
@@ -526,23 +520,23 @@ const rowsForTab = computed(() => {
 			@click.self="reqForm.open = false"
 		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">Request petty cash</h3>
+				<h3 class="text-sm font-semibold text-ink-900 mb-4">{{ __("Request petty cash") }}</h3>
 				<div class="space-y-3">
-					<DeskField label="Amount" required
+					<DeskField :label="__('Amount')" required
 						><DeskInput v-model.number="reqForm.amount" type="number" min="0"
 					/></DeskField>
-					<DeskField label="Purpose" required
-						><DeskInput v-model="reqForm.purpose" placeholder="What is it for?"
+					<DeskField :label="__('Purpose')" required
+						><DeskInput v-model="reqForm.purpose" :placeholder="__('What is it for?')"
 					/></DeskField>
 				</div>
 				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="reqForm.open = false">Cancel</button>
+					<button class="desk-btn" @click="reqForm.open = false">{{ __("Cancel") }}</button>
 					<button
 						class="desk-save-btn"
 						:disabled="reqForm.saving"
 						@click="submitRequest"
 					>
-						{{ reqForm.saving ? "Saving…" : "Request" }}
+						{{ reqForm.saving ? __("Saving…") : __("Request") }}
 					</button>
 				</div>
 			</div>
@@ -561,7 +555,7 @@ const rowsForTab = computed(() => {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Issue petty cash directly</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Issue petty cash directly") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -574,26 +568,25 @@ const rowsForTab = computed(() => {
 					<p
 						class="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-md px-2.5 py-2"
 					>
-						No request precedes this — the record you create here is the only trail.
-						Use it when cash genuinely moved before anyone could raise a request.
+						{{ __("No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request.") }}
 					</p>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Issue to <span class="text-danger-600">*</span></label
+							>{{ __("Issue to") }} <span class="text-danger-600">*</span></label
 						>
 						<DeskLinkPicker
 							v-model="direct.holder"
 							doctype="User"
 							label-field="full_name"
 							value-field="name"
-							placeholder="Pick the holder…"
+							:placeholder="__('Pick the holder…')"
 						/>
 					</div>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Amount <span class="text-danger-600">*</span></label
+							>{{ __("Amount") }} <span class="text-danger-600">*</span></label
 						>
 						<input
 							v-model.number="direct.amount"
@@ -606,24 +599,24 @@ const rowsForTab = computed(() => {
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>From account <span class="text-danger-600">*</span></label
+							>{{ __("From account") }} <span class="text-danger-600">*</span></label
 						>
 						<DeskSearchableSelect
 							v-model="direct.paidFrom"
 							:options="accountOptions"
-							placeholder="Pick an account…"
-							search-placeholder="Search accounts…"
+							:placeholder="__('Pick an account…')"
+							:search-placeholder="__('Search accounts…')"
 						/>
 					</div>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Reason <span class="text-danger-600">*</span></label
+							>{{ __("Reason") }} <span class="text-danger-600">*</span></label
 						>
 						<input
 							v-model="direct.purpose"
 							type="text"
-							placeholder="What's it for?"
+							:placeholder="__('What\'s it for?')"
 							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 						/>
 					</div>
@@ -636,7 +629,7 @@ const rowsForTab = computed(() => {
 						class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 						@click="direct.open = false"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						type="button"
@@ -644,7 +637,7 @@ const rowsForTab = computed(() => {
 						:disabled="direct.saving"
 						@click="submitDirect"
 					>
-						{{ direct.saving ? "Issuing…" : "Issue float" }}
+						{{ direct.saving ? __("Issuing…") : __("Issue float") }}
 					</button>
 				</footer>
 			</div>
@@ -658,24 +651,23 @@ const rowsForTab = computed(() => {
 		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
 				<h3 class="text-sm font-semibold text-ink-900 mb-1">
-					Disburse {{ fmtINR(disb.row?.amount) }}
+					{{ __("Disburse {0}", [fmtINR(disb.row?.amount)]) }}
 				</h3>
 				<p class="text-xs text-ink-500 mb-4">
-					to {{ userName(disb.row?.requested_by) }} · posts a Journal Entry (Dr Petty
-					Cash / Cr the source account).
+					{{ __("to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).", [userName(disb.row?.requested_by)]) }}
 				</p>
-				<DeskField label="Pay from" required>
+				<DeskField :label="__('Pay from')" required>
 					<DeskSelect v-model="disb.paidFrom">
-						<option value="" disabled>Bank / Cash account…</option>
+						<option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 						<option v-for="a in disb.accounts" :key="a.name" :value="a.name">
 							{{ a.name }}
 						</option>
 					</DeskSelect>
 				</DeskField>
 				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="disb.open = false">Cancel</button>
+					<button class="desk-btn" @click="disb.open = false">{{ __("Cancel") }}</button>
 					<button class="desk-save-btn" :disabled="disb.saving" @click="confirmDisburse">
-						{{ disb.saving ? "Posting…" : "Disburse" }}
+						{{ disb.saving ? __("Posting…") : __("Disburse") }}
 					</button>
 				</div>
 			</div>

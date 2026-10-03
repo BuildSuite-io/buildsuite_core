@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	projectId: { type: String, required: true },
@@ -48,22 +49,22 @@ const FILE_COLUMNS = [
 	},
 	{
 		key: "file_name",
-		label: "File",
+		label: __("File"),
 		align: "left",
 	},
 	{
 		key: "file_size",
-		label: "Size",
+		label: __("Size"),
 		align: "right",
 	},
 	{
 		key: "creation",
-		label: "Uploaded",
+		label: __("Uploaded"),
 		align: "left",
 	},
 	{
 		key: "owner",
-		label: "By",
+		label: __("By"),
 		align: "left",
 	},
 	{
@@ -94,7 +95,7 @@ async function onFilesPicked(e) {
 				private: false,
 			});
 		} catch (err) {
-			showToast(`Failed to upload ${file.name}`, "error");
+			showToast(__("Failed to upload {0}", [file.name]), "error");
 			console.error("upload failed:", err);
 		} finally {
 			uploadingCount.value--;
@@ -121,9 +122,9 @@ async function confirmDelete() {
 		showDeleteConfirm.value = false;
 		pendingDelete.value = null;
 		listRef.value?.reload();
-		showToast("Attachment deleted");
+		showToast(__("Attachment deleted"));
 	} catch (err) {
-		showToast("Failed to delete attachment", "error");
+		showToast(__("Failed to delete attachment"), "error");
 		console.error("deleteFile failed:", err);
 	} finally {
 		deleteLoading.value = false;
@@ -161,8 +162,8 @@ function formatFileSize(bytes) {
 			:paginated="false"
 			:page-length="200"
 			initial-order-by="creation desc"
-			search-placeholder="Search files…"
-			empty-message="No attachments yet. Upload drawings, contracts, or site documents."
+			:search-placeholder="__('Search files…')"
+			:empty-message="__('No attachments yet. Upload drawings, contracts, or site documents.')"
 			@row-click="openFile"
 			@count-change="emit('count-change', $event)"
 		>
@@ -174,7 +175,11 @@ function formatFileSize(bytes) {
 					:disabled="uploadingCount > 0"
 					@click="fileInput?.click()"
 				>
-					{{ uploadingCount > 0 ? `Uploading… (${uploadingCount})` : "+ Upload" }}
+					{{
+						uploadingCount > 0
+							? __("Uploading… ({0})", [uploadingCount])
+							: __("+ Upload")
+					}}
 				</button>
 			</template>
 
@@ -212,7 +217,7 @@ function formatFileSize(bytes) {
 					type="button"
 					class="text-xs px-1.5 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 text-danger-700"
 					style="border-radius: 4px"
-					:title="`Delete ${row?.file_name}`"
+					:title="__('Delete {0}', [row?.file_name])"
 					@click.stop="promptDelete(row?.name, row?.file_name)"
 				>
 					✕
@@ -222,11 +227,13 @@ function formatFileSize(bytes) {
 
 		<ConfirmDialog
 			v-model:open="showDeleteConfirm"
-			title="Delete attachment"
+			:title="__('Delete attachment')"
 			:message="
-				pendingDelete ? `Delete '${pendingDelete.fileName}'? This cannot be undone.` : ''
+				pendingDelete
+					? __(&quot;Delete '{0}'? This cannot be undone.&quot;, [pendingDelete.fileName])
+					: ''
 			"
-			confirm-label="Delete"
+			:confirm-label="__('Delete')"
 			:destructive="true"
 			:loading="deleteLoading"
 			@confirm="confirmDelete"

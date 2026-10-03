@@ -29,6 +29,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
@@ -60,7 +61,7 @@ async function load() {
 			bill.value.docstatus === 2 ? [] : await availableSupplierBillAdvances(props.id);
 		await refreshWorkflow(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load bill", "error");
+		showToast(err.message || __("Failed to load bill"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -89,8 +90,8 @@ const statusPills = computed(() => {
 });
 
 const breadcrumbs = [
-	{ label: "Project Finance", to: "/project-finance" },
-	{ label: "Bills", to: "/project-finance/bills" },
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Bills"), to: "/project-finance/bills" },
 	{ label: props.id },
 ];
 
@@ -98,30 +99,33 @@ const breadcrumbs = [
 const busy = ref(false);
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: "Submit bill?",
-		message: `Submit ${bill.value.name} (${fmtINR(
-			bill.value.grand_total
-		)})? It posts the payable and can then be paid.`,
-		confirmLabel: "Submit",
+		title: __("Submit bill?"),
+		message: __("Submit {0} ({1})? It posts the payable and can then be paid.", [
+			bill.value.name,
+			fmtINR(bill.value.grand_total),
+		]),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		await submitSupplierBill(bill.value.name);
 		await load();
-		showToast("Submitted.");
+		showToast(__("Submitted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: "Cancel bill?",
-		message: `Cancel ${bill.value.name}? Its payable and any allocations are reversed.`,
-		confirmLabel: "Cancel bill",
-		cancelLabel: "Keep",
+		title: __("Cancel bill?"),
+		message: __("Cancel {0}? Its payable and any allocations are reversed.", [
+			bill.value.name,
+		]),
+		confirmLabel: __("Cancel bill"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -129,9 +133,9 @@ async function onCancel() {
 	try {
 		await cancelSupplierBill(bill.value.name);
 		await load();
-		showToast("Cancelled.");
+		showToast(__("Cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -142,27 +146,27 @@ async function onWorkflowAction(action) {
 	try {
 		await applyWorkflowAction(bill.value.name, action);
 		await load();
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: "Delete draft?",
-		message: `Permanently delete ${bill.value.name}?`,
-		confirmLabel: "Delete",
+		title: __("Delete draft?"),
+		message: __("Permanently delete {0}?", [bill.value.name]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await deleteSupplierBill(bill.value.name);
-		showToast("Deleted.");
+		showToast(__("Deleted."));
 		router.push("/project-finance/bills");
 	} catch (err) {
-		showToast(err.message || "Delete failed", "error");
+		showToast(err.message || __("Delete failed"), "error");
 	}
 }
 function onPrint() {
@@ -213,13 +217,13 @@ async function openPay() {
 }
 async function savePay() {
 	const amt = Number(pay.value.amount) || 0;
-	if (amt <= 0) return showToast("Enter an amount greater than zero.", "error");
+	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(payment.value.outstanding) + 0.01)
 		return showToast(
-			`Can't exceed the outstanding ${fmtINR(payment.value.outstanding)}.`,
+			__("Can't exceed the outstanding {0}.", [fmtINR(payment.value.outstanding)]),
 			"error"
 		);
-	if (!pay.value.pay_from) return showToast("Pick the account to pay from.", "error");
+	if (!pay.value.pay_from) return showToast(__("Pick the account to pay from."), "error");
 	pay.value.saving = true;
 	try {
 		await recordSupplierBillPayment({
@@ -232,9 +236,9 @@ async function savePay() {
 		});
 		pay.value.open = false;
 		await load();
-		showToast("Payment made.");
+		showToast(__("Payment made."));
 	} catch (err) {
-		showToast(err.message || "Payment failed", "error");
+		showToast(err.message || __("Payment failed"), "error");
 	} finally {
 		pay.value.saving = false;
 	}
@@ -270,11 +274,14 @@ function openLinkAdvance() {
 async function doLink(a) {
 	const amt = Number(advAlloc[a.payment_entry]) || 0;
 	if (amt <= 0) {
-		adv.value.error = "Enter an amount greater than zero.";
+		adv.value.error = __("Enter an amount greater than zero.");
 		return;
 	}
 	if (amt > Number(a.unallocated) + 0.01) {
-		adv.value.error = `Only ${fmtINR(a.unallocated)} is unadjusted on ${a.payment_entry}.`;
+		adv.value.error = __("Only {0} is unadjusted on {1}.", [
+			fmtINR(a.unallocated),
+			a.payment_entry,
+		]);
 		return;
 	}
 	adv.value.saving = a.payment_entry;
@@ -287,23 +294,26 @@ async function doLink(a) {
 		});
 		adv.value.open = false;
 		await load();
-		adv.value.msg = `Linked ${fmtINR(amt)} from ${
-			a.payment_entry
-		} — outstanding is now ${fmtINR(remainingOutstanding.value)}.`;
-		showToast("Advance linked.");
+		adv.value.msg = __("Linked {0} from {1} — outstanding is now {2}.", [
+			fmtINR(amt),
+			a.payment_entry,
+			fmtINR(remainingOutstanding.value),
+		]);
+		showToast(__("Advance linked."));
 	} catch (err) {
-		adv.value.error = err.message || "Could not link the advance.";
+		adv.value.error = err.message || __("Could not link the advance.");
 	} finally {
 		adv.value.saving = "";
 	}
 }
 async function unlinkAdvance(row) {
 	const ok = await confirmDialog({
-		title: "Unlink advance?",
-		message: `Return ${fmtINR(row.allocated)} to ${
-			row.payment_entry
-		}'s unallocated balance? The net payable goes back up.`,
-		confirmLabel: "Unlink",
+		title: __("Unlink advance?"),
+		message: __("Return {0} to {1}'s unallocated balance? The net payable goes back up.", [
+			fmtINR(row.allocated),
+			row.payment_entry,
+		]),
+		confirmLabel: __("Unlink"),
 	});
 	if (!ok) return;
 	adv.value.msg = "";
@@ -313,9 +323,9 @@ async function unlinkAdvance(row) {
 			payment_entry: row.payment_entry,
 		});
 		await load();
-		showToast("Advance unlinked.");
+		showToast(__("Advance unlinked."));
 	} catch (err) {
-		showToast(err.message || "Unlink failed", "error");
+		showToast(err.message || __("Unlink failed"), "error");
 	}
 }
 </script>
@@ -323,7 +333,9 @@ async function unlinkAdvance(row) {
 <template>
 	<DeskPage
 		:title="bill ? bill.name : id"
-		:subtitle="bill ? `Billed ${fmtDate(bill.date)} · due ${fmtDate(bill.due_date)}` : ''"
+		:subtitle="
+			bill ? __('Billed {0} · due {1}', [fmtDate(bill.date), fmtDate(bill.due_date)]) : ''
+		"
 		:breadcrumbs="breadcrumbs"
 	>
 		<template v-if="bill" #actions>
@@ -342,7 +354,7 @@ async function unlinkAdvance(row) {
 							d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
 						/>
 					</svg>
-					Print / PDF
+					{{ __("Print / PDF") }}
 				</button>
 				<button
 					v-if="isDraft && canDelete('supplierBill')"
@@ -351,7 +363,7 @@ async function unlinkAdvance(row) {
 					:disabled="busy"
 					@click="onDelete"
 				>
-					Delete
+					{{ __("Delete") }}
 				</button>
 				<button
 					v-if="isDraft && canEdit('supplierBill')"
@@ -359,7 +371,7 @@ async function unlinkAdvance(row) {
 					class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 					@click="router.push(`/project-finance/supplier-bills/${bill.name}/edit`)"
 				>
-					Edit
+					{{ __("Edit") }}
 				</button>
 				<!-- Plain docstatus lifecycle (no workflow configured) -->
 				<button
@@ -369,7 +381,7 @@ async function unlinkAdvance(row) {
 					:disabled="busy"
 					@click="onSubmit"
 				>
-					Submit
+					{{ __("Submit") }}
 				</button>
 				<button
 					v-if="isSubmitted && payment.outstanding > 0.01 && canCreate('advance')"
@@ -378,7 +390,7 @@ async function unlinkAdvance(row) {
 					:disabled="busy"
 					@click="openPay"
 				>
-					Pay
+					{{ __("Pay") }}
 				</button>
 				<button
 					v-if="!wfActive && isSubmitted && canSubmit('supplierBill')"
@@ -387,7 +399,7 @@ async function unlinkAdvance(row) {
 					:disabled="busy"
 					@click="onCancel"
 				>
-					Cancel
+					{{ __("Cancel") }}
 				</button>
 				<!-- Workflow transitions (active workflow) -->
 				<button
@@ -398,13 +410,13 @@ async function unlinkAdvance(row) {
 					:disabled="busy"
 					@click="onWorkflowAction(t.action)"
 				>
-					{{ t.action }}
+					{{ __(t.action) }}
 				</button>
 			</div>
 		</template>
 
 		<div v-if="!bill" class="py-16 text-center text-sm text-ink-400">
-			{{ loading ? "Loading…" : "Bill not found." }}
+			{{ loading ? __("Loading…") : __("Bill not found.") }}
 		</div>
 		<div v-else class="space-y-4">
 			<!-- draft / cancelled notice -->
@@ -412,13 +424,13 @@ async function unlinkAdvance(row) {
 				v-if="state === 'Draft'"
 				class="px-4 py-2.5 bg-warning-50 border border-warning-200 rounded-lg text-sm text-warning-700"
 			>
-				Draft — not posted yet. Submit it to make it a payable and enable payment.
+				{{ __("Draft — not posted yet. Submit it to make it a payable and enable payment.") }}
 			</div>
 			<div
 				v-if="state === 'Cancelled'"
 				class="px-4 py-2.5 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700"
 			>
-				Cancelled — no longer a payable and excluded from costs.
+				{{ __("Cancelled — no longer a payable and excluded from costs.") }}
 			</div>
 
 			<!-- advance linked confirmation -->
@@ -440,26 +452,32 @@ async function unlinkAdvance(row) {
 				class="px-4 py-2.5 bg-info-50 border border-info-200 rounded-md text-xs text-ink-700 flex items-center justify-between gap-3 flex-wrap"
 			>
 				<span>
-					<span class="font-medium text-ink-900"
-						>{{ bill.supplier_name }} has {{ fmtINR(unlinkedTotal) }} in unlinked
-						advance payment{{ availableAdvances.length === 1 ? "" : "s" }}</span
-					>
-					— link {{ availableAdvances.length === 1 ? "it" : "them" }} to this bill to
-					settle the payable.
+					<span class="font-medium text-ink-900">{{
+						availableAdvances.length === 1
+							? __("{0} has {1} in unlinked advance payment", [bill.supplier_name, fmtINR(unlinkedTotal)])
+							: __("{0} has {1} in unlinked advance payments", [bill.supplier_name, fmtINR(unlinkedTotal)])
+					}}</span>
+					{{
+						availableAdvances.length === 1
+							? __("— link it to this bill to settle the payable.")
+							: __("— link them to this bill to settle the payable.")
+					}}
 				</span>
 				<button
 					type="button"
 					class="text-xs px-2.5 py-1 border border-info-200 bg-white hover:bg-info-50 text-info-700 font-medium flex-shrink-0 rounded-md"
 					@click="openLinkAdvance"
 				>
-					Link advance →
+					{{ __("Link advance →") }}
 				</button>
 			</div>
 
 			<!-- summary strip -->
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 				<div class="border border-ink-200 rounded-lg p-3">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500">Supplier</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500">
+						{{ __("Supplier") }}
+					</div>
 					<div class="text-sm font-medium text-ink-900 mt-0.5">
 						{{ bill.supplier_name }}
 					</div>
@@ -471,7 +489,9 @@ async function unlinkAdvance(row) {
 					</div>
 				</div>
 				<div class="border border-ink-200 rounded-lg p-3">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500">Project</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500">
+						{{ __("Project") }}
+					</div>
 					<DeskLink
 						v-if="bill.project"
 						:to="`/projects/${bill.project}`"
@@ -481,14 +501,16 @@ async function unlinkAdvance(row) {
 					<div v-else class="text-sm text-ink-500 mt-0.5">—</div>
 				</div>
 				<div class="border border-ink-200 rounded-lg p-3">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500">Bill total</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500">
+						{{ __("Bill total") }}
+					</div>
 					<div class="text-sm font-semibold text-ink-900 tabular-nums mt-0.5">
 						{{ fmtINR(bill.grand_total) }}
 					</div>
 				</div>
 				<div class="border border-ink-200 rounded-lg p-3">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500">
-						{{ isSubmitted ? "Outstanding" : "Status" }}
+						{{ isSubmitted ? __("Outstanding") : __("Status") }}
 					</div>
 					<div
 						v-if="isSubmitted"
@@ -499,11 +521,11 @@ async function unlinkAdvance(row) {
 					>
 						{{ fmtINR(payment.outstanding) }}
 					</div>
-					<div v-else class="text-sm text-ink-700 mt-0.5">{{ state }}</div>
+					<div v-else class="text-sm text-ink-700 mt-0.5">{{ __(state) }}</div>
 				</div>
 			</div>
 			<div v-if="bill.bill_no" class="text-xs text-ink-500">
-				Supplier invoice <span class="font-medium text-ink-700">{{ bill.bill_no }}</span
+				{{ __("Supplier invoice") }} <span class="font-medium text-ink-700">{{ bill.bill_no }}</span
 				><span v-if="bill.bill_date"> · {{ fmtDate(bill.bill_date) }}</span>
 			</div>
 
@@ -511,16 +533,16 @@ async function unlinkAdvance(row) {
 			<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 				<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 					<h3 class="text-[11px] uppercase tracking-wider font-semibold text-ink-700">
-						Items
+						{{ __("Items") }}
 					</h3>
 				</div>
 				<table class="w-full text-xs">
 					<thead class="text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
-							<th class="text-left px-4 py-2">Description</th>
-							<th class="text-right px-4 py-2">Qty</th>
-							<th class="text-right px-4 py-2">Rate</th>
-							<th class="text-right px-4 py-2">Amount</th>
+							<th class="text-left px-4 py-2">{{ __("Description") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Qty") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Rate") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -555,7 +577,7 @@ async function unlinkAdvance(row) {
 						<div
 							class="bg-ink-50 px-4 py-2 border-b border-ink-200 text-[11px] uppercase tracking-wider font-semibold text-ink-700"
 						>
-							Payments ({{ payments.length }})
+							{{ __("Payments ({0})", [payments.length]) }}
 						</div>
 						<div
 							v-for="p in payments"
@@ -591,7 +613,7 @@ async function unlinkAdvance(row) {
 						>
 							<span
 								class="text-[11px] uppercase tracking-wider font-semibold text-ink-700"
-								>Advance Payments</span
+								>{{ __("Advance Payments") }}</span
 							>
 							<button
 								v-if="canLink && availableAdvances.length && canCreate('advance')"
@@ -599,7 +621,7 @@ async function unlinkAdvance(row) {
 								class="text-xs text-brand-700 hover:underline"
 								@click="openLinkAdvance"
 							>
-								+ Link advance
+								{{ __("+ Link advance") }}
 							</button>
 						</div>
 						<template v-if="linkedAdvances.length">
@@ -621,7 +643,7 @@ async function unlinkAdvance(row) {
 										v-if="canLink && canCreate('advance')"
 										type="button"
 										class="text-ink-400 hover:text-danger-600 text-xs"
-										:title="`Unlink ${row.payment_entry}`"
+										:title="__('Unlink {0}', [row.payment_entry])"
 										@click="unlinkAdvance(row)"
 									>
 										✕
@@ -632,7 +654,7 @@ async function unlinkAdvance(row) {
 								class="px-4 py-2 border-t border-ink-100 flex items-center justify-between text-[11px]"
 							>
 								<span class="uppercase tracking-wider text-ink-500 font-medium"
-									>Total advance adjusted</span
+									>{{ __("Total advance adjusted") }}</span
 								>
 								<span class="tabular-nums font-semibold text-ink-900">{{
 									fmtINR(advanceAdjusted)
@@ -643,8 +665,12 @@ async function unlinkAdvance(row) {
 							v-else
 							class="px-4 py-3 text-xs text-ink-400 italic border-t border-ink-100"
 						>
-							No advances linked yet — {{ bill.supplier_name }} has
-							{{ fmtINR(unlinkedTotal) }} unallocated.
+							{{
+								__("No advances linked yet — {0} has {1} unallocated.", [
+									bill.supplier_name,
+									fmtINR(unlinkedTotal),
+								])
+							}}
 						</div>
 					</div>
 				</section>
@@ -652,7 +678,7 @@ async function unlinkAdvance(row) {
 				<!-- totals waterfall -->
 				<section class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
 					<div class="flex justify-between text-ink-600">
-						<span>Net total</span
+						<span>{{ __("Net total") }}</span
 						><span class="tabular-nums">{{ fmtINR(bill.net_total) }}</span>
 					</div>
 					<div
@@ -666,18 +692,18 @@ async function unlinkAdvance(row) {
 					<div
 						class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
 					>
-						<span>Bill total</span
+						<span>{{ __("Bill total") }}</span
 						><span class="tabular-nums">{{ fmtINR(bill.grand_total) }}</span>
 					</div>
 					<div v-if="advanceAdjusted > 0" class="flex justify-between text-ink-600">
-						<span>Advance adjusted</span
+						<span>{{ __("Advance adjusted") }}</span
 						><span class="tabular-nums text-info-700"
 							>− {{ fmtINR(advanceAdjusted) }}</span
 						>
 					</div>
 					<template v-if="isSubmitted">
 						<div class="flex justify-between text-ink-600">
-							<span>Paid</span
+							<span>{{ __("Paid") }}</span
 							><span class="tabular-nums">{{ fmtINR(payment.paid) }}</span>
 						</div>
 						<div
@@ -686,12 +712,12 @@ async function unlinkAdvance(row) {
 								payment.outstanding > 0.01 ? 'text-danger-700' : 'text-success-700'
 							"
 						>
-							<span>Outstanding</span
+							<span>{{ __("Outstanding") }}</span
 							><span class="tabular-nums">{{ fmtINR(payment.outstanding) }}</span>
 						</div>
 					</template>
 					<div v-else-if="advanceAdjusted > 0" class="text-[10px] text-ink-400">
-						Settles the payable when the bill is submitted.
+						{{ __("Settles the payable when the bill is submitted.") }}
 					</div>
 				</section>
 			</div>
@@ -710,7 +736,7 @@ async function unlinkAdvance(row) {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Pay bill</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Pay bill") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -730,23 +756,23 @@ async function unlinkAdvance(row) {
 						>.
 					</div>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Amount" required
+						<DeskField :label="__('Amount')" required
 							><DeskInput v-model.number="pay.amount" type="number" min="0"
 						/></DeskField>
-						<DeskField label="Date"
+						<DeskField :label="__('Date')"
 							><DeskInput v-model="pay.date" type="date"
 						/></DeskField>
 					</div>
-					<DeskField label="Pay from" required>
+					<DeskField :label="__('Pay from')" required>
 						<DeskSelect v-model="pay.pay_from"
-							><option value="" disabled>Bank / Cash account…</option>
+							><option value="" disabled>{{ __("Bank / Cash account…") }}</option>
 							<option v-for="a in payAccounts" :key="a.name" :value="a.name">
 								{{ a.name }} ({{ a.account_type }})
 							</option></DeskSelect
 						>
 					</DeskField>
 					<div class="grid grid-cols-2 gap-3">
-						<DeskField label="Mode of payment"
+						<DeskField :label="__('Mode of payment')"
 							><DeskSelect v-model="pay.mode_of_payment"
 								><option value="">—</option>
 								<option v-for="m in payModes" :key="m" :value="m">
@@ -754,8 +780,8 @@ async function unlinkAdvance(row) {
 								</option></DeskSelect
 							></DeskField
 						>
-						<DeskField label="Reference no."
-							><DeskInput v-model="pay.reference_no" placeholder="UTR / cheque no."
+						<DeskField :label="__('Reference no.')"
+							><DeskInput v-model="pay.reference_no" :placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -775,7 +801,7 @@ async function unlinkAdvance(row) {
 						:disabled="pay.saving"
 						@click="savePay"
 					>
-						{{ pay.saving ? "Paying…" : "Record payment" }}
+						{{ pay.saving ? __("Paying…") : __("Record payment") }}
 					</button>
 				</footer>
 			</div>
@@ -794,7 +820,7 @@ async function unlinkAdvance(row) {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Link advance payment</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Link advance payment") }}</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -832,7 +858,7 @@ async function unlinkAdvance(row) {
 									</div>
 								</div>
 								<div class="text-right flex-shrink-0">
-									<div class="text-xs text-ink-500">Unallocated</div>
+									<div class="text-xs text-ink-500">{{ __("Unallocated") }}</div>
 									<div class="text-sm font-semibold text-ink-900 tabular-nums">
 										{{ fmtINR(a.unallocated) }}
 									</div>
@@ -841,7 +867,7 @@ async function unlinkAdvance(row) {
 							<div class="flex items-center gap-2 mt-2">
 								<label
 									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium flex-shrink-0"
-									>Adjust</label
+									>{{ __("Adjust") }}</label
 								>
 								<input
 									v-model.number="advAlloc[a.payment_entry]"
@@ -857,13 +883,13 @@ async function unlinkAdvance(row) {
 									:disabled="adv.saving === a.payment_entry"
 									@click="doLink(a)"
 								>
-									{{ adv.saving === a.payment_entry ? "Linking…" : "Link" }}
+									{{ adv.saving === a.payment_entry ? __("Linking…") : __("Link") }}
 								</button>
 							</div>
 						</div>
 					</div>
 					<div v-else class="text-xs text-ink-400 italic py-2">
-						No unlinked advances left for this supplier.
+						{{ __("No unlinked advances left for this supplier.") }}
 					</div>
 					<div v-if="adv.error" class="text-[11px] text-danger-600">{{ adv.error }}</div>
 				</div>

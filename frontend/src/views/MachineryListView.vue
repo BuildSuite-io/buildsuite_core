@@ -16,6 +16,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { getMachineryRegister } from "@/data/equipmentApi";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const store = useDataStore();
@@ -30,7 +31,7 @@ async function load() {
 	try {
 		all.value = (await getMachineryRegister()) || [];
 	} catch (e) {
-		error.value = e.message || "Failed to load machinery.";
+		error.value = e.message || __("Failed to load machinery.");
 	} finally {
 		loading.value = false;
 	}
@@ -69,18 +70,18 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "machinery_name", label: "Name" },
-	{ key: "machinery_type", label: "Type" },
-	{ key: "ownership", label: "Ownership" },
-	{ key: "rate", label: "Rate", align: "right" },
-	{ key: "owner_vendor", label: "Owner / Vendor" },
-	{ key: "status", label: "Status" },
+	{ key: "machinery_name", label: __("Name") },
+	{ key: "machinery_type", label: __("Type") },
+	{ key: "ownership", label: __("Ownership") },
+	{ key: "rate", label: __("Rate"), align: "right" },
+	{ key: "owner_vendor", label: __("Owner / Vendor") },
+	{ key: "status", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery") },
 ];
 
 function onRowClick(row) {
@@ -89,9 +90,9 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Machinery Register" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Machinery Register')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('machinery')" to="/machinery/new" class="desk-save-btn">+ New</RouterLink>
+			<RouterLink v-if="canCreate('machinery')" to="/machinery/new" class="desk-save-btn">+ {{ __("New") }}</RouterLink>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -105,36 +106,36 @@ function onRowClick(row) {
 			>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Type</span
+						>{{ __("Type") }}</span
 					>
 					<span class="w-44 inline-block">
 						<DeskSearchableSelect
 							v-model="f.type"
 							:options="typeOptions"
 							allow-clear
-							placeholder="All types"
-							search-placeholder="Search…"
+							:placeholder="__('All types')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Ownership</span
+						>{{ __("Ownership") }}</span
 					>
 					<DeskSelect v-model="f.ownership" class="!w-36">
-						<option value="">Any</option>
-						<option value="Owned">Owned</option>
-						<option value="Hired">Hired</option>
+						<option value="">{{ __("Any") }}</option>
+						<option value="Owned">{{ __("Owned") }}</option>
+						<option value="Hired">{{ __("Hired") }}</option>
 					</DeskSelect>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Status</span
+						>{{ __("Status") }}</span
 					>
 					<DeskSelect v-model="f.status" class="!w-36">
-						<option value="">Any</option>
-						<option value="Active">Active</option>
-						<option value="Inactive">Inactive</option>
+						<option value="">{{ __("Any") }}</option>
+						<option value="Active">{{ __("Active") }}</option>
+						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</label>
 			</ReportFilters>
@@ -144,7 +145,7 @@ function onRowClick(row) {
 				:rows="rows"
 				:columns="columns"
 				row-key="name"
-				search-placeholder="Search machinery…"
+				:search-placeholder="__('Search machinery…')"
 				@row-click="onRowClick"
 			>
 				<template #cell-machinery_name="{ row }">
@@ -174,9 +175,9 @@ function onRowClick(row) {
 
 				<template #empty>
 					<div class="text-sm text-ink-500">
-						{{ loading ? "Loading machinery…" : "No machinery yet." }}
+						{{ loading ? __("Loading machinery…") : __("No machinery yet.") }}
 						<RouterLink v-if="!loading && canCreate('machinery')" to="/machinery/new" class="desk-link"
-							>Add one →</RouterLink
+							>{{ __("Add one →") }}</RouterLink
 						>
 					</div>
 				</template>

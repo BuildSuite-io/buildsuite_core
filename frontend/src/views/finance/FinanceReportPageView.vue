@@ -1,6 +1,7 @@
 <script setup>
 // Maps /project-finance/report/:slug to its report component.
 import { computed, defineAsyncComponent } from "vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ slug: String });
 
@@ -17,5 +18,5 @@ const comp = computed(() => reports[props.slug] || null);
 
 <template>
 	<component :is="comp" v-if="comp" />
-	<div v-else class="max-w-3xl mx-auto px-6 py-16 text-center text-ink-500">Unknown report.</div>
+	<div v-else class="max-w-3xl mx-auto px-6 py-16 text-center text-ink-500">{{ __("Unknown report.") }}</div>
 </template>

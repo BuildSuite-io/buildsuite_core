@@ -11,6 +11,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -38,7 +39,7 @@ const machineryOptions = computed(() =>
 	(machineryRes.data || []).map((m) => ({
 		value: m.name,
 		label: m.machinery_name,
-		hint: [m.machinery_type, m.ownership].filter(Boolean).join(" · "),
+		hint: [m.machinery_type, __(m.ownership)].filter(Boolean).join(" · "),
 	}))
 );
 // Project picker is company-scoped to the switcher's working company (per-company projects).
@@ -91,8 +92,8 @@ const total = computed(
 
 function validate() {
 	const e = {};
-	if (!form.machine) e.machine = "Machine is required.";
-	if (!form.project) e.project = "Project is required.";
+	if (!form.machine) e.machine = __("Machine is required.");
+	if (!form.project) e.project = __("Project is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -117,88 +118,88 @@ async function onSave() {
 		});
 		router.push(`/machinery-usage/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to log usage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to log usage"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery Usage", to: "/machinery-usage" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery Usage"), to: "/machinery-usage" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Log Machinery Usage" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Log Machinery Usage')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('machineryUsage')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to log machinery usage.
+			{{ __("You don't have permission to log machinery usage.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Saving…' : 'Log usage'"
+					:save-label="saving ? __('Saving…') : __('Log usage')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"
 				/>
 			</template>
 
-			<DeskSection title="Usage" :cols="3">
-				<DeskField label="Machine" required :error="errors.machine">
+			<DeskSection :title="__('Usage')" :cols="3">
+				<DeskField :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
 						:options="machineryOptions"
-						placeholder="Pick a machine…"
-						search-placeholder="Search machine…"
+						:placeholder="__('Pick a machine…')"
+						:search-placeholder="__('Search machine…')"
 					/>
 				</DeskField>
-				<DeskField label="Project" required :error="errors.project">
+				<DeskField :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
 						label-field="project_name"
 						value-field="name"
 						:filters="companyFilter"
-						placeholder="Pick a project…"
-						search-placeholder="Search project…"
+						:placeholder="__('Pick a project…')"
+						:search-placeholder="__('Search project…')"
 					/>
 				</DeskField>
-				<DeskField label="Task">
+				<DeskField :label="__('Task')">
 					<DeskLinkPicker
 						v-model="form.task"
 						doctype="Task"
 						label-field="subject"
 						value-field="name"
 						:filters="form.project ? [['project', '=', form.project]] : []"
-						placeholder="Task…"
+						:placeholder="__('Task…')"
 					/>
 				</DeskField>
 
-				<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
-				<DeskField label="Quantity">
+				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Quantity')">
 					<DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5" />
 				</DeskField>
-				<DeskField label="Unit">
+				<DeskField :label="__('Unit')">
 					<DeskSelect v-model="form.unit">
-						<option>Days</option>
-						<option>Hours</option>
+						<option value="Days">{{ __("Days") }}</option>
+						<option value="Hours">{{ __("Hours") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`Rate (${currencySymbol()})`">
+				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="`Fuel cost (${currencySymbol()})`">
+				<DeskField :label="`${__('Fuel cost')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
 				</DeskField>
-				<DeskField label="Total">
+				<DeskField :label="__('Total')">
 					<div class="text-sm text-ink-900 font-medium tabular-nums pt-1.5">
 						{{ fmtINR(total) }}
 					</div>
