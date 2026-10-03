@@ -1532,3 +1532,148 @@ paid {0} of {1},payé {0} sur {1}
 — Choose a terms template —,— Choisir un modèle de conditions —
 — No tax —,— Aucune taxe —
 — Optional —,— Facultatif —
+"A half day counts as half a man-day. Both halves come from submitted attendance sheets — a sheet left in draft is in neither register, so it is not here either.","Une demi-journée compte pour un demi jour-homme. Les deux moitiés proviennent des feuilles de présence soumises — une feuille restée en brouillon n’est dans aucun registre, elle n’est donc pas ici non plus."
+Absences,Absences
+Add Row,Ajouter une ligne
+Add to Table,Ajouter au tableau
+All employees,Tous les employés
+All sites,Tous les chantiers
+Allocated,Alloué
+Applies to all rows.,S’applique à toutes les lignes.
+Attendance cancelled,Présence annulée
+Attendance created,Présence créée
+Attendance submitted,Présence soumise
+Back to Crews,Retour aux équipes
+Back to Field Attendance,Retour à la présence chantier
+Back to Field Employees,Retour aux employés de chantier
+Books the whole sheet to one task.,Impute toute la feuille à une seule tâche.
+Bulk Select,Sélection groupée
+Bulk Select Employees,Sélection groupée d’employés
+Cancel sheet,Annuler la feuille
+Code,Code
+Comments,Commentaires
+Contractor,Contractuel
+Could not amend,Impossible d’amender
+Could not load the crew.,Impossible de charger l’équipe.
+Covering {0}.,Couvre {0}.
+Create,Créer
+Create crew,Créer l’équipe
+Crew,Équipe
+Crew (optional),Équipe (facultatif)
+Crew created,Équipe créée
+Crew leader,Chef d’équipe
+Crew name,Nom de l’équipe
+Crew not found.,Équipe introuvable.
+Daily rate,Taux journalier
+Daily wage,Salaire journalier
+Date of birth,Date de naissance
+Date of joining,Date d’entrée
+Days,Jours
+"Days worked, overtime and what the labour cost — rolled up from submitted attendance.","Jours travaillés, heures supplémentaires et coût de main-d’œuvre — consolidés depuis les présences soumises."
+Deploy to task…,Affecter à une tâche…
+Emp ID,ID employé
+Employee,Employé
+Employee List,Liste des employés
+Employee code,Code employé
+Employees,Employés
+Failed to create attendance,Échec de la création de la présence
+Failed to create crew,Échec de la création de l’équipe
+Failed to create field employee,Échec de la création de l’employé de chantier
+Failed to delete attendance,Échec de la suppression de la présence
+Failed to delete crew,Échec de la suppression de l’équipe
+Failed to delete field employee,Échec de la suppression de l’employé de chantier
+Failed to update attendance,Échec de la mise à jour de la présence
+Failed to update crew,Échec de la mise à jour de l’équipe
+Failed to update field employee,Échec de la mise à jour de l’employé de chantier
+Field Employee,Employé de chantier
+Field attendance not found.,Présence chantier introuvable.
+Field employee created,Employé de chantier créé
+Field employee not found.,Employé de chantier introuvable.
+First name,Prénom
+From the worker's trade,D’après le corps de métier de l’ouvrier
+Full,Complète
+Gender,Genre
+Half,Demie
+Labour Attendance Register,Registre de présence de la main-d’œuvre
+Labour cost,Coût de main-d’œuvre
+Last name,Nom
+Leader,Chef
+Loading attendance…,Chargement de la présence…
+Loading crew…,Chargement de l’équipe…
+Loading field employee…,Chargement de l’employé de chantier…
+Man-days,Jours-homme
+Members,Membres
+New Crew,Nouvelle équipe
+New Field Attendance,Nouvelle présence chantier
+New Field Employee,Nouvel employé de chantier
+No attendance has been submitted yet.,Aucune présence n’a encore été soumise.
+No employees.,Aucun employé.
+No employees. Use,Aucun employé. Utilisez
+No labour attendance yet — submit a Field Attendance.,Aucune présence de main-d’œuvre pour l’instant — soumettez une présence chantier.
+No members yet. Add workers to the crew.,Aucun membre pour l’instant. Ajoutez des ouvriers à l’équipe.
+No members.,Aucun membre.
+No overtime yet — submit a Field Attendance with overtime hours.,Aucune heure supplémentaire pour l’instant — soumettez une présence chantier avec des heures supplémentaires.
+No workers match.,Aucun ouvrier ne correspond.
+Nothing matches these filters.,Aucun résultat pour ces filtres.
+OT hrs,H supp.
+OT rate,Taux h. supp.
+OT share,Part h. supp.
+OT wage,Salaire h. supp.
+OT wages,Salaires h. supp.
+On sheet,Sur la feuille
+Overtime,Heures supplémentaires
+Overtime Attendance Register,Registre des heures supplémentaires
+Overtime hours,Heures supplémentaires
+Overtime wage,Salaire des heures supplémentaires
+Pick a crew…,Choisissez une équipe…
+Pick a worker…,Choisissez un ouvrier…
+Pick worker…,Choisissez un ouvrier…
+Project roster ({0}),Effectif du projet ({0})
+Records which gang worked this sheet.,Enregistre quelle équipe a travaillé sur cette feuille.
+Remove member,Retirer le membre
+Remove row,Supprimer la ligne
+Role,Rôle
+Search attendance…,Rechercher une présence…
+Search crews…,Rechercher des équipes…
+Search employees…,Rechercher des employés…
+Search employee…,Rechercher un employé…
+Search worker / project…,Rechercher ouvrier / projet…
+Search workers…,Rechercher des ouvriers…
+Select All,Tout sélectionner
+Select Crew,Sélectionner une équipe
+Select crew…,Sélectionner une équipe…
+Select trade,Sélectionner un corps de métier
+Site,Chantier
+Site Attendance Summary,Récapitulatif de présence du chantier
+Sites,Chantiers
+Submit to post the attendance and generate the Labour and Overtime registers.,Soumettez pour enregistrer la présence et générer les registres de main-d’œuvre et d’heures supplémentaires.
+Task (optional),Tâche (facultatif)
+That crew has no members.,Cette équipe n’a aucun membre.
+The crew is removed. Field attendance that referenced it keeps its stored rows.,L’équipe est supprimée. Les présences chantier qui la référençaient conservent leurs lignes enregistrées.
+This draft attendance sheet will be removed permanently.,Cette feuille de présence en brouillon sera supprimée définitivement.
+"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited.","Cela enregistre la présence et génère les registres de main-d’œuvre et d’heures supplémentaires. Une feuille enregistrée s’annule, elle ne se modifie pas."
+This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy.,Cela contre-passe la feuille — ses écritures dans les registres de main-d’œuvre et d’heures supplémentaires sont annulées avec elle. Amendez ensuite pour créer une copie corrigée.
+This sheet is {0} and can no longer be edited here.,Cette feuille est {0} et ne peut plus être modifiée ici.
+This worker record will be removed permanently.,Cette fiche ouvrier sera supprimée définitivement.
+Total OT hours {0} · Total amount {1},Total heures supp. {0} · Montant total {1}
+Total daily wages {0},Total des salaires journaliers {0}
+Unselect All,Tout désélectionner
+Wage rate,Taux de salaire
+Wages,Salaires
+Worker,Ouvrier
+Workers,Ouvriers
+You don't have access to this attendance sheet,Vous n’avez pas accès à cette feuille de présence
+You don't have access to this crew,Vous n’avez pas accès à cette équipe
+You don't have access to this field employee,Vous n’avez pas accès à cet employé de chantier
+You don't have permission to create a crew.,Vous n’avez pas la permission de créer une équipe.
+You don't have permission to create a field attendance sheet.,Vous n’avez pas la permission de créer une feuille de présence chantier.
+You don't have permission to create a field employee.,Vous n’avez pas la permission de créer un employé de chantier.
+e.g. Block A Structural Gang,p. ex. Équipe structure Bloc A
+hrs,h
+sites,chantiers
+to load a crew or the whole roster.,pour charger une équipe ou tout l’effectif.
+workers,ouvriers
+{0} member,{0} membre
+{0} members,{0} membres
+{0} of {1} {2},{0} sur {1} {2}
+{0} selected,{0} sélectionné(s)

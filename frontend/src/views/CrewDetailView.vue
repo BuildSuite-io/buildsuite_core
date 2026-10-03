@@ -8,6 +8,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
@@ -91,7 +92,7 @@ async function saveEdit() {
 		await resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update crew", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update crew"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -99,9 +100,9 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${doc.value?.crew_name}?`,
-		message: "The crew is removed. Field attendance that referenced it keeps its stored rows.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [doc.value?.crew_name]),
+		message: __("The crew is removed. Field attendance that referenced it keeps its stored rows."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -109,7 +110,7 @@ async function onDelete() {
 		await adapter.remove("Crew", props.id);
 		router.push("/crews");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete crew", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete crew"), "error");
 	}
 }
 
@@ -117,14 +118,14 @@ const subtitle = computed(() => {
 	const d = doc.value;
 	if (!d) return "";
 	const n = members.value.length;
-	const count = `${n} member${n === 1 ? "" : "s"}`;
+	const count = n === 1 ? __("{0} member", [n]) : __("{0} members", [n]);
 	return d.trade ? `${count} · ${d.trade}` : count;
 });
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Crews", to: "/crews" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Crews"), to: "/crews" },
 	{ label: doc.value?.crew_name || props.id },
 ]);
 </script>
@@ -144,7 +145,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && canDelete('crew')"
@@ -153,7 +154,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="editing"
@@ -162,7 +163,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing"
@@ -171,22 +172,22 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Crew" :cols="2">
-				<DeskField label="Crew leader">
+			<DeskSection :title="__('Crew')" :cols="2">
+				<DeskField :label="__('Crew leader')">
 					<div class="text-sm text-ink-900">
 						{{ doc.crew_leader ? workerName(doc.crew_leader) : "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Trade">
+				<DeskField :label="__('Trade')">
 					<div class="text-sm text-ink-700">{{ doc.trade || "—" }}</div>
 				</DeskField>
-				<DeskField label="Company">
+				<DeskField :label="__('Company')">
 					<div class="text-sm text-ink-700">{{ doc.company || "—" }}</div>
 				</DeskField>
 			</DeskSection>
@@ -208,14 +209,14 @@ const breadcrumbs = computed(() => [
 		</div>
 	</DeskPage>
 
-	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">Loading crew…</div>
+	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">{{ __("Loading crew…") }}</div>
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this crew"
+		:title="__('You don\'t have access to this crew')"
 		back-to="/crews"
-		back-label="Back to Crews"
+		:back-label="__('Back to Crews')"
 	/>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Crew not found.</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Crew not found.") }}</div>
 </template>

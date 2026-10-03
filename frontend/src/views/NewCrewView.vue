@@ -5,6 +5,7 @@
 import { reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
@@ -56,36 +57,36 @@ async function onSave() {
 	saving.value = true;
 	try {
 		const res = await saveCrew({ ...form });
-		showToast("Crew created");
+		showToast(__("Crew created"));
 		router.push(`/crews/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create crew", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create crew"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Crews", to: "/crews" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Crews"), to: "/crews" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="New Crew" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Crew')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('crew')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create a crew.
+			{{ __("You don't have permission to create a crew.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create crew'"
+					:save-label="saving ? __('Creating…') : __('Create crew')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"

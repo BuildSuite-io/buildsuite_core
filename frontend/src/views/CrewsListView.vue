@@ -9,6 +9,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { workerName } = useFieldEmployeeOptions();
@@ -19,24 +20,24 @@ function onRowClick(row) {
 }
 
 const columns = [
-	{ key: "crew_name", label: "Crew" },
-	{ key: "crew_leader", label: "Leader" },
-	{ key: "trade", label: "Trade" },
-	{ key: "members_count", label: "Members", align: "right" },
+	{ key: "crew_name", label: __("Crew") },
+	{ key: "crew_leader", label: __("Leader") },
+	{ key: "trade", label: __("Trade") },
+	{ key: "members_count", label: __("Members"), align: "right" },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Crews" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Crews") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Crew" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Crew')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink v-if="canCreate('crew')" to="/crews/new" class="desk-save-btn !text-xs"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -48,7 +49,7 @@ const breadcrumbs = [
 			cache-key="buildsuite-crews"
 			row-key="name"
 			initial-order-by="crew_name asc"
-			search-placeholder="Search crews…"
+			:search-placeholder="__('Search crews…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-crew_name="{ row }">
