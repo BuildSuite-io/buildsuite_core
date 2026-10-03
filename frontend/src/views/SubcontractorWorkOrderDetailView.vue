@@ -23,6 +23,7 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -54,7 +55,7 @@ async function load() {
 			measured_by_line: {},
 		}));
 	} catch (err) {
-		showToast(err.message || "Failed to load work order", "error");
+		showToast(err.message || __("Failed to load work order"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -114,11 +115,12 @@ function onPrint() {
 
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `Submit ${wo.value.name}?`,
-		message: `Submit this work order for ${fmtINR(
-			wo.value.total_value
-		)}? It becomes committed cost and its schedule of values is locked.`,
-		confirmLabel: "Submit",
+		title: __("Submit {0}?", [wo.value.name]),
+		message: __(
+			"Submit this work order for {0}? It becomes committed cost and its schedule of values is locked.",
+			[fmtINR(wo.value.total_value)]
+		),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
@@ -127,20 +129,21 @@ async function onSubmit() {
 		actions.value = res.actions || [];
 		delete res.actions;
 		wo.value = res;
-		showToast("Work order submitted.");
+		showToast(__("Work order submitted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: `Cancel ${wo.value.name}?`,
-		message:
-			"This cancels the work order. It's blocked if measurement books or bills exist against it.",
-		confirmLabel: "Cancel work order",
-		cancelLabel: "Keep",
+		title: __("Cancel {0}?", [wo.value.name]),
+		message: __(
+			"This cancels the work order. It's blocked if measurement books or bills exist against it."
+		),
+		confirmLabel: __("Cancel work order"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -150,9 +153,9 @@ async function onCancel() {
 		actions.value = res.actions || [];
 		delete res.actions;
 		wo.value = res;
-		showToast("Work order cancelled.");
+		showToast(__("Work order cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -161,10 +164,10 @@ async function onAmend() {
 	busy.value = true;
 	try {
 		const res = await amendWorkOrder(wo.value.name);
-		showToast("Amended — a fresh draft was created.");
+		showToast(__("Amended — a fresh draft was created."));
 		router.push(`/subcontractor-work-orders/${encodeURIComponent(res.name)}`);
 	} catch (err) {
-		showToast(err.message || "Amend failed", "error");
+		showToast(err.message || __("Amend failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -176,9 +179,9 @@ function onEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${wo.value.name}?`,
-		message: "This work order and its schedule of values will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [wo.value.name]),
+		message: __("This work order and its schedule of values will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -186,23 +189,23 @@ async function onDelete() {
 		await adapter.remove("Subcontractor Work Order", wo.value.name);
 		router.push("/subcontractor-work-orders");
 	} catch (err) {
-		showToast(err.message || "Failed to delete work order", "error");
+		showToast(err.message || __("Failed to delete work order"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Work Orders", to: "/subcontractor-work-orders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Work Orders"), to: "/subcontractor-work-orders" },
 	{ label: wo.value?.name || props.id },
 ]);
 
 const tab = ref("sov");
 const tabs = computed(() => [
-	{ id: "sov", label: "Schedule of values" },
-	{ id: "measurements", label: "Measurements", count: mbs.value.length },
-	{ id: "bills", label: "Bills", count: bills.value.length },
-	{ id: "terms", label: "Terms" },
+	{ id: "sov", label: __("Schedule of values") },
+	{ id: "measurements", label: __("Measurements"), count: mbs.value.length },
+	{ id: "bills", label: __("Bills"), count: bills.value.length },
+	{ id: "terms", label: __("Terms") },
 ]);
 </script>
 
@@ -222,7 +225,7 @@ const tabs = computed(() => [
 				style="border-radius: 6px"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="isDraft && canSubmit('subcontractorWorkOrder')"
@@ -232,27 +235,27 @@ const tabs = computed(() => [
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="isSubmitted && canRecordMeasurement"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
 				style="border-radius: 6px"
-				title="Capture a site measurement (Nos × L × B × D → qty) against this WO"
+				:title="__('Capture a site measurement (Nos × L × B × D → qty) against this WO')"
 				@click="onRecordMeasurement"
 			>
-				+ Record measurement
+				{{ __("+ Record measurement") }}
 			</button>
 			<button
 				v-if="isSubmitted && canRaiseBill"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium inline-flex items-center"
 				style="border-radius: 6px"
-				title="Bill progress against this work order (derives this period from certified Measurement Books)"
+				:title="__('Bill progress against this work order (derives this period from certified Measurement Books)')"
 				@click="onRaiseBill"
 			>
-				+ Bill progress
+				{{ __("+ Bill progress") }}
 			</button>
 			<button
 				v-if="isSubmitted && canSubmit('subcontractorWorkOrder')"
@@ -262,7 +265,7 @@ const tabs = computed(() => [
 				:disabled="busy"
 				@click="onCancel"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('subcontractorWorkOrder')"
@@ -270,19 +273,19 @@ const tabs = computed(() => [
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				title="Create a fresh editable draft copy (the original stays cancelled)"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center"
 				style="border-radius: 6px"
-				title="Open the printable work order (Save as PDF from the browser print dialog)"
+				:title="__('Open the printable work order (Save as PDF from the browser print dialog)')"
 				@click="onPrint"
 			>
-				Print / PDF
+				{{ __("Print / PDF") }}
 			</button>
 			<button
 				v-if="!isSubmitted && canDelete('subcontractorWorkOrder')"
@@ -291,7 +294,7 @@ const tabs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -299,7 +302,7 @@ const tabs = computed(() => [
 		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Subcontractor
+					{{ __("Subcontractor") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ wo.subcontractor_name || "—" }}
@@ -307,7 +310,7 @@ const tabs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Project
+					{{ __("Project") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ wo.project_name || wo.project }}
@@ -316,16 +319,16 @@ const tabs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Total value
+					{{ __("Total value") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(wo.total_value) }}
 				</div>
-				<div class="text-[10px] text-ink-500">Retention {{ wo.retention_percent }}%</div>
+				<div class="text-[10px] text-ink-500">{{ __("Retention {0}%", [wo.retention_percent]) }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Billed to date
+					{{ __("Billed to date") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(totalBilled) }}
@@ -334,16 +337,16 @@ const tabs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Retention held
+					{{ __("Retention held") }}
 				</div>
 				<div class="text-base font-semibold text-warning-700 tabular-nums mt-0.5">
 					{{ fmtINR(totalRetention) }}
 				</div>
-				<div class="text-[10px] text-ink-500">Withheld</div>
+				<div class="text-[10px] text-ink-500">{{ __("Withheld") }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Status
+					{{ __("Status") }}
 				</div>
 				<div class="mt-1"><StatusBadge :status="wo.status" /></div>
 			</div>
@@ -379,22 +382,22 @@ const tabs = computed(() => [
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
 			>
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Schedule of values
+					{{ __("Schedule of values") }}
 				</h3>
 				<span v-if="wo.delivery_type" class="text-[10px] text-ink-500 italic">{{
-					wo.delivery_type
+					__(wo.delivery_type)
 				}}</span>
 			</div>
 			<table class="w-full text-xs" style="min-width: 640px">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Scope</th>
-						<th class="text-left px-3 py-2">Cost code</th>
-						<th class="text-right px-3 py-2">Qty</th>
-						<th class="text-left px-3 py-2">UOM</th>
-						<th class="text-right px-3 py-2">Rate</th>
-						<th class="text-right px-3 py-2">Line value</th>
-						<th class="text-right px-3 py-2">Measured to date</th>
+						<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+						<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Line value") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Measured to date") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -432,8 +435,8 @@ const tabs = computed(() => [
 							class="px-3 py-2 text-right tabular-nums text-info-700 font-medium"
 							:title="
 								lineMeasured(line.name) > line.qty
-									? 'Exceeds awarded qty — flag for variation'
-									: 'Sum across certified Measurement Books for this line'
+									? __('Exceeds awarded qty — flag for variation')
+									: __('Sum across certified Measurement Books for this line')
 							"
 						>
 							{{ lineMeasured(line.name).toLocaleString("en-IN") }} {{ line.uom }}
@@ -446,7 +449,7 @@ const tabs = computed(() => [
 							colspan="5"
 							class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 						>
-							WO total
+							{{ __("WO total") }}
 						</td>
 						<td
 							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -463,7 +466,7 @@ const tabs = computed(() => [
 		<section v-if="tab === 'measurements'">
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Measurement books ({{ mbs.length }})
+					{{ __("Measurement books ({0})", [mbs.length]) }}
 				</h3>
 				<button
 					v-if="isSubmitted && canRecordMeasurement"
@@ -471,7 +474,7 @@ const tabs = computed(() => [
 					class="text-xs text-brand-700 hover:underline"
 					@click="onRecordMeasurement"
 				>
-					+ Record measurement
+					{{ __("+ Record measurement") }}
 				</button>
 			</div>
 			<div
@@ -481,11 +484,11 @@ const tabs = computed(() => [
 				<table class="w-full text-xs" style="min-width: 520px">
 					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
-							<th class="text-left px-3 py-2">MB</th>
-							<th class="text-left px-3 py-2">Date</th>
-							<th class="text-right px-3 py-2">Entries</th>
-							<th class="text-right px-3 py-2">Measured</th>
-							<th class="text-left px-3 py-2">Status</th>
+							<th class="text-left px-3 py-2">{{ __("MB") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Entries") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Measured") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -515,7 +518,7 @@ const tabs = computed(() => [
 				</table>
 			</div>
 			<div v-else class="text-xs text-ink-400 italic">
-				No measurements recorded yet against this WO.
+				{{ __("No measurements recorded yet against this WO.") }}
 			</div>
 		</section>
 
@@ -523,7 +526,7 @@ const tabs = computed(() => [
 		<section v-if="tab === 'bills'">
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Bills ({{ bills.length }})
+					{{ __("Bills ({0})", [bills.length]) }}
 				</h3>
 				<button
 					v-if="isSubmitted && canRaiseBill"
@@ -531,7 +534,7 @@ const tabs = computed(() => [
 					class="text-xs text-brand-700 hover:underline"
 					@click="onRaiseBill"
 				>
-					+ Bill progress
+					{{ __("+ Bill progress") }}
 				</button>
 			</div>
 			<div
@@ -541,11 +544,11 @@ const tabs = computed(() => [
 				<table class="w-full text-xs" style="min-width: 520px">
 					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
-							<th class="text-left px-3 py-2">Bill</th>
-							<th class="text-left px-3 py-2">Date</th>
-							<th class="text-right px-3 py-2">Gross</th>
-							<th class="text-right px-3 py-2">Net payable</th>
-							<th class="text-left px-3 py-2">Status</th>
+							<th class="text-left px-3 py-2">{{ __("Bill") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Gross") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Net payable") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -557,7 +560,7 @@ const tabs = computed(() => [
 						>
 							<td class="px-3 py-2">
 								<DeskLink :to="`/subcontractor-bills/${b.name}`" @click.stop
-									>Bill {{ b.ra_no }}</DeskLink
+									>{{ __("Bill {0}", [b.ra_no]) }}</DeskLink
 								>
 							</td>
 							<td class="px-3 py-2 text-ink-500">{{ fmtDate(b.date) }}</td>
@@ -573,7 +576,7 @@ const tabs = computed(() => [
 				</table>
 			</div>
 			<div v-else class="text-xs text-ink-400 italic">
-				No bills raised yet against this WO.
+				{{ __("No bills raised yet against this WO.") }}
 			</div>
 		</section>
 
@@ -581,7 +584,7 @@ const tabs = computed(() => [
 		<section v-if="tab === 'terms'">
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Terms &amp; conditions
+					{{ __("Terms & conditions") }}
 				</h3>
 				<button
 					v-if="isDraft && canEdit('subcontractorWorkOrder')"
@@ -589,7 +592,7 @@ const tabs = computed(() => [
 					class="text-xs text-brand-700 hover:underline"
 					@click="onEdit"
 				>
-					Edit in work order
+					{{ __("Edit in work order") }}
 				</button>
 			</div>
 			<div
@@ -599,12 +602,12 @@ const tabs = computed(() => [
 				{{ wo.terms }}
 			</div>
 			<div v-else class="text-xs text-ink-400 italic">
-				No terms set. Edit the work order to import a template or type custom terms.
+				{{ __("No terms set. Edit the work order to import a template or type custom terms.") }}
 			</div>
 		</section>
 	</DeskPage>
 
 	<div v-else class="px-3 py-2 text-sm text-ink-500">
-		{{ loading ? "Loading work order…" : "Work order not found." }}
+		{{ loading ? __("Loading work order…") : __("Work order not found.") }}
 	</div>
 </template>

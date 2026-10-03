@@ -9,6 +9,7 @@
 import { computed, ref, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { getBill, getWoBillContext, saveBill } from "@/data/subcontractApi";
 import { useAutosave } from "@/composables/useAutosave";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -95,7 +96,7 @@ async function loadWoContext(wo) {
 		form.value.retention_percent = ctx.retention_percent ?? 5;
 	} catch (err) {
 		woContext.value = null;
-		showToast(err.message || "Failed to load work order", "error");
+		showToast(err.message || __("Failed to load work order"), "error");
 	}
 }
 
@@ -131,7 +132,7 @@ watch(
 				await nextTick();
 				ready.value = true;
 			} catch (err) {
-				showToast(err.message || "Failed to load bill", "error");
+				showToast(err.message || __("Failed to load bill"), "error");
 			}
 		} else if (form.value.work_order) {
 			loadWoContext(form.value.work_order);
@@ -168,13 +169,15 @@ function removeLine(i) {
 function validate() {
 	const e = {};
 	if (mode.value === "wo") {
-		if (!form.value.work_order) e.work_order = "Pick a work order.";
+		if (!form.value.work_order) e.work_order = __("Pick a work order.");
 		if (!isEdit.value && woGross.value <= 0)
-			e.lines = "No fresh measured quantity to bill — certify a Measurement Book first.";
+			e.lines = __(
+				"No fresh measured quantity to bill — certify a Measurement Book first."
+			);
 	} else {
-		if (!form.value.subcontractor) e.subcontractor = "Pick a subcontractor.";
-		if (!form.value.project) e.project = "Pick a project.";
-		if (directGross.value <= 0) e.lines = "Add at least one line with an amount.";
+		if (!form.value.subcontractor) e.subcontractor = __("Pick a subcontractor.");
+		if (!form.value.project) e.project = __("Pick a project.");
+		if (directGross.value <= 0) e.lines = __("Add at least one line with an amount.");
 	}
 	errors.value = e;
 	return Object.keys(e).length === 0;
@@ -225,7 +228,7 @@ async function onSave() {
 		const bill = await saveBill(buildPayload());
 		router.push(`/subcontractor-bills/${bill.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save bill", "error");
+		showToast(err.message || __("Failed to save bill"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -245,21 +248,25 @@ function onCancel() {
 }
 
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Subcontractor Bill"
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Subcontractor Bill")
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create Subcontractor bill"
+	saving.value
+		? __("Saving…")
+		: isEdit.value
+		? __("Save changes")
+		: __("Create Subcontractor bill")
 );
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractor Bills", to: "/subcontractor-bills" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractor Bills"), to: "/subcontractor-bills" },
 	...(isEdit.value
 		? [
 				{ label: editingId.value, to: `/subcontractor-bills/${editingId.value}` },
-				{ label: "Edit" },
+				{ label: __("Edit") },
 		  ]
-		: [{ label: "New" }]),
+		: [{ label: __("New") }]),
 ]);
 </script>
 
@@ -278,7 +285,7 @@ const breadcrumbs = computed(() => [
 							v-if="isEdit && autosaveStatus !== 'idle'"
 							class="text-xs text-ink-400"
 						>
-							{{ autosaveStatus === "saving" ? "Saving…" : "Saved" }}
+							{{ autosaveStatus === "saving" ? __("Saving…") : __("Saved") }}
 						</span>
 					</template>
 				</DeskActionBar>
@@ -296,7 +303,7 @@ const breadcrumbs = computed(() => [
 					"
 					@click="mode = 'wo'"
 				>
-					From Work Order
+					{{ __("From Work Order") }}
 				</button>
 				<button
 					type="button"
@@ -308,37 +315,37 @@ const breadcrumbs = computed(() => [
 					"
 					@click="mode = 'direct'"
 				>
-					Direct (no work order)
+					{{ __("Direct (no work order)") }}
 				</button>
 			</div>
 
 			<!-- WORK ORDER MODE -->
 			<template v-if="mode === 'wo'">
-				<DeskSection title="Header" :cols="3">
-					<DeskField label="Work order" required :error="errors.work_order">
+				<DeskSection :title="__('Header')" :cols="3">
+					<DeskField :label="__('Work order')" required :error="errors.work_order">
 						<DeskLinkPicker
 							:model-value="form.work_order"
 							doctype="Subcontractor Work Order"
 							label-field="name"
 							value-field="name"
 							:filters="companyFilter"
-							placeholder="Pick a work order…"
+							:placeholder="__('Pick a work order…')"
 							:disabled="isEdit"
 							@update:model-value="onWorkOrderChange"
 						/>
 					</DeskField>
-					<DeskField label="Date" required
+					<DeskField :label="__('Date')" required
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField label="Subcontractor Invoice No"
+					<DeskField :label="__('Subcontractor Invoice No')"
 						><DeskInput
 							v-model="form.supplier_invoice_no"
-							placeholder="e.g. SI-2026-0042"
+							:placeholder="__('e.g. SI-2026-0042')"
 					/></DeskField>
-					<DeskField label="Subcontractor Invoice Date"
+					<DeskField :label="__('Subcontractor Invoice Date')"
 						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
-					<DeskField label="Retention (%)">
+					<DeskField :label="__('Retention (%)')">
 						<DeskInput
 							v-model.number="form.retention_percent"
 							type="number"
@@ -359,7 +366,7 @@ const breadcrumbs = computed(() => [
 
 				<section class="mt-6">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
-						This period (derived from certified Measurement Books)
+						{{ __("This period (derived from certified Measurement Books)") }}
 					</h3>
 					<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 						<table class="w-full text-xs" style="min-width: 720px">
@@ -367,12 +374,12 @@ const breadcrumbs = computed(() => [
 								class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]"
 							>
 								<tr>
-									<th class="text-left px-3 py-2">Scope</th>
-									<th class="text-right px-3 py-2">Rate</th>
-									<th class="text-right px-3 py-2">Measured</th>
-									<th class="text-right px-3 py-2">Prev. billed</th>
-									<th class="text-right px-3 py-2">This period</th>
-									<th class="text-right px-3 py-2">Amount</th>
+									<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Measured") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Prev. billed") }}</th>
+									<th class="text-right px-3 py-2">{{ __("This period") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -408,14 +415,14 @@ const breadcrumbs = computed(() => [
 										colspan="6"
 										class="px-3 py-4 text-center text-ink-400 italic"
 									>
-										Pick a work order to derive this period's lines.
+										{{ __("Pick a work order to derive this period's lines.") }}
 									</td>
 								</tr>
 							</tbody>
 							<tfoot v-if="woLines.length">
 								<tr class="bg-ink-50 border-t border-ink-200">
 									<td colspan="5" class="px-3 py-1.5 text-right text-ink-600">
-										Gross this period
+										{{ __("Gross this period") }}
 									</td>
 									<td class="px-3 py-1.5 text-right tabular-nums font-semibold">
 										{{ fmtINR(woGross) }}
@@ -423,7 +430,7 @@ const breadcrumbs = computed(() => [
 								</tr>
 								<tr class="bg-ink-50">
 									<td colspan="5" class="px-3 py-1 text-right text-warning-700">
-										Less retention ({{ form.retention_percent }}%)
+										{{ __("Less retention ({0}%)", [form.retention_percent]) }}
 									</td>
 									<td class="px-3 py-1 text-right tabular-nums text-warning-700">
 										−{{ fmtINR(retention) }}
@@ -434,7 +441,7 @@ const breadcrumbs = computed(() => [
 										colspan="5"
 										class="px-3 py-1.5 text-right font-semibold text-ink-900"
 									>
-										Net payable
+										{{ __("Net payable") }}
 									</td>
 									<td
 										class="px-3 py-1.5 text-right tabular-nums font-bold text-brand-700"
@@ -453,21 +460,25 @@ const breadcrumbs = computed(() => [
 
 			<!-- DIRECT MODE -->
 			<template v-else>
-				<DeskSection title="Header" :cols="3">
-					<DeskField label="Subcontractor" required :error="errors.subcontractor">
+				<DeskSection :title="__('Header')" :cols="3">
+					<DeskField
+						:label="__('Subcontractor')"
+						required
+						:error="errors.subcontractor"
+					>
 						<DeskLinkPicker
 							v-model="form.subcontractor"
 							doctype="Supplier"
 							label-field="supplier_name"
 							value-field="name"
 							:filters="[['supplier_type', '=', 'Subcontractor']]"
-							placeholder="Pick a subcontractor…"
+							:placeholder="__('Pick a subcontractor…')"
 						/>
 					</DeskField>
 					<DeskField
-						label="Project"
+						:label="__('Project')"
 						required
-						hint="Sets the accounting company."
+						:hint="__('Sets the accounting company.')"
 						:error="errors.project"
 					>
 						<DeskLinkPicker
@@ -476,21 +487,21 @@ const breadcrumbs = computed(() => [
 							label-field="project_name"
 							value-field="name"
 							:filters="companyFilter"
-							placeholder="Pick a project…"
+							:placeholder="__('Pick a project…')"
 						/>
 					</DeskField>
-					<DeskField label="Date" required
+					<DeskField :label="__('Date')" required
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField label="Subcontractor Invoice No"
+					<DeskField :label="__('Subcontractor Invoice No')"
 						><DeskInput
 							v-model="form.supplier_invoice_no"
-							placeholder="e.g. SI-2026-0042"
+							:placeholder="__('e.g. SI-2026-0042')"
 					/></DeskField>
-					<DeskField label="Subcontractor Invoice Date"
+					<DeskField :label="__('Subcontractor Invoice Date')"
 						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
-					<DeskField label="Retention (%)">
+					<DeskField :label="__('Retention (%)')">
 						<DeskInput
 							v-model.number="form.retention_percent"
 							type="number"
@@ -503,21 +514,24 @@ const breadcrumbs = computed(() => [
 				<div
 					class="mt-3 text-xs text-ink-600 bg-info-50 border border-info-100 rounded-md px-3 py-2"
 				>
-					Direct bill — for one-off / lump-sum charges. Taxes are applied on the detail
-					page.
+					{{
+						__(
+							"Direct bill — for one-off / lump-sum charges. Taxes are applied on the detail page."
+						)
+					}}
 				</div>
 
 				<section class="mt-6">
 					<div class="flex items-center justify-between mb-2">
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-							Charge lines
+							{{ __("Charge lines") }}
 						</h3>
 						<button
 							type="button"
 							class="text-xs text-brand-700 hover:underline"
 							@click="addLine"
 						>
-							+ Add line
+							{{ __("+ Add line") }}
 						</button>
 					</div>
 					<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
@@ -527,12 +541,12 @@ const breadcrumbs = computed(() => [
 							>
 								<tr>
 									<th class="text-left px-3 py-2 min-w-[220px]">
-										Scope / description
+										{{ __("Scope / description") }}
 									</th>
 									<th class="text-left px-3 py-2 min-w-[150px]">
-										Cost code (optional)
+										{{ __("Cost code (optional)") }}
 									</th>
-									<th class="text-right px-3 py-2 w-32">Amount</th>
+									<th class="text-right px-3 py-2 w-32">{{ __("Amount") }}</th>
 									<th class="w-8"></th>
 								</tr>
 							</thead>
@@ -546,14 +560,14 @@ const breadcrumbs = computed(() => [
 										<input
 											v-model="l.scope"
 											class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
-											placeholder="What is being billed"
+											:placeholder="__('What is being billed')"
 										/>
 									</td>
 									<td class="px-3 py-1">
 										<CostCodePicker
 											v-model="l.cost_code"
 											:project-id="form.project"
-											placeholder="Pick code…"
+											:placeholder="__('Pick code…')"
 										/>
 									</td>
 									<td class="px-3 py-1">
@@ -578,7 +592,7 @@ const breadcrumbs = computed(() => [
 							<tfoot>
 								<tr class="bg-ink-50 border-t border-ink-200">
 									<td colspan="2" class="px-3 py-1.5 text-right text-ink-600">
-										Gross
+										{{ __("Gross") }}
 									</td>
 									<td class="px-3 py-1.5 text-right tabular-nums font-semibold">
 										{{ fmtINR(directGross) }}
@@ -587,7 +601,7 @@ const breadcrumbs = computed(() => [
 								</tr>
 								<tr class="bg-ink-50">
 									<td colspan="2" class="px-3 py-1 text-right text-warning-700">
-										Less retention ({{ form.retention_percent }}%)
+										{{ __("Less retention ({0}%)", [form.retention_percent]) }}
 									</td>
 									<td class="px-3 py-1 text-right tabular-nums text-warning-700">
 										−{{ fmtINR(retention) }}
@@ -599,7 +613,7 @@ const breadcrumbs = computed(() => [
 										colspan="2"
 										class="px-3 py-1.5 text-right font-semibold text-ink-900"
 									>
-										Net payable
+										{{ __("Net payable") }}
 									</td>
 									<td
 										class="px-3 py-1.5 text-right tabular-nums font-bold text-brand-700"
