@@ -19,6 +19,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 const router = useRouter();
@@ -84,7 +85,7 @@ watch(
 		try {
 			const mr = await getMaterialRequest(id);
 			if (mr.state !== "Draft") {
-				showToast("Only a draft request can be edited.", "error");
+				showToast(__("Only a draft request can be edited."), "error");
 				router.replace(`/procurement/material-requests/${id}`);
 				return;
 			}
@@ -101,7 +102,7 @@ watch(
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
 		} catch (err) {
-			showToast(err.message || "Failed to load request", "error");
+			showToast(err.message || __("Failed to load request"), "error");
 		}
 	},
 	{ immediate: true }
@@ -124,8 +125,9 @@ function removeLine(idx) {
 
 function validate() {
 	const e = {};
-	if (!form.value.project) e.project = "Pick a project for the request.";
-	if (!validLines.value.length) e.lines = "Add at least one item with a quantity.";
+	if (!form.value.project) e.project = __("Pick a project for the request.");
+	if (!validLines.value.length)
+		e.lines = __("Add at least one item with a quantity.");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -146,10 +148,10 @@ async function onSave() {
 				rate: Number(l.rate) || 0,
 			})),
 		});
-		showToast(isEdit.value ? "Request saved." : "Request raised.");
+		showToast(isEdit.value ? __("Request saved.") : __("Request raised."));
 		router.push(`/procurement/material-requests/${mr.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save request", "error");
+		showToast(err.message || __("Failed to save request"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -159,19 +161,23 @@ function onCancel() {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Material Requests", to: "/procurement/material-requests" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Material Requests"), to: "/procurement/material-requests" },
 	isEdit.value
 		? { label: editingId.value, to: `/procurement/material-requests/${editingId.value}` }
-		: { label: "New" },
-	...(isEdit.value ? [{ label: "Edit" }] : []),
+		: { label: __("New") },
+	...(isEdit.value ? [{ label: __("Edit") }] : []),
 ]);
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Material Request"
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Material Request")
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Raise request"
+	saving.value
+		? __("Saving…")
+		: isEdit.value
+			? __("Save changes")
+			: __("Raise request")
 );
 </script>
 
@@ -182,7 +188,11 @@ const saveLabel = computed(() =>
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this" : "create a" }} material request.
+			{{
+				isEdit
+					? __("You don't have permission to edit this material request.")
+					: __("You don't have permission to create a material request.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
@@ -194,13 +204,15 @@ const saveLabel = computed(() =>
 				/>
 			</template>
 
-			<DeskSection title="Request" :cols="2">
+			<DeskSection :title="__('Request')" :cols="2">
 				<DeskField
-					label="Project"
+					:label="__('Project')"
 					required
 					:error="errors.project"
 					:hint="
-						isEdit ? 'Locked while editing — the request stays on its project.' : ''
+						isEdit
+							? __('Locked while editing — the request stays on its project.')
+							: ''
 					"
 				>
 					<DeskLinkPicker
@@ -210,10 +222,10 @@ const saveLabel = computed(() =>
 						value-field="name"
 						:search-fields="['project_name', 'name']"
 						:disabled="isEdit"
-						placeholder="— Select project —"
+						:placeholder="__('— Select project —')"
 					/>
 				</DeskField>
-				<DeskField label="Needed by">
+				<DeskField :label="__('Needed by')">
 					<DeskInput v-model="form.schedule_date" type="date" />
 				</DeskField>
 			</DeskSection>
@@ -222,25 +234,27 @@ const saveLabel = computed(() =>
 			<section class="mt-6">
 				<div class="flex items-center justify-between mb-2 gap-3">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Items
+						{{ __("Items") }}
 					</h3>
 					<button
 						type="button"
 						class="text-xs text-brand-700 hover:underline"
 						@click="addLine"
 					>
-						+ Add item
+						{{ __("+ Add item") }}
 					</button>
 				</div>
 				<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 					<table class="w-full text-xs" style="min-width: 720px">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
-								<th class="text-left px-3 py-2" style="min-width: 200px">Item</th>
-								<th class="text-left px-3 py-2">Notes</th>
-								<th class="text-right px-3 py-2 w-24">Qty</th>
-								<th class="text-left px-3 py-2 w-32">UOM</th>
-								<th class="text-right px-3 py-2 w-28">Est. rate</th>
+								<th class="text-left px-3 py-2" style="min-width: 200px">
+									{{ __("Item") }}
+								</th>
+								<th class="text-left px-3 py-2">{{ __("Notes") }}</th>
+								<th class="text-right px-3 py-2 w-24">{{ __("Qty") }}</th>
+								<th class="text-left px-3 py-2 w-32">{{ __("UOM") }}</th>
+								<th class="text-right px-3 py-2 w-28">{{ __("Est. rate") }}</th>
 								<th class="text-center px-2 py-2 w-8"></th>
 							</tr>
 						</thead>
@@ -257,7 +271,7 @@ const saveLabel = computed(() =>
 										label-field="item_name"
 										value-field="name"
 										:search-fields="['item_name', 'item_code', 'name']"
-										placeholder="— Item —"
+										:placeholder="__('— Item —')"
 										:allow-create="canCreate('item')"
 										create-label="item"
 										@update:model-value="onPickItem(line)"
@@ -268,7 +282,7 @@ const saveLabel = computed(() =>
 									<input
 										v-model="line.description"
 										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
-										placeholder="Brand, spec, where it's needed…"
+										:placeholder="__('Brand, spec, where it\'s needed…')"
 									/>
 								</td>
 								<td class="px-3 py-2">
@@ -277,7 +291,7 @@ const saveLabel = computed(() =>
 										type="number"
 										min="0"
 										class="w-full bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
-										placeholder="Qty"
+										:placeholder="__('Qty')"
 									/>
 								</td>
 								<td class="px-3 py-2" style="min-width: 120px">
@@ -303,7 +317,7 @@ const saveLabel = computed(() =>
 									<button
 										type="button"
 										class="text-ink-400 hover:text-danger-600"
-										title="Remove"
+										:title="__('Remove')"
 										@click="removeLine(idx)"
 									>
 										✕
@@ -317,7 +331,7 @@ const saveLabel = computed(() =>
 									colspan="4"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
-									Estimated value
+									{{ __("Estimated value") }}
 								</td>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"

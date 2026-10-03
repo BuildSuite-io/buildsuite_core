@@ -488,3 +488,240 @@ yet to start,pas encore commencé
 {0}d remaining,{0} j restants
 {0}d total,{0} j au total
 tasks,tâches
++ Add item,+ Ajouter un article
++ Create Purchase Order,+ Créer un bon de commande
++ New Request,+ Nouvelle demande
+Action failed,Échec de l’action
+Add at least one item with a quantity.,Ajoutez au moins un article avec une quantité.
+Add item,Ajouter un article
+All cost codes,Tous les codes de coût
+All projects,Tous les projets
+All suppliers,Tous les fournisseurs
+Amend,Amender
+Amend failed,Échec de l’amendement
+Amended — a fresh draft was created.,Amendé — un nouveau brouillon a été créé.
+Amount,Montant
+Any,Tous
+At site,Sur site
+At standard rate,Au tarif standard
+Back to Procurement →,Retour à l’approvisionnement →
+Back to purchase order,Retour au bon de commande
+Billed,Facturé
+Billed {0}%,Facturé {0} %
+"Brand, spec, where it's needed…","Marque, spécification, où c’est nécessaire…"
+Can't receive against this order.,Impossible de réceptionner sur ce bon de commande.
+Cancel failed,Échec de l’annulation
+Cancel order,Annuler le bon de commande
+Cancel receipt,Annuler la réception
+Cancel request,Annuler la demande
+Cancel {0}?,Annuler {0} ?
+Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back.,L’annulation inverse la réception — le matériel sort du stock et la quantité reçue du bon de commande diminue.
+Cancelling withdraws the request — it drops out of the procurement queue. Amend later to raise a corrected copy.,L’annulation retire la demande — elle sort de la file d’approvisionnement. Amendez plus tard pour en créer une copie corrigée.
+Confirm receipt,Confirmer la réception
+Consumed,Consommé
+Consumption by cost code,Consommation par code de coût
+Converting from Material Request,Conversion depuis une demande de matériel
+Cost code,Code de coût
+Create Receipt,Créer une réception
+Create a fresh editable draft copy (the original stays cancelled),Créer une nouvelle copie modifiable (l’original reste annulé)
+Create order,Créer le bon de commande
+Delete {0}?,Supprimer {0} ?
+Delivery follow-up,Suivi des livraisons
+Draft,Brouillon
+Draft — not posted to stock yet. Submit it to record the goods into the warehouse.,Brouillon — pas encore enregistré en stock. Soumettez-le pour enregistrer les marchandises dans l’entrepôt.
+Draft — not sent to the office yet. Submit it to enter the procurement queue.,Brouillon — pas encore envoyé au bureau. Soumettez-le pour entrer dans la file d’approvisionnement.
+Draft — not sent to the supplier yet. Submit it to post the order.,Brouillon — pas encore envoyé au fournisseur. Soumettez-le pour enregistrer le bon de commande.
+Edit {0},Modifier {0}
+Enter at least one received quantity.,Saisissez au moins une quantité reçue.
+Est. rate,Tarif est.
+Estimated value,Valeur estimée
+"Every purchase order line — supplier, item, quantity and rate — so last paid is one search away.","Chaque ligne de bon de commande — fournisseur, article, quantité et tarif — pour retrouver le dernier prix payé en une recherche."
+Failed to delete order,Échec de la suppression du bon de commande
+Failed to delete receipt,Échec de la suppression de la réception
+Failed to delete request,Échec de la suppression de la demande
+Failed to load material request,Échec du chargement de la demande de matériel
+Failed to load order,Échec du chargement du bon de commande
+Failed to load purchase orders,Échec du chargement des bons de commande
+Failed to load receipt,Échec du chargement de la réception
+Failed to load request,Échec du chargement de la demande
+Failed to load the report.,Échec du chargement du rapport.
+Failed to save order,Échec de l’enregistrement du bon de commande
+Failed to save receipt,Échec de l’enregistrement de la réception
+Failed to save request,Échec de l’enregistrement de la demande
+Find,Rechercher
+From (order date),Du (date de commande)
+From (receipt date),Du (date de réception)
+From (request date),Du (date de demande)
+From the purchase order.,Depuis le bon de commande.
+Hide emptied items,Masquer les articles épuisés
+Includes sub-projects.,Inclut les sous-projets.
+Into {0},Vers {0}
+Issued,Sorti
+Item or cost code…,Article ou code de coût…
+Item or store…,Article ou magasin…
+"Item, code, supplier…","Article, code, fournisseur…"
+"Item, order, supplier…","Article, commande, fournisseur…"
+Items received,Articles reçus
+Keep,Conserver
+Last bought from,Dernier achat auprès de
+Loading order…,Chargement du bon de commande…
+Loading receipt…,Chargement de la réception…
+Loading request…,Chargement de la demande…
+Locked while editing — the request stays on its project.,Verrouillé pendant la modification — la demande reste sur son projet.
+Locked while editing.,Verrouillé pendant la modification.
+MR,DM
+Material at site,Matériel sur site
+"Material issued to site, grouped by the cost code it was booked against.","Matériel sorti vers le chantier, regroupé par le code de coût sur lequel il a été imputé."
+Material request not found.,Demande de matériel introuvable.
+Needed by,Nécessaire pour le
+New Material Request,Nouvelle demande de matériel
+New PO,Nouveau BC
+New Purchase Order,Nouveau bon de commande
+New Purchase Receipt,Nouvelle réception
+New Receipt,Nouvelle réception
+No items match these filters.,Aucun article ne correspond à ces filtres.
+No lines match these filters.,Aucune ligne ne correspond à ces filtres.
+No material requests yet.,Aucune demande de matériel pour l’instant.
+No open orders in scope.,Aucun bon de commande ouvert dans le périmètre.
+"No order line in scope carries a rate code, so there is nothing to compare.","Aucune ligne de commande du périmètre ne porte de code de tarif, il n’y a donc rien à comparer."
+No orders match these filters.,Aucun bon de commande ne correspond à ces filtres.
+No purchase orders in scope.,Aucun bon de commande dans le périmètre.
+No purchase orders yet.,Aucun bon de commande pour l’instant.
+No purchase receipts yet.,Aucune réception pour l’instant.
+No report is registered under that name.,Aucun rapport n’est enregistré sous ce nom.
+No report registered for '{0}',Aucun rapport enregistré pour « {0} »
+No requests match these filters.,Aucune demande ne correspond à ces filtres.
+Notes,Notes
+Notes…,Notes…
+Nothing issued to site yet in scope.,Rien n’a encore été sorti vers le chantier dans le périmètre.
+Nothing left to receive on this order.,Plus rien à réceptionner sur ce bon de commande.
+Nothing received at site yet in scope.,Rien n’a encore été reçu sur site dans le périmètre.
+Nothing waiting — every request in scope has been ordered.,Rien en attente — toutes les demandes du périmètre ont été commandées.
+On Hold,En attente
+Only a draft order can be edited.,Seul un bon de commande en brouillon peut être modifié.
+Only a draft receipt can be edited.,Seule une réception en brouillon peut être modifiée.
+Only a draft request can be edited.,Seule une demande en brouillon peut être modifiée.
+"Open orders by the date they were needed, how much has landed, and what is still outstanding.","Les commandes ouvertes par date de besoin, ce qui est arrivé, et ce qui reste en attente."
+Open the printable purchase order (Save as PDF from the print dialog),Ouvrir le bon de commande imprimable (Enregistrer en PDF depuis la boîte d’impression)
+Order,Commande
+Order cancelled.,Bon de commande annulé.
+Order created.,Bon de commande créé.
+Order saved.,Bon de commande enregistré.
+Order submitted.,Bon de commande soumis.
+"Order, supplier, project…","Commande, fournisseur, projet…"
+Ordered,Commandé
+Over estimate only,Dépassement d’estimation uniquement
+Overdue only,En retard uniquement
+PO,BC
+PO rate,Tarif BC
+Paid,Payé
+Partially Ordered,Partiellement commandé
+Pending,En attente
+Pick a project for the request.,Choisissez un projet pour la demande.
+Pick a project.,Choisissez un projet.
+Pick a purchase order.,Choisissez un bon de commande.
+Pick a receiving warehouse.,Choisissez un entrepôt de réception.
+Pick a supplier.,Choisissez un fournisseur.
+Print / PDF,Imprimer / PDF
+Project store,Magasin de projet
+Purchase order,Bon de commande
+Purchase order not found.,Bon de commande introuvable.
+Purchase rate vs estimate,Tarif d’achat vs estimation
+Purchase receipt not found.,Réception introuvable.
+Purchase register,Registre des achats
+Raise a Purchase Order from this request,Créer un bon de commande à partir de cette demande
+Raise request,Créer la demande
+Rate,Tarif
+Receipt,Réception
+Receipt cancelled.,Réception annulée.
+Receipt recorded.,Réception enregistrée.
+Receipt saved.,Réception sauvegardée.
+Receipt submitted.,Réception soumise.
+Received,Reçu
+Received counts posted purchase receipts; consumed counts posted consumption. A cancelled receipt never entered stock.,« Reçu » compte les réceptions validées ; « consommé » compte la consommation validée. Une réception annulée n’est jamais entrée en stock.
+"Received minus consumed, per item, at each project store.","Reçu moins consommé, par article, à chaque magasin de projet."
+Received now,Reçu maintenant
+Received on,Reçu le
+Receiving warehouse,Entrepôt de réception
+Record a goods receipt against this order,Enregistrer une réception de marchandises sur ce bon de commande
+Report not found,Rapport introuvable
+Request,Demande
+Request cancelled.,Demande annulée.
+Request raised.,Demande créée.
+Request saved.,Demande enregistrée.
+Request submitted.,Demande soumise.
+"Request, project…","Demande, projet…"
+Requested by,Demandé par
+Requests waiting to be ordered,Demandes en attente de commande
+Required by,Requis pour le
+Required by {0},Requis pour le {0}
+Return Issued,Retour émis
+Save changes,Enregistrer les modifications
+"Search PO, supplier…","Rechercher BC, fournisseur…"
+Search cost codes…,Rechercher des codes de coût…
+Search material request…,Rechercher une demande de matériel…
+Search projects…,Rechercher des projets…
+"Search receipt, supplier…","Rechercher réception, fournisseur…"
+Search suppliers…,Rechercher des fournisseurs…
+Search…,Rechercher…
+Still due,Encore dû
+Stopped,Arrêté
+Submit,Soumettre
+Submit failed,Échec de la soumission
+"Submit this order to {0} ({1})? It posts the order and locks the lines; a submitted order is amended, not edited.","Soumettre ce bon de commande à {0} ({1}) ? Il enregistre la commande et verrouille les lignes ; un bon de commande soumis s’amende, il ne se modifie pas."
+"Submit this request ({0})? It enters the procurement queue; a submitted request is cancelled, not edited.","Soumettre cette demande ({0}) ? Elle entre dans la file d’approvisionnement ; une demande soumise s’annule, elle ne se modifie pas."
+Submit {0}?,Soumettre {0} ?
+Submitting posts the goods into stock and updates the purchase order's received quantity.,La soumission enregistre les marchandises en stock et met à jour la quantité reçue du bon de commande.
+This cancels the order. It's blocked if receipts or bills exist against it.,Cela annule le bon de commande. C’est bloqué si des réceptions ou des factures y sont rattachées.
+This order and its items will be removed permanently.,Ce bon de commande et ses articles seront supprimés définitivement.
+This receipt will be removed permanently.,Cette réception sera supprimée définitivement.
+This request and its items will be removed permanently.,Cette demande et ses articles seront supprimés définitivement.
+To (order date),Au (date de commande)
+To (receipt date),Au (date de réception)
+To (request date),Au (date de demande)
+To Bill,À facturer
+To Receive,À réceptionner
+To Receive and Bill,À réceptionner et facturer
+Total,Total
+Total received,Total reçu
+UOM,Unité
+Unit,Unité
+Value,Valeur
+Value received,Valeur reçue
+"Valued at the item master's standard rate — a list price, not what this particular material cost. Issue valuation needs stock rates, which are not modelled.","Évalué au tarif standard de la fiche article — un prix de liste, pas le coût réel de ce matériel. La valorisation des sorties nécessite des tarifs de stock, non modélisés."
+What site has asked for that is not yet on a purchase order — the gap between the request book and the order book.,Ce que le chantier a demandé et qui n’est pas encore sur un bon de commande — l’écart entre le registre des demandes et celui des commandes.
+What you are paying against the QS rate in the Rate Master. Only lines carrying a rate code can be compared.,Ce que vous payez par rapport au tarif QS du référentiel de prix. Seules les lignes portant un code de tarif peuvent être comparées.
+Where the goods land on site.,Où les marchandises arrivent sur site.
+You don't have permission to create a material request.,Vous n’avez pas la permission de créer une demande de matériel.
+You don't have permission to create a purchase order.,Vous n’avez pas la permission de créer un bon de commande.
+You don't have permission to create a purchase receipt.,Vous n’avez pas la permission de créer une réception.
+You don't have permission to edit this material request.,Vous n’avez pas la permission de modifier cette demande de matériel.
+You don't have permission to edit this purchase order.,Vous n’avez pas la permission de modifier ce bon de commande.
+You don't have permission to edit this purchase receipt.,Vous n’avez pas la permission de modifier cette réception.
+against,sur
+due {0},échéance {0}
+item,article
+items,articles
+lines,lignes
+lines pre-filled; set the supplier and rates.,lignes pré-remplies ; renseignez le fournisseur et les tarifs.
+orders,commandes
+requests,demandes
+rows,lignes
+to,à
+{0} done.,{0} effectué.
+{0} lines,{0} lignes
+{0} open order,{0} commande ouverte
+{0} open orders,{0} commandes ouvertes
+{0} order line could not be checked — no rate code on the line.,{0} ligne de commande n’a pas pu être vérifiée — aucun code de tarif sur la ligne.
+{0} order lines could not be checked — no rate code on the line.,{0} lignes de commande n’ont pas pu être vérifiées — aucun code de tarif sur la ligne.
+{0} overdue,{0} en retard
+{0} request waiting,{0} demande en attente
+{0} requests waiting,{0} demandes en attente
+{0} · requested {1},{0} · demandé {1}
+{0}d late,{0} j de retard
+{0}d old,{0} j d’ancienneté
+— Item —,— Article —
+— Select open PO —,— Sélectionner un BC ouvert —
+— Select project —,— Sélectionner un projet —
+— Select supplier —,— Sélectionner un fournisseur —
+— Select warehouse —,— Sélectionner un entrepôt —
