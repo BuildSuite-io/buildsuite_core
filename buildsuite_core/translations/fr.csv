@@ -1260,3 +1260,25 @@ withheld on sub-bills,retenu sur les factures de sous-traitants
 ← Prev,← Préc.
 ✓ Receipt attached,✓ Reçu joint
 📷 Attach receipt,📷 Joindre un reçu
+Active,Actif
+Pending Approval,En attente d’approbation
+Approved,Approuvé
+Rejected,Rejeté
+Awarded,Attribué
+Inactive,Inactif
+Superseded,Remplacé
+Replaced,Remplacé
+Manual,Manuel
+Assembly,Assemblage
+Present,Présent
+Full Day,Journée complète
+Half Day,Demi-journée
+Absent,Absent
+Overtime Only,Heures supp. uniquement
+Partially Received,Partiellement reçu
+Transferred,Transféré
+Delivered,Livré
+Partly Billed,Partiellement facturé
+Return,Retour
+New {0},Nouveau {0}
+Create “{0}”,Créer « {0} »
