@@ -550,10 +550,18 @@ def record_receipt(name: str, amount: str | float | None = None, date: str | Non
 		pe.paid_to = deposit_to
 		pe.paid_to_account_currency = frappe.db.get_value("Account", deposit_to, "account_currency")
 	if amount:
-		pe.paid_amount = flt(amount)
-		pe.received_amount = flt(amount)
+		amount = flt(amount)
+		# `amount` is in the INVOICE's currency (what the UI shows as outstanding). For a Receive
+		# that's the paid/party side; the received (bank) side is the same number when currencies
+		# match, else scaled by the effective rate ERPNext resolved on the full receipt — so the
+		# company-currency base amounts still balance. (Assumes the deposit account is in the
+		# company currency, the common case.)
+		full_paid = flt(pe.paid_amount) or amount
+		full_received = flt(pe.received_amount) or amount
+		pe.paid_amount = amount
+		pe.received_amount = flt(amount * full_received / full_paid) if full_paid else amount
 		if pe.references:
-			pe.references[0].allocated_amount = flt(amount)
+			pe.references[0].allocated_amount = amount
 	if mode_of_payment:
 		pe.mode_of_payment = mode_of_payment
 	if reference_no:

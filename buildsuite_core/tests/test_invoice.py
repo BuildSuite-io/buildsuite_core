@@ -128,6 +128,39 @@ class TestInvoice(BuildSuiteTestCase):
 		# The header receivables total is in company currency (base), so it includes the 900000.
 		self.assertGreaterEqual(flt(receivables_summary(company=self.company)["outstanding"]), 900000)
 
+	def test_receive_foreign_invoice(self):
+		"""A USD invoice received in full into a company-currency (NGN) bank/cash account: the
+		Payment Entry submits with balanced base amounts and the invoice clears."""
+		from buildsuite_core.api.invoice import record_receipt, save_invoice, submit_invoice
+
+		company_currency = frappe.db.get_value("Company", self.company, "default_currency")
+		foreign = "USD" if company_currency != "USD" else "EUR"
+		cust = self._customer()
+		name = save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"currency": foreign,
+					"conversion_rate": 1500,
+					"items": [{"description": "Consulting", "qty": 2, "rate": 300}],
+				}
+			)
+		)["name"]
+		submit_invoice(name)
+		deposit = self._deposit_account()  # company-currency cash
+		r = record_receipt(name, amount=600, date="2026-07-25", mode_of_payment="Cash", deposit_to=deposit)
+		pe = frappe.get_doc("Payment Entry", r["payment_entry"])
+		self.assertEqual(pe.docstatus, 1)
+		# paid is the USD allocation (clears the invoice); received is the NGN into the bank at the
+		# payment-date rate ERPNext resolved; the company-currency base amounts balance.
+		self.assertAlmostEqual(flt(pe.paid_amount), 600, places=2)
+		self.assertGreater(flt(pe.received_amount), 0)
+		self.assertAlmostEqual(flt(pe.base_paid_amount), flt(pe.base_received_amount), places=2)
+		self.assertAlmostEqual(flt(r["payment"]["outstanding"]), 0, places=2)
+		self.assertEqual(r["payment"]["status"], "Paid")
+
 	def test_company_currency_invoice_rate_is_one(self):
 		"""Default path unchanged: no currency sent → company currency, rate 1, base == grand."""
 		from buildsuite_core.api.invoice import get_invoice, save_invoice
