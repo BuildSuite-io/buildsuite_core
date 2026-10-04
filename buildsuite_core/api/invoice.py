@@ -29,6 +29,75 @@ def _company_for(project=None):
 	return default_company()
 
 
+def _company_currency(company):
+	return frappe.db.get_value("Company", company, "default_currency")
+
+
+def _resolve_conversion_rate(currency, company_currency, posting_date, supplied=None):
+	"""The transaction→company exchange rate ERPNext stores on the invoice. 1 when it's already
+	in company currency; otherwise honour a rate the user typed, else ask ERPNext's Currency
+	Exchange (selling side — these are customer invoices). We don't invent FX."""
+	if not currency or currency == company_currency:
+		return 1.0
+	if supplied:
+		return flt(supplied)
+	try:
+		from erpnext.setup.utils import get_exchange_rate
+
+		return flt(get_exchange_rate(currency, company_currency, posting_date, "for_selling")) or 1.0
+	except Exception:
+		return 1.0
+
+
+def _receivable_account(company, currency):
+	"""The Debtors account a foreign-currency invoice posts to. ERPNext won't let a USD invoice
+	settle against an NGN receivable — the party account's currency must match the invoice's.
+	Reuse an existing receivable account already in that currency, else create one. Returns None
+	for company-currency invoices (ERPNext picks the default)."""
+	company_currency = _company_currency(company)
+	if not currency or currency == company_currency:
+		return None
+	existing = frappe.db.get_value(
+		"Account",
+		{"company": company, "account_currency": currency, "account_type": "Receivable", "is_group": 0},
+		"name",
+	)
+	if existing:
+		return existing
+	default_receivable = frappe.db.get_value("Company", company, "default_receivable_account")
+	parent = (
+		frappe.db.get_value("Account", default_receivable, "parent_account") if default_receivable else None
+	)
+	if not parent:
+		parent = frappe.db.get_value(
+			"Account", {"company": company, "root_type": "Asset", "is_group": 1}, "name"
+		)
+	return (
+		frappe.get_doc(
+			{
+				"doctype": "Account",
+				"account_name": f"Debtors ({currency})",
+				"parent_account": parent,
+				"company": company,
+				"account_type": "Receivable",
+				"account_currency": currency,
+				"root_type": "Asset",
+			}
+		)
+		.insert(ignore_permissions=True)
+		.name
+	)
+
+
+def _base_outstanding(grand_total, outstanding, base_grand_total):
+	"""Outstanding in COMPANY currency — scale the reliable base_grand_total by the unpaid
+	fraction (there is no base_outstanding_amount field). Equals the raw outstanding at rate 1."""
+	grand_total = flt(grand_total)
+	if not grand_total:
+		return 0.0
+	return flt(base_grand_total) * flt(outstanding) / grand_total
+
+
 def ensure_invoice_item():
 	"""A generic non-stock sales Item that invoice lines hang off (the description carries the
 	real detail). Mirrors the Subcontractor Bill's service-item approach."""
@@ -176,6 +245,14 @@ def _serialize(doc):
 		"net_total": doc.net_total,
 		"total_taxes_and_charges": doc.total_taxes_and_charges,
 		"grand_total": doc.grand_total,
+		# Currency as ERPNext holds it: the invoice's own currency + rate to company currency,
+		# plus the company-currency (base_*) equivalents it computed.
+		"currency": doc.currency,
+		"conversion_rate": doc.conversion_rate,
+		"company_currency": _company_currency(doc.company),
+		"base_net_total": doc.base_net_total,
+		"base_total_taxes_and_charges": doc.base_total_taxes_and_charges,
+		"base_grand_total": doc.base_grand_total,
 		"total_advance": flt(doc.get("total_advance")),
 		"advance_adjusted": adjusted,
 		"advances": advances,
@@ -218,7 +295,9 @@ def list_invoices(project: str | None = None, company: str | None = None):
 			"project",
 			"posting_date",
 			"due_date",
+			"currency",
 			"grand_total",
+			"base_grand_total",
 			"outstanding_amount",
 			"status",
 			"docstatus",
@@ -251,6 +330,7 @@ def list_invoices(project: str | None = None, company: str | None = None):
 			pay_status = "Partly Paid"
 		else:
 			pay_status = "Unpaid"
+		row_outstanding = outstanding if r.docstatus == 1 else 0
 		out.append(
 			{
 				"name": r.name,
@@ -260,8 +340,13 @@ def list_invoices(project: str | None = None, company: str | None = None):
 				"project_name": pnames.get(r.project) or r.project,
 				"date": str(r.posting_date) if r.posting_date else None,
 				"due_date": str(r.due_date) if r.due_date else None,
+				# `total`/`outstanding` in the invoice's own currency (per-row display);
+				# `base_*` in company currency (for the header total across invoices).
+				"currency": r.currency,
 				"total": invoiced,
-				"outstanding": outstanding if r.docstatus == 1 else 0,
+				"base_total": flt(r.base_grand_total),
+				"outstanding": row_outstanding,
+				"base_outstanding": _base_outstanding(r.grand_total, row_outstanding, r.base_grand_total),
 				"docstatus": r.docstatus,
 				"status": pay_status,
 			}
@@ -311,11 +396,22 @@ def save_invoice(payload: str):
 	si.company = company
 	# Customer is a global ERPNext party — usable across companies (no cross-company guard).
 	si.customer = customer
-	si.currency = frappe.db.get_value("Company", company, "default_currency")
 	si.set_posting_time = 1
 	si.posting_date = data.get("date") or nowdate()
 	si.due_date = data.get("due_date") or si.posting_date
 	si.project = project or None
+	# Invoice currency: default to the company currency (unchanged for domestic invoices), but
+	# honour a currency the form sends so a foreign customer can be billed in theirs. ERPNext
+	# computes every base_* amount from this rate — we pre-compute nothing.
+	company_currency = _company_currency(company)
+	si.currency = data.get("currency") or company_currency
+	si.conversion_rate = _resolve_conversion_rate(
+		si.currency, company_currency, si.posting_date, data.get("conversion_rate")
+	)
+	# A foreign-currency invoice must post to a receivable account in that currency (ERPNext rule).
+	debit_to = _receivable_account(company, si.currency)
+	if debit_to:
+		si.debit_to = debit_to
 
 	item_code = ensure_invoice_item()
 	income = _income_account(company)
@@ -755,9 +851,11 @@ def receivables_summary(company: str | None = None):
 
 	company = company or company_scope()
 	cond = "AND company = %(company)s" if company else ""
+	# Sum outstanding in COMPANY currency: base_grand_total scaled by the unpaid fraction, so
+	# invoices in different currencies add up correctly (equals outstanding_amount at rate 1).
 	outstanding = frappe.db.sql(
 		f"""
-		SELECT COALESCE(SUM(outstanding_amount), 0)
+		SELECT COALESCE(SUM(base_grand_total * outstanding_amount / NULLIF(grand_total, 0)), 0)
 		FROM `tabSales Invoice`
 		WHERE docstatus = 1 {cond} AND outstanding_amount > 0
 		""",

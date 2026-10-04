@@ -30,17 +30,22 @@ def active_company():
 
 
 @frappe.whitelist()
-def exchange_rate(from_currency: str, to_currency: str, date: str | None = None):
-	"""The exchange rate ERPNext would apply converting `from_currency` → `to_currency` on `date`
-	(buying side — these feed supplier/purchase documents). A thin, forgiving wrapper over
-	ERPNext's own Currency Exchange lookup so the SPA can pre-fill a foreign bill's rate; returns
-	1.0 for same-currency or when no rate is configured (the user can still type one)."""
+def exchange_rate(
+	from_currency: str, to_currency: str, date: str | None = None, side: str = "for_buying"
+):
+	"""The exchange rate ERPNext would apply converting `from_currency` → `to_currency` on `date`.
+	`side` is "for_buying" (supplier/purchase documents) or "for_selling" (customer invoices) —
+	a Currency Exchange record can carry a different rate for each. A thin, forgiving wrapper over
+	ERPNext's own lookup so the SPA can pre-fill a foreign document's rate; returns 1.0 for
+	same-currency or when no rate is configured (the user can still type one)."""
 	if not from_currency or from_currency == to_currency:
 		return 1.0
+	if side not in ("for_buying", "for_selling"):
+		side = "for_buying"
 	try:
 		from erpnext.setup.utils import get_exchange_rate
 
-		return flt(get_exchange_rate(from_currency, to_currency, date, "for_buying")) or 1.0
+		return flt(get_exchange_rate(from_currency, to_currency, date, side)) or 1.0
 	except Exception:
 		return 1.0
 
