@@ -13,6 +13,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { canCreate } = usePermissions();
@@ -52,17 +53,20 @@ const FIELDS = [
 ];
 
 const columns = [
-	{ key: "name", label: "ID" },
-	{ key: "title", label: "Title" },
-	{ key: "project", label: "Project" },
-	{ key: "type", label: "Type" },
-	{ key: "impact", label: "Impact", align: "right" },
-	{ key: "recoverable", label: "Recoverable" },
-	{ key: "status", label: "Status" },
-	{ key: "raised_date", label: "Date" },
+	{ key: "name", label: __("ID") },
+	{ key: "title", label: __("Title") },
+	{ key: "project", label: __("Project") },
+	{ key: "type", label: __("Type") },
+	{ key: "impact", label: __("Impact"), align: "right" },
+	{ key: "recoverable", label: __("Recoverable") },
+	{ key: "status", label: __("Status") },
+	{ key: "raised_date", label: __("Date") },
 ];
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Scope Change Orders" }];
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Scope Change Orders") },
+];
 
 function onRowClick(row) {
 	router.push(`/sco/${row.name}`);
@@ -70,10 +74,10 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Scope Change Orders" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Scope Change Orders')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink v-if="canCreate('sco')" to="/sco/new" class="desk-save-btn"
-				>+ Raise SCO</RouterLink
+				>{{ __("+ Raise SCO") }}</RouterLink
 			>
 		</template>
 
@@ -81,13 +85,13 @@ function onRowClick(row) {
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Total SCOs
+					{{ __("Total SCOs") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ all.length }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Pending approval
+					{{ __("Pending approval") }}
 				</div>
 				<div class="text-base font-semibold text-warning-700 mt-0.5">
 					{{ pendingCount }}
@@ -95,7 +99,7 @@ function onRowClick(row) {
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Net cost impact
+					{{ __("Net cost impact") }}
 				</div>
 				<div
 					class="text-base font-semibold mt-0.5 tabular-nums"
@@ -106,7 +110,7 @@ function onRowClick(row) {
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Client recoverable
+					{{ __("Client recoverable") }}
 				</div>
 				<div class="text-base font-semibold text-success-700 mt-0.5 tabular-nums">
 					{{ fmtCompactINR(recoverableTotal) }}
@@ -123,21 +127,21 @@ function onRowClick(row) {
 			:filter-field-map="filterFieldMap"
 			cache-key="buildsuite-sco-list"
 			row-key="name"
-			search-placeholder="Search SCO id or title…"
-			empty-message="No scope change orders yet."
+			:search-placeholder="__('Search SCO id or title…')"
+			:empty-message="__('No scope change orders yet.')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
 				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-44">
-					<option value="">Status: Any</option>
-					<option>Pending Approval</option>
-					<option>Approved</option>
-					<option>Rejected</option>
+					<option value="">{{ __("Status: Any") }}</option>
+					<option value="Pending Approval">{{ __("Pending Approval") }}</option>
+					<option value="Approved">{{ __("Approved") }}</option>
+					<option value="Rejected">{{ __("Rejected") }}</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Status"
-					:value="statusFilter"
+					:label="__('Status')"
+					:value="__(statusFilter)"
 					@remove="statusFilter = ''"
 				/>
 			</template>
@@ -154,7 +158,7 @@ function onRowClick(row) {
 				<span class="text-ink-700 text-xs">{{ row.project_name || row.project }}</span>
 			</template>
 			<template #cell-type="{ row }">
-				<span class="text-ink-700 text-xs">{{ row.type }}</span>
+				<span class="text-ink-700 text-xs">{{ __(row.type) }}</span>
 			</template>
 			<template #cell-impact="{ row }">
 				<span
@@ -169,12 +173,12 @@ function onRowClick(row) {
 				<span
 					v-if="row.recoverable"
 					class="text-[10px] px-1.5 py-0.5 bg-success-50 text-success-700 font-medium rounded"
-					>Yes</span
+					>{{ __("Yes") }}</span
 				>
 				<span
 					v-else
 					class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600 font-medium rounded"
-					>Internal</span
+					>{{ __("Internal") }}</span
 				>
 			</template>
 			<template #cell-status="{ row }">

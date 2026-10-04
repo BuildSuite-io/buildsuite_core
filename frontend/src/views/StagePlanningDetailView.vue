@@ -6,6 +6,7 @@ import { usePageTitle } from "@/composables/usePageTitle";
 // DocType carries those fields.
 
 import { ref, computed, watch } from "vue";
+import { __ } from "@/utils/translate";
 import AccessDenied from "@/components/AccessDenied.vue";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { useRouter, useRoute, RouterLink } from "vue-router";
@@ -374,27 +375,30 @@ const tasksLocked = computed(() => stage.value?.workflowState === "Approved");
 // so Submit / Approve / Revise / Cancel all ask before they act.
 const ACTION_CONFIRM = {
 	"Submit for Approval": {
-		title: "Submit for approval",
-		message:
-			"This stage will be sent for approval. You won't be able to edit it while it is pending.",
-		confirmLabel: "Submit",
+		title: __("Submit for approval"),
+		message: __(
+			"This stage will be sent for approval. You won't be able to edit it while it is pending."
+		),
+		confirmLabel: __("Submit"),
 	},
 	Approve: {
-		title: "Approve stage",
-		message:
-			"Approving will lock the stage scope, dates, and task list. Subsequent edits require Revise.",
-		confirmLabel: "Approve",
+		title: __("Approve stage"),
+		message: __(
+			"Approving will lock the stage scope, dates, and task list. Subsequent edits require Revise."
+		),
+		confirmLabel: __("Approve"),
 	},
 	Revise: {
-		title: "Revise stage",
-		message:
-			"This stage will move back to Draft. You can keep editing and resubmit for approval when ready.",
-		confirmLabel: "Revise",
+		title: __("Revise stage"),
+		message: __(
+			"This stage will move back to Draft. You can keep editing and resubmit for approval when ready."
+		),
+		confirmLabel: __("Revise"),
 	},
 	Cancel: {
-		title: "Cancel stage",
-		message: "This will cancel the stage.",
-		confirmLabel: "Cancel stage",
+		title: __("Cancel stage"),
+		message: __("This will cancel the stage."),
+		confirmLabel: __("Cancel stage"),
 		destructive: true,
 	},
 };
@@ -407,10 +411,11 @@ const confirmContent = computed(() => {
 	// Revise on a Rejected stage clones into a fresh Draft — say so explicitly.
 	if (wf.action === "Revise" && wf.clone) {
 		return {
-			title: "Revise stage",
-			message:
-				"A new draft copy will be created from this rejected stage so you can edit and resubmit it. The rejected stage is kept as a record.",
-			confirmLabel: "Revise",
+			title: __("Revise stage"),
+			message: __(
+				"A new draft copy will be created from this rejected stage so you can edit and resubmit it. The rejected stage is kept as a record."
+			),
+			confirmLabel: __("Revise"),
 		};
 	}
 	return ACTION_CONFIRM[wf.action] || {};
@@ -456,9 +461,9 @@ async function applyWorkflowAction(action) {
 		}
 		await stageResource.value?.reload?.();
 		await fetchActivity();
-		showToast(`${action} applied`);
+		showToast(__("{0} applied", [action]));
 	} catch (err) {
-		showToast(err.message || `Failed to apply ${action}`, "error");
+		showToast(err.message || __("Failed to apply {0}", [action]), "error");
 	} finally {
 		workflowActing.value = null;
 	}
@@ -488,10 +493,10 @@ async function reviseRejectedStage() {
 			throw new Error(data?.exception || data?.exc_type || `HTTP ${response.status}`);
 		}
 		const newName = data?.message?.name;
-		showToast("Stage revised — editing the new draft");
+		showToast(__("Stage revised — editing the new draft"));
 		if (newName) router.push({ path: `/stage-plannings/${newName}`, query: { edit: "1" } });
 	} catch (err) {
-		showToast(err.message || "Failed to revise stage", "error");
+		showToast(err.message || __("Failed to revise stage"), "error");
 	} finally {
 		workflowActing.value = null;
 	}
@@ -552,7 +557,7 @@ async function confirmReject() {
 	if (!stage.value) return;
 	const reason = rejectReason.value.trim();
 	if (!reason) {
-		rejectError.value = "Please enter a rejection reason.";
+		rejectError.value = __("Please enter a rejection reason.");
 		return;
 	}
 	rejectError.value = "";
@@ -578,9 +583,9 @@ async function confirmReject() {
 		showRejectModal.value = false;
 		await stageResource.value?.reload?.();
 		await fetchActivity();
-		showToast("Stage rejected");
+		showToast(__("Stage rejected"));
 	} catch (err) {
-		rejectError.value = err.message || "Failed to reject stage";
+		rejectError.value = err.message || __("Failed to reject stage");
 	} finally {
 		workflowActing.value = null;
 	}
@@ -644,13 +649,13 @@ function toggleDependency(depId) {
 
 function validateEdit() {
 	const e = {};
-	if (!editForm.value.stageName?.trim()) e.stageName = "Stage name is required";
+	if (!editForm.value.stageName?.trim()) e.stageName = __("Stage name is required");
 	if (
 		editForm.value.plannedEnd &&
 		editForm.value.plannedStart &&
 		editForm.value.plannedEnd < editForm.value.plannedStart
 	) {
-		e.plannedEnd = "End must be on or after start";
+		e.plannedEnd = __("End must be on or after start");
 	}
 	setErrors(e);
 	return Object.keys(e).length === 0;
@@ -684,9 +689,9 @@ async function saveEdit() {
 		});
 		await stageResource.value?.reload?.();
 		editing.value = false;
-		showToast("Stage updated");
+		showToast(__("Stage updated"));
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update stage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update stage"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -704,7 +709,7 @@ async function persistChildRows(rows) {
 		await stageResource.value?.reload?.();
 		pendingQty.value = {}; // authoritative data reloaded — drop optimistic overrides
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update stage tasks", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update stage tasks"), "error");
 		throw err;
 	} finally {
 		saving.value = false;
@@ -727,14 +732,14 @@ async function persistQtyRows(rows) {
 			planned_task_count: childRows.length,
 		});
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to save planned progress", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to save planned progress"), "error");
 	}
 }
 
 async function onPickerSave(payload) {
 	try {
 		await persistChildRows(payload?.newChildRows || []);
-		showToast("Stage tasks updated");
+		showToast(__("Stage tasks updated"));
 	} catch {
 		// toast already shown
 	}
@@ -768,7 +773,7 @@ async function confirmDelete() {
 		if (project.value) router.push(`/projects/${project.value.id}`);
 		else router.push("/stage-plannings");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete stage", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete stage"), "error");
 	}
 }
 
@@ -797,8 +802,8 @@ const dependencyCount = computed(() => (stage.value?.dependencies || []).length)
 
 const breadcrumbs = computed(() => {
 	const out = [
-		{ label: "BuildSuite Core", to: "/" },
-		{ label: "Stage Planning", to: "/stage-plannings" },
+		{ label: __("BuildSuite Core"), to: "/" },
+		{ label: __("Stage Planning"), to: "/stage-plannings" },
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
@@ -824,7 +829,7 @@ usePageTitle(() => stage.value?.stageName);
 				style="border-radius: 6px"
 				@click="onStageReview"
 			>
-				Stage Review
+				{{ __("Stage Review") }}
 			</button>
 
 			<!-- Workflow action buttons -->
@@ -836,7 +841,7 @@ usePageTitle(() => stage.value?.stageName);
 					:disabled="!!workflowActing"
 					@click="runAction(wf)"
 				>
-					{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}
+					{{ workflowActing === wf.action ? `${__(wf.action)}…` : __(wf.action) }}
 				</button>
 				<button
 					v-else-if="wf.variant === 'success'"
@@ -846,7 +851,7 @@ usePageTitle(() => stage.value?.stageName);
 					:disabled="!!workflowActing"
 					@click="runAction(wf)"
 				>
-					{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}
+					{{ workflowActing === wf.action ? `${__(wf.action)}…` : __(wf.action) }}
 				</button>
 				<button
 					v-else-if="wf.variant === 'warning'"
@@ -856,7 +861,7 @@ usePageTitle(() => stage.value?.stageName);
 					:disabled="!!workflowActing"
 					@click="runAction(wf)"
 				>
-					{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}
+					{{ workflowActing === wf.action ? `${__(wf.action)}…` : __(wf.action) }}
 				</button>
 				<button
 					v-else-if="wf.variant === 'danger'"
@@ -866,7 +871,7 @@ usePageTitle(() => stage.value?.stageName);
 					:disabled="!!workflowActing"
 					@click="runAction(wf)"
 				>
-					{{ workflowActing === wf.action ? `${wf.action}…` : wf.action }}
+					{{ workflowActing === wf.action ? `${__(wf.action)}…` : __(wf.action) }}
 				</button>
 			</template>
 
@@ -878,7 +883,7 @@ usePageTitle(() => stage.value?.stageName);
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 
 			<button
@@ -888,7 +893,7 @@ usePageTitle(() => stage.value?.stageName);
 				style="border-radius: 6px"
 				@click="showDeleteConfirm = true"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -899,7 +904,7 @@ usePageTitle(() => stage.value?.stageName);
 			style="border-radius: 8px"
 		>
 			<div class="text-[11px] uppercase tracking-wider font-semibold text-danger-700 mb-1">
-				Stage rejected
+				{{ __("Stage rejected") }}
 			</div>
 			<div
 				v-if="stage.rejectReason"
@@ -907,7 +912,7 @@ usePageTitle(() => stage.value?.stageName);
 			>
 				{{ stage.rejectReason }}
 			</div>
-			<div v-else class="text-sm text-ink-500 italic">No reason recorded.</div>
+			<div v-else class="text-sm text-ink-500 italic">{{ __("No reason recorded.") }}</div>
 		</div>
 
 		<!-- KPI strip -->
@@ -930,13 +935,13 @@ usePageTitle(() => stage.value?.stageName);
 						aria-hidden="true"
 						v-html="getWorkspaceIconPath('calendar')"
 					/>
-					Window
+					{{ __("Window") }}
 				</div>
 				<div class="text-sm font-semibold text-ink-900 mt-1.5 dark:text-[#F5F5F5]">
 					{{ fmtDate(stage.plannedStart) || "—" }}
 				</div>
 				<div class="text-[11px] text-ink-500 mt-0.5">
-					to {{ fmtDate(stage.plannedEnd) || "—" }}
+					{{ __("to") }} {{ fmtDate(stage.plannedEnd) || "—" }}
 				</div>
 			</div>
 			<div
@@ -957,7 +962,7 @@ usePageTitle(() => stage.value?.stageName);
 						aria-hidden="true"
 						v-html="getWorkspaceIconPath('chart-line')"
 					/>
-					Duration
+					{{ __("Duration") }}
 				</div>
 				<div
 					class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]"
@@ -966,7 +971,7 @@ usePageTitle(() => stage.value?.stageName);
 					<span
 						v-if="stageDurationDays !== null"
 						class="text-xs text-ink-500 font-normal"
-						>day{{ stageDurationDays === 1 ? "" : "s" }}</span
+						>{{ stageDurationDays === 1 ? __("day") : __("days") }}</span
 					>
 				</div>
 			</div>
@@ -988,7 +993,7 @@ usePageTitle(() => stage.value?.stageName);
 						aria-hidden="true"
 						v-html="getWorkspaceIconPath('clipboard-list')"
 					/>
-					Tasks
+					{{ __("Tasks") }}
 				</div>
 				<div
 					class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]"
@@ -1022,7 +1027,7 @@ usePageTitle(() => stage.value?.stageName);
 						aria-hidden="true"
 						v-html="getWorkspaceIconPath('refresh-ccw')"
 					/>
-					Dependencies
+					{{ __("Dependencies") }}
 				</div>
 				<div
 					class="text-lg font-semibold text-ink-900 mt-1 tabular-nums dark:text-[#F5F5F5]"
@@ -1032,10 +1037,10 @@ usePageTitle(() => stage.value?.stageName);
 				<div class="text-[11px] text-ink-500 mt-0.5">
 					{{
 						dependencyCount === 0
-							? "starts independently"
+							? __("starts independently")
 							: dependencyCount === 1
-							? "stage must complete first"
-							: "stages must complete first"
+							? __("stage must complete first")
+							: __("stages must complete first")
 					}}
 				</div>
 			</div>
@@ -1061,13 +1066,13 @@ usePageTitle(() => stage.value?.stageName);
 					v-html="getWorkspaceIconPath('info')"
 				/>
 				<h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">
-					Stage details
+					{{ __("Stage details") }}
 				</h2>
 			</header>
 			<div class="p-5 space-y-4">
 				<div>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Project
+						{{ __("Project") }}
 					</div>
 					<div class="text-sm mt-1">
 						<DeskLink v-if="project" :to="`/projects/${project.id}`">{{
@@ -1078,7 +1083,7 @@ usePageTitle(() => stage.value?.stageName);
 				</div>
 				<div>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Description
+						{{ __("Description") }}
 					</div>
 					<div class="text-sm text-ink-700 mt-1 whitespace-pre-line dark:text-ink-300">
 						{{ stage.description || "—" }}
@@ -1088,7 +1093,7 @@ usePageTitle(() => stage.value?.stageName);
 		</section>
 
 		<!-- Dependencies -->
-		<DeskSection title="Dependencies">
+		<DeskSection :title="__('Dependencies')">
 			<div class="md:col-span-2">
 				<div v-if="(stage.dependencies || []).length" class="flex flex-wrap gap-1.5">
 					<DeskLink
@@ -1101,7 +1106,7 @@ usePageTitle(() => stage.value?.stageName);
 					>
 				</div>
 				<div v-else class="text-xs text-ink-400 italic">
-					No dependencies · this stage can start independently.
+					{{ __("No dependencies · this stage can start independently.") }}
 				</div>
 			</div>
 		</DeskSection>
@@ -1110,16 +1115,19 @@ usePageTitle(() => stage.value?.stageName);
 		<section class="mb-6">
 			<div class="flex items-center justify-between mb-2">
 				<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-					Tasks in this stage
+					{{ __("Tasks in this stage") }}
 				</div>
 				<div class="flex items-center gap-3">
 					<span class="text-[11px] text-ink-500 tabular-nums">
-						{{ (stage.stagePlanningTasks || []).length }} task{{
-							(stage.stagePlanningTasks || []).length === 1 ? "" : "s"
+						{{ (stage.stagePlanningTasks || []).length }}
+						{{
+							(stage.stagePlanningTasks || []).length === 1
+								? __("task")
+								: __("tasks")
 						}}
 					</span>
 					<span v-if="tasksLocked" class="text-[11px] text-ink-400 italic"
-						>Locked — stage is approved</span
+						>{{ __("Locked — stage is approved") }}</span
 					>
 					<button
 						v-else-if="canEditPerm('stagePlanning')"
@@ -1129,7 +1137,7 @@ usePageTitle(() => stage.value?.stageName);
 						:disabled="saving"
 						@click="openPicker"
 					>
-						Add/Remove Tasks
+						{{ __("Add/Remove Tasks") }}
 					</button>
 				</div>
 			</div>
@@ -1143,11 +1151,11 @@ usePageTitle(() => stage.value?.stageName);
 						class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium dark:bg-ink-800 dark:border-ink-700"
 						style="grid-template-columns: minmax(220px, 1fr) 110px 110px 110px 110px"
 					>
-						<div class="px-3 py-1.5">Task</div>
-						<div class="px-3 py-1.5">Planned Start</div>
-						<div class="px-3 py-1.5">Planned End</div>
-						<div class="px-3 py-1.5 text-right">Planned Progress (%)</div>
-						<div class="px-3 py-1.5">Status</div>
+						<div class="px-3 py-1.5">{{ __("Task") }}</div>
+						<div class="px-3 py-1.5">{{ __("Planned Start") }}</div>
+						<div class="px-3 py-1.5">{{ __("Planned End") }}</div>
+						<div class="px-3 py-1.5 text-right">{{ __("Planned Progress (%)") }}</div>
+						<div class="px-3 py-1.5">{{ __("Status") }}</div>
 					</div>
 					<div
 						v-for="row in stage.stagePlanningTasks"
@@ -1162,7 +1170,7 @@ usePageTitle(() => stage.value?.stageName);
 								class="text-ink-900 font-medium hover:underline dark:text-[#F5F5F5]"
 								>{{ taskName(row.task) }}</RouterLink
 							>
-							<span v-else class="text-ink-400 italic">No task linked</span>
+							<span v-else class="text-ink-400 italic">{{ __("No task linked") }}</span>
 						</div>
 						<div class="px-3 py-1.5 text-xs text-ink-700 dark:text-ink-300">
 							{{ fmtDate(row.plannedStart) || "—" }}
@@ -1196,7 +1204,7 @@ usePageTitle(() => stage.value?.stageName);
 					</div>
 				</div>
 				<div v-else class="text-xs text-ink-400 italic">
-					No task rows yet · click "Add/Remove Tasks" above to pick tasks for this stage.
+					{{ __('No task rows yet · click "Add/Remove Tasks" above to pick tasks for this stage.') }}
 				</div>
 			</div>
 		</section>
@@ -1212,7 +1220,7 @@ usePageTitle(() => stage.value?.stageName);
 				style="border-radius: 6px 6px 0 0"
 			>
 				<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-					Activity
+					{{ __("Activity") }}
 				</div>
 			</header>
 			<div v-if="activityEntries.length" class="divide-y divide-ink-100 dark:divide-ink-800">
@@ -1231,12 +1239,13 @@ usePageTitle(() => stage.value?.stageName);
 							{{ entry.text || entry.type }}
 						</div>
 						<div class="text-[11px] text-ink-500 mt-0.5">
-							by {{ entry.by_name || entry.by }} · {{ activityWhen(entry.at) }}
+							{{ __("by") }} {{ entry.by_name || entry.by }} ·
+							{{ activityWhen(entry.at) }}
 						</div>
 					</div>
 				</div>
 			</div>
-			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">No activity yet.</div>
+			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">{{ __("No activity yet.") }}</div>
 		</section>
 
 		<!-- Edit modal -->
@@ -1257,7 +1266,7 @@ usePageTitle(() => stage.value?.stageName);
 					>
 						<div class="min-w-0 flex-1">
 							<h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">
-								Edit stage
+								{{ __("Edit stage") }}
 							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ stage.stageName
@@ -1267,7 +1276,7 @@ usePageTitle(() => stage.value?.stageName);
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3 dark:text-ink-400 dark:hover:text-ink-200"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="cancelEdit"
 						>
 							×
@@ -1275,38 +1284,38 @@ usePageTitle(() => stage.value?.stageName);
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection title="Stage details">
-							<DeskField label="Stage name" required :error="errors.stageName">
+						<DeskSection :title="__('Stage details')">
+							<DeskField :label="__('Stage name')" required :error="errors.stageName">
 								<DeskInput
 									v-model="editForm.stageName"
 									@input="clearError('stageName')"
 								/>
 							</DeskField>
 							<DeskField
-								label="Project"
-								hint="Locked after create — move tasks instead of reparenting a stage."
+								:label="__('Project')"
+								:hint="__('Locked after create — move tasks instead of reparenting a stage.')"
 							>
 								<DeskInput
 									:model-value="project ? project.name : editForm.project"
 									disabled
 								/>
 							</DeskField>
-							<DeskField label="Planned start">
+							<DeskField :label="__('Planned start')">
 								<DeskInput v-model="editForm.plannedStart" type="date" />
 							</DeskField>
-							<DeskField label="Planned end" :error="errors.plannedEnd">
+							<DeskField :label="__('Planned end')" :error="errors.plannedEnd">
 								<DeskInput
 									v-model="editForm.plannedEnd"
 									type="date"
 									@input="clearError('plannedEnd')"
 								/>
 							</DeskField>
-							<DeskField label="Description">
+							<DeskField :label="__('Description')">
 								<DeskTextarea v-model="editForm.description" :rows="3" />
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection title="Dependencies">
+						<DeskSection :title="__('Dependencies')">
 							<div class="md:col-span-2">
 								<div v-if="siblingStages.length" class="flex flex-wrap gap-2">
 									<label
@@ -1330,16 +1339,23 @@ usePageTitle(() => stage.value?.stageName);
 									</label>
 								</div>
 								<div v-else class="text-xs text-ink-400 italic">
-									No other stages on this project yet · add one to create a
-									dependency.
+									{{
+										__(
+											"No other stages on this project yet · add one to create a dependency."
+										)
+									}}
 								</div>
 								<div class="text-[11px] text-ink-500 mt-1.5">
-									Pick the stages that must complete before this one can start.
+									{{
+										__(
+											"Pick the stages that must complete before this one can start."
+										)
+									}}
 								</div>
 							</div>
 						</DeskSection>
 
-						<DeskSection title="Tasks">
+						<DeskSection :title="__('Tasks')">
 							<div class="md:col-span-2 text-xs text-ink-500">
 								{{ (stage.stagePlanningTasks || []).length }} task{{
 									(stage.stagePlanningTasks || []).length === 1 ? "" : "s"
@@ -1364,7 +1380,7 @@ usePageTitle(() => stage.value?.stageName);
 							:disabled="saving"
 							@click="cancelEdit"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -1372,7 +1388,7 @@ usePageTitle(() => stage.value?.stageName);
 							:disabled="saving"
 							@click="saveEdit"
 						>
-							{{ saving ? "Saving…" : "Save" }}
+							{{ saving ? __("Saving…") : __("Save") }}
 						</button>
 					</footer>
 				</div>
@@ -1411,7 +1427,7 @@ usePageTitle(() => stage.value?.stageName);
 					>
 						<div class="min-w-0 flex-1">
 							<h2 class="text-sm font-semibold text-ink-900 dark:text-[#F5F5F5]">
-								Reject stage
+								{{ __("Reject stage") }}
 							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ stage.stageName }}
@@ -1420,7 +1436,7 @@ usePageTitle(() => stage.value?.stageName);
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3 dark:text-ink-400 dark:hover:text-ink-200"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="showRejectModal = false"
 						>
 							×
@@ -1428,18 +1444,21 @@ usePageTitle(() => stage.value?.stageName);
 					</header>
 
 					<div class="p-5">
-						<DeskField label="Rejection reason" required :error="rejectError">
+						<DeskField :label="__('Rejection reason')" required :error="rejectError">
 							<DeskTextarea
 								v-model="rejectReason"
 								data-test="reject-reason-input"
 								:rows="4"
-								placeholder="Explain why this stage is being rejected…"
+								:placeholder="__('Explain why this stage is being rejected…')"
 								@input="rejectError = ''"
 							/>
 						</DeskField>
 						<p class="text-[11px] text-ink-500 mt-1.5">
-							This reason is recorded on the stage. Rejection is final — the stage
-							cannot be revised afterwards.
+							{{
+								__(
+									"This reason is recorded on the stage. Rejection is final — the stage cannot be revised afterwards."
+								)
+							}}
 						</p>
 					</div>
 
@@ -1454,7 +1473,7 @@ usePageTitle(() => stage.value?.stageName);
 							:disabled="workflowActing === 'Reject'"
 							@click="showRejectModal = false"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -1464,7 +1483,7 @@ usePageTitle(() => stage.value?.stageName);
 							:disabled="workflowActing === 'Reject'"
 							@click="confirmReject"
 						>
-							{{ workflowActing === "Reject" ? "Rejecting…" : "Reject stage" }}
+							{{ workflowActing === "Reject" ? __("Rejecting…") : __("Reject stage") }}
 						</button>
 					</footer>
 				</div>
@@ -1473,9 +1492,14 @@ usePageTitle(() => stage.value?.stageName);
 
 		<ConfirmDialog
 			v-model:open="showDeleteConfirm"
-			title="Delete stage"
-			:message="`Delete &quot;${stage.stageName}&quot;? Dependencies in other stages pointing at this one will be cleaned up automatically.`"
-			confirm-label="Delete"
+			:title="__('Delete stage')"
+			:message="
+				__(
+					'Delete &quot;{0}&quot;? Dependencies in other stages pointing at this one will be cleaned up automatically.',
+					[stage.stageName]
+				)
+			"
+			:confirm-label="__('Delete')"
 			:destructive="true"
 			@confirm="confirmDelete"
 		/>
@@ -1498,13 +1522,13 @@ usePageTitle(() => stage.value?.stageName);
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this stage"
+		:title="__('You don\'t have access to this stage')"
 		back-to="/stage-plannings"
-		back-label="Back to Stage Planning"
+		:back-label="__('Back to Stage Planning')"
 	/>
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
-		Stage not found ·
-		<RouterLink to="/stage-plannings" class="desk-link">Back to list →</RouterLink>
+		{{ __("Stage not found") }} ·
+		<RouterLink to="/stage-plannings" class="desk-link">{{ __("Back to list") }} →</RouterLink>
 	</div>
 </template>

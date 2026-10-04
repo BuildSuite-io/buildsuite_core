@@ -2,6 +2,7 @@
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	project: { type: Object, required: true },
@@ -35,7 +36,7 @@ const { canEdit } = usePermissions();
 					:disabled="!hasCandidates"
 					@click="emit('add')"
 				>
-					+ Add Member
+					{{ __("+ Add Member") }}
 				</button>
 			</template>
 			<template #cell-member="{ row }">
@@ -60,30 +61,30 @@ const { canEdit } = usePermissions();
 						v-if="row.id === project.pm"
 						class="text-[10px] font-medium px-1.5 py-0.5 bg-brand-50 text-brand-700"
 						style="border-radius: 9999px"
-						>Project Manager</span
+						>{{ __("Project Manager") }}</span
 					>
 					<button
 						v-else-if="canEdit('project')"
 						type="button"
 						class="text-xs px-2 py-0.5 border border-ink-200 bg-white hover:bg-danger-50 hover:border-danger-200 text-ink-500 hover:text-danger-700"
 						style="border-radius: 6px"
-						:title="`Remove ${row.name} from this project`"
+						:title="__('Remove {0} from this project', [row.name])"
 						@click.stop="emit('remove', row.id)"
 					>
-						Remove
+						{{ __("Remove") }}
 					</button>
 				</div>
 			</template>
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					No team members yet.
+					{{ __("No team members yet.") }}
 					<button
 						v-if="hasCandidates && canEdit('project')"
 						type="button"
 						class="desk-link"
 						@click="emit('add')"
 					>
-						Add the first one →
+						{{ __("Add the first one →") }}
 					</button>
 				</div>
 			</template>

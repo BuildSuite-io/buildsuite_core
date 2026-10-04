@@ -18,6 +18,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 const router = useRouter();
@@ -86,7 +87,7 @@ watch(
 		try {
 			const po = await getPurchaseOrder(id);
 			if (po.state !== "Draft") {
-				showToast("Only a draft order can be edited.", "error");
+				showToast(__("Only a draft order can be edited."), "error");
 				router.replace(`/procurement/purchase-orders/${id}`);
 				return;
 			}
@@ -105,7 +106,7 @@ watch(
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
 		} catch (err) {
-			showToast(err.message || "Failed to load order", "error");
+			showToast(err.message || __("Failed to load order"), "error");
 		}
 	},
 	{ immediate: true }
@@ -130,7 +131,7 @@ watch(
 				}));
 			}
 		} catch (err) {
-			showToast(err.message || "Failed to load material request", "error");
+			showToast(err.message || __("Failed to load material request"), "error");
 		}
 	},
 	{ immediate: true }
@@ -156,9 +157,9 @@ function lineAmount(l) {
 
 function validate() {
 	const e = {};
-	if (!form.value.supplier) e.supplier = "Pick a supplier.";
-	if (!form.value.project) e.project = "Pick a project.";
-	if (!validLines.value.length) e.lines = "Add at least one item with a quantity.";
+	if (!form.value.supplier) e.supplier = __("Pick a supplier.");
+	if (!form.value.project) e.project = __("Pick a project.");
+	if (!validLines.value.length) e.lines = __("Add at least one item with a quantity.");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -181,10 +182,10 @@ async function onSave() {
 				rate: Number(l.rate) || 0,
 			})),
 		});
-		showToast(isEdit.value ? "Order saved." : "Order created.");
+		showToast(isEdit.value ? __("Order saved.") : __("Order created."));
 		router.push(`/procurement/purchase-orders/${po.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save order", "error");
+		showToast(err.message || __("Failed to save order"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -194,19 +195,19 @@ function onCancel() {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Purchase Orders", to: "/procurement/purchase-orders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Orders"), to: "/procurement/purchase-orders" },
 	isEdit.value
 		? { label: editingId.value, to: `/procurement/purchase-orders/${editingId.value}` }
-		: { label: "New" },
-	...(isEdit.value ? [{ label: "Edit" }] : []),
+		: { label: __("New") },
+	...(isEdit.value ? [{ label: __("Edit") }] : []),
 ]);
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Purchase Order"
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Purchase Order")
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create order"
+	saving.value ? __("Saving…") : isEdit.value ? __("Save changes") : __("Create order")
 );
 </script>
 
@@ -217,7 +218,11 @@ const saveLabel = computed(() =>
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this" : "create a" }} purchase order.
+			{{
+				isEdit
+					? __("You don't have permission to edit this purchase order.")
+					: __("You don't have permission to create a purchase order.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
@@ -233,27 +238,27 @@ const saveLabel = computed(() =>
 				v-if="form.material_request"
 				class="mb-4 px-4 py-2 bg-info-50 border border-info-200 rounded-md text-xs text-info-700"
 			>
-				Converting from Material Request
-				<span class="font-mono">{{ form.material_request }}</span> — lines pre-filled; set
-				the supplier and rates.
+				{{ __("Converting from Material Request") }}
+				<span class="font-mono">{{ form.material_request }}</span> —
+				{{ __("lines pre-filled; set the supplier and rates.") }}
 			</div>
 
-			<DeskSection title="Order" :cols="3">
-				<DeskField label="Supplier" required :error="errors.supplier">
+			<DeskSection :title="__('Order')" :cols="3">
+				<DeskField :label="__('Supplier')" required :error="errors.supplier">
 					<DeskLinkPicker
 						v-model="form.supplier"
 						doctype="Supplier"
 						label-field="supplier_name"
 						value-field="name"
 						:search-fields="['supplier_name', 'name']"
-						placeholder="— Select supplier —"
+						:placeholder="__('— Select supplier —')"
 					/>
 				</DeskField>
 				<DeskField
-					label="Project"
+					:label="__('Project')"
 					required
 					:error="errors.project"
-					:hint="isEdit ? 'Locked while editing.' : ''"
+					:hint="isEdit ? __('Locked while editing.') : ''"
 				>
 					<DeskLinkPicker
 						v-model="form.project"
@@ -262,10 +267,10 @@ const saveLabel = computed(() =>
 						value-field="name"
 						:search-fields="['project_name', 'name']"
 						:disabled="isEdit"
-						placeholder="— Select project —"
+						:placeholder="__('— Select project —')"
 					/>
 				</DeskField>
-				<DeskField label="Required by">
+				<DeskField :label="__('Required by')">
 					<DeskInput v-model="form.schedule_date" type="date" />
 				</DeskField>
 			</DeskSection>
@@ -274,26 +279,28 @@ const saveLabel = computed(() =>
 			<section class="mt-6">
 				<div class="flex items-center justify-between mb-2 gap-3">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Items
+						{{ __("Items") }}
 					</h3>
 					<button
 						type="button"
 						class="text-xs text-brand-700 hover:underline"
 						@click="addLine"
 					>
-						+ Add item
+						+ {{ __("Add item") }}
 					</button>
 				</div>
 				<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 					<table class="w-full text-xs" style="min-width: 760px">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
-								<th class="text-left px-3 py-2" style="min-width: 200px">Item</th>
-								<th class="text-left px-3 py-2">Notes</th>
-								<th class="text-right px-3 py-2 w-20">Qty</th>
-								<th class="text-left px-3 py-2 w-28">UOM</th>
-								<th class="text-right px-3 py-2 w-28">Rate</th>
-								<th class="text-right px-3 py-2 w-28">Amount</th>
+								<th class="text-left px-3 py-2" style="min-width: 200px">
+									{{ __("Item") }}
+								</th>
+								<th class="text-left px-3 py-2">{{ __("Notes") }}</th>
+								<th class="text-right px-3 py-2 w-20">{{ __("Qty") }}</th>
+								<th class="text-left px-3 py-2 w-28">{{ __("UOM") }}</th>
+								<th class="text-right px-3 py-2 w-28">{{ __("Rate") }}</th>
+								<th class="text-right px-3 py-2 w-28">{{ __("Amount") }}</th>
 								<th class="text-center px-2 py-2 w-8"></th>
 							</tr>
 						</thead>
@@ -310,9 +317,9 @@ const saveLabel = computed(() =>
 										label-field="item_name"
 										value-field="name"
 										:search-fields="['item_name', 'item_code', 'name']"
-										placeholder="— Item —"
+										:placeholder="__('— Item —')"
 										:allow-create="canCreate('item')"
-										create-label="item"
+										:create-label="__('item')"
 										@update:model-value="onPickItem(line)"
 										@create="(text) => openItemCreate(line, text)"
 									/>
@@ -321,7 +328,7 @@ const saveLabel = computed(() =>
 									<input
 										v-model="line.description"
 										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
-										placeholder="Notes…"
+										:placeholder="__('Notes…')"
 									/>
 								</td>
 								<td class="px-3 py-2">
@@ -359,7 +366,7 @@ const saveLabel = computed(() =>
 									<button
 										type="button"
 										class="text-ink-400 hover:text-danger-600"
-										title="Remove"
+										:title="__('Remove')"
 										@click="removeLine(idx)"
 									>
 										✕
@@ -373,7 +380,7 @@ const saveLabel = computed(() =>
 									colspan="5"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
-									Total
+									{{ __("Total") }}
 								</td>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"

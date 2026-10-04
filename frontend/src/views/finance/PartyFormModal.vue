@@ -4,11 +4,12 @@
 // supplies the title + type options and persists via its own API call, so this
 // component owns no data logic. Ported from the prototype (PartyFormModal).
 import { ref, watch } from "vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	open: { type: Boolean, default: false },
-	title: { type: String, default: "New party" },
-	typeLabel: { type: String, default: "Type" },
+	title: { type: String, default: () => __("New party") },
+	typeLabel: { type: String, default: () => __("Type") },
 	typeOptions: { type: Array, default: () => [] }, // string[]
 	initial: { type: Object, default: null }, // for edit
 	serverError: { type: String, default: "" }, // e.g. duplicate-name from the parent's save attempt
@@ -37,7 +38,7 @@ watch(
 function onSave() {
 	const name = (form.value.name || "").trim();
 	if (!name) {
-		error.value = "Name is required.";
+		error.value = __("Name is required.");
 		return;
 	}
 	emit("save", { ...form.value, name });
@@ -63,7 +64,7 @@ function onSave() {
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
-						aria-label="Close"
+						:aria-label="__('Close')"
 						@click="emit('close')"
 					>
 						✕
@@ -77,13 +78,13 @@ function onSave() {
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Name <span class="text-danger-600">*</span></label
+							>{{ __("Name") }} <span class="text-danger-600">*</span></label
 						>
 						<input
 							v-model="form.name"
 							type="text"
 							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
-							placeholder="Party name"
+							:placeholder="__('Party name')"
 						/>
 						<div v-if="error || serverError" class="text-[11px] text-danger-600 mt-1">
 							{{ error || serverError }}
@@ -99,14 +100,14 @@ function onSave() {
 							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 						>
 							<option value="">—</option>
-							<option v-for="t in typeOptions" :key="t" :value="t">{{ t }}</option>
+							<option v-for="t in typeOptions" :key="t" :value="t">{{ __(t) }}</option>
 						</select>
 					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Contact person</label
+								>{{ __("Contact person") }}</label
 							>
 							<input
 								v-model="form.contactPerson"
@@ -117,7 +118,7 @@ function onSave() {
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Phone</label
+								>{{ __("Phone") }}</label
 							>
 							<input
 								v-model="form.phone"
@@ -129,7 +130,7 @@ function onSave() {
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Email</label
+							>{{ __("Email") }}</label
 						>
 						<input
 							v-model="form.email"
@@ -140,7 +141,7 @@ function onSave() {
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>Tax ID</label
+							>{{ __("Tax ID") }}</label
 						>
 						<input
 							v-model="form.gstin"
@@ -161,7 +162,7 @@ function onSave() {
 						class="text-xs px-3 py-1.5 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700 rounded-md"
 						@click="emit('delete')"
 					>
-						Delete
+						{{ __("Delete") }}
 					</button>
 					<div class="ml-auto flex items-center gap-2">
 						<button
@@ -169,7 +170,7 @@ function onSave() {
 							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 							@click="emit('close')"
 						>
-							{{ readOnly ? "Close" : "Cancel" }}
+							{{ readOnly ? __("Close") : __("Cancel") }}
 						</button>
 						<button
 							v-if="!readOnly"
@@ -177,7 +178,7 @@ function onSave() {
 							class="text-xs desk-save-btn"
 							@click="onSave"
 						>
-							Save
+							{{ __("Save") }}
 						</button>
 					</div>
 				</footer>

@@ -33,6 +33,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const { canCreate, canEdit, canDelete } = usePermissions();
 
@@ -45,7 +46,7 @@ const activeCompany = useActiveCompany();
 // one company's ledgers) — so scope Account pickers to the working company unconditionally.
 const accountCompanyFilter = workingCompanyFilter();
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Expenses" }];
+const breadcrumbs = [{ label: __("Project Finance"), to: "/project-finance" }, { label: __("Expenses") }];
 const confirmDialog = useConfirm();
 
 const ctx = ref({ employee: null, can_submit: false });
@@ -68,7 +69,7 @@ async function loadExpenses() {
 	try {
 		expenses.value = await listExpenses();
 	} catch (err) {
-		showToast(err.message || "Failed to load expenses", "error");
+		showToast(err.message || __("Failed to load expenses"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -93,10 +94,10 @@ const myExpensesAll = computed(() => expenses.value.filter((e) => e.employee ===
 const tabs = computed(() => {
 	const t = [];
 	if (canVerify.value) {
-		t.push({ id: "queue", label: "To Submit", count: toSubmit.value.length });
-		t.push({ id: "all", label: "All Expenses" });
+		t.push({ id: "queue", label: __("To Submit"), count: toSubmit.value.length });
+		t.push({ id: "all", label: __("All Expenses") });
 	}
-	t.push({ id: "mine", label: "My Expenses" });
+	t.push({ id: "mine", label: __("My Expenses") });
 	return t;
 });
 const tab = ref(null);
@@ -123,12 +124,12 @@ function inPeriod(d) {
 // date lands mid-list under a date sort and reads as though it never saved. The name (EXP-…) runs
 // in entry sequence, so it breaks ties the way a human expects.
 const SORT_OPTIONS = [
-	{ key: "created-desc", label: "Entered — newest first" },
-	{ key: "created-asc", label: "Entered — oldest first" },
-	{ key: "date-desc", label: "Expense date — newest first" },
-	{ key: "date-asc", label: "Expense date — oldest first" },
-	{ key: "amount-desc", label: "Amount — highest first" },
-	{ key: "amount-asc", label: "Amount — lowest first" },
+	{ key: "created-desc", label: __("Entered — newest first") },
+	{ key: "created-asc", label: __("Entered — oldest first") },
+	{ key: "date-desc", label: __("Expense date — newest first") },
+	{ key: "date-asc", label: __("Expense date — oldest first") },
+	{ key: "amount-desc", label: __("Amount — highest first") },
+	{ key: "amount-asc", label: __("Amount — lowest first") },
 ];
 const sortBy = ref("created-desc");
 const cmpText = (x, y) => (x || "").localeCompare(y || "");
@@ -189,41 +190,44 @@ async function refresh() {
 }
 async function onSubmit(e) {
 	const ok = await confirmDialog({
-		title: "Submit expense?",
-		message: `Submit "${e.description}" (${fmtINR(e.amount)})? Submitting posts it — it will hit the ${e.source} balance and the reports.`,
-		confirmLabel: "Submit",
+		title: __("Submit expense?"),
+		message: __('Submit "{0}" ({1})? Submitting posts it — it will hit the {2} balance and the reports.', [e.description, fmtINR(e.amount), e.source]),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	try {
 		await submitExpense(e.name);
 		await refresh();
-		showToast("Submitted — Journal Entry posted.");
+		showToast(__("Submitted — Journal Entry posted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	}
 }
 async function onCancel(e) {
 	const ok = await confirmDialog({
-		title: "Cancel expense?",
-		message: `Cancel "${e.description}" (${fmtINR(e.amount)})? Its effect on balances and reports is reversed. A cancelled expense can then be deleted.`,
-		confirmLabel: "Cancel expense",
-		cancelLabel: "Keep",
+		title: __("Cancel expense?"),
+		message: __('Cancel "{0}" ({1})? Its effect on balances and reports is reversed. A cancelled expense can then be deleted.', [e.description, fmtINR(e.amount)]),
+		confirmLabel: __("Cancel expense"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await cancelExpense(e.name);
 		await refresh();
-		showToast("Cancelled — Journal Entry reversed.");
+		showToast(__("Cancelled — Journal Entry reversed."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	}
 }
 async function onDelete(e) {
 	const ok = await confirmDialog({
-		title: "Delete expense?",
-		message: `Permanently delete "${e.description}" (${fmtINR(e.amount)})${e.status === "Cancelled" ? " — already cancelled, no balance impact" : ""}?`,
-		confirmLabel: "Delete",
+		title: __("Delete expense?"),
+		message:
+			e.status === "Cancelled"
+				? __('Permanently delete "{0}" ({1}) — already cancelled, no balance impact?', [e.description, fmtINR(e.amount)])
+				: __('Permanently delete "{0}" ({1})?', [e.description, fmtINR(e.amount)]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -231,16 +235,16 @@ async function onDelete(e) {
 		await cancelExpense(e.name);
 		if (detail.value?.name === e.name) closeDetail();
 		await refresh();
-		showToast("Deleted.");
+		showToast(__("Deleted."));
 	} catch (err) {
-		showToast(err.message || "Delete failed", "error");
+		showToast(err.message || __("Delete failed"), "error");
 	}
 }
 
 // --- create / edit form modal ---
 const PAID_FROM = [
-	{ value: "petty", label: "Petty Cash" },
-	{ value: "company", label: "Company" },
+	{ value: "petty", label: __("Petty Cash") },
+	{ value: "company", label: __("Company") },
 ];
 const modalOpen = ref(false);
 const editingId = ref(null);
@@ -302,20 +306,20 @@ async function uploadReceipt(ev) {
 		const url = r?.file_url || r?.message?.file_url || "";
 		if (!url) throw new Error("no url");
 		form.attachment = url;
-		showToast("Receipt attached.");
+		showToast(__("Receipt attached."));
 	} catch {
-		showToast("Upload failed.", "error");
+		showToast(__("Upload failed."), "error");
 	} finally {
 		form.uploading = false;
 		if (ev.target) ev.target.value = "";
 	}
 }
 async function save() {
-	if (!form.description.trim()) return showToast("Description is required.", "error");
-	if (!(Number(form.amount) > 0)) return showToast("Enter an amount greater than zero.", "error");
-	if (!form.project) return showToast("Pick a project.", "error");
-	if (!form.expense_account) return showToast("Pick an expense account.", "error");
-	if (form.paid_from === "company" && !form.company_account) return showToast("Pick the company account to pay from.", "error");
+	if (!form.description.trim()) return showToast(__("Description is required."), "error");
+	if (!(Number(form.amount) > 0)) return showToast(__("Enter an amount greater than zero."), "error");
+	if (!form.project) return showToast(__("Pick a project."), "error");
+	if (!form.expense_account) return showToast(__("Pick an expense account."), "error");
+	if (form.paid_from === "company" && !form.company_account) return showToast(__("Pick the company account to pay from."), "error");
 	form.saving = true;
 	try {
 		await saveExpense({
@@ -329,9 +333,9 @@ async function save() {
 		});
 		modalOpen.value = false;
 		await refresh();
-		showToast(editingId.value ? "Expense updated." : "Expense saved.");
+		showToast(editingId.value ? __("Expense updated.") : __("Expense saved."));
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		form.saving = false;
 	}
@@ -345,15 +349,15 @@ const expenseAccountFilters = computed(() => [
 </script>
 
 <template>
-	<DeskPage title="Expenses" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Expenses')" :breadcrumbs="breadcrumbs">
 		<div class="space-y-4">
 			<div class="flex items-center justify-between gap-3">
-				<div class="text-sm text-ink-600">Log site spend. It hits balances &amp; reports once <span class="font-medium">Submitted</span>.</div>
-				<button v-if="canCreate('expense') && canLog" type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openNew">+ New expense</button>
+				<div class="text-sm text-ink-600">{{ __("Log site spend. It hits balances & reports once") }} <span class="font-medium">{{ __("Submitted") }}</span>.</div>
+				<button v-if="canCreate('expense') && canLog" type="button" class="text-xs desk-save-btn whitespace-nowrap" @click="openNew">{{ __("+ New expense") }}</button>
 			</div>
 
 			<div v-if="canCreate('expense') && !canLog" class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-3 text-sm text-warning-700">
-				Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.
+				{{ __("Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.") }}
 			</div>
 
 			<!-- Tab strip -->
@@ -374,67 +378,67 @@ const expenseAccountFilters = computed(() => [
 			<section v-if="activeTab === 'queue'" class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 				<table v-if="toSubmit.length" class="w-full text-xs">
 					<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
-						<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">By</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="px-4 py-2"></th></tr>
+						<tr><th class="text-left px-4 py-2">{{ __("Date") }}</th><th class="text-left px-4 py-2">{{ __("Description") }}</th><th class="text-left px-4 py-2">{{ __("By") }}</th><th class="text-left px-4 py-2">{{ __("Source") }}</th><th class="text-left px-4 py-2">{{ __("Account") }}</th><th class="text-right px-4 py-2">{{ __("Amount") }}</th><th class="px-4 py-2"></th></tr>
 					</thead>
 					<tbody>
 						<tr v-for="e in toSubmitPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(e)">
 							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 							<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
-							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
-							<td class="px-4 py-2.5 text-right"><button type="button" class="desk-save-btn" @click.stop="onSubmit(e)">Submit</button></td>
+							<td class="px-4 py-2.5 text-right"><button type="button" class="desk-save-btn" @click.stop="onSubmit(e)">{{ __("Submit") }}</button></td>
 						</tr>
 					</tbody>
 				</table>
-				<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "No draft expenses awaiting submission." }}</div>
+				<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? __("Loading…") : __("No draft expenses awaiting submission.") }}</div>
 				<DeskPaginationFooter :pager="toSubmitPager" />
 			</section>
 
 			<!-- All Expenses -->
 			<template v-else-if="activeTab === 'all'">
 				<div class="flex items-center gap-2 flex-wrap">
-					<input v-model="search" type="text" placeholder="Search description, holder, project, account…" class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full" />
+					<input v-model="search" type="text" :placeholder="__('Search description, holder, project, account…')" class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full" />
 					<select v-model="statusFilter" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
-						<option value="">All statuses</option>
-						<option value="Draft">Draft</option>
-						<option value="Submitted">Submitted</option>
-						<option value="Cancelled">Cancelled</option>
+						<option value="">{{ __("All statuses") }}</option>
+						<option value="Draft">{{ __("Draft") }}</option>
+						<option value="Submitted">{{ __("Submitted") }}</option>
+						<option value="Cancelled">{{ __("Cancelled") }}</option>
 					</select>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">From</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("From") }}</span>
 						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("To") }}</span>
 						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
 					</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Sort</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Sort") }}</span>
 						<select v-model="sortBy" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
 							<option v-for="o in SORT_OPTIONS" :key="o.key" :value="o.key">{{ o.label }}</option>
 						</select>
 					</div>
-					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">Clear filters</button>
-					<span class="text-[11px] text-ink-400 ml-auto">{{ allExpenses.length }} expense{{ allExpenses.length === 1 ? "" : "s" }}</span>
+					<button v-if="hasFilters" type="button" class="text-[11px] text-danger-600 hover:underline" @click="clearFilters">{{ __("Clear filters") }}</button>
+					<span class="text-[11px] text-ink-400 ml-auto">{{ __(allExpenses.length === 1 ? "{0} expense" : "{0} expenses", [allExpenses.length]) }}</span>
 				</div>
 				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 					<table v-if="allExpenses.length" class="w-full text-xs">
 						<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
-							<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">By</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="text-left px-4 py-2">Status</th></tr>
+							<tr><th class="text-left px-4 py-2">{{ __("Date") }}</th><th class="text-left px-4 py-2">{{ __("Description") }}</th><th class="text-left px-4 py-2">{{ __("By") }}</th><th class="text-left px-4 py-2">{{ __("Source") }}</th><th class="text-left px-4 py-2">{{ __("Account") }}</th><th class="text-right px-4 py-2">{{ __("Amount") }}</th><th class="text-left px-4 py-2">{{ __("Status") }}</th></tr>
 						</thead>
 						<tbody>
 							<tr v-for="e in allExpensesPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 								<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
-								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
 								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
 							</tr>
 						</tbody>
 					</table>
-					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">No expenses match.</div>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ __("No expenses match.") }}</div>
 					<DeskPaginationFooter :pager="allExpensesPager" />
 				</section>
 			</template>
@@ -443,38 +447,38 @@ const expenseAccountFilters = computed(() => [
 			<template v-else-if="activeTab === 'mine'">
 				<div class="flex items-center gap-2 flex-wrap">
 					<div class="flex items-center gap-1.5">
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">From</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("From") }}</span>
 						<input v-model="from" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">To</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("To") }}</span>
 						<input v-model="to" type="date" class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200" />
 					</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Sort</span>
+						<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Sort") }}</span>
 						<select v-model="sortBy" class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200">
 							<option v-for="o in SORT_OPTIONS" :key="o.key" :value="o.key">{{ o.label }}</option>
 						</select>
 					</div>
-					<button v-if="from || to" type="button" class="text-[11px] text-danger-600 hover:underline" @click="from = ''; to = ''">Clear</button>
-					<span class="text-[11px] text-ink-400 ml-auto">{{ myExpenses.length }} expense{{ myExpenses.length === 1 ? "" : "s" }}</span>
+					<button v-if="from || to" type="button" class="text-[11px] text-danger-600 hover:underline" @click="from = ''; to = ''">{{ __("Clear") }}</button>
+					<span class="text-[11px] text-ink-400 ml-auto">{{ __(myExpenses.length === 1 ? "{0} expense" : "{0} expenses", [myExpenses.length]) }}</span>
 				</div>
 				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 					<table v-if="myExpenses.length" class="w-full text-xs">
 						<thead class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50">
-							<tr><th class="text-left px-4 py-2">Date</th><th class="text-left px-4 py-2">Description</th><th class="text-left px-4 py-2">Project</th><th class="text-left px-4 py-2">Source</th><th class="text-left px-4 py-2">Account</th><th class="text-right px-4 py-2">Amount</th><th class="text-left px-4 py-2">Status</th></tr>
+							<tr><th class="text-left px-4 py-2">{{ __("Date") }}</th><th class="text-left px-4 py-2">{{ __("Description") }}</th><th class="text-left px-4 py-2">{{ __("Project") }}</th><th class="text-left px-4 py-2">{{ __("Source") }}</th><th class="text-left px-4 py-2">{{ __("Account") }}</th><th class="text-right px-4 py-2">{{ __("Amount") }}</th><th class="text-left px-4 py-2">{{ __("Status") }}</th></tr>
 						</thead>
 						<tbody>
 							<tr v-for="e in myExpensesPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span></td>
 								<td class="px-4 py-2.5 text-ink-500">{{ projectName(e) }}</td>
-								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ e.source }}</span></td>
+								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
 								<td class="px-4 py-2.5"><StatusBadge :status="e.status" size="xs" /></td>
 							</tr>
 						</tbody>
 					</table>
-					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? "Loading…" : "You haven't logged any expenses." }}</div>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">{{ loading ? __("Loading…") : __("You haven't logged any expenses.") }}</div>
 					<DeskPaginationFooter :pager="myExpensesPager" />
 				</section>
 			</template>
@@ -491,35 +495,35 @@ const expenseAccountFilters = computed(() => [
 					</header>
 					<div class="px-4 py-4 overflow-y-auto flex-1 space-y-4">
 						<div class="flex items-center justify-between bg-ink-50 rounded-lg px-4 py-3">
-							<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Amount</div>
+							<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Amount") }}</div>
 							<div class="text-xl font-semibold text-ink-900 tabular-nums">{{ fmtINR(detail.amount) }}</div>
 						</div>
 						<div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Date</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.date) }}</div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Holder</div><div class="mt-0.5 flex items-center gap-1.5"><UserAvatar :name="holderName(detail)" size="xs" /><span class="text-ink-900">{{ holderName(detail) }}</span></div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Project</div><div class="text-ink-900 mt-0.5">{{ projectName(detail) }}</div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Paid from</div><div class="mt-0.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full" :class="sourceChipClass(detail.source)">{{ detail.source }}</span></div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Expense account</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || "—" }}</div></div>
-							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Cost code</div><div class="text-ink-900 mt-0.5">{{ detail.cost_code || "—" }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Date") }}</div><div class="text-ink-900 mt-0.5">{{ fmtDate(detail.date) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Holder") }}</div><div class="mt-0.5 flex items-center gap-1.5"><UserAvatar :name="holderName(detail)" size="xs" /><span class="text-ink-900">{{ holderName(detail) }}</span></div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Project") }}</div><div class="text-ink-900 mt-0.5">{{ projectName(detail) }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Paid from") }}</div><div class="mt-0.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full" :class="sourceChipClass(detail.source)">{{ __(detail.source) }}</span></div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Expense account") }}</div><div class="text-ink-900 mt-0.5">{{ detail.expense_account || "—" }}</div></div>
+							<div><div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Cost code") }}</div><div class="text-ink-900 mt-0.5">{{ detail.cost_code || "—" }}</div></div>
 						</div>
 						<div>
-							<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">Receipt</div>
-							<a v-if="detail.attachment" :href="detail.attachment" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline">View receipt</a>
-							<div v-else class="text-xs text-ink-400 italic">No receipt attached.</div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">{{ __("Receipt") }}</div>
+							<a v-if="detail.attachment" :href="detail.attachment" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline">{{ __("View receipt") }}</a>
+							<div v-else class="text-xs text-ink-400 italic">{{ __("No receipt attached.") }}</div>
 						</div>
 						<div v-if="detail.status === 'Cancelled'" class="px-3 py-2 bg-danger-50 border border-danger-200 rounded-md text-[11px] text-danger-700">
-							Cancelled — this expense no longer affects balances or reports. It can be deleted.
+							{{ __("Cancelled — this expense no longer affects balances or reports. It can be deleted.") }}
 						</div>
 					</div>
 					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-between gap-2 flex-shrink-0">
 						<div class="flex items-center gap-2">
-							<button v-if="(detail.status === 'Draft' || (detail.status === 'Cancelled' && canVerify)) && canDelete('expense')" type="button" class="text-xs px-2.5 py-1.5 text-danger-600 hover:underline" @click="onDelete(detail)">Delete</button>
+							<button v-if="(detail.status === 'Draft' || (detail.status === 'Cancelled' && canVerify)) && canDelete('expense')" type="button" class="text-xs px-2.5 py-1.5 text-danger-600 hover:underline" @click="onDelete(detail)">{{ __("Delete") }}</button>
 						</div>
 						<div class="flex items-center gap-2">
-							<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="closeDetail">Close</button>
-							<button v-if="detail.status === 'Draft' && canEdit('expense')" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openEdit(detail)">Edit</button>
-							<button v-if="detail.status === 'Draft' && canVerify" type="button" class="text-xs desk-save-btn" @click="onSubmit(detail)">Submit</button>
-							<button v-if="detail.status === 'Submitted' && canVerify" type="button" class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md" @click="onCancel(detail)">Cancel</button>
+							<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="closeDetail">{{ __("Close") }}</button>
+							<button v-if="detail.status === 'Draft' && canEdit('expense')" type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="openEdit(detail)">{{ __("Edit") }}</button>
+							<button v-if="detail.status === 'Draft' && canVerify" type="button" class="text-xs desk-save-btn" @click="onSubmit(detail)">{{ __("Submit") }}</button>
+							<button v-if="detail.status === 'Submitted' && canVerify" type="button" class="text-xs px-3 py-1.5 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium rounded-md" @click="onCancel(detail)">{{ __("Cancel") }}</button>
 						</div>
 					</footer>
 				</div>
@@ -528,47 +532,47 @@ const expenseAccountFilters = computed(() => [
 			<!-- Create / edit form modal -->
 			<div v-if="modalOpen" class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto" @click.self="modalOpen = false">
 				<div class="bg-white border border-ink-200 w-full max-w-lg shadow-xl rounded-xl" @click.stop>
-					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"><h2 class="text-sm font-semibold text-ink-900">{{ editingId ? "Edit expense" : "New expense" }}</h2><button type="button" class="text-ink-400 hover:text-ink-900" @click="modalOpen = false">✕</button></header>
+					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"><h2 class="text-sm font-semibold text-ink-900">{{ editingId ? __("Edit expense") : __("New expense") }}</h2><button type="button" class="text-ink-400 hover:text-ink-900" @click="modalOpen = false">✕</button></header>
 					<div class="px-4 py-4 space-y-3">
 						<div class="grid grid-cols-2 gap-3">
-							<DeskField label="Date"><DeskInput v-model="form.date" type="date" /></DeskField>
-							<DeskField label="Amount" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
+							<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+							<DeskField :label="__('Amount')" required><DeskInput v-model.number="form.amount" type="number" min="0" placeholder="0" /></DeskField>
 						</div>
-						<DeskField label="Description" required><DeskInput v-model="form.description" placeholder="What was bought?" /></DeskField>
-						<DeskField label="Project" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" placeholder="Pick a project…" /></DeskField>
+						<DeskField :label="__('Description')" required><DeskInput v-model="form.description" :placeholder="__('What was bought?')" /></DeskField>
+						<DeskField :label="__('Project')" required><DeskLinkPicker v-model="form.project" doctype="Project" label-field="project_name" value-field="name" :filters="companyFilter" :placeholder="__('Pick a project…')" /></DeskField>
 						<div class="grid grid-cols-2 gap-3">
-							<DeskField label="Expense account" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" placeholder="Pick an account…" /></DeskField>
-							<DeskField label="Cost code">
-								<CostCodePicker v-model="form.cost_code" :project-id="form.project" placeholder="— Pick cost code —" />
+							<DeskField :label="__('Expense account')" required><DeskLinkPicker v-model="form.expense_account" doctype="Account" label-field="name" value-field="name" :filters="expenseAccountFilters" :placeholder="__('Pick an account…')" /></DeskField>
+							<DeskField :label="__('Cost code')">
+								<CostCodePicker v-model="form.cost_code" :project-id="form.project" :placeholder="__('— Pick cost code —')" />
 							</DeskField>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
-							<DeskField label="Paid from">
+							<DeskField :label="__('Paid from')">
 								<DeskSelect v-model="form.paid_from" @update:model-value="onPaidFromChange"><option v-for="p in PAID_FROM" :key="p.value" :value="p.value">{{ p.label }}</option></DeskSelect>
 							</DeskField>
-							<DeskField v-if="form.paid_from === 'company'" label="Company account" required>
+							<DeskField v-if="form.paid_from === 'company'" :label="__('Company account')" required>
 								<DeskSelect v-model="form.company_account">
-									<option value="" disabled>Pick an account…</option>
+									<option value="" disabled>{{ __("Pick an account…") }}</option>
 									<option v-for="a in payAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
 								</DeskSelect>
 							</DeskField>
 						</div>
-						<DeskField v-if="canVerify && form.paid_from === 'petty'" label="Holder (petty cash float)">
-							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" :filters="companyFilter" placeholder="Defaults to you…" />
+						<DeskField v-if="canVerify && form.paid_from === 'petty'" :label="__('Holder (petty cash float)')">
+							<DeskLinkPicker v-model="form.employee" doctype="Employee" label-field="employee_name" value-field="name" :filters="companyFilter" :placeholder="__('Defaults to you…')" />
 						</DeskField>
 						<p v-if="form.paid_from === 'petty'" class="text-[11px] text-ink-500 -mt-1">
-							Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.
+							{{ __("Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.") }}
 						</p>
-						<DeskField label="Receipt (optional)">
+						<DeskField :label="__('Receipt (optional)')">
 							<label class="inline-flex items-center gap-2 text-xs cursor-pointer px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded-md" :class="form.attachment ? 'text-success-700' : 'text-ink-700'">
-								{{ form.uploading ? "Uploading…" : form.attachment ? "✓ Receipt attached" : "📷 Attach receipt" }}
+								{{ form.uploading ? __("Uploading…") : form.attachment ? __("✓ Receipt attached") : __("📷 Attach receipt") }}
 								<input type="file" class="hidden" accept="image/*,application/pdf" @change="uploadReceipt($event)" />
 							</label>
 						</DeskField>
 					</div>
 					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
-						<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="modalOpen = false">Cancel</button>
-						<button type="button" class="text-xs desk-save-btn" :disabled="form.saving" @click="save">{{ form.saving ? "Saving…" : editingId ? "Save" : "Save as draft" }}</button>
+						<button type="button" class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md" @click="modalOpen = false">{{ __("Cancel") }}</button>
+						<button type="button" class="text-xs desk-save-btn" :disabled="form.saving" @click="save">{{ form.saving ? __("Saving…") : editingId ? __("Save") : __("Save as draft") }}</button>
 					</footer>
 				</div>
 			</div>

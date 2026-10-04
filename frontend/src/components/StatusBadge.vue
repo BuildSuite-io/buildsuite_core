@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	status: { type: String, required: true },
@@ -84,5 +85,5 @@ const classes = computed(() => {
 </script>
 
 <template>
-	<span :class="classes">{{ displayStatus }}</span>
+	<span :class="classes">{{ __(displayStatus) }}</span>
 </template>

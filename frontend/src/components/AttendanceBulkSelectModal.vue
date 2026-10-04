@@ -10,6 +10,7 @@ import { getRoster } from "@/data/fieldAttendanceApi";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { showToast } from "@/utils/appToast";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 
 const props = defineProps({
@@ -149,7 +150,7 @@ async function selectCrew() {
 		await res?.reload?.();
 		const members = res?.doc?.members || [];
 		if (!members.length) {
-			showToast("That crew has no members.", "info");
+			showToast(__("That crew has no members."), "info");
 			return;
 		}
 		addWorkerRows(
@@ -160,7 +161,7 @@ async function selectCrew() {
 		// The button is the commit point — browsing the dropdown must not rewrite the sheet.
 		emit("crew", bulkCrew.value);
 	} catch (err) {
-		showToast(err.message || "Could not load the crew.", "error");
+		showToast(err.message || __("Could not load the crew."), "error");
 	}
 }
 
@@ -189,11 +190,11 @@ function addToTable() {
 				<header
 					class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Bulk Select Employees</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Bulk Select Employees") }}</h2>
 					<button
 						type="button"
 						class="text-ink-500 hover:text-ink-900 text-lg leading-none"
-						aria-label="Close"
+						:aria-label="__('Close')"
 						@click="emit('close')"
 					>
 						×
@@ -204,13 +205,13 @@ function addToTable() {
 					<div class="grid grid-cols-2 gap-3 mb-3 text-xs">
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
-								Project
+								{{ __("Project") }}
 							</div>
 							<div class="text-ink-800">{{ projectLabel || project || "—" }}</div>
 						</div>
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 mb-1">
-								Date
+								{{ __("Date") }}
 							</div>
 							<div class="text-ink-800">{{ fmtDate(date) || "—" }}</div>
 						</div>
@@ -220,7 +221,7 @@ function addToTable() {
 						v-model="search"
 						type="text"
 						class="desk-input mb-3"
-						placeholder="Search employee…"
+						:placeholder="__('Search employee…')"
 					/>
 
 					<div class="flex flex-wrap items-center gap-2 mb-3">
@@ -231,22 +232,22 @@ function addToTable() {
 							:disabled="!projectRoster.length"
 							@click="selectProjectRoster"
 						>
-							Project roster ({{ projectRoster.length }})
+							{{ __("Project roster ({0})", [projectRoster.length]) }}
 						</button>
 						<button
 							type="button"
 							class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 rounded-md"
 							@click="selectAll"
 						>
-							Select All
+							{{ __("Select All") }}
 						</button>
 						<div class="flex items-center gap-1">
 							<div class="w-48">
 								<DeskSearchableSelect
 									v-model="bulkCrew"
 									:options="crewOpts"
-									placeholder="Select crew…"
-									search-placeholder="Search crews…"
+									:placeholder="__('Select crew…')"
+									:search-placeholder="__('Search crews…')"
 									allow-clear
 								/>
 							</div>
@@ -256,7 +257,7 @@ function addToTable() {
 								:disabled="!bulkCrew"
 								@click="selectCrew"
 							>
-								Select Crew
+								{{ __("Select Crew") }}
 							</button>
 						</div>
 						<button
@@ -264,7 +265,7 @@ function addToTable() {
 							class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 rounded-md"
 							@click="unselectAll"
 						>
-							Unselect All
+							{{ __("Unselect All") }}
 						</button>
 					</div>
 
@@ -297,20 +298,20 @@ function addToTable() {
 										class="ml-1.5 text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-500"
 										style="border-radius: 9999px"
 									>
-										On sheet
+										{{ __("On sheet") }}
 									</span>
 									<span
 										v-else-if="isAllocated(e.value)"
 										class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-full whitespace-nowrap"
 									>
-										Allocated
+										{{ __("Allocated") }}
 									</span>
 								</span>
 								<span class="block text-[11px] text-ink-500">{{ e.hint }}</span>
 							</span>
 						</label>
 						<div v-if="!bulkList.length" class="text-xs text-ink-400 italic py-3">
-							No workers match.
+							{{ __("No workers match.") }}
 						</div>
 					</div>
 				</div>
@@ -318,13 +319,13 @@ function addToTable() {
 				<footer
 					class="px-5 py-3 border-t border-ink-200 flex items-center justify-between gap-2"
 				>
-					<span class="text-[11px] text-ink-500">{{ checked.size }} selected</span>
+					<span class="text-[11px] text-ink-500">{{ __("{0} selected", [checked.size]) }}</span>
 					<button
 						type="button"
 						class="text-xs px-3 py-1.5 bg-ink-900 text-white hover:bg-ink-800 rounded-md font-medium"
 						@click="addToTable"
 					>
-						Add to Table
+						{{ __("Add to Table") }}
 					</button>
 				</footer>
 			</div>

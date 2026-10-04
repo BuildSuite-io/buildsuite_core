@@ -6,6 +6,7 @@
 import { ref, computed, watch } from "vue";
 import { useDataStore } from "@/stores";
 import { useActiveCompany } from "@/composables/useActiveCompany";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtINR } from "@/utils/format";
@@ -34,7 +35,7 @@ async function reload() {
 	try {
 		accounts.value = await listFinanceAccounts(activeCompany.value);
 	} catch (err) {
-		loadError.value = err.message || "Failed to load accounts.";
+		loadError.value = err.message || __("Failed to load accounts.");
 	} finally {
 		loading.value = false;
 	}
@@ -43,9 +44,9 @@ async function reload() {
 watch(activeCompany, reload, { immediate: true });
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Bank & Cash Accounts" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Bank & Cash Accounts") },
 ];
 
 // --- add/edit modal ---
@@ -77,7 +78,7 @@ function openEdit(acc) {
 }
 async function save() {
 	if (!form.value.name.trim()) {
-		error.value = "Account name is required.";
+		error.value = __("Account name is required.");
 		return;
 	}
 	saving.value = true;
@@ -93,16 +94,18 @@ async function save() {
 		modalOpen.value = false;
 		await reload();
 	} catch (err) {
-		error.value = err.message || "Failed to save the account.";
+		error.value = err.message || __("Failed to save the account.");
 	} finally {
 		saving.value = false;
 	}
 }
 async function del(acc) {
 	const ok = await confirmDialog({
-		title: "Delete account?",
-		message: `Delete "${acc.name}"? Accounts with recorded movements can't be deleted.`,
-		confirmLabel: "Delete",
+		title: __("Delete account?"),
+		message: __('Delete "{0}"? Accounts with recorded movements can\'t be deleted.', [
+			acc.name,
+		]),
+		confirmLabel: __("Delete"),
 		danger: true,
 	});
 	if (!ok) return;
@@ -110,20 +113,20 @@ async function del(acc) {
 		await deleteFinanceAccount(acc.id);
 		await reload();
 	} catch (err) {
-		loadError.value = err.message || "Failed to delete the account.";
+		loadError.value = err.message || __("Failed to delete the account.");
 	}
 }
 </script>
 
 <template>
 	<DeskPage
-		title="Bank & Cash Accounts"
-		subtitle="Accounts shown across Project Finance — balances derive from movements"
+		:title="__('Bank & Cash Accounts')"
+		:subtitle="__('Accounts shown across Project Finance — balances derive from movements')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<template #actions>
 			<button v-if="canManage" type="button" class="desk-save-btn !text-xs" @click="openNew">
-				+ New Account
+				+ {{ __("New Account") }}
 			</button>
 		</template>
 
@@ -131,7 +134,7 @@ async function del(acc) {
 			v-if="!canManage"
 			class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-6 text-sm text-warning-700"
 		>
-			You don't have permission to manage finance accounts.
+			{{ __("You don't have permission to manage finance accounts.") }}
 		</div>
 
 		<template v-else>
@@ -148,11 +151,11 @@ async function del(acc) {
 						class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
 					>
 						<tr>
-							<th class="text-left px-4 py-2">Account</th>
-							<th class="text-left px-4 py-2">Type</th>
-							<th class="text-left px-4 py-2">Account no.</th>
-							<th class="text-right px-4 py-2">Opening balance</th>
-							<th class="text-right px-4 py-2">Current balance</th>
+							<th class="text-left px-4 py-2">{{ __("Account") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Type") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Account no.") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Opening balance") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Current balance") }}</th>
 							<th class="px-4 py-2"></th>
 						</tr>
 					</thead>
@@ -201,7 +204,7 @@ async function del(acc) {
 											? 'bg-info-50 text-info-700'
 											: 'bg-success-50 text-success-700'
 									"
-									>{{ acc.type }}</span
+									>{{ __(acc.type) }}</span
 								>
 							</td>
 							<td class="px-4 py-2.5 font-mono text-ink-500">
@@ -221,20 +224,20 @@ async function del(acc) {
 									class="text-[11px] px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 									@click="openEdit(acc)"
 								>
-									Edit
+									{{ __("Edit") }}
 								</button>
 								<button
 									type="button"
 									class="text-[11px] px-2 py-1 ml-1 text-danger-600 hover:underline"
 									@click="del(acc)"
 								>
-									Delete
+									{{ __("Delete") }}
 								</button>
 							</td>
 						</tr>
 						<tr v-if="loading">
 							<td colspan="6" class="px-4 py-10 text-center text-xs text-ink-400">
-								Loading accounts…
+								{{ __("Loading accounts…") }}
 							</td>
 						</tr>
 						<tr v-else-if="!accounts.length">
@@ -242,7 +245,7 @@ async function del(acc) {
 								colspan="6"
 								class="px-4 py-10 text-center text-xs text-ink-400 italic"
 							>
-								No accounts yet — add your bank and cash accounts.
+								{{ __("No accounts yet — add your bank and cash accounts.") }}
 							</td>
 						</tr>
 					</tbody>
@@ -250,8 +253,9 @@ async function del(acc) {
 			</section>
 
 			<p class="text-[11px] text-ink-400 mt-3">
-				Current balance = opening balance ± every recorded movement (receipts, payments,
-				disbursements, advances). Accounts with history can't be deleted.
+				{{
+					__("Current balance = opening balance ± every recorded movement (receipts, payments, disbursements, advances). Accounts with history can't be deleted.")
+				}}
 			</p>
 		</template>
 
@@ -270,7 +274,7 @@ async function del(acc) {
 						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 					>
 						<h2 class="text-sm font-semibold text-ink-900">
-							{{ editingId ? "Edit account" : "New account" }}
+							{{ editingId ? __("Edit account") : __("New account") }}
 						</h2>
 						<button
 							type="button"
@@ -284,35 +288,35 @@ async function del(acc) {
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Account name <span class="text-danger-600">*</span></label
+								>{{ __("Account name") }} <span class="text-danger-600">*</span></label
 							>
 							<input
 								v-model="form.name"
 								type="text"
 								class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
-								placeholder="e.g. ICICI Current A/c"
+								:placeholder="__('e.g. ICICI Current A/c')"
 							/>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<div>
 								<label
 									class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-									>Type</label
+									>{{ __("Type") }}</label
 								>
 								<select
 									v-model="form.type"
 									:disabled="!!editingId"
 									class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 disabled:bg-ink-50 disabled:text-ink-400"
 								>
-									<option value="Bank">Bank</option>
-									<option value="Cash">Cash</option>
-									<option value="Petty Cash">Petty Cash</option>
+									<option value="Bank">{{ __("Bank") }}</option>
+									<option value="Cash">{{ __("Cash") }}</option>
+									<option value="Petty Cash">{{ __("Petty Cash") }}</option>
 								</select>
 							</div>
 							<div>
 								<label
 									class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-									>Opening balance</label
+									>{{ __("Opening balance") }}</label
 								>
 								<input
 									v-model.number="form.opening_balance"
@@ -325,8 +329,8 @@ async function del(acc) {
 						<div v-if="form.type === 'Bank'">
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>Account no.
-								<span class="text-ink-400 normal-case">(optional)</span></label
+								>{{ __("Account no.") }}
+								<span class="text-ink-400 normal-case">{{ __("(optional)") }}</span></label
 							>
 							<input
 								v-model="form.account_no"
@@ -344,7 +348,7 @@ async function del(acc) {
 							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 							@click="modalOpen = false"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -352,7 +356,7 @@ async function del(acc) {
 							:disabled="saving"
 							@click="save"
 						>
-							{{ saving ? "Saving…" : "Save" }}
+							{{ saving ? __("Saving…") : __("Save") }}
 						</button>
 					</footer>
 				</div>

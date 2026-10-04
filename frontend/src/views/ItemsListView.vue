@@ -10,6 +10,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 import { fmtINR } from "@/utils/format";
 
 const { canCreate } = usePermissions();
@@ -27,19 +28,19 @@ const ITEM_FIELDS = [
 
 const columns = [
 	// `name` is the docname, which for Item is the item_code.
-	{ key: "name", label: "Code" },
-	{ key: "item_name", label: "Item" },
-	{ key: "item_group", label: "Group" },
-	{ key: "stock_uom", label: "UOM" },
-	{ key: "standard_rate", label: "Standard rate", align: "right" },
-	{ key: "custom_rate_master", label: "Rate Master" },
-	{ key: "disabled", label: "Status" },
+	{ key: "name", label: __("Code") },
+	{ key: "item_name", label: __("Item") },
+	{ key: "item_group", label: __("Group") },
+	{ key: "stock_uom", label: __("UOM") },
+	{ key: "standard_rate", label: __("Standard rate"), align: "right" },
+	{ key: "custom_rate_master", label: __("Rate Master") },
+	{ key: "disabled", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Items" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Items") },
 ];
 
 const groupFilter = ref("");
@@ -61,7 +62,7 @@ function openEdit(row) {
 </script>
 
 <template>
-	<DeskPage title="Item" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Item')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<button
 				v-if="canCreate('item')"
@@ -69,7 +70,7 @@ function openEdit(row) {
 				class="desk-save-btn !text-xs"
 				@click="openNew"
 			>
-				+ New Item
+				{{ __("+ New Item") }}
 			</button>
 		</template>
 
@@ -84,7 +85,7 @@ function openEdit(row) {
 			cache-key="buildsuite-items"
 			row-key="name"
 			initial-order-by="item_name asc"
-			search-placeholder="Search item, code, group…"
+			:search-placeholder="__('Search item, code, group…')"
 			@row-click="openEdit"
 		>
 			<template #filter-chips>
@@ -94,11 +95,11 @@ function openEdit(row) {
 					class="!w-56"
 					doctype="Item Group"
 					:page-length="10"
-					placeholder="Group: Any"
+					:placeholder="__('Group: Any')"
 				/>
 				<DeskFilterChip
 					v-else
-					label="Group"
+					:label="__('Group')"
 					:value="groupFilter"
 					@remove="groupFilter = ''"
 				/>

@@ -6,6 +6,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	rows: { type: Array, default: () => [] },
@@ -52,7 +53,7 @@ function rowKey(row, i) {
 	<section class="mt-6">
 		<div class="flex items-center justify-between mb-2 gap-3">
 			<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-				Members
+				{{ __("Members") }}
 				<span v-if="!editable && rows.length" class="text-ink-400 font-normal normal-case">
 					({{ rows.length }})
 				</span>
@@ -63,7 +64,7 @@ function rowKey(row, i) {
 				class="text-xs text-brand-700 hover:underline"
 				@click="emit('add')"
 			>
-				+ Add member
+				+ {{ __("Add member") }}
 			</button>
 		</div>
 
@@ -72,9 +73,9 @@ function rowKey(row, i) {
 			<table class="w-full text-xs">
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Worker</th>
-						<th class="text-left px-3 py-2">Role</th>
-						<th class="text-right px-3 py-2">Daily rate</th>
+						<th class="text-left px-3 py-2">{{ __("Worker") }}</th>
+						<th class="text-left px-3 py-2">{{ __("Role") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Daily rate") }}</th>
 						<th v-if="editable" class="w-8"></th>
 					</tr>
 				</thead>
@@ -89,8 +90,8 @@ function rowKey(row, i) {
 								v-if="editable"
 								:model-value="row.field_employee"
 								:options="availableWorkers(row)"
-								placeholder="Pick a worker…"
-								search-placeholder="Search workers…"
+								:placeholder="__('Pick a worker…')"
+								:search-placeholder="__('Search workers…')"
 								@update:model-value="(v) => onPickWorker(row, v)"
 							/>
 							<span v-else class="text-ink-900 font-medium">
@@ -105,7 +106,7 @@ function rowKey(row, i) {
 								doctype="Labour Trade"
 								label-field="trade"
 								:search-fields="['trade', 'name']"
-								placeholder="From the worker's trade"
+								:placeholder="__('From the worker\'s trade')"
 							/>
 							<span v-else class="text-ink-600">{{ row.role_in_crew || "—" }}</span>
 						</td>
@@ -118,7 +119,7 @@ function rowKey(row, i) {
 							<button
 								type="button"
 								class="text-ink-400 hover:text-danger-600"
-								aria-label="Remove member"
+								:aria-label="__('Remove member')"
 								@click="emit('remove', i)"
 							>
 								✕
@@ -133,8 +134,8 @@ function rowKey(row, i) {
 						>
 							{{
 								editable
-									? "No members yet. Add workers to the crew."
-									: "No members."
+									? __("No members yet. Add workers to the crew.")
+									: __("No members.")
 							}}
 						</td>
 					</tr>

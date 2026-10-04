@@ -3,6 +3,7 @@
 // doctype default in Desk (Customize Form → Default Print Format) plus the default /
 // document Letter Head. See ServerPrintDocument for the mechanism.
 import ServerPrintDocument from "@/components/ServerPrintDocument.vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, required: true } });
 </script>
@@ -12,6 +13,6 @@ const props = defineProps({ id: { type: String, required: true } });
 		doctype="Sales Invoice"
 		:name="props.id"
 		:back-to="`/project-finance/invoices/${props.id}`"
-		back-label="Back to invoice"
+		:back-label="__('Back to invoice')"
 	/>
 </template>
