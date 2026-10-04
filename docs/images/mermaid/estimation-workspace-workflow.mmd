@@ -1,0 +1,107 @@
+%% Estimation Workspace — how a price is COMPOSED (buildsuite_core)
+%% ---
+%% Companion to boq-er (structure) and boq-flowchart (lifecycle). This one answers a
+%% single question: what is the arithmetic relationship between a Rate Master, an
+%% Assembly, a BOQ Item and the BOQ total?
+%% ---
+%% The rule the whole workspace rests on: each level is the SUM OF THE LEVEL BELOW,
+%% not an addition ON TOP of it. Breaking a BOQ Item into Labour / Material /
+%% Equipment therefore cannot increase the parent — it derives it. See NOTE1.
+%% ---
+%% Sources: doctype/construction_rate_master, doctype/assembly (validate),
+%% doctype/boq_sub_item (validate), doctype/boq_item (roll_up_item_rate),
+%% doctype/boq/boq_rollup (compute_boq_totals), api/boq (explode_item,
+%% import_template, approve_boq), api/rate_master (update_rates_from_po),
+%% api/boq_actuals (cost-code rails).
+flowchart TB
+
+    subgraph L0["① Resource layer · Construction Rate Master (per company)"]
+        direction LR
+        RM["<b>Construction Rate Master</b><br/>rate_code · UOM · current_rate<br/>category = Material | Labour | Equipment | Others<br/><i>the only place a unit price is authored</i>"]
+        RH["Construction Rate History<br/>rate · effective_from → effective_to<br/>reason = Initial | Manual revision | Purchase-driven<br/><i>appended on every current_rate change</i>"]
+        RM -- "sync_rate_history() on validate" --> RH
+    end
+
+    subgraph L1["② Recipe layer · Assembly — an analysis of rate"]
+        direction LR
+        ASM["<b>Assembly</b><br/>assembly_code · UOM<br/><b>rate_per_unit = Σ components.amount</b>"]
+        AC["Assembly Component (child)<br/>resource → Rate Master<br/>coefficient = qty per 1 unit of the Assembly<br/><b>amount = coefficient × rate</b>"]
+        AC == "validate() re-reads every component<br/>rate, then rate_per_unit = Σ amounts" ==> ASM
+    end
+
+    subgraph L2["③ Skeleton layer · Estimate Template (optional shortcut)"]
+        direction LR
+        ET["<b>Estimate Template</b><br/>template_code · project_category<br/><i>a reusable BOQ outline</i>"]
+        ETR["Estimate Template Row (child)<br/>line_type = <b>Assembly</b> | <b>Resource</b><br/>group_name · placeholder_qty · cost_head"]
+        ET -- rows --> ETR
+    end
+
+    subgraph L3["④ Project layer · the BOQ tree"]
+        direction TB
+        BOQ["<b>BOQ</b> · one per Project revision<br/>status · margin_rate · tax_rate"]
+        GRP["<b>BOQ Group</b> — code 'F'<br/><i>a bill heading; holds no money of its own</i>"]
+        ITEM["<b>BOQ Item</b> — code 'F.01'<br/>planned_qty · unit · cost_head<br/><b>rate = Σ sub_items.amount</b> ⟵ derived<br/><b>planned_amount = planned_qty × rate</b>"]
+        SUB["<b>BOQ Sub Item</b> — the leaf<br/>rate_master · qty_per_unit (per 1 unit of the parent)<br/><b>amount = qty_per_unit × rate</b><br/><i>a PER-UNIT figure, not a line total</i>"]
+        %% dotted = "contains" (structure, reads down)
+        %% thick  = "is priced by" (arithmetic, reads up) — see the spine below
+        BOQ -. contains .-> GRP
+        GRP -. contains .-> ITEM
+        ITEM -. contains .-> SUB
+    end
+
+    subgraph L4["⑤ Roll-up · compute_boq_totals()"]
+        direction TB
+        ROLL["<b>planned_amount = Σ BOQ Item.planned_amount</b><br/>margin = planned × margin_rate%<br/>tax = (planned + margin) × tax_rate%<br/><b>total = planned + margin + tax</b><br/><i>Sub Items are never summed here — they<br/>are already inside each Item's rate</i>"]
+        WPS["BOQ WP Summary (child)<br/>margin + tax allocated to each Work Package<br/>in proportion to its planned share"]
+        ROLL --> WPS
+    end
+
+    subgraph L5["⑥ Lifecycle & feedback"]
+        direction TB
+        DRAFT(["Draft — the only editable state"])
+        SUBM(["Submitted"])
+        APPR(["Approved · supersedes the prior revision"])
+        SUPER(["Superseded"])
+        ACT["<b>Actuals arrive by COST CODE</b>, never by record id<br/>Material Consumption · Subcontractor Bill<br/>Expense Entry · Journal Entry<br/><i>resolved against the Approved revision</i>"]
+        DRAFT -- "submit_boq()" --> SUBM
+        SUBM -- "approve_boq() · Director / PM / Admin<br/>validates cost codes are unique + preserved" --> APPR
+        APPR -. "prior Approved rev" .-> SUPER
+        APPR --> ACT
+    end
+
+    %% ---- composition path (the spine) ----
+    RM ==> AC
+    ASM ==> EXPL{{"explode_item(boq_item)<br/>snapshots each component as a Sub Item<br/>qty_per_unit = coefficient"}}
+    EXPL ==> SUB
+    RM == "or author the analysis by hand,<br/>one resource at a time" ==> SUB
+    SUB == "roll_up_item_rate()" ==> ITEM
+    ITEM ==> ROLL
+    ROLL ==> DRAFT
+
+    %% ---- template seeding ----
+    ETR -. "Assembly row" .-> ASM
+    ETR -. "Resource row" .-> RM
+    ET ==> IMP{{"import_template(boq, template)<br/>creates Groups + Items;<br/>Assembly rows auto-explode"}}
+    IMP ==> GRP
+
+    %% ---- revision + rate feedback loops ----
+    APPR -- "create_revision() — clone the tree<br/>(raised from an Approved Scope Change Order)" --> DRAFT
+    PO[("Purchase Order · on submit<br/><i>real market price paid</i>")]
+    PO -- "update_rates_from_po() — prompts when the paid price<br/>differs by > rate_master_update_threshold %<br/>(governance roles only); logged as 'Purchase-driven'" --> RM
+
+    %% ---- the two semantics people get wrong ----
+    NOTE1["⚖️ <b>Composition, not addition</b><br/>F.01 rate 11,135.50 = 3,833.33 Labour<br/>+ 4,666.67 Equipment + 2,635.50 Material<br/>× 277.76 Sqm = ₹30.9L<br/>Adding the breakdown DERIVES the rate.<br/>It replaces a lump sum — it never stacks on it."]
+    NOTE2["📸 <b>Rates are snapshots, not live links</b><br/>Sub Item copies rate + UOM from the Rate Master<br/>at save time. No doc_event pushes a later rate<br/>change into existing BOQs — a line re-prices only<br/>when it is itself re-saved or re-exploded."]
+    SUB -.-> NOTE1
+    RM -.-> NOTE2
+
+    classDef master fill:#ecfdf5,stroke:#10b981,color:#064e3b;
+    classDef tree fill:#f5f3ff,stroke:#8b5cf6,color:#3b0764;
+    classDef api fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a;
+    classDef state fill:#fff7ed,stroke:#f59e0b,color:#7c2d12;
+    classDef note fill:#fefce8,stroke:#ca8a04,color:#713f12;
+    class RM,RH,ASM,AC,ET,ETR master;
+    class BOQ,GRP,ITEM,SUB,ROLL,WPS tree;
+    class EXPL,IMP,ACT api;
+    class DRAFT,SUBM,APPR,SUPER state;
+    class NOTE1,NOTE2 note;

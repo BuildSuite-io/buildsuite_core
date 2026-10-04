@@ -29,6 +29,7 @@ import { createDataAdapter } from "@/data/adapters";
 import { endBeforeStartError, outOfParentBoundsError } from "@/utils/dateBounds";
 import { fetchProjectBounds } from "@/utils/projectBounds";
 import { fmtCompactINR, fmtDate, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const store = useDataStore();
@@ -209,7 +210,7 @@ function cancelEdit() {
 }
 function validate() {
 	const e = {};
-	if (!form.value.name) e.name = "Work package name is required";
+	if (!form.value.name) e.name = __("Work package name is required");
 	const endErr = endBeforeStartError(form.value.startDate, form.value.endDate);
 	if (endErr) e.endDate = endErr;
 	setErrors(e);
@@ -246,7 +247,7 @@ async function saveEdit() {
 		workPackageResource.value?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update work package", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update work package"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -255,16 +256,21 @@ async function saveEdit() {
 async function onDelete() {
 	if (!wp.value) return;
 	const n = tasks.value.length;
-	const msg = n
-		? `Delete "${wp.value.name}"? This will also delete ${n} task${
-				n === 1 ? "" : "s"
-			} and any progress entries on them.`
-		: `Delete "${wp.value.name}"?`;
+	const msg = !n
+		? __('Delete "{0}"?', [wp.value.name])
+		: n === 1
+			? __('Delete "{0}"? This will also delete 1 task and any progress entries on them.', [
+					wp.value.name,
+				])
+			: __('Delete "{0}"? This will also delete {1} tasks and any progress entries on them.', [
+					wp.value.name,
+					n,
+				]);
 	if (
 		!(await confirmDialog({
-			title: "Delete work package",
+			title: __("Delete work package"),
 			message: msg,
-			confirmLabel: "Delete",
+			confirmLabel: __("Delete"),
 			destructive: true,
 		}))
 	)
@@ -274,7 +280,7 @@ async function onDelete() {
 		await adapter.remove("Work Package", wpId);
 		router.push("/work-packages");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete work package", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete work package"), "error");
 	}
 }
 
@@ -290,8 +296,8 @@ const taskModalOpen = ref(false);
 
 const breadcrumbs = computed(() => {
 	const out = [
-		{ label: "BuildSuite Core", to: "/" },
-		{ label: "Work Package", to: "/work-packages" },
+		{ label: __("BuildSuite Core"), to: "/" },
+		{ label: __("Work Package"), to: "/work-packages" },
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
@@ -299,13 +305,13 @@ const breadcrumbs = computed(() => {
 });
 
 const taskCols = [
-	{ key: "name", label: "Task" },
-	{ key: "status", label: "Status" },
-	{ key: "priority", label: "Priority" },
-	{ key: "task_type", label: "Task Type" },
-	{ key: "assignee", label: "Assignee" },
-	{ key: "endDate", label: "Due" },
-	{ key: "progress", label: "Progress", align: "right" },
+	{ key: "name", label: __("Task") },
+	{ key: "status", label: __("Status") },
+	{ key: "priority", label: __("Priority") },
+	{ key: "task_type", label: __("Task Type") },
+	{ key: "assignee", label: __("Assignee") },
+	{ key: "endDate", label: __("Due") },
+	{ key: "progress", label: __("Progress"), align: "right" },
 ];
 
 function onTaskRowClick(row) {
@@ -351,10 +357,10 @@ usePageTitle(() => wp.value?.name);
 					:disabled="saving"
 					@click="cancelEdit"
 				>
-					Cancel
+					{{ __("Cancel") }}
 				</button>
 				<button type="button" class="desk-save-btn" :disabled="saving" @click="saveEdit">
-					{{ saving ? "Saving…" : "Save" }}
+					{{ saving ? __("Saving…") : __("Save") }}
 				</button>
 			</template>
 			<template v-else>
@@ -365,7 +371,7 @@ usePageTitle(() => wp.value?.name);
 					style="border-radius: 6px"
 					@click="startEdit"
 				>
-					Edit
+					{{ __("Edit") }}
 				</button>
 				<button
 					v-if="canDelete('workPackage')"
@@ -374,7 +380,7 @@ usePageTitle(() => wp.value?.name);
 					style="border-radius: 6px"
 					@click="onDelete"
 				>
-					Delete
+					{{ __("Delete") }}
 				</button>
 			</template>
 		</template>
@@ -384,7 +390,7 @@ usePageTitle(() => wp.value?.name);
 			<div v-if="!editing" class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Budget
+						{{ __("Budget") }}
 					</div>
 					<div class="text-sm text-ink-900 mt-0.5 tabular-nums">
 						{{ fmtCompactINR(wp.budget) }}
@@ -392,7 +398,7 @@ usePageTitle(() => wp.value?.name);
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Progress
+						{{ __("Progress") }}
 					</div>
 					<div class="flex items-center gap-2 mt-1">
 						<div
@@ -412,7 +418,7 @@ usePageTitle(() => wp.value?.name);
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Timeline
+						{{ __("Timeline") }}
 					</div>
 					<div class="text-xs text-ink-700 mt-0.5">
 						{{ fmtDate(wp.startDate) }} → {{ fmtDate(wp.endDate) }}
@@ -427,7 +433,7 @@ usePageTitle(() => wp.value?.name);
 				style="border-radius: 6px"
 			>
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
-					Description
+					{{ __("Description") }}
 				</div>
 				<div class="text-sm text-ink-800 leading-snug whitespace-pre-line">
 					{{ wp.description }}
@@ -436,40 +442,42 @@ usePageTitle(() => wp.value?.name);
 
 			<!-- Edit-mode form -->
 			<div v-if="editing" class="max-w-3xl mx-auto">
-				<DeskSection title="Basic information">
+				<DeskSection :title="__('Basic information')">
 					<DeskField
-						label="Project"
-						hint="Locked after create — moving a work package across projects isn't supported."
+						:label="__('Project')"
+						:hint="
+							__('Locked after create — moving a work package across projects isn\'t supported.')
+						"
 					>
 						<div class="text-sm text-ink-900 py-1">{{ project?.name || "—" }}</div>
 					</DeskField>
-					<DeskField label="Work Package name" required :error="errors.name">
+					<DeskField :label="__('Work Package name')" required :error="errors.name">
 						<DeskInput v-model="form.name" />
 					</DeskField>
-					<DeskField label="Code">
+					<DeskField :label="__('Code')">
 						<DeskInput v-model="form.code" />
 					</DeskField>
-					<DeskField label="Description">
+					<DeskField :label="__('Description')">
 						<DeskTextarea v-model="form.description" :rows="3" />
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Schedule & cost">
-					<DeskField label="Start date">
+				<DeskSection :title="__('Schedule & cost')">
+					<DeskField :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField label="Expected end date" :error="errors.endDate">
+					<DeskField :label="__('Expected end date')" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="`Budget (${currencySymbol()})`">
+					<DeskField :label="`${__('Budget')} (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" />
 					</DeskField>
-					<DeskField label="Status">
+					<DeskField :label="__('Status')">
 						<DeskSelect v-model="form.status">
-							<option>Planned</option>
-							<option>In Progress</option>
-							<option>On Hold</option>
-							<option>Completed</option>
+							<option value="Planned">{{ __("Planned") }}</option>
+							<option value="In Progress">{{ __("In Progress") }}</option>
+							<option value="On Hold">{{ __("On Hold") }}</option>
+							<option value="Completed">{{ __("Completed") }}</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
@@ -478,14 +486,18 @@ usePageTitle(() => wp.value?.name);
 			<!-- Tasks list — view mode only (hidden while editing the WP itself) -->
 			<template v-if="!editing">
 				<div class="text-xs text-ink-500 mb-2 mt-4">
-					{{ tasks.length }} task{{ tasks.length === 1 ? "" : "s" }} in this work package
+					{{
+						tasks.length === 1
+							? __("{0} task in this work package", [tasks.length])
+							: __("{0} tasks in this work package", [tasks.length])
+					}}
 				</div>
 				<DeskList
 					v-model="taskSearch"
 					:rows="tasksFiltered"
 					:columns="taskCols"
 					row-key="id"
-					search-placeholder="Search tasks…"
+					:search-placeholder="__('Search tasks…')"
 					@row-click="onTaskRowClick"
 				>
 					<template #actions>
@@ -495,7 +507,7 @@ usePageTitle(() => wp.value?.name);
 							class="desk-save-btn"
 							@click="taskModalOpen = true"
 						>
-							+ Add Task
+							{{ __("+ Add Task") }}
 						</button>
 					</template>
 
@@ -538,7 +550,7 @@ usePageTitle(() => wp.value?.name);
 					</template>
 
 					<template #empty>
-						<div class="text-sm text-ink-500">No tasks in this work package yet.</div>
+						<div class="text-sm text-ink-500">{{ __("No tasks in this work package yet.") }}</div>
 					</template>
 				</DeskList>
 			</template>
@@ -556,10 +568,10 @@ usePageTitle(() => wp.value?.name);
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this work package"
+		:title="__('You don\'t have access to this work package')"
 		back-to="/work-packages"
-		back-label="Back to Work Packages"
+		:back-label="__('Back to Work Packages')"
 	/>
 
-	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Work package not found</div>
+	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">{{ __("Work package not found") }}</div>
 </template>

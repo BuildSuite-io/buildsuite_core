@@ -22,6 +22,7 @@ import { parseFrappeError } from "@/utils/frappeError";
 import { computeAllConflicts, hasCycle, computeCascade } from "@/composables/useScheduleEngine";
 import { showToast } from "@/utils/appToast";
 import { useConfirm } from "@/composables/useConfirm";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const adapter = createDataAdapter(store);
@@ -76,10 +77,12 @@ async function onUndo() {
 		const res = await undoLast(selectedProject.value);
 		if (res?.undone) {
 			await loadSchedule(); // reloads + refreshes snapshots
-			showToast(`Undone: ${res.label || "last cascade"} (${res.changed} tasks)`);
+			showToast(
+				__("Undone: {0} ({1} tasks)", [res.label || __("last cascade"), res.changed])
+			);
 		}
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Undo failed.");
+		flashError(parseFrappeError(err).summary || __("Undo failed."));
 	} finally {
 		snapBusy.value = false;
 	}
@@ -88,7 +91,7 @@ async function onUndo() {
 async function onSaveRevision() {
 	const label = newRevisionLabel.value.trim();
 	if (!label) {
-		flashError("Give the revision a name first.");
+		flashError(__("Give the revision a name first."));
 		return;
 	}
 	snapBusy.value = true;
@@ -96,9 +99,9 @@ async function onSaveRevision() {
 		await saveRevision(selectedProject.value, label);
 		newRevisionLabel.value = "";
 		await refreshSnapshots();
-		showToast(`Saved revision "${label}".`);
+		showToast(__('Saved revision "{0}".', [label]));
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Could not save revision.");
+		flashError(parseFrappeError(err).summary || __("Could not save revision."));
 	} finally {
 		snapBusy.value = false;
 	}
@@ -106,18 +109,21 @@ async function onSaveRevision() {
 
 async function onRestoreRevision(snap) {
 	const ok = await confirmDialog({
-		title: "Restore revision?",
-		message: `Restore the schedule to "${snap.label}"? Current dates are saved to Undo first, so you can revert this.`,
-		confirmLabel: "Restore",
+		title: __("Restore revision?"),
+		message: __(
+			'Restore the schedule to "{0}"? Current dates are saved to Undo first, so you can revert this.',
+			[snap.label]
+		),
+		confirmLabel: __("Restore"),
 	});
 	if (!ok) return;
 	snapBusy.value = true;
 	try {
 		await restoreSnapshot(snap.name);
 		await loadSchedule(); // reloads + refreshes snapshots
-		showToast(`Restored "${snap.label}".`);
+		showToast(__('Restored "{0}".', [snap.label]));
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Restore failed.");
+		flashError(parseFrappeError(err).summary || __("Restore failed."));
 	} finally {
 		snapBusy.value = false;
 	}
@@ -125,9 +131,12 @@ async function onRestoreRevision(snap) {
 
 async function onDeleteRevision(snap) {
 	const ok = await confirmDialog({
-		title: "Delete revision?",
-		message: `Delete the saved revision "${snap.label}"? This does not change the schedule.`,
-		confirmLabel: "Delete",
+		title: __("Delete revision?"),
+		message: __(
+			'Delete the saved revision "{0}"? This does not change the schedule.',
+			[snap.label]
+		),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -135,7 +144,7 @@ async function onDeleteRevision(snap) {
 		await deleteSnapshot(snap.name);
 		await refreshSnapshots();
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Could not delete revision.");
+		flashError(parseFrappeError(err).summary || __("Could not delete revision."));
 	}
 }
 
@@ -264,7 +273,7 @@ async function loadSchedule() {
 		};
 		recomputeLocalConflicts();
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Failed to load the schedule.");
+		flashError(parseFrappeError(err).summary || __("Failed to load the schedule."));
 		allTasks.value = [];
 		allDeps.value = [];
 		wpData.value = [];
@@ -505,7 +514,7 @@ const groupedRows = computed(() => {
 				kind: "group",
 				key: "__unstaged__",
 				axis: "stage",
-				name: "Not in a stage",
+				name: __("Not in a stage"),
 				members: unstaged,
 				collapsed,
 				...ru,
@@ -544,7 +553,7 @@ const groupedRows = computed(() => {
 			kind: "group",
 			key: "__nowp__",
 			axis: "wp",
-			name: "Direct project tasks",
+			name: __("Direct project tasks"),
 			members: noWP,
 			collapsed,
 			...ru,
@@ -891,7 +900,7 @@ async function commitDates(task, newStart, newEnd, before) {
 		task.startDate = before?.startDate ?? task.startDate;
 		task.endDate = before?.endDate ?? task.endDate;
 		recomputeLocalConflicts();
-		flashError(parseFrappeError(err).summary || "Could not reschedule.");
+		flashError(parseFrappeError(err).summary || __("Could not reschedule."));
 		return;
 	}
 	// A single-task move is already reflected locally (the client conflict engine
@@ -919,7 +928,7 @@ async function confirmCascade() {
 			0
 		);
 	} catch (err) {
-		flashError(parseFrappeError(err).summary || "Cascade failed.");
+		flashError(parseFrappeError(err).summary || __("Cascade failed."));
 	}
 	await loadSchedule();
 }
@@ -1024,7 +1033,7 @@ async function onDepDragUp(e) {
 	if (!targetId || targetId === drag.fromTaskId) return;
 	const { edges } = engineInputs();
 	if (hasCycle(drag.fromTaskId, targetId, edges)) {
-		flashError("Creating this dependency would close a cycle.");
+		flashError(__("Creating this dependency would close a cycle."));
 		return;
 	}
 	// Optimistic: draw the edge + reflag conflicts immediately, persist in background.
@@ -1043,7 +1052,7 @@ async function onDepDragUp(e) {
 	} catch (err) {
 		allDeps.value = allDeps.value.filter((d) => d.id !== edge.id);
 		recomputeLocalConflicts();
-		flashError(parseFrappeError(err).summary || "Could not create dependency.");
+		flashError(parseFrappeError(err).summary || __("Could not create dependency."));
 	}
 }
 const depGhost = computed(() => {
@@ -1100,7 +1109,7 @@ async function applyPopover() {
 			allDeps.value = [...allDeps.value];
 			recomputeLocalConflicts();
 		}
-		flashError(parseFrappeError(err).summary || "Could not update dependency.");
+		flashError(parseFrappeError(err).summary || __("Could not update dependency."));
 	}
 }
 async function deleteFromPopover() {
@@ -1115,7 +1124,7 @@ async function deleteFromPopover() {
 	} catch (err) {
 		allDeps.value = prev;
 		recomputeLocalConflicts();
-		flashError(parseFrappeError(err).summary || "Could not delete dependency.");
+		flashError(parseFrappeError(err).summary || __("Could not delete dependency."));
 	}
 }
 
@@ -1132,16 +1141,16 @@ onBeforeUnmount(() => {
 	<div class="px-6 py-4">
 		<div class="flex items-center justify-between mb-4">
 			<div>
-				<h1 class="text-lg font-semibold text-ink-900">Schedule</h1>
+				<h1 class="text-lg font-semibold text-ink-900">{{ __("Schedule") }}</h1>
 				<p class="text-xs text-ink-500 mt-0.5">
-					Gantt timeline — view the schedule and adjust task dates from the list
+					{{ __("Gantt timeline — view the schedule and adjust task dates from the list") }}
 				</p>
 			</div>
 			<div
 				v-if="!canEditAny && allTasks.length"
 				class="text-[11px] px-2 py-1 bg-ink-100 text-ink-600 rounded-full"
 			>
-				Read-only — your role cannot edit tasks
+				{{ __("Read-only — your role cannot edit tasks") }}
 			</div>
 		</div>
 
@@ -1158,7 +1167,7 @@ onBeforeUnmount(() => {
 			class="bg-white border border-ink-200 rounded-t-lg px-3 py-2 flex items-center gap-3 flex-wrap"
 		>
 			<div class="flex items-center gap-2">
-				<label class="text-xs text-ink-500">Project</label>
+				<label class="text-xs text-ink-500">{{ __("Project") }}</label>
 				<DeskLinkPicker
 					v-model="selectedProject"
 					class="!w-56"
@@ -1166,7 +1175,7 @@ onBeforeUnmount(() => {
 					label-field="project_name"
 					value-field="name"
 					:search-fields="['project_name', 'custom_project_id', 'name']"
-					placeholder="— Pick a project —"
+					:placeholder="__('— Pick a project —')"
 				/>
 			</div>
 
@@ -1180,7 +1189,7 @@ onBeforeUnmount(() => {
 					"
 					@click="setViewMode(m)"
 				>
-					{{ m }}
+					{{ __(m) }}
 				</button>
 			</div>
 
@@ -1192,7 +1201,7 @@ onBeforeUnmount(() => {
 					"
 					@click="setGroupBy('none')"
 				>
-					None
+					{{ __("None") }}
 				</button>
 				<button
 					class="px-3 py-1 text-xs border-l border-ink-200"
@@ -1203,7 +1212,7 @@ onBeforeUnmount(() => {
 					"
 					@click="setGroupBy('stage')"
 				>
-					By Stage
+					{{ __("By Stage") }}
 				</button>
 				<button
 					class="px-3 py-1 text-xs border-l border-ink-200"
@@ -1212,7 +1221,7 @@ onBeforeUnmount(() => {
 					"
 					@click="setGroupBy('wp')"
 				>
-					By WP
+					{{ __("By WP") }}
 				</button>
 			</div>
 
@@ -1220,7 +1229,7 @@ onBeforeUnmount(() => {
 				class="text-xs px-2.5 py-1 border border-ink-200 rounded bg-white hover:bg-ink-50"
 				@click="jumpToToday"
 			>
-				Today
+				{{ __("Today") }}
 			</button>
 
 			<!-- Undo the last cascading (group) action -->
@@ -1230,14 +1239,14 @@ onBeforeUnmount(() => {
 				:disabled="!undoCount || snapBusy"
 				:title="
 					undoCount
-						? `Undo the last cascade (${undoCount} step${
-								undoCount === 1 ? '' : 's'
-						  } available)`
-						: 'Nothing to undo — undo captures cascading (multi-task) changes'
+						? undoCount === 1
+							? __('Undo the last cascade ({0} step available)', [undoCount])
+							: __('Undo the last cascade ({0} steps available)', [undoCount])
+						: __('Nothing to undo — undo captures cascading (multi-task) changes')
 				"
 				@click="onUndo"
 			>
-				<span>↶ Undo</span>
+				<span>↶ {{ __("Undo") }}</span>
 				<span
 					v-if="undoCount"
 					class="text-[10px] px-1 rounded bg-ink-100 text-ink-600 tabular-nums"
@@ -1252,7 +1261,7 @@ onBeforeUnmount(() => {
 					:class="revisionsOpen ? 'bg-ink-50' : ''"
 					@click="revisionsOpen = !revisionsOpen"
 				>
-					<span>Revisions</span>
+					<span>{{ __("Revisions") }}</span>
 					<span
 						v-if="revisions.length"
 						class="text-[10px] px-1 rounded bg-ink-100 text-ink-600 tabular-nums"
@@ -1273,9 +1282,9 @@ onBeforeUnmount(() => {
 						<input
 							v-model="newRevisionLabel"
 							type="text"
-							placeholder="Name this revision…"
+							:placeholder="__('Name this revision…')"
 							class="desk-input !py-1 !text-xs flex-1"
-							aria-label="Revision name"
+							:aria-label="__('Revision name')"
 							@keydown.enter="onSaveRevision"
 						/>
 						<button
@@ -1284,7 +1293,7 @@ onBeforeUnmount(() => {
 							:disabled="snapBusy || !newRevisionLabel.trim()"
 							@click="onSaveRevision"
 						>
-							Save
+							{{ __("Save") }}
 						</button>
 					</div>
 					<div class="max-h-72 overflow-y-auto scrollbar-thin py-1">
@@ -1292,7 +1301,7 @@ onBeforeUnmount(() => {
 							v-if="!revisions.length"
 							class="px-3 py-4 text-center text-[11px] text-ink-400 italic"
 						>
-							No saved revisions yet. Save one to snapshot the current schedule.
+							{{ __("No saved revisions yet. Save one to snapshot the current schedule.") }}
 						</div>
 						<div
 							v-for="rev in revisions"
@@ -1304,7 +1313,7 @@ onBeforeUnmount(() => {
 									{{ rev.label }}
 								</div>
 								<div class="text-[10px] text-ink-500 tabular-nums">
-									{{ rev.task_count }} tasks ·
+									{{ __("{0} tasks", [rev.task_count]) }} ·
 									{{ rev.creation ? rev.creation.slice(0, 16) : "" }}
 								</div>
 							</div>
@@ -1314,12 +1323,12 @@ onBeforeUnmount(() => {
 								:disabled="snapBusy"
 								@click="onRestoreRevision(rev)"
 							>
-								Restore
+								{{ __("Restore") }}
 							</button>
 							<button
 								v-if="canEditAny"
 								class="text-[11px] px-1.5 py-0.5 text-ink-400 hover:text-danger-600"
-								title="Delete revision"
+								:title="__('Delete revision')"
 								@click="onDeleteRevision(rev)"
 							>
 								✕
@@ -1330,13 +1339,13 @@ onBeforeUnmount(() => {
 			</div>
 
 			<button v-if="canCreateHere" class="desk-save-btn" @click="newTaskOpen = true">
-				+ New Task
+				{{ __("+ New Task") }}
 			</button>
 
 			<div class="ml-auto text-xs text-ink-500 flex items-center gap-3">
-				<span>{{ allTasks.length }} tasks</span>
-				<span v-if="allDeps.length">· {{ allDeps.length }} dependencies</span>
-				<span class="text-ink-400 italic hidden md:inline">Ctrl + scroll to zoom</span>
+				<span>{{ __("{0} tasks", [allTasks.length]) }}</span>
+				<span v-if="allDeps.length">· {{ __("{0} dependencies", [allDeps.length]) }}</span>
+				<span class="text-ink-400 italic hidden md:inline">{{ __("Ctrl + scroll to zoom") }}</span>
 			</div>
 		</div>
 
@@ -1346,13 +1355,13 @@ onBeforeUnmount(() => {
 			class="bg-white border border-ink-200 border-t-0 rounded-b-lg overflow-hidden relative"
 		>
 			<div v-if="!selectedProject" class="p-10 text-center text-sm text-ink-400">
-				Select a project to view its schedule.
+				{{ __("Select a project to view its schedule.") }}
 			</div>
 			<div v-else-if="loading" class="p-10 text-center text-sm text-ink-400">
-				Loading schedule…
+				{{ __("Loading schedule…") }}
 			</div>
 			<div v-else-if="!allTasks.length" class="p-10 text-center text-sm text-ink-400">
-				No tasks in this project yet.
+				{{ __("No tasks in this project yet.") }}
 			</div>
 
 			<div
@@ -1387,15 +1396,15 @@ onBeforeUnmount(() => {
 							<input
 								v-model="search"
 								type="text"
-								placeholder="Search tasks…"
+								:placeholder="__('Search tasks…')"
 								class="w-full text-xs pl-7 pr-7 py-1 border border-ink-200 rounded bg-white text-ink-800 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 							/>
 							<button
 								v-if="search"
 								type="button"
 								class="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 hover:text-ink-700"
-								title="Clear search"
-								aria-label="Clear search"
+								:title="__('Clear search')"
+								:aria-label="__('Clear search')"
 								@click="search = ''"
 							>
 								<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1414,18 +1423,18 @@ onBeforeUnmount(() => {
 						>
 							<button
 								class="text-[10px] text-brand-700 hover:underline"
-								title="Expand all groups"
+								:title="__('Expand all groups')"
 								@click="expandAllGroups"
 							>
-								Expand
+								{{ __("Expand") }}
 							</button>
 							<span class="text-ink-300 text-[10px]">·</span>
 							<button
 								class="text-[10px] text-brand-700 hover:underline"
-								title="Collapse all groups"
+								:title="__('Collapse all groups')"
 								@click="collapseAllGroups"
 							>
-								Collapse
+								{{ __("Collapse") }}
 							</button>
 						</div>
 					</div>
@@ -1458,8 +1467,8 @@ onBeforeUnmount(() => {
 										<span class="text-[10px] text-ink-500 tabular-nums">
 											{{
 												r.computedFinish
-													? "finish " + fmtShort(r.computedFinish)
-													: "no dates"
+													? __("finish {0}", [fmtShort(r.computedFinish)])
+													: __("no dates")
 											}}
 										</span>
 										<span class="text-[10px] text-ink-500 tabular-nums"
@@ -1468,7 +1477,7 @@ onBeforeUnmount(() => {
 										<span
 											v-if="r.axis === 'stage' && r.slipDays > 0"
 											class="text-[9px] px-1.5 py-0 bg-warning-50 text-warning-700 rounded-full font-medium tabular-nums"
-											>+{{ r.slipDays }}d LATE</span
+											>{{ __("+{0}d LATE", [r.slipDays]) }}</span
 										>
 									</div>
 								</div>
@@ -1497,7 +1506,7 @@ onBeforeUnmount(() => {
 												class="schedule-date-input"
 												:value="r.task.endDate || ''"
 												:disabled="!canEditTask(r.task)"
-												title="Milestone date (due)"
+												:title="__('Milestone date (due)')"
 												@click.stop
 												@mousedown.stop
 												@change="
@@ -1505,7 +1514,7 @@ onBeforeUnmount(() => {
 												"
 											/>
 											<span class="text-[9px] text-ink-400 ml-1"
-												>milestone</span
+												>{{ __("milestone") }}</span
 											>
 										</template>
 										<template v-else>
@@ -1514,7 +1523,7 @@ onBeforeUnmount(() => {
 												class="schedule-date-input"
 												:value="r.task.startDate || ''"
 												:disabled="!canEditTask(r.task)"
-												title="Start date"
+												:title="__('Start date')"
 												@click.stop
 												@mousedown.stop
 												@change="
@@ -1527,7 +1536,7 @@ onBeforeUnmount(() => {
 												class="schedule-date-input"
 												:value="r.task.endDate || ''"
 												:disabled="!canEditTask(r.task)"
-												title="Due date"
+												:title="__('Due date')"
 												@click.stop
 												@mousedown.stop
 												@change="
@@ -1696,7 +1705,7 @@ onBeforeUnmount(() => {
 										height: SUMMARY_BAR_HEIGHT + 'px',
 									}"
 									class="bg-ink-900 cursor-help"
-									:title="'Stage planned end · ' + fmtShort(sb.group.plannedEnd)"
+									:title="__('Stage planned end') + ' · ' + fmtShort(sb.group.plannedEnd)"
 								></div>
 							</template>
 
@@ -1775,10 +1784,11 @@ onBeforeUnmount(() => {
 									class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-400 italic select-none pointer-events-none"
 									>{{
 										canEditTask(b.task)
-											? "Hover and click to place a 1-" +
-											  viewMode +
-											  " block · drag the edges after to extend"
-											: "No timeline set"
+											? __(
+													"Hover and click to place a 1-{0} block · drag the edges after to extend",
+													[viewMode]
+											  )
+											: __("No timeline set")
 									}}</span
 								>
 								<div
@@ -1830,8 +1840,8 @@ onBeforeUnmount(() => {
 										  ' · ' +
 										  b.task.progress +
 										  '%' +
-										  (b.isOverdue ? ' · OVERDUE' : '') +
-										  (b.isInspection ? ' · Inspection' : '')
+										  (b.isOverdue ? ' · ' + __('OVERDUE') : '') +
+										  (b.isInspection ? ' · ' + __('Inspection') : '')
 								"
 								@mousedown="onBarMouseDown(b.task, $event, 'move')"
 							>
@@ -1874,14 +1884,14 @@ onBeforeUnmount(() => {
 										b.width > 18
 									"
 									class="relative ml-auto text-[11px] leading-none text-white z-[5]"
-									title="Overdue"
+									:title="__('Overdue')"
 									>⏱</span
 								>
 								<div
 									v-if="canEditTask(b.task)"
 									data-link-arrow="true"
 									class="absolute -right-4 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-brand-700 cursor-crosshair opacity-50 group-hover:opacity-100 z-20 shadow transition-opacity"
-									title="Drag to another task to create a Finish-to-Start dependency"
+									:title="__('Drag to another task to create a Finish-to-Start dependency')"
 									@mousedown.stop="onArrowHandleMouseDown(b.task, $event)"
 								></div>
 							</div>
@@ -1903,9 +1913,9 @@ onBeforeUnmount(() => {
 									b.task.schedule_conflict
 										? b.task.name + ' — ' + b.task.conflict_reason
 										: b.task.name +
-										  ' · Milestone · ' +
+										  ' · ' + __('Milestone') + ' · ' +
 										  fmtShort(b.task.endDate) +
-										  (b.isOverdue ? ' · OVERDUE' : '')
+										  (b.isOverdue ? ' · ' + __('OVERDUE') : '')
 								"
 							>
 								<svg :width="DIAMOND_W" :height="ROW_HEIGHT" class="flex-shrink-0">
@@ -1964,7 +1974,7 @@ onBeforeUnmount(() => {
 										top: (ROW_HEIGHT - 16) / 2 + 'px',
 										pointerEvents: 'auto',
 									}"
-									title="Drag to another task to create a Finish-to-Start dependency"
+									:title="__('Drag to another task to create a Finish-to-Start dependency')"
 									@mousedown.stop="onArrowHandleMouseDown(b.task, $event)"
 								></div>
 							</div>
@@ -2050,35 +2060,35 @@ onBeforeUnmount(() => {
 				@click.stop
 			>
 				<div class="text-[11px] uppercase tracking-wider text-ink-500 mb-2 font-medium">
-					Dependency
+					{{ __("Dependency") }}
 				</div>
 				<div class="text-xs text-ink-700 mb-2 font-mono">
 					{{ popoverDep.dep.predecessor }} → {{ popoverDep.dep.successor }}
 				</div>
 				<div class="flex items-center gap-2 mb-2">
-					<label class="text-[11px] text-ink-500 w-12">Type</label>
+					<label class="text-[11px] text-ink-500 w-12">{{ __("Type") }}</label>
 					<select
 						v-model="popoverDep.dep.dependency_type"
 						:disabled="!canEditAny"
 						class="text-xs px-2 py-1 border border-ink-200 rounded bg-white flex-1"
 					>
-						<option value="FS">FS — Finish to Start</option>
-						<option value="SS">SS — Start to Start</option>
-						<option value="FF">FF — Finish to Finish</option>
+						<option value="FS">{{ __("FS — Finish to Start") }}</option>
+						<option value="SS">{{ __("SS — Start to Start") }}</option>
+						<option value="FF">{{ __("FF — Finish to Finish") }}</option>
 					</select>
 				</div>
 				<div class="flex items-center gap-2 mb-3">
-					<label class="text-[11px] text-ink-500 w-12">Lag</label>
+					<label class="text-[11px] text-ink-500 w-12">{{ __("Lag") }}</label>
 					<input
 						type="number"
 						v-model.number="popoverDep.dep.lag"
 						:disabled="!canEditAny"
 						class="text-xs px-2 py-1 border border-ink-200 rounded bg-white flex-1"
 					/>
-					<span class="text-[11px] text-ink-500">days</span>
+					<span class="text-[11px] text-ink-500">{{ __("days") }}</span>
 				</div>
 				<p class="text-[10px] text-ink-400 mb-3 italic">
-					Negative lag = lead (overlap allowed).
+					{{ __("Negative lag = lead (overlap allowed).") }}
 				</p>
 				<div class="flex items-center justify-between gap-2">
 					<button
@@ -2086,21 +2096,21 @@ onBeforeUnmount(() => {
 						class="text-xs px-2 py-1 text-danger-700 hover:bg-danger-50 rounded"
 						@click="deleteFromPopover"
 					>
-						Delete
+						{{ __("Delete") }}
 					</button>
 					<div class="ml-auto flex items-center gap-2">
 						<button
 							class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50"
 							@click="popoverDep = null"
 						>
-							Close
+							{{ __("Close") }}
 						</button>
 						<button
 							v-if="canEditAny"
 							class="text-xs px-2.5 py-1 bg-ink-900 text-white rounded hover:bg-ink-800"
 							@click="applyPopover"
 						>
-							Save
+							{{ __("Save") }}
 						</button>
 					</div>
 				</div>
@@ -2121,13 +2131,14 @@ onBeforeUnmount(() => {
 					>
 						<div>
 							<div class="text-sm font-semibold text-ink-900">
-								Reschedule downstream?
+								{{ __("Reschedule downstream?") }}
 							</div>
 							<div class="text-[11px] text-ink-500 mt-0.5">
-								{{ previewState.moves.length }} downstream task{{
-									previewState.moves.length === 1 ? "" : "s"
+								{{
+									previewState.moves.length === 1
+										? __("{0} downstream task would shift forward", [previewState.moves.length])
+										: __("{0} downstream tasks would shift forward", [previewState.moves.length])
 								}}
-								would shift forward
 							</div>
 						</div>
 						<button
@@ -2143,12 +2154,12 @@ onBeforeUnmount(() => {
 							style="grid-template-columns: minmax(140px, 1.4fr) 1fr 1fr"
 						>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500">
-								Task
+								{{ __("Task") }}
 							</div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500">
-								From
+								{{ __("From") }}
 							</div>
-							<div class="text-[10px] uppercase tracking-wider text-ink-500">To</div>
+							<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("To") }}</div>
 							<template v-for="m in previewState.moves" :key="m.task">
 								<div class="text-ink-900 truncate" :title="taskName(m.task)">
 									{{ taskName(m.task) }}
@@ -2164,9 +2175,11 @@ onBeforeUnmount(() => {
 							</template>
 						</div>
 						<p class="text-[11px] text-ink-500 mt-4 italic">
-							Cancel keeps your dragged task at its new dates but leaves dependents
-							flagged for conflict — you can resolve them manually or reschedule
-							again later.
+							{{
+								__(
+									"Cancel keeps your dragged task at its new dates but leaves dependents flagged for conflict — you can resolve them manually or reschedule again later."
+								)
+							}}
 						</p>
 					</div>
 					<div
@@ -2176,13 +2189,13 @@ onBeforeUnmount(() => {
 							class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-white"
 							@click="cancelCascade"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							class="text-xs px-3 py-1.5 bg-ink-900 text-white rounded hover:bg-ink-800"
 							@click="confirmCascade"
 						>
-							Apply cascade
+							{{ __("Apply cascade") }}
 						</button>
 					</div>
 				</div>
@@ -2195,11 +2208,11 @@ onBeforeUnmount(() => {
 		>
 			<div class="flex items-center gap-4 flex-wrap">
 				<span class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-					>Type</span
+					>{{ __("Type") }}</span
 				>
 				<div class="flex items-center gap-1.5">
 					<span class="inline-block w-5 h-2.5 rounded bg-brand-500"></span
-					><span>Activity</span>
+					><span>{{ __("Activity") }}</span>
 				</div>
 				<div class="flex items-center gap-1.5">
 					<svg width="14" height="14" viewBox="0 0 14 14">
@@ -2209,19 +2222,19 @@ onBeforeUnmount(() => {
 							:stroke="diamondBaseStroke"
 						/>
 					</svg>
-					<span>Milestone</span>
+					<span>{{ __("Milestone") }}</span>
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-info-500"
 						style="border: 1.5px dashed #1e293b"
 					></span
-					><span>Inspection</span>
+					><span>{{ __("Inspection") }}</span>
 				</div>
 			</div>
 			<div class="flex items-center gap-4 flex-wrap">
 				<span class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-					>Status</span
+					>{{ __("Status") }}</span
 				>
 				<div class="flex items-center gap-1.5">
 					<span
@@ -2229,49 +2242,49 @@ onBeforeUnmount(() => {
 						><span
 							class="absolute inset-y-0 left-0 w-full bg-success-600"
 						></span></span
-					>Completed
+					>{{ __("Completed") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-brand-100 border border-brand-700 relative overflow-hidden"
 						><span class="absolute inset-y-0 left-0 w-3/5 bg-brand-600"></span></span
-					>In Progress
+					>{{ __("In Progress") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-ink-100 border border-ink-400"
 					></span
-					>Yet To Start
+					>{{ __("Yet To Start") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded gantt-in-delay-track border border-warning-700 relative overflow-hidden"
 						><span class="absolute inset-y-0 left-0 w-2/5 bg-warning-600"></span></span
-					>In Delay
+					>{{ __("In Delay") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-ink-200 border border-ink-600"
 					></span
-					>Blocked
+					>{{ __("Blocked") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-danger-100 border border-danger-700 relative overflow-hidden"
 						><span class="absolute inset-y-0 left-0 w-3/5 bg-danger-600"></span></span
-					>Schedule conflict
+					>{{ __("Schedule conflict") }}
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span
 						class="inline-block w-5 h-2.5 rounded bg-brand-100 border border-brand-700 ring-2 ring-warning-500 ring-offset-1 relative overflow-hidden"
 						><span class="absolute inset-y-0 left-0 w-3/5 bg-brand-600"></span></span
-					>Overdue <span class="text-ink-500">⏱</span>
+					>{{ __("Overdue") }} <span class="text-ink-500">⏱</span>
 				</div>
 				<div v-if="groupBy === 'stage'" class="ml-auto flex items-center gap-1.5">
-					<span class="inline-block w-0.5 h-3 bg-ink-900"></span>Stage planned end
+					<span class="inline-block w-0.5 h-3 bg-ink-900"></span>{{ __("Stage planned end") }}
 				</div>
 				<div class="flex items-center gap-1.5" :class="{ 'ml-auto': groupBy !== 'stage' }">
-					<span class="w-px h-3 bg-danger-500/60"></span>Today
+					<span class="w-px h-3 bg-danger-500/60"></span>{{ __("Today") }}
 				</div>
 			</div>
 		</div>

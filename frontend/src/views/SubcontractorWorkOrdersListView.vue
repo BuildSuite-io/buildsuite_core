@@ -11,6 +11,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
@@ -63,23 +64,23 @@ const FIELDS = [
 // while `docstatus` — which drives the real status — never gets fetched, so every row reads
 // as Draft. `percent` is computed from total_value + the bills fetch; `status` from docstatus.
 const columns = computed(() => [
-	{ key: "name", label: "WO ID" },
-	{ key: "subcontractor_name", label: "Subcontractor" },
-	{ key: "project", label: "Project" },
-	{ key: "date", label: "Date" },
-	{ key: "delivery_type", label: "Type" },
-	{ key: "total_value", label: "Value", align: "right" },
+	{ key: "name", label: __("WO ID") },
+	{ key: "subcontractor_name", label: __("Subcontractor") },
+	{ key: "project", label: __("Project") },
+	{ key: "date", label: __("Date") },
+	{ key: "delivery_type", label: __("Type") },
+	{ key: "total_value", label: __("Value"), align: "right" },
 	// "% Billed" is hidden for personas that can't read Subcontractor Bills (no bill fetch).
 	...(canReadBills.value
-		? [{ key: "percent", label: "% Billed", align: "right", fields: ["total_value"] }]
+		? [{ key: "percent", label: __("% Billed"), align: "right", fields: ["total_value"] }]
 		: []),
-	{ key: "status", label: "Status", fields: ["docstatus"] },
+	{ key: "status", label: __("Status"), fields: ["docstatus"] },
 ]);
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Work Orders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Work Orders") },
 ];
 
 function onRowClick(row) {
@@ -88,13 +89,13 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Work Orders" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Work Orders')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('subcontractorWorkOrder')"
 				to="/subcontractor-work-orders/new"
 				class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -105,8 +106,8 @@ function onRowClick(row) {
 			:search-fields="['name', 'subcontractor_name', 'project']"
 			cache-key="buildsuite-subcontractor-wo-list"
 			row-key="name"
-			search-placeholder="Search WO, subcontractor, project…"
-			empty-message="No work orders raised yet."
+			:search-placeholder="__('Search WO, subcontractor, project…')"
+			:empty-message="__('No work orders raised yet.')"
 			@row-click="onRowClick"
 		>
 			<template #cell-name="{ row }">
@@ -130,7 +131,7 @@ function onRowClick(row) {
 				<span
 					v-if="row.delivery_type"
 					class="text-[11px] px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded"
-					>{{ row.delivery_type }}</span
+					>{{ __(row.delivery_type) }}</span
 				>
 				<span v-else class="text-ink-300">—</span>
 			</template>

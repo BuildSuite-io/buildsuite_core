@@ -20,6 +20,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -42,7 +43,7 @@ async function load() {
 		delete data.wo_lines;
 		mb.value = data;
 	} catch (err) {
-		showToast(err.message || "Failed to load measurement book", "error");
+		showToast(err.message || __("Failed to load measurement book"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -63,10 +64,11 @@ function onEdit() {
 
 async function onCertify() {
 	const ok = await confirmDialog({
-		title: `Certify ${mb.value.name}?`,
-		message:
-			"Certified measurement books become the source of measured-to-date on the work order. Revert to Draft to retract.",
-		confirmLabel: "Certify",
+		title: __("Certify {0}?", [mb.value.name]),
+		message: __(
+			"Certified measurement books become the source of measured-to-date on the work order. Revert to Draft to retract."
+		),
+		confirmLabel: __("Certify"),
 	});
 	if (!ok) return;
 	busy.value = true;
@@ -74,9 +76,9 @@ async function onCertify() {
 		const res = await certifyMeasurementBook(mb.value.name);
 		mb.value.status = res.status;
 		mb.value.certified_by = res.certified_by;
-		showToast("Measurement book certified.");
+		showToast(__("Measurement book certified."));
 	} catch (err) {
-		showToast(err.message || "Certify failed", "error");
+		showToast(err.message || __("Certify failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -89,7 +91,7 @@ async function onRevert() {
 		mb.value.status = res.status;
 		mb.value.certified_by = res.certified_by;
 	} catch (err) {
-		showToast(err.message || "Revert failed", "error");
+		showToast(err.message || __("Revert failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -105,10 +107,11 @@ function onCreateBill() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${mb.value.name}?`,
-		message:
-			"The entries are removed permanently. Measured-to-date on the work order will recompute against the remaining certified books.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [mb.value.name]),
+		message: __(
+			"The entries are removed permanently. Measured-to-date on the work order will recompute against the remaining certified books."
+		),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -116,14 +119,14 @@ async function onDelete() {
 		await adapter.remove("Measurement Book", mb.value.name);
 		router.push("/measurement-books");
 	} catch (err) {
-		showToast(err.message || "Failed to delete measurement book", "error");
+		showToast(err.message || __("Failed to delete measurement book"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Measurement Books", to: "/measurement-books" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Measurement Books"), to: "/measurement-books" },
 	{ label: mb.value?.name || props.id },
 ]);
 </script>
@@ -144,7 +147,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="isDraft && canSubmit('measurementBook')"
@@ -154,7 +157,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onCertify"
 			>
-				Certify
+				{{ __("Certify") }}
 			</button>
 			<button
 				v-if="!isDraft && canSubmit('measurementBook')"
@@ -164,17 +167,17 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onRevert"
 			>
-				Revert to Draft
+				{{ __("Revert to Draft") }}
 			</button>
 			<button
 				v-if="!isDraft && mb.work_order && canCreate('subcontractorBill')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
-				title="Open the new Subcontractor Bill form pre-filled to this Work Order"
+				:title="__('Open the new Subcontractor Bill form pre-filled to this Work Order')"
 				@click="onCreateBill"
 			>
-				+ Create Subcontractor bill
+				{{ __("+ Create Subcontractor bill") }}
 			</button>
 			<button
 				v-if="canDelete('measurementBook')"
@@ -183,7 +186,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -191,7 +194,7 @@ const breadcrumbs = computed(() => [
 		<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Project
+					{{ __("Project") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ mb.project_name || mb.project }}
@@ -199,7 +202,7 @@ const breadcrumbs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Work order
+					{{ __("Work order") }}
 				</div>
 				<div class="text-sm mt-0.5">
 					<DeskLink :to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`">{{
@@ -213,13 +216,13 @@ const breadcrumbs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Date
+					{{ __("Date") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5">{{ fmtDate(mb.date) }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Measured by
+					{{ __("Measured by") }}
 				</div>
 				<div class="text-sm text-ink-900 mt-0.5">
 					<UserAvatar
@@ -231,7 +234,7 @@ const breadcrumbs = computed(() => [
 					<span v-else>—</span>
 				</div>
 				<div class="text-[10px] text-ink-500 mt-1 flex items-center gap-1">
-					<span>Certified by</span>
+					<span>{{ __("Certified by") }}</span>
 					<UserAvatar
 						v-if="mb.certified_by"
 						:user-id="mb.certified_by"
@@ -243,13 +246,17 @@ const breadcrumbs = computed(() => [
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Measured total
+					{{ __("Measured total") }}
 				</div>
 				<div class="text-base font-semibold text-info-700 tabular-nums mt-0.5">
 					{{ Number(mb.measured_total || 0).toLocaleString("en-IN") }}
 				</div>
 				<div class="text-[10px] text-ink-500">
-					across {{ (mb.entries || []).length }} entries
+					{{
+						(mb.entries || []).length === 1
+							? __("across {0} entry", [1])
+							: __("across {0} entries", [(mb.entries || []).length])
+					}}
 				</div>
 			</div>
 		</div>
@@ -260,27 +267,26 @@ const breadcrumbs = computed(() => [
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
 			>
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Entries
+					{{ __("Entries") }}
 				</h3>
-				<span class="text-[10px] text-ink-500 italic"
-					>Quantity = Nos × L × B × D (or entered directly). Deduction rows
-					subtract.</span
-				>
+				<span class="text-[10px] text-ink-500 italic">{{
+					__("Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract.")
+				}}</span>
 			</div>
 			<table class="w-full text-xs" style="min-width: 720px">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
 						<th class="text-left px-3 py-2">#</th>
-						<th class="text-left px-3 py-2">Description</th>
-						<th class="text-left px-3 py-2">Cost code</th>
-						<th class="text-left px-3 py-2">WO line</th>
-						<th class="text-right px-3 py-2">Nos</th>
-						<th class="text-right px-3 py-2">L</th>
-						<th class="text-right px-3 py-2">B</th>
-						<th class="text-right px-3 py-2">D</th>
-						<th class="text-right px-3 py-2">Qty</th>
-						<th class="text-left px-3 py-2">UOM</th>
-						<th class="text-center px-3 py-2">Deduction</th>
+						<th class="text-left px-3 py-2">{{ __("Description") }}</th>
+						<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
+						<th class="text-left px-3 py-2">{{ __("WO line") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Nos") }}</th>
+						<th class="text-right px-3 py-2">{{ __("L") }}</th>
+						<th class="text-right px-3 py-2">{{ __("B") }}</th>
+						<th class="text-right px-3 py-2">{{ __("D") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-center px-3 py-2">{{ __("Deduction") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -328,7 +334,7 @@ const breadcrumbs = computed(() => [
 							<span
 								v-if="e.is_deduction"
 								class="text-[10px] px-1.5 py-0.5 bg-danger-100 text-danger-700 rounded"
-								>Deduct</span
+								>{{ __("Deduct") }}</span
 							>
 							<span
 								v-else
@@ -344,7 +350,7 @@ const breadcrumbs = computed(() => [
 							colspan="8"
 							class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 						>
-							Measured total
+							{{ __("Measured total") }}
 						</td>
 						<td
 							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-info-700"
@@ -363,13 +369,13 @@ const breadcrumbs = computed(() => [
 			class="mt-4 px-4 py-3 bg-ink-50 border border-ink-200 rounded-md"
 		>
 			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
-				Remarks
+				{{ __("Remarks") }}
 			</div>
 			<div class="text-sm text-ink-800 whitespace-pre-line">{{ mb.remarks }}</div>
 		</section>
 	</DeskPage>
 
 	<div v-else class="px-3 py-2 text-sm text-ink-500">
-		{{ loading ? "Loading measurement book…" : "Measurement book not found." }}
+		{{ loading ? __("Loading measurement book…") : __("Measurement book not found.") }}
 	</div>
 </template>

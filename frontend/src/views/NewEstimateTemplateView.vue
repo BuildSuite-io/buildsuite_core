@@ -6,6 +6,7 @@ import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { usePermissions } from '@/composables/usePermissions'
 import { createDataAdapter } from '@/data/adapters'
+import { __ } from '@/utils/translate'
 import DeskPage from '@/components/desk/DeskPage.vue'
 import DeskForm from '@/components/desk/DeskForm.vue'
 import DeskActionBar from '@/components/desk/DeskActionBar.vue'
@@ -29,8 +30,8 @@ const saving = ref(false)
 
 function validate() {
   const e = {}
-  if (!form.templateCode.trim()) e.templateCode = 'Code is required'
-  if (!form.templateName.trim()) e.templateName = 'Name is required'
+  if (!form.templateCode.trim()) e.templateCode = __('Code is required')
+  if (!form.templateName.trim()) e.templateName = __('Name is required')
   setErrors(e)
   return Object.keys(e).length === 0
 }
@@ -51,7 +52,7 @@ async function onSave() {
     })
     router.push(`/estimate-template/${res.name}`)
   } catch (err) {
-    showToast(applyServerErrors(err) ?? 'Failed to create estimate template', 'error')
+    showToast(applyServerErrors(err) ?? __('Failed to create estimate template'), 'error')
   } finally {
     saving.value = false
   }
@@ -59,41 +60,41 @@ async function onSave() {
 
 const breadcrumbs = [
   { label: 'BuildSuite Core', to: '/' },
-  { label: 'Estimation', to: '/estimation' },
-  { label: 'Estimate Template', to: '/estimate-template' },
-  { label: 'New' },
+  { label: __('Estimation'), to: '/estimation' },
+  { label: __('Estimate Template'), to: '/estimate-template' },
+  { label: __('New') },
 ]
 </script>
 
 <template>
-  <DeskPage title="New Estimate Template" subtitle="A reusable BOQ skeleton — add rows after creating"
+  <DeskPage :title="__('New Estimate Template')" :subtitle="__('A reusable BOQ skeleton — add rows after creating')"
     :breadcrumbs="breadcrumbs">
     <div
       v-if="!canCreate('estimateTemplate')"
       class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
       style="border-radius: 6px"
     >
-      You don't have permission to create an estimate template.
+      {{ __("You don't have permission to create an estimate template.") }}
     </div>
     <DeskForm v-else>
       <template #action-bar>
-        <DeskActionBar :save-label="saving ? 'Creating…' : 'Create template'" :saving="saving" @save="onSave"
+        <DeskActionBar :save-label="saving ? __('Creating…') : __('Create template')" :saving="saving" @save="onSave"
           @cancel="onCancel" />
       </template>
 
-      <DeskSection title="Template details">
-        <DeskField label="Code" required hint="Short stable identifier (e.g. ET-RES-TOWER)."
+      <DeskSection :title="__('Template details')">
+        <DeskField :label="__('Code')" required :hint="__('Short stable identifier (e.g. ET-RES-TOWER).')"
           :error="errors.templateCode">
           <DeskInput v-model="form.templateCode" placeholder="ET-..." />
         </DeskField>
-        <DeskField label="Name" required :error="errors.templateName">
+        <DeskField :label="__('Name')" required :error="errors.templateName">
           <DeskInput v-model="form.templateName" />
         </DeskField>
-        <DeskField label="Project Category" hint="Used to suggest this template for matching project types.">
+        <DeskField :label="__('Project Category')" :hint="__('Used to suggest this template for matching project types.')">
           <DeskLinkPicker v-model="form.projectType" doctype="Project Category" label-field="name" value-field="name"
-            placeholder="— Any project type —" />
+            :placeholder="__('— Any project type —')" />
         </DeskField>
-        <DeskField label="Description">
+        <DeskField :label="__('Description')">
           <DeskTextarea v-model="form.description" :rows="3" />
         </DeskField>
       </DeskSection>

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
+import { __ } from "@/utils/translate";
 import { fmtINR } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -17,9 +18,9 @@ function onRowClick(row) {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Estimation", to: "/estimation" },
-	{ label: "Assembly" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Assembly") },
 ];
 
 const FIELDS = [
@@ -34,12 +35,12 @@ const FIELDS = [
 ];
 
 const columns = [
-	{ key: "assembly_code", label: "Code" },
-	{ key: "assembly_name", label: "Name" },
-	{ key: "category", label: "Category" },
-	{ key: "uom", label: "Unit" },
-	{ key: "component_count", label: "Components", align: "right" },
-	{ key: "rate_per_unit", label: "Rate / unit", align: "right" },
+	{ key: "assembly_code", label: __("Code") },
+	{ key: "assembly_name", label: __("Name") },
+	{ key: "category", label: __("Category") },
+	{ key: "uom", label: __("Unit") },
+	{ key: "component_count", label: __("Components"), align: "right" },
+	{ key: "rate_per_unit", label: __("Rate / unit"), align: "right" },
 ];
 
 const categoryFilter = ref("");
@@ -48,11 +49,11 @@ const filterFieldMap = { category: "category" };
 </script>
 
 <template>
-	<DeskPage title="Assembly" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Assembly')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<DeskLink to="/rate-master" class="text-xs">View Rate Master →</DeskLink>
+			<DeskLink to="/rate-master" class="text-xs">{{ __("View Rate Master →") }}</DeskLink>
 			<RouterLink v-if="canCreate('assembly')" to="/assembly/new" class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -65,8 +66,8 @@ const filterFieldMap = { category: "category" };
 			:filter-field-map="filterFieldMap"
 			cache-key="buildsuite-assembly-list"
 			row-key="name"
-			search-placeholder="Search by code or name…"
-			empty-message="No assemblies match your filters."
+			:search-placeholder="__('Search by code or name…')"
+			:empty-message="__('No assemblies match your filters.')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -76,12 +77,12 @@ const filterFieldMap = { category: "category" };
 					doctype="Assembly Category"
 					label-field="name"
 					value-field="name"
-					placeholder="Category: Any"
+					:placeholder="__('Category: Any')"
 					class="!w-40"
 				/>
 				<DeskFilterChip
 					v-else
-					label="Category"
+					:label="__('Category')"
 					:value="categoryFilter"
 					@remove="categoryFilter = ''"
 				/>

@@ -11,6 +11,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const router = useRouter();
@@ -115,12 +116,12 @@ const sortField = ref("entryDate");
 const sortDirection = ref("desc");
 
 const SORT_OPTIONS = [
-	{ value: "entryDate", label: "Entry Date" },
-	{ value: "progressPct", label: "Progress %" },
-	{ value: "task", label: "Task" },
-	{ value: "enteredBy", label: "Entered By" },
-	{ value: "modified", label: "Last Updated" },
-	{ value: "creation", label: "Created" },
+	{ value: "entryDate", label: __("Entry Date") },
+	{ value: "progressPct", label: __("Progress %") },
+	{ value: "task", label: __("Task") },
+	{ value: "enteredBy", label: __("Entered By") },
+	{ value: "modified", label: __("Last Updated") },
+	{ value: "creation", label: __("Created") },
 ];
 
 const items = computed(() => {
@@ -158,19 +159,24 @@ const WEATHER_ICON = {
 };
 
 const columns = [
-	{ key: "id", label: "ID" },
-	{ key: "entryDate", label: "Date" },
-	{ key: "task", label: "Task" },
-	{ key: "progressPct", label: "Progress", align: "right" },
-	{ key: "labour", label: "Labour", align: "right" },
-	{ key: "weather", label: "Weather" },
-	{ key: "flags", label: "Flags" },
-	{ key: "enteredBy", label: "Entered by" },
+	{ key: "id", label: __("ID") },
+	{ key: "entryDate", label: __("Date") },
+	{ key: "task", label: __("Task") },
+	{ key: "progressPct", label: __("Progress"), align: "right" },
+	{ key: "labour", label: __("Labour"), align: "right" },
+	{ key: "weather", label: __("Weather") },
+	{ key: "flags", label: __("Flags") },
+	{ key: "enteredBy", label: __("Entered by") },
 ];
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Task Progress Entry" }];
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Task Progress Entry") },
+];
 
-const subtitle = computed(() => `${items.value.length} of ${companyScopedEntries.value.length}`);
+const subtitle = computed(() =>
+	__("{0} of {1}", [items.value.length, companyScopedEntries.value.length])
+);
 
 function onRowClick(row) {
 	router.push(`/progress-entries/${row.id}`);
@@ -178,13 +184,17 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Task Progress Entry" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Task Progress Entry')"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+	>
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('taskProgressEntry')"
 				to="/progress-entries/new"
 				class="desk-save-btn"
-				>+ New Entry</RouterLink
+				>+ {{ __("New Entry") }}</RouterLink
 			>
 		</template>
 
@@ -194,7 +204,7 @@ function onRowClick(row) {
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have access to Task Progress Entries.
+			{{ __("You don't have access to Task Progress Entries.") }}
 		</div>
 
 		<!-- KPI strip -->
@@ -204,25 +214,25 @@ function onRowClick(row) {
 		>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Total entries
+					{{ __("Total entries") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.total }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Filed today
+					{{ __("Filed today") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.today }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Last 7 days
+					{{ __("Last 7 days") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.thisWeek }}</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Flagged blockers
+					{{ __("Flagged blockers") }}
 				</div>
 				<div
 					class="text-base font-semibold mt-0.5"
@@ -239,7 +249,7 @@ function onRowClick(row) {
 			:rows="items"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search narrative, task, blocker note…"
+			:search-placeholder="__('Search narrative, task, blocker note…')"
 			:sort-field="sortField"
 			:sort-direction="sortDirection"
 			:sort-options="SORT_OPTIONS"
@@ -257,7 +267,7 @@ function onRowClick(row) {
 					value-field="name"
 					:search-fields="['subject', 'name']"
 					:page-length="10"
-					placeholder="Task: Any"
+					:placeholder="__('Task: Any')"
 				/>
 
 				<!-- Entered by filter -->
@@ -269,7 +279,7 @@ function onRowClick(row) {
 					value-field="name"
 					:search-fields="['full_name', 'name']"
 					:page-length="10"
-					placeholder="Entered by: Any"
+					:placeholder="__('Entered by: Any')"
 				/>
 
 				<!-- Blocker-only toggle -->
@@ -280,11 +290,11 @@ function onRowClick(row) {
 					style="border-radius: 2px"
 					@click="blockerOnly = true"
 				>
-					🚩 Blockers only
+					🚩 {{ __("Blockers only") }}
 				</button>
 				<DeskFilterChip
 					v-else
-					label="Blockers"
+					:label="__('Blockers')"
 					value="only"
 					@remove="blockerOnly = false"
 				/>
@@ -337,7 +347,7 @@ function onRowClick(row) {
 			<template #cell-weather="{ row }">
 				<span v-if="row.weather" class="text-xs">
 					<span class="mr-1">{{ WEATHER_ICON[row.weather] || "" }}</span
-					>{{ row.weather }}
+					>{{ __(row.weather) }}
 				</span>
 				<span v-else class="text-[10px] text-ink-300">—</span>
 			</template>
@@ -346,8 +356,8 @@ function onRowClick(row) {
 					v-if="row.blockerFlag"
 					class="text-[10px] px-1.5 py-0.5 bg-danger-50 text-danger-700 font-medium"
 					style="border-radius: 2px"
-					:title="row.blockerNote || 'Blocker flagged'"
-					>🚩 Blocker</span
+					:title="row.blockerNote || __('Blocker flagged')"
+					>🚩 {{ __("Blocker") }}</span
 				>
 				<span v-else class="text-[10px] text-ink-300">—</span>
 			</template>
@@ -361,12 +371,12 @@ function onRowClick(row) {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					No progress entries match these filters ·
+					{{ __("No progress entries match these filters") }} ·
 					<RouterLink
 						v-if="canCreate('taskProgressEntry')"
 						to="/progress-entries/new"
 						class="desk-link"
-						>File a new entry →</RouterLink
+						>{{ __("File a new entry") }} →</RouterLink
 					>
 				</div>
 			</template>

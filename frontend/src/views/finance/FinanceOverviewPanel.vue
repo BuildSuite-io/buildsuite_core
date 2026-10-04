@@ -20,12 +20,16 @@ import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const fin = useFinanceMock();
 const router = useRouter();
 const { canCreate } = usePermissions();
 const activeCompany = useActiveCompany();
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Overview" }];
+const breadcrumbs = [
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Overview") },
+];
 
 function go(section) {
 	router.push(`/project-finance/${section}`);
@@ -80,23 +84,28 @@ const attention = computed(() => {
 	const ex = fin.expensesToVerify.length;
 	if (ex > 0)
 		out.push({
-			text: `${ex} expense${ex === 1 ? "" : "s"} awaiting submit`,
+			text:
+				ex === 1
+					? __("{0} expense awaiting submit", [ex])
+					: __("{0} expenses awaiting submit", [ex]),
 			section: "expenses",
 			tone: "warning",
 		});
 	if (draftInvoices.value > 0)
 		out.push({
-			text: `${draftInvoices.value} draft invoice${
-				draftInvoices.value === 1 ? "" : "s"
-			} not yet posted`,
+			text:
+				draftInvoices.value === 1
+					? __("{0} draft invoice not yet posted", [draftInvoices.value])
+					: __("{0} draft invoices not yet posted", [draftInvoices.value]),
 			section: "invoices",
 			tone: "info",
 		});
 	if (overdueCount.value > 0)
 		out.push({
-			text: `${overdueCount.value} invoice${
-				overdueCount.value === 1 ? "" : "s"
-			} overdue — chase receivables`,
+			text:
+				overdueCount.value === 1
+					? __("{0} invoice overdue — chase receivables", [overdueCount.value])
+					: __("{0} invoices overdue — chase receivables", [overdueCount.value]),
 			section: "invoices",
 			tone: "danger",
 		});
@@ -122,10 +131,10 @@ const topPayables = computed(() =>
 const recentMovements = computed(() => fin.allPayments.slice(0, 5));
 
 const quickActions = [
-	{ key: "new-expense", section: "expenses", icon: "receipt", label: "New Expense", caps: ["expense"] },
-	{ key: "req-petty", section: "petty-cash", icon: "hand-coins", label: "Request Petty Cash", caps: ["pettyCash"] },
-	{ key: "new-invoice", section: "invoices", icon: "file-text", label: "New Invoice", caps: ["salesInvoice"] },
-	{ key: "new-bill", section: "bills", icon: "banknote", label: "New Bill", caps: ["supplierBill", "subcontractorBill"] },
+	{ key: "new-expense", section: "expenses", icon: "receipt", label: __("New Expense"), caps: ["expense"] },
+	{ key: "req-petty", section: "petty-cash", icon: "hand-coins", label: __("Request Petty Cash"), caps: ["pettyCash"] },
+	{ key: "new-invoice", section: "invoices", icon: "file-text", label: __("New Invoice"), caps: ["salesInvoice"] },
+	{ key: "new-bill", section: "bills", icon: "banknote", label: __("New Bill"), caps: ["supplierBill", "subcontractorBill"] },
 ];
 // Only surface a quick action the persona can actually act on (its create capability).
 const visibleQuickActions = computed(() =>
@@ -140,7 +149,7 @@ const toneDot = {
 </script>
 
 <template>
-	<DeskPage title="Finance Overview" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Finance Overview')" :breadcrumbs="breadcrumbs">
 		<div class="space-y-5">
 			<!-- ===== KPI strip ===== -->
 			<div class="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -150,14 +159,16 @@ const toneDot = {
 					@click="go('payments')"
 				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Cash &amp; bank
+						{{ __("Cash & bank") }}
 					</div>
 					<div class="text-lg font-semibold text-ink-900 tabular-nums mt-0.5">
 						{{ fmtCompactINR(totalCashBank) }}
 					</div>
 					<div class="text-[10px] text-ink-500">
-						{{ cashBankAccounts.length }} account{{
-							cashBankAccounts.length === 1 ? "" : "s"
+						{{
+							cashBankAccounts.length === 1
+								? __("{0} account", [cashBankAccounts.length])
+								: __("{0} accounts", [cashBankAccounts.length])
 						}}
 					</div>
 				</button>
@@ -167,7 +178,7 @@ const toneDot = {
 					@click="go('invoices')"
 				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Receivables
+						{{ __("Receivables") }}
 					</div>
 					<div class="text-lg font-semibold text-ink-900 tabular-nums mt-0.5">
 						{{ fmtCompactINR(receivable) }}
@@ -176,7 +187,7 @@ const toneDot = {
 						class="text-[10px]"
 						:class="overdueCount > 0 ? 'text-danger-700 font-medium' : 'text-ink-500'"
 					>
-						{{ overdueCount > 0 ? `${overdueCount} overdue` : "none overdue" }}
+						{{ overdueCount > 0 ? __("{0} overdue", [overdueCount]) : __("none overdue") }}
 					</div>
 				</button>
 				<button
@@ -185,13 +196,13 @@ const toneDot = {
 					@click="go('bills')"
 				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Payables
+						{{ __("Payables") }}
 					</div>
 					<div class="text-lg font-semibold text-ink-900 tabular-nums mt-0.5">
 						{{ fmtCompactINR(payable) }}
 					</div>
 					<div class="text-[10px] text-ink-500">
-						retention {{ fmtCompactINR(retention) }}
+						{{ __("retention") }} {{ fmtCompactINR(retention) }}
 					</div>
 				</button>
 				<button
@@ -200,12 +211,12 @@ const toneDot = {
 					@click="go('bills')"
 				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Retention held
+						{{ __("Retention held") }}
 					</div>
 					<div class="text-lg font-semibold text-warning-700 tabular-nums mt-0.5">
 						{{ fmtCompactINR(retention) }}
 					</div>
-					<div class="text-[10px] text-ink-500">withheld on sub-bills</div>
+					<div class="text-[10px] text-ink-500">{{ __("withheld on sub-bills") }}</div>
 				</button>
 				<button
 					type="button"
@@ -221,12 +232,12 @@ const toneDot = {
 						class="text-[10px] uppercase tracking-wider font-medium"
 						:class="netPosition >= 0 ? 'text-brand-700' : 'text-danger-700'"
 					>
-						Net position
+						{{ __("Net position") }}
 					</div>
 					<div class="text-lg font-semibold text-ink-900 tabular-nums mt-0.5">
 						{{ fmtCompactINR(netPosition) }}
 					</div>
-					<div class="text-[10px] text-ink-500">have − owe · report →</div>
+					<div class="text-[10px] text-ink-500">{{ __("have − owe · report →") }}</div>
 				</button>
 			</div>
 
@@ -250,12 +261,12 @@ const toneDot = {
 								stroke-linejoin="round"
 								v-html="getWorkspaceIconPath('wallet')"
 							/>
-							Accounts
+							{{ __("Accounts") }}
 						</h3>
 						<RouterLink
 							to="/settings/finance-accounts"
 							class="text-[11px] text-brand-700 hover:underline"
-							>Manage</RouterLink
+							>{{ __("Manage") }}</RouterLink
 						>
 					</div>
 					<div class="divide-y divide-ink-100">
@@ -292,7 +303,7 @@ const toneDot = {
 									<div class="text-xs text-ink-900 font-medium truncate">
 										{{ acc.name }}
 									</div>
-									<div class="text-[10px] text-ink-500">{{ acc.type }}</div>
+									<div class="text-[10px] text-ink-500">{{ __(acc.type) }}</div>
 								</div>
 							</div>
 							<div class="text-sm font-semibold text-ink-900 tabular-nums">
@@ -303,7 +314,7 @@ const toneDot = {
 							v-if="!accounts.length"
 							class="px-4 py-8 text-center text-xs text-ink-400 italic"
 						>
-							No accounts defined.
+							{{ __("No accounts defined.") }}
 						</div>
 					</div>
 				</section>
@@ -314,12 +325,12 @@ const toneDot = {
 						class="px-4 py-2.5 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
 					>
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-							Needs attention
+							{{ __("Needs attention") }}
 						</h3>
 						<span
 							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
-							title="Draft/expense counts are sample data pending live finance registers."
-							>Sample</span
+							:title="__('Draft/expense counts are sample data pending live finance registers.')"
+							>{{ __("Sample") }}</span
 						>
 					</div>
 					<div v-if="attention.length" class="divide-y divide-ink-100">
@@ -352,7 +363,7 @@ const toneDot = {
 							stroke-linejoin="round"
 							v-html="getWorkspaceIconPath('check-circle')"
 						/>
-						All clear — nothing pending.
+						{{ __("All clear — nothing pending.") }}
 					</div>
 				</section>
 
@@ -363,7 +374,7 @@ const toneDot = {
 				>
 					<div class="px-4 py-2.5 bg-ink-50 border-b border-ink-200">
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-							Quick actions
+							{{ __("Quick actions") }}
 						</h3>
 					</div>
 					<div class="p-3 grid grid-cols-2 gap-2">
@@ -404,14 +415,14 @@ const toneDot = {
 						class="px-4 py-2.5 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
 					>
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-							Overdue receivables
+							{{ __("Overdue receivables") }}
 						</h3>
 						<button
 							type="button"
 							class="text-[11px] text-brand-700 hover:underline"
 							@click="go('invoices')"
 						>
-							All invoices →
+							{{ __("All invoices →") }}
 						</button>
 					</div>
 					<div v-if="topOverdue.length" class="divide-y divide-ink-100">
@@ -431,13 +442,13 @@ const toneDot = {
 									{{ fmtINR(r.amount) }}
 								</div>
 								<div class="text-[10px] text-danger-700 font-medium">
-									{{ r.days }}d overdue
+									{{ __("{0}d overdue", [r.days]) }}
 								</div>
 							</div>
 						</div>
 					</div>
 					<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-						Nothing overdue.
+						{{ __("Nothing overdue.") }}
 					</div>
 				</section>
 
@@ -447,14 +458,14 @@ const toneDot = {
 						class="px-4 py-2.5 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
 					>
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-							Payables due
+							{{ __("Payables due") }}
 						</h3>
 						<button
 							type="button"
 							class="text-[11px] text-brand-700 hover:underline"
 							@click="go('bills')"
 						>
-							All bills →
+							{{ __("All bills →") }}
 						</button>
 					</div>
 					<div v-if="topPayables.length" class="divide-y divide-ink-100">
@@ -471,11 +482,11 @@ const toneDot = {
 									<span
 										v-if="p.kind === 'subcontractor'"
 										class="text-[9px] px-1.5 py-0.5 bg-info-50 text-info-700 rounded-full uppercase tracking-wider flex-shrink-0"
-										>Sub</span
+										>{{ __("Sub") }}</span
 									>
 								</div>
 								<div class="text-[10px] text-ink-400">
-									due {{ fmtDate(p.due) }}
+									{{ __("due") }} {{ fmtDate(p.due) }}
 								</div>
 							</div>
 							<div
@@ -486,7 +497,7 @@ const toneDot = {
 						</div>
 					</div>
 					<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-						Nothing payable.
+						{{ __("Nothing payable.") }}
 					</div>
 				</section>
 			</div>
@@ -499,11 +510,11 @@ const toneDot = {
 					<h3
 						class="text-xs uppercase tracking-wider font-semibold text-ink-700 flex items-center gap-2"
 					>
-						Recent transactions
+						{{ __("Recent transactions") }}
 						<span
 							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
-							title="Sample data pending a live payments register."
-							>Sample</span
+							:title="__('Sample data pending a live payments register.')"
+							>{{ __("Sample") }}</span
 						>
 					</h3>
 					<button
@@ -511,7 +522,7 @@ const toneDot = {
 						class="text-[11px] text-brand-700 hover:underline"
 						@click="go('payments')"
 					>
-						All payments →
+						{{ __("All payments →") }}
 					</button>
 				</div>
 				<div v-if="recentMovements.length" class="divide-y divide-ink-100">
@@ -527,7 +538,7 @@ const toneDot = {
 									? 'bg-success-50 text-success-700'
 									: 'bg-warning-50 text-warning-700'
 							"
-							>{{ m.type }}</span
+							>{{ __(m.type) }}</span
 						>
 						<span class="text-xs text-ink-900 flex-1 truncate">{{ m.party }}</span>
 						<span class="text-[10px] text-ink-400 flex-shrink-0">{{
@@ -541,7 +552,7 @@ const toneDot = {
 					</div>
 				</div>
 				<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-					No transactions yet.
+					{{ __("No transactions yet.") }}
 				</div>
 			</section>
 		</div>

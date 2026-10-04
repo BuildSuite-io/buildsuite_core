@@ -13,6 +13,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtCompactINR } from "@/utils/format";
 import { getHomeDashboard } from "@/data/homeDashboardApi";
+import { __ } from "@/utils/translate";
 
 // One live aggregate read backs the whole overview (api.home.get_home_dashboard).
 const activeCompany = useActiveCompany();
@@ -40,26 +41,32 @@ function progressBarColor(p) {
 	return TONE_BAR[p.tone] || "bg-success-500";
 }
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard" }];
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Dashboard") }];
 </script>
 
 <template>
-	<DeskPage title="Dashboard" subtitle="Operations overview · live" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Dashboard')"
+		:subtitle="__('Operations overview · live')"
+		:breadcrumbs="breadcrumbs"
+	>
 		<template #actions>
 			<RouterLink
 				to="/tasks/new"
 				class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
 				style="border-radius: 2px"
-				>+ New Task</RouterLink
+				>{{ __("+ New Task") }}</RouterLink
 			>
-			<RouterLink to="/projects/new" class="desk-save-btn">+ New Project</RouterLink>
+			<RouterLink to="/projects/new" class="desk-save-btn">{{
+				__("+ New Project")
+			}}</RouterLink>
 		</template>
 
 		<!-- KPI strip — Desk-tight, 4 cards -->
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Active projects
+					{{ __("Active projects") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">
 					{{ kpis.active_projects ?? "—" }}
@@ -67,7 +74,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Open tasks
+					{{ __("Open tasks") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5">
 					{{ kpis.open_tasks ?? "—" }}
@@ -75,7 +82,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Pending SCOs
+					{{ __("Pending SCOs") }}
 				</div>
 				<div class="text-base font-semibold text-warning-700 mt-0.5">
 					{{ kpis.pending_scos ?? "—" }}
@@ -83,7 +90,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					Total order book
+					{{ __("Total order book") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5 tabular-nums">
 					{{ fmtCompactINR(kpis.total_order_book || 0) }}
@@ -102,9 +109,9 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 					class="px-3 py-2 bg-ink-50 border-b border-ink-200 flex items-center justify-between"
 				>
 					<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700">
-						Active projects
+						{{ __("Active projects") }}
 					</h2>
-					<DeskLink to="/projects" class="text-xs">See all →</DeskLink>
+					<DeskLink to="/projects" class="text-xs">{{ __("See all →") }}</DeskLink>
 				</div>
 				<div>
 					<RouterLink
@@ -146,7 +153,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 						v-if="!rootProjects.length"
 						class="px-3 py-6 text-center text-xs text-ink-400"
 					>
-						No projects yet.
+						{{ __("No projects yet.") }}
 					</div>
 				</div>
 			</div>
@@ -161,7 +168,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 						<h2
 							class="text-[11px] font-semibold uppercase tracking-wider text-ink-700"
 						>
-							Pending SCOs
+							{{ __("Pending SCOs") }}
 						</h2>
 					</div>
 					<div>
@@ -181,7 +188,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 							v-if="!pendingScos.length"
 							class="px-3 py-5 text-center text-xs text-ink-400"
 						>
-							No pending SCOs
+							{{ __("No pending SCOs") }}
 						</div>
 					</div>
 				</div>
@@ -194,7 +201,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 						<h2
 							class="text-[11px] font-semibold uppercase tracking-wider text-ink-700"
 						>
-							Tasks in progress
+							{{ __("Tasks in progress") }}
 						</h2>
 					</div>
 					<div>
@@ -217,7 +224,7 @@ const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Dashboard"
 							v-if="!inProgressTasks.length"
 							class="px-3 py-5 text-center text-xs text-ink-400"
 						>
-							No tasks in progress
+							{{ __("No tasks in progress") }}
 						</div>
 					</div>
 				</div>

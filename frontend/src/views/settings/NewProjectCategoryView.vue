@@ -8,6 +8,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -31,7 +32,7 @@ const saving = ref(false);
 
 function validate() {
 	const e = {};
-	if (!form.name.trim()) e.name = "Name is required";
+	if (!form.name.trim()) e.name = __("Name is required");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -49,7 +50,7 @@ async function save() {
 		});
 		router.push(`/settings/project-categories/${res.name}`);
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to create category", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to create category"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -59,10 +60,10 @@ function cancel() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Project Categories", to: "/settings/project-categories" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Project Categories"), to: "/settings/project-categories" },
+	{ label: __("New") },
 ];
 
 onMounted(() => {
@@ -71,11 +72,11 @@ onMounted(() => {
 </script>
 
 <template>
-	<DeskPage title="New Project Category" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Project Category')" :breadcrumbs="breadcrumbs">
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create category'"
+					:save-label="saving ? __('Creating…') : __('Create category')"
 					:saving="saving"
 					@save="save"
 					@cancel="cancel"
@@ -83,41 +84,41 @@ onMounted(() => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Basic">
+				<DeskSection :title="__('Basic')">
 					<DeskField
-						label="Category name"
+						:label="__('Category name')"
 						required
 						:error="errors.name"
-						hint="e.g. Commercial, Residential, Infrastructure, EPC, Interiors."
+						:hint="__('e.g. Commercial, Residential, Infrastructure, EPC, Interiors.')"
 					>
-						<DeskInput v-model="form.name" placeholder="e.g. Industrial" />
+						<DeskInput v-model="form.name" :placeholder="__('e.g. Industrial')" />
 					</DeskField>
-					<DeskField label="Sort order" hint="Position in the new-project dropdown.">
-						<DeskInput v-model="form.sortOrder" type="number" placeholder="auto" />
+					<DeskField :label="__('Sort order')" :hint="__('Position in the new-project dropdown.')">
+						<DeskInput v-model="form.sortOrder" type="number" :placeholder="__('auto')" />
 					</DeskField>
-					<DeskField label="Enabled">
+					<DeskField :label="__('Enabled')">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
 							<input type="checkbox" v-model="form.enabled" class="accent-brand-600" />
 							<span>{{
 								form.enabled
-									? "Enabled — appears in the new-project dropdown"
-									: "Disabled — hidden from the new-project dropdown"
+									? __("Enabled — appears in the new-project dropdown")
+									: __("Disabled — hidden from the new-project dropdown")
 							}}</span>
 						</label>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Work Package label">
+				<DeskSection :title="__('Work Package label')">
 					<DeskField
-						label="Singular"
-						hint='e.g. "Block", "Tower", "Package". Defaults to "Work Package".'
+						:label="__('Singular')"
+						:hint="__('e.g. &quot;Block&quot;, &quot;Tower&quot;, &quot;Package&quot;. Defaults to &quot;Work Package&quot;.')"
 					>
-						<DeskInput v-model="form.workPackageLabel" placeholder="Work Package" />
+						<DeskInput v-model="form.workPackageLabel" :placeholder="__('Work Package')" />
 					</DeskField>
-					<DeskField label="Plural">
+					<DeskField :label="__('Plural')">
 						<DeskInput
 							v-model="form.workPackageLabelPlural"
-							placeholder="Work Packages"
+							:placeholder="__('Work Packages')"
 						/>
 					</DeskField>
 				</DeskSection>

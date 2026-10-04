@@ -9,6 +9,7 @@ import { showToast } from "@/utils/appToast";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createSubcontractor } from "@/data/subcontractApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -38,8 +39,8 @@ const saving = ref(false);
 
 function validate() {
 	const e = {};
-	if (!form.subcontractor_name.trim()) e.subcontractor_name = "Name is required.";
-	if (!form.trade) e.trade = "Trade is required.";
+	if (!form.subcontractor_name.trim()) e.subcontractor_name = __("Name is required.");
+	if (!form.trade) e.trade = __("Trade is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -63,65 +64,65 @@ async function onSave() {
 		});
 		router.push(`/subcontractors/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create subcontractor", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create subcontractor"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractors", to: "/subcontractors" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractors"), to: "/subcontractors" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="New Subcontractor" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Subcontractor')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('subcontractor')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create a subcontractor.
+			{{ __("You don't have permission to create a subcontractor.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create subcontractor'"
+					:save-label="saving ? __('Creating…') : __('Create subcontractor')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"
 				/>
 			</template>
 
-			<DeskSection title="Details" :cols="3">
-				<DeskField label="Name" required :error="errors.subcontractor_name">
+			<DeskSection :title="__('Details')" :cols="3">
+				<DeskField :label="__('Name')" required :error="errors.subcontractor_name">
 					<DeskInput v-model="form.subcontractor_name" />
 				</DeskField>
-				<DeskField label="Trade" required :error="errors.trade">
+				<DeskField :label="__('Trade')" required :error="errors.trade">
 					<TradePicker v-model="form.trade" :error="errors.trade" />
 				</DeskField>
-				<DeskField label="Status">
+				<DeskField :label="__('Status')">
 					<DeskSelect v-model="form.status">
-						<option>Active</option>
-						<option>Inactive</option>
+						<option value="Active">{{ __("Active") }}</option>
+						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Tax ID" hint="e.g. GSTIN (India), VAT No, TIN"
+				<DeskField :label="__('Tax ID')" :hint="__('e.g. GSTIN (India), VAT No, TIN')"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
 			</DeskSection>
 
-			<DeskSection title="Contact" :cols="3">
-				<DeskField label="Contact person">
+			<DeskSection :title="__('Contact')" :cols="3">
+				<DeskField :label="__('Contact person')">
 					<DeskInput v-model="form.contact_person" />
 				</DeskField>
-				<DeskField label="Phone number">
+				<DeskField :label="__('Phone number')">
 					<DeskInput v-model="form.phone" />
 				</DeskField>
-				<DeskField label="Email id">
+				<DeskField :label="__('Email id')">
 					<DeskInput v-model="form.email" type="email" />
 				</DeskField>
 			</DeskSection>

@@ -2,7 +2,7 @@ erDiagram
     PROJECT ||--o{ BOQ : "revisions"
     PROJECT ||--o{ WORK_PACKAGE : has
     PROJECT ||--o{ TASK : has
-    PROJECT_TYPE ||--o{ ESTIMATE_TEMPLATE : "scopes"
+    PROJECT_CATEGORY ||--o{ ESTIMATE_TEMPLATE : "scopes"
 
     BOQ ||--o| BOQ : "base_revision (self)"
     BOQ ||--o{ BOQ_GROUP : contains
@@ -26,8 +26,10 @@ erDiagram
 
     CONSTRUCTION_RATE_MASTER ||--o{ CONSTRUCTION_RATE_HISTORY : "audit trail"
     CONSTRUCTION_RATE_MASTER ||--o| UOM : uom
+    CONSTRUCTION_RATE_MASTER }o--o| RATE_MASTER_CATEGORY : "catalogue grouping"
 
     ESTIMATE_TEMPLATE ||--o{ ESTIMATE_TEMPLATE_ROW : rows
+    ESTIMATE_TEMPLATE ||--o{ ESTIMATE_TEMPLATE_GROUP : "group ordering"
     ESTIMATE_TEMPLATE_ROW }o--o| ASSEMBLY : "Assembly line"
     ESTIMATE_TEMPLATE_ROW }o--o| CONSTRUCTION_RATE_MASTER : "Resource line"
 
@@ -94,7 +96,7 @@ erDiagram
     }
     CONSTRUCTION_RATE_MASTER {
         Data rate_code PK
-        Select category "Material|Labour|Equipment"
+        Select category "Material|Labour|Equipment|Others"
         Currency current_rate
         Currency previous_rate
         Date effective_date
@@ -109,8 +111,11 @@ erDiagram
     }
     ESTIMATE_TEMPLATE {
         Data template_code PK
-        Link project_type FK
+        Link project_category FK
         Currency estimated_total
+    }
+    ESTIMATE_TEMPLATE_GROUP {
+        Data group_name
     }
     ESTIMATE_TEMPLATE_ROW {
         Data group_name

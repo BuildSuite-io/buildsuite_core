@@ -6,6 +6,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
+import { __ } from "@/utils/translate";
 
 defineProps({
 	rows: { type: Array, default: () => [] },
@@ -46,7 +47,7 @@ function rowKey(row, i) {
 	<section v-if="editable" class="mt-6">
 		<div class="flex items-center justify-between mb-2 gap-3">
 			<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-				Employee List
+				{{ __("Employee List") }}
 			</h3>
 			<slot name="actions" />
 		</div>
@@ -56,11 +57,11 @@ function rowKey(row, i) {
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
 						<th class="text-left px-2 py-2 w-8">#</th>
-						<th class="text-left px-2 py-2" style="min-width: 200px">Employee</th>
-						<th class="text-left px-2 py-2">Emp ID</th>
-						<th class="text-left px-2 py-2 w-36">Status</th>
-						<th class="text-right px-2 py-2 w-16">OT hrs</th>
-						<th class="text-left px-2 py-2">Comments</th>
+						<th class="text-left px-2 py-2" style="min-width: 200px">{{ __("Employee") }}</th>
+						<th class="text-left px-2 py-2">{{ __("Emp ID") }}</th>
+						<th class="text-left px-2 py-2 w-36">{{ __("Status") }}</th>
+						<th class="text-right px-2 py-2 w-16">{{ __("OT hrs") }}</th>
+						<th class="text-left px-2 py-2">{{ __("Comments") }}</th>
 						<th class="w-8"></th>
 					</tr>
 				</thead>
@@ -75,8 +76,8 @@ function rowKey(row, i) {
 							<DeskSearchableSelect
 								:model-value="r.employee"
 								:options="workerOptions"
-								placeholder="Pick worker…"
-								search-placeholder="Search…"
+								:placeholder="__('Pick worker…')"
+								:search-placeholder="__('Search…')"
 								@update:model-value="(v) => onPickEmployee(r, v)"
 							/>
 						</td>
@@ -88,7 +89,7 @@ function rowKey(row, i) {
 								:model-value="r.status"
 								@update:model-value="(v) => setRowStatus(r, v)"
 							>
-								<option v-for="s in statuses" :key="s">{{ s }}</option>
+								<option v-for="s in statuses" :key="s" :value="s">{{ __(s) }}</option>
 							</DeskSelect>
 						</td>
 						<td class="px-2 py-1.5">
@@ -111,7 +112,7 @@ function rowKey(row, i) {
 							<button
 								type="button"
 								class="text-ink-400 hover:text-danger-600"
-								aria-label="Remove row"
+								:aria-label="__('Remove row')"
 								@click="emit('remove', i)"
 							>
 								✕
@@ -120,8 +121,9 @@ function rowKey(row, i) {
 					</tr>
 					<tr v-if="!rows.length">
 						<td colspan="7" class="px-3 py-6 text-center text-ink-400 italic">
-							No employees. Use <span class="font-medium">Bulk Select</span> to load
-							a crew or the whole roster.
+							{{ __("No employees. Use") }}
+							<span class="font-medium">{{ __("Bulk Select") }}</span>
+							{{ __("to load a crew or the whole roster.") }}
 						</td>
 					</tr>
 				</tbody>
@@ -133,17 +135,17 @@ function rowKey(row, i) {
 	<section v-else class="mb-6 bg-white border border-ink-200 rounded-lg overflow-hidden">
 		<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
 			<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-				Employee List
+				{{ __("Employee List") }}
 			</h3>
 		</div>
 		<table class="w-full text-xs">
 			<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 				<tr>
-					<th class="text-left px-3 py-2">Employee</th>
-					<th class="text-left px-3 py-2">Emp ID</th>
-					<th class="text-left px-3 py-2">Status</th>
-					<th class="text-right px-3 py-2">OT hrs</th>
-					<th class="text-left px-3 py-2">Comments</th>
+					<th class="text-left px-3 py-2">{{ __("Employee") }}</th>
+					<th class="text-left px-3 py-2">{{ __("Emp ID") }}</th>
+					<th class="text-left px-3 py-2">{{ __("Status") }}</th>
+					<th class="text-right px-3 py-2">{{ __("OT hrs") }}</th>
+					<th class="text-left px-3 py-2">{{ __("Comments") }}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -160,7 +162,7 @@ function rowKey(row, i) {
 				</tr>
 				<tr v-if="!rows.length">
 					<td colspan="5" class="px-3 py-6 text-center text-ink-400 italic">
-						No employees.
+						{{ __("No employees.") }}
 					</td>
 				</tr>
 			</tbody>

@@ -13,6 +13,7 @@ import { useContractorOptions } from "@/composables/useContractorOptions";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { contractorName } = useContractorOptions();
@@ -38,29 +39,29 @@ function onRowClick(row) {
 const columns = [
 	// `name` is the record id, not a meta field, so the label must be explicit —
 	// the auto-label would fall back to the raw key.
-	{ key: "name", label: "Code" },
-	{ key: "employee_name", label: "Name" },
-	{ key: "custom_trade", label: "Trade" },
-	{ key: "custom_wage", label: "Daily rate", align: "right" },
-	{ key: "custom_contractor", label: "Contractor" },
-	{ key: "status", label: "Status", preset: "status" },
+	{ key: "name", label: __("Code") },
+	{ key: "employee_name", label: __("Name") },
+	{ key: "custom_trade", label: __("Trade") },
+	{ key: "custom_wage", label: __("Daily rate"), align: "right" },
+	{ key: "custom_contractor", label: __("Contractor") },
+	{ key: "status", label: __("Status"), preset: "status" },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Field Employees" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Field Employees") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Field Employee" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Field Employee')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('fieldEmployee')"
 				to="/field-employees/new"
 				class="desk-save-btn !text-xs"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -80,7 +81,7 @@ const breadcrumbs = [
 			cache-key="buildsuite-field-employees"
 			row-key="name"
 			initial-order-by="employee_name asc"
-			search-placeholder="Search workers…"
+			:search-placeholder="__('Search workers…')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
@@ -88,8 +89,8 @@ const breadcrumbs = [
 					<DeskSearchableSelect
 						v-model="projectFilter"
 						:options="projectOptions"
-						placeholder="All projects"
-						search-placeholder="Search projects…"
+						:placeholder="__('All projects')"
+						:search-placeholder="__('Search projects…')"
 						allow-clear
 					/>
 				</div>

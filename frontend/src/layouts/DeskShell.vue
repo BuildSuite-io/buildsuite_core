@@ -456,7 +456,7 @@ const navGroups = computed(() => {
 							group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700',
 							collapsed ? 'lg:justify-center' : '',
 						]"
-						:title="collapsed ? item.name : ''"
+						:title="collapsed ? __(item.name) : ''"
 						@click="closeSidebar"
 					>
 						<span
@@ -475,10 +475,10 @@ const navGroups = computed(() => {
 								v-html="getWorkspaceIconPath(item.slug)"
 							/>
 						</span>
-						<span class="flex-1 truncate" :class="collapsed ? 'lg:hidden' : ''">{{ item.name }}</span>
+						<span class="flex-1 truncate" :class="collapsed ? 'lg:hidden' : ''">{{ __(item.name) }}</span>
 						<span
 							v-if="item.hint"
-							:title="item.hint.title"
+							:title="__(item.hint.title)"
 							class="text-[9px] font-medium text-ink-400 border border-ink-200 rounded px-1 leading-4 flex-shrink-0"
 							:class="collapsed ? 'lg:hidden' : ''"
 							>{{ item.hint.label }}</span

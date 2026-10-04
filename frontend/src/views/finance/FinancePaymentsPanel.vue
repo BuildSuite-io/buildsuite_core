@@ -16,6 +16,7 @@ import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { listFinancePayments, cancelFinancePayment } from "@/data/financePaymentApi";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const confirmDialog = useConfirm();
@@ -32,7 +33,7 @@ async function load() {
 	try {
 		movements.value = await listFinancePayments();
 	} catch (err) {
-		showToast(err.message || "Failed to load payments", "error");
+		showToast(err.message || __("Failed to load payments"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -129,61 +130,69 @@ const totalOut = computed(() =>
 );
 
 const CANCEL_NOTE = {
-	in: "The invoice's outstanding goes back up (or the customer advance is removed).",
-	out: "The bill's outstanding goes back up (or the advance paid is removed).",
+	in: __("The invoice's outstanding goes back up (or the customer advance is removed)."),
+	out: __("The bill's outstanding goes back up (or the advance paid is removed)."),
 };
 async function onCancel(m) {
 	const ok = await confirmDialog({
-		title: `Cancel this ${m.type.toLowerCase()}?`,
-		message: `${m.type} of ${fmtINR(m.amount)} — ${m.party} (${fmtDate(m.date)}).\n\n${
-			CANCEL_NOTE[m.dir]
-		} Record a fresh transaction if it was entered wrongly — posted entries are cancelled, not edited.`,
-		confirmLabel: "Cancel transaction",
+		title: __("Cancel this {0}?", [__(m.type).toLowerCase()]),
+		message: `${__("{0} of {1} — {2} ({3}).", [
+			__(m.type),
+			fmtINR(m.amount),
+			m.party,
+			fmtDate(m.date),
+		])}\n\n${CANCEL_NOTE[m.dir]} ${__(
+			"Record a fresh transaction if it was entered wrongly — posted entries are cancelled, not edited."
+		)}`,
+		confirmLabel: __("Cancel transaction"),
 		destructive: true,
 	});
 	if (!ok) return;
 	try {
 		await cancelFinancePayment(m.name);
 		await load();
-		showToast("Transaction cancelled.");
+		showToast(__("Transaction cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	}
 }
 
-const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { label: "Payments" }];
+const breadcrumbs = [
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Payments") },
+];
 </script>
 
 <template>
-	<DeskPage title="Payments" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Payments')" :breadcrumbs="breadcrumbs">
 		<div class="space-y-4">
 			<div class="flex items-center gap-2 flex-wrap">
 				<input
 					v-model="search"
 					type="text"
-					placeholder="Search type, party, account, reference…"
+					:placeholder="__('Search type, party, account, reference…')"
 					class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-64 max-w-full"
 				/>
 				<select
 					v-model="typeFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">All types</option>
-					<option v-for="t in MOVEMENT_TYPES" :key="t" :value="t">{{ t }}</option>
+					<option value="">{{ __("All types") }}</option>
+					<option v-for="t in MOVEMENT_TYPES" :key="t" :value="t">{{ __(t) }}</option>
 				</select>
 				<select
 					v-model="dirFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">In &amp; out</option>
-					<option value="in">Money in</option>
-					<option value="out">Money out</option>
+					<option value="">{{ __("In & out") }}</option>
+					<option value="in">{{ __("Money in") }}</option>
+					<option value="out">{{ __("Money out") }}</option>
 				</select>
 				<select
 					v-model="accFilter"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 				>
-					<option value="">All accounts</option>
+					<option value="">{{ __("All accounts") }}</option>
 					<option v-for="a in accountOptions" :key="a" :value="a">{{ a }}</option>
 				</select>
 				<div class="w-52">
@@ -191,13 +200,13 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						v-model="partyFilter"
 						:options="partyOptions"
 						allow-clear
-						placeholder="All parties"
-						search-placeholder="Search parties…"
+						:placeholder="__('All parties')"
+						:search-placeholder="__('Search parties…')"
 					/>
 				</div>
 				<div class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>From</span
+						>{{ __("From") }}</span
 					>
 					<input
 						v-model="from"
@@ -205,7 +214,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>To</span
+						>{{ __("To") }}</span
 					>
 					<input
 						v-model="to"
@@ -221,7 +230,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						v-model.number="amtMin"
 						type="number"
 						min="0"
-						placeholder="Min"
+						:placeholder="__('Min')"
 						class="text-xs px-2 py-1 border border-ink-200 rounded-md w-20 text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
 					<span class="text-ink-400 text-xs">–</span>
@@ -229,7 +238,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						v-model.number="amtMax"
 						type="number"
 						min="0"
-						placeholder="Max"
+						:placeholder="__('Max')"
 						class="text-xs px-2 py-1 border border-ink-200 rounded-md w-24 text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
 				</div>
@@ -239,26 +248,26 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 					class="text-[11px] text-danger-600 hover:underline"
 					@click="clearFilters"
 				>
-					Clear filters
+					{{ __("Clear filters") }}
 				</button>
 				<div class="ml-auto flex items-center gap-5 text-xs">
 					<div class="flex items-center gap-1.5">
-						<span class="text-ink-500">In</span>
+						<span class="text-ink-500">{{ __("In") }}</span>
 						<span class="tabular-nums text-success-700 font-medium">{{
 							fmtINR(totalIn)
 						}}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-ink-500">Out</span>
+						<span class="text-ink-500">{{ __("Out") }}</span>
 						<span class="tabular-nums text-danger-700 font-medium">{{
 							fmtINR(totalOut)
 						}}</span>
 					</div>
-					<span class="text-ink-400"
-						>{{ filtered.length }} transaction{{
-							filtered.length === 1 ? "" : "s"
-						}}</span
-					>
+					<span class="text-ink-400">{{
+						filtered.length === 1
+							? __("{0} transaction", [filtered.length])
+							: __("{0} transactions", [filtered.length])
+					}}</span>
 				</div>
 			</div>
 
@@ -268,13 +277,13 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 						class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
 					>
 						<tr>
-							<th class="text-left px-4 py-2">Date</th>
-							<th class="text-left px-4 py-2">Type</th>
-							<th class="text-left px-4 py-2">Party</th>
-							<th class="text-left px-4 py-2">Account</th>
-							<th class="text-left px-4 py-2">Ref</th>
-							<th class="text-right px-4 py-2">In</th>
-							<th class="text-right px-4 py-2">Out</th>
+							<th class="text-left px-4 py-2">{{ __("Date") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Type") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Party") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Account") }}</th>
+							<th class="text-left px-4 py-2">{{ __("Ref") }}</th>
+							<th class="text-right px-4 py-2">{{ __("In") }}</th>
+							<th class="text-right px-4 py-2">{{ __("Out") }}</th>
 							<th class="px-4 py-2"></th>
 						</tr>
 					</thead>
@@ -295,7 +304,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 											? 'bg-success-50 text-success-700'
 											: 'bg-warning-50 text-warning-700'
 									"
-									>{{ m.type }}</span
+									>{{ __(m.type) }}</span
 								>
 							</td>
 							<td class="px-4 py-2.5 text-ink-900">{{ m.party }}</td>
@@ -316,7 +325,7 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 									class="text-[11px] text-danger-600 hover:underline"
 									@click="onCancel(m)"
 								>
-									Cancel
+									{{ __("Cancel") }}
 								</button>
 							</td>
 						</tr>
@@ -325,16 +334,19 @@ const breadcrumbs = [{ label: "Project Finance", to: "/project-finance" }, { lab
 				<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">
 					{{
 						loading
-							? "Loading payments…"
+							? __("Loading payments…")
 							: hasFilters
-							? "No transactions match the filters."
-							: "No transactions recorded yet."
+							? __("No transactions match the filters.")
+							: __("No transactions recorded yet.")
 					}}
 				</div>
 			</section>
 			<p class="text-[11px] text-ink-400">
-				Posted transactions are cancelled, not edited — cancel the wrong entry and record a
-				fresh one. All balances and outstandings recompute automatically.
+				{{
+					__(
+						"Posted transactions are cancelled, not edited — cancel the wrong entry and record a fresh one. All balances and outstandings recompute automatically."
+					)
+				}}
 			</p>
 		</div>
 	</DeskPage>

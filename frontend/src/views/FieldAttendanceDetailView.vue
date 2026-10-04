@@ -27,6 +27,7 @@ import {
 } from "@/utils/workforceForms";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { isPermissionDenied } from "@/utils/frappeError";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import AccessDenied from "@/components/AccessDenied.vue";
@@ -102,24 +103,24 @@ const cards = computed(() => {
 	).length;
 
 	return [
-		{ label: "Project", value: d.project_name || projectLabel(d.project) || "—" },
+		{ label: __("Project"), value: d.project_name || projectLabel(d.project) || "—" },
 		{
-			label: "Crew",
+			label: __("Crew"),
 			value: d.crew_name || d.crew || "—",
 			to: d.crew ? `/crews/${d.crew}` : null,
 		},
 		{
-			label: "Task",
+			label: __("Task"),
 			value: d.task_subject || d.task || "—",
 			to: d.task ? `/tasks/${d.task}` : null,
 		},
 		{
-			label: "Present",
+			label: __("Present"),
 			value: `${present} / ${rows.value.length}`,
 			cls: "font-medium tabular-nums",
 		},
 		{
-			label: "Labour cost",
+			label: __("Labour cost"),
 			value: fmtINR(d.labour_cost),
 			cls: "font-medium tabular-nums",
 		},
@@ -185,7 +186,7 @@ async function saveEdit() {
 		doc.value = await saveFieldAttendance({ name: props.id, ...form.value });
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update attendance", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update attendance"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -198,7 +199,7 @@ async function run(fn, okMsg) {
 		await load();
 		showToast(okMsg);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Action failed", "error");
+		showToast(applyServerErrors(err) ?? __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -206,23 +207,25 @@ async function run(fn, okMsg) {
 
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `Submit ${props.id}?`,
-		message:
+		title: __("Submit {0}?", [props.id]),
+		message: __(
 			"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited.",
-		confirmLabel: "Submit",
+		),
+		confirmLabel: __("Submit"),
 	});
-	if (ok) await run(() => submitFieldAttendance(props.id), "Attendance submitted");
+	if (ok) await run(() => submitFieldAttendance(props.id), __("Attendance submitted"));
 }
 
 async function onCancelSheet() {
 	const ok = await confirmDialog({
-		title: `Cancel ${props.id}?`,
-		message:
+		title: __("Cancel {0}?", [props.id]),
+		message: __(
 			"This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy.",
-		confirmLabel: "Cancel sheet",
+		),
+		confirmLabel: __("Cancel sheet"),
 		destructive: true,
 	});
-	if (ok) await run(() => cancelFieldAttendance(props.id), "Attendance cancelled");
+	if (ok) await run(() => cancelFieldAttendance(props.id), __("Attendance cancelled"));
 }
 
 async function onAmend() {
@@ -231,7 +234,7 @@ async function onAmend() {
 		const copy = await amendFieldAttendance(props.id);
 		router.push(`/field-attendance/${copy.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Could not amend", "error");
+		showToast(applyServerErrors(err) ?? __("Could not amend"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -242,9 +245,9 @@ async function onWorkflowAction(action) {
 	try {
 		await applyWorkflowAction(props.id, action);
 		await load();
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Action failed", "error");
+		showToast(applyServerErrors(err) ?? __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -252,9 +255,9 @@ async function onWorkflowAction(action) {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${props.id}?`,
-		message: "This draft attendance sheet will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [props.id]),
+		message: __("This draft attendance sheet will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -262,7 +265,7 @@ async function onDelete() {
 		await adapter.remove("Field Attendance", props.id);
 		router.push("/field-attendance");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete attendance", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete attendance"), "error");
 	}
 }
 
@@ -274,9 +277,9 @@ const subtitle = computed(() => {
 });
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Field Attendance", to: "/field-attendance" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Field Attendance"), to: "/field-attendance" },
 	{ label: props.id },
 ]);
 </script>
@@ -297,7 +300,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && isDraft && canDelete('fieldAttendance')"
@@ -306,7 +309,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="!editing && !wfActive && isDraft && canSubmit('fieldAttendance')"
@@ -315,7 +318,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="!editing && !wfActive && isSubmitted && canSubmit('fieldAttendance')"
@@ -325,7 +328,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onCancelSheet"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="!editing && !wfActive && isCancelled && canCreate('fieldAttendance')"
@@ -335,7 +338,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				v-for="t in !editing && wfActive ? wfTransitions : []"
@@ -355,7 +358,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing"
@@ -364,7 +367,7 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
@@ -375,7 +378,7 @@ const breadcrumbs = computed(() => [
 				class="mb-4 px-3 py-2 bg-ink-50 border border-ink-200 text-xs text-ink-600"
 				style="border-radius: 6px"
 			>
-				This sheet is {{ docStatusLabel.toLowerCase() }} and can no longer be edited here.
+				{{ __("This sheet is {0} and can no longer be edited here.", [docStatusLabel.toLowerCase()]) }}
 			</div>
 
 			<!-- Headline strip — project / crew / task / present / labour cost -->
@@ -399,7 +402,7 @@ const breadcrumbs = computed(() => [
 			<AttendanceEmployeeTable :rows="rows" :statuses="ATTENDANCE_STATUSES" />
 
 			<p v-if="isDraft" class="text-[11px] text-ink-400 mt-3">
-				Submit to post the attendance and generate the Labour and Overtime registers.
+				{{ __("Submit to post the attendance and generate the Labour and Overtime registers.") }}
 			</p>
 		</div>
 
@@ -447,14 +450,14 @@ const breadcrumbs = computed(() => [
 		/>
 	</DeskPage>
 
-	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">Loading attendance…</div>
+	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">{{ __("Loading attendance…") }}</div>
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this attendance sheet"
+		:title="__('You don\'t have access to this attendance sheet')"
 		back-to="/field-attendance"
-		back-label="Back to Field Attendance"
+		:back-label="__('Back to Field Attendance')"
 	/>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Field attendance not found.</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Field attendance not found.") }}</div>
 </template>
