@@ -22,6 +22,7 @@ import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -91,7 +92,7 @@ function cancelEdit() {
 }
 async function saveEdit() {
 	if (!form.value.title?.trim()) {
-		setErrors({ title: "Title is required." });
+		setErrors({ title: __("Title is required.") });
 		return;
 	}
 	saving.value = true;
@@ -106,7 +107,7 @@ async function saveEdit() {
 		await resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update change order", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update change order"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -114,9 +115,9 @@ async function saveEdit() {
 
 async function onApprove() {
 	const ok = await confirmDialog({
-		title: `Approve ${sco.value.name}?`,
-		message: "Approving lets a BOQ revision be raised from this change order.",
-		confirmLabel: "Approve",
+		title: __("Approve {0}?", [sco.value.name]),
+		message: __("Approving lets a BOQ revision be raised from this change order."),
+		confirmLabel: __("Approve"),
 	});
 	if (!ok) return;
 	busy.value = true;
@@ -124,9 +125,9 @@ async function onApprove() {
 		await approveSco(sco.value.name);
 		await resource?.reload?.();
 		await refreshWorkflow(sco.value.name);
-		showToast("Scope change order approved.");
+		showToast(__("Scope change order approved."));
 	} catch (err) {
-		showToast(err.message || "Approve failed", "error");
+		showToast(err.message || __("Approve failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -145,9 +146,9 @@ async function confirmReject() {
 		await resource?.reload?.();
 		await refreshWorkflow(sco.value.name);
 		rejectOpen.value = false;
-		showToast("Scope change order rejected.");
+		showToast(__("Scope change order rejected."));
 	} catch (err) {
-		showToast(err.message || "Reject failed", "error");
+		showToast(err.message || __("Reject failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -159,9 +160,9 @@ async function onRevise() {
 		await reviseSco(sco.value.name);
 		await resource?.reload?.();
 		await refreshWorkflow(sco.value.name);
-		showToast("Reopened for revision.");
+		showToast(__("Reopened for revision."));
 	} catch (err) {
-		showToast(err.message || "Revise failed", "error");
+		showToast(err.message || __("Revise failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -169,10 +170,11 @@ async function onRevise() {
 
 async function onCreateBoqRevision() {
 	const ok = await confirmDialog({
-		title: "Raise BOQ revision?",
-		message:
+		title: __("Raise BOQ revision?"),
+		message: __(
 			"This clones the project's current BOQ into a new Draft revision linked to this change order.",
-		confirmLabel: "Raise revision",
+		),
+		confirmLabel: __("Raise revision"),
 	});
 	if (!ok) return;
 	busy.value = true;
@@ -180,7 +182,7 @@ async function onCreateBoqRevision() {
 		const res = await createBoqRevision(sco.value.name);
 		router.push(`/boq/${res.boq}`);
 	} catch (err) {
-		showToast(err.message || "Failed to raise BOQ revision", "error");
+		showToast(err.message || __("Failed to raise BOQ revision"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -188,9 +190,9 @@ async function onCreateBoqRevision() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${sco.value.name}?`,
-		message: "This scope change order will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [sco.value.name]),
+		message: __("This scope change order will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -198,13 +200,13 @@ async function onDelete() {
 		await adapter.remove("Scope Change Order", props.id);
 		router.push("/sco");
 	} catch (err) {
-		showToast(err.message || "Failed to delete change order", "error");
+		showToast(err.message || __("Failed to delete change order"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Scope Change Orders", to: "/sco" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Scope Change Orders"), to: "/sco" },
 	{ label: sco.value?.name || props.id },
 ]);
 </script>
@@ -226,7 +228,7 @@ const breadcrumbs = computed(() => [
 					style="border-radius: 6px"
 					@click="startEdit"
 				>
-					Edit
+					{{ __("Edit") }}
 				</button>
 				<button
 					v-if="wfActions.has('Approve')"
@@ -236,7 +238,7 @@ const breadcrumbs = computed(() => [
 					:disabled="busy"
 					@click="onApprove"
 				>
-					Approve
+					{{ __("Approve") }}
 				</button>
 				<button
 					v-if="wfActions.has('Reject')"
@@ -246,7 +248,7 @@ const breadcrumbs = computed(() => [
 					:disabled="busy"
 					@click="openReject"
 				>
-					Reject
+					{{ __("Reject") }}
 				</button>
 				<button
 					v-if="
@@ -261,7 +263,7 @@ const breadcrumbs = computed(() => [
 					:disabled="busy"
 					@click="onCreateBoqRevision"
 				>
-					+ Raise BOQ revision
+					{{ __("+ Raise BOQ revision") }}
 				</button>
 				<button
 					v-if="wfActions.has('Revise') && canEditRecord('sco', sco)"
@@ -271,7 +273,7 @@ const breadcrumbs = computed(() => [
 					:disabled="busy"
 					@click="onRevise"
 				>
-					Revise
+					{{ __("Revise") }}
 				</button>
 				<button
 					v-if="canDeleteRecord('sco', sco)"
@@ -280,7 +282,7 @@ const breadcrumbs = computed(() => [
 					style="border-radius: 6px"
 					@click="onDelete"
 				>
-					Delete
+					{{ __("Delete") }}
 				</button>
 			</template>
 			<template v-else>
@@ -290,10 +292,10 @@ const breadcrumbs = computed(() => [
 					style="border-radius: 6px"
 					@click="cancelEdit"
 				>
-					Cancel
+					{{ __("Cancel") }}
 				</button>
 				<button type="button" class="desk-save-btn" :disabled="saving" @click="saveEdit">
-					{{ saving ? "Saving…" : "Save" }}
+					{{ saving ? __("Saving…") : __("Save") }}
 				</button>
 			</template>
 		</template>
@@ -303,7 +305,7 @@ const breadcrumbs = computed(() => [
 			v-if="isPending && !wfActions.has('Approve') && !editing"
 			class="mb-4 px-3 py-2 text-xs text-ink-600 bg-warning-50 border border-warning-200 rounded"
 		>
-			Awaiting PM / Director approval.
+			{{ __("Awaiting PM / Director approval.") }}
 		</div>
 
 		<!-- View mode -->
@@ -311,7 +313,7 @@ const breadcrumbs = computed(() => [
 			<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Project
+						{{ __("Project") }}
 					</div>
 					<div class="text-sm text-ink-900 mt-0.5 truncate">
 						{{ sco.project_name || sco.project }}
@@ -319,13 +321,13 @@ const breadcrumbs = computed(() => [
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Type
+						{{ __("Type") }}
 					</div>
-					<div class="text-sm text-ink-900 mt-0.5">{{ sco.type }}</div>
+					<div class="text-sm text-ink-900 mt-0.5">{{ __(sco.type) }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Cost impact
+						{{ __("Cost impact") }}
 					</div>
 					<div
 						class="text-base font-semibold tabular-nums mt-0.5"
@@ -337,15 +339,15 @@ const breadcrumbs = computed(() => [
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Recoverable
+						{{ __("Recoverable") }}
 					</div>
 					<div class="text-sm text-ink-900 mt-0.5">
-						{{ sco.recoverable ? "Yes · from client" : "Internal" }}
+						{{ sco.recoverable ? __("Yes · from client") : __("Internal") }}
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Raised
+						{{ __("Raised") }}
 					</div>
 					<div class="text-sm text-ink-900 mt-0.5 truncate">
 						{{ sco.raised_by || "—" }}
@@ -354,16 +356,16 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 
-			<DeskSection title="Justification" :cols="1">
-				<DeskField label="Reason"
+			<DeskSection :title="__('Justification')" :cols="1">
+				<DeskField :label="__('Reason')"
 					><div class="text-sm text-ink-800 whitespace-pre-line">
 						{{ sco.reason || "—" }}
 					</div></DeskField
 				>
 			</DeskSection>
 
-			<DeskSection v-if="isRejected && sco.rejection_reason" title="Rejection" :cols="1">
-				<DeskField label="Reason"
+			<DeskSection v-if="isRejected && sco.rejection_reason" :title="__('Rejection')" :cols="1">
+				<DeskField :label="__('Reason')"
 					><div class="text-sm text-danger-700 whitespace-pre-line">
 						{{ sco.rejection_reason }}
 					</div></DeskField
@@ -373,25 +375,28 @@ const breadcrumbs = computed(() => [
 			<!-- BOQ Impact -->
 			<section class="mt-6">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
-					BOQ impact
+					{{ __("BOQ impact") }}
 				</h3>
 				<div v-if="sco.boq_revision" class="text-sm text-ink-700">
-					BOQ revision raised:
+					{{ __("BOQ revision raised:") }}
 					<DeskLink :to="`/boq/${sco.boq_revision}`">{{ sco.boq_revision }}</DeskLink>
 				</div>
 				<div v-else-if="isApproved" class="text-xs text-ink-500 italic">
-					No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's
-					BOQ.
+					{{
+						__(
+							"No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ.",
+						)
+					}}
 				</div>
 				<div v-else class="text-xs text-ink-400 italic">
-					A BOQ revision can be raised once this change order is approved.
+					{{ __("A BOQ revision can be raised once this change order is approved.") }}
 				</div>
 			</section>
 
 			<!-- Activity -->
 			<section v-if="activity.length" class="mt-6">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
-					Activity
+					{{ __("Activity") }}
 				</h3>
 				<ul class="space-y-1.5">
 					<li
@@ -399,8 +404,8 @@ const breadcrumbs = computed(() => [
 						:key="i"
 						class="flex items-start gap-1.5 text-xs flex-wrap"
 					>
-						<span class="font-medium text-ink-800">{{ a.action }}</span>
-						<span class="text-ink-500">by {{ a.user }}</span>
+						<span class="font-medium text-ink-800">{{ __(a.action) }}</span>
+						<span class="text-ink-500">{{ __("by {0}", [a.user]) }}</span>
 						<span class="text-ink-400">
 							· {{ a.activity_on ? fmtDate(a.activity_on.slice(0, 10)) : "" }}</span
 						>
@@ -412,32 +417,32 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection title="Change order" :cols="2">
-				<DeskField label="Project"
+			<DeskSection :title="__('Change order')" :cols="2">
+				<DeskField :label="__('Project')"
 					><div class="text-sm text-ink-700">
 						{{ sco.project_name || sco.project }}
 					</div></DeskField
 				>
-				<DeskField label="Type">
+				<DeskField :label="__('Type')">
 					<DeskSelect v-model="form.type"
-						><option v-for="t in TYPES" :key="t">{{ t }}</option></DeskSelect
+						><option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option></DeskSelect
 					>
 				</DeskField>
-				<DeskField label="Title" required :error="errors.title" class="md:col-span-2"
+				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2"
 					><DeskInput v-model="form.title"
 				/></DeskField>
 				<DeskField
-					:label="`Cost impact (${currencySymbol()})`"
-					hint="Positive = added cost; negative = a saving."
+					:label="`${__('Cost impact')} (${currencySymbol()})`"
+					:hint="__('Positive = added cost; negative = a saving.')"
 					><DeskInput v-model.number="form.impact" type="number" step="1000"
 				/></DeskField>
-				<DeskField label="Cost recovery">
+				<DeskField :label="__('Cost recovery')">
 					<DeskSelect v-model="form.recoverable">
-						<option value="1">Recoverable from client</option>
-						<option value="0">Internal — absorbed by us</option>
+						<option value="1">{{ __("Recoverable from client") }}</option>
+						<option value="0">{{ __("Internal — absorbed by us") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Reason / justification" class="md:col-span-2"
+				<DeskField :label="__('Reason / justification')" class="md:col-span-2"
 					><DeskTextarea v-model="form.reason" :rows="4"
 				/></DeskField>
 			</DeskSection>
@@ -456,14 +461,14 @@ const breadcrumbs = computed(() => [
 					@click.stop
 				>
 					<header class="px-5 py-3 border-b border-ink-200">
-						<h2 class="text-sm font-semibold text-ink-900">Reject {{ sco.name }}</h2>
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Reject {0}", [sco.name]) }}</h2>
 					</header>
 					<div class="p-5">
-						<DeskField label="Rejection reason"
+						<DeskField :label="__('Rejection reason')"
 							><DeskTextarea
 								v-model="rejectReason"
 								:rows="4"
-								placeholder="Why is this change order rejected?"
+								:placeholder="__('Why is this change order rejected?')"
 						/></DeskField>
 					</div>
 					<footer
@@ -475,7 +480,7 @@ const breadcrumbs = computed(() => [
 							style="border-radius: 6px"
 							@click="rejectOpen = false"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -484,7 +489,7 @@ const breadcrumbs = computed(() => [
 							:disabled="busy"
 							@click="confirmReject"
 						>
-							Reject
+							{{ __("Reject") }}
 						</button>
 					</footer>
 				</div>
@@ -492,5 +497,5 @@ const breadcrumbs = computed(() => [
 		</Teleport>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading scope change order…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading scope change order…") }}</div>
 </template>

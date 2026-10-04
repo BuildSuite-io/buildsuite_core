@@ -7,6 +7,7 @@ import { reactive, ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { useTaskTypes } from "@/composables/useTaskTypes";
@@ -66,8 +67,8 @@ watch(
 
 function validate() {
 	const e = {};
-	if (!form.name) e.name = "Task name is required";
-	if (!form.projectId) e.projectId = "Project is required";
+	if (!form.name) e.name = __("Task name is required");
+	if (!form.projectId) e.projectId = __("Project is required");
 	const endErr = endBeforeStartError(form.startDate, form.endDate);
 	if (endErr) e.endDate = endErr;
 	setErrors(e);
@@ -120,16 +121,16 @@ async function save() {
 			"";
 
 		if (!createdTaskId) {
-			showToast("Task created, but could not resolve its ID for navigation", "error");
+			showToast(__("Task created, but could not resolve its ID for navigation"), "error");
 			await router.push("/tasks");
 			return;
 		}
 
 		await router.push(`/tasks/${createdTaskId}`);
 		await nextTick();
-		showToast("Task created");
+		showToast(__("Task created"));
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create task", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create task"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -139,16 +140,16 @@ function cancel() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Task", to: "/tasks" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Task"), to: "/tasks" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="New Task"
-		subtitle="Create a task and assign it to a project or work package"
+		:title="__('New Task')"
+		:subtitle="__('Create a task and assign it to a project or work package')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<div
@@ -156,47 +157,47 @@ const breadcrumbs = [
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create a task.
+			{{ __("You don't have permission to create a task.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
-				<DeskActionBar save-label="Create task" @save="save" @cancel="cancel" />
+				<DeskActionBar :save-label="__('Create task')" @save="save" @cancel="cancel" />
 			</template>
 
 			<!-- Narrow centered column so the form doesn't feel sprawling. Save bar
            above stays full-width (matches Frappe Desk's form layout). -->
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Task details" :cols="1">
-					<DeskField label="Task name" required :error="errors.name">
+				<DeskSection :title="__('Task details')" :cols="1">
+					<DeskField :label="__('Task name')" required :error="errors.name">
 						<DeskInput
 							v-model="form.name"
 							data-test="field-task-name"
-							placeholder="e.g. Block A — Level 6 column casting"
+							:placeholder="__('e.g. Block A — Level 6 column casting')"
 						/>
 					</DeskField>
 					<DeskField
-						label="Task Type"
-						hint="Drives workflow + Gantt rendering. Milestone = zero-duration."
+						:label="__('Task Type')"
+						:hint="__('Drives workflow + Gantt rendering. Milestone = zero-duration.')"
 					>
 						<DeskSelect v-model="form.taskType">
-							<option v-for="tt in taskTypes" :key="tt" :value="tt">{{ tt }}</option>
+							<option v-for="tt in taskTypes" :key="tt" :value="tt">{{ __(tt) }}</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField label="Description">
+					<DeskField :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
-							placeholder="Details about the task, location, scope…"
+							:placeholder="__('Details about the task, location, scope…')"
 						/>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Hierarchy">
+				<DeskSection :title="__('Hierarchy')">
 					<DeskField
-						label="Project"
+						:label="__('Project')"
 						required
 						:error="errors.projectId"
-						:hint="lockedProject ? 'Pre-selected — locked.' : ''"
+						:hint="lockedProject ? __('Pre-selected — locked.') : ''"
 					>
 						<DeskLinkPicker
 							v-model="form.projectId"
@@ -206,18 +207,18 @@ const breadcrumbs = [
 							value-field="name"
 							:search-fields="['project_name', 'custom_project_id', 'name']"
 								:page-length="20"
-							placeholder="— Select project —"
+							:placeholder="__('— Select project —')"
 							:disabled="lockedProject"
 							:error="errors.projectId"
 							@change="clearError('projectId')"
 						/>
 					</DeskField>
 					<DeskField
-						label="Work Package"
+						:label="__('Work Package')"
 						:hint="
 							lockedWP
-								? 'Pre-selected — locked.'
-								: 'Optional · direct project tasks leave blank'
+								? __('Pre-selected — locked.')
+								: __('Optional · direct project tasks leave blank')
 						"
 					>
 						<DeskLinkPicker
@@ -235,7 +236,7 @@ const breadcrumbs = [
 										: []
 							"
 							:page-length="20"
-							placeholder="— None · Direct project task —"
+							:placeholder="__('— None · Direct project task —')"
 							:disabled="lockedWP"
 							:error="errors.workPackageId"
 							@change="clearError('workPackageId')"
@@ -243,26 +244,26 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Schedule" :cols="3">
+				<DeskSection :title="__('Schedule')" :cols="3">
 					<!-- A Milestone is a point in time: only a Due date, no start (the due
 					     date is the end date behind the scenes, used for delay). -->
 					<DeskField
 						v-if="form.taskType !== 'Milestone'"
-						label="Start date"
+						:label="__('Start date')"
 						:error="errors.startDate"
 					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField label="Due date" :error="errors.endDate">
+					<DeskField :label="__('Due date')" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField label="Estimated hours">
+					<DeskField :label="__('Estimated hours')">
 						<DeskInput v-model="form.estimatedHours" type="number" />
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Assignment" :cols="3">
-					<DeskField label="Assignee">
+				<DeskSection :title="__('Assignment')" :cols="3">
+					<DeskField :label="__('Assignee')">
 						<DeskLinkPicker
 							v-model="form.assignee"
 							doctype="User"
@@ -270,24 +271,24 @@ const breadcrumbs = [
 							value-field="name"
 							:search-fields="['full_name', 'name', 'email']"
 							:page-length="20"
-							placeholder="— Select assignee —"
+							:placeholder="__('— Select assignee —')"
 						/>
 					</DeskField>
-					<DeskField label="Status">
+					<DeskField :label="__('Status')">
 						<DeskSelect v-model="form.status">
-							<option>Yet To Start</option>
-							<option>In Progress</option>
-							<option>In Delay</option>
-							<option>Completed</option>
-							<option>Blocked</option>
+							<option value="Yet To Start">{{ __("Yet To Start") }}</option>
+							<option value="In Progress">{{ __("In Progress") }}</option>
+							<option value="In Delay">{{ __("In Delay") }}</option>
+							<option value="Completed">{{ __("Completed") }}</option>
+							<option value="Blocked">{{ __("Blocked") }}</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField label="Priority">
+					<DeskField :label="__('Priority')">
 						<DeskSelect v-model="form.priority">
-							<option>Low</option>
-							<option>Medium</option>
-							<option>High</option>
-							<option>Urgent</option>
+							<option value="Low">{{ __("Low") }}</option>
+							<option value="Medium">{{ __("Medium") }}</option>
+							<option value="High">{{ __("High") }}</option>
+							<option value="Urgent">{{ __("Urgent") }}</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>

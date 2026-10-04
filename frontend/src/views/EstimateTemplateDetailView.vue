@@ -13,6 +13,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -179,14 +180,14 @@ const cards = computed(() => {
 	const d = doc.value;
 	if (!d) return [];
 	return [
-		{ label: "Project Category", value: d.project_category || "Any" },
-		{ label: "Rows", value: rawRows.value.length, cls: "tabular-nums" },
+		{ label: __("Project Category"), value: d.project_category || __("Any") },
+		{ label: __("Rows"), value: rawRows.value.length, cls: "tabular-nums" },
 		{
-			label: "Estimated total",
+			label: __("Estimated total"),
 			value: fmtINR(estimatedTotal.value),
 			cls: "tabular-nums font-semibold",
 		},
-		{ label: "Updated", value: fmtDate(d.modified), cls: "text-xs" },
+		{ label: __("Updated"), value: fmtDate(d.modified), cls: "text-xs" },
 	];
 });
 
@@ -217,7 +218,7 @@ async function persistTemplate(patch) {
 		await adapter.update("Estimate Template", props.id, patch);
 		await resource?.reload?.();
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update template", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update template"), "error");
 	} finally {
 		savingRows.value = false;
 	}
@@ -257,7 +258,7 @@ function cancelEdit() {
 
 async function saveEdit() {
 	const e = {};
-	if (!form.value.templateName?.trim()) e.templateName = "Name is required";
+	if (!form.value.templateName?.trim()) e.templateName = __("Name is required");
 	setErrors(e);
 	if (Object.keys(e).length) return;
 
@@ -272,7 +273,7 @@ async function saveEdit() {
 		resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update template", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update template"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -280,9 +281,12 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: "Delete estimate template",
-		message: `Delete "${doc.value?.template_name}" (${doc.value?.template_code})? This cannot be undone.`,
-		confirmLabel: "Delete",
+		title: __("Delete estimate template"),
+		message: __('Delete "{0}" ({1})? This cannot be undone.', [
+			doc.value?.template_name,
+			doc.value?.template_code,
+		]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -290,7 +294,7 @@ async function onDelete() {
 		await adapter.remove("Estimate Template", props.id);
 		router.push("/estimate-template");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete template", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete template"), "error");
 	}
 }
 
@@ -320,7 +324,7 @@ function cancelAddGroup() {
 async function saveAddGroup() {
 	const name = newGroupName.value.trim();
 	if (!name) return;
-	if (groupNameTaken(name)) return showToast("A group with that name already exists.", "error");
+	if (groupNameTaken(name)) return showToast(__("A group with that name already exists."), "error");
 	await persistTemplate({ groups: [...currentGroups(), { group_name: name }] });
 	cancelAddGroup();
 }
@@ -337,7 +341,7 @@ async function saveRenameGroup(group) {
 	const name = editGroupName.value.trim();
 	if (!name || name === group.name) return cancelRenameGroup();
 	if (groupNameTaken(name, group.name))
-		return showToast("A group with that name already exists.", "error");
+		return showToast(__("A group with that name already exists."), "error");
 	// Rename the group AND re-point every row joined to its old name, in one save.
 	const groups = currentGroups().map((g) =>
 		(g.group_name || "").trim() === group.name ? { ...g, group_name: name } : g,
@@ -351,13 +355,19 @@ async function saveRenameGroup(group) {
 
 async function removeGroup(group) {
 	const ok = await confirmDialog({
-		title: "Delete group",
+		title: __("Delete group"),
 		message: group.count
-			? `Delete "${group.name}" and its ${group.count} row${
-					group.count === 1 ? "" : "s"
-				}? This cannot be undone.`
-			: `Delete the empty group "${group.name}"?`,
-		confirmLabel: "Delete",
+			? group.count === 1
+				? __('Delete "{0}" and its {1} row? This cannot be undone.', [
+						group.name,
+						group.count,
+					])
+				: __('Delete "{0}" and its {1} rows? This cannot be undone.', [
+						group.name,
+						group.count,
+					])
+			: __('Delete the empty group "{0}"?', [group.name]),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -426,9 +436,9 @@ function patchRowByName(name, field, value) {
 
 async function removeRow(name) {
 	const ok = await confirmDialog({
-		title: "Remove row",
-		message: "Remove this line from the template?",
-		confirmLabel: "Remove",
+		title: __("Remove row"),
+		message: __("Remove this line from the template?"),
+		confirmLabel: __("Remove"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -452,7 +462,7 @@ async function removeRow(name) {
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="canDelete('estimateTemplate')"
@@ -461,7 +471,7 @@ async function removeRow(name) {
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -485,18 +495,21 @@ async function removeRow(name) {
 			style="border-radius: 6px"
 		>
 			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
-				Description
+				{{ __("Description") }}
 			</div>
 			<div class="text-sm text-ink-800 leading-snug whitespace-pre-line">
 				{{ doc.description }}
 			</div>
 		</div>
 
-		<DeskSection title="Template rows" :cols="1">
+		<DeskSection :title="__('Template rows')" :cols="1">
 			<div class="flex items-start justify-between gap-3 mb-2 px-1">
 				<div class="text-[11px] text-ink-500">
-					Groups are created first; items are mapped under them — same structure as a
-					BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.
+					{{
+						__(
+							"Groups are created first; items are mapped under them — same structure as a BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.",
+						)
+					}}
 				</div>
 				<button
 					v-if="!addingGroup && canEdit('estimateTemplate')"
@@ -505,7 +518,7 @@ async function removeRow(name) {
 					:disabled="savingRows"
 					@click="startAddGroup"
 				>
-					+ Add group
+					{{ __("+ Add group") }}
 				</button>
 			</div>
 
@@ -516,7 +529,7 @@ async function removeRow(name) {
 			>
 				<DeskInput
 					v-model="newGroupName"
-					placeholder="Group name — e.g. Substructure, Finishes…"
+					:placeholder="__('Group name — e.g. Substructure, Finishes…')"
 					class="flex-1"
 					@keyup.enter="saveAddGroup"
 					@keyup.esc="cancelAddGroup"
@@ -527,7 +540,7 @@ async function removeRow(name) {
 					style="border-radius: 6px"
 					@click="cancelAddGroup"
 				>
-					Cancel
+					{{ __("Cancel") }}
 				</button>
 				<button
 					v-if="canEdit('estimateTemplate')"
@@ -536,7 +549,7 @@ async function removeRow(name) {
 					:disabled="savingRows"
 					@click="saveAddGroup"
 				>
-					Add group
+					{{ __("Add group") }}
 				</button>
 			</div>
 
@@ -550,12 +563,12 @@ async function removeRow(name) {
 						class="grid bg-gradient-to-r from-brand-50 to-white border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 						:style="{ gridTemplateColumns: GRID_COLS }"
 					>
-						<div class="px-3 py-1.5">Item source</div>
-						<div class="px-2 py-1.5">Unit</div>
-						<div class="px-2 py-1.5 text-right">Qty</div>
-						<div class="px-2 py-1.5 text-right">Rate</div>
-						<div class="px-2 py-1.5 text-right">Amount</div>
-						<div class="px-2 py-1.5">Cost head</div>
+						<div class="px-3 py-1.5">{{ __("Item source") }}</div>
+						<div class="px-2 py-1.5">{{ __("Unit") }}</div>
+						<div class="px-2 py-1.5 text-right">{{ __("Qty") }}</div>
+						<div class="px-2 py-1.5 text-right">{{ __("Rate") }}</div>
+						<div class="px-2 py-1.5 text-right">{{ __("Amount") }}</div>
+						<div class="px-2 py-1.5">{{ __("Cost head") }}</div>
 						<div class="px-2 py-1.5"></div>
 					</div>
 
@@ -581,7 +594,7 @@ async function removeRow(name) {
 										style="border-radius: 6px"
 										@click="cancelRenameGroup"
 									>
-										Cancel
+										{{ __("Cancel") }}
 									</button>
 									<button
 										v-if="canEdit('estimateTemplate')"
@@ -590,20 +603,23 @@ async function removeRow(name) {
 										:disabled="savingRows"
 										@click="saveRenameGroup(group)"
 									>
-										Save
+										{{ __("Save") }}
 									</button>
 								</div>
 								<div v-else class="text-sm font-semibold text-ink-900">
 									{{ group.name }}
 									<span class="ml-2 text-[11px] text-ink-500 font-normal"
-										>· {{ group.count }} item{{
-											group.count === 1 ? "" : "s"
+										>·
+										{{
+											group.count === 1
+												? __("{0} item", [group.count])
+												: __("{0} items", [group.count])
 										}}</span
 									>
 									<span
 										v-if="!group.real"
 										class="ml-2 text-[10px] text-warning-700 font-normal italic"
-										>unassigned</span
+										>{{ __("unassigned") }}</span
 									>
 								</div>
 							</div>
@@ -611,7 +627,7 @@ async function removeRow(name) {
 								class="px-2 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 								style="grid-column: 5 / span 1"
 							>
-								Subtotal
+								{{ __("Subtotal") }}
 							</div>
 							<div
 								class="px-2 py-2 text-right tabular-nums font-semibold text-ink-900"
@@ -628,7 +644,7 @@ async function removeRow(name) {
 										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-brand-700 disabled:opacity-40"
-										title="Rename group"
+										:title="__('Rename group')"
 										:disabled="savingRows"
 										@click="startRenameGroup(group)"
 									>
@@ -653,7 +669,7 @@ async function removeRow(name) {
 										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-danger-700 disabled:opacity-40"
-										title="Delete group"
+										:title="__('Delete group')"
 										:disabled="savingRows"
 										@click="removeGroup(group)"
 									>
@@ -698,7 +714,7 @@ async function removeRow(name) {
 												: 'bg-ink-100 text-ink-600'
 										"
 										style="border-radius: 2px"
-										>{{ row.sourceKind || "—" }}</span
+										>{{ row.sourceKind ? __(row.sourceKind) : "—" }}</span
 									>
 								</div>
 								<div class="px-2 py-1.5 text-xs text-ink-700">
@@ -748,7 +764,7 @@ async function removeRow(name) {
 										v-if="canEdit('estimateTemplate')"
 										type="button"
 										class="text-ink-400 hover:text-danger-700 text-base leading-none"
-										title="Remove"
+										:title="__('Remove')"
 										:disabled="savingRows"
 										@click="removeRow(row.name)"
 									>
@@ -760,7 +776,7 @@ async function removeRow(name) {
 								v-if="!group.rows.length && addingRow !== group.key"
 								class="px-3 py-2 text-[11px] text-ink-400 italic"
 							>
-								No items in this group yet.
+								{{ __("No items in this group yet.") }}
 							</div>
 						</div>
 
@@ -775,12 +791,12 @@ async function removeRow(name) {
 										<DeskSearchableSelect
 											v-model="newRow.source"
 											:options="sourceOptions"
-											placeholder="Pick a source…"
-											search-placeholder="Search assemblies / rate master…"
+											:placeholder="__('Pick a source…')"
+											:search-placeholder="__('Search assemblies / rate master…')"
 										/>
 									</div>
 									<div class="px-2 py-2 text-[11px] text-ink-500">
-										{{ newRowSource?.unit || "auto" }}
+										{{ newRowSource?.unit || __("auto") }}
 									</div>
 									<div class="px-2 py-2">
 										<DeskInput
@@ -791,7 +807,7 @@ async function removeRow(name) {
 										/>
 									</div>
 									<div class="px-2 py-2 text-right text-[11px] text-ink-500">
-										{{ newRowSource ? fmtINR(newRowSource.rate) : "auto" }}
+										{{ newRowSource ? fmtINR(newRowSource.rate) : __("auto") }}
 									</div>
 									<div
 										class="px-2 py-2 text-right text-[11px] tabular-nums"
@@ -801,7 +817,7 @@ async function removeRow(name) {
 												: 'text-ink-500'
 										"
 									>
-										{{ newRowSource ? fmtINR(newRowAmount) : "auto" }}
+										{{ newRowSource ? fmtINR(newRowAmount) : __("auto") }}
 									</div>
 									<div class="px-2 py-2">
 										<DeskSelect v-model="newRow.cost_head">
@@ -822,7 +838,7 @@ async function removeRow(name) {
 										style="border-radius: 6px"
 										@click="cancelAddRow"
 									>
-										Cancel
+										{{ __("Cancel") }}
 									</button>
 									<button
 										v-if="canEdit('estimateTemplate')"
@@ -831,7 +847,7 @@ async function removeRow(name) {
 										:disabled="savingRows"
 										@click="saveAddRow"
 									>
-										+ Add item
+										{{ __("+ Add item") }}
 									</button>
 								</div>
 							</template>
@@ -843,7 +859,7 @@ async function removeRow(name) {
 									class="text-[11px] text-ink-500 hover:text-brand-700"
 									@click="startAddRow(group)"
 								>
-									+ Add item to "{{ group.name }}"
+									{{ __('+ Add item to "{0}"', [group.name]) }}
 								</button>
 							</div>
 						</template>
@@ -858,13 +874,13 @@ async function removeRow(name) {
 							class="px-3 py-2 text-[11px] uppercase tracking-wider text-ink-700 font-semibold"
 							style="grid-column: 1 / span 4"
 						>
-							Estimated total
+							{{ __("Estimated total") }}
 						</div>
 						<div
 							class="px-2 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 							style="grid-column: 5 / span 1"
 						>
-							Grand total
+							{{ __("Grand total") }}
 						</div>
 						<div
 							class="px-2 py-2 text-right tabular-nums font-semibold text-ink-900 text-sm"
@@ -882,9 +898,9 @@ async function removeRow(name) {
 				class="border border-ink-200 py-8 text-center"
 				style="border-radius: 8px"
 			>
-				<div class="text-sm text-ink-700 mb-1">No groups yet.</div>
+				<div class="text-sm text-ink-700 mb-1">{{ __("No groups yet.") }}</div>
 				<div class="text-xs text-ink-500 mb-3">
-					Create a group first, then map items under it — same as a BOQ.
+					{{ __("Create a group first, then map items under it — same as a BOQ.") }}
 				</div>
 				<button
 					v-if="canEdit('estimateTemplate')"
@@ -892,7 +908,7 @@ async function removeRow(name) {
 					class="desk-save-btn !text-xs"
 					@click="startAddGroup"
 				>
-					+ Add group
+					{{ __("+ Add group") }}
 				</button>
 			</div>
 		</DeskSection>
@@ -913,7 +929,7 @@ async function removeRow(name) {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">Edit template</h2>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit template") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ doc.template_name }}
 							</p>
@@ -921,7 +937,7 @@ async function removeRow(name) {
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="cancelEdit"
 						>
 							×
@@ -929,34 +945,34 @@ async function removeRow(name) {
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection title="Basic">
+						<DeskSection :title="__('Basic')">
 							<DeskField
-								label="Code"
-								hint="The template's identifier — not editable."
+								:label="__('Code')"
+								:hint="__('The template\'s identifier — not editable.')"
 							>
 								<span class="text-sm font-mono text-ink-700">{{
 									doc.template_code
 								}}</span>
 							</DeskField>
-							<DeskField label="Name" required :error="errors.templateName">
+							<DeskField :label="__('Name')" required :error="errors.templateName">
 								<DeskInput v-model="form.templateName" />
 							</DeskField>
-							<DeskField label="Project Category tag" hint="Empty = universal.">
+							<DeskField :label="__('Project Category tag')" :hint="__('Empty = universal.')">
 								<DeskLinkPicker
 									v-model="form.projectType"
 									doctype="Project Category"
 									label-field="name"
 									value-field="name"
-									placeholder="— Universal —"
+									:placeholder="__('— Universal —')"
 								/>
 							</DeskField>
-							<DeskField label="Enabled">
+							<DeskField :label="__('Enabled')">
 								<label class="inline-flex items-center gap-2 text-sm text-ink-800">
 									<input type="checkbox" v-model="form.enabled" />
-									<span>Available in pickers</span>
+									<span>{{ __("Available in pickers") }}</span>
 								</label>
 							</DeskField>
-							<DeskField label="Description">
+							<DeskField :label="__('Description')">
 								<DeskTextarea v-model="form.description" :rows="3" />
 							</DeskField>
 						</DeskSection>
@@ -973,7 +989,7 @@ async function removeRow(name) {
 							:disabled="saving"
 							@click="cancelEdit"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canEdit('estimateTemplate')"
@@ -982,7 +998,7 @@ async function removeRow(name) {
 							:disabled="saving"
 							@click="saveEdit"
 						>
-							{{ saving ? "Saving…" : "Save" }}
+							{{ saving ? __("Saving…") : __("Save") }}
 						</button>
 					</footer>
 				</div>
@@ -990,5 +1006,5 @@ async function removeRow(name) {
 		</Teleport>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading estimate template…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading estimate template…") }}</div>
 </template>

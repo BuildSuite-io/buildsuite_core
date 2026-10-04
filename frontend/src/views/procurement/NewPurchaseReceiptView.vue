@@ -24,6 +24,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 // Warehouses are company-partitioned; scope the picker to the working company (default when
@@ -66,7 +67,7 @@ const poOptions = computed(() =>
 		label: `${po.name} — ${po.supplier_name || po.supplier}`,
 		hint: [
 			po.project_name || po.project,
-			po.schedule_date ? "due " + fmtDate(po.schedule_date) : "",
+			po.schedule_date ? __("due {0}", [fmtDate(po.schedule_date)]) : "",
 		]
 			.filter(Boolean)
 			.join(" · "),
@@ -81,7 +82,7 @@ watch(
 		try {
 			openPos.value = await getOpenPurchaseOrders();
 		} catch (err) {
-			showToast(err.message || "Failed to load purchase orders", "error");
+			showToast(err.message || __("Failed to load purchase orders"), "error");
 		}
 	},
 	{ immediate: true }
@@ -110,7 +111,7 @@ watch(
 				})),
 			};
 		} catch (err) {
-			error.value = err.message || "Can't receive against this order.";
+			error.value = err.message || __("Can't receive against this order.");
 		}
 	},
 	{ immediate: true }
@@ -124,7 +125,7 @@ watch(
 		try {
 			const pr = await getPurchaseReceipt(id);
 			if (pr.state !== "Draft") {
-				showToast("Only a draft receipt can be edited.", "error");
+				showToast(__("Only a draft receipt can be edited."), "error");
 				router.replace(`/procurement/receipts/${id}`);
 				return;
 			}
@@ -145,7 +146,7 @@ watch(
 				})),
 			};
 		} catch (err) {
-			showToast(err.message || "Failed to load receipt", "error");
+			showToast(err.message || __("Failed to load receipt"), "error");
 		}
 	},
 	{ immediate: true }
@@ -164,15 +165,15 @@ const canSave = computed(
 async function onSave() {
 	error.value = "";
 	if (!selectedPo.value) {
-		error.value = "Pick a purchase order.";
+		error.value = __("Pick a purchase order.");
 		return;
 	}
 	if (!receipt.value.warehouse) {
-		error.value = "Pick a receiving warehouse.";
+		error.value = __("Pick a receiving warehouse.");
 		return;
 	}
 	if (!receivedLines.value.length) {
-		error.value = "Enter at least one received quantity.";
+		error.value = __("Enter at least one received quantity.");
 		return;
 	}
 	saving.value = true;
@@ -188,10 +189,10 @@ async function onSave() {
 				purchase_order_item: l.purchase_order_item,
 			})),
 		});
-		showToast(isEdit.value ? "Receipt saved." : "Receipt recorded.");
+		showToast(isEdit.value ? __("Receipt saved.") : __("Receipt recorded."));
 		router.push(`/procurement/receipts/${pr.name}`);
 	} catch (err) {
-		error.value = err.message || "Failed to save receipt";
+		error.value = err.message || __("Failed to save receipt");
 	} finally {
 		saving.value = false;
 	}
@@ -202,18 +203,18 @@ function onCancel() {
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Purchase Receipts", to: "/procurement/receipts" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Receipts"), to: "/procurement/receipts" },
 	isEdit.value
 		? { label: editingId.value, to: `/procurement/receipts/${editingId.value}` }
-		: { label: "New" },
-	...(isEdit.value ? [{ label: "Edit" }] : []),
+		: { label: __("New") },
+	...(isEdit.value ? [{ label: __("Edit") }] : []),
 ]);
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Purchase Receipt"
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Purchase Receipt")
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Confirm receipt"
+	saving.value ? __("Saving…") : isEdit.value ? __("Save changes") : __("Confirm receipt")
 );
 </script>
 
@@ -224,7 +225,11 @@ const saveLabel = computed(() =>
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this" : "create a" }} purchase receipt.
+			{{
+				isEdit
+					? __("You don't have permission to edit this purchase receipt.")
+					: __("You don't have permission to create a purchase receipt.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
@@ -244,23 +249,23 @@ const saveLabel = computed(() =>
 				{{ error }}
 			</div>
 
-			<DeskSection title="Receipt" :cols="3">
-				<DeskField label="Purchase order" required>
+			<DeskSection :title="__('Receipt')" :cols="3">
+				<DeskField :label="__('Purchase order')" required>
 					<DeskSearchableSelect
 						v-if="!isEdit"
 						v-model="selectedPo"
 						:options="poOptions"
-						placeholder="— Select open PO —"
-						search-placeholder="Search PO, supplier…"
+						:placeholder="__('— Select open PO —')"
+						:search-placeholder="__('Search PO, supplier…')"
 					/>
 					<div v-else class="text-sm text-ink-900 pt-1.5 font-mono">
 						{{ selectedPo }}
 					</div>
 				</DeskField>
 				<DeskField
-					label="Receiving warehouse"
+					:label="__('Receiving warehouse')"
 					required
-					hint="Where the goods land on site."
+					:hint="__('Where the goods land on site.')"
 				>
 					<DeskLinkPicker
 						v-model="receipt.warehouse"
@@ -268,23 +273,23 @@ const saveLabel = computed(() =>
 						label-field="warehouse_name"
 						value-field="name"
 						:filters="warehouseFilters"
-						placeholder="— Select warehouse —"
+						:placeholder="__('— Select warehouse —')"
 					/>
 				</DeskField>
-				<DeskField label="Received on">
+				<DeskField :label="__('Received on')">
 					<DeskInput v-model="receipt.posting_date" type="date" />
 				</DeskField>
 				<DeskField
 					v-if="receipt.supplier_name"
-					label="Supplier"
-					hint="From the purchase order."
+					:label="__('Supplier')"
+					:hint="__('From the purchase order.')"
 				>
 					<div class="text-sm text-ink-900 pt-1.5">{{ receipt.supplier_name }}</div>
 				</DeskField>
 				<DeskField
 					v-if="receipt.project_name"
-					label="Project"
-					hint="From the purchase order."
+					:label="__('Project')"
+					:hint="__('From the purchase order.')"
 				>
 					<div class="text-sm text-ink-900 pt-1.5">{{ receipt.project_name }}</div>
 				</DeskField>
@@ -293,18 +298,18 @@ const saveLabel = computed(() =>
 			<!-- Received lines -->
 			<section v-if="receipt.lines.length" class="mt-6">
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
-					Items received
+					{{ __("Items received") }}
 				</h3>
 				<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 					<table class="w-full text-xs" style="min-width: 680px">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
-								<th class="text-left px-3 py-2">Item</th>
-								<th class="text-left px-3 py-2">UOM</th>
-								<th class="text-right px-3 py-2">Ordered</th>
-								<th class="text-right px-3 py-2">PO rate</th>
-								<th class="text-right px-3 py-2 w-28">Received now</th>
-								<th class="text-right px-3 py-2">Amount</th>
+								<th class="text-left px-3 py-2">{{ __("Item") }}</th>
+								<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+								<th class="text-right px-3 py-2">{{ __("Ordered") }}</th>
+								<th class="text-right px-3 py-2">{{ __("PO rate") }}</th>
+								<th class="text-right px-3 py-2 w-28">{{ __("Received now") }}</th>
+								<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -349,7 +354,7 @@ const saveLabel = computed(() =>
 									colspan="5"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
-									Total received
+									{{ __("Total received") }}
 								</td>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -362,7 +367,7 @@ const saveLabel = computed(() =>
 				</div>
 			</section>
 			<div v-else-if="selectedPo" class="mt-6 text-xs text-ink-400 italic">
-				Nothing left to receive on this order.
+				{{ __("Nothing left to receive on this order.") }}
 			</div>
 		</DeskForm>
 	</DeskPage>

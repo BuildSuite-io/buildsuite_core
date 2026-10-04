@@ -7,6 +7,7 @@ import { ref, watch, computed } from "vue";
 import { useDataStore } from "@/stores";
 import { PROJECT_TABS } from "@/data/projectTabs";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -34,9 +35,9 @@ async function saveEdit() {
 	try {
 		await store.updateProjectSettings({ ...form.value.tabs });
 		editing.value = false;
-		showToast("Project Settings saved", "success");
+		showToast(__("Project Settings saved"), "success");
 	} catch (e) {
-		showToast(e.message || "Could not save Project Settings", "error");
+		showToast(e.message || __("Could not save Project Settings"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -50,44 +51,43 @@ function setAll(on) {
 const shownCount = computed(() => PROJECT_TABS.filter((t) => store.siteProjectTabVisible(t.id)).length);
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Project Settings" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Project Settings") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="Project Settings"
-		subtitle="Site-wide defaults for the Project record"
+		:title="__('Project Settings')"
+		:subtitle="__('Site-wide defaults for the Project record')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
 					v-if="store.isAdmin"
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
+					:save-label="editing ? (saving ? __('Saving…') : __('Save')) : __('Edit')"
 					:show-cancel="editing"
 					:saving="saving"
-					cancel-label="Cancel"
+					:cancel-label="__('Cancel')"
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				/>
 				<div v-else class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700">
-					Read-only. Editing requires the Admin or BuildSuite Administrator role.
+					{{ __("Read-only. Editing requires the Admin or BuildSuite Administrator role.") }}
 				</div>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Project page tabs" :cols="1">
+				<DeskSection :title="__('Project page tabs')" :cols="1">
 					<div class="text-xs text-ink-600 mb-3">
-						Which tabs every project offers. Overview is always shown, so it is not listed here.
-						Any project can overrule these for itself from its own "…" menu.
+						{{ __('Which tabs every project offers. Overview is always shown, so it is not listed here. Any project can overrule these for itself from its own "…" menu.') }}
 					</div>
 
 					<div v-if="editing" class="flex items-center gap-2 mb-3">
-						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(true)">Show all</button>
-						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(false)">Hide all</button>
+						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(true)">{{ __("Show all") }}</button>
+						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(false)">{{ __("Hide all") }}</button>
 					</div>
 
 					<div class="border border-ink-200 rounded-lg overflow-hidden">
@@ -98,15 +98,15 @@ const breadcrumbs = [
 							:class="i ? 'border-t border-ink-100' : ''"
 						>
 							<div class="flex-1 min-w-0">
-								<div class="text-sm font-medium text-ink-900">{{ t.label }}</div>
-								<div class="text-[11px] text-ink-500 mt-0.5">{{ t.desc }}</div>
+								<div class="text-sm font-medium text-ink-900">{{ __(t.label) }}</div>
+								<div class="text-[11px] text-ink-500 mt-0.5">{{ __(t.desc) }}</div>
 							</div>
 
 							<div class="flex-shrink-0 pt-0.5">
 								<label v-if="editing" class="flex items-center gap-2 text-xs cursor-pointer whitespace-nowrap">
 									<input type="checkbox" v-model="form.tabs[t.id]" class="accent-brand-600" />
 									<span :class="form.tabs[t.id] ? 'text-ink-900' : 'text-ink-500'">
-										{{ form.tabs[t.id] ? "Shown" : "Hidden" }}
+										{{ form.tabs[t.id] ? __("Shown") : __("Hidden") }}
 									</span>
 								</label>
 								<span
@@ -116,14 +116,14 @@ const breadcrumbs = [
 										? 'bg-success-50 text-success-700'
 										: 'bg-ink-100 text-ink-600'"
 								>
-									{{ store.siteProjectTabVisible(t.id) ? "Shown" : "Hidden" }}
+									{{ store.siteProjectTabVisible(t.id) ? __("Shown") : __("Hidden") }}
 								</span>
 							</div>
 						</div>
 					</div>
 
 					<div class="text-[11px] text-ink-500 mt-2">
-						{{ shownCount }} of {{ PROJECT_TABS.length }} tabs shown by default.
+						{{ __("{0} of {1} tabs shown by default.", [shownCount, PROJECT_TABS.length]) }}
 					</div>
 				</DeskSection>
 			</div>

@@ -7,6 +7,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
+import { __ } from "@/utils/translate";
 
 defineProps({
 	form: { type: Object, required: true },
@@ -17,34 +18,34 @@ const { workerOptions } = useFieldEmployeeOptions();
 </script>
 
 <template>
-	<DeskSection title="Crew" :cols="2">
-		<DeskField label="Crew name" required :error="errors.crew_name">
-			<DeskInput v-model="form.crew_name" placeholder="e.g. Block A Structural Gang" />
+	<DeskSection :title="__('Crew')" :cols="2">
+		<DeskField :label="__('Crew name')" required :error="errors.crew_name">
+			<DeskInput v-model="form.crew_name" :placeholder="__('e.g. Block A Structural Gang')" />
 		</DeskField>
-		<DeskField label="Crew leader">
+		<DeskField :label="__('Crew leader')">
 			<DeskSearchableSelect
 				v-model="form.crew_leader"
 				:options="workerOptions"
-				placeholder="Pick a worker…"
-				search-placeholder="Search workers…"
+				:placeholder="__('Pick a worker…')"
+				:search-placeholder="__('Search workers…')"
 				allow-clear
 			/>
 		</DeskField>
 
-		<DeskField label="Trade">
+		<DeskField :label="__('Trade')">
 			<DeskLinkPicker
 				v-model="form.trade"
 				doctype="Labour Trade"
 				label-field="trade"
 				:search-fields="['trade', 'name']"
-				placeholder="Select trade"
+				:placeholder="__('Select trade')"
 			/>
 		</DeskField>
-		<DeskField label="Company" required :error="errors.company">
+		<DeskField :label="__('Company')" required :error="errors.company">
 			<DeskLinkPicker
 				v-model="form.company"
 				doctype="Company"
-				placeholder="Select company"
+				:placeholder="__('Select company')"
 				:error="errors.company"
 			/>
 		</DeskField>

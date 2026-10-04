@@ -14,6 +14,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { canCreate } = usePermissions();
@@ -33,14 +34,14 @@ const FIELDS = [
 	"status",
 ];
 const columns = [
-	{ key: "name", label: "PO" },
-	{ key: "supplier_name", label: "Supplier" },
-	{ key: "project", label: "Project" },
-	{ key: "transaction_date", label: "Ordered" },
-	{ key: "schedule_date", label: "Required by" },
-	{ key: "grand_total", label: "Value", align: "right" },
-	{ key: "per_received", label: "Received", align: "right" },
-	{ key: "status", label: "Status" },
+	{ key: "name", label: __("PO") },
+	{ key: "supplier_name", label: __("Supplier") },
+	{ key: "project", label: __("Project") },
+	{ key: "transaction_date", label: __("Ordered") },
+	{ key: "schedule_date", label: __("Required by") },
+	{ key: "grand_total", label: __("Value"), align: "right" },
+	{ key: "per_received", label: __("Received"), align: "right" },
+	{ key: "status", label: __("Status") },
 ];
 
 const statusFilter = ref("");
@@ -68,14 +69,14 @@ function openNew() {
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Purchase Orders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Orders") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Purchase Orders" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Purchase Orders')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<button
 				v-if="canCreate('purchaseOrder')"
@@ -83,7 +84,7 @@ const breadcrumbs = [
 				class="desk-save-btn !text-xs"
 				@click="openNew"
 			>
-				+ New PO
+				+ {{ __("New PO") }}
 			</button>
 		</template>
 
@@ -99,21 +100,21 @@ const breadcrumbs = [
 			cache-key="buildsuite-purchase-orders"
 			row-key="name"
 			initial-order-by="transaction_date desc"
-			search-placeholder="Search PO, supplier…"
-			empty-message="No purchase orders yet."
+			:search-placeholder="__('Search PO, supplier…')"
+			:empty-message="__('No purchase orders yet.')"
 			@row-click="openDetail"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">
-					<option value="">Status: Any</option>
-					<option>Draft</option>
-					<option>To Receive and Bill</option>
-					<option>To Bill</option>
-					<option>To Receive</option>
-					<option>Completed</option>
-					<option>On Hold</option>
-					<option>Closed</option>
-					<option>Cancelled</option>
+					<option value="">{{ __("Status: Any") }}</option>
+					<option value="Draft">{{ __("Draft") }}</option>
+					<option value="To Receive and Bill">{{ __("To Receive and Bill") }}</option>
+					<option value="To Bill">{{ __("To Bill") }}</option>
+					<option value="To Receive">{{ __("To Receive") }}</option>
+					<option value="Completed">{{ __("Completed") }}</option>
+					<option value="On Hold">{{ __("On Hold") }}</option>
+					<option value="Closed">{{ __("Closed") }}</option>
+					<option value="Cancelled">{{ __("Cancelled") }}</option>
 				</DeskSelect>
 				<div class="w-48">
 					<DeskLinkPicker
@@ -121,19 +122,19 @@ const breadcrumbs = [
 						doctype="Project"
 						label-field="project_name"
 						value-field="name"
-						placeholder="All projects"
+						:placeholder="__('All projects')"
 					/>
 				</div>
 				<input
 					v-model="fromDate"
 					type="date"
-					title="From (order date)"
+					:title="__('From (order date)')"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
 				/>
 				<input
 					v-model="toDate"
 					type="date"
-					title="To (order date)"
+					:title="__('To (order date)')"
 					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
 				/>
 			</template>

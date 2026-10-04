@@ -8,6 +8,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import {
 	getWorkspaceSettings,
 	setWorkspaceReports,
@@ -54,7 +55,7 @@ async function load() {
 		if (!activeSlug.value && workspaces.value.length)
 			activeSlug.value = workspaces.value[0].slug;
 	} catch (err) {
-		showToast(err.message || "Failed to load settings", "error");
+		showToast(err.message || __("Failed to load settings"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -83,11 +84,11 @@ function removeRecord(i) {
 async function save() {
 	if (saving.value) return;
 	if (rows.value.find((r) => !r.report && !(r.route || "").trim())) {
-		showToast("Every report row needs a report or a route.", "error");
+		showToast(__("Every report row needs a report or a route."), "error");
 		return;
 	}
 	if (docRows.value.find((r) => !(r.doctype || "").trim())) {
-		showToast("Every record row needs a DocType.", "error");
+		showToast(__("Every record row needs a DocType."), "error");
 		return;
 	}
 	saving.value = true;
@@ -95,22 +96,22 @@ async function save() {
 		await setWorkspaceReports(activeSlug.value, rows.value);
 		const res = await setWorkspaceDoctypes(activeSlug.value, docRows.value);
 		hydrate(res); // final response carries both maps
-		showToast(`${activeLabel.value} saved`);
+		showToast(__("{0} saved", [activeLabel.value]));
 	} catch (err) {
-		showToast(err.message || "Failed to save", "error");
+		showToast(err.message || __("Failed to save"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const activeLabel = computed(
-	() => workspaces.value.find((w) => w.slug === activeSlug.value)?.label || "Workspace",
+	() => workspaces.value.find((w) => w.slug === activeSlug.value)?.label || __("Workspace"),
 );
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Workspace Setting" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Workspace Setting") },
 ];
 
 onMounted(() => {
@@ -124,21 +125,21 @@ onMounted(() => {
 
 <template>
 	<DeskPage
-		title="Workspace Setting"
-		subtitle="Report-style shortcut tiles shown in each workspace"
+		:title="__('Workspace Setting')"
+		:subtitle="__('Report-style shortcut tiles shown in each workspace')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Saving…' : `Save ${activeLabel}`"
+					:save-label="saving ? __('Saving…') : __('Save {0}', [activeLabel])"
 					:saving="saving"
 					@save="save"
 					@cancel="load"
 				/>
 			</template>
 
-			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">Loading…</div>
+			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">{{ __("Loading…") }}</div>
 
 			<template v-else>
 				<!-- Workspace tabs -->
@@ -161,7 +162,7 @@ onMounted(() => {
 					</button>
 				</div>
 
-				<DeskSection :title="`${activeLabel} reports`" :cols="1">
+				<DeskSection :title="__('{0} reports', [activeLabel])" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
 						Tiles render in the {{ activeLabel }} workspace in the order below. Set a
 						<strong>Report</strong> (its Desk route is used) <em>or</em> a
@@ -174,11 +175,11 @@ onMounted(() => {
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium w-8">#</th>
-									<th class="py-1.5 pr-2 font-medium w-44">Label</th>
-									<th class="py-1.5 pr-2 font-medium w-52">Report</th>
-									<th class="py-1.5 pr-2 font-medium w-52">Route</th>
-									<th class="py-1.5 pr-2 font-medium w-28">Icon</th>
-									<th class="py-1.5 pr-2 font-medium">Description</th>
+									<th class="py-1.5 pr-2 font-medium w-44">{{ __("Label") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-52">{{ __("Report") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-52">{{ __("Route") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Icon") }}</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Description") }}</th>
 									<th class="w-20"></th>
 								</tr>
 							</thead>
@@ -192,13 +193,13 @@ onMounted(() => {
 										{{ i + 1 }}
 									</td>
 									<td class="py-1 pr-2">
-										<DeskInput v-model="r.label" placeholder="Tile title" />
+										<DeskInput v-model="r.label" :placeholder="__('Tile title')" />
 									</td>
 									<td class="py-1 pr-2">
 										<DeskLinkPicker
 											v-model="r.report"
 											doctype="Report"
-											placeholder="Select report"
+											:placeholder="__('Select report')"
 											label-field="report_name"
 											value-field="name"
 											:search-fields="['report_name', 'name']"
@@ -208,7 +209,7 @@ onMounted(() => {
 									<td class="py-1 pr-2">
 										<DeskInput
 											v-model="r.route"
-											placeholder="/path or /app/…"
+											:placeholder="__('/path or /app/…')"
 										/>
 									</td>
 									<td class="py-1 pr-2">
@@ -217,14 +218,14 @@ onMounted(() => {
 									<td class="py-1 pr-2">
 										<DeskInput
 											v-model="r.description"
-											placeholder="Short description"
+											:placeholder="__('Short description')"
 										/>
 									</td>
 									<td class="py-1 text-center whitespace-nowrap pt-2">
 										<button
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === 0"
-											title="Move up"
+											:title="__('Move up')"
 											@click="move(rows, i, -1)"
 										>
 											↑
@@ -232,14 +233,14 @@ onMounted(() => {
 										<button
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === rows.length - 1"
-											title="Move down"
+											:title="__('Move down')"
 											@click="move(rows, i, 1)"
 										>
 											↓
 										</button>
 										<button
 											class="text-ink-400 hover:text-danger-600 px-1"
-											title="Remove"
+											:title="__('Remove')"
 											@click="removeReport(i)"
 										>
 											×
@@ -248,18 +249,18 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!rows.length">
 									<td colspan="7" class="py-3 text-center text-ink-400">
-										No reports configured for {{ activeLabel }} yet.
+										{{ __("No reports configured for {0} yet.", [activeLabel]) }}
 									</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 					<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addReport">
-						+ Add report
+						{{ __("+ Add report") }}
 					</button>
 				</DeskSection>
 
-				<DeskSection :title="`${activeLabel} records`" :cols="1">
+				<DeskSection :title="__('{0} records', [activeLabel])" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
 						DocType tiles render in the {{ activeLabel }} workspace's
 						<strong>Records</strong> group. Each opens the generic list + add/edit form
@@ -270,10 +271,10 @@ onMounted(() => {
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium w-8">#</th>
-									<th class="py-1.5 pr-2 font-medium w-44">Label</th>
-									<th class="py-1.5 pr-2 font-medium w-52">DocType</th>
-									<th class="py-1.5 pr-2 font-medium w-28">Icon</th>
-									<th class="py-1.5 pr-2 font-medium">Description</th>
+									<th class="py-1.5 pr-2 font-medium w-44">{{ __("Label") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-52">{{ __("DocType") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Icon") }}</th>
+									<th class="py-1.5 pr-2 font-medium">{{ __("Description") }}</th>
 									<th class="w-20"></th>
 								</tr>
 							</thead>
@@ -289,14 +290,14 @@ onMounted(() => {
 									<td class="py-1 pr-2">
 										<DeskInput
 											v-model="r.label"
-											placeholder="Tile title (defaults to DocType)"
+											:placeholder="__('Tile title (defaults to DocType)')"
 										/>
 									</td>
 									<td class="py-1 pr-2">
 										<DeskLinkPicker
 											v-model="r.doctype"
 											doctype="DocType"
-											placeholder="Select DocType"
+											:placeholder="__('Select DocType')"
 											value-field="name"
 											:search-fields="['name']"
 											:page-length="20"
@@ -308,14 +309,14 @@ onMounted(() => {
 									<td class="py-1 pr-2">
 										<DeskInput
 											v-model="r.description"
-											placeholder="Short description"
+											:placeholder="__('Short description')"
 										/>
 									</td>
 									<td class="py-1 text-center whitespace-nowrap pt-2">
 										<button
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === 0"
-											title="Move up"
+											:title="__('Move up')"
 											@click="move(docRows, i, -1)"
 										>
 											↑
@@ -323,14 +324,14 @@ onMounted(() => {
 										<button
 											class="text-ink-400 hover:text-ink-700 px-1 disabled:opacity-30"
 											:disabled="i === docRows.length - 1"
-											title="Move down"
+											:title="__('Move down')"
 											@click="move(docRows, i, 1)"
 										>
 											↓
 										</button>
 										<button
 											class="text-ink-400 hover:text-danger-600 px-1"
-											title="Remove"
+											:title="__('Remove')"
 											@click="removeRecord(i)"
 										>
 											×
@@ -339,14 +340,14 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!docRows.length">
 									<td colspan="6" class="py-3 text-center text-ink-400">
-										No records configured for {{ activeLabel }} yet.
+										{{ __("No records configured for {0} yet.", [activeLabel]) }}
 									</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 					<button class="mt-2 text-sm text-brand-600 hover:underline" @click="addRecord">
-						+ Add record
+						{{ __("+ Add record") }}
 					</button>
 				</DeskSection>
 			</template>

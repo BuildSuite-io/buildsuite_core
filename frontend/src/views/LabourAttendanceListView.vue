@@ -15,6 +15,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import { frappeRequest } from "frappe-ui-frappe-request";
 
 const { projectOptions, projectLabel } = useProjectOptions();
@@ -86,27 +87,27 @@ async function loadTotal() {
 }
 watch(filterValues, loadTotal, { immediate: true, deep: true });
 
-const subtitle = computed(() => `Total daily wages ${fmtINR(totalWages.value)}`);
+const subtitle = computed(() => __("Total daily wages {0}", [fmtINR(totalWages.value)]));
 
 const columns = [
-	{ key: "attendance_date", label: "Date" },
-	{ key: "employee_name", label: "Worker" },
-	{ key: "status", label: "Status" },
-	{ key: "task", label: "Task" },
-	{ key: "project", label: "Project" },
-	{ key: "wage_rate", label: "Wage rate", align: "right" },
-	{ key: "daily_wage_calculated", label: "Daily wage", align: "right" },
+	{ key: "attendance_date", label: __("Date") },
+	{ key: "employee_name", label: __("Worker") },
+	{ key: "status", label: __("Status") },
+	{ key: "task", label: __("Task") },
+	{ key: "project", label: __("Project") },
+	{ key: "wage_rate", label: __("Wage rate"), align: "right" },
+	{ key: "daily_wage_calculated", label: __("Daily wage"), align: "right" },
 ];
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Labour Attendance Register" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Labour Attendance Register") },
 ];
 </script>
 
 <template>
-	<DeskPage title="Labour Attendance Register" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Labour Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<DocTypeListView
 			doctype="Labour Attendance Register"
 			:field-order="[
@@ -127,8 +128,8 @@ const breadcrumbs = [
 			cache-key="buildsuite-labour-attendance"
 			row-key="name"
 			initial-order-by="attendance_date desc"
-			search-placeholder="Search worker / project…"
-			empty-message="No labour attendance yet — submit a Field Attendance."
+			:search-placeholder="__('Search worker / project…')"
+			:empty-message="__('No labour attendance yet — submit a Field Attendance.')"
 		>
 			<template #filter-chips>
 				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -136,8 +137,8 @@ const breadcrumbs = [
 						<DeskSearchableSelect
 							v-model="projectFilter"
 							:options="projectOptions"
-							placeholder="All projects"
-							search-placeholder="Search projects…"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search projects…')"
 							allow-clear
 						/>
 					</div>
@@ -145,18 +146,18 @@ const breadcrumbs = [
 						<DeskSearchableSelect
 							v-model="workerFilter"
 							:options="workerOptions"
-							placeholder="Everyone"
-							search-placeholder="Search workers…"
+							:placeholder="__('Everyone')"
+							:search-placeholder="__('Search workers…')"
 							allow-clear
 						/>
 					</div>
 					<DeskSelect v-model="statusFilter" class="!w-32">
-						<option value="">Any status</option>
-						<option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+						<option value="">{{ __("Any status") }}</option>
+						<option v-for="s in STATUSES" :key="s" :value="s">{{ __(s) }}</option>
 					</DeskSelect>
 					<div class="flex items-center gap-1.5">
 						<DeskInput v-model="fromFilter" type="date" class="!w-36" />
-						<span class="text-[11px] text-ink-400">to</span>
+						<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 						<DeskInput v-model="toFilter" type="date" class="!w-36" />
 					</div>
 					<button
@@ -165,7 +166,7 @@ const breadcrumbs = [
 						class="text-[11px] text-ink-500 hover:text-ink-800 px-1"
 						@click="clearFilters"
 					>
-						Clear
+						{{ __("Clear") }}
 					</button>
 				</div>
 			</template>

@@ -12,6 +12,7 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
@@ -90,9 +91,9 @@ function cancelEdit() {
 }
 function validate() {
 	const e = {};
-	if (!form.value.machinery_name?.trim()) e.machinery_name = "Name is required.";
-	if (!form.value.machinery_type) e.machinery_type = "Type is required.";
-	if (!form.value.company) e.company = "Company is required.";
+	if (!form.value.machinery_name?.trim()) e.machinery_name = __("Name is required.");
+	if (!form.value.machinery_type) e.machinery_type = __("Type is required.");
+	if (!form.value.company) e.company = __("Company is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -115,7 +116,7 @@ async function saveEdit() {
 		await resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update machinery", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update machinery"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -123,9 +124,9 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${doc.value?.machinery_name}?`,
-		message: "This machinery record will be removed permanently. Its usage logs will remain.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [doc.value?.machinery_name]),
+		message: __("This machinery record will be removed permanently. Its usage logs will remain."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -133,14 +134,14 @@ async function onDelete() {
 		await adapter.remove("Machinery", props.id);
 		router.push("/machinery");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete machinery", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete machinery"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery", to: "/machinery" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery"), to: "/machinery" },
 	{ label: doc.value?.machinery_name || props.id },
 ]);
 </script>
@@ -149,7 +150,7 @@ const breadcrumbs = computed(() => [
 	<DeskPage
 		v-if="doc"
 		:title="doc.machinery_name"
-		:subtitle="`${doc.machinery_type || '—'} · ${doc.ownership}`"
+		:subtitle="`${doc.machinery_type || '—'} · ${__(doc.ownership)}`"
 		:breadcrumbs="breadcrumbs"
 		:status="[doc.status]"
 	>
@@ -160,7 +161,7 @@ const breadcrumbs = computed(() => [
 				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
 				style="border-radius: 6px"
 			>
-				+ Log usage
+				+ {{ __("Log usage") }}
 			</RouterLink>
 			<button
 				v-if="!editing && canEdit('machinery')"
@@ -169,7 +170,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && canDelete('machinery')"
@@ -178,7 +179,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="editing"
@@ -187,7 +188,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing && canEdit('machinery')"
@@ -196,53 +197,53 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Machinery" :cols="3">
-				<DeskField label="Type"
+			<DeskSection :title="__('Machinery')" :cols="3">
+				<DeskField :label="__('Type')"
 					><div class="text-sm text-ink-700">
 						{{ doc.machinery_type || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Ownership"
-					><div class="text-sm text-ink-800">{{ doc.ownership }}</div></DeskField
+				<DeskField :label="__('Ownership')"
+					><div class="text-sm text-ink-800">{{ __(doc.ownership) }}</div></DeskField
 				>
-				<DeskField label="Rate"
+				<DeskField :label="__('Rate')"
 					><div class="text-sm text-ink-800 tabular-nums">
 						{{ rateDisplay }}
 					</div></DeskField
 				>
-				<DeskField label="Owner / Vendor"
+				<DeskField :label="__('Owner / Vendor')"
 					><div class="text-sm text-ink-800">
 						{{ doc.owner_vendor || "—" }}
 					</div></DeskField
 				>
-				<DeskField label="Status"><StatusBadge :status="doc.status" /></DeskField>
-				<DeskField v-if="doc.ownership === 'Owned'" label="Linked asset (ERPNext)">
+				<DeskField :label="__('Status')"><StatusBadge :status="doc.status" /></DeskField>
+				<DeskField v-if="doc.ownership === 'Owned'" :label="__('Linked asset (ERPNext)')">
 					<DeskLink v-if="doc.asset" :href="`/app/asset/${doc.asset}`" target="_blank">{{
 						doc.asset
 					}}</DeskLink>
-					<div v-else class="text-sm text-ink-400">— not linked —</div>
+					<div v-else class="text-sm text-ink-400">{{ __("— not linked —") }}</div>
 				</DeskField>
-				<DeskField label="Company"
+				<DeskField :label="__('Company')"
 					><div class="text-sm text-ink-700">{{ doc.company || "—" }}</div></DeskField
 				>
 			</DeskSection>
 
 			<!-- Usage logs for this machine -->
-			<DeskSection :title="`Usage logs (${usageRows.length})`" :cols="1">
+			<DeskSection :title="__('Usage logs ({0})', [usageRows.length])" :cols="1">
 				<table v-if="usageRows.length" class="w-full text-sm">
 					<thead>
 						<tr class="text-left text-ink-500 border-b border-ink-100">
-							<th class="py-1.5 pr-3 font-medium">Date</th>
-							<th class="py-1.5 pr-3 font-medium">Project</th>
-							<th class="py-1.5 pr-3 font-medium">Task</th>
-							<th class="py-1.5 pr-3 font-medium text-right">Qty</th>
-							<th class="py-1.5 font-medium text-right">Total</th>
+							<th class="py-1.5 pr-3 font-medium">{{ __("Date") }}</th>
+							<th class="py-1.5 pr-3 font-medium">{{ __("Project") }}</th>
+							<th class="py-1.5 pr-3 font-medium">{{ __("Task") }}</th>
+							<th class="py-1.5 pr-3 font-medium text-right">{{ __("Qty") }}</th>
+							<th class="py-1.5 font-medium text-right">{{ __("Total") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -266,78 +267,78 @@ const breadcrumbs = computed(() => [
 						</tr>
 					</tbody>
 				</table>
-				<div v-else class="text-sm text-ink-400 italic">No usage logged yet.</div>
+				<div v-else class="text-sm text-ink-400 italic">{{ __("No usage logged yet.") }}</div>
 			</DeskSection>
 		</div>
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection title="Machinery" :cols="3">
-				<DeskField label="Name" required :error="errors.machinery_name"
+			<DeskSection :title="__('Machinery')" :cols="3">
+				<DeskField :label="__('Name')" required :error="errors.machinery_name"
 					><DeskInput v-model="form.machinery_name"
 				/></DeskField>
-				<DeskField label="Type" required :error="errors.machinery_type">
+				<DeskField :label="__('Type')" required :error="errors.machinery_type">
 					<DeskLinkPicker
 						v-model="form.machinery_type"
 						doctype="Machinery Type"
 						label-field="name"
 						value-field="name"
-						placeholder="Pick a type…"
+						:placeholder="__('Pick a type…')"
 					/>
 				</DeskField>
 
-				<DeskField label="Ownership">
+				<DeskField :label="__('Ownership')">
 					<DeskSelect v-model="form.ownership"
-						><option>Owned</option>
-						<option>Hired</option></DeskSelect
+						><option value="Owned">{{ __("Owned") }}</option>
+						<option value="Hired">{{ __("Hired") }}</option></DeskSelect
 					>
 				</DeskField>
-				<DeskField :label="`Rate (${currencySymbol()})`"
+				<DeskField :label="`${__('Rate')} (${currencySymbol()})`"
 					><DeskInput v-model.number="form.rate" type="number" min="0"
 				/></DeskField>
-				<DeskField label="Rate Unit">
+				<DeskField :label="__('Rate Unit')">
 					<DeskSelect v-model="form.rate_unit"
-						><option>Hour</option>
-						<option>Day</option>
-						<option>Month</option></DeskSelect
+						><option value="Hour">{{ __("Hour") }}</option>
+						<option value="Day">{{ __("Day") }}</option>
+						<option value="Month">{{ __("Month") }}</option></DeskSelect
 					>
 				</DeskField>
 
-				<DeskField label="Owner / Vendor"
+				<DeskField :label="__('Owner / Vendor')"
 					><DeskInput v-model="form.owner_vendor"
 				/></DeskField>
-				<DeskField label="Status">
+				<DeskField :label="__('Status')">
 					<DeskSelect v-model="form.status"
-						><option>Active</option>
-						<option>Inactive</option></DeskSelect
+						><option value="Active">{{ __("Active") }}</option>
+						<option value="Inactive">{{ __("Inactive") }}</option></DeskSelect
 					>
 				</DeskField>
 				<DeskField
 					v-if="form.ownership === 'Owned'"
-					label="Asset"
-					hint="Optional — owned fixed asset."
+					:label="__('Asset')"
+					:hint="__('Optional — owned fixed asset.')"
 				>
 					<DeskLinkPicker
 						v-model="form.asset"
 						doctype="Asset"
 						label-field="asset_name"
 						value-field="name"
-						placeholder="Link an asset…"
+						:placeholder="__('Link an asset…')"
 					/>
 				</DeskField>
 
-				<DeskField label="Company" required :error="errors.company">
+				<DeskField :label="__('Company')" required :error="errors.company">
 					<DeskLinkPicker
 						v-model="form.company"
 						doctype="Company"
 						label-field="name"
 						value-field="name"
-						placeholder="Company…"
+						:placeholder="__('Company…')"
 					/>
 				</DeskField>
 			</DeskSection>
 		</div>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Loading machinery…</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading machinery…") }}</div>
 </template>

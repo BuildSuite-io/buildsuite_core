@@ -5,6 +5,7 @@
 import { computed } from "vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DocTypeForm from "@/components/doctype/DocTypeForm.vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -12,11 +13,11 @@ const props = defineProps({
 });
 
 const isEdit = computed(() => !!props.name);
-const title = computed(() => (isEdit.value ? props.name : `New ${props.doctype}`));
+const title = computed(() => (isEdit.value ? props.name : __("New {0}", [props.doctype])));
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
+	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: props.doctype, to: `/records/${encodeURIComponent(props.doctype)}` },
-	{ label: isEdit.value ? props.name : "New" },
+	{ label: isEdit.value ? props.name : __("New") },
 ]);
 </script>
 

@@ -16,6 +16,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import ReportFilters from "@/components/reports/ReportFilters.vue";
 import { fmtINR, fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const { projectName } = useProjectNames();
 
@@ -189,52 +190,52 @@ const period = computed(() => {
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Site Attendance Summary" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Site Attendance Summary") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="Site Attendance Summary"
-		subtitle="Days worked, overtime and what the labour cost — rolled up from submitted attendance."
+		:title="__('Site Attendance Summary')"
+		:subtitle="__('Days worked, overtime and what the labour cost — rolled up from submitted attendance.')"
 		:breadcrumbs="breadcrumbs"
 		printable
 	>
 		<ReportFilters
 			:active="anyFilter"
 			:shown="rows.length"
-			:noun="groupBy === 'project' ? 'sites' : 'workers'"
+			:noun="groupBy === 'project' ? __('sites') : __('workers')"
 			@clear="clearFilters"
 		>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Site</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Site") }}</span>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.project"
 						:options="projectOptions"
 						allow-clear
-						placeholder="All sites"
-						search-placeholder="Search…"
+						:placeholder="__('All sites')"
+						:search-placeholder="__('Search…')"
 					/>
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Worker</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Worker") }}</span>
 				<span class="w-48 inline-block">
 					<DeskSearchableSelect
 						v-model="f.worker"
 						:options="workerOptions"
 						allow-clear
-						placeholder="Everyone"
-						search-placeholder="Search…"
+						:placeholder="__('Everyone')"
+						:search-placeholder="__('Search…')"
 					/>
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">Period</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Period") }}</span>
 				<DeskInput v-model="f.from" type="date" class="!w-36" />
-				<span class="text-[11px] text-ink-400">to</span>
+				<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 				<DeskInput v-model="f.to" type="date" class="!w-36" />
 			</label>
 			<div class="flex border border-ink-200 rounded-md overflow-hidden">
@@ -253,7 +254,7 @@ const breadcrumbs = [
 					"
 					@click="groupBy = g[0]"
 				>
-					{{ g[1] }}
+					{{ __(g[1]) }}
 				</button>
 			</div>
 		</ReportFilters>
@@ -262,21 +263,21 @@ const breadcrumbs = [
 			<!-- Headline figures -->
 			<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Workers</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Workers") }}</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ distinctWorkers }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Man-days</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Man-days") }}</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ totals.manDays }}</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Overtime</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Overtime") }}</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums">
-						{{ totals.otHours }} <span class="text-[11px] font-normal text-ink-500">hrs</span>
+						{{ totals.otHours }} <span class="text-[11px] font-normal text-ink-500">{{ __("hrs") }}</span>
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Absences</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Absences") }}</div>
 					<div
 						class="text-base font-semibold tabular-nums"
 						:class="totals.absent ? 'text-warning-700' : 'text-ink-900'"
@@ -285,11 +286,11 @@ const breadcrumbs = [
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">Labour cost</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Labour cost") }}</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ fmtINR(totals.total) }}</div>
 				</div>
 			</div>
-			<p v-if="period" class="text-[11px] text-ink-500 mb-3">Covering {{ period }}.</p>
+			<p v-if="period" class="text-[11px] text-ink-500 mb-3">{{ __("Covering {0}.", [period]) }}</p>
 
 			<div class="bg-white border border-ink-200 overflow-x-auto" style="border-radius: 8px">
 				<table class="w-full text-xs" style="min-width: 900px">
@@ -297,18 +298,18 @@ const breadcrumbs = [
 						class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200"
 					>
 						<tr>
-							<th class="text-left px-3 py-2">{{ groupBy === "project" ? "Site" : "Worker" }}</th>
-							<th class="text-right px-3 py-2">{{ groupBy === "project" ? "Workers" : "Sites" }}</th>
-							<th class="text-right px-3 py-2">Days</th>
-							<th class="text-right px-3 py-2">Full</th>
-							<th class="text-right px-3 py-2">Half</th>
-							<th class="text-right px-3 py-2">Absent</th>
-							<th class="text-right px-3 py-2">Man-days</th>
-							<th class="text-right px-3 py-2">Wages</th>
-							<th class="text-right px-3 py-2">OT hrs</th>
-							<th class="text-right px-3 py-2">OT wages</th>
-							<th class="text-right px-3 py-2">Total</th>
-							<th class="text-right px-3 py-2">OT share</th>
+							<th class="text-left px-3 py-2">{{ groupBy === "project" ? __("Site") : __("Worker") }}</th>
+							<th class="text-right px-3 py-2">{{ groupBy === "project" ? __("Workers") : __("Sites") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Days") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Full") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Half") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Absent") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Man-days") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Wages") }}</th>
+							<th class="text-right px-3 py-2">{{ __("OT hrs") }}</th>
+							<th class="text-right px-3 py-2">{{ __("OT wages") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Total") }}</th>
+							<th class="text-right px-3 py-2">{{ __("OT share") }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -349,7 +350,7 @@ const breadcrumbs = [
 					</tbody>
 					<tfoot>
 						<tr class="bg-ink-50 border-t border-ink-200 font-semibold text-ink-900">
-							<td class="px-3 py-2">Total</td>
+							<td class="px-3 py-2">{{ __("Total") }}</td>
 							<td class="px-3 py-2 text-right tabular-nums">
 								{{ groupBy === "project" ? distinctWorkers : "" }}
 							</td>
@@ -366,8 +367,11 @@ const breadcrumbs = [
 			</div>
 
 			<p class="text-[11px] text-ink-500 mt-2">
-				A half day counts as half a man-day. Both halves come from submitted attendance sheets — a
-				sheet left in draft is in neither register, so it is not here either.
+				{{
+					__(
+						"A half day counts as half a man-day. Both halves come from submitted attendance sheets — a sheet left in draft is in neither register, so it is not here either."
+					)
+				}}
 			</p>
 		</template>
 
@@ -376,8 +380,8 @@ const breadcrumbs = [
 			class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic"
 			style="border-radius: 8px"
 		>
-			<template v-if="anyFilter">Nothing matches these filters.</template>
-			<template v-else>No attendance has been submitted yet.</template>
+			<template v-if="anyFilter">{{ __("Nothing matches these filters.") }}</template>
+			<template v-else>{{ __("No attendance has been submitted yet.") }}</template>
 		</div>
 	</DeskPage>
 </template>
