@@ -19,6 +19,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 const router = useRouter();
@@ -149,7 +150,7 @@ watch(
 				woProjectName.value = mb.project_name || mb.project || "";
 				woSubName.value = mb.subcontractor_name || "";
 			} catch (err) {
-				showToast(err.message || "Failed to load measurement book", "error");
+				showToast(err.message || __("Failed to load measurement book"), "error");
 			} finally {
 				loading.value = false;
 			}
@@ -226,11 +227,11 @@ function entryIncomplete(e) {
 }
 function validate() {
 	const e = {};
-	if (!form.value.work_order) e.work_order = "Pick a work order.";
+	if (!form.value.work_order) e.work_order = __("Pick a work order.");
 	if (!form.value.entries.length) {
-		e.entries = "Add at least one measurement entry.";
+		e.entries = __("Add at least one measurement entry.");
 	} else if (form.value.entries.some(entryIncomplete)) {
-		e.entries = "Each entry needs a description, WO line and UOM.";
+		e.entries = __("Each entry needs a description, WO line and UOM.");
 	}
 	errors.value = e;
 	return Object.keys(e).length === 0;
@@ -277,7 +278,7 @@ async function onSave() {
 		});
 		router.push(`/measurement-books/${mb.name}`);
 	} catch (err) {
-		showToast(err.message || "Failed to save measurement book", "error");
+		showToast(err.message || __("Failed to save measurement book"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -287,21 +288,21 @@ function onCancel() {
 }
 
 const pageTitle = computed(() =>
-	isEdit.value ? `Edit ${editingId.value}` : "New Measurement Book"
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Measurement Book")
 );
 const saveLabel = computed(() =>
-	saving.value ? "Saving…" : isEdit.value ? "Save changes" : "Create MB"
+	saving.value ? __("Saving…") : isEdit.value ? __("Save changes") : __("Create MB")
 );
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Measurement Books", to: "/measurement-books" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Measurement Books"), to: "/measurement-books" },
 	...(isEdit.value
 		? [
 				{ label: editingId.value, to: `/measurement-books/${editingId.value}` },
-				{ label: "Edit" },
+				{ label: __("Edit") },
 		  ]
-		: [{ label: "New" }]),
+		: [{ label: __("New") }]),
 ]);
 </script>
 
@@ -312,7 +313,11 @@ const breadcrumbs = computed(() => [
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to {{ isEdit ? "edit this" : "create a" }} measurement book.
+			{{
+				isEdit
+					? __("You don't have permission to edit this measurement book.")
+					: __("You don't have permission to create a measurement book.")
+			}}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
@@ -324,20 +329,20 @@ const breadcrumbs = computed(() => [
 				/>
 			</template>
 
-			<DeskSection title="Header" :cols="3">
-				<DeskField label="Work order" required :error="errors.work_order">
+			<DeskSection :title="__('Header')" :cols="3">
+				<DeskField :label="__('Work order')" required :error="errors.work_order">
 					<DeskLinkPicker
 						:model-value="form.work_order"
 						doctype="Subcontractor Work Order"
 						label-field="name"
 						value-field="name"
 						:filters="companyFilter"
-						placeholder="Pick a work order…"
+						:placeholder="__('Pick a work order…')"
 						@update:model-value="onWorkOrderChange"
 					/>
 				</DeskField>
 				<!-- Read-only, derived from the work order. -->
-				<DeskField label="Project" hint="Derived from the work order.">
+				<DeskField :label="__('Project')" :hint="__('Derived from the work order.')">
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
@@ -345,7 +350,7 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woProjectName || form.project || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Subcontractor" hint="Derived from the work order.">
+				<DeskField :label="__('Subcontractor')" :hint="__('Derived from the work order.')">
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
@@ -353,19 +358,19 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woSubName || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Date" required
+				<DeskField :label="__('Date')" required
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField label="Measured by">
+				<DeskField :label="__('Measured by')">
 					<DeskLinkPicker
 						v-model="form.measured_by"
 						doctype="User"
 						label-field="full_name"
 						value-field="name"
-						placeholder="— Optional —"
+						:placeholder="__('— Optional —')"
 					/>
 				</DeskField>
-				<DeskField label="Remarks" class="md:col-span-2"
+				<DeskField :label="__('Remarks')" class="md:col-span-2"
 					><DeskInput v-model="form.remarks"
 				/></DeskField>
 			</DeskSection>
@@ -374,14 +379,14 @@ const breadcrumbs = computed(() => [
 			<section class="mt-6">
 				<div class="flex items-center justify-between mb-2 gap-3">
 					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-						Entries — Quantity = Nos × L × B × D, or type directly
+						{{ __("Entries — Quantity = Nos × L × B × D, or type directly") }}
 					</h3>
 					<button
 						type="button"
 						class="text-xs text-brand-700 hover:underline"
 						@click="addRow"
 					>
-						+ Add entry
+						{{ __("+ Add entry") }}
 					</button>
 				</div>
 				<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
@@ -390,21 +395,21 @@ const breadcrumbs = computed(() => [
 							<tr>
 								<th class="text-left px-2 py-2 w-8">#</th>
 								<th class="text-left px-2 py-2 min-w-[160px]">
-									Description <span class="text-danger-600">*</span>
+									{{ __("Description") }} <span class="text-danger-600">*</span>
 								</th>
 								<th class="text-left px-2 py-2 min-w-[130px]">
-									WO line <span class="text-danger-600">*</span>
+									{{ __("WO line") }} <span class="text-danger-600">*</span>
 								</th>
-								<th class="text-left px-2 py-2 min-w-[130px]">Cost code</th>
-								<th class="text-right px-2 py-2 w-14">Nos</th>
-								<th class="text-right px-2 py-2 w-16">L</th>
-								<th class="text-right px-2 py-2 w-16">B</th>
-								<th class="text-right px-2 py-2 w-14">D</th>
-								<th class="text-right px-2 py-2 w-20">Qty</th>
+								<th class="text-left px-2 py-2 min-w-[130px]">{{ __("Cost code") }}</th>
+								<th class="text-right px-2 py-2 w-14">{{ __("Nos") }}</th>
+								<th class="text-right px-2 py-2 w-16">{{ __("L") }}</th>
+								<th class="text-right px-2 py-2 w-16">{{ __("B") }}</th>
+								<th class="text-right px-2 py-2 w-14">{{ __("D") }}</th>
+								<th class="text-right px-2 py-2 w-20">{{ __("Qty") }}</th>
 								<th class="text-left px-2 py-2 w-20">
-									UOM <span class="text-danger-600">*</span>
+									{{ __("UOM") }} <span class="text-danger-600">*</span>
 								</th>
-								<th class="text-center px-2 py-2 w-14">Deduct</th>
+								<th class="text-center px-2 py-2 w-14">{{ __("Deduct") }}</th>
 								<th class="text-center px-2 py-2 w-8"></th>
 							</tr>
 						</thead>
@@ -420,7 +425,7 @@ const breadcrumbs = computed(() => [
 									<input
 										v-model="e.description"
 										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
-										placeholder="What was measured"
+										:placeholder="__('What was measured')"
 									/>
 								</td>
 								<td class="px-2 py-1">
@@ -443,7 +448,7 @@ const breadcrumbs = computed(() => [
 									<CostCodePicker
 										v-model="e.cost_code"
 										:project-id="form.project"
-										placeholder="Pick code…"
+										:placeholder="__('Pick code…')"
 									/>
 								</td>
 								<td class="px-2 py-1">
@@ -494,8 +499,8 @@ const breadcrumbs = computed(() => [
 										class="w-full text-xs text-right tabular-nums py-1.5 focus:outline-none bg-transparent"
 										:title="
 											e._autoQty
-												? 'Derived from Nos × L × B × D — type to override.'
-												: 'Override active (clear to re-derive).'
+												? __('Derived from Nos × L × B × D — type to override.')
+												: __('Override active (clear to re-derive).')
 										"
 										@input="onQtyOverride(e)"
 									/>
@@ -505,7 +510,7 @@ const breadcrumbs = computed(() => [
 										class="text-[9px] text-brand-700 hover:underline"
 										@click="clearOverride(e)"
 									>
-										clear override
+										{{ __("clear override") }}
 									</button>
 								</td>
 								<td class="px-2 py-1" style="min-width: 110px">
@@ -522,14 +527,14 @@ const breadcrumbs = computed(() => [
 										v-model="e.is_deduction"
 										type="checkbox"
 										class="accent-danger-600"
-										title="Mark as a deduction (subtracts from measured total)"
+										:title="__('Mark as a deduction (subtracts from measured total)')"
 									/>
 								</td>
 								<td class="px-2 py-1 text-center">
 									<button
 										type="button"
 										class="text-ink-400 hover:text-danger-600"
-										title="Remove"
+										:title="__('Remove')"
 										@click="removeRow(idx)"
 									>
 										✕
@@ -543,7 +548,7 @@ const breadcrumbs = computed(() => [
 									colspan="8"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
-									Measured total
+									{{ __("Measured total") }}
 								</td>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-info-700"

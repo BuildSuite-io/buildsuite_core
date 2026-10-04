@@ -13,6 +13,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
@@ -31,19 +32,19 @@ onMounted(async () => {
 const FIELDS = ["name", "project", "work_order", "date", "measured_total", "status"];
 
 const columns = [
-	{ key: "name", label: "MB ID" },
-	{ key: "project", label: "Project" },
-	{ key: "work_order", label: "Work Order" },
-	{ key: "date", label: "Date" },
-	{ key: "entries", label: "Entries", align: "right" },
-	{ key: "measured_total", label: "Measured", align: "right" },
-	{ key: "status", label: "Status" },
+	{ key: "name", label: __("MB ID") },
+	{ key: "project", label: __("Project") },
+	{ key: "work_order", label: __("Work Order") },
+	{ key: "date", label: __("Date") },
+	{ key: "entries", label: __("Entries"), align: "right" },
+	{ key: "measured_total", label: __("Measured"), align: "right" },
+	{ key: "status", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Measurement Books" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Measurement Books") },
 ];
 
 function onRowClick(row) {
@@ -52,13 +53,13 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Measurement Books" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Measurement Books')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('measurementBook')"
 				to="/measurement-books/new"
 				class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -69,8 +70,8 @@ function onRowClick(row) {
 			:search-fields="['name', 'work_order', 'project']"
 			cache-key="buildsuite-measurement-book-list"
 			row-key="name"
-			search-placeholder="Search MB, WO, project…"
-			empty-message="No measurement books recorded yet."
+			:search-placeholder="__('Search MB, WO, project…')"
+			:empty-message="__('No measurement books recorded yet.')"
 			@row-click="onRowClick"
 		>
 			<template #cell-name="{ row }">

@@ -37,6 +37,7 @@ import { setTaskAssignee, getTaskAssignee } from "@/data/taskAssignmentApi";
 import FileUploadHandler from "frappe-ui-file-upload-handler";
 import { fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -139,7 +140,7 @@ async function loadDeps() {
 	try {
 		deps.value = await getTaskDependencies(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load dependencies", "error");
+		showToast(err.message || __("Failed to load dependencies"), "error");
 	}
 }
 watch(() => props.id, loadDeps, { immediate: true });
@@ -168,7 +169,11 @@ function lagLabel(d) {
 	return n === 0 ? "" : n > 0 ? `+${n}d` : `${n}d`;
 }
 function depTypeTitle(t) {
-	return t === "FS" ? "Finish to Start" : t === "SS" ? "Start to Start" : "Finish to Finish";
+	return t === "FS"
+		? __("Finish to Start")
+		: t === "SS"
+			? __("Start to Start")
+			: __("Finish to Finish");
 }
 
 // Add/edit modal. role: 'pred' (other task is the predecessor of this one) or
@@ -224,7 +229,7 @@ function openEditDep(dep, role) {
 async function saveDep() {
 	depForm.error = "";
 	if (!depForm.otherTaskId) {
-		depForm.error = "Pick a task.";
+		depForm.error = __("Pick a task.");
 		return;
 	}
 	depSaving.value = true;
@@ -248,9 +253,9 @@ async function saveDep() {
 		}
 		await loadDeps();
 		depModalOpen.value = false;
-		showToast("Dependency saved");
+		showToast(__("Dependency saved"));
 	} catch (err) {
-		depForm.error = err.message || "Failed to save dependency";
+		depForm.error = err.message || __("Failed to save dependency");
 	} finally {
 		depSaving.value = false;
 	}
@@ -260,9 +265,9 @@ async function deleteDep(dep, role) {
 		if (role === "pred") await removeTaskPredecessor(props.id, dep.task);
 		else await removeTaskPredecessor(dep.task, props.id);
 		await loadDeps();
-		showToast("Dependency removed");
+		showToast(__("Dependency removed"));
 	} catch (err) {
-		showToast(err.message || "Failed to remove dependency", "error");
+		showToast(err.message || __("Failed to remove dependency"), "error");
 	}
 }
 
@@ -504,15 +509,18 @@ function validateProgressEntry() {
 	const pct = Number(progressForm.progressPct);
 	const floor = Number(task.value?.progress) || 0;
 	if (Number.isNaN(pct) || pct > 100) {
-		e.progressPct = "Progress must be between 0 and 100";
+		e.progressPct = __("Progress must be between 0 and 100");
 	} else if (pct <= 0) {
-		e.progressPct = "A progress entry can't be 0% — record the progress actually made.";
+		e.progressPct = __("A progress entry can't be 0% — record the progress actually made.");
 	} else if (pct <= floor) {
 		// Progress is cumulative + strictly increasing — it must exceed the current value.
-		e.progressPct = `Progress must increase — enter a value above the current ${floor}%. Entries are cumulative.`;
+		e.progressPct = __(
+			"Progress must increase — enter a value above the current {0}%. Entries are cumulative.",
+			[floor],
+		);
 	}
 	if (progressForm.blockerFlag && !progressForm.blockerNote.trim()) {
-		e.blockerNote = "Describe the blocker";
+		e.blockerNote = __("Describe the blocker");
 	}
 	setProgressErrors(e);
 	return Object.keys(e).length === 0;
@@ -545,7 +553,7 @@ async function saveProgressEntry() {
 					private: true,
 				});
 			} catch (uploadErr) {
-				showToast(`Filed entry, but failed to attach ${f.fileName}`, "error");
+				showToast(__("Filed entry, but failed to attach {0}", [f.fileName]), "error");
 				console.error("attachment upload failed:", uploadErr);
 			}
 		}
@@ -555,10 +563,10 @@ async function saveProgressEntry() {
 
 		// Refresh task and entries list
 		await Promise.all([taskResource.value?.reload?.(), entriesResource.fetch()]);
-		showToast("Progress entry filed");
+		showToast(__("Progress entry filed"));
 	} catch (err) {
 		const summary = applyProgressErrors(err);
-		showToast(summary ?? "Failed to file progress entry", "error");
+		showToast(summary ?? __("Failed to file progress entry"), "error");
 		console.error("saveProgressEntry failed:", err);
 	} finally {
 		savingProgress.value = false;
@@ -646,9 +654,9 @@ async function saveEdit() {
 		}
 		editing.value = false;
 		taskResource.value?.reload?.();
-		showToast("Task updated");
+		showToast(__("Task updated"));
 	} catch (err) {
-		showToast(applyEditErrors(err) ?? "Failed to save task", "error");
+		showToast(applyEditErrors(err) ?? __("Failed to save task"), "error");
 	}
 }
 function cancelEdit() {
@@ -666,7 +674,7 @@ async function quickStatus(status) {
 		await adapter.update("Task", props.id, patch);
 		taskResource.value?.reload?.();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to update task status", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to update task status"), "error");
 	}
 }
 
@@ -684,9 +692,9 @@ async function confirmDelete() {
 		showDeleteConfirm.value = false;
 		await router.push("/tasks");
 		await nextTick();
-		showToast("Task deleted");
+		showToast(__("Task deleted"));
 	} catch (err) {
-		showToast("Failed to delete task", "error");
+		showToast(__("Failed to delete task"), "error");
 		console.error("confirmDelete failed:", err);
 	} finally {
 		deleteLoading.value = false;
@@ -696,7 +704,7 @@ async function confirmDelete() {
 const breadcrumbs = computed(() => {
 	const out = [
 		{ label: "BuildSuite Core", to: "/" },
-		{ label: "Task", to: "/tasks" },
+		{ label: __("Task"), to: "/tasks" },
 	];
 	if (project.value)
 		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
@@ -738,7 +746,7 @@ usePageTitle(() => task.value?.name);
 				style="border-radius: 6px"
 				@click="quickStatus('In Progress')"
 			>
-				Start
+				{{ __("Start") }}
 			</button>
 			<button
 				v-if="task.status !== 'Completed' && canEditRecord('task', task)"
@@ -747,7 +755,7 @@ usePageTitle(() => task.value?.name);
 				style="border-radius: 6px; color: #15803d"
 				@click="quickStatus('Completed')"
 			>
-				Mark complete
+				{{ __("Mark complete") }}
 			</button>
 			<button
 				v-if="canEditRecord('task', task)"
@@ -756,7 +764,7 @@ usePageTitle(() => task.value?.name);
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="canDeleteRecord('task', task)"
@@ -766,7 +774,7 @@ usePageTitle(() => task.value?.name);
 				:disabled="deleteLoading"
 				@click="deleteTask"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -794,7 +802,7 @@ usePageTitle(() => task.value?.name);
 								aria-hidden="true"
 								v-html="getWorkspaceIconPath('chart-bar')"
 							/>
-							<h3 class="text-sm font-semibold text-ink-900">Progress</h3>
+							<h3 class="text-sm font-semibold text-ink-900">{{ __("Progress") }}</h3>
 						</div>
 						<button
 							v-if="
@@ -807,7 +815,7 @@ usePageTitle(() => task.value?.name);
 							class="desk-save-btn text-xs"
 							@click="fileProgressEntry"
 						>
-							+ File Progress Entry
+							+ {{ __("File Progress Entry") }}
 						</button>
 					</header>
 					<div class="p-5">
@@ -838,31 +846,34 @@ usePageTitle(() => task.value?.name);
 								{{ entryCount }} {{ entryCount === 1 ? "entry" : "entries" }} total
 							</template>
 							<template v-else>
-								No progress entries filed yet — progress derives from the latest
-								entry.
+								{{
+									__(
+										"No progress entries filed yet — progress derives from the latest entry.",
+									)
+								}}
 							</template>
 						</div>
 					</div>
 				</section>
 
-				<DeskSection title="Details">
-					<DeskField label="Name">
+				<DeskSection :title="__('Details')">
+					<DeskField :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ task.name }}</div>
 					</DeskField>
-					<DeskField label="Task Type" hint="Drives workflow.">
+					<DeskField :label="__('Task Type')" :hint="__('Drives workflow.')">
 						<div class="py-1">
 							<StatusBadge :status="task.task_type || 'Activity'" />
 						</div>
 					</DeskField>
-					<DeskField label="Description">
+					<DeskField :label="__('Description')">
 						<div class="text-sm text-ink-700 py-1 whitespace-pre-line">
 							{{ task.description || "—" }}
 						</div>
 					</DeskField>
-					<DeskField label="Start">
+					<DeskField :label="__('Start')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.startDate) }}</div>
 					</DeskField>
-					<DeskField label="Due">
+					<DeskField :label="__('Due')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.endDate) }}</div>
 					</DeskField>
 				</DeskSection>
@@ -874,7 +885,7 @@ usePageTitle(() => task.value?.name);
 					<div
 						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 					>
-						Project
+						{{ __("Project") }}
 					</div>
 					<DeskLink
 						v-if="project"
@@ -892,7 +903,7 @@ usePageTitle(() => task.value?.name);
 					<div
 						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 					>
-						Work Package
+						{{ __("Work Package") }}
 					</div>
 					<DeskLink :to="`/work-packages/${wp.id}`" class="text-sm font-medium">{{
 						wp.name
@@ -902,20 +913,20 @@ usePageTitle(() => task.value?.name);
 					<div
 						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 					>
-						Assignee
+						{{ __("Assignee") }}
 					</div>
 					<UserAvatar
 						v-if="currentAssignee"
 						:user-id="currentAssignee"
 						:show-name="true"
 					/>
-					<span v-else class="text-sm text-ink-400">Unassigned</span>
+					<span v-else class="text-sm text-ink-400">{{ __("Unassigned") }}</span>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div
 						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 					>
-						Timeline
+						{{ __("Timeline") }}
 					</div>
 					<div class="text-sm text-ink-700">
 						{{ fmtDate(task.startDate) }} → {{ fmtDate(task.endDate) }}
@@ -926,7 +937,7 @@ usePageTitle(() => task.value?.name);
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="flex items-center justify-between mb-1.5">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Dependencies
+							{{ __("Dependencies") }}
 						</div>
 						<RouterLink
 							:to="
@@ -935,7 +946,7 @@ usePageTitle(() => task.value?.name);
 									: '/schedule'
 							"
 							class="text-[10px] text-brand-700 hover:underline"
-							>Open Gantt →</RouterLink
+							>{{ __("Open Gantt") }} →</RouterLink
 						>
 					</div>
 
@@ -944,14 +955,14 @@ usePageTitle(() => task.value?.name);
 						<div
 							class="flex items-center justify-between text-[10px] text-ink-500 mb-1"
 						>
-							<span>Predecessors ({{ deps.predecessors.length }})</span>
+							<span>{{ __("Predecessors") }} ({{ deps.predecessors.length }})</span>
 							<button
 								v-if="canEditDeps"
 								@click="openAddPredecessor"
 								class="text-brand-700 hover:underline"
-								title="Add a task this one depends on"
+								:title="__('Add a task this one depends on')"
 							>
-								+ Add
+								+ {{ __("Add") }}
 							</button>
 						</div>
 						<ul v-if="deps.predecessors.length" class="space-y-1">
@@ -982,21 +993,21 @@ usePageTitle(() => task.value?.name);
 									<button
 										@click="openEditDep(dep, 'pred')"
 										class="px-1 py-0.5 text-ink-500 hover:text-ink-900"
-										title="Edit"
+										:title="__('Edit')"
 									>
 										✎
 									</button>
 									<button
 										@click="deleteDep(dep, 'pred')"
 										class="px-1 py-0.5 text-danger-700 hover:bg-danger-50 rounded"
-										title="Delete"
+										:title="__('Delete')"
 									>
 										🗑
 									</button>
 								</div>
 							</li>
 						</ul>
-						<div v-else class="text-[11px] text-ink-400 italic">None</div>
+						<div v-else class="text-[11px] text-ink-400 italic">{{ __("None") }}</div>
 					</div>
 
 					<!-- Successors (inferred) -->
@@ -1004,14 +1015,14 @@ usePageTitle(() => task.value?.name);
 						<div
 							class="flex items-center justify-between text-[10px] text-ink-500 mb-1"
 						>
-							<span>Successors ({{ deps.successors.length }})</span>
+							<span>{{ __("Successors") }} ({{ deps.successors.length }})</span>
 							<button
 								v-if="canEditDeps"
 								@click="openAddSuccessor"
 								class="text-brand-700 hover:underline"
-								title="Add a task that depends on this one"
+								:title="__('Add a task that depends on this one')"
 							>
-								+ Add
+								+ {{ __("Add") }}
 							</button>
 						</div>
 						<ul v-if="deps.successors.length" class="space-y-1">
@@ -1042,33 +1053,33 @@ usePageTitle(() => task.value?.name);
 									<button
 										@click="openEditDep(dep, 'succ')"
 										class="px-1 py-0.5 text-ink-500 hover:text-ink-900"
-										title="Edit"
+										:title="__('Edit')"
 									>
 										✎
 									</button>
 									<button
 										@click="deleteDep(dep, 'succ')"
 										class="px-1 py-0.5 text-danger-700 hover:bg-danger-50 rounded"
-										title="Delete"
+										:title="__('Delete')"
 									>
 										🗑
 									</button>
 								</div>
 							</li>
 						</ul>
-						<div v-else class="text-[11px] text-ink-400 italic">None</div>
+						<div v-else class="text-[11px] text-ink-400 italic">{{ __("None") }}</div>
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="flex items-center justify-between mb-1.5">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Recent entries
+							{{ __("Recent entries") }}
 						</div>
 						<DeskLink
 							v-if="entryCount > 3"
 							:to="{ path: '/progress-entries', query: { task: task.id } }"
 							class="text-[10px]"
-							>View all {{ entryCount }} →</DeskLink
+							>{{ __("View all {0}", [entryCount]) }} →</DeskLink
 						>
 					</div>
 					<ul v-if="recentEntries.length" class="space-y-1.5">
@@ -1088,13 +1099,13 @@ usePageTitle(() => task.value?.name);
 							<span
 								v-if="e.blockerFlag"
 								class="text-danger-700 flex-shrink-0"
-								title="Blocker flagged"
+								:title="__('Blocker flagged')"
 								>🚩</span
 							>
 							<UserAvatar :user-id="e.enteredBy" size="xs" />
 						</li>
 					</ul>
-					<div v-else class="text-xs text-ink-400 italic">None yet</div>
+					<div v-else class="text-xs text-ink-400 italic">{{ __("None yet") }}</div>
 				</div>
 			</aside>
 		</div>
@@ -1117,13 +1128,13 @@ usePageTitle(() => task.value?.name);
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">Edit task</h2>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit task") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ task.name }}</p>
 						</div>
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="cancelEdit"
 						>
 							×
@@ -1132,27 +1143,31 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection title="Details">
-							<DeskField label="Name" required :error="editErrors.name">
+						<DeskSection :title="__('Details')">
+							<DeskField :label="__('Name')" required :error="editErrors.name">
 								<DeskInput v-model="form.name" @input="clearEditError('name')" />
 							</DeskField>
 							<DeskField
-								label="Task Type"
+								:label="__('Task Type')"
 								required
-								hint="Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate."
+								:hint="
+									__(
+										'Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate.',
+									)
+								"
 							>
 								<DeskSelect
 									v-model="form.task_type"
 									@change="clearEditError('task_type')"
 								>
 									<option v-for="tt in taskTypes" :key="tt" :value="tt">
-										{{ tt }}
+										{{ __(tt) }}
 									</option>
 								</DeskSelect>
 							</DeskField>
 							<DeskField
-								label="Work Package"
-								hint="Optional — leave blank for a direct project task."
+								:label="__('Work Package')"
+								:hint="__('Optional — leave blank for a direct project task.')"
 							>
 								<DeskLinkPicker
 									v-model="form.workPackageId"
@@ -1164,15 +1179,15 @@ usePageTitle(() => task.value?.name);
 										task.projectId ? [['project', '=', task.projectId]] : []
 									"
 									:page-length="20"
-									placeholder="— None · Direct project task —"
+									:placeholder="__('— None · Direct project task —')"
 								/>
 							</DeskField>
-							<DeskField label="Description">
+							<DeskField :label="__('Description')">
 								<DeskTextarea v-model="form.description" :rows="4" />
 							</DeskField>
 							<DeskField
 								v-if="form.task_type !== 'Milestone'"
-								label="Start"
+								:label="__('Start')"
 								:error="editErrors.startDate"
 							>
 								<DeskInput
@@ -1181,7 +1196,7 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('startDate')"
 								/>
 							</DeskField>
-							<DeskField label="Due" :error="editErrors.endDate">
+							<DeskField :label="__('Due')" :error="editErrors.endDate">
 								<DeskInput
 									v-model="form.endDate"
 									type="date"
@@ -1190,12 +1205,12 @@ usePageTitle(() => task.value?.name);
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection title="Assignment & status">
-							<DeskField label="Assignee" :error="editErrors.assignee">
+						<DeskSection :title="__('Assignment & status')">
+							<DeskField :label="__('Assignee')" :error="editErrors.assignee">
 								<DeskLinkPicker
 									v-model="form.assignee"
 									doctype="User"
-									placeholder="Select assignee"
+									:placeholder="__('Select assignee')"
 									label-field="full_name"
 									value-field="name"
 									:search-fields="['full_name', 'name', 'email']"
@@ -1205,26 +1220,26 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('assignee')"
 								/>
 							</DeskField>
-							<DeskField label="Status" :error="editErrors.status">
+							<DeskField :label="__('Status')" :error="editErrors.status">
 								<DeskSelect
 									v-model="form.status"
 									@change="clearEditError('status')"
 								>
-									<option>Yet To Start</option>
-									<option>In Progress</option>
-									<option>In Delay</option>
-									<option>Completed</option>
-									<option>Blocked</option>
+									<option value="Yet To Start">{{ __("Yet To Start") }}</option>
+									<option value="In Progress">{{ __("In Progress") }}</option>
+									<option value="In Delay">{{ __("In Delay") }}</option>
+									<option value="Completed">{{ __("Completed") }}</option>
+									<option value="Blocked">{{ __("Blocked") }}</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField label="Priority" :error="editErrors.priority">
+							<DeskField :label="__('Priority')" :error="editErrors.priority">
 								<DeskSelect
 									v-model="form.priority"
 									@change="clearEditError('priority')"
 								>
-									<option>Low</option>
-									<option>Medium</option>
-									<option>High</option>
+									<option value="Low">{{ __("Low") }}</option>
+									<option value="Medium">{{ __("Medium") }}</option>
+									<option value="High">{{ __("High") }}</option>
 								</DeskSelect>
 							</DeskField>
 						</DeskSection>
@@ -1241,9 +1256,11 @@ usePageTitle(() => task.value?.name);
 							style="border-radius: 6px"
 							@click="cancelEdit"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
-						<button type="button" class="desk-save-btn" @click="saveEdit">Save</button>
+						<button type="button" class="desk-save-btn" @click="saveEdit">
+							{{ __("Save") }}
+						</button>
 					</footer>
 				</div>
 			</div>
@@ -1271,16 +1288,16 @@ usePageTitle(() => task.value?.name);
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">File progress entry</h2>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("File progress entry") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
-								{{ task.name }} · currently {{ task.progress }}% ·
-								{{ task.status }}
+								{{ task.name }} · {{ __("currently") }} {{ task.progress }}% ·
+								{{ __(task.status) }}
 							</p>
 						</div>
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="cancelProgressEntry"
 						>
 							×
@@ -1289,13 +1306,16 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection title="Progress" :cols="2">
+						<DeskSection :title="__('Progress')" :cols="2">
 							<DeskField
-								label="Cumulative progress (%)"
+								:label="__('Cumulative progress (%)')"
 								required
-								:hint="`The NEW cumulative % after this entry — not a delta. Can't go below the current ${
-									task.progress || 0
-								}%.`"
+								:hint="
+									__(
+										'The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.',
+										[task.progress || 0],
+									)
+								"
 								:error="progressErrors.progressPct"
 							>
 								<DeskInput
@@ -1308,7 +1328,7 @@ usePageTitle(() => task.value?.name);
 									@input="clearProgressError('progressPct')"
 								/>
 							</DeskField>
-							<DeskField label="Entry date" :error="progressErrors.entryDate">
+							<DeskField :label="__('Entry date')" :error="progressErrors.entryDate">
 								<DeskInput
 									v-model="progressForm.entryDate"
 									type="date"
@@ -1316,8 +1336,8 @@ usePageTitle(() => task.value?.name);
 								/>
 							</DeskField>
 							<DeskField
-								label="Entered by"
-								hint="Stamped automatically from the signed-in user."
+								:label="__('Entered by')"
+								:hint="__('Stamped automatically from the signed-in user.')"
 							>
 								<div class="flex items-center gap-2 py-1">
 									<UserAvatar :user-id="progressForm.enteredBy" size="xs" />
@@ -1334,46 +1354,50 @@ usePageTitle(() => task.value?.name);
 							</DeskField>
 							<div class="md:col-span-2">
 								<DeskField
-									label="Narrative"
-									hint="What was completed today? Any context worth recording?"
+									:label="__('Narrative')"
+									:hint="__('What was completed today? Any context worth recording?')"
 								>
 									<DeskTextarea
 										v-model="progressForm.narrative"
 										:rows="3"
-										placeholder="e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken."
+										:placeholder="
+											__(
+												'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.',
+											)
+										"
 									/>
 								</DeskField>
 							</div>
 						</DeskSection>
 
-						<DeskSection title="Labour deployed today" :cols="2">
+						<DeskSection :title="__('Labour deployed today')" :cols="2">
 							<DeskField
-								label="Skilled labour"
-								hint="Count of skilled workers on site today"
+								:label="__('Skilled labour')"
+								:hint="__('Count of skilled workers on site today')"
 							>
 								<DeskInput v-model="progressForm.skilledLabour" type="number" />
 							</DeskField>
 							<DeskField
-								label="Unskilled labour"
-								hint="Count of unskilled workers / helpers"
+								:label="__('Unskilled labour')"
+								:hint="__('Count of unskilled workers / helpers')"
 							>
 								<DeskInput v-model="progressForm.unskilledLabour" type="number" />
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection title="Site conditions" :cols="2">
+						<DeskSection :title="__('Site conditions')" :cols="2">
 							<DeskField
-								label="Weather"
-								hint="Optional — only if it's worth recording."
+								:label="__('Weather')"
+								:hint="__('Optional — only if it\'s worth recording.')"
 							>
 								<DeskSelect v-model="progressForm.weather">
-									<option value="">— No record —</option>
+									<option value="">{{ __("— No record —") }}</option>
 									<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
-										{{ w }}
+										{{ __(w) }}
 									</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField label="Blocker">
+							<DeskField :label="__('Blocker')">
 								<label
 									class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
 								>
@@ -1382,27 +1406,31 @@ usePageTitle(() => task.value?.name);
 										type="checkbox"
 										class="h-3.5 w-3.5"
 									/>
-									Flag a blocker on this entry
+									{{ __("Flag a blocker on this entry") }}
 								</label>
 							</DeskField>
 							<div v-if="progressForm.blockerFlag" class="md:col-span-2">
 								<DeskField
-									label="Blocker detail"
+									:label="__('Blocker detail')"
 									required
-									hint="What blocked progress today?"
+									:hint="__('What blocked progress today?')"
 									:error="progressErrors.blockerNote"
 								>
 									<DeskTextarea
 										v-model="progressForm.blockerNote"
 										:rows="2"
-										placeholder="e.g. Afternoon shower delayed final bay by 2 hours"
+										:placeholder="
+											__(
+												'e.g. Afternoon shower delayed final bay by 2 hours',
+											)
+										"
 										@input="clearProgressError('blockerNote')"
 									/>
 								</DeskField>
 							</div>
 						</DeskSection>
 
-						<DeskSection title="Attachments" :cols="1">
+						<DeskSection :title="__('Attachments')" :cols="1">
 							<input
 								ref="progressFileInput"
 								type="file"
@@ -1419,8 +1447,12 @@ usePageTitle(() => task.value?.name);
 								@change="onProgressFilesPicked"
 							/>
 							<DeskField
-								label="Files"
-								hint="Site photos, QC reports, drawings — picked here and saved with the entry."
+								:label="__('Files')"
+								:hint="
+									__(
+										'Site photos, QC reports, drawings — picked here and saved with the entry.',
+									)
+								"
 							>
 								<div class="space-y-2 py-1">
 									<ul v-if="pendingAttachments.length" class="space-y-1.5">
@@ -1458,7 +1490,7 @@ usePageTitle(() => task.value?.name);
 											<button
 												type="button"
 												class="text-ink-400 hover:text-danger-700 text-base leading-none"
-												aria-label="Remove"
+												:aria-label="__('Remove')"
 												@click="removePendingAttachment(idx)"
 											>
 												×
@@ -1473,11 +1505,11 @@ usePageTitle(() => task.value?.name);
 											@click="openProgressFilePicker"
 										>
 											<span class="text-sm leading-none">+</span>
-											<span
-												>Attach file{{
-													pendingAttachments.length ? "s" : ""
-												}}</span
-											>
+											<span>{{
+												pendingAttachments.length
+													? __("Attach files")
+													: __("Attach file")
+											}}</span>
 										</button>
 										<button
 											type="button"
@@ -1496,7 +1528,7 @@ usePageTitle(() => task.value?.name);
 												aria-hidden="true"
 												v-html="getWorkspaceIconPath('camera')"
 											/>
-											<span>Capture photo</span>
+											<span>{{ __("Capture photo") }}</span>
 										</button>
 									</div>
 								</div>
@@ -1515,7 +1547,7 @@ usePageTitle(() => task.value?.name);
 							style="border-radius: 6px"
 							@click="cancelProgressEntry"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -1524,7 +1556,7 @@ usePageTitle(() => task.value?.name);
 							:disabled="savingProgress"
 							@click="saveProgressEntry"
 						>
-							{{ savingProgress ? "Filing…" : "File entry" }}
+							{{ savingProgress ? __("Filing…") : __("File entry") }}
 						</button>
 					</footer>
 				</div>
@@ -1533,9 +1565,9 @@ usePageTitle(() => task.value?.name);
 
 		<ConfirmDialog
 			v-model:open="showDeleteConfirm"
-			title="Delete task"
-			:message="`Delete '${task?.name}'? This cannot be undone.`"
-			confirm-label="Delete"
+			:title="__('Delete task')"
+			:message="__('Delete \'{0}\'? This cannot be undone.', [task?.name])"
+			:confirm-label="__('Delete')"
 			:destructive="true"
 			:loading="deleteLoading"
 			@confirm="confirmDelete"
@@ -1559,16 +1591,16 @@ usePageTitle(() => task.value?.name);
 						<h2 class="text-sm font-semibold text-ink-900">
 							{{
 								depForm.mode === "edit"
-									? "Edit dependency"
+									? __("Edit dependency")
 									: depForm.mode === "add-pred"
-										? "Add predecessor"
-										: "Add successor"
+										? __("Add predecessor")
+										: __("Add successor")
 							}}
 						</h2>
 						<button
 							type="button"
 							class="text-ink-500 hover:text-ink-900 text-lg leading-none"
-							aria-label="Close"
+							:aria-label="__('Close')"
 							@click="depModalOpen = false"
 						>
 							×
@@ -1577,12 +1609,14 @@ usePageTitle(() => task.value?.name);
 					<div class="p-5 space-y-3">
 						<DeskField
 							:label="
-								depForm.role === 'pred' ? 'Predecessor task' : 'Successor task'
+								depForm.role === 'pred'
+									? __('Predecessor task')
+									: __('Successor task')
 							"
 							:hint="
 								depForm.role === 'pred'
-									? 'Must finish/start before this task.'
-									: 'Waits on this task.'
+									? __('Must finish/start before this task.')
+									: __('Waits on this task.')
 							"
 						>
 							<div v-if="depForm.mode === 'edit'" class="text-sm text-ink-900 py-1">
@@ -1596,18 +1630,18 @@ usePageTitle(() => task.value?.name);
 								value-field="name"
 								:search-fields="['subject', 'name']"
 								:filters="depPickerFilters"
-								placeholder="Pick a task"
+								:placeholder="__('Pick a task')"
 							/>
 						</DeskField>
 						<div class="grid grid-cols-2 gap-3">
-							<DeskField label="Type" hint="FS / SS / FF">
+							<DeskField :label="__('Type')" hint="FS / SS / FF">
 								<DeskSelect v-model="depForm.dependency_type">
 									<option>FS</option>
 									<option>SS</option>
 									<option>FF</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField label="Lag (days)" hint="− = lead / overlap">
+							<DeskField :label="__('Lag (days)')" :hint="__('− = lead / overlap')">
 								<DeskInput v-model="depForm.lag" type="number" />
 							</DeskField>
 						</div>
@@ -1624,7 +1658,7 @@ usePageTitle(() => task.value?.name);
 							style="border-radius: 6px"
 							@click="depModalOpen = false"
 						>
-							Cancel
+							{{ __("Cancel") }}
 						</button>
 						<button
 							type="button"
@@ -1632,7 +1666,7 @@ usePageTitle(() => task.value?.name);
 							:disabled="depSaving"
 							@click="saveDep"
 						>
-							{{ depSaving ? "Saving…" : "Save" }}
+							{{ depSaving ? __("Saving…") : __("Save") }}
 						</button>
 					</footer>
 				</div>
@@ -1642,10 +1676,12 @@ usePageTitle(() => task.value?.name);
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this task"
+		:title="__('You don\'t have access to this task')"
 		back-to="/tasks"
-		back-label="Back to Tasks"
+		:back-label="__('Back to Tasks')"
 	/>
 
-	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Task not found</div>
+	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
+		{{ __("Task not found") }}
+	</div>
 </template>

@@ -19,6 +19,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -46,7 +47,7 @@ async function load() {
 		pr.value = await getPurchaseReceipt(props.id);
 		await refreshWorkflow(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load receipt", "error");
+		showToast(err.message || __("Failed to load receipt"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -66,38 +67,40 @@ function onEdit() {
 
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `Submit ${pr.value.name}?`,
-		message:
-			"Submitting posts the goods into stock and updates the purchase order's received quantity.",
-		confirmLabel: "Submit",
+		title: __("Submit {0}?", [pr.value.name]),
+		message: __(
+			"Submitting posts the goods into stock and updates the purchase order's received quantity."
+		),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		pr.value = await submitPurchaseReceipt(pr.value.name);
-		showToast("Receipt submitted.");
+		showToast(__("Receipt submitted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: `Cancel ${pr.value.name}?`,
-		message:
-			"Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back.",
-		confirmLabel: "Cancel receipt",
-		cancelLabel: "Keep",
+		title: __("Cancel {0}?", [pr.value.name]),
+		message: __(
+			"Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back."
+		),
+		confirmLabel: __("Cancel receipt"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		pr.value = await cancelPurchaseReceipt(pr.value.name);
-		showToast("Receipt cancelled.");
+		showToast(__("Receipt cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -109,9 +112,9 @@ async function onWorkflowAction(action) {
 	try {
 		await applyWorkflowAction(pr.value.name, action);
 		await load();
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -120,19 +123,19 @@ async function onAmend() {
 	busy.value = true;
 	try {
 		const res = await amendPurchaseReceipt(pr.value.name);
-		showToast("Amended — a fresh draft was created.");
+		showToast(__("Amended — a fresh draft was created."));
 		router.push(`/procurement/receipts/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Amend failed", "error");
+		showToast(err.message || __("Amend failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${pr.value.name}?`,
-		message: "This receipt will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [pr.value.name]),
+		message: __("This receipt will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -140,14 +143,14 @@ async function onDelete() {
 		await deletePurchaseReceipt(pr.value.name);
 		router.push("/procurement/receipts");
 	} catch (err) {
-		showToast(err.message || "Failed to delete receipt", "error");
+		showToast(err.message || __("Failed to delete receipt"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Purchase Receipts", to: "/procurement/receipts" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Receipts"), to: "/procurement/receipts" },
 	{ label: pr.value?.name || props.id },
 ]);
 </script>
@@ -164,7 +167,7 @@ const breadcrumbs = computed(() => [
 			<span
 				v-if="wfActive && wfState && wfState !== pr.status"
 				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
-				>{{ wfState }}</span
+				>{{ __(wfState) }}</span
 			>
 			<button
 				v-if="isDraft && canEdit('purchaseReceipt')"
@@ -173,7 +176,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
@@ -184,7 +187,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="!wfActive && isSubmitted && canSubmit('purchaseReceipt')"
@@ -194,7 +197,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onCancel"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<!-- Workflow transitions (active workflow) — role- and state-filtered by the backend -->
 			<button
@@ -206,7 +209,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onWorkflowAction(t.action)"
 			>
-				{{ t.action }}
+				{{ __(t.action) }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('purchaseReceipt')"
@@ -214,10 +217,10 @@ const breadcrumbs = computed(() => [
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				title="Create a fresh editable draft copy (the original stays cancelled)"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				v-if="!isSubmitted && canDelete('purchaseReceipt')"
@@ -226,7 +229,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -234,28 +237,28 @@ const breadcrumbs = computed(() => [
 			v-if="isDraft"
 			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"
 		>
-			Draft — not posted to stock yet. Submit it to record the goods into the warehouse.
+			{{ __("Draft — not posted to stock yet. Submit it to record the goods into the warehouse.") }}
 		</div>
 
 		<!-- Summary strip -->
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Supplier</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Supplier") }}</div>
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ pr.supplier_name || pr.supplier }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Project</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Project") }}</div>
 				<DeskLink :to="`/projects/${pr.project}`" class="text-sm">{{
 					pr.project_name || pr.project
 				}}</DeskLink>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Received on</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Received on") }}</div>
 				<div class="text-sm text-ink-900 mt-0.5">{{ fmtDate(pr.posting_date) }}</div>
 				<div v-if="pr.purchase_order" class="text-[10px] text-ink-500">
-					against
+					{{ __("against") }}
 					<DeskLink
 						:to="`/procurement/purchase-orders/${pr.purchase_order}`"
 						class="font-mono"
@@ -264,7 +267,7 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Value received</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Value received") }}</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(total) }}
 				</div>
@@ -277,18 +280,18 @@ const breadcrumbs = computed(() => [
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
 			>
 				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
-					Items received
+					{{ __("Items received") }}
 				</h3>
-				<span class="text-[10px] text-ink-500">Into {{ pr.warehouse || "—" }}</span>
+				<span class="text-[10px] text-ink-500">{{ __("Into {0}", [pr.warehouse || "—"]) }}</span>
 			</div>
 			<table class="w-full text-xs" style="min-width: 620px">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Item</th>
-						<th class="text-left px-3 py-2">UOM</th>
-						<th class="text-right px-3 py-2">Rate</th>
-						<th class="text-right px-3 py-2">Received</th>
-						<th class="text-right px-3 py-2">Amount</th>
+						<th class="text-left px-3 py-2">{{ __("Item") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Received") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -311,6 +314,6 @@ const breadcrumbs = computed(() => [
 	</DeskPage>
 
 	<div v-else class="px-3 py-2 text-sm text-ink-500">
-		{{ loading ? "Loading receipt…" : "Purchase receipt not found." }}
+		{{ loading ? __("Loading receipt…") : __("Purchase receipt not found.") }}
 	</div>
 </template>

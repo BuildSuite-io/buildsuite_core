@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '@/stores'
+import { __ } from '@/utils/translate'
 import { showToast } from '@/utils/appToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { usePermissions } from '@/composables/usePermissions'
@@ -30,9 +31,9 @@ const saving = ref(false)
 
 function validate() {
   const e = {}
-  if (!form.assemblyCode.trim()) e.assemblyCode = 'Code is required'
-  if (!form.assemblyName.trim()) e.assemblyName = 'Name is required'
-  if (!form.uom) e.uom = 'Unit is required'
+  if (!form.assemblyCode.trim()) e.assemblyCode = __('Code is required')
+  if (!form.assemblyName.trim()) e.assemblyName = __('Name is required')
+  if (!form.uom) e.uom = __('Unit is required')
   setErrors(e)
   return Object.keys(e).length === 0
 }
@@ -54,52 +55,52 @@ async function onSave() {
     })
     router.push(`/assembly/${res.name}`)
   } catch (err) {
-    showToast(applyServerErrors(err) ?? 'Failed to create assembly', 'error')
+    showToast(applyServerErrors(err) ?? __('Failed to create assembly'), 'error')
   } finally {
     saving.value = false
   }
 }
 
 const breadcrumbs = [
-  { label: 'BuildSuite Core', to: '/' },
-  { label: 'Estimation', to: '/estimation' },
-  { label: 'Assembly', to: '/assembly' },
-  { label: 'New' },
+  { label: __('BuildSuite Core'), to: '/' },
+  { label: __('Estimation'), to: '/estimation' },
+  { label: __('Assembly'), to: '/assembly' },
+  { label: __('New') },
 ]
 </script>
 
 <template>
-  <DeskPage title="New Assembly" subtitle="Rate-analysis recipe priced per unit" :breadcrumbs="breadcrumbs">
+  <DeskPage :title="__('New Assembly')" :subtitle="__('Rate-analysis recipe priced per unit')" :breadcrumbs="breadcrumbs">
     <div
       v-if="!canCreate('assembly')"
       class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
       style="border-radius: 6px"
     >
-      You don't have permission to create an assembly.
+      {{ __("You don't have permission to create an assembly.") }}
     </div>
     <DeskForm v-else>
       <template #action-bar>
-        <DeskActionBar :save-label="saving ? 'Creating…' : 'Create assembly'" :saving="saving" @save="onSave"
+        <DeskActionBar :save-label="saving ? __('Creating…') : __('Create assembly')" :saving="saving" @save="onSave"
           @cancel="onCancel" />
       </template>
 
-      <DeskSection title="Assembly details">
-        <DeskField label="Code" required hint="Short stable identifier (e.g. ASM-RCC-M25)."
+      <DeskSection :title="__('Assembly details')">
+        <DeskField :label="__('Code')" required :hint="__('Short stable identifier (e.g. ASM-RCC-M25).')"
           :error="errors.assemblyCode">
-          <DeskInput v-model="form.assemblyCode" placeholder="ASM-..." />
+          <DeskInput v-model="form.assemblyCode" :placeholder="__('ASM-...')" />
         </DeskField>
-        <DeskField label="Name" required :error="errors.assemblyName">
+        <DeskField :label="__('Name')" required :error="errors.assemblyName">
           <DeskInput v-model="form.assemblyName" />
         </DeskField>
-        <DeskField label="Unit (per)" required hint="The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;." :error="errors.uom">
+        <DeskField :label="__('Unit (per)')" required :hint="__('The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.')" :error="errors.uom">
           <DeskLinkPicker v-model="form.uom" doctype="UOM" label-field="name" value-field="name"
-            placeholder="— Select unit —" />
+            :placeholder="__('— Select unit —')" />
         </DeskField>
-        <DeskField label="Category">
+        <DeskField :label="__('Category')">
           <DeskLinkPicker v-model="form.category" doctype="Assembly Category" label-field="name"
-            value-field="name" placeholder="— Select category —" />
+            value-field="name" :placeholder="__('— Select category —')" />
         </DeskField>
-        <DeskField label="Notes">
+        <DeskField :label="__('Notes')">
           <DeskTextarea v-model="form.notes" :rows="3" />
         </DeskField>
       </DeskSection>

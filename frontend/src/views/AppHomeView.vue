@@ -11,6 +11,7 @@ import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtCompactINR } from "@/utils/format";
 import { getHomeDashboard } from "@/data/homeDashboardApi";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const session = useSessionStore();
@@ -37,19 +38,19 @@ const cta = computed(() => dash.value?.cta || null);
 const now = new Date();
 const greeting = computed(() => {
 	const hour = now.getHours();
-	if (hour < 12) return "Good morning";
-	if (hour < 18) return "Good afternoon";
-	return "Good evening";
+	if (hour < 12) return __("Good morning");
+	if (hour < 18) return __("Good afternoon");
+	return __("Good evening");
 });
 const userName = computed(() => {
 	const id = session.user && session.user !== "Guest" ? session.user : null;
 	return (id && resolveUserName(id)) || store.user?.name || "Admin User";
 });
 const roleLabel = computed(() =>
-	store.isAdmin ? "System Manager (Admin)" : store.currentRole?.name || "User"
+	store.isAdmin ? __("System Manager (Admin)") : store.currentRole?.name || __("User")
 );
 const greetingSub = computed(
-	() => dash.value?.greeting_sub || "Here is a snapshot of your work today."
+	() => dash.value?.greeting_sub || __("Here is a snapshot of your work today.")
 );
 const dateLabel = computed(() =>
 	new Intl.DateTimeFormat("en-GB", {
@@ -87,39 +88,39 @@ function tileValue(m) {
 // the prototype's per-role Home. `store.role` is the persona slug; ALL_ACTIONS lists
 // every tile with the roles allowed to see it, and quickActions filters to the caller.
 const ALL_ACTIONS = [
-	{ key:'projects',      label:'Projects',            to:'/projects',                      icon:'clipboard-list', roles:['director','pm','site-engineer','foreman','estimator','qs','accountant'] },
-	{ key:'tasks',         label:'Tasks',               to:'/tasks',                         icon:'check-circle',   roles:['director','pm','site-engineer','foreman'] },
-	{ key:'progress-new',  label:'File Progress Entry', to:'/progress-entries/new',          icon:'file-text',      roles:['pm','site-engineer','foreman'] },
-	{ key:'schedule',      label:'Schedule',            to:'/schedule',                      icon:'calendar',       roles:['director','pm','site-engineer'] },
-	{ key:'stages',        label:'Stage Planning',      to:'/stage-plannings',               icon:'layout-grid',    roles:['pm','site-engineer'] },
-	{ key:'boq',           label:'BOQ',                 to:'/boq',                           icon:'estimation',     roles:['director','pm','estimator','qs'] },
-	{ key:'rate-master',   label:'Rate Master',         to:'/rate-master',                   icon:'chart-bar',      roles:['estimator','qs'] },
-	{ key:'assemblies',    label:'Assemblies',          to:'/assembly',                      icon:'wrench',         roles:['estimator'] },
-	{ key:'sub-wos',       label:'Work Orders',         to:'/subcontractor-work-orders',     icon:'subcontract',    roles:['pm','qs','director'] },
-	{ key:'sub-bills',     label:'Subcontractor Bills', to:'/subcontractor-bills',           icon:'receipt',        roles:['qs','accountant'] },
-	{ key:'mrs',           label:'Material Requests',   to:'/procurement/material-requests', icon:'clipboard-list', roles:['pm','procurement','store-keeper','site-engineer','foreman'] },
-	{ key:'pos',           label:'Purchase Orders',     to:'/procurement/purchase-orders',   icon:'file-text',      roles:['procurement','store-keeper'] },
-	{ key:'grns',          label:'Purchase Receipts',   to:'/procurement/receipts',          icon:'stock',          roles:['procurement','store-keeper'] },
-	{ key:'grn-new',       label:'Confirm Delivery',    to:'/procurement/receipts/new',      icon:'stock',          roles:['site-engineer','foreman'] },
-	{ key:'consumption',   label:'Record Consumption',  to:'/material-consumption/new',      icon:'package',        roles:['store-keeper','site-engineer','foreman'] },
-	{ key:'items',         label:'Items',               to:'/items',                         icon:'tag',            roles:['procurement','store-keeper'] },
-	{ key:'suppliers',     label:'Suppliers',           to:'/project-finance/suppliers',     icon:'building-2',     roles:['procurement'] },
-	{ key:'fin-invoices',  label:'Invoices',            to:'/project-finance/invoices',      icon:'file-text',      roles:['accountant'] },
-	{ key:'fin-bills',     label:'Bills',               to:'/project-finance/bills',         icon:'receipt',        roles:['accountant'] },
-	{ key:'fin-payments',  label:'Payments',            to:'/project-finance/payments',      icon:'refresh-ccw',    roles:['accountant'] },
-	{ key:'fin-petty',     label:'Petty Cash',          to:'/project-finance/petty-cash',    icon:'hand-coins',     roles:['accountant','director','site-engineer','foreman'] },
-	{ key:'fin-expenses',  label:'Expenses',            to:'/project-finance/expenses',      icon:'receipt',        roles:['director','site-engineer','foreman'] },
-	{ key:'fin-overview',  label:'Financial Overview',  to:'/project-finance/overview',      icon:'wallet',         roles:['director'] },
-	{ key:'wf-attendance', label:'Field Attendance',    to:'/field-attendance',              icon:'users-2',        roles:['foreman','hr-manager','site-engineer'] },
-	{ key:'wf-employees',  label:'Field Employees',     to:'/field-employees',               icon:'hard-hat',       roles:['hr-manager'] },
-	{ key:'wf-crews',      label:'Crews',               to:'/crews',                         icon:'users-2',        roles:['foreman','hr-manager'] },
-	{ key:'wf-labour',     label:'Labour Register',     to:'/labour-attendance',             icon:'clipboard-list', roles:['hr-manager'] },
-	{ key:'admin-users',      label:'Users',              to:'/settings/users',           icon:'users-2',        roles:['admin','bsa'] },
-	{ key:'admin-projects',   label:'Projects',           to:'/projects',                 icon:'clipboard-list', roles:['admin','bsa'] },
-	{ key:'admin-dashboard',  label:'Project Dashboard',  to:'/project-dashboard',        icon:'chart-bar',      roles:['admin','bsa'] },
-	{ key:'admin-boq',        label:'BOQ',                to:'/boq',                      icon:'estimation',     roles:['admin','bsa'] },
-	{ key:'admin-finance',    label:'Financial Overview', to:'/project-finance/overview', icon:'wallet',         roles:['admin','bsa'] },
-	{ key:'admin-attendance', label:'Field Attendance',   to:'/field-attendance',         icon:'users-2',        roles:['admin','bsa'] },
+	{ key:'projects',      label:__('Projects'),            to:'/projects',                      icon:'clipboard-list', roles:['director','pm','site-engineer','foreman','estimator','qs','accountant'] },
+	{ key:'tasks',         label:__('Tasks'),               to:'/tasks',                         icon:'check-circle',   roles:['director','pm','site-engineer','foreman'] },
+	{ key:'progress-new',  label:__('File Progress Entry'), to:'/progress-entries/new',          icon:'file-text',      roles:['pm','site-engineer','foreman'] },
+	{ key:'schedule',      label:__('Schedule'),            to:'/schedule',                      icon:'calendar',       roles:['director','pm','site-engineer'] },
+	{ key:'stages',        label:__('Stage Planning'),      to:'/stage-plannings',               icon:'layout-grid',    roles:['pm','site-engineer'] },
+	{ key:'boq',           label:__('BOQ'),                 to:'/boq',                           icon:'estimation',     roles:['director','pm','estimator','qs'] },
+	{ key:'rate-master',   label:__('Rate Master'),         to:'/rate-master',                   icon:'chart-bar',      roles:['estimator','qs'] },
+	{ key:'assemblies',    label:__('Assemblies'),          to:'/assembly',                      icon:'wrench',         roles:['estimator'] },
+	{ key:'sub-wos',       label:__('Work Orders'),         to:'/subcontractor-work-orders',     icon:'subcontract',    roles:['pm','qs','director'] },
+	{ key:'sub-bills',     label:__('Subcontractor Bills'), to:'/subcontractor-bills',           icon:'receipt',        roles:['qs','accountant'] },
+	{ key:'mrs',           label:__('Material Requests'),   to:'/procurement/material-requests', icon:'clipboard-list', roles:['pm','procurement','store-keeper','site-engineer','foreman'] },
+	{ key:'pos',           label:__('Purchase Orders'),     to:'/procurement/purchase-orders',   icon:'file-text',      roles:['procurement','store-keeper'] },
+	{ key:'grns',          label:__('Purchase Receipts'),   to:'/procurement/receipts',          icon:'stock',          roles:['procurement','store-keeper'] },
+	{ key:'grn-new',       label:__('Confirm Delivery'),    to:'/procurement/receipts/new',      icon:'stock',          roles:['site-engineer','foreman'] },
+	{ key:'consumption',   label:__('Record Consumption'),  to:'/material-consumption/new',      icon:'package',        roles:['store-keeper','site-engineer','foreman'] },
+	{ key:'items',         label:__('Items'),               to:'/items',                         icon:'tag',            roles:['procurement','store-keeper'] },
+	{ key:'suppliers',     label:__('Suppliers'),           to:'/project-finance/suppliers',     icon:'building-2',     roles:['procurement'] },
+	{ key:'fin-invoices',  label:__('Invoices'),            to:'/project-finance/invoices',      icon:'file-text',      roles:['accountant'] },
+	{ key:'fin-bills',     label:__('Bills'),               to:'/project-finance/bills',         icon:'receipt',        roles:['accountant'] },
+	{ key:'fin-payments',  label:__('Payments'),            to:'/project-finance/payments',      icon:'refresh-ccw',    roles:['accountant'] },
+	{ key:'fin-petty',     label:__('Petty Cash'),          to:'/project-finance/petty-cash',    icon:'hand-coins',     roles:['accountant','director','site-engineer','foreman'] },
+	{ key:'fin-expenses',  label:__('Expenses'),            to:'/project-finance/expenses',      icon:'receipt',        roles:['director','site-engineer','foreman'] },
+	{ key:'fin-overview',  label:__('Financial Overview'),  to:'/project-finance/overview',      icon:'wallet',         roles:['director'] },
+	{ key:'wf-attendance', label:__('Field Attendance'),    to:'/field-attendance',              icon:'users-2',        roles:['foreman','hr-manager','site-engineer'] },
+	{ key:'wf-employees',  label:__('Field Employees'),     to:'/field-employees',               icon:'hard-hat',       roles:['hr-manager'] },
+	{ key:'wf-crews',      label:__('Crews'),               to:'/crews',                         icon:'users-2',        roles:['foreman','hr-manager'] },
+	{ key:'wf-labour',     label:__('Labour Register'),     to:'/labour-attendance',             icon:'clipboard-list', roles:['hr-manager'] },
+	{ key:'admin-users',      label:__('Users'),              to:'/settings/users',           icon:'users-2',        roles:['admin','bsa'] },
+	{ key:'admin-projects',   label:__('Projects'),           to:'/projects',                 icon:'clipboard-list', roles:['admin','bsa'] },
+	{ key:'admin-dashboard',  label:__('Project Dashboard'),  to:'/project-dashboard',        icon:'chart-bar',      roles:['admin','bsa'] },
+	{ key:'admin-boq',        label:__('BOQ'),                to:'/boq',                      icon:'estimation',     roles:['admin','bsa'] },
+	{ key:'admin-finance',    label:__('Financial Overview'), to:'/project-finance/overview', icon:'wallet',         roles:['admin','bsa'] },
+	{ key:'admin-attendance', label:__('Field Attendance'),   to:'/field-attendance',         icon:'users-2',        roles:['admin','bsa'] },
 ];
 // Site roles re-sort their tiles by daily frequency.
 const SITE_ROLES = ["site-engineer", "foreman"];
@@ -163,12 +164,12 @@ const quickActions = computed(() => {
 				<header
 					class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">Today's snapshot</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Today's snapshot") }}</h2>
 					<span
 						class="text-[10px] uppercase tracking-wider font-medium text-success-700 bg-success-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1"
 					>
 						<span class="w-1.5 h-1.5 rounded-full bg-success-500"></span>
-						Live
+						{{ __("Live") }}
 					</span>
 				</header>
 				<div class="p-5">
@@ -207,7 +208,7 @@ const quickActions = computed(() => {
 							<div
 								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-2"
 							>
-								{{ m.label }}
+								{{ __(m.label) }}
 							</div>
 						</component>
 					</div>
@@ -238,15 +239,15 @@ const quickActions = computed(() => {
 					</div>
 					<div class="min-w-0">
 						<h2 class="text-base font-semibold text-ink-900 leading-tight">
-							{{ cta.title }}
+							{{ __(cta.title) }}
 						</h2>
-						<p class="text-xs text-ink-600 mt-1.5 leading-snug">{{ cta.sub }}</p>
+						<p class="text-xs text-ink-600 mt-1.5 leading-snug">{{ __(cta.sub) }}</p>
 					</div>
 				</div>
 				<div
 					class="mt-4 inline-flex items-center gap-1.5 bg-brand-600 group-hover:bg-brand-700 text-white text-xs font-medium px-2.5 py-1.5 rounded-md self-start transition-colors"
 				>
-					{{ cta.cta }} <span aria-hidden="true">→</span>
+					{{ __(cta.cta) }} <span aria-hidden="true">→</span>
 				</div>
 			</RouterLink>
 		</div>
@@ -277,20 +278,20 @@ const quickActions = computed(() => {
 					/>
 				</div>
 				<div class="flex-1 min-w-0">
-					<div class="text-sm font-semibold text-ink-900">{{ a.title }}</div>
-					<div class="text-xs text-ink-500 mt-0.5 truncate">{{ a.sub }}</div>
+					<div class="text-sm font-semibold text-ink-900">{{ __(a.title) }}</div>
+					<div class="text-xs text-ink-500 mt-0.5 truncate">{{ __(a.sub) }}</div>
 				</div>
 				<div
 					class="text-xs text-brand-700 group-hover:text-brand-800 font-medium flex-shrink-0"
 				>
-					View →
+					{{ __("View") }} →
 				</div>
 			</RouterLink>
 		</div>
 
 		<!-- Quick actions -->
 		<div class="mb-6">
-			<h2 class="text-sm font-semibold text-ink-900 mb-3">Quick actions</h2>
+			<h2 class="text-sm font-semibold text-ink-900 mb-3">{{ __("Quick actions") }}</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 				<RouterLink
 					v-for="action in quickActions"
@@ -318,7 +319,7 @@ const quickActions = computed(() => {
 						<div
 							class="text-sm font-medium text-ink-900 group-hover:text-brand-700 transition-colors"
 						>
-							{{ action.label }}
+							{{ __(action.label) }}
 						</div>
 					</div>
 					<div class="text-ink-300 group-hover:text-brand-500 transition-colors">→</div>

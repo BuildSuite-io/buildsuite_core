@@ -99,3 +99,2889 @@ To-dos — your to-do list,Tâches — votre liste de tâches
 Switch to light theme,Passer au thème clair
 Switch to dark theme,Passer au thème sombre
 Settings,Paramètres
+Home,Accueil
+Insights,Analyses
+Site Execution,Exécution du chantier
+Estimation,Estimation
+Procurement,Approvisionnement
+Subcontract,Sous-traitance
+Workforce,Main-d'œuvre
+Project Finance,Finances de projet
+Equipment,Équipement
+Accounting,Comptabilité
+Buying,Achats
+Stock,Stock
+Assets,Immobilisations
+HR,RH
+Read-only access,Accès en lecture seule
+Approve-only access,Accès approbation uniquement
+Create own work only,Création de ses propres travaux uniquement
+Self-service only,Libre-service uniquement
+Team-only (direct reports),Équipe uniquement (subordonnés directs)
+Pay-only view,Vue paiement uniquement
+Material-request raise only,Création de demandes de matériel uniquement
+Good morning,Bonjour
+Good afternoon,Bon après-midi
+Good evening,Bonsoir
+System Manager (Admin),Gestionnaire système (Admin)
+User,Utilisateur
+Here is a snapshot of your work today.,Voici un aperçu de votre travail aujourd'hui.
+Live,En direct
+Today's snapshot,Aperçu du jour
+Quick actions,Actions rapides
+View,Voir
+Projects,Projets
+Tasks,Tâches
+File Progress Entry,Saisir un avancement
+Schedule,Planning
+Stage Planning,Planification des étapes
+BOQ,Devis quantitatif
+Rate Master,Référentiel de prix
+Assemblies,Assemblages
+Work Orders,Ordres de travaux
+Subcontractor Bills,Factures sous-traitants
+Material Requests,Demandes de matériel
+Purchase Orders,Bons de commande
+Purchase Receipts,Bons de réception
+Confirm Delivery,Confirmer la livraison
+Record Consumption,Enregistrer la consommation
+Items,Articles
+Suppliers,Fournisseurs
+Invoices,Factures
+Bills,Factures fournisseurs
+Payments,Paiements
+Petty Cash,Petite caisse
+Expenses,Dépenses
+Financial Overview,Aperçu financier
+Field Attendance,Présence chantier
+Field Employees,Employés de chantier
+Crews,Équipes
+Labour Register,Registre de main-d'œuvre
+Users,Utilisateurs
+Project Dashboard,Tableau de bord projet
++ Add Member,+ Ajouter un membre
++ Add Stage,+ Ajouter une étape
++ Add Task,+ Ajouter une tâche
++ Add Work Package,+ Ajouter un lot de travaux
++ New,+ Nouveau
++ New Subproject,+ Nouveau sous-projet
++ Plan first stage,+ Planifier la première étape
++ Raise SCO,+ Créer un OM
++ Seed from {0} template,+ Initialiser depuis le modèle {0}
++ Upload,+ Téléverser
+About this project,À propos de ce projet
+Acknowledged by client,Accusé de réception du client
+Actual,Réel
+Actual vs Planned,Réel vs planifié
+Add member,Ajouter un membre
+Add team member,Ajouter un membre d’équipe
+Add the first one →,Ajouter le premier →
+Adding…,Ajout…
+Allow subprojects under this project,Autoriser des sous-projets sous ce projet
+Approved chargeable this period,Facturable approuvé cette période
+As of,Au
+Attachment deleted,Pièce jointe supprimée
+Attachments,Pièces jointes
+Attachments added,Pièces jointes ajoutées
+BOQ revision,Révision du devis quantitatif
+BOQ revisions,Révisions du devis quantitatif
+Back to Projects,Retour aux projets
+Back to project,Retour au projet
+Back to projects,Retour aux projets
+Basic information,Informations de base
+Blocked,Bloqué
+Blockers raised,Blocages signalés
+Brief description of project scope,Brève description du périmètre du projet
+Budget,Budget
+Building report…,Génération du rapport…
+By,Par
+Category,Catégorie
+Category: Any,Catégorie : toutes
+Chargeable,Facturable
+Client,Client
+Coming up,À venir
+Commercial,Commercial
+Company,Société
+Company: Any,Société : toutes
+Completed,Terminé
+Completed tasks / total tasks in stage,Tâches terminées / total des tâches de l’étape
+Completion,Achèvement
+Contains supplier pricing and procurement commitments — not for issue to the client. Switch to the client audience before sharing.,Contient les prix fournisseurs et les engagements d’approvisionnement — à ne pas diffuser au client. Passez à l’audience client avant de partager.
+Contract completion,Achèvement contractuel
+Contract programme,Planning contractuel
+Contract start,Début contractuel
+Cost impact,Impact sur les coûts
+Could not update tabs,Impossible de mettre à jour les onglets
+Create one in the BOQ module →,Créez-en un dans le module Devis quantitatif →
+Create one →,En créer un →
+Create project,Créer le projet
+Create the first one →,Créer le premier →
+Create the first task →,Créer la première tâche →
+Created,Créé le
+Creating…,Création…
+Current stage,Étape actuelle
+Daily report,Rapport quotidien
+Date,Date
+Default,Par défaut
+Default (hidden),Par défaut (masqué)
+Default (shown),Par défaut (affiché)
+Defaults to your default company. This is locked after the project is created.,"Par défaut, votre société par défaut. Verrouillé après la création du projet."
+Delayed,En retard
+Delayed by {0}d,En retard de {0} j
+Delays & constraints,Retards et contraintes
+"Delete '{0}' and all its subprojects, work packages, and tasks? This cannot be undone.","Supprimer « {0} » et tous ses sous-projets, lots de travaux et tâches ? Cette action est irréversible."
+Delete attachment,Supprimer la pièce jointe
+Delete project,Supprimer le projet
+Delete {0},Supprimer {0}
+Deliveries received,Livraisons reçues
+Description,Description
+Edit project,Modifier le projet
+End,Fin
+End date,Date de fin
+Executive summary,Résumé exécutif
+Expected end date,Date de fin prévue
+Export PDF,Exporter en PDF
+Failed to add team member,Échec de l’ajout du membre d’équipe
+Failed to create project,Échec de la création du projet
+Failed to delete attachment,Échec de la suppression de la pièce jointe
+Failed to delete project,Échec de la suppression du projet
+Failed to import template,Échec de l’import du modèle
+Failed to load the progress report.,Échec du chargement du rapport d’avancement.
+Failed to remove team member,Échec du retrait du membre d’équipe
+Failed to save project,Échec de l’enregistrement du projet
+Failed to seed stages,Échec de l’initialisation des étapes
+Failed to upload {0},Échec du téléversement de {0}
+File,Fichier
+From the,Depuis le
+Generated,Généré
+Generated using,Généré avec
+Goods received on site,Marchandises reçues sur site
+Hidden anyway until this is a parent project.,Masqué de toute façon jusqu’à ce que ce soit un projet parent.
+Hide,Masquer
+ID,ID
+Impact,Impact
+Import,Importer
+Import default tasks,Importer les tâches par défaut
+Import project template,Importer un modèle de projet
+Import work packages,Importer les lots de travaux
+"Imported {0} work packages, {1} tasks and {2} stages.","{0} lots de travaux, {1} tâches et {2} étapes importés."
+Importing…,Import…
+In Delay,En retard
+In INR,En INR
+Industrial,Industriel
+Infrastructure,Infrastructure
+Inherited from the parent project — locked.,Hérité du projet parent — verrouillé.
+Initial status,Statut initial
+Inspection,Inspection
+Internal or External (ERPNext).,Interne ou externe (ERPNext).
+Internal report.,Rapport interne.
+Issues raised,Problèmes signalés
+Item,Article
+Key metrics,Indicateurs clés
+Labour-days,Jours-homme
+Last update,Dernière mise à jour
+Loading template…,Chargement du modèle…
+Location,Emplacement
+Locked after create — a project can't be moved between companies.,Verrouillé après création — un projet ne peut pas être déplacé entre sociétés.
+Locked on - this project has {0} subproject. Delete or move them out before turning this off.,Verrouillé activé - ce projet a {0} sous-projet. Supprimez-le ou déplacez-le avant de désactiver.
+Locked on - this project has {0} subprojects. Delete or move them out before turning this off.,Verrouillé activé - ce projet a {0} sous-projets. Supprimez-les ou déplacez-les avant de désactiver.
+Material requests raised,Demandes de matériel créées
+Materials,Matériaux
+Materials ordered,Matériaux commandés
+Materials received on site,Matériaux reçus sur site
+Milestone,Jalon
+Monthly report,Rapport mensuel
+More actions,Plus d’actions
+Moved,Déplacé
+Name series,Série de nommage
+Name · Signature · Date,Nom · Signature · Date
+New,Nouveau
+New Project,Nouveau projet
+No,Non
+No BOQ on this project ·,Aucun devis quantitatif sur ce projet ·
+"No attachments yet. Upload drawings, contracts, or site documents.","Aucune pièce jointe. Téléversez des plans, contrats ou documents de chantier."
+No deliveries received in this period.,Aucune livraison reçue sur cette période.
+No description provided yet.,Aucune description fournie pour l’instant.
+No project data available.,Aucune donnée de projet disponible.
+No project manager assigned.,Aucun chef de projet assigné.
+No projects match your filters,Aucun projet ne correspond à vos filtres
+No scope changes on this project.,Aucune modification de périmètre sur ce projet.
+No site photographs were recorded in this period.,Aucune photo de chantier enregistrée sur cette période.
+No stages planned yet.,Aucune étape planifiée pour l’instant.
+No stages touch this period.,Aucune étape ne concerne cette période.
+No subprojects yet ·,Aucun sous-projet pour l’instant ·
+No task activity recorded in this period.,Aucune activité de tâche enregistrée sur cette période.
+No tasks due in the look-ahead window.,Aucune tâche à échéance dans la fenêtre à venir.
+No tasks yet ·,Aucune tâche pour l’instant ·
+No team members yet.,Aucun membre d’équipe pour l’instant.
+No template configured for,Aucun modèle configuré pour
+"No template configured for project type ""{0}"" — plan stages manually.",Aucun modèle configuré pour le type de projet « {0} » — planifiez les étapes manuellement.
+No template is configured for this project's category,Aucun modèle n’est configuré pour la catégorie de ce projet
+No work packages yet.,Aucun lot de travaux pour l’instant.
+Note,Note
+On programme,Dans les délais
+On track,Sur la bonne voie
+Ongoing,En cours
+Open BOQ module →,Ouvrir le module Devis quantitatif →
+Open parent →,Ouvrir le parent →
+Open →,Ouvrir →
+Opens the browser print dialog. Pick 'Save as PDF' to export.,Ouvre la boîte d’impression du navigateur. Choisissez « Enregistrer en PDF » pour exporter.
+"Optional. If given, it becomes the project's record ID; otherwise the naming series is used.","Facultatif. S’il est fourni, il devient l’ID d’enregistrement du projet ; sinon la série de nommage est utilisée."
+Other stages in this period,Autres étapes sur cette période
+Overview,Aperçu
+Page tabs,Onglets de la page
+Photograph on file,Photo au dossier
+"Pick a customer, or create one inline.","Choisissez un client, ou créez-en un directement."
+Pick a user to add to this project's team.,Choisissez un utilisateur à ajouter à l’équipe de ce projet.
+Planned,Planifié
+Position,Position
+Prepared by,Préparé par
+Priority: Any,Priorité : toutes
+Programme,Planning
+Progress,Avancement
+Progress against programme,Avancement par rapport au planning
+Progress entries,Saisies d’avancement
+Project,Projet
+Project Category,Catégorie de projet
+Project ID,ID du projet
+Project Manager,Chef de projet
+Project Name,Nom du projet
+Project Settings,Paramètres du projet
+Project Type,Type de projet
+Project budget (₹),Budget du projet (₹)
+Project category,Catégorie de projet
+Project created,Projet créé
+Project deleted,Projet supprimé
+Project details,Détails du projet
+Project name,Nom du projet
+Project name is required,Le nom du projet est obligatoire
+Project not found,Projet introuvable
+Project progress & schedule position,Avancement du projet et position au planning
+Project tabs updated,Onglets du projet mis à jour
+Project type,Type de projet
+Project updated,Projet mis à jour
+Project: Any,Projet : tous
+Purchase orders placed,Bons de commande passés
+Qty,Qté
+Recoverable,Récupérable
+Registered office address · GSTIN · Contact,Adresse du siège · GSTIN · Contact
+Remove,Retirer
+Remove team member,Retirer le membre d’équipe
+Remove {0} from this project,Retirer {0} de ce projet
+Remove {0} from this project's team?,Retirer {0} de l’équipe de ce projet ?
+Renovation,Rénovation
+Reporting period,Période de reporting
+Reports,Rapports
+Residential,Résidentiel
+Reviewed by,Revu par
+Schedule & cost,Planning et coûts
+Scope Changes,Modifications de périmètre
+Scope changes,Modifications de périmètre
+Search BOQ revisions…,Rechercher des révisions de devis…
+"Search by name, code, client…","Rechercher par nom, code, client…"
+Search files…,Rechercher des fichiers…
+Search scope changes…,Rechercher des modifications de périmètre…
+Search stages…,Rechercher des étapes…
+Search subprojects…,Rechercher des sous-projets…
+Search tasks…,Rechercher des tâches…
+Search users…,Rechercher des utilisateurs…
+Search work packages…,Rechercher des lots de travaux…
+Seed default stages,Initialiser les étapes par défaut
+Seed stages,Initialiser les étapes
+Seed {0} default stages from the {1} template?\n\nThis creates {0} stages on top of any existing ones — it does not replace or merge.,Initialiser {0} étapes par défaut depuis le modèle {1} ?\n\nCela crée {0} étapes en plus de celles existantes — sans les remplacer ni les fusionner.
+Seeded {0} stages,{0} étapes initialisées
+Select company,Sélectionner une société
+Select customer,Sélectionner un client
+Select project category,Sélectionner une catégorie de projet
+Select project manager,Sélectionner un chef de projet
+Select project type,Sélectionner un type de projet
+Show,Afficher
+Show a selection ({0}),Afficher une sélection ({0})
+Show all {0},Afficher tout ({0})
+Show less ▴,Afficher moins ▴
+Show more ▾,Afficher plus ▾
+Site address,Adresse du chantier
+Site photographs,Photos de chantier
+Size,Taille
+Stage,Étape
+Stage progress,Avancement de l’étape
+Stages,Étapes
+Start,Début
+Start date,Date de début
+Status: Any,Statut : tous
+Subproject of,Sous-projet de
+Subproject under {0},Sous-projet sous {0}
+Subprojects,Sous-projets
+Supplier,Fournisseur
+Task,Tâche
+Task Type: Any,Type de tâche : tous
+Task activity,Activité des tâches
+Tasks completed,Tâches terminées
+Team,Équipe
+Team & status,Équipe et statut
+Team member added,Membre d’équipe ajouté
+Team member removed,Membre d’équipe retiré
+Template seeds,Le modèle initialise
+The naming series used to generate this project's record ID.,La série de nommage utilisée pour générer l’ID d’enregistrement de ce projet.
+Timeline,Chronologie
+Title,Titre
+Top-level project,Projet de premier niveau
+Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).,Activez pour diviser ce projet en sous-projets (p. ex. Bloc A / Bloc B / Tour 1).
+Type,Type
+Uploaded,Téléversé
+Uploading… ({0}),Téléversement… ({0})
+Variance,Écart
+Variation,Variation
+Variations,Variations
+Variations raised,Variations créées
+Weekly report,Rapport hebdomadaire
+Which tabs this project shows. Leave a tab on,Les onglets affichés par ce projet. Laissez un onglet sur
+Will seed {0} stages —,Initialisera {0} étapes —
+Work Packages,Lots de travaux
+Work progressed this period,Travaux avancés cette période
+Yes,Oui
+Yet To Start,Pas encore commencé
+You don't have access to this project,Vous n’avez pas accès à ce projet
+You don't have permission to create a project.,Vous n’avez pas la permission de créer un projet.
+You'll plan stages manually after create.,Vous planifierez les étapes manuellement après la création.
+active:,actif :
+actual,réel
+and it follows,et il suit
+approved,approuvé
+avg progress,avancement moyen
+committed,engagé
+complete,terminé
+completed,terminé
+contract completion,achèvement contractuel
+days past,jours écoulés
+days to,jours avant
+default stages,étapes par défaut
+e.g. BTP-P2 (optional),p. ex. BTP-P2 (facultatif)
+e.g. Bangalore Tech Park Phase 2,p. ex. Bangalore Tech Park Phase 2
+end date,date de fin
+files uploaded,fichiers téléversés
+from this template can also be imported.,de ce modèle peuvent aussi être importés.
+from this template can be imported.,de ce modèle peuvent être importés.
+goods receipts,bons de réception
+in progress,en cours
+in this period,sur cette période
+or plan one manually →,ou en planifier une manuellement →
+over,en dépassement
+package,lot
+packages,lots
+pending,en attente
+placed,passés
+plan,planifier
+planned,planifié
+site updates filed,mises à jour de chantier déposées
+skilled,qualifié
+subproject,sous-projet
+subprojects,sous-projets
+"template. Your existing tasks, stages and work packages are kept — the template is added on top.","modèle. Vos tâches, étapes et lots de travaux existants sont conservés — le modèle s’ajoute par-dessus."
+the site template,le modèle du site
+under,sous
+unskilled,non qualifié
+via progress entries,via les saisies d’avancement
+work packages,lots de travaux
+yet to start,pas encore commencé
+{0}d behind,{0} j de retard
+{0}d remaining,{0} j restants
+{0}d total,{0} j au total
+tasks,tâches
++ Add item,+ Ajouter un article
++ Create Purchase Order,+ Créer un bon de commande
++ New Request,+ Nouvelle demande
+Action failed,Échec de l’action
+Add at least one item with a quantity.,Ajoutez au moins un article avec une quantité.
+Add item,Ajouter un article
+All cost codes,Tous les codes de coût
+All projects,Tous les projets
+All suppliers,Tous les fournisseurs
+Amend,Amender
+Amend failed,Échec de l’amendement
+Amended — a fresh draft was created.,Amendé — un nouveau brouillon a été créé.
+Amount,Montant
+Any,Tous
+At site,Sur site
+At standard rate,Au tarif standard
+Back to Procurement →,Retour à l’approvisionnement →
+Back to purchase order,Retour au bon de commande
+Billed,Facturé
+Billed {0}%,Facturé {0} %
+"Brand, spec, where it's needed…","Marque, spécification, où c’est nécessaire…"
+Can't receive against this order.,Impossible de réceptionner sur ce bon de commande.
+Cancel failed,Échec de l’annulation
+Cancel order,Annuler le bon de commande
+Cancel receipt,Annuler la réception
+Cancel request,Annuler la demande
+Cancel {0}?,Annuler {0} ?
+Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back.,L’annulation inverse la réception — le matériel sort du stock et la quantité reçue du bon de commande diminue.
+Cancelling withdraws the request — it drops out of the procurement queue. Amend later to raise a corrected copy.,L’annulation retire la demande — elle sort de la file d’approvisionnement. Amendez plus tard pour en créer une copie corrigée.
+Confirm receipt,Confirmer la réception
+Consumed,Consommé
+Consumption by cost code,Consommation par code de coût
+Converting from Material Request,Conversion depuis une demande de matériel
+Cost code,Code de coût
+Create Receipt,Créer une réception
+Create a fresh editable draft copy (the original stays cancelled),Créer une nouvelle copie modifiable (l’original reste annulé)
+Create order,Créer le bon de commande
+Delete {0}?,Supprimer {0} ?
+Delivery follow-up,Suivi des livraisons
+Draft,Brouillon
+Draft — not posted to stock yet. Submit it to record the goods into the warehouse.,Brouillon — pas encore enregistré en stock. Soumettez-le pour enregistrer les marchandises dans l’entrepôt.
+Draft — not sent to the office yet. Submit it to enter the procurement queue.,Brouillon — pas encore envoyé au bureau. Soumettez-le pour entrer dans la file d’approvisionnement.
+Draft — not sent to the supplier yet. Submit it to post the order.,Brouillon — pas encore envoyé au fournisseur. Soumettez-le pour enregistrer le bon de commande.
+Edit {0},Modifier {0}
+Enter at least one received quantity.,Saisissez au moins une quantité reçue.
+Est. rate,Tarif est.
+Estimated value,Valeur estimée
+"Every purchase order line — supplier, item, quantity and rate — so last paid is one search away.","Chaque ligne de bon de commande — fournisseur, article, quantité et tarif — pour retrouver le dernier prix payé en une recherche."
+Failed to delete order,Échec de la suppression du bon de commande
+Failed to delete receipt,Échec de la suppression de la réception
+Failed to delete request,Échec de la suppression de la demande
+Failed to load material request,Échec du chargement de la demande de matériel
+Failed to load order,Échec du chargement du bon de commande
+Failed to load purchase orders,Échec du chargement des bons de commande
+Failed to load receipt,Échec du chargement de la réception
+Failed to load request,Échec du chargement de la demande
+Failed to load the report.,Échec du chargement du rapport.
+Failed to save order,Échec de l’enregistrement du bon de commande
+Failed to save receipt,Échec de l’enregistrement de la réception
+Failed to save request,Échec de l’enregistrement de la demande
+Find,Rechercher
+From (order date),Du (date de commande)
+From (receipt date),Du (date de réception)
+From (request date),Du (date de demande)
+From the purchase order.,Depuis le bon de commande.
+Hide emptied items,Masquer les articles épuisés
+Includes sub-projects.,Inclut les sous-projets.
+Into {0},Vers {0}
+Issued,Sorti
+Item or cost code…,Article ou code de coût…
+Item or store…,Article ou magasin…
+"Item, code, supplier…","Article, code, fournisseur…"
+"Item, order, supplier…","Article, commande, fournisseur…"
+Items received,Articles reçus
+Keep,Conserver
+Last bought from,Dernier achat auprès de
+Loading order…,Chargement du bon de commande…
+Loading receipt…,Chargement de la réception…
+Loading request…,Chargement de la demande…
+Locked while editing — the request stays on its project.,Verrouillé pendant la modification — la demande reste sur son projet.
+Locked while editing.,Verrouillé pendant la modification.
+MR,DM
+Material at site,Matériel sur site
+"Material issued to site, grouped by the cost code it was booked against.","Matériel sorti vers le chantier, regroupé par le code de coût sur lequel il a été imputé."
+Material request not found.,Demande de matériel introuvable.
+Needed by,Nécessaire pour le
+New Material Request,Nouvelle demande de matériel
+New PO,Nouveau BC
+New Purchase Order,Nouveau bon de commande
+New Purchase Receipt,Nouvelle réception
+New Receipt,Nouvelle réception
+No items match these filters.,Aucun article ne correspond à ces filtres.
+No lines match these filters.,Aucune ligne ne correspond à ces filtres.
+No material requests yet.,Aucune demande de matériel pour l’instant.
+No open orders in scope.,Aucun bon de commande ouvert dans le périmètre.
+"No order line in scope carries a rate code, so there is nothing to compare.","Aucune ligne de commande du périmètre ne porte de code de tarif, il n’y a donc rien à comparer."
+No orders match these filters.,Aucun bon de commande ne correspond à ces filtres.
+No purchase orders in scope.,Aucun bon de commande dans le périmètre.
+No purchase orders yet.,Aucun bon de commande pour l’instant.
+No purchase receipts yet.,Aucune réception pour l’instant.
+No report is registered under that name.,Aucun rapport n’est enregistré sous ce nom.
+No report registered for '{0}',Aucun rapport enregistré pour « {0} »
+No requests match these filters.,Aucune demande ne correspond à ces filtres.
+Notes,Notes
+Notes…,Notes…
+Nothing issued to site yet in scope.,Rien n’a encore été sorti vers le chantier dans le périmètre.
+Nothing left to receive on this order.,Plus rien à réceptionner sur ce bon de commande.
+Nothing received at site yet in scope.,Rien n’a encore été reçu sur site dans le périmètre.
+Nothing waiting — every request in scope has been ordered.,Rien en attente — toutes les demandes du périmètre ont été commandées.
+On Hold,En attente
+Only a draft order can be edited.,Seul un bon de commande en brouillon peut être modifié.
+Only a draft receipt can be edited.,Seule une réception en brouillon peut être modifiée.
+Only a draft request can be edited.,Seule une demande en brouillon peut être modifiée.
+"Open orders by the date they were needed, how much has landed, and what is still outstanding.","Les commandes ouvertes par date de besoin, ce qui est arrivé, et ce qui reste en attente."
+Open the printable purchase order (Save as PDF from the print dialog),Ouvrir le bon de commande imprimable (Enregistrer en PDF depuis la boîte d’impression)
+Order,Commande
+Order cancelled.,Bon de commande annulé.
+Order created.,Bon de commande créé.
+Order saved.,Bon de commande enregistré.
+Order submitted.,Bon de commande soumis.
+"Order, supplier, project…","Commande, fournisseur, projet…"
+Ordered,Commandé
+Over estimate only,Dépassement d’estimation uniquement
+Overdue only,En retard uniquement
+PO,BC
+PO rate,Tarif BC
+Paid,Payé
+Partially Ordered,Partiellement commandé
+Pending,En attente
+Pick a project for the request.,Choisissez un projet pour la demande.
+Pick a project.,Choisissez un projet.
+Pick a purchase order.,Choisissez un bon de commande.
+Pick a receiving warehouse.,Choisissez un entrepôt de réception.
+Pick a supplier.,Choisissez un fournisseur.
+Print / PDF,Imprimer / PDF
+Project store,Magasin de projet
+Purchase order,Bon de commande
+Purchase order not found.,Bon de commande introuvable.
+Purchase rate vs estimate,Tarif d’achat vs estimation
+Purchase receipt not found.,Réception introuvable.
+Purchase register,Registre des achats
+Raise a Purchase Order from this request,Créer un bon de commande à partir de cette demande
+Raise request,Créer la demande
+Rate,Tarif
+Receipt,Réception
+Receipt cancelled.,Réception annulée.
+Receipt recorded.,Réception enregistrée.
+Receipt saved.,Réception sauvegardée.
+Receipt submitted.,Réception soumise.
+Received,Reçu
+Received counts posted purchase receipts; consumed counts posted consumption. A cancelled receipt never entered stock.,« Reçu » compte les réceptions validées ; « consommé » compte la consommation validée. Une réception annulée n’est jamais entrée en stock.
+"Received minus consumed, per item, at each project store.","Reçu moins consommé, par article, à chaque magasin de projet."
+Received now,Reçu maintenant
+Received on,Reçu le
+Receiving warehouse,Entrepôt de réception
+Record a goods receipt against this order,Enregistrer une réception de marchandises sur ce bon de commande
+Report not found,Rapport introuvable
+Request,Demande
+Request cancelled.,Demande annulée.
+Request raised.,Demande créée.
+Request saved.,Demande enregistrée.
+Request submitted.,Demande soumise.
+"Request, project…","Demande, projet…"
+Requested by,Demandé par
+Requests waiting to be ordered,Demandes en attente de commande
+Required by,Requis pour le
+Required by {0},Requis pour le {0}
+Return Issued,Retour émis
+Save changes,Enregistrer les modifications
+"Search PO, supplier…","Rechercher BC, fournisseur…"
+Search cost codes…,Rechercher des codes de coût…
+Search material request…,Rechercher une demande de matériel…
+Search projects…,Rechercher des projets…
+"Search receipt, supplier…","Rechercher réception, fournisseur…"
+Search suppliers…,Rechercher des fournisseurs…
+Search…,Rechercher…
+Still due,Encore dû
+Stopped,Arrêté
+Submit,Soumettre
+Submit failed,Échec de la soumission
+"Submit this order to {0} ({1})? It posts the order and locks the lines; a submitted order is amended, not edited.","Soumettre ce bon de commande à {0} ({1}) ? Il enregistre la commande et verrouille les lignes ; un bon de commande soumis s’amende, il ne se modifie pas."
+"Submit this request ({0})? It enters the procurement queue; a submitted request is cancelled, not edited.","Soumettre cette demande ({0}) ? Elle entre dans la file d’approvisionnement ; une demande soumise s’annule, elle ne se modifie pas."
+Submit {0}?,Soumettre {0} ?
+Submitting posts the goods into stock and updates the purchase order's received quantity.,La soumission enregistre les marchandises en stock et met à jour la quantité reçue du bon de commande.
+This cancels the order. It's blocked if receipts or bills exist against it.,Cela annule le bon de commande. C’est bloqué si des réceptions ou des factures y sont rattachées.
+This order and its items will be removed permanently.,Ce bon de commande et ses articles seront supprimés définitivement.
+This receipt will be removed permanently.,Cette réception sera supprimée définitivement.
+This request and its items will be removed permanently.,Cette demande et ses articles seront supprimés définitivement.
+To (order date),Au (date de commande)
+To (receipt date),Au (date de réception)
+To (request date),Au (date de demande)
+To Bill,À facturer
+To Receive,À réceptionner
+To Receive and Bill,À réceptionner et facturer
+Total,Total
+Total received,Total reçu
+UOM,Unité
+Unit,Unité
+Value,Valeur
+Value received,Valeur reçue
+"Valued at the item master's standard rate — a list price, not what this particular material cost. Issue valuation needs stock rates, which are not modelled.","Évalué au tarif standard de la fiche article — un prix de liste, pas le coût réel de ce matériel. La valorisation des sorties nécessite des tarifs de stock, non modélisés."
+What site has asked for that is not yet on a purchase order — the gap between the request book and the order book.,Ce que le chantier a demandé et qui n’est pas encore sur un bon de commande — l’écart entre le registre des demandes et celui des commandes.
+What you are paying against the QS rate in the Rate Master. Only lines carrying a rate code can be compared.,Ce que vous payez par rapport au tarif QS du référentiel de prix. Seules les lignes portant un code de tarif peuvent être comparées.
+Where the goods land on site.,Où les marchandises arrivent sur site.
+You don't have permission to create a material request.,Vous n’avez pas la permission de créer une demande de matériel.
+You don't have permission to create a purchase order.,Vous n’avez pas la permission de créer un bon de commande.
+You don't have permission to create a purchase receipt.,Vous n’avez pas la permission de créer une réception.
+You don't have permission to edit this material request.,Vous n’avez pas la permission de modifier cette demande de matériel.
+You don't have permission to edit this purchase order.,Vous n’avez pas la permission de modifier ce bon de commande.
+You don't have permission to edit this purchase receipt.,Vous n’avez pas la permission de modifier cette réception.
+against,sur
+due {0},échéance {0}
+item,article
+items,articles
+lines,lignes
+lines pre-filled; set the supplier and rates.,lignes pré-remplies ; renseignez le fournisseur et les tarifs.
+orders,commandes
+requests,demandes
+rows,lignes
+to,à
+{0} done.,{0} effectué.
+{0} lines,{0} lignes
+{0} open order,{0} commande ouverte
+{0} open orders,{0} commandes ouvertes
+{0} order line could not be checked — no rate code on the line.,{0} ligne de commande n’a pas pu être vérifiée — aucun code de tarif sur la ligne.
+{0} order lines could not be checked — no rate code on the line.,{0} lignes de commande n’ont pas pu être vérifiées — aucun code de tarif sur la ligne.
+{0} overdue,{0} en retard
+{0} request waiting,{0} demande en attente
+{0} requests waiting,{0} demandes en attente
+{0} · requested {1},{0} · demandé {1}
+{0}d late,{0} j de retard
+{0}d old,{0} j d’ancienneté
+— Item —,— Article —
+— Select open PO —,— Sélectionner un BC ouvert —
+— Select project —,— Sélectionner un projet —
+— Select supplier —,— Sélectionner un fournisseur —
+— Select warehouse —,— Sélectionner un entrepôt —
++ Add row,+ Ajouter une ligne
++ Issue directly,+ Émettre directement
++ Link advance,+ Lier une avance
++ New Customer,+ Nouveau client
++ New Supplier,+ Nouveau fournisseur
++ New bill,+ Nouvelle facture fournisseur
++ New expense,+ Nouvelle dépense
++ New invoice,+ Nouvelle facture
++ Request petty cash,+ Demander de la petite caisse
+A cancelled invoice can't be printed,Une facture annulée ne peut pas être imprimée
+"A direct purchase from a supplier (materials, services) — an ERPNext Purchase Invoice.","Un achat direct auprès d’un fournisseur (matériaux, services) — une facture d’achat ERPNext."
+A short reason is required.,Un motif court est requis.
+A supplier payable — Submit posts it; then pay from a Bank/Cash account.,Une dette fournisseur — Soumettre l’enregistre ; payez ensuite depuis un compte Banque/Caisse.
+Account,Compte
+Account name…,Nom du compte…
+Accounts,Comptes
+Add at least one item with a quantity and rate.,Ajoutez au moins un article avec une quantité et un tarif.
+Add one →,En ajouter un →
+Adjust,Ajuster
+Adjusted {0} from {1} — outstanding is now {2}.,{0} ajusté depuis {1} — l’encours est maintenant {2}.
+Advance Payments,Paiements d’avance
+Advance adjusted,Avance ajustée
+Advance adjusted.,Avance ajustée.
+Advance held,Avance détenue
+Advance linked.,Avance liée.
+Advance paid,Avance versée
+Advance recorded.,Avance enregistrée.
+Advance unlinked.,Avance déliée.
+Advances held,Avances détenues
+Advances paid,Avances versées
+Advances paid to suppliers,Avances versées aux fournisseurs
+Advances received from customers,Avances reçues des clients
+Advances to site holders. Spend is logged separately under,Avances aux titulaires de chantier. Les dépenses sont enregistrées séparément sous
+Against purchase order,Sur bon de commande
+Aging,Ancienneté
+All Expenses,Toutes les dépenses
+All Requests,Toutes les demandes
+All accounts,Tous les comptes
+All bills →,Toutes les factures fournisseurs →
+All clear — nothing pending.,Tout est clair — rien en attente.
+All dates,Toutes les dates
+All entries,Toutes les écritures
+All expense accounts,Tous les comptes de dépense
+All invoices →,Toutes les factures →
+All parties,Tous les tiers
+All payments →,Tous les paiements →
+All statuses,Tous les statuts
+All types,Tous les types
+Amount — highest first,Montant — décroissant
+Amount — lowest first,Montant — croissant
+An RA / work-done bill against a Subcontractor Work Order (with retention).,Une facture d’avancement (RA) sur un ordre de travaux de sous-traitant (avec retenue).
+Any source,Toute source
+Assets − liabilities,Actif − passif
+Back to invoice,Retour à la facture
+Balance,Solde
+Balance in hand (all-time),Solde disponible (cumul)
+Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.,Solde disponible = fonds décaissés − dépenses approuvées (onglet Dépenses). Un solde négatif signifie que le titulaire a avancé son propre argent — il lui est dû et réglé au prochain décaissement.
+Balances,Soldes
+Bank / Cash account…,Compte Banque / Caisse…
+Bank balance,Solde bancaire
+Beginning,Début
+Bill,Facture fournisseur
+Bill date,Date de la facture
+Bill details,Détails de la facture fournisseur
+Bill not found.,Facture fournisseur introuvable.
+Bill saved as draft.,Facture fournisseur enregistrée en brouillon.
+Bill total,Total de la facture fournisseur
+Bill updated.,Facture fournisseur mise à jour.
+Billed {0} · due {1},Facturé {0} · échéance {1}
+Bills the customer — Submit posts it as a receivable.,Facture le client — Soumettre l’enregistre comme créance.
+Both,Les deux
+Bucket,Tranche
+Can't exceed the outstanding {0}.,Ne peut pas dépasser l’encours de {0}.
+"Cancel ""{0}"" ({1})? Its effect on balances and reports is reversed. A cancelled expense can then be deleted.",Annuler « {0} » ({1}) ? Son effet sur les soldes et les rapports est inversé. Une dépense annulée peut ensuite être supprimée.
+Cancel bill,Annuler la facture fournisseur
+Cancel bill?,Annuler la facture fournisseur ?
+Cancel disbursement,Annuler le décaissement
+Cancel disbursement?,Annuler le décaissement ?
+Cancel expense,Annuler la dépense
+Cancel expense?,Annuler la dépense ?
+Cancel invoice,Annuler la facture
+Cancel invoice?,Annuler la facture ?
+Cancel petty cash request {0} for {1}?,Annuler la demande de petite caisse {0} pour {1} ?
+Cancel request?,Annuler la demande ?
+Cancel this {0}?,Annuler ce {0} ?
+Cancel transaction,Annuler la transaction
+Cancel your petty cash request {0}?,Annuler votre demande de petite caisse {0} ?
+Cancel {0}? Its payable and any allocations are reversed.,Annuler {0} ? Sa dette et ses allocations sont inversées.
+Cancel {0}? Its receivable and any allocations are reversed.,Annuler {0} ? Sa créance et ses allocations sont inversées.
+Cancelled — Journal Entry reversed.,Annulé — écriture de journal contre-passée.
+Cancelled — no longer a payable and excluded from costs.,Annulé — n’est plus une dette et exclu des coûts.
+Cancelled — no longer a receivable and excluded from income.,Annulé — n’est plus une créance et exclu des produits.
+Cancelled — this expense no longer affects balances or reports. It can be deleted.,Annulé — cette dépense n’affecte plus les soldes ni les rapports. Elle peut être supprimée.
+Cancelled.,Annulé.
+Cash & Bank,Caisse et banque
+Cash & Bank Statement,Relevé caisse et banque
+Cash & bank,Caisse et banque
+Cash in hand,Espèces en caisse
+Clear,Effacer
+Closing,Clôture
+Closing balance,Solde de clôture
+Company account,Compte de la société
+Contact,Contact
+Contact person,Personne à contacter
+Could not link the advance.,Impossible de lier l’avance.
+Create bill,Créer la facture fournisseur
+Create invoice,Créer la facture
+Customer,Client
+Customer deleted.,Client supprimé.
+Customer is required.,Le client est obligatoire.
+Customer type,Type de client
+Customers,Clients
+Customers owe us,Les clients nous doivent
+Defaults to you…,"Par défaut, vous…"
+Delete draft?,Supprimer le brouillon ?
+Delete expense?,Supprimer la dépense ?
+Delete failed,Échec de la suppression
+Delete failed — the customer may have linked transactions.,Échec de la suppression — le client a peut-être des transactions liées.
+Delete failed — the supplier may have linked transactions.,Échec de la suppression — le fournisseur a peut-être des transactions liées.
+Delete invoice?,Supprimer la facture ?
+Deleted.,Supprimé.
+Deposit into,Déposer sur
+Description is required.,La description est obligatoire.
+Description or id…,Description ou id…
+Direct,Direct
+Direct Expenses,Charges directes
+Direct Income,Produits directs
+Direct expenses,Charges directes
+Disburse,Décaisser
+Disburse failed,Échec du décaissement
+Disburse {0},Décaisser {0}
+Disbursed,Décaissé
+Disbursed (period),Décaissé (période)
+Disbursed — Journal Entry posted.,Décaissé — écriture de journal enregistrée.
+Disbursement reversed.,Décaissement contre-passé.
+"Disbursement rows hide automatically when an expense-only filter (account / status) is applied. Balance in hand is all-time; the other totals respect the filters. A negative balance is money the holder fronted — owed back to them, cleared on the next disbursement.",Les lignes de décaissement se masquent automatiquement lorsqu’un filtre dépenses uniquement (compte / statut) est appliqué. Le solde disponible est cumulé ; les autres totaux respectent les filtres. Un solde négatif correspond à de l’argent avancé par le titulaire — qui lui est dû et réglé au prochain décaissement.
+Disbursements only,Décaissements uniquement
+Discount,Remise
+Discount (on grand total),Remise (sur le total général)
+Discount (on net),Remise (sur le net)
+Draft — not posted yet. Submit it to make it a payable and enable payment.,Brouillon — pas encore enregistré. Soumettez-le pour en faire une dette et permettre le paiement.
+Draft — not posted yet. Submit it to make it a receivable and enable payment receipt.,Brouillon — pas encore enregistré. Soumettez-le pour en faire une créance et permettre l’encaissement.
+Draft/expense counts are sample data pending live finance registers.,Les compteurs de brouillons/dépenses sont des données d’exemple en attendant les registres financiers réels.
+Edit Customer,Modifier le client
+Edit Supplier,Modifier le fournisseur
+Edit expense,Modifier la dépense
+Email,E-mail
+Enter a purpose.,Saisissez un objet.
+Enter an amount greater than zero.,Saisissez un montant supérieur à zéro.
+Enter an amount.,Saisissez un montant.
+Entered — newest first,Saisie — plus récentes d’abord
+Entered — oldest first,Saisie — plus anciennes d’abord
+Entries,Écritures
+Entry,Écriture
+Expense Account,Compte de dépense
+Expense Summary,Récapitulatif des dépenses
+Expense account,Compte de dépense
+Expense date — newest first,Date de dépense — plus récentes d’abord
+Expense date — oldest first,Date de dépense — plus anciennes d’abord
+Expense saved.,Dépense enregistrée.
+Expense updated.,Dépense mise à jour.
+Expenses only,Dépenses uniquement
+Export CSV,Exporter en CSV
+Failed to load PO lines,Échec du chargement des lignes du bon de commande
+Failed to load accounts,Échec du chargement des comptes
+Failed to load accounts.,Échec du chargement des comptes.
+Failed to load balances,Échec du chargement des soldes
+Failed to load bill,Échec du chargement de la facture fournisseur
+Failed to load bills,Échec du chargement des factures fournisseurs
+Failed to load customers,Échec du chargement des clients
+Failed to load expenses,Échec du chargement des dépenses
+Failed to load expenses.,Échec du chargement des dépenses.
+Failed to load invoice,Échec du chargement de la facture
+Failed to load payments,Échec du chargement des paiements
+Failed to load statement,Échec du chargement du relevé
+Failed to load suppliers,Échec du chargement des fournisseurs
+Failed to load tax template,Échec du chargement du modèle de taxe
+Failed to load the statement.,Échec du chargement du relevé.
+Failed to load.,Échec du chargement.
+Failed to record advance,Échec de l’enregistrement de l’avance
+Failed to save,Échec de l’enregistrement
+Finance Overview,Aperçu financier
+Financial Position,Situation financière
+From,De
+From Purchase Order,Depuis un bon de commande
+From account,Compte débité
+From date,Date de début
+From date (posting date),Date de début (date de comptabilisation)
+From {0},De {0}
+Group by,Grouper par
+Hide empty accounts,Masquer les comptes vides
+Holder,Titulaire
+Holder (petty cash float),Titulaire (fonds de petite caisse)
+Import from template…,Importer depuis un modèle…
+In,Entrée
+In & out,Entrées et sorties
+Income,Produits
+"Income and expenses are posted GL entries, grouped by ledger account and scoped to the selected project and period. Direct vs indirect follows the chart of accounts' cost-of-sales boundary. Click an account to list its vouchers.","Les produits et charges sont des écritures de grand livre comptabilisées, regroupées par compte et limitées au projet et à la période sélectionnés. Direct vs indirect suit la frontière du coût des ventes du plan comptable. Cliquez sur un compte pour lister ses pièces."
+Indirect Expenses,Charges indirectes
+Indirect expenses,Charges indirectes
+Invoice,Facture
+Invoice date,Date de la facture
+Invoice details,Détails de la facture
+Invoice not found.,Facture introuvable.
+Invoice saved as draft.,Facture enregistrée en brouillon.
+Invoice total,Total de la facture
+Invoice updated.,Facture mise à jour.
+Invoiced {0} · due {1},Facturé {0} · échéance {1}
+Issue failed,Échec de l’émission
+Issue float,Émettre les fonds
+Issue petty cash directly,Émettre la petite caisse directement
+Issue to,Émettre à
+"Issued directly to the holder, no request behind it","Émis directement au titulaire, sans demande préalable"
+Issuing…,Émission…
+Lines pre-fill from the PO's unbilled quantities.,Les lignes se pré-remplissent à partir des quantités non facturées du bon de commande.
+Link,Lier
+Link advance payment,Lier un paiement d’avance
+Link advance →,Lier une avance →
+Linked {0} from {1} — outstanding is now {2}.,{0} lié depuis {1} — l’encours est maintenant {2}.
+Linking…,Liaison…
+Loading customers…,Chargement des clients…
+Loading payments…,Chargement des paiements…
+Loading suppliers…,Chargement des fournisseurs…
+Log site spend. It hits balances & reports once,Enregistrez les dépenses de chantier. Elles impactent les soldes et rapports une fois
+Manage,Gérer
+Max,Max
+Min,Min
+Mode of payment,Mode de paiement
+Money In,Entrées
+Money Out,Sorties
+Money in,Entrées
+Money out,Sorties
+Money paid to a supplier or subcontractor before (or without) a bill — it stays on the party's account until a later bill draws it down.,Argent versé à un fournisseur ou sous-traitant avant (ou sans) facture — il reste sur le compte du tiers jusqu’à ce qu’une facture ultérieure l’impute.
+Money received before (or without) an invoice — it stays on the customer's account until a later invoice draws it down.,Argent reçu avant (ou sans) facture — il reste sur le compte du client jusqu’à ce qu’une facture ultérieure l’impute.
+My Expenses,Mes dépenses
+My Requests,Mes demandes
+Name,Nom
+Name is required.,Le nom est obligatoire.
+Needs attention,À surveiller
+Net position,Position nette
+Net total,Total net
+New Bill,Nouvelle facture fournisseur
+New Customer,Nouveau client
+New Expense,Nouvelle dépense
+New Invoice,Nouvelle facture
+New Supplier,Nouveau fournisseur
+New bill,Nouvelle facture fournisseur
+New expense,Nouvelle dépense
+New party,Nouveau tiers
+New supplier bill,Nouvelle facture fournisseur
+Next →,Suivant →
+No accounts defined.,Aucun compte défini.
+No advances adjusted yet — {0} has {1} unallocated.,Aucune avance ajustée pour l’instant — {0} a {1} non alloué.
+No advances linked yet — {0} has {1} unallocated.,Aucune avance liée pour l’instant — {0} a {1} non alloué.
+No bills yet.,Aucune facture fournisseur pour l’instant.
+No contributing vouchers.,Aucune pièce contributrice.
+No customers yet.,Aucun client pour l’instant.
+No draft expenses awaiting submission.,Aucune dépense en brouillon en attente de soumission.
+No entries match the filters.,Aucune écriture ne correspond aux filtres.
+No expenses match.,Aucune dépense ne correspond.
+No invoices yet.,Aucune facture pour l’instant.
+No movements in this period.,Aucun mouvement sur cette période.
+No outstanding payables.,Aucune dette en cours.
+No outstanding receivables.,Aucune créance en cours.
+No petty-cash activity yet.,Aucune activité de petite caisse pour l’instant.
+No project,Aucun projet
+No purchase order — enter charge lines manually.,Aucun bon de commande — saisissez les lignes de charges manuellement.
+No receipt attached.,Aucun reçu joint.
+No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request.,Aucune demande ne précède ceci — l’enregistrement créé ici est la seule trace. À utiliser lorsque l’argent a réellement circulé avant toute demande.
+No submitted expenses in this period.,Aucune dépense soumise sur cette période.
+No suppliers yet.,Aucun fournisseur pour l’instant.
+No transactions match the filters.,Aucune transaction ne correspond aux filtres.
+No transactions recorded yet.,Aucune transaction enregistrée pour l’instant.
+No transactions yet.,Aucune transaction pour l’instant.
+No unadjusted advances left for this customer.,Plus d’avances non ajustées pour ce client.
+No unlinked advances left for this supplier.,Plus d’avances non liées pour ce fournisseur.
+None,Aucun
+Not due,Non échu
+Nothing here.,Rien ici.
+Nothing overdue.,Rien en retard.
+Nothing payable.,Rien à payer.
+On Grand Total,Sur le total général
+On Net Total,Sur le total net
+Only {0} is unadjusted on {1}.,Seul {0} est non ajusté sur {1}.
+Open {0}'s petty-cash report,Ouvrir le rapport de petite caisse de {0}
+Opening balance,Solde d’ouverture
+Opening carries everything before this date.,L’ouverture reprend tout ce qui précède cette date.
+Optional — tags the income to a project.,Facultatif — rattache le produit à un projet.
+Optional — ties the cost to a project's books.,Facultatif — rattache le coût à la comptabilité d’un projet.
+Out,Sortie
+Outstanding,Encours
+Overdue,En retard
+Overdue receivables,Créances en retard
+Page {0} / {1},Page {0} / {1}
+Paid from,Payé depuis
+"Paid from the holder's petty-cash float. If they fronted the money themselves, this simply pushes their balance negative — the amount owed back to them, settled on the next disbursement.","Payé depuis le fonds de petite caisse du titulaire. S’il a avancé l’argent lui-même, cela rend simplement son solde négatif — le montant qui lui est dû, réglé au prochain décaissement."
+Particulars,Libellé
+Partly Paid,Partiellement payé
+Party,Tiers
+Party name,Nom du tiers
+Party or document…,Tiers ou document…
+Pay,Payer
+Pay bill,Payer la facture fournisseur
+Pay from,Payer depuis
+Payable,À payer
+Payables,Dettes fournisseurs
+Payables (aged),Dettes fournisseurs (âgées)
+Payables due,Dettes à échéance
+Payables only,Dettes uniquement
+Paying…,Paiement…
+Payment failed,Échec du paiement
+Payment made.,Paiement effectué.
+Payment received.,Paiement reçu.
+Payments ({0}),Paiements ({0})
+Pending spend (period),Dépenses en attente (période)
+Period,Période
+"Permanently delete ""{0}"" ({1}) — already cancelled, no balance impact?","Supprimer définitivement « {0} » ({1}) — déjà annulé, sans impact sur les soldes ?"
+"Permanently delete ""{0}"" ({1})?",Supprimer définitivement « {0} » ({1}) ?
+Permanently delete {0}?,Supprimer définitivement {0} ?
+Person,Personne
+Petty Cash Statement,Relevé de petite caisse
+Petty cash holder,Titulaire de petite caisse
+Petty cash issued — Journal Entry posted.,Petite caisse émise — écriture de journal enregistrée.
+Petty cash requested.,Petite caisse demandée.
+Petty cash with holders,Petite caisse chez les titulaires
+Phone,Téléphone
+Pick a customer.,Choisissez un client.
+Pick a customer…,Choisissez un client…
+Pick a party.,Choisissez un tiers.
+"Pick a petty cash holder to see their personal statement — disbursements received, spend logged, and balance in hand.","Choisissez un titulaire de petite caisse pour voir son relevé personnel — décaissements reçus, dépenses enregistrées et solde disponible."
+Pick a project…,Choisissez un projet…
+Pick a supplier or subcontractor…,Choisissez un fournisseur ou sous-traitant…
+Pick a supplier…,Choisissez un fournisseur…
+Pick an account…,Choisissez un compte…
+Pick an expense account.,Choisissez un compte de dépense.
+Pick an item…,Choisissez un article…
+Pick the account to deposit into.,Choisissez le compte de dépôt.
+Pick the account to pay from.,Choisissez le compte à débiter.
+Pick the company account to pay from.,Choisissez le compte de la société à débiter.
+Pick the holder…,Choisissez le titulaire…
+Pick who is receiving the float.,Choisissez qui reçoit les fonds.
+"Posted transactions are cancelled, not edited — cancel the wrong entry and record a fresh one. All balances and outstandings recompute automatically.","Les transactions comptabilisées s’annulent, elles ne se modifient pas — annulez l’écriture erronée et enregistrez-en une nouvelle. Tous les soldes et encours se recalculent automatiquement."
+Posting…,Comptabilisation…
+Preview and print the invoice,Prévisualiser et imprimer la facture
+Profit,Résultat
+Profit & Loss,Compte de résultat
+Purpose,Objet
+Reason,Motif
+Receipt (optional),Reçu (facultatif)
+Receipt attached.,Reçu joint.
+Receipt failed,Échec du reçu
+Receipts ({0}),Réceptions ({0})
+Receivables,Créances
+Receivables & Payables,Créances et dettes
+Receivables (aged),Créances (âgées)
+Receivables only,Créances uniquement
+Receive,Encaisser
+Receive payment,Encaisser un paiement
+Receiving…,Encaissement…
+Recent transactions,Transactions récentes
+"Record a fresh transaction if it was entered wrongly — posted entries are cancelled, not edited.","Enregistrez une nouvelle transaction en cas d’erreur de saisie — les écritures comptabilisées s’annulent, elles ne se modifient pas."
+Record advance,Enregistrer une avance
+Record customer advance,Enregistrer une avance client
+Record payment,Enregistrer un paiement
+Record receipt,Enregistrer un encaissement
+Recording…,Enregistrement…
+Ref,Réf.
+Reference no.,N° de référence
+Remove line,Supprimer la ligne
+Report,Rapport
+Request Petty Cash,Demander de la petite caisse
+Request petty cash,Demander de la petite caisse
+Request withdrawn.,Demande retirée.
+Requested,Demandé
+Retention,Retenue de garantie
+Retention held,Retenue de garantie détenue
+Return {0} to {1}'s unallocated balance? The invoice's outstanding goes back up.,Rendre {0} au solde non alloué de {1} ? L’encours de la facture remonte.
+Return {0} to {1}'s unallocated balance? The net payable goes back up.,Rendre {0} au solde non alloué de {1} ? La dette nette remonte.
+Reversal failed,Échec de la contre-passation
+Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.,Contre-passer les {0} décaissés à {1} ? La demande retourne dans la file de décaissement et ses fonds diminuent.
+"Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.","Contre-passer les {0} émis à {1} ? Émis directement, l’enregistrement est supprimé et ses fonds diminuent."
+Sample,Exemple
+Sample data pending a live payments register.,Données d’exemple en attendant un registre de paiements réel.
+Save as draft,Enregistrer en brouillon
+Save bill,Enregistrer la facture fournisseur
+Save failed.,Échec de l’enregistrement.
+Save invoice,Enregistrer la facture
+Saved,Enregistré
+Search accounts…,Rechercher des comptes…
+"Search bill, party, project…","Rechercher facture, tiers, projet…"
+"Search description, holder, project, account…","Rechercher description, titulaire, projet, compte…"
+Search holders…,Rechercher des titulaires…
+"Search invoice, customer…","Rechercher facture, client…"
+"Search name, contact, tax ID…","Rechercher nom, contact, n° fiscal…"
+"Search name, contact, trade, tax ID…","Rechercher nom, contact, métier, n° fiscal…"
+Search parties…,Rechercher des tiers…
+Search requests…,Rechercher des demandes…
+"Search type, party, account, reference…","Rechercher type, tiers, compte, référence…"
+Select a PO with something to bill…,Sélectionnez un bon de commande à facturer…
+Settles against the receivable when the invoice is submitted.,S’impute sur la créance à la soumission de la facture.
+Settles the payable when the bill is submitted.,Règle la dette à la soumission de la facture fournisseur.
+Showing {0}–{1} of {2},Affichage de {0}–{1} sur {2}
+Sort,Trier
+Source,Source
+Sub,ST
+Subcontractor,Sous-traitant
+Subcontractor bill,Facture de sous-traitant
+Subcontractors,Sous-traitants
+"Subcontractors are suppliers of type ""Subcontractor"" — click one to open its master in the Subcontract module.",Les sous-traitants sont des fournisseurs de type « Sous-traitant » — cliquez sur l’un d’eux pour ouvrir sa fiche dans le module Sous-traitance.
+"Submit ""{0}"" ({1})? Submitting posts it — it will hit the {2} balance and the reports.",Soumettre « {0} » ({1}) ? La soumission l’enregistre — elle impactera le solde {2} et les rapports.
+Submit bill?,Soumettre la facture fournisseur ?
+Submit expense?,Soumettre la dépense ?
+Submit invoice?,Soumettre la facture ?
+Submit {0} ({1})? It posts the payable and can then be paid.,"Soumettre {0} ({1}) ? Elle enregistre la dette, qui peut ensuite être payée."
+Submit {0} ({1})? It posts the receivable and counts as income.,Soumettre {0} ({1}) ? Elle enregistre la créance et compte comme produit.
+Submitted,Soumis
+Submitted spend,Dépenses soumises
+Submitted spend (period),Dépenses soumises (période)
+Submitted — Journal Entry posted.,Soumis — écriture de journal enregistrée.
+Submitted.,Soumis.
+Supplier bill,Facture fournisseur
+Supplier deleted.,Fournisseur supprimé.
+Supplier invoice,Facture du fournisseur
+Supplier invoice date,Date de la facture du fournisseur
+Supplier invoice no.,N° de facture du fournisseur
+Supplier is required.,Le fournisseur est obligatoire.
+Supplier type,Type de fournisseur
+Supplier · project,Fournisseur · projet
+Supplier/customer advances and own-pocket reimbursements aren't broken out yet — shown as {0}0 until modelled.,Les avances fournisseurs/clients et les remboursements de frais personnels ne sont pas encore détaillés — affichés à {0}0 en attendant leur modélisation.
+Tax,Taxe
+Tax ID,N° fiscal
+Tax account…,Compte de taxe…
+Tax template…,Modèle de taxe…
+Taxable value,Base imposable
+Taxes & discount,Taxes et remise
+Terms & conditions,Conditions générales
+Terms printed on the invoice — import a template above or write your own.,Conditions imprimées sur la facture — importez un modèle ci-dessus ou saisissez les vôtres.
+Terms — import a template above or write your own.,Conditions — importez un modèle ci-dessus ou saisissez les vôtres.
+The bill's outstanding goes back up (or the advance paid is removed).,L’encours de la facture fournisseur remonte (ou l’avance versée est retirée).
+The invoice's outstanding goes back up (or the customer advance is removed).,L’encours de la facture remonte (ou l’avance client est retirée).
+Their reference,Leur référence
+"This customer master record will be removed permanently. Deletion is blocked if it has linked transactions (invoices, payments).","Cette fiche client sera supprimée définitivement. La suppression est bloquée en présence de transactions liées (factures, paiements)."
+"This supplier master record will be removed permanently. Deletion is blocked if it has linked transactions (bills, payments, work orders).","Cette fiche fournisseur sera supprimée définitivement. La suppression est bloquée en présence de transactions liées (factures, paiements, ordres de travaux)."
+To,À
+To Disburse,À décaisser
+To Submit,À soumettre
+To date,Date de fin
+To date (posting date),Date de fin (date de comptabilisation)
+To reimburse (own-pocket),À rembourser (frais personnels)
+To {0},À {0}
+Total Expense (Debit),Total des charges (débit)
+Total Income (Credit),Total des produits (crédit)
+Total advance adjusted,Total des avances ajustées
+Total assets,Total de l’actif
+Total income,Total des produits
+Total liabilities,Total du passif
+Transaction cancelled.,Transaction annulée.
+Type: {0},Type : {0}
+UTR / cheque no.,UTR / n° de chèque
+Unallocated,Non alloué
+Unknown finance section.,Section financière inconnue.
+Unknown report.,Rapport inconnu.
+Unlink,Délier
+Unlink advance?,Délier l’avance ?
+Unlink failed,Échec de la déliaison
+Unlink {0},Délier {0}
+Unpaid,Impayé
+Updated,Mis à jour
+Upload failed.,Échec du téléversement.
+Uploading…,Téléversement…
+View Customer,Voir le client
+View Supplier,Voir le fournisseur
+View receipt,Voir le reçu
+What is it for?,À quoi cela sert-il ?
+What was bought?,Qu’a-t-on acheté ?
+What we have,Ce que nous avons
+What we owe,Ce que nous devons
+What's it for?,À quoi cela sert-il ?
+"Whole company, as it stands right now — this one has no period or project filter.","Toute la société, à l’instant présent — sans filtre de période ni de projet."
+Withdraw,Retirer
+Withdraw failed,Échec du retrait
+Withdraw request?,Retirer la demande ?
+You don't have permission to create a supplier bill.,Vous n’avez pas la permission de créer une facture fournisseur.
+You don't have permission to create an invoice.,Vous n’avez pas la permission de créer une facture.
+You don't have permission to edit this bill.,Vous n’avez pas la permission de modifier cette facture fournisseur.
+You don't have permission to edit this invoice.,Vous n’avez pas la permission de modifier cette facture.
+You haven't logged any expenses.,Vous n’avez enregistré aucune dépense.
+"Your user account isn't linked to an Employee, so spend can't be logged. Ask an administrator to set the Employee's User ID.","Votre compte utilisateur n’est pas lié à un employé, les dépenses ne peuvent donc pas être enregistrées. Demandez à un administrateur de renseigner l’ID utilisateur de l’employé."
+accounts,comptes
+cost of sales,coût des ventes
+due,échéance
+e.g. Block A — RA-4 milestone,p. ex. Bloc A — jalon RA-4
+expenses,dépenses
+have − owe · report →,avoir − devoir · rapport →
+movements,mouvements
+no income in period,aucun produit sur la période
+none overdue,aucun en retard
+overheads,frais généraux
+posted invoices,factures comptabilisées
+retention,retenue de garantie
+set,définir
+to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).,à {0} · enregistre une écriture de journal (Dr Petite caisse / Cr le compte source).
+withheld on sub-bills,retenu sur les factures de sous-traitants
+{0} account,{0} compte
+{0} accounts,{0} comptes
+{0} bill,{0} facture fournisseur
+{0} bills,{0} factures fournisseurs
+{0} d,{0} j
+{0} draft invoice not yet posted,{0} facture en brouillon non comptabilisée
+{0} draft invoices not yet posted,{0} factures en brouillon non comptabilisées
+{0} entries,{0} écritures
+{0} entry,{0} écriture
+{0} expense awaiting submit,{0} dépense en attente de soumission
+{0} expenses awaiting submit,{0} dépenses en attente de soumission
+{0} has {1} in unlinked advance payment,{0} a {1} en paiement d’avance non lié
+{0} has {1} in unlinked advance payments,{0} a {1} en paiements d’avance non liés
+{0} in hand,{0} disponible
+{0} invoice overdue — chase receivables,{0} facture en retard — relancer les créances
+{0} invoices overdue — chase receivables,{0} factures en retard — relancer les créances
+{0} of {1} — {2} ({3}).,{0} sur {1} — {2} ({3}).
+{0} owed,{0} dû
+{0} owed to holder,{0} dû au titulaire
+{0} to {1},{0} à {1}
+{0} transaction,{0} transaction
+{0} transactions,{0} transactions
+{0} → {1},{0} → {1}
+{0}% margin,{0} % de marge
+{0}% of income,{0} % des produits
+— Pick a holder —,— Choisir un titulaire —
+— Pick cost code —,— Choisir un code de coût —
+— link it to this bill to settle the payable.,— liez-le à cette facture fournisseur pour régler la dette.
+— link them to this bill to settle the payable.,— liez-les à cette facture fournisseur pour régler la dette.
+← Prev,← Préc.
+✓ Receipt attached,✓ Reçu joint
+📷 Attach receipt,📷 Joindre un reçu
+Active,Actif
+Pending Approval,En attente d’approbation
+Approved,Approuvé
+Rejected,Rejeté
+Awarded,Attribué
+Inactive,Inactif
+Superseded,Remplacé
+Replaced,Remplacé
+Manual,Manuel
+Assembly,Assemblage
+Present,Présent
+Full Day,Journée complète
+Half Day,Demi-journée
+Absent,Absent
+Overtime Only,Heures supp. uniquement
+Partially Received,Partiellement reçu
+Transferred,Transféré
+Delivered,Livré
+Partly Billed,Partiellement facturé
+Return,Retour
+New {0},Nouveau {0}
+Create “{0}”,Créer « {0} »
+% Billed,% facturé
+(optional),(facultatif)
++ Add entry,+ Ajouter une entrée
++ Add line,+ Ajouter une ligne
++ Bill progress,+ Facturer l’avancement
++ Create Subcontractor bill,+ Créer une facture de sous-traitant
++ Raise new work order,+ Créer un ordre de travaux
++ Record measurement,+ Enregistrer une mesure
+Account Head,Compte comptable
+Account…,Compte…
+Add at least one line with an amount.,Ajoutez au moins une ligne avec un montant.
+Add at least one measurement entry.,Ajoutez au moins une entrée de mesure.
+Add at least one schedule-of-values line.,Ajoutez au moins une ligne de décomposition du prix.
+Add: Taxes,Plus : taxes
+Additional Discount,Remise supplémentaire
+Advance,Avance
+Advance amount,Montant de l’avance
+Advance recovery (₹),Récupération d’avance (₹)
+All subcontractors,Tous les sous-traitants
+All trades,Tous les corps de métier
+Apply TDS (withholding),Appliquer la retenue à la source (TDS)
+B,B
+Back to work order,Retour à l’ordre de travaux
+Bill #,N° de facture
+Bill ID,ID de la facture
+Bill cancelled.,Facture annulée.
+Bill progress against this work order (derives this period from certified Measurement Books),Facturer l’avancement sur cet ordre de travaux (la période est dérivée des carnets de mesures certifiés)
+Bill type,Type de facture
+Bill {0},Facture {0}
+Billed to date,Facturé à ce jour
+Billing saved.,Facturation enregistrée.
+Bills ({0}),Factures ({0})
+Cancel Bill {0}?,Annuler la facture {0} ?
+Cancel work order,Annuler l’ordre de travaux
+Capture a site measurement (Nos × L × B × D → qty) against this WO,Saisir une mesure de chantier (Nos × L × B × D → qté) pour cet OT
+Certified by,Certifié par
+Certified measurement books become the source of measured-to-date on the work order. Revert to Draft to retract.,Les carnets de mesures certifiés deviennent la source du mesuré à ce jour sur l’ordre de travaux. Repassez en brouillon pour les retirer.
+Certify,Certifier
+Certify failed,Échec de la certification
+Certify {0}?,Certifier {0} ?
+Charge lines,Lignes de charges
+Cost code (optional),Code de coût (facultatif)
+Create MB,Créer un carnet de mesures
+Create Subcontractor bill,Créer une facture de sous-traitant
+Create subcontractor,Créer un sous-traitant
+Create work order,Créer l’ordre de travaux
+D,D
+Deduct,Déduire
+Deduction,Déduction
+Default (Subcontractor Charges),Par défaut (charges de sous-traitance)
+"Delete ""{0}""?",Supprimer « {0} » ?
+Delete Bill {0}?,Supprimer la facture {0} ?
+Delivery type,Type de prestation
+Derived from Nos × L × B × D — type to override.,Dérivé de Nos × L × B × D — saisissez pour remplacer.
+Derived from the work order.,Dérivé de l’ordre de travaux.
+Describe the work — free text,Décrivez les travaux — texte libre
+Details,Détails
+Direct (no work order),Direct (sans ordre de travaux)
+Direct bill,Facture directe
+Direct bill — for one-off / lump-sum charges. Taxes are applied on the detail page.,Facture directe — pour des charges ponctuelles / forfaitaires. Les taxes sont appliquées sur la page de détail.
+"Each entry needs a description, WO line and UOM.","Chaque entrée nécessite une description, une ligne d’OT et une unité."
+Edit in work order,Modifier dans l’ordre de travaux
+Email id,Adresse e-mail
+"Entries — Quantity = Nos × L × B × D, or type directly","Entrées — Quantité = Nos × L × B × D, ou saisie directe"
+Exceeds awarded qty — flag for variation,Dépasse la quantité attribuée — à signaler pour avenant
+Failed to create subcontractor,Échec de la création du sous-traitant
+Failed to delete measurement book,Échec de la suppression du carnet de mesures
+Failed to delete work order,Échec de la suppression de l’ordre de travaux
+Failed to load measurement book,Échec du chargement du carnet de mesures
+Failed to load subcontractor,Échec du chargement du sous-traitant
+Failed to load template rows,Échec du chargement des lignes du modèle
+Failed to load work order,Échec du chargement de l’ordre de travaux
+Failed to save bill,Échec de l’enregistrement de la facture
+Failed to save measurement book,Échec de l’enregistrement du carnet de mesures
+Failed to save work order,Échec de l’enregistrement de l’ordre de travaux
+Failed to update subcontractor,Échec de la mise à jour du sous-traitant
+Filter by trade,Filtrer par corps de métier
+Final (release retention),Finale (libération de la retenue)
+From Work Order,Depuis un ordre de travaux
+Fully paid — {0} of {1},Entièrement payé — {0} sur {1}
+Grand Total,Total général
+Grand total,Total général
+Gross,Brut
+Gross bill value,Valeur brute de la facture
+Gross this period,Brut de la période
+Header,En-tête
+"Held on your books, released on the final bill.","Retenu dans vos comptes, libéré sur la facture finale."
+How qty is computed:,Comment la quantité est calculée :
+Import from template,Importer depuis un modèle
+Invoice value,Valeur de la facture
+"Invoices, measurement sheets, and site photos go here.","Les factures, feuilles de mesures et photos de chantier vont ici."
+L,L
+Less retention ({0}%),Moins retenue ({0} %)
+Less: Advance recovery,Moins : récupération d’avance
+Less: Discount (on Grand Total),Moins : remise (sur le total général)
+Less: Discount (on Net Total),Moins : remise (sur le total net)
+Less: Retention held @ {0}%,Moins : retenue de garantie @ {0} %
+Less: TDS withheld @ {0}%,Moins : retenue à la source @ {0} %
+Line value,Valeur de la ligne
+Lines — claimed against schedule of values,Lignes — réclamées sur la décomposition du prix
+Loading bills…,Chargement des factures…
+Loading measurement book…,Chargement du carnet de mesures…
+Loading subcontractors…,Chargement des sous-traitants…
+Loading subcontractor…,Chargement du sous-traitant…
+Loading work order…,Chargement de l’ordre de travaux…
+MB,CM
+MB ID,ID du carnet de mesures
+Make Payment,Effectuer un paiement
+Make payment,Effectuer un paiement
+Mark as a deduction (subtracts from measured total),Marquer comme déduction (soustrait du total mesuré)
+Measured,Mesuré
+Measured by,Mesuré par
+Measured to date,Mesuré à ce jour
+Measured total,Total mesuré
+Measurement Books,Carnets de mesures
+Measurement book certified.,Carnet de mesures certifié.
+Measurement book not found.,Carnet de mesures introuvable.
+Measurement books ({0}),Carnets de mesures ({0})
+Measurements,Mesures
+Mode,Mode
+Net Total,Total net
+Net payable,Net à payer
+Net payable to subcontractor,Net à payer au sous-traitant
+New Measurement Book,Nouveau carnet de mesures
+New Subcontractor,Nouveau sous-traitant
+New Subcontractor Bill,Nouvelle facture de sous-traitant
+New Work Order,Nouvel ordre de travaux
+No attachments yet.,Aucune pièce jointe pour l’instant.
+No bills raised yet against this WO.,Aucune facture émise pour l’instant sur cet OT.
+No fresh measured quantity to bill — certify a Measurement Book first.,Aucune nouvelle quantité mesurée à facturer — certifiez d’abord un carnet de mesures.
+No measurement books recorded yet.,Aucun carnet de mesures enregistré pour l’instant.
+No measurements recorded yet against this WO.,Aucune mesure enregistrée pour l’instant sur cet OT.
+No subcontractor bills yet.,Aucune facture de sous-traitant pour l’instant.
+No subcontractors yet.,Aucun sous-traitant pour l’instant.
+No tax,Aucune taxe
+No tax. Pick a template or add a row.,Aucune taxe. Choisissez un modèle ou ajoutez une ligne.
+No terms set. Edit the work order to import a template or type custom terms.,Aucune condition définie. Modifiez l’ordre de travaux pour importer un modèle ou saisir des conditions.
+No unlinked advances left for this subcontractor.,Plus d’avances non liées pour ce sous-traitant.
+No work orders raised against this subcontractor yet.,Aucun ordre de travaux émis pour ce sous-traitant pour l’instant.
+No work orders raised yet.,Aucun ordre de travaux émis pour l’instant.
+Normal,Normale
+Nos,Nbre
+Nothing to bill — add a line with an amount.,Rien à facturer — ajoutez une ligne avec un montant.
+Open the new Subcontractor Bill form pre-filled to this Work Order,Ouvrir le formulaire de facture de sous-traitant pré-rempli pour cet ordre de travaux
+Open the printable work order (Save as PDF from the browser print dialog),Ouvrir l’ordre de travaux imprimable (Enregistrer en PDF depuis la boîte d’impression)
+Override active (clear to re-derive).,Remplacement actif (effacer pour recalculer).
+Paid from account,Compte débité
+Paid on,Payé le
+Payment recorded.,Paiement enregistré.
+Phone number,Numéro de téléphone
+Pick a delivery type…,Choisissez un type de prestation…
+Pick a standard template to fill the box below. You can edit the text after importing.,Choisissez un modèle standard pour remplir le champ ci-dessous. Vous pourrez modifier le texte après l’import.
+Pick a subcontractor.,Choisissez un sous-traitant.
+Pick a subcontractor…,Choisissez un sous-traitant…
+Pick a work order to derive this period's lines.,Choisissez un ordre de travaux pour dériver les lignes de la période.
+Pick a work order.,Choisissez un ordre de travaux.
+Pick a work order…,Choisissez un ordre de travaux…
+Pick category…,Choisissez une catégorie…
+Pick code…,Choisissez un code…
+Prev. billed,Préc. facturé
+Previously billed,Précédemment facturé
+Purchase Invoice,Facture d’achat
+Purchase Invoice {0} generated — bill submitted.,Facture d’achat {0} générée — facture soumise.
+Purchase Invoice {0} generated.,Facture d’achat {0} générée.
+Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract.,Quantité = Nos × L × B × D (ou saisie directe). Les lignes de déduction se soustraient.
+Recovered here,Récupéré ici
+Reference,Référence
+Remarks,Remarques
+Retention %,Retenue %
+Retention (%),Retenue (%)
+Retention {0}%,Retenue {0} %
+"Retention, TDS & discount","Retenue, TDS et remise"
+Revert failed,Échec du retour en brouillon
+Revert to Draft,Repasser en brouillon
+Save billing,Enregistrer la facturation
+Schedule of values,Décomposition du prix
+Scope,Périmètre
+Scope / description,Périmètre / description
+"Search MB, WO, project…","Rechercher CM, OT, projet…"
+"Search WO, subcontractor, project…","Rechercher OT, sous-traitant, projet…"
+"Search bill, subcontractor, project…","Rechercher facture, sous-traitant, projet…"
+"Search name, trade, contact…","Rechercher nom, corps de métier, contact…"
+Sets the accounting company.,Définit la société comptable.
+Settles the payable — advance payments linked below.,Règle la dette — paiements d’avance liés ci-dessous.
+Settles the payable — advance payments linked below; reflects in the outstanding.,Règle la dette — paiements d’avance liés ci-dessous ; se reflète dans l’encours.
+State,État
+Subcontractor Bill {0},Facture de sous-traitant {0}
+Subcontractor Invoice Date,Date de la facture du sous-traitant
+Subcontractor Invoice No,N° de facture du sous-traitant
+Subcontractor inv:,Facture sous-traitant :
+Submit Bill {0}?,Soumettre la facture {0} ?
+Submit this work order for {0}? It becomes committed cost and its schedule of values is locked.,Soumettre cet ordre de travaux pour {0} ? Il devient un coût engagé et sa décomposition du prix est verrouillée.
+Sum across certified Measurement Books for this line,Somme sur les carnets de mesures certifiés pour cette ligne
+Tax Rate,Taux de taxe
+Taxes and Charges,Taxes et charges
+Template,Modèle
+Terms,Conditions
+Terms & conditions printed on the work order…,Conditions générales imprimées sur l’ordre de travaux…
+The entries are removed permanently. Measured-to-date on the work order will recompute against the remaining certified books.,Les entrées sont supprimées définitivement. Le mesuré à ce jour sur l’ordre de travaux sera recalculé d’après les carnets certifiés restants.
+This cancelled bill will be removed permanently.,Cette facture annulée sera supprimée définitivement.
+"This cancels the bill and its Purchase Invoice, reversing the postings.","Cela annule la facture et sa facture d’achat, en contre-passant les écritures."
+This cancels the work order. It's blocked if measurement books or bills exist against it.,Cela annule l’ordre de travaux. C’est bloqué si des carnets de mesures ou des factures y sont rattachés.
+This draft bill will be removed permanently.,Cette facture en brouillon sera supprimée définitivement.
+This period,Cette période
+This period (derived from certified Measurement Books),Cette période (dérivée des carnets de mesures certifiés)
+This period amount,Montant de la période
+This period qty,Qté de la période
+This period qty = (Measured to date from Certified MBs) − (Previously billed qty). Read-only on this bill.,Qté de la période = (mesuré à ce jour des CM certifiés) − (qté précédemment facturée). En lecture seule sur cette facture.
+This posts the bill and generates the Purchase Invoice for {0} net payable. A submitted bill is read-only.,Cela enregistre la facture et génère la facture d’achat pour {0} net à payer. Une facture soumise est en lecture seule.
+This subcontractor master record will be removed permanently.,Cette fiche sous-traitant sera supprimée définitivement.
+This work order and its schedule of values will be removed permanently.,Cet ordre de travaux et sa décomposition du prix seront supprimés définitivement.
+Total advance recovered,Total des avances récupérées
+Total taxes,Total des taxes
+Total value,Valeur totale
+Trade,Corps de métier
+Trade is required.,Le corps de métier est obligatoire.
+WO,OT
+WO ID,ID de l’OT
+WO line,Ligne d’OT
+WO total,Total de l’OT
+What is being billed,Ce qui est facturé
+What was measured,Ce qui a été mesuré
+Withheld,Retenu
+Withholding category,Catégorie de retenue
+Work Order,Ordre de travaux
+Work order,Ordre de travaux
+Work order cancelled.,Ordre de travaux annulé.
+Work order not found.,Ordre de travaux introuvable.
+Work order submitted.,Ordre de travaux soumis.
+Work orders ({0}),Ordres de travaux ({0})
+You don't have permission to create a measurement book.,Vous n’avez pas la permission de créer un carnet de mesures.
+You don't have permission to create a subcontractor.,Vous n’avez pas la permission de créer un sous-traitant.
+You don't have permission to create a work order.,Vous n’avez pas la permission de créer un ordre de travaux.
+You don't have permission to edit this measurement book.,Vous n’avez pas la permission de modifier ce carnet de mesures.
+You don't have permission to edit this work order.,Vous n’avez pas la permission de modifier cet ordre de travaux.
+across {0} entries,sur {0} entrées
+across {0} entry,sur {0} entrée
+bills,factures
+clear override,effacer le remplacement
+direct,direct
+"e.g. GSTIN (India), VAT No, TIN","p. ex. GSTIN (Inde), n° TVA, TIN"
+e.g. SI-2026-0042,p. ex. SI-2026-0042
+"manual charge lines, not tied to a Work Order.","lignes de charges manuelles, non liées à un ordre de travaux."
+paid {0} of {1},payé {0} sur {1}
+{0} work order reference this subcontractor and would be left dangling.,{0} ordre de travaux référence ce sous-traitant et resterait orphelin.
+{0} work orders reference this subcontractor and would be left dangling.,{0} ordres de travaux référencent ce sous-traitant et resteraient orphelins.
+{0}% withheld,{0} % retenu
+— Choose a terms template —,— Choisir un modèle de conditions —
+— No tax —,— Aucune taxe —
+— Optional —,— Facultatif —
+"A half day counts as half a man-day. Both halves come from submitted attendance sheets — a sheet left in draft is in neither register, so it is not here either.","Une demi-journée compte pour un demi jour-homme. Les deux moitiés proviennent des feuilles de présence soumises — une feuille restée en brouillon n’est dans aucun registre, elle n’est donc pas ici non plus."
+Absences,Absences
+Add Row,Ajouter une ligne
+Add to Table,Ajouter au tableau
+All employees,Tous les employés
+All sites,Tous les chantiers
+Allocated,Alloué
+Applies to all rows.,S’applique à toutes les lignes.
+Attendance cancelled,Présence annulée
+Attendance created,Présence créée
+Attendance submitted,Présence soumise
+Back to Crews,Retour aux équipes
+Back to Field Attendance,Retour à la présence chantier
+Back to Field Employees,Retour aux employés de chantier
+Books the whole sheet to one task.,Impute toute la feuille à une seule tâche.
+Bulk Select,Sélection groupée
+Bulk Select Employees,Sélection groupée d’employés
+Cancel sheet,Annuler la feuille
+Code,Code
+Comments,Commentaires
+Contractor,Contractuel
+Could not amend,Impossible d’amender
+Could not load the crew.,Impossible de charger l’équipe.
+Covering {0}.,Couvre {0}.
+Create,Créer
+Create crew,Créer l’équipe
+Crew,Équipe
+Crew (optional),Équipe (facultatif)
+Crew created,Équipe créée
+Crew leader,Chef d’équipe
+Crew name,Nom de l’équipe
+Crew not found.,Équipe introuvable.
+Daily rate,Taux journalier
+Daily wage,Salaire journalier
+Date of birth,Date de naissance
+Date of joining,Date d’entrée
+Days,Jours
+"Days worked, overtime and what the labour cost — rolled up from submitted attendance.","Jours travaillés, heures supplémentaires et coût de main-d’œuvre — consolidés depuis les présences soumises."
+Deploy to task…,Affecter à une tâche…
+Emp ID,ID employé
+Employee,Employé
+Employee List,Liste des employés
+Employee code,Code employé
+Employees,Employés
+Failed to create attendance,Échec de la création de la présence
+Failed to create crew,Échec de la création de l’équipe
+Failed to create field employee,Échec de la création de l’employé de chantier
+Failed to delete attendance,Échec de la suppression de la présence
+Failed to delete crew,Échec de la suppression de l’équipe
+Failed to delete field employee,Échec de la suppression de l’employé de chantier
+Failed to update attendance,Échec de la mise à jour de la présence
+Failed to update crew,Échec de la mise à jour de l’équipe
+Failed to update field employee,Échec de la mise à jour de l’employé de chantier
+Field Employee,Employé de chantier
+Field attendance not found.,Présence chantier introuvable.
+Field employee created,Employé de chantier créé
+Field employee not found.,Employé de chantier introuvable.
+First name,Prénom
+From the worker's trade,D’après le corps de métier de l’ouvrier
+Full,Complète
+Gender,Genre
+Half,Demie
+Labour Attendance Register,Registre de présence de la main-d’œuvre
+Labour cost,Coût de main-d’œuvre
+Last name,Nom
+Leader,Chef
+Loading attendance…,Chargement de la présence…
+Loading crew…,Chargement de l’équipe…
+Loading field employee…,Chargement de l’employé de chantier…
+Man-days,Jours-homme
+Members,Membres
+New Crew,Nouvelle équipe
+New Field Attendance,Nouvelle présence chantier
+New Field Employee,Nouvel employé de chantier
+No attendance has been submitted yet.,Aucune présence n’a encore été soumise.
+No employees.,Aucun employé.
+No employees. Use,Aucun employé. Utilisez
+No labour attendance yet — submit a Field Attendance.,Aucune présence de main-d’œuvre pour l’instant — soumettez une présence chantier.
+No members yet. Add workers to the crew.,Aucun membre pour l’instant. Ajoutez des ouvriers à l’équipe.
+No members.,Aucun membre.
+No overtime yet — submit a Field Attendance with overtime hours.,Aucune heure supplémentaire pour l’instant — soumettez une présence chantier avec des heures supplémentaires.
+No workers match.,Aucun ouvrier ne correspond.
+Nothing matches these filters.,Aucun résultat pour ces filtres.
+OT hrs,H supp.
+OT rate,Taux h. supp.
+OT share,Part h. supp.
+OT wage,Salaire h. supp.
+OT wages,Salaires h. supp.
+On sheet,Sur la feuille
+Overtime,Heures supplémentaires
+Overtime Attendance Register,Registre des heures supplémentaires
+Overtime hours,Heures supplémentaires
+Overtime wage,Salaire des heures supplémentaires
+Pick a crew…,Choisissez une équipe…
+Pick a worker…,Choisissez un ouvrier…
+Pick worker…,Choisissez un ouvrier…
+Project roster ({0}),Effectif du projet ({0})
+Records which gang worked this sheet.,Enregistre quelle équipe a travaillé sur cette feuille.
+Remove member,Retirer le membre
+Remove row,Supprimer la ligne
+Role,Rôle
+Search attendance…,Rechercher une présence…
+Search crews…,Rechercher des équipes…
+Search employees…,Rechercher des employés…
+Search employee…,Rechercher un employé…
+Search worker / project…,Rechercher ouvrier / projet…
+Search workers…,Rechercher des ouvriers…
+Select All,Tout sélectionner
+Select Crew,Sélectionner une équipe
+Select crew…,Sélectionner une équipe…
+Select trade,Sélectionner un corps de métier
+Site,Chantier
+Site Attendance Summary,Récapitulatif de présence du chantier
+Sites,Chantiers
+Submit to post the attendance and generate the Labour and Overtime registers.,Soumettez pour enregistrer la présence et générer les registres de main-d’œuvre et d’heures supplémentaires.
+Task (optional),Tâche (facultatif)
+That crew has no members.,Cette équipe n’a aucun membre.
+The crew is removed. Field attendance that referenced it keeps its stored rows.,L’équipe est supprimée. Les présences chantier qui la référençaient conservent leurs lignes enregistrées.
+This draft attendance sheet will be removed permanently.,Cette feuille de présence en brouillon sera supprimée définitivement.
+"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited.","Cela enregistre la présence et génère les registres de main-d’œuvre et d’heures supplémentaires. Une feuille enregistrée s’annule, elle ne se modifie pas."
+This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy.,Cela contre-passe la feuille — ses écritures dans les registres de main-d’œuvre et d’heures supplémentaires sont annulées avec elle. Amendez ensuite pour créer une copie corrigée.
+This sheet is {0} and can no longer be edited here.,Cette feuille est {0} et ne peut plus être modifiée ici.
+This worker record will be removed permanently.,Cette fiche ouvrier sera supprimée définitivement.
+Total OT hours {0} · Total amount {1},Total heures supp. {0} · Montant total {1}
+Total daily wages {0},Total des salaires journaliers {0}
+Unselect All,Tout désélectionner
+Wage rate,Taux de salaire
+Wages,Salaires
+Worker,Ouvrier
+Workers,Ouvriers
+You don't have access to this attendance sheet,Vous n’avez pas accès à cette feuille de présence
+You don't have access to this crew,Vous n’avez pas accès à cette équipe
+You don't have access to this field employee,Vous n’avez pas accès à cet employé de chantier
+You don't have permission to create a crew.,Vous n’avez pas la permission de créer une équipe.
+You don't have permission to create a field attendance sheet.,Vous n’avez pas la permission de créer une feuille de présence chantier.
+You don't have permission to create a field employee.,Vous n’avez pas la permission de créer un employé de chantier.
+e.g. Block A Structural Gang,p. ex. Équipe structure Bloc A
+hrs,h
+sites,chantiers
+to load a crew or the whole roster.,pour charger une équipe ou tout l’effectif.
+workers,ouvriers
+{0} member,{0} membre
+{0} members,{0} membres
+{0} of {1} {2},{0} sur {1} {2}
+{0} selected,{0} sélectionné(s)
+% vs plan,% vs plan
++ Add,+ Ajouter
++ Attach file,+ Joindre un fichier
++ New Project,+ Nouveau projet
++ New Stage,+ Nouvelle étape
++ New Task,+ Nouvelle tâche
++ Raise BOQ revision,+ Créer une révision du devis
++{0}d LATE,+{0} j DE RETARD
+A BOQ revision can be raised once this change order is approved.,Une révision du devis peut être créée une fois cet ordre de modification approuvé.
+A new draft copy will be created from this rejected stage so you can edit and resubmit it. The rejected stage is kept as a record.,Une nouvelle copie brouillon sera créée à partir de cette étape rejetée pour que vous puissiez la modifier et la resoumettre. L’étape rejetée est conservée comme trace.
+A progress entry can't be 0% — record the progress actually made.,Une saisie d’avancement ne peut pas être à 0 % — enregistrez l’avancement réellement réalisé.
+Active projects,Projets actifs
+Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate.,Activité = travail standard avec saisies d’avancement ; Jalon = point de contrôle sans avancement de quantité ; Inspection = point de passage conforme/non conforme.
+Actual {0}% · Planned {1}%,Réel {0} % · Planifié {1} %
+Add,Ajouter
+Add a task that depends on this one,Ajouter une tâche qui dépend de celle-ci
+Add a task this one depends on,Ajouter une tâche dont celle-ci dépend
+Add predecessor,Ajouter un prédécesseur
+Add successor,Ajouter un successeur
+Add/Remove Tasks,Ajouter / retirer des tâches
+Apply cascade,Appliquer la cascade
+Approve,Approuver
+Approve failed,Échec de l’approbation
+Approve stage,Approuver l’étape
+Approve {0}?,Approuver {0} ?
+Approving lets a BOQ revision be raised from this change order.,L’approbation permet de créer une révision du devis à partir de cet ordre de modification.
+"Approving will lock the stage scope, dates, and task list. Subsequent edits require Revise.","L’approbation verrouille le périmètre, les dates et la liste des tâches de l’étape. Les modifications ultérieures nécessitent une révision."
+Assignee,Assigné à
+Assignee: Any,Assigné à : tous
+Assignment,Affectation
+Assignment & status,Affectation et statut
+Attach file,Joindre un fichier
+Attach files,Joindre des fichiers
+Awaiting PM / Director approval.,En attente de l’approbation du chef de projet / directeur.
+BOQ impact,Impact sur le devis
+BOQ revision raised:,Révision du devis créée :
+Back to Progress Entries,Retour aux saisies d’avancement
+Back to Stage Planning,Retour à la planification des étapes
+Back to Tasks,Retour aux tâches
+Back to Work Packages,Retour aux lots de travaux
+Back to list,Retour à la liste
+Back to list →,Retour à la liste →
+Blocker,Blocage
+Blocker detail,Détail du blocage
+Blocker flagged,Blocage signalé
+Blockers,Blocages
+Blockers only,Blocages uniquement
+Budget (₹),Budget (₹)
+By Stage,Par étape
+By WP,Par lot
+Cancel keeps your dragged task at its new dates but leaves dependents flagged for conflict — you can resolve them manually or reschedule again later.,Annuler conserve la tâche déplacée à ses nouvelles dates mais laisse les dépendantes signalées en conflit — vous pourrez les résoudre manuellement ou replanifier plus tard.
+Cancel stage,Annuler l’étape
+Capture photo,Prendre une photo
+Cascade failed.,Échec de la cascade.
+Change order,Ordre de modification
+Clear search,Effacer la recherche
+Client recoverable,Récupérable auprès du client
+Collapse,Réduire
+Collapse all groups,Réduire tous les groupes
+Cost / control boundary inside a project,Frontière de coût / contrôle au sein d’un projet
+Cost impact (₹),Impact sur les coûts (₹)
+Cost recovery,Récupération des coûts
+Could not create dependency.,Impossible de créer la dépendance.
+Could not delete dependency.,Impossible de supprimer la dépendance.
+Could not delete revision.,Impossible de supprimer la révision.
+Could not reschedule.,Impossible de replanifier.
+Could not save revision.,Impossible d’enregistrer la révision.
+Could not update dependency.,Impossible de mettre à jour la dépendance.
+Count of skilled workers on site today,Nombre d’ouvriers qualifiés sur site aujourd’hui
+Count of unskilled workers / helpers,Nombre d’ouvriers non qualifiés / aides
+Create Stage,Créer l’étape
+Create a task and assign it to a project or work package,Créer une tâche et l’affecter à un projet ou un lot de travaux
+Create a task →,Créer une tâche →
+Create task,Créer la tâche
+Create work package,Créer le lot de travaux
+Creating stage…,Création de l’étape…
+Creating this dependency would close a cycle.,Créer cette dépendance fermerait un cycle.
+Ctrl + scroll to zoom,Ctrl + molette pour zoomer
+Cumulative progress,Avancement cumulé
+Cumulative progress (%),Avancement cumulé (%)
+Currently,Actuellement
+Dashboard,Tableau de bord
+Delay reasons,Motifs de retard
+"Delete ""{0}""? This will also delete 1 task and any progress entries on them.",Supprimer « {0} » ? Cela supprimera aussi 1 tâche et toutes les saisies d’avancement associées.
+"Delete ""{0}""? This will also delete {1} tasks and any progress entries on them.",Supprimer « {0} » ? Cela supprimera aussi {1} tâches et toutes les saisies d’avancement associées.
+Delete &quot;{0}&quot;? Dependencies in other stages pointing at this one will be cleaned up automatically.,Supprimer « {0} » ? Les dépendances d’autres étapes pointant vers celle-ci seront nettoyées automatiquement.
+Delete '{0}'? This cannot be undone.,Supprimer « {0} » ? Cette action est irréversible.
+Delete progress entry,Supprimer la saisie d’avancement
+Delete revision,Supprimer la révision
+Delete revision?,Supprimer la révision ?
+Delete stage,Supprimer l’étape
+Delete task,Supprimer la tâche
+"Delete the saved revision ""{0}""? This does not change the schedule.",Supprimer la révision enregistrée « {0} » ? Cela ne modifie pas le planning.
+Delete this entry? It's a historical entry; the task's current progress will not change.,Supprimer cette saisie ? C’est une saisie historique ; l’avancement actuel de la tâche ne changera pas.
+Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).,Supprimer cette saisie ? C’est la plus récente sur la tâche — l’avancement de la tâche reviendra à la saisie précédente (ou 0 % si c’est la seule).
+Delete work package,Supprimer le lot de travaux
+Dependencies,Dépendances
+Dependency,Dépendance
+Dependency removed,Dépendance retirée
+Dependency saved,Dépendance enregistrée
+Describe the blocker,Décrivez le blocage
+"Details about the task, location, scope…","Détails sur la tâche, l’emplacement, le périmètre…"
+Direct project tasks,Tâches de projet directes
+Drag to another task to create a Finish-to-Start dependency,Glissez vers une autre tâche pour créer une dépendance fin-à-début
+Drives workflow + Gantt rendering. Milestone = zero-duration.,Pilote le flux de travail + le rendu Gantt. Jalon = durée nulle.
+Drives workflow.,Pilote le flux de travail.
+Duration,Durée
+Edit dependency,Modifier la dépendance
+Edit stage,Modifier l’étape
+Edit task,Modifier la tâche
+End must be on or after start,La fin doit être à la date de début ou après
+Ended,Terminé
+Entered By,Saisi par
+Entered by,Saisi par
+Entered by —,Saisi par —
+Entered by: Any,Saisi par : tous
+Entry Date,Date de saisie
+Entry date,Date de saisie
+Estimated hours,Heures estimées
+Expand,Développer
+Expand all groups,Développer tous les groupes
+Explain why this stage is being rejected…,Expliquez pourquoi cette étape est rejetée…
+FF — Finish to Finish,FF — Fin à fin
+FS — Finish to Start,FS — Fin à début
+Failed to apply {0},Échec de l’application de {0}
+Failed to create stage,Échec de la création de l’étape
+Failed to create task,Échec de la création de la tâche
+Failed to create work package,Échec de la création du lot de travaux
+Failed to delete change order,Échec de la suppression de l’ordre de modification
+Failed to delete progress entry,Échec de la suppression de la saisie d’avancement
+Failed to delete stage,Échec de la suppression de l’étape
+Failed to delete task,Échec de la suppression de la tâche
+Failed to delete work package,Échec de la suppression du lot de travaux
+Failed to file progress entry,Échec de l’enregistrement de la saisie d’avancement
+Failed to load dependencies,Échec du chargement des dépendances
+Failed to load the schedule.,Échec du chargement du planning.
+Failed to raise BOQ revision,Échec de la création de la révision du devis
+Failed to raise scope change order,Échec de la création de l’ordre de modification
+Failed to reject stage,Échec du rejet de l’étape
+Failed to remove dependency,Échec du retrait de la dépendance
+Failed to revise stage,Échec de la révision de l’étape
+Failed to save dependency,Échec de l’enregistrement de la dépendance
+Failed to save planned progress,Échec de l’enregistrement de l’avancement planifié
+Failed to save progress entry,Échec de l’enregistrement de la saisie d’avancement
+Failed to save task,Échec de l’enregistrement de la tâche
+Failed to update change order,Échec de la mise à jour de l’ordre de modification
+Failed to update stage,Échec de la mise à jour de l’étape
+Failed to update stage tasks,Échec de la mise à jour des tâches de l’étape
+Failed to update task status,Échec de la mise à jour du statut de la tâche
+Failed to update work package,Échec de la mise à jour du lot de travaux
+File a new entry,Saisir une nouvelle entrée
+File entry,Enregistrer la saisie
+File progress entry,Enregistrer une saisie d’avancement
+"File today's progress against a task — labour, weather, blockers","Enregistrez l’avancement du jour sur une tâche — main-d’œuvre, météo, blocages"
+"Filed entry, but failed to attach {0}","Saisie enregistrée, mais échec de la pièce jointe {0}"
+Filed today,Saisi aujourd’hui
+Files,Fichiers
+Filing…,Enregistrement…
+Finish to Finish,Fin à fin
+Finish to Start,Fin à début
+Flag a blocker on this entry,Signaler un blocage sur cette saisie
+Flagged blockers,Blocages signalés
+Flags,Signalements
+Gantt timeline — view the schedule and adjust task dates from the list,Chronologie Gantt — consultez le planning et ajustez les dates des tâches depuis la liste
+Give the revision a name first.,Donnez d’abord un nom à la révision.
+Hierarchy,Hiérarchie
+Hover and click to place a 1-{0} block · drag the edges after to extend,Survolez et cliquez pour placer un bloc de 1-{0} · tirez ensuite les bords pour l’étendre
+Internal,Interne
+Internal — absorbed by us,Interne — absorbé par nous
+Justification,Justification
+Labour,Main-d’œuvre
+Labour deployed,Main-d’œuvre déployée
+Labour deployed today,Main-d’œuvre déployée aujourd’hui
+Labour movement,Mouvement de main-d’œuvre
+Lag,Décalage
+Lag (days),Décalage (jours)
+Last 7 days,7 derniers jours
+Last Updated,Dernière mise à jour
+Latest on task,Dernier sur la tâche
+Loading schedule…,Chargement du planning…
+Loading scope change order…,Chargement de l’ordre de modification…
+Locked after create — move tasks instead of reparenting a stage.,Verrouillé après création — déplacez les tâches plutôt que de rattacher une étape ailleurs.
+Locked after create — moving a work package across projects isn't supported.,Verrouillé après création — déplacer un lot de travaux entre projets n’est pas pris en charge.
+Locked — stage is approved,Verrouillé — l’étape est approuvée
+Logged,Enregistré
+Mark complete,Marquer terminé
+Material planned-vs-actual cost (from this stage's BOQ lines) will appear here once Estimation / BOQ is available.,Le coût planifié vs réel des matériaux (d’après les lignes de devis de cette étape) apparaîtra ici une fois l’Estimation / le devis disponible.
+Materials — planned vs actual,Matériaux — planifié vs réel
+Milestone date (due),Date du jalon (échéance)
+Must finish/start before this task.,Doit se terminer/commencer avant cette tâche.
+Name this revision…,Nommez cette révision…
+Narrative,Compte rendu
+Negative lag = lead (overlap allowed).,Décalage négatif = avance (chevauchement autorisé).
+Net cost impact,Impact net sur les coûts
+New Entry,Nouvelle saisie
+New Progress Entry,Nouvelle saisie d’avancement
+New Stage,Nouvelle étape
+New Task,Nouvelle tâche
+New Work Package,Nouveau lot de travaux
+Next: Add Tasks,Suivant : ajouter des tâches
+No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ.,Aucune révision du devis pour l’instant — utilisez « + Créer une révision du devis » ci-dessus pour dériver le devis du projet.
+No activity yet.,Aucune activité pour l’instant.
+No blocker,Aucun blocage
+No changes made,Aucune modification effectuée
+No dependencies · this stage can start independently.,Aucune dépendance · cette étape peut démarrer de façon autonome.
+No other stages on this project yet · add one to create a dependency.,Aucune autre étape sur ce projet · ajoutez-en une pour créer une dépendance.
+"No other stages on this project yet · create them first, then come back to wire dependencies.","Aucune autre étape sur ce projet · créez-les d’abord, puis revenez définir les dépendances."
+No pending SCOs,Aucun OM en attente
+No progress entries filed yet — progress derives from the latest entry.,Aucune saisie d’avancement pour l’instant — l’avancement dérive de la dernière saisie.
+No progress entries match these filters,Aucune saisie d’avancement ne correspond à ces filtres
+No projects yet.,Aucun projet pour l’instant.
+No reason recorded.,Aucun motif enregistré.
+No saved revisions yet. Save one to snapshot the current schedule.,Aucune révision enregistrée pour l’instant. Enregistrez-en une pour figer le planning actuel.
+No scope change orders yet.,Aucun ordre de modification pour l’instant.
+No stages match these filters,Aucune étape ne correspond à ces filtres
+No task linked,Aucune tâche liée
+"No task rows yet · click ""Add/Remove Tasks"" above to pick tasks for this stage.",Aucune ligne de tâche pour l’instant · cliquez sur « Ajouter / retirer des tâches » ci-dessus pour choisir les tâches de cette étape.
+No tasks in progress,Aucune tâche en cours
+No tasks in this project yet.,Aucune tâche dans ce projet pour l’instant.
+No tasks in this work package yet.,Aucune tâche dans ce lot de travaux pour l’instant.
+No tasks linked to this stage yet.,Aucune tâche liée à cette étape pour l’instant.
+No tasks match these filters,Aucune tâche ne correspond à ces filtres
+No timeline set,Aucune chronologie définie
+No work packages match these filters.,Aucun lot de travaux ne correspond à ces filtres.
+None yet,Aucun pour l’instant
+Not in a stage,Hors étape
+Nothing to undo — undo captures cascading (multi-task) changes,Rien à annuler — l’annulation capture les modifications en cascade (multi-tâches)
+OVERDUE,EN RETARD
+On window,Dans la fenêtre
+Open Gantt,Ouvrir le Gantt
+Open tasks,Tâches ouvertes
+Operations overview · live,Vue d’ensemble des opérations · en direct
+Optional · direct project tasks leave blank,Facultatif · laissez vide pour les tâches de projet directes
+Optional · only if it's worth recording,Facultatif · uniquement si cela vaut la peine d’être enregistré
+Optional · pick stages that must complete before this one can start.,Facultatif · choisissez les étapes devant se terminer avant que celle-ci puisse commencer.
+Optional — leave blank for a direct project task.,Facultatif — laissez vide pour une tâche de projet directe.
+Optional — only if it's worth recording.,Facultatif — uniquement si cela vaut la peine d’être enregistré.
+Pending SCOs,OM en attente
+Pending approval,En attente d’approbation
+Pick a task,Choisissez une tâche
+Pick a task.,Choisissez une tâche.
+Pick the stages that must complete before this one can start.,Choisissez les étapes devant se terminer avant que celle-ci puisse commencer.
+Plan a stage →,Planifier une étape →
+Planned End,Fin planifiée
+Planned Progress (%),Avancement planifié (%)
+Planned Start,Début planifié
+Planned end,Fin planifiée
+Planned start,Début planifié
+Planned: {0}%,Planifié : {0} %
+Please enter a rejection reason.,Veuillez saisir un motif de rejet.
+Positive = added cost to the project; negative = a saving.,Positif = coût ajouté au projet ; négatif = une économie.
+Positive = added cost; negative = a saving.,Positif = coût ajouté ; négatif = une économie.
+Pre-selected from where you came in — locked.,Pré-sélectionné depuis votre point d’entrée — verrouillé.
+Pre-selected — locked.,Pré-sélectionné — verrouillé.
+Predecessor task,Tâche prédécesseure
+Predecessors,Prédécesseurs
+Progress %,Avancement %
+Progress (actual / planned),Avancement (réel / planifié)
+Progress can't go below the recorded {0}%. Entries are cumulative.,L’avancement ne peut pas descendre sous les {0} % enregistrés. Les saisies sont cumulatives.
+Progress entry deleted,Saisie d’avancement supprimée
+Progress entry filed,Saisie d’avancement enregistrée
+Progress entry not found.,Saisie d’avancement introuvable.
+Progress entry updated,Saisie d’avancement mise à jour
+Progress must be between 0 and 100,L’avancement doit être compris entre 0 et 100
+Progress must increase — enter a value above the current {0}%. Entries are cumulative.,L’avancement doit augmenter — saisissez une valeur supérieure aux {0} % actuels. Les saisies sont cumulatives.
+Project is required,Le projet est obligatoire
+Project · WP,Projet · lot
+"Project, task & date","Projet, tâche et date"
+Raise,Créer
+Raise BOQ revision?,Créer une révision du devis ?
+Raise SCO,Créer un OM
+Raise Scope Change Order,Créer un ordre de modification
+Raise revision,Créer la révision
+Raising submits it for PM / Director approval,La création le soumet à l’approbation du chef de projet / directeur
+Raising…,Création…
+Read-only — your role cannot edit tasks,Lecture seule — votre rôle ne peut pas modifier les tâches
+Reason / justification,Motif / justification
+Recent entries,Saisies récentes
+Recoverable from client,Récupérable auprès du client
+Reject,Rejeter
+Reject failed,Échec du rejet
+Reject stage,Rejeter l’étape
+Reject {0},Rejeter {0}
+Rejecting…,Rejet…
+Rejection,Rejet
+Rejection reason,Motif du rejet
+Reopened for revision.,Rouvert pour révision.
+Reschedule downstream?,Replanifier l’aval ?
+Responsible,Responsable
+Restore,Restaurer
+Restore failed.,Échec de la restauration.
+Restore revision?,Restaurer la révision ?
+"Restore the schedule to ""{0}""? Current dates are saved to Undo first, so you can revert this.","Restaurer le planning à « {0} » ? Les dates actuelles sont d’abord enregistrées dans Annuler, vous pourrez donc revenir en arrière."
+"Restored ""{0}"".",Restauré à « {0} ».
+Review,Revue
+Revise,Réviser
+Revise failed,Échec de la révision
+Revise stage,Réviser l’étape
+Revision name,Nom de la révision
+Revisions,Révisions
+SS — Start to Start,SS — Début à début
+"Saved revision ""{0}"".",Révision « {0} » enregistrée.
+Schedule conflict,Conflit de planning
+Scope Change Orders,Ordres de modification
+Scope change order approved.,Ordre de modification approuvé.
+Scope change order rejected.,Ordre de modification rejeté.
+"Scope, gates, hand-off notes…","Périmètre, points de passage, notes de transfert…"
+Search SCO id or title…,Rechercher un id ou un titre d’OM…
+Search by name or code…,Rechercher par nom ou code…
+"Search narrative, task, blocker note…","Rechercher compte rendu, tâche, note de blocage…"
+"Search stages, projects, descriptions…","Rechercher étapes, projets, descriptions…"
+See all →,Tout voir →
+Select a project to view its schedule.,Sélectionnez un projet pour voir son planning.
+Select assignee,Sélectionner l’assigné
+Select project,Sélectionner un projet
+Short identifier — auto-generated if left blank.,Identifiant court — généré automatiquement si laissé vide.
+Site conditions,Conditions de chantier
+"Site photos, QC reports, drawings — picked here and saved with the entry.","Photos de chantier, rapports qualité, plans — choisis ici et enregistrés avec la saisie."
+Skilled,Qualifié
+Skilled labour,Main-d’œuvre qualifiée
+Stage Review,Revue d’étape
+Stage activity,Activité de l’étape
+"Stage activity (submissions, approvals, edits) will appear here.","L’activité de l’étape (soumissions, approbations, modifications) apparaîtra ici."
+Stage created,Étape créée
+"Stage created, but could not resolve its ID for navigation","Étape créée, mais impossible de résoudre son ID pour la navigation"
+Stage details,Détails de l’étape
+Stage name,Nom de l’étape
+Stage name is required,Le nom de l’étape est obligatoire
+Stage not found,Étape introuvable
+Stage planned end,Fin planifiée de l’étape
+Stage rejected,Étape rejetée
+Stage revised — editing the new draft,Étape révisée — modification du nouveau brouillon
+Stage tasks updated,Tâches de l’étape mises à jour
+Stage updated,Étape mise à jour
+Stamped automatically from the signed-in user.,Horodaté automatiquement d’après l’utilisateur connecté.
+Start to Start,Début à début
+State: Any,État : tous
+Submit for approval,Soumettre pour approbation
+Successor task,Tâche successeure
+Successors,Successeurs
+TBD,À définir
+Task Progress Entry,Saisie d’avancement de tâche
+Task Type,Type de tâche
+Task created,Tâche créée
+"Task created, but could not resolve its ID for navigation","Tâche créée, mais impossible de résoudre son ID pour la navigation"
+Task deleted,Tâche supprimée
+Task details,Détails de la tâche
+Task is required,La tâche est obligatoire
+Task name,Nom de la tâche
+Task name is required,Le nom de la tâche est obligatoire
+Task not found,Tâche introuvable
+Task progress,Avancement de la tâche
+Task updated,Tâche mise à jour
+Task: Any,Tâche : toutes
+Tasks (done / total),Tâches (terminées / total)
+Tasks in progress,Tâches en cours
+Tasks in this stage,Tâches de cette étape
+The NEW cumulative % after this entry — not a delta. 0–100.,Le NOUVEAU % cumulé après cette saisie — pas un delta. 0–100.
+The NEW cumulative % after this entry — not a delta. Can't go below the current {0}%.,Le NOUVEAU % cumulé après cette saisie — pas un delta. Ne peut pas descendre sous les {0} % actuels.
+This clones the project's current BOQ into a new Draft revision linked to this change order.,Cela clone le devis actuel du projet dans une nouvelle révision brouillon liée à cet ordre de modification.
+This reason is recorded on the stage. Rejection is final — the stage cannot be revised afterwards.,Ce motif est enregistré sur l’étape. Le rejet est définitif — l’étape ne peut plus être révisée ensuite.
+This scope change order will be removed permanently.,Cet ordre de modification sera supprimé définitivement.
+This stage will be sent for approval. You won't be able to edit it while it is pending.,Cette étape sera envoyée pour approbation. Vous ne pourrez pas la modifier tant qu’elle est en attente.
+This stage will move back to Draft. You can keep editing and resubmit for approval when ready.,Cette étape repassera en brouillon. Vous pouvez continuer à la modifier et la resoumettre pour approbation une fois prête.
+This task is already Completed — no further progress entries can be added.,Cette tâche est déjà terminée — aucune nouvelle saisie d’avancement ne peut être ajoutée.
+This will cancel the stage.,Cela annulera l’étape.
+Title is required.,Le titre est obligatoire.
+Total SCOs,Total des OM
+Total entries,Total des saisies
+Total labour,Main-d’œuvre totale
+Total order book,Carnet de commandes total
+Unassigned,Non assigné
+Under {0},Sous {0}
+Undo,Annuler
+Undo failed.,Échec de l’annulation.
+Undo the last cascade ({0} step available),Annuler la dernière cascade ({0} étape disponible)
+Undo the last cascade ({0} steps available),Annuler la dernière cascade ({0} étapes disponibles)
+Undone: {0} ({1} tasks),Annulé : {0} ({1} tâches)
+Unskilled,Non qualifié
+Unskilled labour,Main-d’œuvre non qualifiée
+Untitled stage,Étape sans titre
+Untitled task,Tâche sans titre
+Urgent,Urgent
+View all {0},Tout voir ({0})
+Waits on this task.,Dépend de cette tâche.
+Weather,Météo
+What blocked progress today?,Qu’est-ce qui a bloqué l’avancement aujourd’hui ?
+What this work package covers.,Ce que couvre ce lot de travaux.
+What was completed today? Any context worth recording?,Qu’a-t-on terminé aujourd’hui ? Un contexte à noter ?
+Why is this change needed?,Pourquoi ce changement est-il nécessaire ?
+Why is this change order rejected?,Pourquoi cet ordre de modification est-il rejeté ?
+Window,Fenêtre
+Work Package,Lot de travaux
+Work Package name,Nom du lot de travaux
+Work package name is required,Le nom du lot de travaux est obligatoire
+Work package not found,Lot de travaux introuvable
+Yes · from client,Oui · du client
+You don't have access to Stage Planning.,Vous n’avez pas accès à la planification des étapes.
+You don't have access to Task Progress Entries.,Vous n’avez pas accès aux saisies d’avancement de tâche.
+You don't have access to this progress entry,Vous n’avez pas accès à cette saisie d’avancement
+You don't have access to this stage,Vous n’avez pas accès à cette étape
+You don't have access to this task,Vous n’avez pas accès à cette tâche
+You don't have access to this work package,Vous n’avez pas accès à ce lot de travaux
+You don't have permission to create a stage.,Vous n’avez pas la permission de créer une étape.
+You don't have permission to create a task.,Vous n’avez pas la permission de créer une tâche.
+You don't have permission to create a work package.,Vous n’avez pas la permission de créer un lot de travaux.
+You don't have permission to file a progress entry.,Vous n’avez pas la permission d’enregistrer une saisie d’avancement.
+You don't have permission to raise a scope change order.,Vous n’avez pas la permission de créer un ordre de modification.
+by,par
+by {0},par {0}
+currently,actuellement
+day,jour
+days,jours
+e.g. Afternoon shower delayed final bay by 2 hours,p. ex. Une averse l’après-midi a retardé la dernière travée de 2 heures
+e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.,p. ex. Travées 3-4 terminées ; 285 sur 380 m² réalisés. Éprouvette prélevée.
+e.g. Block A — Level 6 column casting,p. ex. Bloc A — coulage des poteaux niveau 6
+e.g. Foundation Works,p. ex. Travaux de fondation
+e.g. Foundation depth revision — soil report,p. ex. Révision de la profondeur des fondations — rapport de sol
+e.g. Substructure Stage,p. ex. Étape d’infrastructure
+e.g. WP-FND,p. ex. WP-FND
+finish {0},fin {0}
+last cascade,dernière cascade
+milestone,jalon
+no dates,aucune date
+on plan,conforme au plan
+stage must complete first,l’étape doit se terminer d’abord
+stages must complete first,les étapes doivent se terminer d’abord
+starts independently,démarre de façon autonome
+stub,stub
+task,tâche
+{0} applied,{0} appliqué
+{0} dependencies,{0} dépendances
+{0} downstream task would shift forward,{0} tâche en aval serait décalée
+{0} downstream tasks would shift forward,{0} tâches en aval seraient décalées
+{0} of {1},{0} sur {1}
+{0} task in stage,{0} tâche dans l’étape
+{0} task in this work package,{0} tâche dans ce lot de travaux
+{0} tasks,{0} tâches
+{0} tasks in stage,{0} tâches dans l’étape
+{0} tasks in this work package,{0} tâches dans ce lot de travaux
+{0}% cumulative,{0} % cumulé
+— No record —,— Aucun enregistrement —
+— None · Direct project task —,— Aucun · tâche de projet directe —
+— Pick a project —,— Choisir un projet —
+— Select a project first —,— Choisissez d’abord un projet —
+— Select assignee —,— Sélectionner l’assigné —
+— Select task —,— Sélectionner une tâche —
+← Back,← Retour
+← Back to stage,← Retour à l’étape
+− = lead / overlap,− = avance / chevauchement
+🚩 Blocker flagged,🚩 Blocage signalé
+"Delete ""{0}""? Dependencies in other stages pointing at this one will be cleaned up automatically.",Supprimer « {0} » ? Les dépendances d’autres étapes pointant vers celle-ci seront nettoyées automatiquement.
++ Add Component,+ Ajouter un composant
++ Add from library,+ Ajouter depuis la bibliothèque
++ Add group,+ Ajouter un groupe
+"+ Add item to ""{0}""",+ Ajouter un article à « {0} »
++ New BOQ,+ Nouveau devis quantitatif
++ New Item,+ Nouvel article
++ New rate,+ Nouveau tarif
++{0}% margin,+{0} % de marge
+A group with that name already exists.,Un groupe portant ce nom existe déjà.
+A new Draft revision is cloned from this one. Optionally reference a Scope Change Order.,Une nouvelle révision brouillon est clonée à partir de celle-ci. Référencez éventuellement un ordre de modification.
+A quote past validity can be chased. A tender past its deadline cannot be entered at all.,Un devis au-delà de sa validité peut être relancé. Une soumission au-delà de sa date limite ne peut plus être déposée.
+A reusable BOQ skeleton — add rows after creating,Un squelette de devis réutilisable — ajoutez les lignes après la création
+A revision titled “{0}” already exists on this project. Pick a different title.,Une révision intitulée « {0} » existe déjà sur ce projet. Choisissez un autre titre.
+"A tender usually carries several — general conditions, payment, eligibility, defect liability.","Une soumission en comporte généralement plusieurs — conditions générales, paiement, éligibilité, garantie des défauts."
+ASM-...,ASM-...
+Actual for {0} — click to see the source documents,Réel pour {0} — cliquez pour voir les documents sources
+Actuals recalculated,Réels recalculés
+Add Group,Ajouter un groupe
+Add at least one item.,Ajoutez au moins un article.
+Add at least one line with a description.,Ajoutez au moins une ligne avec une description.
+Add group,Ajouter un groupe
+Add item to {0} — {1},Ajouter un article à {0} — {1}
+Add sub-item to {0},Ajouter un sous-article à {0}
+Add the first group,Ajouter le premier groupe
+Adds the template's rows to this BOQ. Assembly lines explode into sub-items.,Ajoute les lignes du modèle à ce devis. Les lignes d’assemblage s’éclatent en sous-articles.
+An issue date is required.,Une date d’émission est requise.
+Applied to the subtotal.,Appliqué au sous-total.
+Approve revision,Approuver la révision
+Approve revision {0}? Any other approved revision on this project is superseded.,Approuver la révision {0} ? Toute autre révision approuvée sur ce projet est remplacée.
+Assembly details,Détails de l’assemblage
+Auto,Auto
+Auto from Assembly,Auto depuis l’assemblage
+Available in pickers,Disponible dans les sélecteurs
+Back to the register →,Retour au registre →
+"Bank guarantee, DD, online transfer.","Garantie bancaire, traite, virement en ligne."
+Basic,Général
+Before the items,Avant les articles
+Bid before tax,Offre hors taxe
+Bid value,Valeur de l’offre
+Bill of Quantities,Devis quantitatif
+Can't be before the date issued.,Ne peut pas être antérieur à la date d’émission.
+Cannot be negative — a price cannot expire before it is offered.,Ne peut pas être négatif — un prix ne peut pas expirer avant d’être proposé.
+Cannot be negative.,Ne peut pas être négatif.
+Cement — OPC 53 Grade,Ciment — OPC 53
+Charged on subtotal plus margin.,Facturé sur le sous-total plus la marge.
+Clone,Cloner
+Clone BOQ,Cloner le devis
+Cloned,Cloné
+Cloned BOQ title,Titre du devis cloné
+Clone…,Cloner…
+Code is required,Le code est obligatoire
+Code is required.,Le code est obligatoire.
+Coefficient,Coefficient
+Collapse all,Tout réduire
+Committed,Engagé
+Compare to R{0},Comparer à R{0}
+Components,Composants
+Construction Rate Master,Référentiel de prix construction
+Cost Head,Poste de coût
+Cost head,Poste de coût
+Could not delete the quotation,Impossible de supprimer le devis
+Could not delete the rate.,Impossible de supprimer le tarif.
+Could not load rates.,Impossible de charger les tarifs.
+Could not read that terms template.,Impossible de lire ce modèle de conditions.
+Could not save the quotation.,Impossible d’enregistrer le devis.
+Could not save the rate.,Impossible d’enregistrer le tarif.
+Counted from the issue date. Leave blank for no expiry.,Compté à partir de la date d’émission. Laissez vide pour aucune expiration.
+"Create a group first, then map items under it — same as a BOQ.","Créez d’abord un groupe, puis rattachez-y les articles — comme pour un devis."
+Create assembly,Créer l’assemblage
+Create draft,Créer le brouillon
+Create group,Créer le groupe
+Create item,Créer l’article
+Create new revision,Créer une nouvelle révision
+Create quotation,Créer le devis
+Create rate,Créer le tarif
+Create revision,Créer la révision
+Create sub-item,Créer le sous-article
+Create template,Créer le modèle
+Create tender,Créer la soumission
+Current Rate,Tarif actuel
+Current rate (₹),Tarif actuel (₹)
+Current rate cannot be negative.,Le tarif actuel ne peut pas être négatif.
+Date issued,Date d’émission
+Dates,Dates
+Deadline,Date limite
+"Delete ""{0}"" ({1})? This cannot be undone.",Supprimer « {0} » ({1}) ? Cette action est irréversible.
+"Delete ""{0}"" and its {1} row? This cannot be undone.",Supprimer « {0} » et sa {1} ligne ? Cette action est irréversible.
+"Delete ""{0}"" and its {1} rows? This cannot be undone.",Supprimer « {0} » et ses {1} lignes ? Cette action est irréversible.
+"Delete ""{0}""? This cannot be undone.",Supprimer « {0} » ? Cette action est irréversible.
+Delete BOQ,Supprimer le devis
+Delete BOQ {0} and all its rows? This cannot be undone.,Supprimer le devis {0} et toutes ses lignes ? Cette action est irréversible.
+Delete assembly,Supprimer l’assemblage
+Delete estimate template,Supprimer le modèle d’estimation
+Delete group,Supprimer le groupe
+"Delete group ""{0} — {1}"" with {2} item and their sub-items?",Supprimer le groupe « {0} — {1} » avec {2} article et ses sous-articles ?
+"Delete group ""{0} — {1}"" with {2} items and their sub-items?",Supprimer le groupe « {0} — {1} » avec {2} articles et leurs sous-articles ?
+"Delete group ""{0} — {1}""?",Supprimer le groupe « {0} — {1} » ?
+Delete item,Supprimer l’article
+"Delete item ""{0} — {1}"" with {2} sub-item?",Supprimer l’article « {0} — {1} » avec {2} sous-article ?
+"Delete item ""{0} — {1}"" with {2} sub-items?",Supprimer l’article « {0} — {1} » avec {2} sous-articles ?
+"Delete item ""{0} — {1}""?",Supprimer l’article « {0} — {1} » ?
+Delete rate,Supprimer le tarif
+Delete sub-item,Supprimer le sous-article
+"Delete sub-item ""{0}""?",Supprimer le sous-article « {0} » ?
+Delete tender,Supprimer la soumission
+"Delete the empty group ""{0}""?",Supprimer le groupe vide « {0} » ?
+Delete {0}? This also removes its rate history.,Supprimer {0} ? Cela supprime aussi son historique de tarifs.
+Description and a non-zero quantity per unit are required.,Une description et une quantité par unité non nulle sont requises.
+Description and unit are required.,Une description et une unité sont requises.
+Disabled,Désactivé
+Drafts,Brouillons
+EMD,EMD
+EMD amount (₹),Montant EMD (₹)
+EMD instrument,Instrument EMD
+EMD valid to,EMD valable jusqu’au
+EMD valid until,EMD valable jusqu’au
+Earnest money,Garantie de soumission
+Earnest money and guarantee,Garantie de soumission et caution
+Edit assembly,Modifier l’assemblage
+Edit group,Modifier le groupe
+Edit item,Modifier l’article
+Edit rate · {0},Modifier le tarif · {0}
+Edit sub-item,Modifier le sous-article
+Edit template,Modifier le modèle
+Effective,Effectif
+Empty = universal.,Vide = universel.
+Enabled,Activé
+Envelope,Enveloppe
+Envelope structure,Structure d’enveloppe
+Estimate Template,Modèle d’estimation
+Estimate template,Modèle d’estimation
+Estimated,Estimé
+Estimated total,Total estimé
+Every item needs a description.,Chaque article nécessite une description.
+Every line needs a quantity above zero.,Chaque ligne nécessite une quantité supérieure à zéro.
+Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only.,Chaque flux se résout via le code de coût. Annuler une source supprime son entrée — le journal n’affiche que le coût réel.
+Expand all,Tout développer
+Explode from assembly into sub-items,Éclater l’assemblage en sous-articles
+Exploded from assembly,Éclaté depuis l’assemblage
+Failed to approve,Échec de l’approbation
+Failed to clone,Échec du clonage
+Failed to create BOQ,Échec de la création du devis
+Failed to create assembly,Échec de la création de l’assemblage
+Failed to create estimate template,Échec de la création du modèle d’estimation
+Failed to create revision,Échec de la création de la révision
+Failed to delete BOQ,Échec de la suppression du devis
+Failed to delete assembly,Échec de la suppression de l’assemblage
+Failed to delete group,Échec de la suppression du groupe
+Failed to delete item,Échec de la suppression de l’article
+Failed to delete sub-item,Échec de la suppression du sous-article
+Failed to delete template,Échec de la suppression du modèle
+Failed to delete tender,Échec de la suppression de la soumission
+Failed to explode,Échec de l’éclatement
+Failed to load actuals,Échec du chargement des réels
+Failed to recalculate,Échec du recalcul
+Failed to save group,Échec de l’enregistrement du groupe
+Failed to save item,Échec de l’enregistrement de l’article
+Failed to save sub-item,Échec de l’enregistrement du sous-article
+Failed to save tender,Échec de l’enregistrement de la soumission
+Failed to submit,Échec de la soumission
+Failed to update assembly,Échec de la mise à jour de l’assemblage
+Failed to update components,Échec de la mise à jour des composants
+Failed to update sections,Échec de la mise à jour des sections
+Failed to update template,Échec de la mise à jour du modèle
+For,Pour
+Formal bids against published invitations. Nothing here touches an estimate — a bid you lose must cost the estimate nothing.,Offres formelles en réponse à des invitations publiées. Rien ici ne touche à une estimation — une offre perdue ne doit rien coûter à l’estimation.
+From Rate Master,Depuis le référentiel de prix
+From WP,Depuis le lot
+Group,Groupe
+Group actual — contributing documents,Réel du groupe — documents contributeurs
+"Group name — e.g. Substructure, Finishes…","Nom du groupe — p. ex. Infrastructure, Finitions…"
+Group: Any,Groupe : tous
+Groups are created first; items are mapped under them — same structure as a BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.,Les groupes sont créés d’abord ; les articles sont rattachés en dessous — même structure qu’un devis. Les lignes issues d’un assemblage s’éclatent automatiquement en sous-articles figés à l’import.
+Groups · Items,Groupes · articles
+Homebuyer,Acquéreur
+"How the bid is packaged: technical and financial together, or opened in stages.","Comment l’offre est présentée : technique et financière ensemble, ou ouvertes par étapes."
+Import Template…,Importer un modèle…
+Internal note — not printed,Note interne — non imprimée
+Internal notes,Notes internes
+Issued by,Émis par
+Issuing body,Organisme émetteur
+Item actual — contributing documents,Réel de l’article — documents contributeurs
+"Item saved, but explode failed","Article enregistré, mais échec de l’éclatement"
+Item source,Source de l’article
+"Leave blank to auto-generate (A, B, C…)","Laissez vide pour générer automatiquement (A, B, C…)"
+Leave blank to auto-generate (e.g. A.05),Laissez vide pour générer automatiquement (p. ex. A.05)
+Leave blank to auto-name.,Laissez vide pour nommer automatiquement.
+Leave blank to clone within this project (WP → WP).,Laissez vide pour cloner au sein de ce projet (lot → lot).
+Link an Assembly to this item first.,Liez d’abord un assemblage à cet article.
+Link to task,Lier à une tâche
+Linked SCO,OM lié
+Load standard terms from the library…,Charger des conditions standard depuis la bibliothèque…
+Loading assembly…,Chargement de l’assemblage…
+Loading estimate template…,Chargement du modèle d’estimation…
+Loading quotation…,Chargement du devis…
+Loading rates…,Chargement des tarifs…
+Loading tender…,Chargement de la soumission…
+Main Contractor,Entreprise générale
+Manual edits stamp 'Manual'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.,Les modifications manuelles portent la mention « Manuel ». Les mises à jour de tarif déclenchées par un bon de commande approuvé portent automatiquement le n° de BC — ce flux se trouve sur la page du BC.
+Margin %,Marge %
+Margin and tax are applied to the subtotal — sell rate and amount are worked out on save.,La marge et la taxe sont appliquées au sous-total — le prix de vente et le montant sont calculés à l’enregistrement.
+Margin {0}%,Marge {0} %
+Material,Matériau
+Material / Labour / Equipment / Subcontract / Preliminaries / Other,Matériau / Main-d’œuvre / Équipement / Sous-traitance / Installations de chantier / Autre
+Money genuinely lodged — it shows as at stake until the bid is decided.,Argent réellement déposé — affiché comme engagé jusqu’à la décision sur l’offre.
+Name is required,Le nom est obligatoire
+Needs a deadline. Miss it and the bid cannot be entered.,"Nécessite une date limite. Dépassée, l’offre ne peut plus être déposée."
+New Assembly,Nouvel assemblage
+New BOQ,Nouveau devis quantitatif
+New Estimate Template,Nouveau modèle d’estimation
+New Quotation,Nouveau devis
+New Tender,Nouvelle soumission
+New group,Nouveau groupe
+New item,Nouvel article
+New rate,Nouveau tarif
+New sub-item · rate analysis,Nouveau sous-article · analyse de prix
+No BOQs match these filters.,Aucun devis ne correspond à ces filtres.
+No assemblies match your filters.,Aucun assemblage ne correspond à vos filtres.
+No components yet — add one to price this assembly.,Aucun composant pour l’instant — ajoutez-en un pour chiffrer cet assemblage.
+No estimate templates yet.,Aucun modèle d’estimation pour l’instant.
+No groups yet.,Aucun groupe pour l’instant.
+No history recorded yet.,Aucun historique enregistré pour l’instant.
+No items in this group yet.,Aucun article dans ce groupe pour l’instant.
+No items on this tender.,Aucun article sur cette soumission.
+No lines on this quotation.,Aucune ligne sur ce devis.
+No matches,Aucune correspondance
+No quotation with that id.,Aucun devis avec cet id.
+No quotations yet. Build one when a customer asks you for a price.,Aucun devis pour l’instant. Créez-en un lorsqu’un client vous demande un prix.
+No rate analysis recorded for this item.,Aucune analyse de prix enregistrée pour cet article.
+No rates match your filters.,Aucun tarif ne correspond à vos filtres.
+No source documents yet — this actual is “— pending”.,Aucun document source pour l’instant — ce réel est « — en attente ».
+No tenders yet. Start one when an invitation to bid comes in.,Aucune soumission pour l’instant. Démarrez-en une à la réception d’une invitation à soumissionner.
+No terms recorded.,Aucune condition enregistrée.
+No terms sections yet.,Aucune section de conditions pour l’instant.
+Not linked to a project,Non lié à un projet
+Not linked yet,Pas encore lié
+Not printed — for whoever picks this up next.,Non imprimé — pour la personne qui reprendra le dossier.
+Nothing ahead of the item table.,Rien avant le tableau des articles.
+Open subcontractor work orders mapped to cost code {0},Ordres de travaux de sous-traitant ouverts rattachés au code de coût {0}
+Optional reference to a Scope Change Order this revision addresses.,Référence facultative à un ordre de modification que cette révision traite.
+Optional · drives live actuals from task progress,Facultatif · alimente les réels en direct depuis l’avancement des tâches
+Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.,Facultatif · choisissez pour pré-remplir la description + le tarif. Les mises à jour du référentiel se propagent aux devis qui l’utilisent.
+Optional — a quotation usually goes out before there is a project.,Facultatif — un devis part généralement avant qu’un projet n’existe.
+Optional — a tender is bid long before there is a project.,Facultatif — une soumission est déposée bien avant qu’un projet n’existe.
+"Optional — scope of work, preamble or method of measurement, printed above the priced schedule.","Facultatif — périmètre des travaux, préambule ou méthode de métré, imprimé au-dessus du bordereau chiffré."
+Optional. Auto-generated if blank.,Facultatif. Généré automatiquement si vide.
+Optional. Drives per-WP roll-up in the BOQ summary.,Facultatif. Alimente la consolidation par lot dans le récapitulatif du devis.
+Other,Autre
+Performance guarantee,Garantie de bonne exécution
+Performance guarantee %,Garantie de bonne exécution %
+Pick a rate master…,Choisissez un référentiel de prix…
+Pick a source…,Choisissez une source…
+Pick a template,Choisissez un modèle
+Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.,Choisissez un assemblage pour pré-remplir l’unité / le tarif et l’éclater en sous-articles figés à l’enregistrement. Laissez vide pour une ligne manuelle.
+Pick the customer this is for.,Choisissez le client concerné.
+Plan Qty,Qté planifiée
+Planned amount,Montant planifié
+Planned qty,Qté planifiée
+Portal,Portail
+Portal:,Portail :
+Preliminaries,Installations de chantier
+Prepared,Préparé
+Price before tax,Prix hors taxe
+Priced offers to customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.,Offres chiffrées aux clients qui vous ont demandé un prix. Rien ici ne touche à une estimation — un prix proposé n’est pas un travail engagé.
+Pricing,Tarification
+Private Client,Client privé
+Project Category tag,Étiquette de catégorie de projet
+Project:,Projet :
+Pulled from a template. Editing it here does not change the library.,Importé d’un modèle. Le modifier ici ne change pas la bibliothèque.
+Pulls the clause in as editable text — change it afterwards and it stays yours.,Importe la clause en texte modifiable — modifiez-la ensuite et elle vous appartient.
+Qty per unit,Qté par unité
+Quotation,Devis
+Quotation not found,Devis introuvable
+Quotations,Devis
+Rate / unit,Tarif / unité
+Rate / unit (Assembly),Tarif / unité (assemblage)
+Rate / unit (live),Tarif / unité (en direct)
+Rate created,Tarif créé
+Rate deleted,Tarif supprimé
+Rate history,Historique des tarifs
+Rate updated,Tarif mis à jour
+Rate-analysis recipe priced per unit,Recette d’analyse de prix chiffrée à l’unité
+Recalc actuals,Recalculer les réels
+Remarks (optional),Remarques (facultatif)
+Remove component,Retirer le composant
+Remove this component from the assembly?,Retirer ce composant de l’assemblage ?
+Remove this line from the template?,Retirer cette ligne du modèle ?
+Rename group,Renommer le groupe
+Resource,Ressource
+Resource name is required.,Le nom de la ressource est obligatoire.
+Rev.,Rév.
+Revision,Révision
+Revision title,Titre de la révision
+Rows,Lignes
+Say what the quotation is for.,Indiquez l’objet du devis.
+Say what the tender is for.,Indiquez l’objet de la soumission.
+Search BOQ id or title…,Rechercher un id ou un titre de devis…
+Search BOQ tree by code or description,Rechercher dans l’arbre du devis par code ou description
+Search assemblies / rate master…,Rechercher assemblages / référentiel de prix…
+Search by code or name…,Rechercher par code ou nom…
+Search code / description…,Rechercher code / description…
+Search code or description…,Rechercher code ou description…
+Search customers…,Rechercher des clients…
+"Search item, code, group…","Rechercher article, code, groupe…"
+Search quotation / customer / scope…,Rechercher devis / client / périmètre…
+Search rate master…,Rechercher dans le référentiel de prix…
+Search tender / reference / issuing body,Rechercher soumission / référence / organisme émetteur
+Search this project's SCOs…,Rechercher les OM de ce projet…
+Select a project,Sélectionner un projet
+Sell rate,Prix de vente
+Short stable identifier (e.g. ASM-RCC-M25).,Identifiant court et stable (p. ex. ASM-RCC-M25).
+Short stable identifier (e.g. ET-RES-TOWER).,Identifiant court et stable (p. ex. ET-RES-TOWER).
+Source WP,Lot source
+Source document,Document source
+Source — Assembly,Source — assemblage
+Standard rate,Tarif standard
+Start from a template,Partir d’un modèle
+Submission,Soumission
+Submission deadline,Date limite de soumission
+Submit BOQ {0} for approval?,Soumettre le devis {0} pour approbation ?
+Subtotal,Sous-total
+Target WP,Lot cible
+Tax %,Taxe %
+Tax {0}%,Taxe {0} %
+Template details,Détails du modèle
+Template imported,Modèle importé
+Template rows,Lignes du modèle
+Tender,Soumission
+Tender created,Soumission créée
+Tender reference,Référence de la soumission
+Tender saved,Soumission enregistrée
+Tenders,Soumissions
+The assembly's identifier — not editable.,L’identifiant de l’assemblage — non modifiable.
+The issuing body's reference — a bid can be rejected on this alone.,La référence de l’organisme émetteur — une offre peut être rejetée sur ce seul motif.
+The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.,La base à l’unité — les coefficients des composants signifient « combien par unité ».
+The submission deadline passed on {0}.,La date limite de soumission est passée le {0}.
+The template's identifier — not editable.,L’identifiant du modèle — non modifiable.
+This BOQ has no groups yet.,Ce devis n’a pas encore de groupes.
+This cannot be undone.,Cette action est irréversible.
+To WP,Vers le lot
+To project,Vers le projet
+Total actual,Total réel
+Total planned,Total planifié
+Total rates,Total des tarifs
+Trend,Tendance
+"Type the items straight in, or pull them from an assembly or an estimate. Terms sections are added on the tender itself.","Saisissez les articles directement, ou importez-les depuis un assemblage ou une estimation. Les sections de conditions sont ajoutées sur la soumission elle-même."
+"Type the items straight in, or pull them from an assembly.","Saisissez les articles directement, ou importez-les depuis un assemblage."
+"Type the terms, or load a standard set above.","Saisissez les conditions, ou chargez un ensemble standard ci-dessus."
+Typed for this quotation.,Saisi pour ce devis.
+UOM is required.,L’unité est obligatoire.
+Unit (per),Unité (par)
+Unit is required,L’unité est obligatoire
+"Unlike a quotation past its validity, this cannot be chased — the bid can no longer be entered.","Contrairement à un devis au-delà de sa validité, celle-ci ne peut pas être relancée — l’offre ne peut plus être déposée."
+Used to suggest this template for matching project types.,Utilisé pour suggérer ce modèle aux types de projet correspondants.
+Valid for (days),Valable (jours)
+Valid to,Valable jusqu’au
+View Assemblies →,Voir les assemblages →
+View Rate Master →,Voir le référentiel de prix →
+WP,Lot
+What does this line of work include?,Qu’inclut cette ligne de travaux ?
+What the line is for,Objet de la ligne
+What we would have to furnish on award.,Ce que nous devrions fournir en cas d’attribution.
+Where the bid is uploaded.,Où l’offre est téléversée.
+Who and what,Qui et quoi
+Who issued it?,Qui l’a émis ?
+Work Package (tag),Lot de travaux (étiquette)
+You don't have permission to create an assembly.,Vous n’avez pas la permission de créer un assemblage.
+You don't have permission to create an estimate template.,Vous n’avez pas la permission de créer un modèle d’estimation.
+across this BOQ,sur l’ensemble de ce devis
+an assembly,un assemblage
+an assembly from the catalogue,un assemblage du catalogue
+approved BOQs,devis approuvés
+auto,auto
+awaiting approval,en attente d’approbation
+blank if none,vide si aucun
+cost {0},coût {0}
+delta,delta
+e.g. Bank guarantee — Federal Bank,p. ex. Garantie bancaire — Federal Bank
+e.g. CEM-OPC53,p. ex. CEM-OPC53
+e.g. Civil Works — RCC,p. ex. Travaux de génie civil — béton armé
+e.g. Façade scope upgrade — R3,p. ex. Extension du périmètre façade — R3
+e.g. GePNIC / state e-procurement,p. ex. GePNIC / e-approvisionnement de l’État
+"e.g. Interior fit-out — Level 8, Brigade Tech Gardens","p. ex. Aménagement intérieur — niveau 8, Brigade Tech Gardens"
+e.g. KMRL,p. ex. KMRL
+e.g. KMRL/P2/CIV/2026/17,p. ex. KMRL/P2/CIV/2026/17
+"e.g. Mason (skilled), Cement OPC 53, Vibrator needle…","p. ex. Maçon (qualifié), ciment OPC 53, aiguille vibrante…"
+e.g. Station finishes package — Kochi Metro Phase 2,p. ex. Lot de finitions de station — Kochi Metro Phase 2
+e.g. Tender draft…,p. ex. Brouillon de soumission…
+expired {0} day ago,expiré il y a {0} jour
+expired {0} days ago,expiré il y a {0} jours
+expires today,expire aujourd’hui
+from,de
+from SCO,depuis l’OM
+incl. tax,TTC
+line,ligne
+"m³, kg, nos…","m³, kg, u…"
+of plan,du plan
+of which cost {0} · margin {1},dont coût {0} · marge {1}
+original,original
+per,par
+per {0},par {0}
+qty × rate (auto),qté × tarif (auto)
+unassigned,non assigné
+unit,unité
+{0} day left,{0} jour restant
+{0} days left,{0} jours restants
+{0} delta,{0} delta
+{0} item,{0} article
+{0} items,{0} articles
+{0} line,{0} ligne
+{0} match,{0} correspondance
+{0} matches,{0} correspondances
+{0} of {1} at item level,{0} sur {1} au niveau article
+{0} of {1} · estimation,{0} sur {1} · estimation
+{0} on award,{0} à l’attribution
+{0} per {1},{0} par {1}
+{0} · per {1},{0} · par {1}
+· linked to Rate Master · coefficient × rate,· lié au référentiel de prix · coefficient × tarif
+Δ vs R{0} shown on each item row,Δ vs R{0} affiché sur chaque ligne d’article
+— Any project type —,— Tout type de projet —
+— Manual entry —,— Saisie manuelle —
+— Manual line —,— Ligne manuelle —
+— Not linked —,— Non lié —
+— Same project —,— Même projet —
+— Select UOM —,— Sélectionner une unité —
+— Select category —,— Sélectionner une catégorie —
+— Select unit —,— Sélectionner une unité —
+— Select —,— Sélectionner —
+— Universal —,— Universel —
+— Unscoped —,— Sans périmètre —
+— auto —,— auto —
+← Back to BOQ list,← Retour à la liste des devis
+← Back to tenders,← Retour aux soumissions
+✓ Comparing R{0},✓ Comparaison avec R{0}
+"The per-unit basis — component coefficients mean ""how much per one of this unit"".",La base à l’unité — les coefficients des composants signifient « combien par unité ».
+(none checked = everyone who can see this workspace),(aucun coché = tous ceux qui voient cet espace de travail)
+(off),(désactivé)
++ Add record,+ Ajouter un enregistrement
++ Add report,+ Ajouter un rapport
++ Add shortcut,+ Ajouter un raccourci
++ New Persona,+ Nouveau persona
++ New User,+ Nouvel utilisateur
++91 98xxx xxxxx,+91 98xxx xxxxx
+/path or /app/…,/chemin ou /app/…
+/route,/route
+"API keys, webhooks, OAuth apps and social login providers.","Clés API, webhooks, applications OAuth et fournisseurs de connexion sociale."
+Abbreviation,Abréviation
+Abbreviation is required (ERPNext prefixes accounts with it),L’abréviation est obligatoire (ERPNext en préfixe les comptes)
+Account name,Nom du compte
+Account name is required.,Le nom du compte est obligatoire.
+Account no.,N° de compte
+Account status,Statut du compte
+Accounts shown across Project Finance — balances derive from movements,Comptes affichés dans Finances de projet — les soldes dérivent des mouvements
+Add at least one role,Ajoutez au moins un rôle
+Add fields to existing DocTypes.,Ajouter des champs aux DocTypes existants.
+Add stage,Ajouter une étape
+Add task,Ajouter une tâche
+Add work package,Ajouter un lot de travaux
+All machines,Toutes les machines
+Amber,Ambre
+"App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.","Les mises à jour de l’application ne réinitialisent plus les permissions ; les modifications apportées aux permissions des rôles BuildSuite dans Desk sont donc conservées lors des mises à niveau. Exportez les permissions actuelles pour les transmettre afin d’aligner les valeurs par défaut, ou restaurez les valeurs par défaut livrées pour abandonner les modifications locales."
+"Approval chains for BOQ, SCO, Petty Cash and RA Bills.","Circuits d’approbation pour le devis, l’OM, la petite caisse et les factures d’avancement."
+Asset,Immobilisation
+Assigning this persona to a user grants these Frappe roles.,Attribuer ce persona à un utilisateur lui accorde ces rôles Frappe.
+Audit Log,Journal d’audit
+Back to Settings,Retour aux paramètres
+Bank,Banque
+Bank & Cash Accounts,Comptes banque et caisse
+"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances.","Comptes banque, caisse et petite caisse affichés dans Finances de projet — avec soldes d’ouverture et soldes courants dérivés."
+Blue,Bleu
+Brand colour,Couleur de marque
+Branding & Letter Head,Image de marque et en-tête de lettre
+Branding saved — this company's letter head updated.,Image de marque enregistrée — l’en-tête de lettre de cette société est mis à jour.
+"Brief intro to BuildSuite Core, link to set up their profile.","Brève introduction à BuildSuite Core, lien pour configurer leur profil."
+BuildSuite Core Settings,Paramètres de BuildSuite Core
+BuildSuite product settings,Paramètres du produit BuildSuite
+"Can't delete ""{0}"" — records still reference it. Reassign or remove them first.",Impossible de supprimer « {0} » — des enregistrements y font encore référence. Réaffectez-les ou supprimez-les d’abord.
+Cash,Caisse
+Category name,Nom de la catégorie
+Category saved,Catégorie enregistrée
+Companies,Sociétés
+"Companies, addresses, fiscal year per entity.","Sociétés, adresses, exercice fiscal par entité."
+Company Name,Nom de la société
+Company is required.,La société est obligatoire.
+Company logo,Logo de la société
+Company name is required,Le nom de la société est obligatoire
+Company not found ·,Société introuvable ·
+Company…,Société…
+Configure the quick-nav shortcut tiles shown on each workspace,Configurez les tuiles de raccourci de navigation rapide affichées sur chaque espace de travail
+Configure workspaces and per-role shortcut grids.,Configurez les espaces de travail et les grilles de raccourcis par rôle.
+"Construction categories that drive project templating, each with its own Work Package label.","Catégories de construction qui pilotent le modèle de projet, chacune avec son propre libellé de lot de travaux."
+Could not create the user.,Impossible de créer l’utilisateur.
+Could not delete persona,Impossible de supprimer le persona
+Could not delete user.,Impossible de supprimer l’utilisateur.
+Could not load persona.,Impossible de charger le persona.
+Could not load personas.,Impossible de charger les personas.
+Could not load users.,Impossible de charger les utilisateurs.
+Could not load workspace shortcuts.,Impossible de charger les raccourcis d’espace de travail.
+Could not save Project Settings,Impossible d’enregistrer les paramètres du projet
+Could not save the company.,Impossible d’enregistrer la société.
+Could not save.,Impossible d’enregistrer.
+Could not send reset link,Impossible d’envoyer le lien de réinitialisation
+Could not send welcome email,Impossible d’envoyer l’e-mail de bienvenue
+Country,Pays
+Create a company →,Créer une société →
+Create category,Créer la catégorie
+Create company,Créer la société
+Create machinery,Créer la machine
+Create persona,Créer le persona
+Create user,Créer l’utilisateur
+Creating users is restricted to administrators.,La création d’utilisateurs est réservée aux administrateurs.
+Current balance,Solde courant
+"Current balance = opening balance ± every recorded movement (receipts, payments, disbursements, advances). Accounts with history can't be deleted.","Solde courant = solde d’ouverture ± chaque mouvement enregistré (encaissements, paiements, décaissements, avances). Les comptes avec historique ne peuvent pas être supprimés."
+Custom Fields,Champs personnalisés
+Cyan,Cyan
+Danger zone,Zone sensible
+Data & Diagnostics,Données et diagnostics
+Data Tools,Outils de données
+"Date format, currency, time zone, default company, fiscal year.","Format de date, devise, fuseau horaire, société par défaut, exercice fiscal."
+Day,Jour
+Default company,Société par défaut
+Default currency,Devise par défaut
+Default permission matrix,Matrice de permissions par défaut
+Default project type,Type de projet par défaut
+Default template,Modèle par défaut
+Defaults imported when a project is created under this category,Valeurs par défaut importées lorsqu’un projet est créé sous cette catégorie
+Defaults to India.,Par défaut : Inde.
+"Delete ""{0}""? Accounts with recorded movements can't be deleted.",Supprimer « {0} » ? Les comptes avec des mouvements enregistrés ne peuvent pas être supprimés.
+"Delete ""{0}""? Users must be reassigned first.",Supprimer « {0} » ? Les utilisateurs doivent d’abord être réaffectés.
+Delete account?,Supprimer le compte ?
+Delete company,Supprimer la société
+"Delete company ""{0}""?\n\nThis is permanent and only succeeds if no record still references this company.",Supprimer la société « {0} » ?\n\nCette action est permanente et n’aboutit que si aucun enregistrement ne référence encore cette société.
+Delete is refused while any project links to this company (Frappe-standard LinkExistsError pattern).,La suppression est refusée tant qu’un projet est lié à cette société (modèle LinkExistsError standard de Frappe).
+Delete persona,Supprimer le persona
+Delete usage entry?,Supprimer l’entrée d’utilisation ?
+Delete user,Supprimer l’utilisateur
+Delete {0}? They can no longer log in or be assigned new work.,Supprimer {0} ? Il ne pourra plus se connecter ni se voir attribuer de nouveaux travaux.
+Deleting a persona is permanent and only allowed when no user is assigned it.,La suppression d’un persona est permanente et n’est autorisée que lorsqu’aucun utilisateur ne lui est attribué.
+Disabled users keep their record but cannot log in.,Les utilisateurs désactivés conservent leur fiche mais ne peuvent pas se connecter.
+Disabled — hidden from the new-project dropdown,Désactivé — masqué de la liste de nouveau projet
+DocType,DocType
+Download the full payload as JSON — useful for sharing a snapshot with the dev team or attaching to a bug report. Includes every slice from saveToStorage plus the active role + company.,Téléchargez la charge complète en JSON — utile pour partager un instantané avec l’équipe de développement ou l’attacher à un rapport de bug. Inclut chaque tranche de saveToStorage plus le rôle et la société actifs.
+Each task is assigned to a Work Package and a Stage. On import it becomes a project task and lands in that stage's plan.,"Chaque tâche est affectée à un lot de travaux et à une étape. À l’import, elle devient une tâche de projet et rejoint le plan de cette étape."
+Each task needs a subject and a valid Work Package / Stage.,Chaque tâche nécessite un objet et un lot de travaux / une étape valides.
+Edit account,Modifier le compte
+Edit default template,Modifier le modèle par défaut
+Email & Notifications,E-mail et notifications
+Email actions,Actions e-mail
+Email is required.,L’e-mail est obligatoire.
+Emails,E-mails
+Emerald,Émeraude
+Enable company awareness,Activer la prise en compte des sociétés
+Enabled — appears in the new-project dropdown,Activé — apparaît dans la liste de nouveau projet
+Enabled — user can log in immediately,Activé — l’utilisateur peut se connecter immédiatement
+End (day),Fin (jour)
+Enter a valid email address.,Saisissez une adresse e-mail valide.
+Every record row needs a DocType.,Chaque ligne d’enregistrement nécessite un DocType.
+Every report row needs a report or a route.,Chaque ligne de rapport nécessite un rapport ou une route.
+Export,Exporter
+Export as JSON,Exporter en JSON
+Export permissions,Exporter les permissions
+"Export the dataset, reset to defaults, inspect local storage.","Exportez le jeu de données, réinitialisez aux valeurs par défaut, inspectez le stockage local."
+Exporting…,Exportation…
+Failed to create category,Échec de la création de la catégorie
+Failed to create company,Échec de la création de la société
+Failed to create machinery,Échec de la création de la machine
+Failed to create persona,Échec de la création du persona
+Failed to delete machinery,Échec de la suppression de la machine
+Failed to delete the account.,Échec de la suppression du compte.
+Failed to delete usage,Échec de la suppression de l’utilisation
+Failed to export permissions,Échec de l’export des permissions
+Failed to load branding,Échec du chargement de l’image de marque
+Failed to load machinery.,Échec du chargement des machines.
+Failed to load settings,Échec du chargement des paramètres
+Failed to load template,Échec du chargement du modèle
+Failed to load the usage log.,Échec du chargement du journal d’utilisation.
+Failed to log usage,Échec de l’enregistrement de l’utilisation
+Failed to restore default permissions,Échec de la restauration des permissions par défaut
+Failed to save category,Échec de l’enregistrement de la catégorie
+Failed to save persona,Échec de l’enregistrement du persona
+Failed to save settings,Échec de l’enregistrement des paramètres
+Failed to save template,Échec de l’enregistrement du modèle
+Failed to save the account.,Échec de l’enregistrement du compte.
+Failed to update machinery,Échec de la mise à jour de la machine
+Failed to update usage,Échec de la mise à jour de l’utilisation
+Filter {0}…,Filtrer {0}…
+Frappe Roles are auto-assigned from the persona on the production side.,Les rôles Frappe sont attribués automatiquement d’après le persona côté production.
+Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user's day-to-day work.,Les rôles Frappe sont attribués automatiquement d’après le persona côté production. Choisissez celui qui correspond au travail quotidien de l’utilisateur.
+Frontend id (auto-filled from the name if left blank).,Id frontend (rempli automatiquement d’après le nom si laissé vide).
+Fuel cost,Coût du carburant
+Fuel cost (₹),Coût du carburant (₹)
+Full name,Nom complet
+Full name is required.,Le nom complet est obligatoire.
+General Settings,Paramètres généraux
+Granted roles,Rôles accordés
+Green,Vert
+Hidden,Masqué
+Hide all,Tout masquer
+Hired,Loué
+Hour,Heure
+Hours,Heures
+How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form.,Comment l’ID d’enregistrement d’un nouveau projet est généré. « Project ID » utilise l’ID de projet saisi comme nom d’enregistrement ; « Name Series » laisse le créateur choisir une série de nommage sur le formulaire de nouveau projet.
+"ID prefixes for Project, Task, BOQ, SCO etc.","Préfixes d’ID pour Projet, Tâche, devis, OM, etc."
+ISO code. Defaults to INR.,Code ISO. Par défaut : INR.
+Icon,Icône
+Identity,Identité
+Integrations,Intégrations
+"Job roles users pick from, each mapping to the Frappe roles it grants.","Fonctions parmi lesquelles les utilisateurs choisissent, chacune correspondant aux rôles Frappe qu’elle accorde."
+Label,Libellé
+Legal entity for project / accounting segregation (§14),Entité juridique pour la séparation projet / comptabilité (§14)
+Legal entity name. Becomes the company's name and appears on invoices / contracts.,Nom de l’entité juridique. Devient le nom de la société et apparaît sur les factures / contrats.
+Lets the user set their own password instead of you assigning one.,Permet à l’utilisateur de définir son propre mot de passe au lieu que vous lui en attribuiez un.
+Letter head subtext,Sous-texte de l’en-tête de lettre
+"Letter heads, print formats per DocType, page sizes.","En-têtes de lettre, formats d’impression par DocType, tailles de page."
+Link an asset…,Lier une immobilisation…
+Linked asset (ERPNext),Immobilisation liée (ERPNext)
+Linked projects,Projets liés
+Loading accounts…,Chargement des comptes…
+Loading machinery…,Chargement des machines…
+Loading persona…,Chargement du persona…
+Loading usage log…,Chargement du journal d’utilisation…
+Loading usage…,Chargement de l’utilisation…
+Loading users…,Chargement des utilisateurs…
+Locked after create per Frappe Naming Series convention.,Verrouillé après création selon la convention de série de nommage Frappe.
+Log Machinery Usage,Enregistrer l’utilisation de la machine
+Log usage,Enregistrer l’utilisation
+Log usage →,Enregistrer l’utilisation →
+Login id — cannot be changed after the user is created.,Identifiant de connexion — non modifiable après la création de l’utilisateur.
+Logo uploaded — Save branding to apply.,Logo téléversé — enregistrez l’image de marque pour l’appliquer.
+Machine,Machine
+Machine is required.,La machine est obligatoire.
+Machinery,Machines
+Machinery Register,Registre des machines
+Machinery Usage,Utilisation des machines
+Machinery Usage Log,Journal d’utilisation des machines
+"Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.","Interrupteur principal. Désactivé → expérience mono-société : le sélecteur de société de la barre supérieure est masqué et les listes/sélecteurs ne sont pas limités à une société. Activé → le sélecteur limite chaque liste, sélecteur Link/Select et la société par défaut des nouveaux enregistrements à la société sélectionnée."
+Mobile,Mobile
+Month,Mois
+Move down,Descendre
+Move up,Monter
+Multi-company,Multi-société
+Naming Series,Série de nommage
+New Account,Nouveau compte
+New Category,Nouvelle catégorie
+New Company,Nouvelle société
+New Machinery,Nouvelle machine
+New Persona,Nouveau persona
+New Project Category,Nouvelle catégorie de projet
+New User,Nouvel utilisateur
+New account,Nouveau compte
+No accounts yet — add your bank and cash accounts.,Aucun compte pour l’instant — ajoutez vos comptes banque et caisse.
+No companies match this search.,Aucune société ne correspond à cette recherche.
+No logo,Aucun logo
+No machinery yet.,Aucune machine pour l’instant.
+No projects reference this company · safe to delete,Aucun projet ne référence cette société · suppression sûre
+No projects reference this company. Safe to delete.,Aucun projet ne référence cette société. Suppression sûre.
+No records configured for {0} yet.,Aucun enregistrement configuré pour {0} pour l’instant.
+No reports configured for {0} yet.,Aucun rapport configuré pour {0} pour l’instant.
+No roles,Aucun rôle
+No shortcuts.,Aucun raccourci.
+No stages yet.,Aucune étape pour l’instant.
+No tasks yet.,Aucune tâche pour l’instant.
+No usage logged yet.,Aucune utilisation enregistrée pour l’instant.
+No users match this search.,Aucun utilisateur ne correspond à cette recherche.
+No workspaces configured.,Aucun espace de travail configuré.
+On,Activé
+Onboarding,Intégration
+Only the System Manager role can create companies.,Seul le rôle System Manager peut créer des sociétés.
+Optional — contact number for this user.,Facultatif — numéro de contact de cet utilisateur.
+Optional — owned fixed asset.,Facultatif — immobilisation en propriété.
+Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant.,Facultatif — l’immobilisation en propriété dans ERPNext Assets. Laissez vide pour du matériel loué.
+Org-wide BuildSuite toggles,Options BuildSuite à l’échelle de l’organisation
+"Org-wide BuildSuite toggles — company segregation, default project type, default company.","Options BuildSuite à l’échelle de l’organisation — séparation des sociétés, type de projet par défaut, société par défaut."
+Organisation,Organisation
+"Organisation, system, data and diagnostics","Organisation, système, données et diagnostics"
+Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.,L’e-mail sortant n’est pas configuré — ces e-mails ne seront pas envoyés tant qu’un compte e-mail sortant n’est pas configuré.
+Owned,Propriété
+Owner / Vendor,Propriétaire / fournisseur
+Ownership,Propriété
+Password reset link,Lien de réinitialisation du mot de passe
+Password-reset link queued,Lien de réinitialisation du mot de passe en file d’attente
+People who can log in. Role assignment and enabled status.,Personnes pouvant se connecter. Attribution des rôles et statut d’activation.
+Persistence model,Modèle de persistance
+Persona,Persona
+Persona created,Persona créé
+Persona deleted,Persona supprimé
+Persona name,Nom du persona
+Persona saved,Persona enregistré
+Personas,Personas
+Petty Cash Account,Compte de petite caisse
+Pick a machine…,Choisissez une machine…
+Pick a persona.,Choisissez un persona.
+Pick a type…,Choisissez un type…
+Pill colour,Couleur de la pastille
+Planned tasks,Tâches planifiées
+Please choose an image file.,Veuillez choisir un fichier image.
+Plural,Pluriel
+Position in the new-project dropdown.,Position dans la liste de nouveau projet.
+Position in the persona dropdown.,Position dans la liste des personas.
+Pre-fills the Project type field on new projects.,Pré-remplit le champ Type de projet sur les nouveaux projets.
+Preview,Aperçu
+Print Templates,Modèles d’impression
+Project Categories,Catégories de projet
+Project Settings saved,Paramètres du projet enregistrés
+Project defaults,Valeurs par défaut du projet
+Project is required.,Le projet est obligatoire.
+Project naming,Nommage des projets
+Project page tabs,Onglets de la page projet
+Prototype dataset · export · reset · localStorage inspector,Jeu de données prototype · export · réinitialisation · inspecteur localStorage
+Quantity,Quantité
+Rate (₹),Tarif (₹)
+Rate Unit,Unité de tarif
+Rate unit,Unité de tarif
+Read-only view. Creating / editing / deleting companies requires the System Manager role.,Vue en lecture seule. Créer / modifier / supprimer des sociétés nécessite le rôle System Manager.
+Read-only view. Editing requires the System Manager role.,Vue en lecture seule. La modification nécessite le rôle System Manager.
+Read-only. Editing requires Admin or BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle Admin ou BuildSuite Administrator.
+Read-only. Editing requires the Admin or BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle Admin ou BuildSuite Administrator.
+Read-only. Editing requires the BuildSuite Administrator role.,Lecture seule. La modification nécessite le rôle BuildSuite Administrator.
+Recent user actions across the system — who changed what when.,Actions récentes des utilisateurs dans le système — qui a changé quoi et quand.
+Registered address · GSTIN · phone / email,Adresse enregistrée · GSTIN · téléphone / e-mail
+Replace logo,Remplacer le logo
+Report-style shortcut tiles shown in each workspace,Tuiles de raccourci de type rapport affichées dans chaque espace de travail
+Report-style shortcut tiles shown in each workspace — one tab per workspace.,Tuiles de raccourci de type rapport affichées dans chaque espace de travail — un onglet par espace de travail.
+Reset,Réinitialiser
+Reset all data,Réinitialiser toutes les données
+"Reset all data to initial seed values?\n\nAny projects, tasks, SCOs, attachments, and stage plannings you created will be lost. Role and active-company preferences are preserved (they live under separate localStorage keys).","Réinitialiser toutes les données aux valeurs initiales ?\n\nTous les projets, tâches, OM, pièces jointes et planifications d’étapes que vous avez créés seront perdus. Les préférences de rôle et de société active sont conservées (elles se trouvent sous des clés localStorage distinctes)."
+Restore default permissions?,Restaurer les permissions par défaut ?
+Restore defaults,Restaurer les valeurs par défaut
+Restore started — default permissions are being re-applied in the background. This can take a few minutes; refresh once it completes.,Restauration démarrée — les permissions par défaut sont réappliquées en arrière-plan. Cela peut prendre quelques minutes ; actualisez une fois terminé.
+Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone.,La restauration écrase toutes les permissions des rôles BuildSuite de ce site par les valeurs par défaut livrées et est irréversible.
+Restoring…,Restauration…
+"Role definitions, workspace visibility and record-level permissions.","Définitions des rôles, visibilité des espaces de travail et permissions au niveau des enregistrements."
+Role permissions,Permissions des rôles
+Role permissions exported.,Permissions des rôles exportées.
+Roles,Rôles
+Roles & Permissions,Rôles et permissions
+Rose,Rose
+Route,Route
+"SMTP, notification rules, email templates, recipients.","SMTP, règles de notification, modèles d’e-mail, destinataires."
+Save branding,Enregistrer l’image de marque
+Save failed,Échec de l’enregistrement
+Save template,Enregistrer le modèle
+Save {0},Enregistrer {0}
+"Search by id, name, description…","Rechercher par id, nom, description…"
+"Search by name, email, persona…","Rechercher par nom, e-mail, persona…"
+Search categories…,Rechercher des catégories…
+Search machinery…,Rechercher des machines…
+Search machine…,Rechercher une machine…
+Search personas…,Rechercher des personas…
+Search project…,Rechercher un projet…
+Search usage…,Rechercher une utilisation…
+Select DocType,Sélectionner un DocType
+Select persona,Sélectionner un persona
+Select report,Sélectionner un rapport
+Send password reset link,Envoyer le lien de réinitialisation du mot de passe
+Send reset link,Envoyer le lien de réinitialisation
+Send welcome,Envoyer la bienvenue
+Send welcome email,Envoyer l’e-mail de bienvenue
+Sending…,Envoi…
+Settings is restricted to administrators.,Les paramètres sont réservés aux administrateurs.
+Short code ERPNext prefixes onto the company's accounts (e.g. ARP).,Code court qu’ERPNext préfixe aux comptes de la société (p. ex. ARP).
+Short description,Description courte
+Short name,Nom court
+Show all,Tout afficher
+Showing {0} of {1} — open the Projects list to see them all.,Affichage de {0} sur {1} — ouvrez la liste des projets pour tous les voir.
+Shown,Affiché
+Shown under the company name in the letter head; line breaks preserved.,Affiché sous le nom de la société dans l’en-tête de lettre ; les sauts de ligne sont conservés.
+Singular,Singulier
+Site-wide defaults for the Project record,Valeurs par défaut du site pour l’enregistrement Projet
+Slate,Ardoise
+Slug,Slug
+Sort order,Ordre de tri
+Stable identifier — locked after create.,Identifiant stable — verrouillé après création.
+Start (day),Début (jour)
+Subject,Objet
+System,Système
+Task…,Tâche…
+Template saved,Modèle enregistré
+The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded 'Petty Cash' account; change it to post to a different float.,"Le grand livre Caisse / Banque dans lequel la petite caisse est décaissée et depuis lequel les dépenses sont payées. Par défaut, le compte « Petty Cash » initialisé ; modifiez-le pour imputer à un autre fonds."
+"The Work Packages, Stages and Tasks a project inherits when it's created under this category. Tasks are assigned to their Stage, so imported stage plans arrive with their tasks.","Les lots de travaux, étapes et tâches qu’un projet hérite lorsqu’il est créé sous cette catégorie. Les tâches sont affectées à leur étape, de sorte que les plans d’étapes importés arrivent avec leurs tâches."
+The company pre-selected on Project create when the user doesn't pick one explicitly. Must exist in the Companies fixture.,La société pré-sélectionnée à la création d’un projet lorsque l’utilisateur n’en choisit pas explicitement. Doit exister dans la fixture Sociétés.
+The label users pick. Can't be changed later.,Le libellé que les utilisateurs choisissent. Non modifiable ultérieurement.
+The name is the key and can't be changed.,Le nom est la clé et ne peut pas être modifié.
+The standard project page — which tabs every project offers by default. Each project can overrule it.,La page projet standard — les onglets que chaque projet propose par défaut. Chaque projet peut la surcharger.
+This is a BuildSuite default persona.,Ceci est un persona BuildSuite par défaut.
+This machinery record will be removed permanently. Its usage logs will remain.,Cette fiche machine sera supprimée définitivement. Ses journaux d’utilisation seront conservés.
+This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. Any permission changes made in Desk will be lost. This cannot be undone — export the current permissions first if you want to keep them.,Cela écrase TOUTES les permissions des rôles BuildSuite de ce site par les valeurs par défaut livrées. Toute modification de permission effectuée dans Desk sera perdue. Cette action est irréversible — exportez d’abord les permissions actuelles si vous souhaitez les conserver.
+This record type isn't available here.,Ce type d’enregistrement n’est pas disponible ici.
+This usage log entry will be removed permanently.,Cette entrée du journal d’utilisation sera supprimée définitivement.
+Three independent keys:,Trois clés indépendantes :
+Tile title,Titre de la tuile
+Tile title (defaults to DocType),Titre de la tuile (par défaut le DocType)
+Topbar pill text.,Texte de la pastille de la barre supérieure.
+Total cost,Coût total
+Type is required.,Le type est obligatoire.
+Unsaved branding changes,Modifications d’image de marque non enregistrées
+Upload failed,Échec du téléversement
+Upload logo,Téléverser un logo
+Upload returned no file URL.,Le téléversement n’a renvoyé aucune URL de fichier.
+Usage,Utilisation
+Usage logs ({0}),Journaux d’utilisation ({0})
+Used,Utilisé
+Used as the login id + destination for the welcome and password-reset emails.,Utilisé comme identifiant de connexion + destination des e-mails de bienvenue et de réinitialisation.
+User deleted,Utilisateur supprimé
+User updated,Utilisateur mis à jour
+User {0} created,Utilisateur {0} créé
+Users management is restricted to administrators.,La gestion des utilisateurs est réservée aux administrateurs.
+Violet,Violet
+Visible to:,Visible par :
+WP-XXX,WP-XXX
+Welcome email,E-mail de bienvenue
+Welcome email queued,E-mail de bienvenue en file d’attente
+What this persona is for,À quoi sert ce persona
+"Which tabs every project offers. Overview is always shown, so it is not listed here. Any project can overrule these for itself from its own ""…"" menu.","Les onglets que chaque projet propose. L’aperçu est toujours affiché, il n’est donc pas listé ici. Chaque projet peut les surcharger depuis son propre menu « … »."
+Work Package label,Libellé du lot de travaux
+Workflows,Flux de travail
+Workspace,Espace de travail
+Workspace Setting,Paramètres d’espace de travail
+Workspace Structure,Structure des espaces de travail
+Workspace shortcuts saved.,Raccourcis d’espace de travail enregistrés.
+You don't have permission to create machinery.,Vous n’avez pas la permission de créer une machine.
+You don't have permission to log machinery usage.,Vous n’avez pas la permission d’enregistrer l’utilisation d’une machine.
+You don't have permission to manage finance accounts.,Vous n’avez pas la permission de gérer les comptes financiers.
+companies,sociétés
+company,société
+e.g. ARP,p. ex. ARP
+e.g. Acme Realty Pvt Ltd,p. ex. Acme Realty Pvt Ltd
+e.g. Asha Menon,p. ex. Asha Menon
+"e.g. Commercial, Residential, Infrastructure, EPC, Interiors.","p. ex. Commercial, Résidentiel, Infrastructure, EPC, Intérieurs."
+e.g. ICICI Current A/c,p. ex. ICICI compte courant
+e.g. Industrial,p. ex. Industriel
+e.g. Planner,p. ex. Planificateur
+e.g. planner,p. ex. planificateur
+letter head,en-tête de lettre
+name@company.com,nom@societe.com
+users,utilisateurs
+{0} of {1} tabs shown by default.,{0} sur {1} onglets affichés par défaut.
+{0} of {1} · multi-company per CLAUDE.md §14,{0} sur {1} · multi-société selon CLAUDE.md §14
+{0} project references this company,{0} projet référence cette société
+{0} projects reference this company,{0} projets référencent cette société
+{0} records,{0} enregistrements
+{0} reports,{0} rapports
+{0} saved,{0} enregistré
+{0} shortcuts,{0} raccourcis
+{0} template,modèle {0}
+{0} workspace,{0} espace de travail
+{0} workspaces,{0} espaces de travail
+— No linked asset —,— Aucune immobilisation liée —
+— None —,— Aucun —
+— not linked —,— non lié —
+"e.g. ""Block"", ""Tower"", ""Package"". Defaults to ""Work Package"".","p. ex. « Block », « Tower », « Package ». Par défaut « Work Package »."
+Search {0}…,Rechercher {0}…
+EMD amount,Montant de la caution
+Project budget,Budget du projet
+Advance recovery,Récupération d'avance
+Current rate,Tarif actuel

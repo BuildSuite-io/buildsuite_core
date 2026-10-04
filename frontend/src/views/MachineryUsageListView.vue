@@ -17,6 +17,7 @@ import ReportFilters from "@/components/reports/ReportFilters.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { getMachineryUsageReport } from "@/data/equipmentApi";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const router = useRouter();
 const store = useDataStore();
@@ -31,7 +32,7 @@ async function load() {
 	try {
 		all.value = (await getMachineryUsageReport()) || [];
 	} catch (e) {
-		error.value = e.message || "Failed to load the usage log.";
+		error.value = e.message || __("Failed to load the usage log.");
 	} finally {
 		loading.value = false;
 	}
@@ -84,18 +85,18 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "date", label: "Date" },
-	{ key: "machine", label: "Machine" },
-	{ key: "project", label: "Project" },
-	{ key: "task", label: "Task" },
-	{ key: "quantity", label: "Qty", align: "right" },
-	{ key: "total", label: "Total cost", align: "right" },
+	{ key: "date", label: __("Date") },
+	{ key: "machine", label: __("Machine") },
+	{ key: "project", label: __("Project") },
+	{ key: "task", label: __("Task") },
+	{ key: "quantity", label: __("Qty"), align: "right" },
+	{ key: "total", label: __("Total cost"), align: "right" },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery Usage" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery Usage") },
 ];
 
 function onRowClick(row) {
@@ -104,9 +105,9 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Machinery Usage Log" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Machinery Usage Log')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-save-btn">+ Log usage</RouterLink>
+			<RouterLink v-if="canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-save-btn">+ {{ __("Log usage") }}</RouterLink>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -120,38 +121,38 @@ function onRowClick(row) {
 			>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Machine</span
+						>{{ __("Machine") }}</span
 					>
 					<span class="w-48 inline-block">
 						<DeskSearchableSelect
 							v-model="f.machine"
 							:options="machineOptions"
 							allow-clear
-							placeholder="All machines"
-							search-placeholder="Search…"
+							:placeholder="__('All machines')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Project</span
+						>{{ __("Project") }}</span
 					>
 					<span class="w-52 inline-block">
 						<DeskSearchableSelect
 							v-model="f.project"
 							:options="projectOptions"
 							allow-clear
-							placeholder="All projects"
-							search-placeholder="Search…"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search…')"
 						/>
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Used</span
+						>{{ __("Used") }}</span
 					>
 					<DeskInput v-model="f.from" type="date" class="!w-36" />
-					<span class="text-[11px] text-ink-400">to</span>
+					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 					<DeskInput v-model="f.to" type="date" class="!w-36" />
 				</label>
 			</ReportFilters>
@@ -161,7 +162,7 @@ function onRowClick(row) {
 				:rows="rows"
 				:columns="columns"
 				row-key="name"
-				search-placeholder="Search usage…"
+				:search-placeholder="__('Search usage…')"
 				@row-click="onRowClick"
 			>
 				<template #cell-date="{ row }">
@@ -189,9 +190,9 @@ function onRowClick(row) {
 
 				<template #empty>
 					<div class="text-sm text-ink-500">
-						{{ loading ? "Loading usage log…" : "No usage logged yet." }}
+						{{ loading ? __("Loading usage log…") : __("No usage logged yet.") }}
 						<RouterLink v-if="!loading && canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-link"
-							>Log usage →</RouterLink
+							>{{ __("Log usage →") }}</RouterLink
 						>
 					</div>
 				</template>

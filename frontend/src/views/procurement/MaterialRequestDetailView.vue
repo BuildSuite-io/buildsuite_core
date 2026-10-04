@@ -20,6 +20,7 @@ import UserAvatar from "@/components/UserAvatar.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -47,7 +48,7 @@ async function load() {
 		mr.value = await getMaterialRequest(props.id);
 		await refreshWorkflow(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load request", "error");
+		showToast(err.message || __("Failed to load request"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -68,39 +69,41 @@ function onCreatePo() {
 
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `Submit ${mr.value.name}?`,
-		message: `Submit this request (${fmtINR(
-			mr.value.total
-		)})? It enters the procurement queue; a submitted request is cancelled, not edited.`,
-		confirmLabel: "Submit",
+		title: __("Submit {0}?", [mr.value.name]),
+		message: __(
+			"Submit this request ({0})? It enters the procurement queue; a submitted request is cancelled, not edited.",
+			[fmtINR(mr.value.total)]
+		),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		mr.value = await submitMaterialRequest(mr.value.name);
-		showToast("Request submitted.");
+		showToast(__("Request submitted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: `Cancel ${mr.value.name}?`,
-		message:
-			"Cancelling withdraws the request — it drops out of the procurement queue. Amend later to raise a corrected copy.",
-		confirmLabel: "Cancel request",
-		cancelLabel: "Keep",
+		title: __("Cancel {0}?", [mr.value.name]),
+		message: __(
+			"Cancelling withdraws the request — it drops out of the procurement queue. Amend later to raise a corrected copy."
+		),
+		confirmLabel: __("Cancel request"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		mr.value = await cancelMaterialRequest(mr.value.name);
-		showToast("Request cancelled.");
+		showToast(__("Request cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -112,9 +115,9 @@ async function onWorkflowAction(action) {
 	try {
 		await applyWorkflowAction(mr.value.name, action);
 		await load();
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -123,19 +126,19 @@ async function onAmend() {
 	busy.value = true;
 	try {
 		const res = await amendMaterialRequest(mr.value.name);
-		showToast("Amended — a fresh draft was created.");
+		showToast(__("Amended — a fresh draft was created."));
 		router.push(`/procurement/material-requests/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Amend failed", "error");
+		showToast(err.message || __("Amend failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${mr.value.name}?`,
-		message: "This request and its items will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [mr.value.name]),
+		message: __("This request and its items will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -143,14 +146,14 @@ async function onDelete() {
 		await deleteMaterialRequest(mr.value.name);
 		router.push("/procurement/material-requests");
 	} catch (err) {
-		showToast(err.message || "Failed to delete request", "error");
+		showToast(err.message || __("Failed to delete request"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Material Requests", to: "/procurement/material-requests" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Material Requests"), to: "/procurement/material-requests" },
 	{ label: mr.value?.name || props.id },
 ]);
 </script>
@@ -159,7 +162,12 @@ const breadcrumbs = computed(() => [
 	<DeskPage
 		v-if="mr"
 		:title="mr.name"
-		:subtitle="`${mr.project_name || mr.project} · requested ${fmtDate(mr.transaction_date)}`"
+		:subtitle="
+			__('{0} · requested {1}', [
+				mr.project_name || mr.project,
+				fmtDate(mr.transaction_date),
+			])
+		"
 		:breadcrumbs="breadcrumbs"
 	>
 		<template #actions>
@@ -167,7 +175,7 @@ const breadcrumbs = computed(() => [
 			<span
 				v-if="wfActive && wfState && wfState !== mr.status"
 				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
-				>{{ wfState }}</span
+				>{{ __(wfState) }}</span
 			>
 			<button
 				v-if="isDraft && canEdit('materialRequest')"
@@ -176,7 +184,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
@@ -187,17 +195,17 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="canOrder && canCreate('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
-				title="Raise a Purchase Order from this request"
+				:title="__('Raise a Purchase Order from this request')"
 				@click="onCreatePo"
 			>
-				+ Create Purchase Order
+				{{ __("+ Create Purchase Order") }}
 			</button>
 			<button
 				v-if="!wfActive && isSubmitted && canSubmit('materialRequest')"
@@ -207,7 +215,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onCancel"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<!-- Workflow transitions (active workflow) — role- and state-filtered by the backend -->
 			<button
@@ -219,7 +227,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onWorkflowAction(t.action)"
 			>
-				{{ t.action }}
+				{{ __(t.action) }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('materialRequest')"
@@ -227,10 +235,10 @@ const breadcrumbs = computed(() => [
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				title="Create a fresh editable draft copy (the original stays cancelled)"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				v-if="!isSubmitted && canDelete('materialRequest')"
@@ -239,7 +247,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -247,7 +255,7 @@ const breadcrumbs = computed(() => [
 			v-if="isDraft"
 			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"
 		>
-			Draft — not sent to the office yet. Submit it to enter the procurement queue.
+			{{ __("Draft — not sent to the office yet. Submit it to enter the procurement queue.") }}
 		</div>
 		<div
 			v-if="isCancelled"
@@ -261,26 +269,32 @@ const breadcrumbs = computed(() => [
 		<!-- Summary strip -->
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Project</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Project") }}
+				</div>
 				<DeskLink :to="`/projects/${mr.project}`" class="text-sm">{{
 					mr.project_name || mr.project
 				}}</DeskLink>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Requested by</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Requested by") }}
+				</div>
 				<div class="flex items-center gap-1.5 mt-0.5">
 					<UserAvatar :user-id="mr.requested_by" size="xs" show-name />
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Needed by</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Needed by") }}
+				</div>
 				<div class="text-sm text-ink-900 mt-0.5">
 					{{ mr.schedule_date ? fmtDate(mr.schedule_date) : "—" }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500">
-					Estimated value
+					{{ __("Estimated value") }}
 				</div>
 				<div class="text-sm font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(mr.total) }}
@@ -293,19 +307,21 @@ const breadcrumbs = computed(() => [
 			<div
 				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
 			>
-				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">Items</h3>
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Items") }}
+				</h3>
 				<span class="text-[10px] text-ink-500"
-					>Ordered {{ Math.round(mr.per_ordered || 0) }}%</span
+					>{{ __("Ordered") }} {{ Math.round(mr.per_ordered || 0) }}%</span
 				>
 			</div>
 			<table class="w-full text-xs" style="min-width: 640px">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Item</th>
-						<th class="text-right px-3 py-2">Qty</th>
-						<th class="text-left px-3 py-2">UOM</th>
-						<th class="text-right px-3 py-2">Est. rate</th>
-						<th class="text-right px-3 py-2">Amount</th>
+						<th class="text-left px-3 py-2">{{ __("Item") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Est. rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -344,6 +360,6 @@ const breadcrumbs = computed(() => [
 	</DeskPage>
 
 	<div v-else class="px-3 py-2 text-sm text-ink-500">
-		{{ loading ? "Loading request…" : "Material request not found." }}
+		{{ loading ? __("Loading request…") : __("Material request not found.") }}
 	</div>
 </template>
