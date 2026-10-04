@@ -16,6 +16,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import { getWorkspaceShortcutsConfig, setWorkspaceShortcuts } from "@/data/workspaceSettingApi";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 
@@ -31,7 +32,7 @@ async function load() {
 		config.value = await getWorkspaceShortcutsConfig();
 	} catch (e) {
 		config.value = [];
-		showToast(e.message || "Could not load workspace shortcuts.", "error");
+		showToast(e.message || __("Could not load workspace shortcuts."), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -58,11 +59,11 @@ async function save() {
 			const rows = (ws.shortcuts || []).filter((s) => s.label?.trim() && s.route?.trim());
 			await setWorkspaceShortcuts(ws.slug, rows);
 		}
-		showToast("Workspace shortcuts saved.");
+		showToast(__("Workspace shortcuts saved."));
 		editing.value = false;
 		await load();
 	} catch (e) {
-		showToast(e.message || "Could not save.", "error");
+		showToast(e.message || __("Could not save."), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -93,36 +94,41 @@ function toggleRole(sc, role) {
 }
 // "BuildSuite Foreman" -> "Foreman"; "System Manager" stays.
 const roleLabel = (r) => r.replace(/^BuildSuite /, "");
-const scVisibility = (sc) => (sc.roles?.length ? sc.roles.map(roleLabel).join(", ") : "Everyone");
+const scVisibility = (sc) =>
+	sc.roles?.length ? sc.roles.map(roleLabel).join(", ") : __("Everyone");
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Workspace Structure" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Workspace Structure") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		title="Workspace Structure"
-		subtitle="Configure the quick-nav shortcut tiles shown on each workspace"
+		:title="__('Workspace Structure')"
+		:subtitle="__('Configure the quick-nav shortcut tiles shown on each workspace')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
 					v-if="canEdit"
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
+					:save-label="editing ? (saving ? __('Saving…') : __('Save')) : __('Edit')"
 					:show-cancel="editing"
 					:saving="saving"
-					cancel-label="Cancel"
+					:cancel-label="__('Cancel')"
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				>
 					<template #left>
 						<span class="text-[11px] text-ink-500">
-							{{ config.length }} workspace{{ config.length === 1 ? "" : "s" }} ·
-							{{ totalShortcuts }} shortcuts
+							{{
+								config.length === 1
+									? __("{0} workspace", [config.length])
+									: __("{0} workspaces", [config.length])
+							}}
+							· {{ __("{0} shortcuts", [totalShortcuts]) }}
 						</span>
 					</template>
 				</DeskActionBar>
@@ -130,12 +136,12 @@ const breadcrumbs = [
 					v-else
 					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
 				>
-					Read-only. Editing requires the BuildSuite Administrator role.
+					{{ __("Read-only. Editing requires the BuildSuite Administrator role.") }}
 				</div>
 			</template>
 
 			<div class="max-w-4xl mx-auto">
-				<div v-if="loading" class="px-4 py-6 text-sm text-ink-500">Loading…</div>
+				<div v-if="loading" class="px-4 py-6 text-sm text-ink-500">{{ __("Loading…") }}</div>
 
 				<DeskSection v-for="ws in config" :key="ws.slug" :title="ws.label">
 					<div class="md:col-span-2">
@@ -178,25 +184,25 @@ const breadcrumbs = [
 									<div class="flex items-center gap-2">
 										<template v-if="editing">
 											<DeskInput v-model="sc.icon" class="!text-base !w-10 !text-center" />
-											<DeskInput v-model="sc.label" placeholder="Label" class="!text-xs !flex-1" />
-											<DeskInput v-model="sc.route" placeholder="/route" class="!text-xs !flex-1 !font-mono" />
+											<DeskInput v-model="sc.label" :placeholder="__('Label')" class="!text-xs !flex-1" />
+											<DeskInput v-model="sc.route" :placeholder="__('/route')" class="!text-xs !flex-1 !font-mono" />
 											<label class="flex items-center gap-1 text-[11px] text-ink-600">
 												<input type="checkbox" v-model="sc.enabled" class="accent-brand-600" />
-												On
+												{{ __("On") }}
 											</label>
 										</template>
 										<template v-else>
 											<span class="text-base">{{ sc.icon }}</span>
 											<span class="text-ink-900 font-medium">{{ sc.label }}</span>
 											<span class="text-xs font-mono text-ink-500">{{ sc.route }}</span>
-											<span v-if="!sc.enabled" class="text-[10px] text-ink-400 italic">(off)</span>
+											<span v-if="!sc.enabled" class="text-[10px] text-ink-400 italic">{{ __("(off)") }}</span>
 										</template>
 									</div>
 
 									<!-- Visible-to roles -->
 									<div class="mt-1.5 text-[11px]">
 										<template v-if="editing">
-											<span class="text-ink-500 mr-1">Visible to:</span>
+											<span class="text-ink-500 mr-1">{{ __("Visible to:") }}</span>
 											<label
 												v-for="role in ws.available_roles"
 												:key="role"
@@ -211,11 +217,11 @@ const breadcrumbs = [
 												{{ roleLabel(role) }}
 											</label>
 											<span v-if="!sc.roles.length" class="text-ink-400 italic ml-1">
-												(none checked = everyone who can see this workspace)
+												{{ __("(none checked = everyone who can see this workspace)") }}
 											</span>
 										</template>
 										<template v-else>
-											<span class="text-ink-500">Visible to:</span>
+											<span class="text-ink-500">{{ __("Visible to:") }}</span>
 											<span class="text-ink-700 ml-1">{{ scVisibility(sc) }}</span>
 										</template>
 									</div>
@@ -227,11 +233,11 @@ const breadcrumbs = [
 									class="text-[11px] text-danger-600 hover:text-danger-800 px-1 pt-1"
 									@click="removeShortcut(ws, scIdx)"
 								>
-									Remove
+									{{ __("Remove") }}
 								</button>
 							</div>
 						</div>
-						<div v-else class="text-xs text-ink-400 italic px-1 py-2">No shortcuts.</div>
+						<div v-else class="text-xs text-ink-400 italic px-1 py-2">{{ __("No shortcuts.") }}</div>
 
 						<button
 							v-if="editing"
@@ -239,14 +245,14 @@ const breadcrumbs = [
 							class="mt-2 text-[11px] text-brand-700 hover:underline"
 							@click="addShortcut(ws)"
 						>
-							+ Add shortcut
+							{{ __("+ Add shortcut") }}
 						</button>
 					</div>
 				</DeskSection>
 
 				<div v-if="!loading && !config.length" class="px-4 py-6 text-sm text-ink-500">
-					No workspaces configured.
-					<RouterLink to="/settings" class="text-brand-700 hover:underline">Back to Settings</RouterLink>
+					{{ __("No workspaces configured.") }}
+					<RouterLink to="/settings" class="text-brand-700 hover:underline">{{ __("Back to Settings") }}</RouterLink>
 				</div>
 			</div>
 		</DeskForm>

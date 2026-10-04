@@ -19,6 +19,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -46,7 +47,7 @@ async function load() {
 		po.value = await getPurchaseOrder(props.id);
 		await refreshWorkflow(props.id);
 	} catch (err) {
-		showToast(err.message || "Failed to load order", "error");
+		showToast(err.message || __("Failed to load order"), "error");
 	} finally {
 		loading.value = false;
 	}
@@ -72,38 +73,39 @@ function onCreateReceipt() {
 
 async function onSubmit() {
 	const ok = await confirmDialog({
-		title: `Submit ${po.value.name}?`,
-		message: `Submit this order to ${po.value.supplier_name || po.value.supplier} (${fmtINR(
-			po.value.grand_total
-		)})? It posts the order and locks the lines; a submitted order is amended, not edited.`,
-		confirmLabel: "Submit",
+		title: __("Submit {0}?", [po.value.name]),
+		message: __(
+			"Submit this order to {0} ({1})? It posts the order and locks the lines; a submitted order is amended, not edited.",
+			[po.value.supplier_name || po.value.supplier, fmtINR(po.value.grand_total)]
+		),
+		confirmLabel: __("Submit"),
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		po.value = await submitPurchaseOrder(po.value.name);
-		showToast("Order submitted.");
+		showToast(__("Order submitted."));
 	} catch (err) {
-		showToast(err.message || "Submit failed", "error");
+		showToast(err.message || __("Submit failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onCancel() {
 	const ok = await confirmDialog({
-		title: `Cancel ${po.value.name}?`,
-		message: "This cancels the order. It's blocked if receipts or bills exist against it.",
-		confirmLabel: "Cancel order",
-		cancelLabel: "Keep",
+		title: __("Cancel {0}?", [po.value.name]),
+		message: __("This cancels the order. It's blocked if receipts or bills exist against it."),
+		confirmLabel: __("Cancel order"),
+		cancelLabel: __("Keep"),
 		destructive: true,
 	});
 	if (!ok) return;
 	busy.value = true;
 	try {
 		po.value = await cancelPurchaseOrder(po.value.name);
-		showToast("Order cancelled.");
+		showToast(__("Order cancelled."));
 	} catch (err) {
-		showToast(err.message || "Cancel failed", "error");
+		showToast(err.message || __("Cancel failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -115,9 +117,9 @@ async function onWorkflowAction(action) {
 	try {
 		await applyWorkflowAction(po.value.name, action);
 		await load();
-		showToast(`${action} done.`);
+		showToast(__("{0} done.", [action]));
 	} catch (err) {
-		showToast(err.message || "Action failed", "error");
+		showToast(err.message || __("Action failed"), "error");
 	} finally {
 		busy.value = false;
 	}
@@ -126,19 +128,19 @@ async function onAmend() {
 	busy.value = true;
 	try {
 		const res = await amendPurchaseOrder(po.value.name);
-		showToast("Amended — a fresh draft was created.");
+		showToast(__("Amended — a fresh draft was created."));
 		router.push(`/procurement/purchase-orders/${res.name}`);
 	} catch (err) {
-		showToast(err.message || "Amend failed", "error");
+		showToast(err.message || __("Amend failed"), "error");
 	} finally {
 		busy.value = false;
 	}
 }
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${po.value.name}?`,
-		message: "This order and its items will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [po.value.name]),
+		message: __("This order and its items will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -146,14 +148,14 @@ async function onDelete() {
 		await deletePurchaseOrder(po.value.name);
 		router.push("/procurement/purchase-orders");
 	} catch (err) {
-		showToast(err.message || "Failed to delete order", "error");
+		showToast(err.message || __("Failed to delete order"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Procurement", to: "/procurement" },
-	{ label: "Purchase Orders", to: "/procurement/purchase-orders" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Orders"), to: "/procurement/purchase-orders" },
 	{ label: po.value?.name || props.id },
 ]);
 </script>
@@ -170,13 +172,13 @@ const breadcrumbs = computed(() => [
 			<span
 				v-if="wfActive && wfState && wfState !== po.status"
 				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
-				>{{ wfState }}</span
+				>{{ __(wfState) }}</span
 			>
 			<button
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 flex items-center gap-1.5"
 				style="border-radius: 6px"
-				title="Open the printable purchase order (Save as PDF from the print dialog)"
+				:title="__('Open the printable purchase order (Save as PDF from the print dialog)')"
 				@click="onPrint"
 			>
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +189,7 @@ const breadcrumbs = computed(() => [
 						d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
 					/>
 				</svg>
-				Print / PDF
+				{{ __("Print / PDF") }}
 			</button>
 			<button
 				v-if="isDraft && canEdit('purchaseOrder')"
@@ -196,7 +198,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<!-- Plain docstatus lifecycle (no workflow configured) -->
 			<button
@@ -207,17 +209,17 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onSubmit"
 			>
-				Submit
+				{{ __("Submit") }}
 			</button>
 			<button
 				v-if="canReceive && canCreate('purchaseReceipt')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
-				title="Record a goods receipt against this order"
+				:title="__('Record a goods receipt against this order')"
 				@click="onCreateReceipt"
 			>
-				+ Create Receipt
+				+ {{ __("Create Receipt") }}
 			</button>
 			<button
 				v-if="!wfActive && isSubmitted && canSubmit('purchaseOrder')"
@@ -227,7 +229,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onCancel"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<!-- Workflow transitions (active workflow) — role- and state-filtered by the backend -->
 			<button
@@ -239,7 +241,7 @@ const breadcrumbs = computed(() => [
 				:disabled="busy"
 				@click="onWorkflowAction(t.action)"
 			>
-				{{ t.action }}
+				{{ __(t.action) }}
 			</button>
 			<button
 				v-if="isCancelled && canCreate('purchaseOrder')"
@@ -247,10 +249,10 @@ const breadcrumbs = computed(() => [
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
 				style="border-radius: 6px"
 				:disabled="busy"
-				title="Create a fresh editable draft copy (the original stays cancelled)"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
 				@click="onAmend"
 			>
-				Amend
+				{{ __("Amend") }}
 			</button>
 			<button
 				v-if="!isSubmitted && canDelete('purchaseOrder')"
@@ -259,7 +261,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 		</template>
 
@@ -267,43 +269,51 @@ const breadcrumbs = computed(() => [
 			v-if="isDraft"
 			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"
 		>
-			Draft — not sent to the supplier yet. Submit it to post the order.
+			{{ __("Draft — not sent to the supplier yet. Submit it to post the order.") }}
 		</div>
 
 		<!-- Summary strip -->
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Supplier</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Supplier") }}
+				</div>
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ po.supplier_name || po.supplier }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Project</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Project") }}
+				</div>
 				<DeskLink :to="`/projects/${po.project}`" class="text-sm">{{
 					po.project_name || po.project
 				}}</DeskLink>
 				<div class="text-[10px] text-ink-500">
 					{{
 						po.schedule_date
-							? "Required by " + fmtDate(po.schedule_date)
+							? __("Required by {0}", [fmtDate(po.schedule_date)])
 							: fmtDate(po.transaction_date)
 					}}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Value</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Value") }}
+				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(po.grand_total) }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
-				<div class="text-[10px] uppercase tracking-wider text-ink-500">Received</div>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">
+					{{ __("Received") }}
+				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ Math.round(po.per_received || 0) }}%
 				</div>
 				<div class="text-[10px] text-ink-500">
-					Billed {{ Math.round(po.per_billed || 0) }}%
+					{{ __("Billed {0}%", [Math.round(po.per_billed || 0)]) }}
 				</div>
 			</div>
 		</div>
@@ -311,17 +321,19 @@ const breadcrumbs = computed(() => [
 		<!-- Item lines -->
 		<section class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
 			<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
-				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">Items</h3>
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Items") }}
+				</h3>
 			</div>
 			<table class="w-full text-xs" style="min-width: 700px">
 				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
-						<th class="text-left px-3 py-2">Item</th>
-						<th class="text-right px-3 py-2">Qty</th>
-						<th class="text-left px-3 py-2">UOM</th>
-						<th class="text-right px-3 py-2">Rate</th>
-						<th class="text-right px-3 py-2">Amount</th>
-						<th class="text-right px-3 py-2">Received</th>
+						<th class="text-left px-3 py-2">{{ __("Item") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Received") }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -371,7 +383,7 @@ const breadcrumbs = computed(() => [
 							colspan="4"
 							class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 						>
-							Total
+							{{ __("Total") }}
 						</td>
 						<td
 							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
@@ -386,6 +398,6 @@ const breadcrumbs = computed(() => [
 	</DeskPage>
 
 	<div v-else class="px-3 py-2 text-sm text-ink-500">
-		{{ loading ? "Loading order…" : "Purchase order not found." }}
+		{{ loading ? __("Loading order…") : __("Purchase order not found.") }}
 	</div>
 </template>

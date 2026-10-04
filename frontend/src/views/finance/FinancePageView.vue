@@ -1,6 +1,7 @@
 <script setup>
 // Maps /project-finance/:section to its panel (petty-cash has its own explicit live route).
 import { computed, defineAsyncComponent } from "vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ section: String });
 
@@ -19,6 +20,6 @@ const comp = computed(() => panels[props.section] || null);
 <template>
 	<component :is="comp" v-if="comp" />
 	<div v-else class="max-w-3xl mx-auto px-6 py-16 text-center text-ink-500">
-		Unknown finance section.
+		{{ __("Unknown finance section.") }}
 	</div>
 </template>

@@ -8,6 +8,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -73,10 +74,10 @@ async function save() {
 			enabled: form.enabled ? 1 : 0,
 			sort_order: Number(form.sortOrder) || 0,
 		});
-		showToast("Category saved");
+		showToast(__("Category saved"));
 		router.push("/settings/project-categories");
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to save category", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to save category"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -86,9 +87,9 @@ function cancel() {
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Settings", to: "/settings" },
-	{ label: "Project Categories", to: "/settings/project-categories" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("Project Categories"), to: "/settings/project-categories" },
 	{ label: props.id },
 ]);
 
@@ -98,11 +99,11 @@ onMounted(() => {
 </script>
 
 <template>
-	<DeskPage :title="props.id" subtitle="Project category" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="props.id" :subtitle="__('Project category')" :breadcrumbs="breadcrumbs">
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Saving…' : 'Save changes'"
+					:save-label="saving ? __('Saving…') : __('Save changes')"
 					:saving="saving"
 					@save="save"
 					@cancel="cancel"
@@ -110,45 +111,43 @@ onMounted(() => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection title="Basic">
+				<DeskSection :title="__('Basic')">
 					<DeskField
-						label="Category name"
-						hint="The name is the key and can't be changed."
+						:label="__('Category name')"
+						:hint="__('The name is the key and can\'t be changed.')"
 					>
 						<DeskInput :model-value="props.id" disabled />
 					</DeskField>
-					<DeskField label="Sort order">
+					<DeskField :label="__('Sort order')">
 						<DeskInput v-model="form.sortOrder" type="number" />
 					</DeskField>
-					<DeskField label="Enabled">
+					<DeskField :label="__('Enabled')">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
 							<input
 								type="checkbox"
 								v-model="form.enabled"
 								class="accent-brand-600"
 							/>
-							<span>{{ form.enabled ? "Enabled" : "Disabled" }}</span>
+							<span>{{ form.enabled ? __("Enabled") : __("Disabled") }}</span>
 						</label>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Work Package label">
-					<DeskField label="Singular">
-						<DeskInput v-model="form.workPackageLabel" placeholder="Work Package" />
+				<DeskSection :title="__('Work Package label')">
+					<DeskField :label="__('Singular')">
+						<DeskInput v-model="form.workPackageLabel" :placeholder="__('Work Package')" />
 					</DeskField>
-					<DeskField label="Plural">
+					<DeskField :label="__('Plural')">
 						<DeskInput
 							v-model="form.workPackageLabelPlural"
-							placeholder="Work Packages"
+							:placeholder="__('Work Packages')"
 						/>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection title="Default template" :cols="1">
+				<DeskSection :title="__('Default template')" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
-						The Work Packages, Stages and Tasks a project inherits when it's created
-						under this category. Tasks are assigned to their Stage, so imported stage
-						plans arrive with their tasks.
+						{{ __("The Work Packages, Stages and Tasks a project inherits when it's created under this category. Tasks are assigned to their Stage, so imported stage plans arrive with their tasks.") }}
 					</p>
 					<div>
 						<button
@@ -157,7 +156,7 @@ onMounted(() => {
 								router.push(`/settings/project-categories/${props.id}/template`)
 							"
 						>
-							Edit default template →
+							{{ __("Edit default template") }} →
 						</button>
 					</div>
 				</DeskSection>

@@ -6,6 +6,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
 import AccessDenied from "@/components/AccessDenied.vue";
 import { toDateInputValue } from "@/utils/dateInput";
@@ -266,7 +267,7 @@ async function saveEdit() {
 		!!o.blockerFlag === !!f.blockerFlag &&
 		(o.blockerNote || "") === (f.blockerNote || "");
 	if (unchanged) {
-		showToast("No changes made");
+		showToast(__("No changes made"));
 		editing.value = false;
 		return;
 	}
@@ -275,7 +276,7 @@ async function saveEdit() {
 	const floor = Number(o.progressPct) || 0;
 	if (Number(f.progressPct) < floor) {
 		showToast(
-			`Progress can't go below the recorded ${floor}%. Entries are cumulative.`,
+			__("Progress can't go below the recorded {0}%. Entries are cumulative.", [floor]),
 			"error"
 		);
 		return;
@@ -294,9 +295,9 @@ async function saveEdit() {
 		});
 		editing.value = false;
 		entryResource.value?.reload?.();
-		showToast("Progress entry updated");
+		showToast(__("Progress entry updated"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to save progress entry", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to save progress entry"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -329,9 +330,9 @@ async function confirmDelete() {
 		showDeleteConfirm.value = false;
 		await router.push(taskId ? `/tasks/${taskId}` : "/progress-entries");
 		await nextTick();
-		showToast("Progress entry deleted");
+		showToast(__("Progress entry deleted"));
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? "Failed to delete progress entry", "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete progress entry"), "error");
 	} finally {
 		deleteLoading.value = false;
 	}
@@ -380,7 +381,7 @@ async function onAttachFilesPicked(e) {
 				private: true,
 			});
 		} catch (err) {
-			showToast(`Failed to upload ${file.name}`, "error");
+			showToast(__("Failed to upload {0}", [file.name]), "error");
 			console.error("upload failed:", err);
 		} finally {
 			uploadingCount.value--;
@@ -407,9 +408,9 @@ async function confirmFileDelete() {
 		showFileDeleteConfirm.value = false;
 		pendingFileDelete.value = null;
 		attachmentsResource.value?.reload?.();
-		showToast("Attachment deleted");
+		showToast(__("Attachment deleted"));
 	} catch (err) {
-		showToast("Failed to delete attachment", "error");
+		showToast(__("Failed to delete attachment"), "error");
 		console.error("deleteFile failed:", err);
 	} finally {
 		fileDeleteLoading.value = false;
@@ -446,14 +447,14 @@ const WEATHER_ICON = { Clear: "☀️", Rainy: "🌧️", Hot: "🌡️", Cold: 
 
 const deleteMessage = computed(() =>
 	isLatestOnTask.value
-		? `Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).`
-		: `Delete this entry? It's a historical entry; the task's current progress will not change.`
+		? __("Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).")
+		: __("Delete this entry? It's a historical entry; the task's current progress will not change.")
 );
 
 const breadcrumbs = computed(() => {
 	const out = [
-		{ label: "BuildSuite Core", to: "/" },
-		{ label: "Task Progress Entry", to: "/progress-entries" },
+		{ label: __("BuildSuite Core"), to: "/" },
+		{ label: __("Task Progress Entry"), to: "/progress-entries" },
 	];
 	if (task.value) out.push({ label: task.value.name, to: `/tasks/${task.value.id}` });
 	return out;
@@ -461,9 +462,9 @@ const breadcrumbs = computed(() => {
 
 const titleStatuses = computed(() => {
 	if (!entry.value) return [];
-	const out = [`${entry.value.progressPct}% cumulative`];
-	if (entry.value.blockerFlag) out.push("Blocker");
-	if (isLatestOnTask.value) out.push("Latest on task");
+	const out = [__("{0}% cumulative", [entry.value.progressPct])];
+	if (entry.value.blockerFlag) out.push(__("Blocker"));
+	if (isLatestOnTask.value) out.push(__("Latest on task"));
 	return out;
 });
 
@@ -485,10 +486,10 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 		<DeskForm>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="editing ? (saving ? 'Saving…' : 'Save') : 'Edit'"
+					:save-label="editing ? (saving ? __('Saving…') : __('Save')) : __('Edit')"
 					:show-save="canEditEntry"
 					:show-cancel="editing"
-					cancel-label="Cancel"
+					:cancel-label="__('Cancel')"
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				>
@@ -514,7 +515,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 							style="border-radius: 2px; color: #b91c1c"
 							@click="deleteEntry"
 						>
-							Delete
+							{{ __("Delete") }}
 						</button>
 					</template>
 				</DeskActionBar>
@@ -524,13 +525,13 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 				<div class="lg:col-span-2">
 					<!-- Progress section — view mode -->
-					<DeskSection v-if="!editing" title="Progress">
-						<DeskField label="Entry date">
+					<DeskSection v-if="!editing" :title="__('Progress')">
+						<DeskField :label="__('Entry date')">
 							<div class="text-sm text-ink-900 py-1">
 								{{ fmtDate(entry.entryDate) }}
 							</div>
 						</DeskField>
-						<DeskField label="Cumulative progress">
+						<DeskField :label="__('Cumulative progress')">
 							<div class="flex items-center gap-3 py-1">
 								<div
 									class="flex-1 h-1.5 bg-ink-100 overflow-hidden"
@@ -554,7 +555,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 								>
 							</div>
 						</DeskField>
-						<DeskField label="Narrative">
+						<DeskField :label="__('Narrative')">
 							<div class="text-sm text-ink-700 py-1 whitespace-pre-wrap">
 								{{ entry.narrative || "—" }}
 							</div>
@@ -562,14 +563,14 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Progress section — edit mode -->
-					<DeskSection v-else title="Progress">
-						<DeskField label="Entry date">
+					<DeskSection v-else :title="__('Progress')">
+						<DeskField :label="__('Entry date')">
 							<DeskInput v-model="form.entryDate" type="date" />
 						</DeskField>
 						<DeskField
-							label="Cumulative progress (%)"
+							:label="__('Cumulative progress (%)')"
 							required
-							hint="The NEW cumulative % after this entry — not a delta. 0–100."
+							:hint="__('The NEW cumulative % after this entry — not a delta. 0–100.')"
 						>
 							<DeskInput
 								v-model="form.progressPct"
@@ -579,23 +580,23 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 								step="1"
 							/>
 						</DeskField>
-						<DeskField label="Narrative">
+						<DeskField :label="__('Narrative')">
 							<DeskTextarea
 								v-model="form.narrative"
 								:rows="3"
-								placeholder="What was completed today? Any context worth recording?"
+								:placeholder="__('What was completed today? Any context worth recording?')"
 							/>
 						</DeskField>
 					</DeskSection>
 
 					<!-- Labour section — view mode -->
-					<DeskSection v-if="!editing" title="Labour deployed today" :cols="2">
-						<DeskField label="Skilled labour">
+					<DeskSection v-if="!editing" :title="__('Labour deployed today')" :cols="2">
+						<DeskField :label="__('Skilled labour')">
 							<div class="text-sm text-ink-900 py-1 tabular-nums">
 								{{ entry.skilledLabour || 0 }}
 							</div>
 						</DeskField>
-						<DeskField label="Unskilled labour">
+						<DeskField :label="__('Unskilled labour')">
 							<div class="text-sm text-ink-900 py-1 tabular-nums">
 								{{ entry.unskilledLabour || 0 }}
 							</div>
@@ -603,47 +604,47 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Labour section — edit mode -->
-					<DeskSection v-else title="Labour deployed today" :cols="2">
+					<DeskSection v-else :title="__('Labour deployed today')" :cols="2">
 						<DeskField
-							label="Skilled labour"
-							hint="Count of skilled workers on site today"
+							:label="__('Skilled labour')"
+							:hint="__('Count of skilled workers on site today')"
 						>
 							<DeskInput v-model="form.skilledLabour" type="number" />
 						</DeskField>
 						<DeskField
-							label="Unskilled labour"
-							hint="Count of unskilled workers / helpers"
+							:label="__('Unskilled labour')"
+							:hint="__('Count of unskilled workers / helpers')"
 						>
 							<DeskInput v-model="form.unskilledLabour" type="number" />
 						</DeskField>
 					</DeskSection>
 
 					<!-- Site conditions — view mode -->
-					<DeskSection v-if="!editing" title="Site conditions" :cols="2">
-						<DeskField label="Weather">
+					<DeskSection v-if="!editing" :title="__('Site conditions')" :cols="2">
+						<DeskField :label="__('Weather')">
 							<div class="text-sm text-ink-900 py-1">
 								<span v-if="entry.weather">
 									<span class="mr-1">{{
 										WEATHER_ICON[entry.weather] || ""
 									}}</span
-									>{{ entry.weather }}
+									>{{ __(entry.weather) }}
 								</span>
 								<span v-else class="text-ink-400">—</span>
 							</div>
 						</DeskField>
-						<DeskField label="Blocker">
+						<DeskField :label="__('Blocker')">
 							<div class="text-sm py-1">
 								<span
 									v-if="entry.blockerFlag"
 									class="text-[10px] px-1.5 py-0.5 bg-danger-50 text-danger-700 font-medium"
 									style="border-radius: 2px"
-									>🚩 Blocker flagged</span
+									>{{ __("🚩 Blocker flagged") }}</span
 								>
-								<span v-else class="text-ink-500 text-xs">No blocker</span>
+								<span v-else class="text-ink-500 text-xs">{{ __("No blocker") }}</span>
 							</div>
 						</DeskField>
 						<div v-if="entry.blockerFlag && entry.blockerNote" class="md:col-span-2">
-							<DeskField label="Blocker detail">
+							<DeskField :label="__('Blocker detail')">
 								<div class="text-sm text-ink-700 py-1 whitespace-pre-wrap">
 									{{ entry.blockerNote }}
 								</div>
@@ -652,16 +653,16 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Site conditions — edit mode -->
-					<DeskSection v-else title="Site conditions" :cols="2">
-						<DeskField label="Weather">
+					<DeskSection v-else :title="__('Site conditions')" :cols="2">
+						<DeskField :label="__('Weather')">
 							<DeskSelect v-model="form.weather">
-								<option value="">— No record —</option>
+								<option value="">{{ __("— No record —") }}</option>
 								<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
-									{{ w }}
+									{{ __(w) }}
 								</option>
 							</DeskSelect>
 						</DeskField>
-						<DeskField label="Blocker">
+						<DeskField :label="__('Blocker')">
 							<label
 								class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
 							>
@@ -670,18 +671,18 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 									type="checkbox"
 									class="h-3.5 w-3.5"
 								/>
-								Flag a blocker on this entry
+								{{ __("Flag a blocker on this entry") }}
 							</label>
 						</DeskField>
 						<div v-if="form.blockerFlag" class="md:col-span-2">
-							<DeskField label="Blocker detail" hint="What blocked progress today?">
+							<DeskField :label="__('Blocker detail')" :hint="__('What blocked progress today?')">
 								<DeskTextarea v-model="form.blockerNote" :rows="2" />
 							</DeskField>
 						</div>
 					</DeskSection>
 
 					<!-- Attachments -->
-					<DeskSection title="Attachments">
+					<DeskSection :title="__('Attachments')">
 						<div class="md:col-span-2">
 							<div
 								v-if="attachedFiles.length"
@@ -693,8 +694,8 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 									style="grid-template-columns: 24px 1fr 70px 32px"
 								>
 									<div></div>
-									<div class="px-3 py-1.5">File</div>
-									<div class="px-3 py-1.5 text-right">Size</div>
+									<div class="px-3 py-1.5">{{ __("File") }}</div>
+									<div class="px-3 py-1.5 text-right">{{ __("Size") }}</div>
 									<div></div>
 								</div>
 								<div
@@ -760,8 +761,8 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 							>
 								{{
 									uploadingCount > 0
-										? `Uploading… (${uploadingCount})`
-										: "+ Attach file"
+										? __("Uploading… ({0})", [uploadingCount])
+										: __("+ Attach file")
 								}}
 							</button>
 						</div>
@@ -777,7 +778,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						<div
 							class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 						>
-							Task
+							{{ __("Task") }}
 						</div>
 						<DeskLink
 							v-if="task"
@@ -787,7 +788,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						>
 						<span v-else class="text-sm text-ink-500">—</span>
 						<div v-if="task" class="text-[11px] text-ink-500 mt-1">
-							Currently {{ task.progress }}% · {{ task.status }}
+							{{ __("Currently") }} {{ task.progress }}% · {{ __(task.status) }}
 						</div>
 					</div>
 					<div
@@ -798,7 +799,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						<div
 							class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 						>
-							Project
+							{{ __("Project") }}
 						</div>
 						<DeskLink :to="`/projects/${project.id}`" class="text-sm font-medium">{{
 							project.name
@@ -812,7 +813,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						<div
 							class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 						>
-							Work Package
+							{{ __("Work Package") }}
 						</div>
 						<DeskLink :to="`/work-packages/${wp.id}`" class="text-sm font-medium">{{
 							wp.name
@@ -825,7 +826,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						<div
 							class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 						>
-							Entered by
+							{{ __("Entered by") }}
 						</div>
 						<div class="inline-flex items-center gap-2">
 							<UserAvatar :user-id="entry.enteredBy" />
@@ -839,7 +840,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						<div
 							class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 						>
-							Total labour
+							{{ __("Total labour") }}
 						</div>
 						<div class="text-sm text-ink-700 tabular-nums">
 							{{ (entry.skilledLabour || 0) + (entry.unskilledLabour || 0) }} workers
@@ -858,7 +859,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					<div class="flex items-center gap-1.5">
 						<span>💬</span
 						><span>Comments — <span class="font-medium text-ink-700">0</span></span>
-						<span class="text-ink-400 italic ml-1">stub</span>
+						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<span>📎</span
@@ -870,7 +871,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						>
 					</div>
 					<div class="flex items-center gap-1.5">
-						<span>👥</span><span>Entered by —</span>
+						<span>👥</span><span>{{ __("Entered by —") }}</span>
 						<UserAvatar :user-id="entry.enteredBy" size="xs" />
 					</div>
 				</div>
@@ -879,9 +880,9 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 
 		<ConfirmDialog
 			v-model:open="showDeleteConfirm"
-			title="Delete progress entry"
+			:title="__('Delete progress entry')"
 			:message="deleteMessage"
-			confirm-label="Delete"
+			:confirm-label="__('Delete')"
 			:destructive="true"
 			:loading="deleteLoading"
 			@confirm="confirmDelete"
@@ -889,13 +890,13 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 
 		<ConfirmDialog
 			v-model:open="showFileDeleteConfirm"
-			title="Delete attachment"
+			:title="__('Delete attachment')"
 			:message="
 				pendingFileDelete
-					? `Delete '${pendingFileDelete.name}'? This cannot be undone.`
+					? __('Delete \'{0}\'? This cannot be undone.', [pendingFileDelete.name])
 					: ''
 			"
-			confirm-label="Delete"
+			:confirm-label="__('Delete')"
 			:destructive="true"
 			:loading="fileDeleteLoading"
 			@confirm="confirmFileDelete"
@@ -904,10 +905,10 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this progress entry"
+		:title="__('You don\'t have access to this progress entry')"
 		back-to="/progress-entries"
-		back-label="Back to Progress Entries"
+		:back-label="__('Back to Progress Entries')"
 	/>
 
-	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">Progress entry not found.</div>
+	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">{{ __("Progress entry not found.") }}</div>
 </template>

@@ -12,6 +12,7 @@ import { useAttendanceSheet } from "@/composables/useAttendanceSheet";
 import { usePermissions } from "@/composables/usePermissions";
 import { saveFieldAttendance } from "@/data/fieldAttendanceApi";
 import { ATTENDANCE_STATUSES, validateFieldAttendance } from "@/utils/workforceForms";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -71,36 +72,36 @@ async function onSave() {
 	saving.value = true;
 	try {
 		const res = await saveFieldAttendance({ ...form });
-		showToast("Attendance created");
+		showToast(__("Attendance created"));
 		router.push(`/field-attendance/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create attendance", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create attendance"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Field Attendance", to: "/field-attendance" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Field Attendance"), to: "/field-attendance" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="New Field Attendance" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Field Attendance')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('fieldAttendance')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create a field attendance sheet.
+			{{ __("You don't have permission to create a field attendance sheet.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create'"
+					:save-label="saving ? __('Creating…') : __('Create')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"

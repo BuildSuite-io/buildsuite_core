@@ -7,6 +7,7 @@ import { useDataStore } from "@/stores";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { usePermissions } from "@/composables/usePermissions";
 import { listSubcontractors } from "@/data/subcontractApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -68,19 +69,19 @@ const rows = computed(() => {
 });
 
 const columns = [
-	{ key: "id", label: "ID" },
-	{ key: "name", label: "Name" },
-	{ key: "trade", label: "Trade" },
-	{ key: "contact", label: "Contact" },
-	{ key: "phone", label: "Phone" },
-	{ key: "tax_id", label: "Tax ID" },
-	{ key: "status", label: "Status" },
+	{ key: "id", label: __("ID") },
+	{ key: "name", label: __("Name") },
+	{ key: "trade", label: __("Trade") },
+	{ key: "contact", label: __("Contact") },
+	{ key: "phone", label: __("Phone") },
+	{ key: "tax_id", label: __("Tax ID") },
+	{ key: "status", label: __("Status") },
 ];
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Subcontract", to: "/subcontract" },
-	{ label: "Subcontractors" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractors") },
 ];
 
 function onRowClick(row) {
@@ -89,21 +90,21 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Subcontractors" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Subcontractors')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<select
 				v-model="tradeFilter"
 				class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white text-ink-700 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
-				title="Filter by trade"
+				:title="__('Filter by trade')"
 			>
-				<option value="">All trades</option>
+				<option value="">{{ __("All trades") }}</option>
 				<option v-for="t in tradeOptions" :key="t" :value="t">{{ t }}</option>
 			</select>
 			<RouterLink
 				v-if="canCreate('subcontractor')"
 				to="/subcontractors/new"
 				class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -112,7 +113,7 @@ function onRowClick(row) {
 			:rows="rows"
 			:columns="columns"
 			row-key="id"
-			search-placeholder="Search name, trade, contact…"
+			:search-placeholder="__('Search name, trade, contact…')"
 			@row-click="onRowClick"
 		>
 			<template #cell-id="{ row }">
@@ -153,12 +154,12 @@ function onRowClick(row) {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ loading ? "Loading subcontractors…" : "No subcontractors yet." }}
+					{{ loading ? __("Loading subcontractors…") : __("No subcontractors yet.") }}
 					<RouterLink
 						v-if="!loading && canCreate('subcontractor')"
 						to="/subcontractors/new"
 						class="desk-link"
-						>Add one →</RouterLink
+						>{{ __("Add one →") }}</RouterLink
 					>
 				</div>
 			</template>

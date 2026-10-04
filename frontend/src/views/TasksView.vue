@@ -16,6 +16,7 @@ import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useUserNames } from "@/composables/useUserNames";
 import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
 const store = useDataStore();
 const router = useRouter();
@@ -112,7 +113,7 @@ const filterValues = computed(() => ({
 	taskType: taskTypeFilter.value,
 }));
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Task" }];
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Task") }];
 
 function onRowClick(row) {
 	router.push(`/tasks/${row.name}`);
@@ -120,10 +121,10 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage title="Task" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Task')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn"
-				>+ New</RouterLink
+				>{{ __("+ New") }}</RouterLink
 			>
 		</template>
 
@@ -143,14 +144,14 @@ function onRowClick(row) {
 				'modified',
 			]"
 			:columns="[
-				{ key: 'subject', label: 'Task' },
-				{ key: 'project', label: 'Project · WP', fields: ['project', 'work_package'] },
-				{ key: 'task_status', label: 'Status', preset: 'status' },
-				{ key: 'priority', label: 'Priority', preset: 'status' },
-				{ key: 'type', label: 'Task Type', preset: 'status' },
-				{ key: 'assignee', label: 'Assignee', fields: ['_assign'] },
-				{ key: 'exp_end_date', label: 'Due' },
-				{ key: 'progress', label: 'Progress', preset: 'progress' },
+				{ key: 'subject', label: __('Task') },
+				{ key: 'project', label: __('Project · WP'), fields: ['project', 'work_package'] },
+				{ key: 'task_status', label: __('Status'), preset: 'status' },
+				{ key: 'priority', label: __('Priority'), preset: 'status' },
+				{ key: 'type', label: __('Task Type'), preset: 'status' },
+				{ key: 'assignee', label: __('Assignee'), fields: ['_assign'] },
+				{ key: 'exp_end_date', label: __('Due') },
+				{ key: 'progress', label: __('Progress'), preset: 'progress' },
 			]"
 			:search-fields="['subject', 'name']"
 			:filter-values="filterValues"
@@ -163,50 +164,50 @@ function onRowClick(row) {
 			}"
 			cache-key="buildsuite-task-list-generic"
 			row-key="name"
-			search-placeholder="Search tasks…"
+			:search-placeholder="__('Search tasks…')"
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
 				<!-- Status: select when empty, chip when set -->
 				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
-					<option value="">Status: Any</option>
-					<option>Yet To Start</option>
-					<option>In Progress</option>
-					<option>In Delay</option>
-					<option>Completed</option>
-					<option>Blocked</option>
+					<option value="">{{ __("Status: Any") }}</option>
+					<option value="Yet To Start">{{ __("Yet To Start") }}</option>
+					<option value="In Progress">{{ __("In Progress") }}</option>
+					<option value="In Delay">{{ __("In Delay") }}</option>
+					<option value="Completed">{{ __("Completed") }}</option>
+					<option value="Blocked">{{ __("Blocked") }}</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Status"
-					:value="statusFilter"
+					:label="__('Status')"
+					:value="__(statusFilter)"
 					@remove="statusFilter = ''"
 				/>
 
 				<!-- Priority -->
 				<DeskSelect v-if="!priorityFilter" v-model="priorityFilter" class="!w-36">
-					<option value="">Priority: Any</option>
-					<option>Low</option>
-					<option>Medium</option>
-					<option>High</option>
+					<option value="">{{ __("Priority: Any") }}</option>
+					<option value="Low">{{ __("Low") }}</option>
+					<option value="Medium">{{ __("Medium") }}</option>
+					<option value="High">{{ __("High") }}</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Priority"
-					:value="priorityFilter"
+					:label="__('Priority')"
+					:value="__(priorityFilter)"
 					@remove="priorityFilter = ''"
 				/>
 
 				<!-- Project -->
 				<DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-48">
-					<option value="">Project: Any</option>
+					<option value="">{{ __("Project: Any") }}</option>
 					<option v-for="p in projectRows" :key="p.name" :value="p.name">
 						{{ p.project_name || p.name }}
 					</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Project"
+					:label="__('Project')"
 					:value="projectName(projectFilter)"
 					@remove="projectFilter = ''"
 				/>
@@ -223,33 +224,33 @@ function onRowClick(row) {
 					:filters="[['enabled', '=', 1]]"
 					order-by="full_name asc"
 					:page-length="20"
-					placeholder="Assignee: Any"
+					:placeholder="__('Assignee: Any')"
 				/>
 				<DeskFilterChip
 					v-else
-					label="Assignee"
+					:label="__('Assignee')"
 					:value="userName(assigneeFilter)"
 					@remove="assigneeFilter = ''"
 				/>
 
 				<!-- Task Type (proposal §M2 Select) -->
 				<DeskSelect v-if="!taskTypeFilter" v-model="taskTypeFilter" class="!w-40">
-					<option value="">Task Type: Any</option>
-					<option>Activity</option>
-					<option>Milestone</option>
-					<option>Inspection</option>
+					<option value="">{{ __("Task Type: Any") }}</option>
+					<option value="Activity">{{ __("Activity") }}</option>
+					<option value="Milestone">{{ __("Milestone") }}</option>
+					<option value="Inspection">{{ __("Inspection") }}</option>
 				</DeskSelect>
 				<DeskFilterChip
 					v-else
-					label="Task Type"
-					:value="taskTypeFilter"
+					:label="__('Task Type')"
+					:value="__(taskTypeFilter)"
 					@remove="taskTypeFilter = ''"
 				/>
 			</template>
 
 			<template #cell-subject="{ row }">
 				<span class="text-ink-900 font-medium">{{
-					row.subject || row.name || "Untitled task"
+					row.subject || row.name || __("Untitled task")
 				}}</span>
 			</template>
 			<template #cell-project="{ row }">
@@ -300,9 +301,9 @@ function onRowClick(row) {
 
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					No tasks match these filters ·
+					{{ __("No tasks match these filters") }} ·
 					<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-link"
-						>Create a task →</RouterLink
+						>{{ __("Create a task →") }}</RouterLink
 					>
 				</div>
 			</template>

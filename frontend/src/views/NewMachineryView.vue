@@ -9,6 +9,7 @@ import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
 import { getActiveCompany } from "@/data/companyApi";
+import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -50,9 +51,9 @@ getActiveCompany()
 
 function validate() {
 	const e = {};
-	if (!form.machinery_name.trim()) e.machinery_name = "Name is required.";
-	if (!form.machinery_type) e.machinery_type = "Type is required.";
-	if (!form.company) e.company = "Company is required.";
+	if (!form.machinery_name.trim()) e.machinery_name = __("Name is required.");
+	if (!form.machinery_type) e.machinery_type = __("Type is required.");
+	if (!form.company) e.company = __("Company is required.");
 	setErrors(e);
 	return Object.keys(e).length === 0;
 }
@@ -78,99 +79,99 @@ async function onSave() {
 		});
 		router.push(`/machinery/${res.name}`);
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to create machinery", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to create machinery"), "error");
 	} finally {
 		saving.value = false;
 	}
 }
 
 const breadcrumbs = [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Equipment", to: "/equipment" },
-	{ label: "Machinery", to: "/machinery" },
-	{ label: "New" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery"), to: "/machinery" },
+	{ label: __("New") },
 ];
 </script>
 
 <template>
-	<DeskPage title="New Machinery" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('New Machinery')" :breadcrumbs="breadcrumbs">
 		<div
 			v-if="!canCreate('machinery')"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
 			style="border-radius: 6px"
 		>
-			You don't have permission to create machinery.
+			{{ __("You don't have permission to create machinery.") }}
 		</div>
 		<DeskForm v-else>
 			<template #action-bar>
 				<DeskActionBar
-					:save-label="saving ? 'Creating…' : 'Create machinery'"
+					:save-label="saving ? __('Creating…') : __('Create machinery')"
 					:saving="saving"
 					@save="onSave"
 					@cancel="onCancel"
 				/>
 			</template>
 
-			<DeskSection title="Machinery" :cols="3">
-				<DeskField label="Name" required :error="errors.machinery_name">
+			<DeskSection :title="__('Machinery')" :cols="3">
+				<DeskField :label="__('Name')" required :error="errors.machinery_name">
 					<DeskInput v-model="form.machinery_name" />
 				</DeskField>
-				<DeskField label="Type" required :error="errors.machinery_type">
+				<DeskField :label="__('Type')" required :error="errors.machinery_type">
 					<DeskLinkPicker
 						v-model="form.machinery_type"
 						doctype="Machinery Type"
 						label-field="name"
 						value-field="name"
-						placeholder="Pick a type…"
+						:placeholder="__('Pick a type…')"
 					/>
 				</DeskField>
-				<DeskField label="Ownership">
+				<DeskField :label="__('Ownership')">
 					<DeskSelect v-model="form.ownership">
-						<option>Owned</option>
-						<option>Hired</option>
+						<option value="Owned">{{ __("Owned") }}</option>
+						<option value="Hired">{{ __("Hired") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`Rate (${currencySymbol()})`">
+				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField label="Rate unit">
+				<DeskField :label="__('Rate unit')">
 					<DeskSelect v-model="form.rate_unit">
-						<option>Hour</option>
-						<option>Day</option>
-						<option>Month</option>
+						<option value="Hour">{{ __("Hour") }}</option>
+						<option value="Day">{{ __("Day") }}</option>
+						<option value="Month">{{ __("Month") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField label="Status">
+				<DeskField :label="__('Status')">
 					<DeskSelect v-model="form.status">
-						<option>Active</option>
-						<option>Inactive</option>
+						<option value="Active">{{ __("Active") }}</option>
+						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField label="Owner / Vendor">
+				<DeskField :label="__('Owner / Vendor')">
 					<DeskInput v-model="form.owner_vendor" />
 				</DeskField>
 				<DeskField
 					v-if="form.ownership === 'Owned'"
-					label="Linked asset (ERPNext)"
-					hint="Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant."
+					:label="__('Linked asset (ERPNext)')"
+					:hint="__('Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant.')"
 				>
 					<DeskLinkPicker
 						v-model="form.asset"
 						doctype="Asset"
 						label-field="asset_name"
 						value-field="name"
-						placeholder="— No linked asset —"
+						:placeholder="__('— No linked asset —')"
 					/>
 				</DeskField>
-				<DeskField label="Company" required :error="errors.company">
+				<DeskField :label="__('Company')" required :error="errors.company">
 					<DeskLinkPicker
 						v-model="form.company"
 						doctype="Company"
 						label-field="name"
 						value-field="name"
-						placeholder="Company…"
+						:placeholder="__('Company…')"
 					/>
 				</DeskField>
 			</DeskSection>

@@ -9,6 +9,7 @@ import { useDataStore } from "@/stores";
 import { useConfirm } from "@/composables/useConfirm";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
@@ -106,7 +107,7 @@ async function saveEdit() {
 		await resource?.reload?.();
 		editing.value = false;
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to update field employee", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to update field employee"), "error");
 	} finally {
 		saving.value = false;
 	}
@@ -114,9 +115,9 @@ async function saveEdit() {
 
 async function onDelete() {
 	const ok = await confirmDialog({
-		title: `Delete ${doc.value?.employee_name}?`,
-		message: "This worker record will be removed permanently.",
-		confirmLabel: "Delete",
+		title: __("Delete {0}?", [doc.value?.employee_name]),
+		message: __("This worker record will be removed permanently."),
+		confirmLabel: __("Delete"),
 		destructive: true,
 	});
 	if (!ok) return;
@@ -124,14 +125,14 @@ async function onDelete() {
 		await adapter.remove("Employee", props.id);
 		router.push("/field-employees");
 	} catch (err) {
-		showToast(applyServerErrors(err) ?? "Failed to delete field employee", "error");
+		showToast(applyServerErrors(err) ?? __("Failed to delete field employee"), "error");
 	}
 }
 
 const breadcrumbs = computed(() => [
-	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Workforce", to: "/workforce" },
-	{ label: "Field Employees", to: "/field-employees" },
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Field Employees"), to: "/field-employees" },
 	{ label: doc.value?.employee_name || props.id },
 ]);
 </script>
@@ -152,7 +153,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="startEdit"
 			>
-				Edit
+				{{ __("Edit") }}
 			</button>
 			<button
 				v-if="!editing && canDelete('fieldEmployee')"
@@ -161,7 +162,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
-				Delete
+				{{ __("Delete") }}
 			</button>
 			<button
 				v-if="editing"
@@ -170,7 +171,7 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 				@click="cancelEdit"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing"
@@ -179,61 +180,61 @@ const breadcrumbs = computed(() => [
 				:disabled="saving"
 				@click="saveEdit"
 			>
-				{{ saving ? "Saving…" : "Save" }}
+				{{ saving ? __("Saving…") : __("Save") }}
 			</button>
 		</template>
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection title="Worker" :cols="3">
-				<DeskField label="Employee code">
+			<DeskSection :title="__('Worker')" :cols="3">
+				<DeskField :label="__('Employee code')">
 					<div class="text-sm font-mono text-ink-800">{{ doc.name }}</div>
 				</DeskField>
-				<DeskField label="First name">
+				<DeskField :label="__('First name')">
 					<div class="text-sm text-ink-900">{{ doc.first_name || "—" }}</div>
 				</DeskField>
-				<DeskField label="Last name">
+				<DeskField :label="__('Last name')">
 					<div class="text-sm text-ink-900">{{ doc.last_name || "—" }}</div>
 				</DeskField>
-				<DeskField label="Gender">
+				<DeskField :label="__('Gender')">
 					<div class="text-sm text-ink-700">{{ doc.gender || "—" }}</div>
 				</DeskField>
 
-				<DeskField label="Date of birth">
+				<DeskField :label="__('Date of birth')">
 					<div class="text-sm text-ink-700">{{ fmtDate(doc.date_of_birth) || "—" }}</div>
 				</DeskField>
-				<DeskField label="Date of joining">
+				<DeskField :label="__('Date of joining')">
 					<div class="text-sm text-ink-700">
 						{{ fmtDate(doc.date_of_joining) || "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Status">
+				<DeskField :label="__('Status')">
 					<StatusBadge :status="doc.status" />
 				</DeskField>
 
-				<DeskField label="Trade">
+				<DeskField :label="__('Trade')">
 					<div class="text-sm text-ink-700">{{ doc.custom_trade || "—" }}</div>
 				</DeskField>
-				<DeskField label="Contractor">
+				<DeskField :label="__('Contractor')">
 					<div class="text-sm text-ink-700">
 						{{ contractorName(doc.custom_contractor) || "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Phone">
+				<DeskField :label="__('Phone')">
 					<div class="text-sm text-ink-700">{{ doc.cell_number || "—" }}</div>
 				</DeskField>
-				<DeskField label="Company">
+				<DeskField :label="__('Company')">
 					<div class="text-sm text-ink-700">{{ doc.company || "—" }}</div>
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection title="Wages" :cols="2">
-				<DeskField label="Daily wage">
+			<DeskSection :title="__('Wages')" :cols="2">
+				<DeskField :label="__('Daily wage')">
 					<div class="text-sm tabular-nums text-ink-900">
 						{{ doc.custom_wage ? fmtINR(doc.custom_wage) : "—" }}
 					</div>
 				</DeskField>
-				<DeskField label="Overtime wage">
+				<DeskField :label="__('Overtime wage')">
 					<div class="text-sm tabular-nums text-ink-900">
 						{{
 							doc.custom_wage_for_overtime
@@ -260,14 +261,14 @@ const breadcrumbs = computed(() => [
 		</div>
 	</DeskPage>
 
-	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">Loading field employee…</div>
+	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">{{ __("Loading field employee…") }}</div>
 
 	<AccessDenied
 		v-else-if="accessDenied"
-		title="You don't have access to this field employee"
+		:title="__('You don\'t have access to this field employee')"
 		back-to="/field-employees"
-		back-label="Back to Field Employees"
+		:back-label="__('Back to Field Employees')"
 	/>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">Field employee not found.</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Field employee not found.") }}</div>
 </template>
