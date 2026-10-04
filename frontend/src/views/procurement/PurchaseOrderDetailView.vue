@@ -18,7 +18,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
@@ -38,6 +38,9 @@ const {
 } = useWorkflow("Purchase Order");
 
 const po = ref(null);
+// Every figure on a PO is in that PO's own currency — format them all with it (identical to the
+// company currency for a domestic order).
+const fmtDoc = (v) => fmtCurrency(v, po.value?.currency);
 const loading = ref(true);
 const busy = ref(false);
 
@@ -76,7 +79,7 @@ async function onSubmit() {
 		title: __("Submit {0}?", [po.value.name]),
 		message: __(
 			"Submit this order to {0} ({1})? It posts the order and locks the lines; a submitted order is amended, not edited.",
-			[po.value.supplier_name || po.value.supplier, fmtINR(po.value.grand_total)]
+			[po.value.supplier_name || po.value.supplier, fmtDoc(po.value.grand_total)]
 		),
 		confirmLabel: __("Submit"),
 	});
@@ -302,7 +305,7 @@ const breadcrumbs = computed(() => [
 					{{ __("Value") }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
-					{{ fmtINR(po.grand_total) }}
+					{{ fmtDoc(po.grand_total) }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
@@ -360,10 +363,10 @@ const breadcrumbs = computed(() => [
 						</td>
 						<td class="px-3 py-2 text-ink-500">{{ it.uom || "—" }}</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-							{{ fmtINR(it.rate) }}
+							{{ fmtDoc(it.rate) }}
 						</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
-							{{ fmtINR(it.amount) }}
+							{{ fmtDoc(it.amount) }}
 						</td>
 						<td
 							class="px-3 py-2 text-right tabular-nums font-medium"
@@ -388,7 +391,17 @@ const breadcrumbs = computed(() => [
 						<td
 							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
 						>
-							{{ fmtINR(po.grand_total) }}
+							{{ fmtDoc(po.grand_total) }}
+						</td>
+						<td></td>
+					</tr>
+					<tr v-if="po.currency && po.currency !== po.company_currency" class="bg-ink-50">
+						<td colspan="4" class="px-3 py-1 text-right text-[11px] text-ink-500">
+							{{ __("In company currency") }}
+							<span class="text-ink-400">@ {{ po.conversion_rate }}</span>
+						</td>
+						<td class="px-3 py-1 text-right tabular-nums text-[11px] text-ink-500">
+							{{ fmtCurrency(po.base_grand_total, po.company_currency) }}
 						</td>
 						<td></td>
 					</tr>

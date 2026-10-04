@@ -45,6 +45,23 @@ def _company_currency(company):
 	return frappe.get_cached_value("Company", company, "default_currency") if company else None
 
 
+def _resolve_conversion_rate(currency, company_currency, transaction_date, supplied=None):
+	"""The transaction→company exchange rate ERPNext stores on the PO. 1 when it's already in
+	company currency; otherwise honour a rate the form sends, else ask ERPNext's Currency Exchange
+	(buying side). A PO is a commitment — it doesn't post to the GL — so no party account is
+	needed; we only surface the rate ERPNext would use."""
+	if not currency or currency == company_currency:
+		return 1.0
+	if supplied:
+		return flt(supplied)
+	try:
+		from erpnext.setup.utils import get_exchange_rate
+
+		return flt(get_exchange_rate(currency, company_currency, transaction_date, "for_buying")) or 1.0
+	except Exception:
+		return 1.0
+
+
 # ==========================================================================
 # Material Request
 # ==========================================================================
@@ -227,9 +244,15 @@ def _serialize_po(doc):
 		"project_name": _project_name(doc.project),
 		"transaction_date": str(doc.transaction_date) if doc.transaction_date else None,
 		"schedule_date": str(doc.schedule_date) if doc.schedule_date else None,
+		# Currency as ERPNext holds it: the PO's own currency + rate to company currency, plus the
+		# company-currency (base_*) equivalents it computed.
 		"currency": doc.currency,
+		"conversion_rate": flt(doc.conversion_rate),
+		"company_currency": _company_currency(doc.company),
 		"grand_total": flt(doc.grand_total),
+		"base_grand_total": flt(doc.base_grand_total),
 		"total": flt(doc.total),
+		"base_total": flt(doc.base_total),
 		"per_received": flt(doc.per_received),
 		"per_billed": flt(doc.per_billed),
 		"docstatus": doc.docstatus,
@@ -363,9 +386,12 @@ def save_purchase_order(
 	items: str | None = None,
 	terms: str | None = None,
 	material_request: str | None = None,
+	currency: str | None = None,
+	conversion_rate: str | float | None = None,
 ):
-	"""Create / update a draft Purchase Order. Rate is entered by hand (single
-	company currency, conversion 1); line amounts are computed by the controller."""
+	"""Create / update a draft Purchase Order. Defaults to the company currency; a foreign
+	supplier can be ordered in their own currency, with the rate from the form or ERPNext's
+	Currency Exchange. Line amounts are computed by the controller."""
 	items = frappe.parse_json(items) or []
 	if not supplier:
 		frappe.throw(_("Pick a supplier."))
@@ -382,12 +408,15 @@ def save_purchase_order(
 	# Supplier is a global ERPNext party — usable across companies (no cross-company guard).
 	doc.supplier = supplier
 	doc.company = company
-	doc.currency = _company_currency(company)
-	doc.conversion_rate = 1
 	doc.project = project
 	doc.transaction_date = transaction_date or doc.transaction_date or nowdate()
 	doc.schedule_date = schedule_date or doc.schedule_date
 	doc.terms = terms
+	company_currency = _company_currency(company)
+	doc.currency = currency or company_currency
+	doc.conversion_rate = _resolve_conversion_rate(
+		doc.currency, company_currency, doc.transaction_date, conversion_rate
+	)
 
 	# Stock lines need a delivery warehouse (see save_material_request); default it to the
 	# project's site store (or the company default).

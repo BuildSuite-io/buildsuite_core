@@ -17,7 +17,8 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
-import { fmtINR } from "@/utils/format";
+import { fmtCurrency, getDisplayCurrency } from "@/utils/format";
+import { getExchangeRate } from "@/data/companyApi";
 import { __ } from "@/utils/translate";
 
 const route = useRoute();
@@ -74,10 +75,38 @@ const form = ref({
 	project: route.query.project || "",
 	schedule_date: inDays(10),
 	material_request: null,
+	// The order's own currency (defaults to the company currency) + rate to company currency.
+	// A domestic order stays at the company currency, rate 1 — unchanged behaviour.
+	currency: getDisplayCurrency(),
+	conversion_rate: 1,
 	lines: [emptyLine()],
 });
 const errors = ref({});
 const saving = ref(false);
+
+// The company's base currency + whether this order is in a different one. Line/total amounts
+// render in the order's own currency; when it differs we also show the company-currency total.
+const companyCurrency = getDisplayCurrency();
+const isForeign = computed(() => !!form.value.currency && form.value.currency !== companyCurrency);
+const fmtDoc = (v) => fmtCurrency(v, form.value.currency);
+
+// Pre-fill the exchange rate from ERPNext (buying side) when the order currency changes.
+async function onCurrencyChange() {
+	if (!isForeign.value) {
+		form.value.conversion_rate = 1;
+		return;
+	}
+	try {
+		form.value.conversion_rate = await getExchangeRate(
+			form.value.currency,
+			companyCurrency,
+			form.value.transaction_date,
+			"for_buying"
+		);
+	} catch {
+		form.value.conversion_rate = form.value.conversion_rate || 1;
+	}
+}
 
 // Edit mode: load the draft PO.
 watch(
@@ -96,6 +125,8 @@ watch(
 				project: po.project || "",
 				schedule_date: po.schedule_date || inDays(10),
 				material_request: null,
+				currency: po.currency || getDisplayCurrency(),
+				conversion_rate: Number(po.conversion_rate) || 1,
 				lines: (po.items || []).map((it) => ({
 					item_code: it.item_code || "",
 					description: it.description || "",
@@ -174,6 +205,8 @@ async function onSave() {
 			project: form.value.project,
 			schedule_date: form.value.schedule_date,
 			material_request: form.value.material_request || undefined,
+			currency: form.value.currency || undefined,
+			conversion_rate: Number(form.value.conversion_rate) || 1,
 			items: validLines.value.map((l) => ({
 				item_code: l.item_code,
 				description: l.description,
@@ -273,6 +306,25 @@ const saveLabel = computed(() =>
 				<DeskField :label="__('Required by')">
 					<DeskInput v-model="form.schedule_date" type="date" />
 				</DeskField>
+				<DeskField
+					:label="__('Currency')"
+					:hint="__('Supplier currency. Defaults to the company currency.')"
+				>
+					<DeskLinkPicker
+						v-model="form.currency"
+						doctype="Currency"
+						:filters="[['enabled', '=', 1]]"
+						:placeholder="__('Company currency')"
+						@update:model-value="onCurrencyChange"
+					/>
+				</DeskField>
+				<DeskField
+					v-if="isForeign"
+					:label="__('Exchange rate')"
+					:hint="`1 ${form.currency} → ${companyCurrency}`"
+				>
+					<DeskInput v-model.number="form.conversion_rate" type="number" min="0" step="any" />
+				</DeskField>
 			</DeskSection>
 
 			<!-- Item lines -->
@@ -360,7 +412,7 @@ const saveLabel = computed(() =>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium"
 								>
-									{{ fmtINR(lineAmount(line)) }}
+									{{ fmtDoc(lineAmount(line)) }}
 								</td>
 								<td class="px-2 py-2 text-center">
 									<button
@@ -385,7 +437,19 @@ const saveLabel = computed(() =>
 								<td
 									class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
 								>
-									{{ fmtINR(total) }}
+									{{ fmtDoc(total) }}
+								</td>
+								<td></td>
+							</tr>
+							<tr v-if="isForeign" class="bg-ink-50">
+								<td
+									colspan="5"
+									class="px-3 py-1 text-right text-[11px] text-ink-500"
+								>
+									{{ __("In company currency") }}
+								</td>
+								<td class="px-3 py-1 text-right tabular-nums text-[11px] text-ink-500">
+									{{ fmtCurrency(total * (Number(form.conversion_rate) || 1), companyCurrency) }}
 								</td>
 								<td></td>
 							</tr>
