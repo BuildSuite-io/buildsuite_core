@@ -127,7 +127,7 @@ def delivery_followup(project: str | None = None):
 			"project",
 			"schedule_date",
 			"per_received",
-			"grand_total",
+			"base_grand_total",  # company currency, so foreign POs are comparable
 		],
 		order_by="schedule_date asc",
 	)
@@ -143,7 +143,7 @@ def delivery_followup(project: str | None = None):
 				"project_name": names.get(p.project) or p.project,
 				"required_by": str(p.schedule_date) if p.schedule_date else None,
 				"pct": round(pct),
-				"pending_value": round(flt(p.grand_total) * (100 - pct) / 100),
+				"pending_value": round(flt(p.base_grand_total) * (100 - pct) / 100),
 			}
 		)
 	return rows

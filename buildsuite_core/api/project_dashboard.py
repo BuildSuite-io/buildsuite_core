@@ -297,13 +297,13 @@ def get_project_dashboard(project: str | None = None):
 			"status": ["not in", ["Closed", "Cancelled"]],
 			"per_received": ["<", 100],
 		},
-		fields=["grand_total"],
+		fields=["base_grand_total"],  # company currency, so foreign POs roll up correctly
 	)
 	commitments = {
 		"committed": committed,
 		"billed": billed,
 		"remaining": max(0.0, committed - billed),
-		"on_order": sum(flt(p.grand_total) for p in pos),
+		"on_order": sum(flt(p.base_grand_total) for p in pos),
 		"on_order_count": len(pos),
 		"retention": retention,
 	}
