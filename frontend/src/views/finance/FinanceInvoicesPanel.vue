@@ -23,7 +23,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtINR, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const breadcrumbs = [
@@ -143,6 +143,7 @@ async function openReceive(row) {
 		inv: {
 			name: row.name,
 			customer_name: row.customer_name,
+			currency: row.currency,
 			outstanding: Number(row.outstanding_amount) || 0,
 		},
 		amount: Number(row.outstanding_amount) || null,
@@ -161,7 +162,7 @@ async function saveReceive() {
 	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(rec.inv.outstanding) + 0.01)
 		return showToast(
-			__("Can't exceed the outstanding {0}.", [fmtINR(rec.inv.outstanding)]),
+			__("Can't exceed the outstanding {0}.", [fmtCurrency(rec.inv.outstanding, rec.inv.currency)]),
 			"error"
 		);
 	if (!rec.deposit_to) return showToast(__("Pick the account to deposit into."), "error");
@@ -278,6 +279,7 @@ async function saveAdvance() {
 					'project',
 					'posting_date',
 					'due_date',
+					'currency',
 					'grand_total',
 					'outstanding_amount',
 					'status',
@@ -376,7 +378,7 @@ async function saveAdvance() {
 				</template>
 				<template #cell-grand_total="{ row }"
 					><span class="tabular-nums text-ink-900">{{
-						fmtINR(row.grand_total)
+						fmtCurrency(row.grand_total, row.currency)
 					}}</span></template
 				>
 				<template #cell-outstanding_amount="{ row }"
@@ -385,7 +387,7 @@ async function saveAdvance() {
 						:class="
 							Number(row.outstanding_amount) > 0.01 ? 'text-ink-900' : 'text-ink-400'
 						"
-						>{{ fmtINR(row.outstanding_amount) }}</span
+						>{{ fmtCurrency(row.outstanding_amount, row.currency) }}</span
 					></template
 				>
 				<template #cell-status="{ row }">
@@ -439,7 +441,7 @@ async function saveAdvance() {
 						<span class="font-mono text-xs">{{ rec.inv?.name }}</span
 						>. Outstanding
 						<span class="font-semibold text-ink-900 tabular-nums">{{
-							fmtINR(rec.inv?.outstanding)
+							fmtCurrency(rec.inv?.outstanding, rec.inv?.currency)
 						}}</span
 						>.
 					</div>

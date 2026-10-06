@@ -82,6 +82,73 @@ class TestInvoice(BuildSuiteTestCase):
 		self.assertAlmostEqual(rows[0]["outstanding"], 60000, places=2)
 		self.assertEqual(len(list_receipts(name)), 1)
 
+	def test_foreign_currency_invoice(self):
+		"""An invoice raised in a currency other than the company's carries that currency + the
+		supplied rate; ERPNext computes the company-currency (base_*) total. The list surfaces the
+		invoice's own currency and the receivables summary totals in company currency."""
+		from buildsuite_core.api.invoice import (
+			get_invoice,
+			list_invoices,
+			receivables_summary,
+			save_invoice,
+			submit_invoice,
+		)
+
+		company_currency = frappe.db.get_value("Company", self.company, "default_currency")
+		foreign = "USD" if company_currency != "USD" else "EUR"
+		cust = self._customer()
+		name = save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"currency": foreign,
+					"conversion_rate": 1500,
+					"items": [{"description": "Consulting", "qty": 2, "rate": 300}],
+				}
+			)
+		)["name"]
+		si = frappe.get_doc("Sales Invoice", name)
+		self.assertEqual(si.currency, foreign)
+		self.assertAlmostEqual(flt(si.conversion_rate), 1500, places=2)
+		self.assertAlmostEqual(flt(si.grand_total), 600, places=2)  # 2 × 300, USD
+		self.assertAlmostEqual(flt(si.base_grand_total), 900000, places=2)  # × 1500, company ccy
+
+		inv = get_invoice(name)
+		self.assertEqual(inv["currency"], foreign)
+		self.assertEqual(inv["company_currency"], company_currency)
+		self.assertAlmostEqual(flt(inv["base_grand_total"]), 900000, places=2)
+
+		submit_invoice(name)
+		row = next(r for r in list_invoices(company=self.company) if r["name"] == name)
+		self.assertEqual(row["currency"], foreign)
+		self.assertAlmostEqual(flt(row["total"]), 600, places=2)
+		self.assertAlmostEqual(flt(row["base_outstanding"]), 900000, places=2)
+		# The header receivables total is in company currency (base), so it includes the 900000.
+		self.assertGreaterEqual(flt(receivables_summary(company=self.company)["outstanding"]), 900000)
+
+	def test_company_currency_invoice_rate_is_one(self):
+		"""Default path unchanged: no currency sent → company currency, rate 1, base == grand."""
+		from buildsuite_core.api.invoice import get_invoice, save_invoice
+
+		cust = self._customer()
+		name = save_invoice(
+			json.dumps(
+				{
+					"customer": cust,
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "Local work", "qty": 5, "rate": 1000}],
+				}
+			)
+		)["name"]
+		si = frappe.get_doc("Sales Invoice", name)
+		self.assertEqual(si.currency, frappe.db.get_value("Company", self.company, "default_currency"))
+		self.assertAlmostEqual(flt(si.conversion_rate), 1, places=6)
+		inv = get_invoice(name)
+		self.assertAlmostEqual(flt(inv["base_grand_total"]), flt(inv["grand_total"]), places=2)
+
 	def test_customer_advance(self):
 		from buildsuite_core.api.invoice import advances_summary, record_advance
 

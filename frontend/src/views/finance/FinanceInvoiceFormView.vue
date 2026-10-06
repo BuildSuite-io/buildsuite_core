@@ -24,7 +24,8 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter, useActiveCompany } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
 import { useAutosave } from "@/composables/useAutosave";
-import { fmtINR, currencySymbol } from "@/utils/format";
+import { fmtCurrency, currencySymbol, getDisplayCurrency } from "@/utils/format";
+import { getExchangeRate } from "@/data/companyApi";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, default: "" } });
@@ -48,15 +49,44 @@ const form = reactive({
 	project: "",
 	date: new Date().toISOString().slice(0, 10),
 	due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+	// The invoice's own currency (defaults to the company currency) + rate to company currency.
+	// A domestic invoice stays at the company currency, rate 1 — unchanged behaviour.
+	currency: getDisplayCurrency(),
+	conversion_rate: 1,
 	lines: [blankLine()],
 	taxes_and_charges: "",
 	taxes: [],
 	discount_on: "Net Total",
-	discount_type: "₹", // "%" | "₹" — ₹ by default, matching the prototype
+	// "amount" (a flat figure in the invoice currency) | "percent". Was the literal glyph "₹".
+	discount_type: "amount",
 	discount_value: 0,
 	tc_name: "",
 	terms: "",
 });
+
+// The company's base currency + whether this invoice is in a different one. Amounts render in
+// the invoice's own currency; when it differs we also show the company-currency total.
+const companyCurrency = getDisplayCurrency();
+const isForeign = computed(() => !!form.currency && form.currency !== companyCurrency);
+const fmtDoc = (v) => fmtCurrency(v, form.currency);
+
+// Pre-fill the exchange rate from ERPNext (selling side) when the invoice currency changes.
+async function onCurrencyChange() {
+	if (!isForeign.value) {
+		form.conversion_rate = 1;
+		return;
+	}
+	try {
+		form.conversion_rate = await getExchangeRate(
+			form.currency,
+			companyCurrency,
+			form.date,
+			"for_selling"
+		);
+	} catch {
+		form.conversion_rate = form.conversion_rate || 1;
+	}
+}
 const termsOpen = ref(false);
 const errors = reactive({ customer: "", lines: "" });
 const saving = ref(false);
@@ -77,6 +107,8 @@ if (isEdit.value) {
 				project: inv.project || "",
 				date: inv.date,
 				due_date: inv.due_date || "",
+				currency: inv.currency || getDisplayCurrency(),
+				conversion_rate: Number(inv.conversion_rate) || 1,
 				lines: (inv.items || []).map((l) => ({
 					description: l.description,
 					qty: l.qty ?? 1,
@@ -90,7 +122,7 @@ if (isEdit.value) {
 					rate: t.rate,
 				})),
 				discount_on: inv.additional_discount_on || "Net Total",
-				discount_type: Number(inv.discount_amount) > 0 ? "₹" : "%",
+				discount_type: Number(inv.discount_amount) > 0 ? "amount" : "percent",
 				discount_value:
 					Number(inv.discount_amount) > 0
 						? Number(inv.discount_amount)
@@ -166,7 +198,7 @@ async function onPickTerms(name) {
 const wf = computed(() => {
 	const net = form.lines.reduce((a, l) => a + lineAmount(l), 0);
 	const discBase = (base) =>
-		form.discount_type === "%"
+		form.discount_type === "percent"
 			? (base * (Number(form.discount_value) || 0)) / 100
 			: Number(form.discount_value) || 0;
 	const netDiscount = form.discount_on === "Net Total" ? discBase(net) : 0;
@@ -197,6 +229,8 @@ function buildPayload() {
 		project: form.project || undefined,
 		date: form.date,
 		due_date: form.due_date || undefined,
+		currency: form.currency || undefined,
+		conversion_rate: Number(form.conversion_rate) || 1,
 		items: lines.map((l) => ({
 			description: l.description.trim(),
 			qty: Number(l.qty) || 1,
@@ -213,8 +247,8 @@ function buildPayload() {
 			})),
 		additional_discount_on: form.discount_on,
 		additional_discount_percentage:
-			form.discount_type === "%" ? Number(form.discount_value) || 0 : 0,
-		discount_amount: form.discount_type === "₹" ? Number(form.discount_value) || 0 : 0,
+			form.discount_type === "percent" ? Number(form.discount_value) || 0 : 0,
+		discount_amount: form.discount_type === "amount" ? Number(form.discount_value) || 0 : 0,
 		tc_name: form.tc_name || undefined,
 		terms: form.terms || undefined,
 	};
@@ -320,6 +354,30 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					<DeskField :label="__('Due date')"
 						><DeskInput v-model="form.due_date" type="date"
 					/></DeskField>
+					<DeskField
+						:label="__('Currency')"
+						:hint="__('Customer currency. Defaults to the company currency.')"
+					>
+						<DeskLinkPicker
+							v-model="form.currency"
+							doctype="Currency"
+							:filters="[['enabled', '=', 1]]"
+							:placeholder="__('Company currency')"
+							@update:model-value="onCurrencyChange"
+						/>
+					</DeskField>
+					<DeskField
+						v-if="isForeign"
+						:label="__('Exchange rate')"
+						:hint="`1 ${form.currency} → ${companyCurrency}`"
+					>
+						<DeskInput
+							v-model.number="form.conversion_rate"
+							type="number"
+							min="0"
+							step="any"
+						/>
+					</DeskField>
 				</DeskSection>
 
 				<DeskSection :title="__('Items')" :cols="1">
@@ -356,7 +414,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								class="text-right"
 							/>
 							<div class="text-xs tabular-nums text-ink-700 text-right">
-								{{ fmtINR(lineAmount(l)) }}
+								{{ fmtDoc(lineAmount(l)) }}
 							</div>
 							<button
 								type="button"
@@ -462,23 +520,23 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										type="button"
 										class="px-2 py-1"
 										:class="
-											form.discount_type === '₹'
+											form.discount_type === 'amount'
 												? 'bg-ink-900 text-white'
 												: 'text-ink-600'
 										"
-										@click="form.discount_type = '₹'"
+										@click="form.discount_type = 'amount'"
 									>
-										{{ currencySymbol() }}
+										{{ currencySymbol(form.currency) }}
 									</button>
 									<button
 										type="button"
 										class="px-2 py-1"
 										:class="
-											form.discount_type === '%'
+											form.discount_type === 'percent'
 												? 'bg-ink-900 text-white'
 												: 'text-ink-600'
 										"
-										@click="form.discount_type = '%'"
+										@click="form.discount_type = 'percent'"
 									>
 										%
 									</button>
@@ -544,12 +602,12 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					<div class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
 						<div class="flex justify-between text-ink-600">
 							<span>{{ __("Net total") }}</span
-							><span class="tabular-nums">{{ fmtINR(wf.net) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(wf.net) }}</span>
 						</div>
 						<div v-if="wf.netDiscount > 0" class="flex justify-between text-ink-600">
 							<span>{{ __("Discount (on net)") }}</span
 							><span class="tabular-nums text-danger-700"
-								>− {{ fmtINR(wf.netDiscount) }}</span
+								>− {{ fmtDoc(wf.netDiscount) }}</span
 							>
 						</div>
 						<div
@@ -557,7 +615,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							class="flex justify-between text-ink-600"
 						>
 							<span>{{ __("Taxable value") }}</span
-							><span class="tabular-nums">{{ fmtINR(wf.taxable) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(wf.taxable) }}</span>
 						</div>
 						<div
 							v-for="(row, idx) in wf.taxRows"
@@ -565,19 +623,28 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							class="flex justify-between text-ink-600"
 						>
 							<span>{{ row.account_head || __("Tax") }} ({{ row.rate }}%)</span
-							><span class="tabular-nums">{{ fmtINR(row.amount) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(row.amount) }}</span>
 						</div>
 						<div v-if="wf.grandDiscount > 0" class="flex justify-between text-ink-600">
 							<span>{{ __("Discount (on grand total)") }}</span
 							><span class="tabular-nums text-danger-700"
-								>− {{ fmtINR(wf.grandDiscount) }}</span
+								>− {{ fmtDoc(wf.grandDiscount) }}</span
 							>
 						</div>
 						<div
 							class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
 						>
 							<span>{{ __("Invoice total") }}</span
-							><span class="tabular-nums">{{ fmtINR(wf.invoiceTotal) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(wf.invoiceTotal) }}</span>
+						</div>
+						<div v-if="isForeign" class="flex justify-between text-xs text-ink-500">
+							<span>{{ __("In company currency") }}</span
+							><span class="tabular-nums">{{
+								fmtCurrency(
+									wf.invoiceTotal * (Number(form.conversion_rate) || 1),
+									companyCurrency
+								)
+							}}</span>
 						</div>
 					</div>
 				</div>
