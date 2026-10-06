@@ -26,7 +26,7 @@ import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useActiveCompany } from "@/composables/useActiveCompany";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtINR, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const breadcrumbs = [{ label: __("Project Finance"), to: "/project-finance" }, { label: __("Bills") }];
@@ -192,7 +192,7 @@ async function savePay() {
 	const amt = Number(pay.amount) || 0;
 	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(pay.row.outstanding) + 0.01)
-		return showToast(__("Can't exceed the outstanding {0}.", [fmtINR(pay.row.outstanding)]), "error");
+		return showToast(__("Can't exceed the outstanding {0}.", [fmtCurrency(pay.row.outstanding, pay.row.currency)]), "error");
 	if (!pay.pay_from) return showToast(__("Pick the account to pay from."), "error");
 	pay.saving = true;
 	try {
@@ -444,13 +444,13 @@ async function saveAdvance() {
 								><span v-else class="text-ink-300">—</span>
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
-								{{ fmtINR(r.total) }}
+								{{ fmtCurrency(r.total, r.currency) }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums font-medium"
 								:class="r.outstanding > 0.01 ? 'text-ink-900' : 'text-ink-400'"
 							>
-								{{ fmtINR(r.outstanding) }}
+								{{ fmtCurrency(r.outstanding, r.currency) }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums"
@@ -596,7 +596,7 @@ async function saveAdvance() {
 						<span class="font-mono text-xs">{{ pay.row?.name }}</span
 						>. Outstanding
 						<span class="font-semibold text-ink-900 tabular-nums">{{
-							fmtINR(pay.row?.outstanding)
+							fmtCurrency(pay.row?.outstanding, pay.row?.currency)
 						}}</span
 						>.
 					</div>

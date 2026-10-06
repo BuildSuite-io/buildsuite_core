@@ -28,7 +28,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { usePermissions } from "@/composables/usePermissions";
-import { fmtDate, fmtINR } from "@/utils/format";
+import { fmtDate, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, required: true } });
@@ -50,6 +50,9 @@ const bill = ref(null);
 const payments = ref([]);
 const availableAdvances = ref([]);
 const loading = ref(true);
+// Every figure on a bill is in that bill's own currency — format them all with it (identical to
+// the company currency for a domestic bill).
+const fmtDoc = (v) => fmtCurrency(v, bill.value?.currency);
 async function load() {
 	loading.value = true;
 	try {
@@ -102,7 +105,7 @@ async function onSubmit() {
 		title: __("Submit bill?"),
 		message: __("Submit {0} ({1})? It posts the payable and can then be paid.", [
 			bill.value.name,
-			fmtINR(bill.value.grand_total),
+			fmtDoc(bill.value.grand_total),
 		]),
 		confirmLabel: __("Submit"),
 	});
@@ -220,7 +223,7 @@ async function savePay() {
 	if (amt <= 0) return showToast(__("Enter an amount greater than zero."), "error");
 	if (amt > Number(payment.value.outstanding) + 0.01)
 		return showToast(
-			__("Can't exceed the outstanding {0}.", [fmtINR(payment.value.outstanding)]),
+			__("Can't exceed the outstanding {0}.", [fmtDoc(payment.value.outstanding)]),
 			"error"
 		);
 	if (!pay.value.pay_from) return showToast(__("Pick the account to pay from."), "error");
@@ -279,7 +282,7 @@ async function doLink(a) {
 	}
 	if (amt > Number(a.unallocated) + 0.01) {
 		adv.value.error = __("Only {0} is unadjusted on {1}.", [
-			fmtINR(a.unallocated),
+			fmtDoc(a.unallocated),
 			a.payment_entry,
 		]);
 		return;
@@ -295,9 +298,9 @@ async function doLink(a) {
 		adv.value.open = false;
 		await load();
 		adv.value.msg = __("Linked {0} from {1} — outstanding is now {2}.", [
-			fmtINR(amt),
+			fmtDoc(amt),
 			a.payment_entry,
-			fmtINR(remainingOutstanding.value),
+			fmtDoc(remainingOutstanding.value),
 		]);
 		showToast(__("Advance linked."));
 	} catch (err) {
@@ -310,7 +313,7 @@ async function unlinkAdvance(row) {
 	const ok = await confirmDialog({
 		title: __("Unlink advance?"),
 		message: __("Return {0} to {1}'s unallocated balance? The net payable goes back up.", [
-			fmtINR(row.allocated),
+			fmtDoc(row.allocated),
 			row.payment_entry,
 		]),
 		confirmLabel: __("Unlink"),
@@ -454,8 +457,8 @@ async function unlinkAdvance(row) {
 				<span>
 					<span class="font-medium text-ink-900">{{
 						availableAdvances.length === 1
-							? __("{0} has {1} in unlinked advance payment", [bill.supplier_name, fmtINR(unlinkedTotal)])
-							: __("{0} has {1} in unlinked advance payments", [bill.supplier_name, fmtINR(unlinkedTotal)])
+							? __("{0} has {1} in unlinked advance payment", [bill.supplier_name, fmtDoc(unlinkedTotal)])
+							: __("{0} has {1} in unlinked advance payments", [bill.supplier_name, fmtDoc(unlinkedTotal)])
 					}}</span>
 					{{
 						availableAdvances.length === 1
@@ -505,7 +508,14 @@ async function unlinkAdvance(row) {
 						{{ __("Bill total") }}
 					</div>
 					<div class="text-sm font-semibold text-ink-900 tabular-nums mt-0.5">
-						{{ fmtINR(bill.grand_total) }}
+						{{ fmtDoc(bill.grand_total) }}
+					</div>
+					<div
+						v-if="bill.currency && bill.currency !== bill.company_currency"
+						class="text-[11px] text-ink-500 tabular-nums mt-0.5"
+					>
+						≈ {{ fmtCurrency(bill.base_grand_total, bill.company_currency) }}
+						<span class="text-ink-400">@ {{ bill.conversion_rate }}</span>
 					</div>
 				</div>
 				<div class="border border-ink-200 rounded-lg p-3">
@@ -519,7 +529,7 @@ async function unlinkAdvance(row) {
 							payment.outstanding > 0.01 ? 'text-danger-700' : 'text-success-700'
 						"
 					>
-						{{ fmtINR(payment.outstanding) }}
+						{{ fmtDoc(payment.outstanding) }}
 					</div>
 					<div v-else class="text-sm text-ink-700 mt-0.5">{{ __(state) }}</div>
 				</div>
@@ -556,10 +566,10 @@ async function unlinkAdvance(row) {
 								{{ l.qty }}
 							</td>
 							<td class="px-4 py-2 text-right tabular-nums text-ink-600">
-								{{ fmtINR(l.rate) }}
+								{{ fmtDoc(l.rate) }}
 							</td>
 							<td class="px-4 py-2 text-right tabular-nums font-medium text-ink-900">
-								{{ fmtINR(l.amount) }}
+								{{ fmtDoc(l.amount) }}
 							</td>
 						</tr>
 					</tbody>
@@ -597,7 +607,7 @@ async function unlinkAdvance(row) {
 									>{{ p.payment_entry }}</DeskLink
 								>
 								<span class="tabular-nums text-success-700 font-medium">{{
-									fmtINR(p.amount)
+									fmtDoc(p.amount)
 								}}</span>
 							</span>
 						</div>
@@ -637,7 +647,7 @@ async function unlinkAdvance(row) {
 								>
 								<span class="flex items-center gap-2 flex-shrink-0">
 									<span class="tabular-nums text-info-700 font-medium">{{
-										fmtINR(row.allocated)
+										fmtDoc(row.allocated)
 									}}</span>
 									<button
 										v-if="canLink && canCreate('advance')"
@@ -657,7 +667,7 @@ async function unlinkAdvance(row) {
 									>{{ __("Total advance adjusted") }}</span
 								>
 								<span class="tabular-nums font-semibold text-ink-900">{{
-									fmtINR(advanceAdjusted)
+									fmtDoc(advanceAdjusted)
 								}}</span>
 							</div>
 						</template>
@@ -668,7 +678,7 @@ async function unlinkAdvance(row) {
 							{{
 								__("No advances linked yet — {0} has {1} unallocated.", [
 									bill.supplier_name,
-									fmtINR(unlinkedTotal),
+									fmtDoc(unlinkedTotal),
 								])
 							}}
 						</div>
@@ -679,7 +689,7 @@ async function unlinkAdvance(row) {
 				<section class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1 self-start">
 					<div class="flex justify-between text-ink-600">
 						<span>{{ __("Net total") }}</span
-						><span class="tabular-nums">{{ fmtINR(bill.net_total) }}</span>
+						><span class="tabular-nums">{{ fmtDoc(bill.net_total) }}</span>
 					</div>
 					<div
 						v-for="(t, idx) in bill.taxes"
@@ -687,24 +697,24 @@ async function unlinkAdvance(row) {
 						class="flex justify-between text-ink-600"
 					>
 						<span>{{ t.description }} ({{ t.rate }}%)</span
-						><span class="tabular-nums">{{ fmtINR(t.tax_amount) }}</span>
+						><span class="tabular-nums">{{ fmtDoc(t.tax_amount) }}</span>
 					</div>
 					<div
 						class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
 					>
 						<span>{{ __("Bill total") }}</span
-						><span class="tabular-nums">{{ fmtINR(bill.grand_total) }}</span>
+						><span class="tabular-nums">{{ fmtDoc(bill.grand_total) }}</span>
 					</div>
 					<div v-if="advanceAdjusted > 0" class="flex justify-between text-ink-600">
 						<span>{{ __("Advance adjusted") }}</span
 						><span class="tabular-nums text-info-700"
-							>− {{ fmtINR(advanceAdjusted) }}</span
+							>− {{ fmtDoc(advanceAdjusted) }}</span
 						>
 					</div>
 					<template v-if="isSubmitted">
 						<div class="flex justify-between text-ink-600">
 							<span>{{ __("Paid") }}</span
-							><span class="tabular-nums">{{ fmtINR(payment.paid) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(payment.paid) }}</span>
 						</div>
 						<div
 							class="flex justify-between font-semibold"
@@ -713,7 +723,7 @@ async function unlinkAdvance(row) {
 							"
 						>
 							<span>{{ __("Outstanding") }}</span
-							><span class="tabular-nums">{{ fmtINR(payment.outstanding) }}</span>
+							><span class="tabular-nums">{{ fmtDoc(payment.outstanding) }}</span>
 						</div>
 					</template>
 					<div v-else-if="advanceAdjusted > 0" class="text-[10px] text-ink-400">
@@ -751,7 +761,7 @@ async function unlinkAdvance(row) {
 						<span class="font-mono text-xs">{{ bill.name }}</span
 						>. Outstanding
 						<span class="font-semibold text-ink-900 tabular-nums">{{
-							fmtINR(payment.outstanding)
+							fmtDoc(payment.outstanding)
 						}}</span
 						>.
 					</div>
@@ -835,7 +845,7 @@ async function unlinkAdvance(row) {
 						<span class="font-medium text-ink-900">{{ bill.supplier_name }}</span
 						>. Current outstanding
 						<span class="font-semibold text-ink-900 tabular-nums">{{
-							fmtINR(remainingOutstanding)
+							fmtDoc(remainingOutstanding)
 						}}</span>
 						— the suggested allocation settles as much of it as each advance allows.
 					</div>
@@ -860,7 +870,7 @@ async function unlinkAdvance(row) {
 								<div class="text-right flex-shrink-0">
 									<div class="text-xs text-ink-500">{{ __("Unallocated") }}</div>
 									<div class="text-sm font-semibold text-ink-900 tabular-nums">
-										{{ fmtINR(a.unallocated) }}
+										{{ fmtDoc(a.unallocated) }}
 									</div>
 								</div>
 							</div>
