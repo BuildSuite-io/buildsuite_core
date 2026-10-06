@@ -12,7 +12,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
-import { fmtDate, fmtCompactINR } from "@/utils/format";
+import { fmtDate, fmtCompactCurrency } from "@/utils/format";
 import { usePermissions } from "@/composables/usePermissions";
 import { __ } from "@/utils/translate";
 
@@ -29,6 +29,7 @@ const FIELDS = [
 	"project",
 	"transaction_date",
 	"schedule_date",
+	"currency",
 	"grand_total",
 	"per_received",
 	"status",
@@ -159,7 +160,7 @@ const breadcrumbs = [
 				}}</span>
 			</template>
 			<template #cell-grand_total="{ row }">
-				<span class="tabular-nums text-ink-700">{{ fmtCompactINR(row.grand_total) }}</span>
+				<span class="tabular-nums text-ink-700">{{ fmtCompactCurrency(row.grand_total, row.currency) }}</span>
 			</template>
 			<template #cell-per_received="{ row }">
 				<span class="flex items-center gap-1.5 justify-end">
