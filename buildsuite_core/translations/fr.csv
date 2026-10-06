@@ -2985,3 +2985,163 @@ EMD amount,Montant de la caution
 Project budget,Budget du projet
 Advance recovery,Récupération d'avance
 Current rate,Tarif actuel
+"Customize shortcuts shown on this workspace — reorder, hide per role, or add new ones.","Personnalisez les raccourcis affichés sur cet espace de travail — réorganisez, masquez par rôle ou ajoutez-en."
+Configure,Configurer
+Owner view,Vue propriétaire
+"Portfolio health, top risks, and high-value approvals at a glance.","Santé du portefeuille, principaux risques et approbations à fort enjeu en un coup d'œil."
+No Site Execution shortcuts available.,Aucun raccourci d'exécution de chantier disponible.
+Configure shortcuts,Configurer les raccourcis
+"General ledger, receivables, payables and financial reports","Grand livre, créances, dettes et rapports financiers"
+Outstanding receivables,Créances en souffrance
+AR aging,Ancienneté des créances
+Outstanding payables,Dettes en souffrance
+AP aging,Ancienneté des dettes
+Total bank balance,Solde bancaire total
+all bank accounts,tous les comptes bancaires
+Net profit (YTD),Bénéfice net (cumul annuel)
+fiscal year to date,depuis le début de l'exercice
+Equipment Dashboard,Tableau de bord équipement
+"Plant register, utilisation and equipment cost at a glance.","Registre du matériel, utilisation et coût des équipements en un coup d'œil."
+Machinery utilisation,Utilisation des machines
+Plant usage + cost by project / task.,Utilisation + coût du matériel par projet / tâche.
+Equipment register,Registre des équipements
+Owned + hired plant with rates.,Matériel détenu + loué avec tarifs.
+Could not load the dashboard.,Impossible de charger le tableau de bord.
+In the register,Dans le registre
+Company-owned plant,Matériel appartenant à l'entreprise
+On hire from vendors,En location chez des fournisseurs
+Equipment cost,Coût des équipements
+Usage + fuel logged,Utilisation + carburant enregistrés
+Recent usage,Utilisation récente
+View all,Voir tout
+Register,Registre
+No machines registered.,Aucune machine enregistrée.
+Procurement Dashboard,Tableau de bord approvisionnement
+"Open material requests, on-order value, site receipts and rate variances at a glance.","Demandes de matériel ouvertes, valeur commandée, réceptions sur chantier et écarts de tarif en un coup d'œil."
+Supplier Bills,Factures fournisseurs
+Approved requests to order,Demandes approuvées à commander
+All caught up,Tout est à jour
+Deliveries overdue,Livraisons en retard
+Partial deliveries,Livraisons partielles
+No partial deliveries pending,Aucune livraison partielle en attente
+"Received, not billed","Reçu, non facturé"
+All receipts billed,Toutes les réceptions facturées
+Open material requests,Demandes de matériel ouvertes
+Pending + Approved + Partially Ordered,En attente + Approuvées + Partiellement commandées
+On order · awaiting delivery,Commandé · en attente de livraison
+POs not yet fully received,Commandes pas encore entièrement reçues
+Received this week,Reçu cette semaine
+Goods receipts in last 7 days,Réceptions des 7 derniers jours
+Above estimated rate,Au-dessus du tarif estimé
+PO line items priced above Rate Master,Lignes de commande au prix supérieur au Rate Master
+Needs action,Nécessite une action
+Recent site receipts,Réceptions récentes sur chantier
+No goods receipts recorded yet.,Aucune réception enregistrée pour l'instant.
+Project Status Summary,Synthèse de l'état des projets
+"Active projects with status, progress and schedule variance.","Projets actifs avec statut, avancement et écart de planning."
+Task Completion by Week,Achèvement des tâches par semaine
+"Tasks completed per project, bucketed by ISO week.","Tâches terminées par projet, regroupées par semaine ISO."
+Pending Progress Entries,Saisies d'avancement en attente
+Tasks that are In Progress with no Task Progress Entry filed in the last 3 days.,Tâches en cours sans saisie d'avancement enregistrée ces 3 derniers jours.
+Stage Plan vs Actual,Plan d'étapes vs réalisé
+"Each stage with planned task count, completed task count, and a variance %.","Chaque étape avec nombre de tâches planifiées, terminées et un écart en %."
+Labour Deployed,Main-d'œuvre déployée
+"Skilled + unskilled labour rolled up from Task Progress Entry, by task and week.","Main-d'œuvre qualifiée + non qualifiée consolidée depuis les saisies d'avancement, par tâche et semaine."
+Week of,Semaine du
+In progress,En cours
+Last entry,Dernière saisie
+Days silent,Jours sans activité
+Unknown report,Rapport inconnu
+Company: All,Société : Toutes
+Project: All,Projet : Tous
+Date range: This quarter,Période : Ce trimestre
+Check the report tile on the Site Execution workspace.,Consultez la tuile de rapport sur l'espace Exécution du chantier.
+You don't have access to Project Finance.,Vous n'avez pas accès aux Finances de projet.
+"Cash & bank balances, quick actions and alerts.","Soldes de caisse et de banque, actions rapides et alertes."
+Transactions,Transactions
+"Price book for materials, labour, and equipment.","Grille de prix pour matériaux, main-d'œuvre et équipements."
+Rate-analysis recipes built from rate-master resources.,Recettes d'analyse de prix construites à partir des ressources du Rate Master.
+Reusable BOQ skeletons of assemblies and resources.,Squelettes de BOQ réutilisables d'assemblages et de ressources.
+Subcontractor Dashboard,Tableau de bord sous-traitance
+"Open commitments, work order momentum and active subcontractors at a glance.","Engagements ouverts, dynamique des ordres de travaux et sous-traitants actifs en un coup d'œil."
+"Open commitments, billing momentum, and certified measurements at a glance.","Engagements ouverts, dynamique de facturation et métrés certifiés en un coup d'œil."
+Open work orders,Ordres de travaux ouverts
+Awarded · In Progress,Attribués · En cours
+Sum across all bills,Somme de toutes les factures
+Withheld pending defect-liability period,Retenu dans l'attente de la période de garantie
+Active subcontractors,Sous-traitants actifs
+In the master,Dans le référentiel
+Recent work orders,Ordres de travaux récents
+Loading work orders…,Chargement des ordres de travaux…
+Recent subcontractor bills,Factures de sous-traitants récentes
+No bills raised yet.,Aucune facture émise pour l'instant.
+Recent measurement books,Carnets de métré récents
+Loading measurement books…,Chargement des carnets de métré…
+No measurements recorded yet.,Aucun métré enregistré pour l'instant.
+Failed to load the dashboard.,Échec du chargement du tableau de bord.
+Project overview,Vue d'ensemble du projet
+Portfolio overview,Vue d'ensemble du portefeuille
+Portfolio,Portefeuille
+Loading portfolio…,Chargement du portefeuille…
+Contract value,Valeur du contrat
+"Approved BOQ, else budget","BOQ approuvé, sinon budget"
+Work done,Travaux réalisés
+All on or ahead of plan,Tous dans les temps ou en avance
+Project health,Santé du projet
+Progress against plan · work done against contract value,Avancement par rapport au plan · travaux réalisés par rapport à la valeur du contrat
+Progress vs plan,Avancement vs plan
+Work done / value,Travaux réalisés / valeur
+No projects in scope,Aucun projet dans le périmètre
+Cost booked to date,Coûts engagés à ce jour
+Actual spend by head — not the BOQ view above,Dépenses réelles par poste — pas la vue BOQ ci-dessus
+Waiting on you,En attente de votre action
+Approvals across every module,Approbations dans tous les modules
+Nothing pending,Rien en attente
+Site activity,Activité du chantier
+Deliveries,Livraisons
+No site reporting yet.,Aucun rapport de chantier pour l'instant.
+Latest reports,Derniers rapports
+No progress entries filed yet.,Aucune saisie d'avancement enregistrée pour l'instant.
+Commitments & exposure,Engagements et exposition
+"Money promised to third parties, and what is still to come","Montants promis à des tiers, et ce qui reste à venir"
+Subcontract committed,Engagé en sous-traitance
+On order,En commande
+open purchase orders,bons de commande ouverts
+Schedule · cost · decisions · supply,Planning · coût · décisions · approvisionnement
+Nothing needs attention,Rien ne nécessite d'attention
+"Schedule, cost, decisions and supply are all within tolerance.","Planning, coût, décisions et approvisionnement sont tous dans les limites."
+"Material issued to site, against the cost code it was booked to.","Matériaux sortis vers le chantier, imputés au code de coût correspondant."
+Aged outstanding — who owes us and who we owe.,Encours par ancienneté — qui nous doit et à qui nous devons.
+"Asked for by site, not yet on an order.","Demandé par le chantier, pas encore commandé."
+"Client interim payment certificates, with total claimed + outstanding.","Certificats de paiement intermédiaires des clients, avec total réclamé + encours."
+"Days worked, overtime and labour cost per site — the HR roll-up.","Jours travaillés, heures supplémentaires et coût de main-d'œuvre par chantier — la synthèse RH."
+Every WO across projects with status + billed-to-date.,"Tous les ordres de travaux, tous projets confondus, avec statut + facturé à ce jour."
+"Every order line — supplier, item, quantity, rate.","Chaque ligne de commande — fournisseur, article, quantité, tarif."
+"Income vs direct costs and overheads, by project and period.","Produits vs coûts directs et frais généraux, par projet et période."
+"Invoiced, received, overdue and retention held, per project.","Facturé, encaissé, en retard et retenue de garantie, par projet."
+"Open orders by the date they were needed, and what is late.","Commandes ouvertes par date de besoin, et ce qui est en retard."
+"Ordered → received → consumed → at site, by item.","Commandé → reçu → consommé → sur le chantier, par article."
+"Per account: opening, movements, closing.","Par compte : ouverture, mouvements, clôture."
+"Per-sub: committed on WOs, billed net, retention held, still to bill.","Par sous-traitant : engagé sur les OT, facturé net, retenue de garantie, reste à facturer."
+Per-worker daily wages — Full Day / Half Day / Absent.,Salaires journaliers par ouvrier — Journée complète / Demi-journée / Absent.
+Per-worker overtime hours × overtime rate.,Heures supplémentaires par ouvrier × taux des heures supplémentaires.
+"Petty cash ledger — the Petty Cash account, per holder.","Grand livre de petite caisse — le compte de petite caisse, par détenteur."
+"Planned vs Committed vs Actual per BOQ cost code, for a project.","Planifié vs Engagé vs Réel par code de coût du BOQ, pour un projet."
+Running subcontractor bills with retention + net payable rollups.,Factures de sous-traitants en cours avec retenue de garantie + net à payer.
+"Site measurements certified by the QS, feeding subcontractor bill qty.","Métrés de chantier certifiés par le métreur, alimentant les quantités des factures de sous-traitants."
+"Stages slipping, by how much, and current progress.","Étapes en glissement, de combien, et avancement actuel."
+"Submitted expenses grouped by project, account, cost code, source or person.","Dépenses soumises groupées par projet, compte, code de coût, source ou personne."
+"WO value, measured, billed, paid, retention and outstanding, per subcontractor.","Valeur des OT, métré, facturé, payé, retenue de garantie et encours, par sous-traitant."
+"What we have vs what we owe, and the net position.","Ce que nous avons vs ce que nous devons, et la position nette."
+What you are paying against the QS rate in the Rate Master.,Ce que vous payez par rapport au tarif du métreur dans le Rate Master.
+Client Bill Register,Registre des factures clients
+Cost Code Variance,Écart par code de coût
+Measurement Book Register,Registre des carnets de métré
+Subcontractor Bill Register,Registre des factures de sous-traitants
+Subcontractor Ledger,Grand livre des sous-traitants
+Work Order Register,Registre des ordres de travaux
+Accounts Category,Catégorie de comptes
+Billing and Collection,Facturation et encaissement
+Delay Analysis,Analyse des retards
+Material Status,État des matériaux
+Subcontractor Position,Situation des sous-traitants

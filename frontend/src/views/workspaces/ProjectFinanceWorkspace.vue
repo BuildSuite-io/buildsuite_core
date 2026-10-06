@@ -17,12 +17,13 @@ import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSec
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { fmtINR } from "@/utils/format";
+import { __, currentLang } from "@/utils/translate";
 
 const { canRead } = usePermissions();
 const session = useSessionStore();
 const activeCompany = useActiveCompany();
 
-const today = new Date().toLocaleDateString("en-US", {
+const today = new Date().toLocaleDateString(currentLang(), {
 	weekday: "long",
 	month: "short",
 	day: "numeric",
@@ -100,14 +101,14 @@ const noAccess = computed(
 			<!-- Title strip -->
 			<div class="mb-5">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Project Finance</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Project Finance") }}</h1>
 			</div>
 
 			<div
 				v-if="noAccess"
 				class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-6 text-sm text-warning-700"
 			>
-				You don't have access to Project Finance.
+				{{ __("You don't have access to Project Finance.") }}
 			</div>
 
 			<template v-else>
@@ -137,17 +138,17 @@ const noAccess = computed(
 							<div
 								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors"
 							>
-								Financial Overview
+								{{ __("Financial Overview") }}
 							</div>
 							<div class="text-xs text-ink-600 mt-0.5">
-								Cash &amp; bank balances, quick actions and alerts.
+								{{ __("Cash & bank balances, quick actions and alerts.") }}
 							</div>
 						</div>
 						<div class="text-right mr-2">
 							<div
 								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 							>
-								Cash &amp; bank
+								{{ __("Cash & bank") }}
 							</div>
 							<div
 								class="text-lg font-semibold text-ink-900 tabular-nums leading-none"
@@ -168,7 +169,7 @@ const noAccess = computed(
 					<h2
 						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
 					>
-						Transactions
+						{{ __("Transactions") }}
 					</h2>
 					<div class="border-t border-ink-200 mb-3"></div>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -176,7 +177,7 @@ const noAccess = computed(
 							v-for="t in txTiles"
 							:key="t.section"
 							:icon="t.icon"
-							:label="t.label"
+							:label="__(t.label)"
 							:to="`/project-finance/${t.section}`"
 						/>
 					</div>
@@ -187,7 +188,7 @@ const noAccess = computed(
 					<h2
 						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
 					>
-						Masters
+						{{ __("Masters") }}
 					</h2>
 					<div class="border-t border-ink-200 mb-3"></div>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -195,7 +196,7 @@ const noAccess = computed(
 							v-for="t in masterTiles"
 							:key="t.section"
 							:icon="t.icon"
-							:label="t.label"
+							:label="__(t.label)"
 							:to="`/project-finance/${t.section}`"
 						/>
 					</div>

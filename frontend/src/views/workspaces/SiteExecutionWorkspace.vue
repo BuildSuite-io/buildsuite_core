@@ -24,6 +24,7 @@
 
 import { computed, ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
+import { __, currentLang } from "@/utils/translate";
 import { useDataStore } from "@/stores";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
@@ -42,7 +43,7 @@ const shortcutsLoaded = ref(false);
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
 });
 
 // --- Session 35 additive: Project Dashboard tile -------------------------
@@ -71,7 +72,7 @@ onMounted(async () => {
 			<!-- Title strip — workspace name as the heading; date eyebrow only -->
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Site Execution</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Site Execution") }}</h1>
 			</div>
 
 			<!-- BSA hint banner — only visible to BSA (the audience who can reconfigure) -->
@@ -81,14 +82,13 @@ onMounted(async () => {
 				style="border-radius: 6px"
 			>
 				<span
-					>Customize shortcuts shown on this workspace — reorder, hide per role, or add
-					new ones.</span
+					>{{ __("Customize shortcuts shown on this workspace — reorder, hide per role, or add new ones.") }}</span
 				>
 				<RouterLink
 					to="/settings/workspace-structure"
 					class="font-medium hover:underline whitespace-nowrap ml-3"
 				>
-					Configure →
+					{{ __("Configure") }} →
 				</RouterLink>
 			</div>
 
@@ -120,16 +120,16 @@ onMounted(async () => {
 							<div
 								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors dark:text-[#F5F5F5]"
 							>
-								Project Dashboard
+								{{ __("Project Dashboard") }}
 							</div>
 							<span
 								class="text-[9px] px-1.5 py-0.5 bg-brand-100 text-brand-700 font-medium uppercase tracking-wider"
 								style="border-radius: 2px"
-								>Owner view</span
+								>{{ __("Owner view") }}</span
 							>
 						</div>
 						<div class="text-xs text-brand-700 mt-1 leading-snug">
-							Portfolio health, top risks, and high-value approvals at a glance.
+							{{ __("Portfolio health, top risks, and high-value approvals at a glance.") }}
 						</div>
 					</div>
 					<svg
@@ -164,7 +164,7 @@ onMounted(async () => {
 					:key="sc.route"
 					:to="sc.route"
 					:icon="sc.icon"
-					:label="sc.label"
+					:label="__(sc.label)"
 				/>
 			</div>
 
@@ -175,14 +175,14 @@ onMounted(async () => {
 				style="border-radius: 8px"
 			>
 				<div class="text-sm text-ink-500 mb-1">
-					No Site Execution shortcuts available.
+					{{ __("No Site Execution shortcuts available.") }}
 				</div>
 				<RouterLink
 					v-if="store.isBSA"
 					to="/settings/workspace-structure"
 					class="text-xs text-brand-700 hover:underline"
 				>
-					Configure shortcuts →
+					{{ __("Configure shortcuts") }} →
 				</RouterLink>
 			</div>
 

@@ -4,10 +4,11 @@
 import { computed } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
 });
 
 const shortcuts = [
@@ -23,7 +24,7 @@ const shortcuts = [
 		<div class="max-w-6xl mx-auto px-6 py-8">
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Workforce</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Workforce") }}</h1>
 			</div>
 
 			<!-- Shortcuts grid -->
@@ -32,7 +33,7 @@ const shortcuts = [
 					v-for="sc in shortcuts"
 					:key="sc.label"
 					:icon="sc.icon"
-					:label="sc.label"
+					:label="__(sc.label)"
 					:to="sc.to"
 					:cap="sc.cap"
 				/>

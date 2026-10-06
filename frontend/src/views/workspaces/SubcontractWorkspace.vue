@@ -12,10 +12,11 @@ import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
 });
 
 const shortcuts = [
@@ -32,7 +33,7 @@ const shortcuts = [
 		<div class="max-w-6xl mx-auto px-6 py-8">
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Subcontractors</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Subcontractors") }}</h1>
 			</div>
 
 			<!-- Subcontractor Dashboard CTA tile -->
@@ -61,16 +62,19 @@ const shortcuts = [
 							<div
 								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors"
 							>
-								Subcontractor Dashboard
+								{{ __("Subcontractor Dashboard") }}
 							</div>
 							<span
 								class="text-[9px] px-1.5 py-0.5 bg-brand-100 text-brand-700 font-medium uppercase tracking-wider rounded-sm"
-								>Live</span
+								>{{ __("Live") }}</span
 							>
 						</div>
 						<div class="text-xs text-brand-700 mt-1 leading-snug">
-							Open commitments, work order momentum and active subcontractors at a
-							glance.
+							{{
+								__(
+									"Open commitments, work order momentum and active subcontractors at a glance.",
+								)
+							}}
 						</div>
 					</div>
 					<div
@@ -87,7 +91,7 @@ const shortcuts = [
 					v-for="sc in shortcuts"
 					:key="sc.label"
 					:icon="sc.icon"
-					:label="sc.label"
+					:label="__(sc.label)"
 					:to="sc.to"
 					:cap="sc.cap"
 				/>

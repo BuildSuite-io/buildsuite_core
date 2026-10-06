@@ -11,6 +11,7 @@ import { ref, computed, onMounted } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import TileGridSkeleton from "@/components/workspaces/TileGridSkeleton.vue";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	workspace: { type: String, required: true },
@@ -46,7 +47,9 @@ function reportTo(r) {
 
 <template>
 	<div v-if="show" :class="spacing">
-		<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">Reports</h2>
+		<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
+			{{ __("Reports") }}
+		</h2>
 		<div class="border-t border-ink-200 mb-3"></div>
 		<TileGridSkeleton v-if="loading" :count="3" with-description />
 		<div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -63,7 +66,7 @@ function reportTo(r) {
 					<span
 						class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
 						style="border-radius: 2px"
-						>Report</span
+						>{{ __("Report") }}</span
 					>
 				</template>
 			</WorkspaceShortcut>

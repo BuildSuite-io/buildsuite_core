@@ -22,6 +22,7 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { getWorkspaceIconPath, resolveWorkspaceIconSlug } from "@/utils/workspaceIcons";
 import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	to: { type: [String, Object], default: null },
@@ -89,12 +90,12 @@ function onClick(e) {
 					<div
 						class="text-sm font-medium text-ink-900 group-hover:text-brand-700 transition-colors"
 					>
-						{{ label }}
+						{{ __(label) }}
 					</div>
 					<slot name="badge" />
 				</div>
 				<div v-if="description" class="text-[11px] text-ink-500 mt-1 leading-snug">
-					{{ description }}
+					{{ __(description) }}
 				</div>
 				<slot />
 			</div>

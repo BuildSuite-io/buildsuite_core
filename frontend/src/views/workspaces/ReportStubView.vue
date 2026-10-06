@@ -15,6 +15,7 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
+import { __ } from "@/utils/translate";
 
 const route = useRoute();
 
@@ -82,16 +83,16 @@ const report = computed(() => REPORTS[slug.value] || null);
 
 const breadcrumbs = computed(() => [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: "Site Execution", to: "/site-execution" },
-	{ label: "Reports" },
-	{ label: report.value?.title || "Unknown report" },
+	{ label: __("Site Execution"), to: "/site-execution" },
+	{ label: __("Reports") },
+	{ label: report.value ? __(report.value.title) : __("Unknown report") },
 ]);
 </script>
 
 <template>
 	<DeskPage
-		:title="report ? report.title : 'Report not found'"
-		:subtitle="report ? report.desc : `No report registered for slug '${slug}'`"
+		:title="report ? __(report.title) : __('Report not found')"
+		:subtitle="report ? __(report.desc) : __(`No report registered for slug '{0}'`, [slug])"
 		:breadcrumbs="breadcrumbs"
 	>
 		<template v-if="report">
@@ -101,23 +102,23 @@ const breadcrumbs = computed(() => [
 				style="border-radius: 6px"
 			>
 				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>Filters</span
+					>{{ __("Filters") }}</span
 				>
 				<span class="text-[11px] text-ink-400">·</span>
 				<span
 					class="text-[11px] bg-white border border-ink-200 px-2 py-0.5"
 					style="border-radius: 9999px"
-					>Company: All</span
+					>{{ __("Company: All") }}</span
 				>
 				<span
 					class="text-[11px] bg-white border border-ink-200 px-2 py-0.5"
 					style="border-radius: 9999px"
-					>Project: All</span
+					>{{ __("Project: All") }}</span
 				>
 				<span
 					class="text-[11px] bg-white border border-ink-200 px-2 py-0.5"
 					style="border-radius: 9999px"
-					>Date range: This quarter</span
+					>{{ __("Date range: This quarter") }}</span
 				>
 			</div>
 
@@ -131,7 +132,7 @@ const breadcrumbs = computed(() => [
 								:key="c"
 								class="text-left text-[11px] uppercase tracking-wider text-ink-500 font-medium px-3 py-2"
 							>
-								{{ c }}
+								{{ __(c) }}
 							</th>
 						</tr>
 					</thead>
@@ -157,11 +158,11 @@ const breadcrumbs = computed(() => [
 		<template v-else>
 			<div class="border border-ink-200 px-4 py-8 text-center" style="border-radius: 6px">
 				<div class="text-sm text-ink-700 mb-1">
-					No report registered for slug <span class="font-mono">{{ slug }}</span
+					{{ __("No report registered for slug") }} <span class="font-mono">{{ slug }}</span
 					>.
 				</div>
 				<div class="text-[11px] text-ink-500">
-					Check the report tile on the Site Execution workspace.
+					{{ __("Check the report tile on the Site Execution workspace.") }}
 				</div>
 			</div>
 		</template>

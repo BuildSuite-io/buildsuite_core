@@ -6,9 +6,10 @@ import { computed } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() =>
-	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+	new Date().toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" }),
 );
 
 
@@ -48,7 +49,7 @@ const SETUP = [
 		<div class="max-w-6xl mx-auto px-6 py-8">
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Estimation</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Estimation") }}</h1>
 			</div>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
@@ -57,13 +58,13 @@ const SETUP = [
 					:key="sc.to"
 					:to="sc.to"
 					:icon="sc.icon"
-					:label="sc.label"
+					:label="__(sc.label)"
 					:cap="sc.cap"
 				/>
 			</div>
 
 			<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
-				Setup
+				{{ __("Setup") }}
 			</h2>
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 				<WorkspaceShortcut
@@ -71,8 +72,8 @@ const SETUP = [
 					:key="sc.to"
 					:to="sc.to"
 					:icon="sc.icon"
-					:label="sc.label"
-					:description="sc.description"
+					:label="__(sc.label)"
+					:description="__(sc.description)"
 					:cap="sc.cap"
 				/>
 			</div>

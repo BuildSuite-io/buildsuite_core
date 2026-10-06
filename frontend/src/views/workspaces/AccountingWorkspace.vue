@@ -14,8 +14,9 @@
 import DeskPage from "@/components/desk/DeskPage.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
 
-const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: "Accounting" }];
+const breadcrumbs = [{ label: "BuildSuite Core", to: "/" }, { label: __("Accounting") }];
 
 // Number Cards: ERPNext-standard KPI tiles at the top of the workspace. All values
 // illustrative — no accounting data exists in seed (M8 Project Finance handles petty
@@ -153,8 +154,8 @@ const sections = [
 
 <template>
 	<DeskPage
-		title="Accounting"
-		subtitle="General ledger, receivables, payables and financial reports"
+		:title="__('Accounting')"
+		:subtitle="__('General ledger, receivables, payables and financial reports')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<!-- Number Cards -->
@@ -166,17 +167,17 @@ const sections = [
 				style="border-radius: 2px"
 			>
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					{{ c.label }}
+					{{ __(c.label) }}
 				</div>
 				<div class="text-base font-semibold text-ink-900 mt-0.5 tabular-nums">
 					{{ c.value }}
 				</div>
-				<div class="text-[10px] text-ink-500 mt-0.5">{{ c.sub }}</div>
+				<div class="text-[10px] text-ink-500 mt-0.5">{{ __(c.sub) }}</div>
 			</div>
 		</div>
 
 		<section class="mb-5">
-			<h2 class="desk-section-title">Shortcuts</h2>
+			<h2 class="desk-section-title">{{ __("Shortcuts") }}</h2>
 			<hr class="desk-divider" />
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 				<WorkspaceShortcut
@@ -184,7 +185,7 @@ const sections = [
 					:key="s.label"
 					:href="s.to"
 					:icon="s.icon"
-					:label="s.label"
+					:label="__(s.label)"
 					prevent
 				/>
 			</div>
@@ -193,7 +194,7 @@ const sections = [
 		<!-- Sections grid (2 cols on desktop) -->
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
 			<section v-for="sec in sections" :key="sec.title">
-				<h2 class="desk-section-title">{{ sec.title }}</h2>
+				<h2 class="desk-section-title">{{ __(sec.title) }}</h2>
 				<hr class="desk-divider" />
 				<ul class="space-y-0.5">
 					<li
@@ -202,11 +203,11 @@ const sections = [
 						class="flex items-center gap-2 text-xs py-1 px-1 hover:bg-brand-50 cursor-pointer"
 						style="border-radius: 6px"
 					>
-						<a href="#" class="desk-link" @click.prevent>{{ i.label }}</a>
+						<a href="#" class="desk-link" @click.prevent>{{ __(i.label) }}</a>
 						<span
 							v-if="i.report"
 							class="text-[9px] uppercase tracking-wider text-ink-400 font-semibold"
-							>report</span
+							>{{ __("report") }}</span
 						>
 					</li>
 				</ul>

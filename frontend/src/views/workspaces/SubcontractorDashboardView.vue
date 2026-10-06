@@ -13,10 +13,11 @@ import { useProjectNames } from "@/composables/useProjectNames";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
 });
 
 const { projectName } = useProjectNames();
@@ -123,16 +124,16 @@ function woPercent(wo) {
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1 flex items-center gap-2">
 					<RouterLink to="/subcontract" class="hover:text-brand-700"
-						>Subcontractors</RouterLink
+						>{{ __("Subcontractors") }}</RouterLink
 					>
 					<span class="text-ink-300">/</span>
-					<span>Dashboard</span>
+					<span>{{ __("Dashboard") }}</span>
 					<span class="text-ink-300 mx-2">·</span>
 					<span>{{ today }}</span>
 				</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Subcontractor Dashboard</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Subcontractor Dashboard") }}</h1>
 				<p class="text-xs text-ink-500 mt-1">
-					Open commitments, billing momentum, and certified measurements at a glance.
+					{{ __("Open commitments, billing momentum, and certified measurements at a glance.") }}
 				</p>
 			</div>
 
@@ -140,7 +141,7 @@ function woPercent(wo) {
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 				<div class="p-4 bg-white border border-ink-200 rounded-lg">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Open work orders
+						{{ __("Open work orders") }}
 					</div>
 					<div class="flex items-baseline gap-2 mt-1.5">
 						<div class="text-2xl font-semibold text-ink-900 tabular-nums">
@@ -150,36 +151,36 @@ function woPercent(wo) {
 							{{ fmtCompactINR(openWosValue) }}
 						</div>
 					</div>
-					<div class="text-[10px] text-ink-400 mt-1">Awarded · In Progress</div>
+					<div class="text-[10px] text-ink-400 mt-1">{{ __("Awarded · In Progress") }}</div>
 				</div>
 				<div class="p-4 bg-white border border-ink-200 rounded-lg">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Billed to date
+						{{ __("Billed to date") }}
 					</div>
 					<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
 						{{ fmtCompactINR(totalBilledToDate) }}
 					</div>
-					<div class="text-[10px] text-ink-400 mt-1">Sum across all bills</div>
+					<div class="text-[10px] text-ink-400 mt-1">{{ __("Sum across all bills") }}</div>
 				</div>
 				<div class="p-4 bg-white border border-ink-200 rounded-lg">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Retention held
+						{{ __("Retention held") }}
 					</div>
 					<div class="text-2xl font-semibold text-warning-700 tabular-nums mt-1.5">
 						{{ fmtCompactINR(totalRetentionHeld) }}
 					</div>
 					<div class="text-[10px] text-ink-400 mt-1">
-						Withheld pending defect-liability period
+						{{ __("Withheld pending defect-liability period") }}
 					</div>
 				</div>
 				<div class="p-4 bg-white border border-ink-200 rounded-lg">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						Active subcontractors
+						{{ __("Active subcontractors") }}
 					</div>
 					<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
 						{{ activeSubs }}
 					</div>
-					<div class="text-[10px] text-ink-400 mt-1">In the master</div>
+					<div class="text-[10px] text-ink-400 mt-1">{{ __("In the master") }}</div>
 				</div>
 			</div>
 
@@ -200,11 +201,11 @@ function woPercent(wo) {
 							stroke-linejoin="round"
 							v-html="getWorkspaceIconPath('clipboard-list')"
 						/>
-						<h2 class="text-sm font-semibold text-ink-900">Recent work orders</h2>
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Recent work orders") }}</h2>
 						<RouterLink
 							to="/subcontractor-work-orders"
 							class="ml-auto text-xs text-brand-700 hover:underline"
-							>View all →</RouterLink
+							>{{ __("View all →") }}</RouterLink
 						>
 					</div>
 					<ul v-if="recentWorkOrders.length" class="divide-y divide-ink-100">
@@ -232,7 +233,7 @@ function woPercent(wo) {
 							</div>
 							<div class="text-[11px] text-ink-500 mt-0.5">
 								<span class="text-ink-700 tabular-nums">{{ woPercent(wo) }}%</span>
-								billed ·
+								{{ __("billed") }} ·
 								<span class="tabular-nums">{{
 									fmtCompactINR(woBilled(wo.name))
 								}}</span>
@@ -241,7 +242,9 @@ function woPercent(wo) {
 					</ul>
 					<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
 						{{
-							wosRes.loading ? "Loading work orders…" : "No work orders raised yet."
+							wosRes.loading
+								? __("Loading work orders…")
+								: __("No work orders raised yet.")
 						}}
 					</div>
 				</div>
@@ -262,12 +265,12 @@ function woPercent(wo) {
 							v-html="getWorkspaceIconPath('file-text')"
 						/>
 						<h2 class="text-sm font-semibold text-ink-900">
-							Recent subcontractor bills
+							{{ __("Recent subcontractor bills") }}
 						</h2>
 						<RouterLink
 							to="/subcontractor-bills"
 							class="ml-auto text-xs text-brand-700 hover:underline"
-							>View all →</RouterLink
+							>{{ __("View all →") }}</RouterLink
 						>
 					</div>
 					<ul v-if="recentBills.length" class="divide-y divide-ink-100">
@@ -277,7 +280,7 @@ function woPercent(wo) {
 									:to="`/subcontractor-bills/${b.name}`"
 									class="text-sm text-ink-900 font-medium hover:text-brand-700 truncate"
 								>
-									RA {{ b.ra_no }} · {{ b.subcontractor_name || b.name }}
+									{{ __("RA") }} {{ b.ra_no }} · {{ b.subcontractor_name || b.name }}
 								</RouterLink>
 								<span class="text-xs tabular-nums text-ink-700">{{
 									fmtCompactINR(b.gross)
@@ -291,11 +294,11 @@ function woPercent(wo) {
 								<span class="text-ink-400">· {{ fmtDate(b.date) }}</span>
 							</div>
 							<div class="text-[11px] text-ink-500 mt-0.5 tabular-nums">
-								Retention
+								{{ __("Retention") }}
 								<span class="text-warning-700 font-medium">{{
 									fmtINR(b.retention_amount)
 								}}</span>
-								· Net payable
+								· {{ __("Net payable") }}
 								<span class="text-ink-900 font-medium">{{
 									fmtINR(b.net_payable)
 								}}</span>
@@ -303,7 +306,7 @@ function woPercent(wo) {
 						</li>
 					</ul>
 					<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-						{{ billsRes.loading ? "Loading bills…" : "No bills raised yet." }}
+						{{ billsRes.loading ? __("Loading bills…") : __("No bills raised yet.") }}
 					</div>
 				</div>
 			</div>
@@ -323,11 +326,11 @@ function woPercent(wo) {
 						stroke-linejoin="round"
 						v-html="getWorkspaceIconPath('chart-bar')"
 					/>
-					<h2 class="text-sm font-semibold text-ink-900">Recent measurement books</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __("Recent measurement books") }}</h2>
 					<RouterLink
 						to="/measurement-books"
 						class="ml-auto text-xs text-brand-700 hover:underline"
-						>View all →</RouterLink
+						>{{ __("View all →") }}</RouterLink
 					>
 				</div>
 				<ul v-if="recentMBs.length" class="divide-y divide-ink-100">
@@ -365,8 +368,8 @@ function woPercent(wo) {
 				<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
 					{{
 						mbsRes.loading
-							? "Loading measurement books…"
-							: "No measurements recorded yet."
+							? __("Loading measurement books…")
+							: __("No measurements recorded yet.")
 					}}
 				</div>
 			</div>

@@ -6,10 +6,11 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
 });
 
 const shortcuts = [
@@ -40,7 +41,7 @@ const reports = [
 		<div class="max-w-6xl mx-auto px-6 py-8">
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Equipment</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Equipment") }}</h1>
 			</div>
 
 			<!-- Equipment Dashboard CTA tile -->
@@ -69,16 +70,16 @@ const reports = [
 							<div
 								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors"
 							>
-								Equipment Dashboard
+								{{ __("Equipment Dashboard") }}
 							</div>
 							<span
 								class="text-[9px] px-1.5 py-0.5 bg-brand-100 text-brand-700 font-medium uppercase tracking-wider"
 								style="border-radius: 2px"
-								>Live</span
+								>{{ __("Live") }}</span
 							>
 						</div>
 						<div class="text-xs text-brand-700 mt-1 leading-snug">
-							Plant register, utilisation and equipment cost at a glance.
+							{{ __("Plant register, utilisation and equipment cost at a glance.") }}
 						</div>
 					</div>
 					<div
@@ -95,7 +96,7 @@ const reports = [
 					v-for="sc in shortcuts"
 					:key="sc.label"
 					:icon="sc.icon"
-					:label="sc.label"
+					:label="__(sc.label)"
 					:to="sc.to"
 					:cap="sc.cap"
 				/>
@@ -104,7 +105,7 @@ const reports = [
 			<!-- Reports group -->
 			<div class="mt-8">
 				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
-					Reports
+					{{ __("Reports") }}
 				</h2>
 				<div class="border-t border-ink-200 mb-3"></div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -112,8 +113,8 @@ const reports = [
 						v-for="(r, i) in reports"
 						:key="i"
 						:icon="r.icon"
-						:label="r.label"
-						:description="r.description"
+						:label="__(r.label)"
+						:description="__(r.description)"
 						:to="r.prevent ? null : r.to"
 						:prevent="r.prevent"
 					>
@@ -121,7 +122,7 @@ const reports = [
 							<span
 								class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
 								style="border-radius: 2px"
-								>Report</span
+								>{{ __("Report") }}</span
 							>
 						</template>
 					</WorkspaceShortcut>
