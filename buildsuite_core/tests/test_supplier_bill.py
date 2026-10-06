@@ -119,6 +119,39 @@ class TestSupplierBill(BuildSuiteTestCase):
 		self.assertAlmostEqual(flt(row["total"]), 400, places=2)  # own currency
 		self.assertAlmostEqual(flt(row["base_outstanding"]), 600000, places=2)  # company currency
 
+	def test_pay_foreign_bill(self):
+		"""A USD bill paid in full from a company-currency (NGN) cash account: the Payment Entry
+		submits with balanced base amounts (paid_amount = allocation × rate) and the bill clears."""
+		from buildsuite_core.api.supplier_bill import record_payment, save_bill, submit_bill
+
+		company_currency = frappe.db.get_value("Company", self.company, "default_currency")
+		foreign = "USD" if company_currency != "USD" else "EUR"
+		supp = self._supplier()
+		name = save_bill(
+			json.dumps(
+				{
+					"supplier": supp,
+					"project": self.project,
+					"date": "2026-07-20",
+					"currency": foreign,
+					"conversion_rate": 1500,
+					"items": [{"description": "Imported valves", "qty": 2, "rate": 200}],
+				}
+			)
+		)["name"]
+		submit_bill(name)
+		cash = self._cash()  # company-currency cash
+		r = record_payment(name, amount=400, date="2026-07-25", mode_of_payment="Cash", pay_from=cash)
+		pe = frappe.get_doc("Payment Entry", r["payment_entry"])
+		self.assertEqual(pe.docstatus, 1)
+		# received is the USD allocation (clears the bill); paid is the NGN that left the bank at
+		# the payment-date rate ERPNext resolved; the company-currency base amounts balance.
+		self.assertAlmostEqual(flt(pe.received_amount), 400, places=2)
+		self.assertGreater(flt(pe.paid_amount), 0)
+		self.assertAlmostEqual(flt(pe.base_paid_amount), flt(pe.base_received_amount), places=2)
+		self.assertAlmostEqual(flt(r["payment"]["outstanding"]), 0, places=2)
+		self.assertEqual(r["payment"]["status"], "Paid")
+
 	def test_company_currency_bill_rate_is_one(self):
 		"""The default path is unchanged: a bill with no currency sent stays in company currency
 		at rate 1, and base_grand_total equals grand_total."""

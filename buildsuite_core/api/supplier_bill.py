@@ -755,10 +755,18 @@ def record_payment(
 		pe.paid_from = pay_from
 		pe.paid_from_account_currency = frappe.db.get_value("Account", pay_from, "account_currency")
 	if amount:
-		pe.paid_amount = flt(amount)
-		pe.received_amount = flt(amount)
+		amount = flt(amount)
+		# `amount` is in the BILL's currency (what the UI shows as outstanding). For a Pay that's
+		# the received/party side; the paid (bank) side is the same number when currencies match,
+		# else scaled by the effective rate ERPNext resolved on the full payment — so the
+		# company-currency base amounts still balance. (Assumes the pay-from account is in the
+		# company currency, the common case.)
+		full_received = flt(pe.received_amount) or amount
+		full_paid = flt(pe.paid_amount) or amount
+		pe.received_amount = amount
+		pe.paid_amount = flt(amount * full_paid / full_received) if full_received else amount
 		if pe.references:
-			pe.references[0].allocated_amount = flt(amount)
+			pe.references[0].allocated_amount = amount
 	if mode_of_payment:
 		pe.mode_of_payment = mode_of_payment
 	# ERPNext makes Reference No + Date mandatory for a Bank Mode of Payment; we keep them
