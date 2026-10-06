@@ -1,3 +1,4 @@
+import { __ } from "@/utils/translate";
 // Insights — the query model behind the prompt box (first layer).
 //
 // HONESTY NOTE, read before extending. There is no model call. A prompt is
@@ -36,7 +37,7 @@ const pName = (s, id) => s.projectById(id)?.name || id || "—";
 // ---------------------------------------------------------------------------
 export const DATASETS = {
 	projects: {
-		label: "Projects",
+		label: __("Projects"),
 		can: (s) => s.canReadProjects,
 		words: ["project", "projects", "job", "jobs"],
 		rows: (s) => s.rootProjects,
@@ -46,14 +47,14 @@ export const DATASETS = {
 		project: (r) => r.name,
 		measures: ["count"],
 		dims: {
-			status: { label: "Status", get: (r) => r.project_status || "—" },
-			company: { label: "Company", get: (r) => r.company || "—" },
+			status: { label: __("Status"), get: (r) => r.project_status || "—" },
+			company: { label: __("Company"), get: (r) => r.company || "—" },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Project" },
-				{ key: "code", label: "ID" },
-				{ key: "status", label: "Status" },
+				{ key: "name", label: __("Project") },
+				{ key: "code", label: __("ID") },
+				{ key: "status", label: __("Status") },
 			],
 			row: (r) => ({
 				name: r.project_name || r.name,
@@ -63,7 +64,7 @@ export const DATASETS = {
 		},
 	},
 	tasks: {
-		label: "Tasks",
+		label: __("Tasks"),
 		can: (s) => s.canReadTasks,
 		words: ["task", "tasks", "activity", "activities"],
 		rows: (s) => s.tasks,
@@ -73,17 +74,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["count"],
 		dims: {
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			status: { label: "Status", get: (r) => r.task_status || r.status || "—" },
-			priority: { label: "Priority", get: (r) => r.priority || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.exp_end_date) },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			status: { label: __("Status"), get: (r) => r.task_status || r.status || "—" },
+			priority: { label: __("Priority"), get: (r) => r.priority || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.exp_end_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Task" },
-				{ key: "project", label: "Project" },
-				{ key: "status", label: "Status" },
-				{ key: "progress", label: "Progress", align: "right" },
+				{ key: "name", label: __("Task") },
+				{ key: "project", label: __("Project") },
+				{ key: "status", label: __("Status") },
+				{ key: "progress", label: __("Progress"), align: "right" },
 			],
 			row: (r, s) => ({
 				name: r.subject || r.name,
@@ -94,7 +95,7 @@ export const DATASETS = {
 		},
 	},
 	stages: {
-		label: "Stages",
+		label: __("Stages"),
 		can: (s) => s.canReadStages,
 		words: ["stage", "stages", "stage plan", "stage planning"],
 		rows: (s) => s.stagePlannings,
@@ -104,16 +105,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["count"],
 		dims: {
-			state: { label: "Approval state", get: (r) => r.workflow_state || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.planned_end) },
+			state: { label: __("Approval state"), get: (r) => r.workflow_state || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.planned_end) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Stage" },
-				{ key: "project", label: "Project" },
-				{ key: "end", label: "Planned end" },
-				{ key: "state", label: "State" },
+				{ key: "name", label: __("Stage") },
+				{ key: "project", label: __("Project") },
+				{ key: "end", label: __("Planned end") },
+				{ key: "state", label: __("State") },
 			],
 			row: (r, s) => ({
 				name: r.stage_name || r.name,
@@ -124,7 +125,7 @@ export const DATASETS = {
 		},
 	},
 	subBills: {
-		label: "Subcontractor bills",
+		label: __("Subcontractor bills"),
 		can: (s) => s.canReadSubBills,
 		words: ["subcontractor bill", "subcontractor bills", "ra bill", "ra bills", "sub bill", "sub bills"],
 		rows: (s) => s.subBills,
@@ -134,17 +135,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			subcontractor: { label: "Subcontractor", get: (r) => r.subcontractor_name || r.subcontractor || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			subcontractor: { label: __("Subcontractor"), get: (r) => r.subcontractor_name || r.subcontractor || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Bill" },
-				{ key: "subcontractor", label: "Subcontractor" },
-				{ key: "project", label: "Project" },
-				{ key: "gross", label: "Gross", align: "right", money: true },
+				{ key: "name", label: __("Bill") },
+				{ key: "subcontractor", label: __("Subcontractor") },
+				{ key: "project", label: __("Project") },
+				{ key: "gross", label: __("Gross"), align: "right", money: true },
 			],
 			row: (r, s) => ({
 				name: r.name,
@@ -155,7 +156,7 @@ export const DATASETS = {
 		},
 	},
 	purchaseOrders: {
-		label: "Purchase orders",
+		label: __("Purchase orders"),
 		can: (s) => s.canReadPurchaseOrders,
 		words: ["purchase order", "purchase orders"],
 		rows: (s) => s.purchaseOrders,
@@ -165,17 +166,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			supplier: { label: "Supplier", get: (r) => r.supplier_name || r.supplier || "—" },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.transaction_date) },
+			supplier: { label: __("Supplier"), get: (r) => r.supplier_name || r.supplier || "—" },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.transaction_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "PO" },
-				{ key: "supplier", label: "Supplier" },
-				{ key: "status", label: "Status" },
-				{ key: "total", label: "Total", align: "right", money: true },
+				{ key: "name", label: __("PO") },
+				{ key: "supplier", label: __("Supplier") },
+				{ key: "status", label: __("Status") },
+				{ key: "total", label: __("Total"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.name,
@@ -186,7 +187,7 @@ export const DATASETS = {
 		},
 	},
 	progress: {
-		label: "Progress entries",
+		label: __("Progress entries"),
 		can: (s) => s.canReadProgress,
 		words: ["progress", "progress entries", "progress entry", "site report", "site reports", "daily report"],
 		rows: (s) => s.taskProgressEntries,
@@ -196,16 +197,16 @@ export const DATASETS = {
 		project: (r, s) => s.taskProject(r.task),
 		measures: ["count"],
 		dims: {
-			project: { label: "Project", get: (r, s) => pName(s, s.taskProject(r.task)) },
-			month: { label: "Month", get: (r) => monthOf(r.entry_date) },
-			blocker: { label: "Blocker", get: (r) => (r.blocker ? "Blocked" : "Clear") },
+			project: { label: __("Project"), get: (r, s) => pName(s, s.taskProject(r.task)) },
+			month: { label: __("Month"), get: (r) => monthOf(r.entry_date) },
+			blocker: { label: __("Blocker"), get: (r) => (r.blocker ? "Blocked" : "Clear") },
 		},
 		list: {
 			columns: [
-				{ key: "date", label: "Date" },
-				{ key: "task", label: "Task" },
-				{ key: "pct", label: "Progress", align: "right" },
-				{ key: "project", label: "Project" },
+				{ key: "date", label: __("Date") },
+				{ key: "task", label: __("Task") },
+				{ key: "pct", label: __("Progress"), align: "right" },
+				{ key: "project", label: __("Project") },
 			],
 			row: (r, s) => ({
 				date: r.entry_date || "—",
@@ -216,7 +217,7 @@ export const DATASETS = {
 		},
 	},
 	workPackages: {
-		label: "Work packages",
+		label: __("Work packages"),
 		can: (s) => s.canReadWorkPackages,
 		words: ["work package", "work packages"],
 		rows: (s) => s.workPackages,
@@ -226,16 +227,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.start_date) },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.start_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Work package" },
-				{ key: "project", label: "Project" },
-				{ key: "status", label: "Status" },
-				{ key: "budget", label: "Budget", align: "right", money: true },
+				{ key: "name", label: __("Work package") },
+				{ key: "project", label: __("Project") },
+				{ key: "status", label: __("Status") },
+				{ key: "budget", label: __("Budget"), align: "right", money: true },
 			],
 			row: (r, s) => ({
 				name: r.work_package_name || r.code || r.name,
@@ -246,7 +247,7 @@ export const DATASETS = {
 		},
 	},
 	scos: {
-		label: "Scope changes",
+		label: __("Scope changes"),
 		can: (s) => s.canReadScos,
 		words: ["scope change", "scope changes", "sco", "variation", "variations"],
 		rows: (s) => s.scos,
@@ -256,18 +257,18 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			status: { label: "Status", get: (r) => r.status || "—" },
-			type: { label: "Type", get: (r) => r.type || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.raised_date) },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			type: { label: __("Type"), get: (r) => r.type || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.raised_date) },
 		},
 		list: {
 			columns: [
-				{ key: "id", label: "SCO" },
-				{ key: "title", label: "Title" },
-				{ key: "project", label: "Project" },
-				{ key: "status", label: "Status" },
-				{ key: "impact", label: "Impact", align: "right", money: true },
+				{ key: "id", label: __("SCO") },
+				{ key: "title", label: __("Title") },
+				{ key: "project", label: __("Project") },
+				{ key: "status", label: __("Status") },
+				{ key: "impact", label: __("Impact"), align: "right", money: true },
 			],
 			row: (r, s) => ({
 				id: r.name,
@@ -279,7 +280,7 @@ export const DATASETS = {
 		},
 	},
 	workOrders: {
-		label: "Work orders",
+		label: __("Work orders"),
 		can: (s) => s.canReadWorkOrders,
 		words: ["work order", "work orders", "swo"],
 		rows: (s) => s.workOrders,
@@ -289,16 +290,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			subcontractor: { label: "Subcontractor", get: (r) => r.subcontractor_name || r.subcontractor || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			subcontractor: { label: __("Subcontractor"), get: (r) => r.subcontractor_name || r.subcontractor || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "WO" },
-				{ key: "subcontractor", label: "Subcontractor" },
-				{ key: "project", label: "Project" },
-				{ key: "value", label: "Value", align: "right", money: true },
+				{ key: "name", label: __("WO") },
+				{ key: "subcontractor", label: __("Subcontractor") },
+				{ key: "project", label: __("Project") },
+				{ key: "value", label: __("Value"), align: "right", money: true },
 			],
 			row: (r, s) => ({
 				name: r.name,
@@ -309,7 +310,7 @@ export const DATASETS = {
 		},
 	},
 	measurementBooks: {
-		label: "Measurement books",
+		label: __("Measurement books"),
 		can: (s) => s.canReadMeasurementBooks,
 		words: ["measurement book", "measurement books", "mb", "measurement"],
 		rows: (s) => s.measurementBooks,
@@ -319,16 +320,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["count", "qty"],
 		dims: {
-			status: { label: "Status", get: (r) => r.status || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "MB" },
-				{ key: "project", label: "Project" },
-				{ key: "date", label: "Date" },
-				{ key: "status", label: "Status" },
+				{ key: "name", label: __("MB") },
+				{ key: "project", label: __("Project") },
+				{ key: "date", label: __("Date") },
+				{ key: "status", label: __("Status") },
 			],
 			row: (r, s) => ({
 				name: r.name,
@@ -339,7 +340,7 @@ export const DATASETS = {
 		},
 	},
 	invoices: {
-		label: "Invoices",
+		label: __("Invoices"),
 		can: (s) => s.canReadInvoices,
 		words: ["invoice", "invoices", "billing", "revenue", "income", "sales", "receivable", "receivables"],
 		rows: (s) => s.invoices,
@@ -349,17 +350,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			customer: { label: "Customer", get: (r) => r.customer_name || r.customer || "—" },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.posting_date) },
+			customer: { label: __("Customer"), get: (r) => r.customer_name || r.customer || "—" },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.posting_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Invoice" },
-				{ key: "customer", label: "Customer" },
-				{ key: "status", label: "Status" },
-				{ key: "total", label: "Total", align: "right", money: true },
+				{ key: "name", label: __("Invoice") },
+				{ key: "customer", label: __("Customer") },
+				{ key: "status", label: __("Status") },
+				{ key: "total", label: __("Total"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.name,
@@ -370,7 +371,7 @@ export const DATASETS = {
 		},
 	},
 	bills: {
-		label: "Supplier bills",
+		label: __("Supplier bills"),
 		can: (s) => s.canReadBills,
 		words: ["supplier bill", "supplier bills", "purchase invoice", "payable", "payables", "supplier spend"],
 		rows: (s) => s.bills,
@@ -380,17 +381,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			supplier: { label: "Supplier", get: (r) => r.supplier_name || r.supplier || "—" },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.posting_date) },
+			supplier: { label: __("Supplier"), get: (r) => r.supplier_name || r.supplier || "—" },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.posting_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Bill" },
-				{ key: "supplier", label: "Supplier" },
-				{ key: "status", label: "Status" },
-				{ key: "total", label: "Total", align: "right", money: true },
+				{ key: "name", label: __("Bill") },
+				{ key: "supplier", label: __("Supplier") },
+				{ key: "status", label: __("Status") },
+				{ key: "total", label: __("Total"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.name,
@@ -401,7 +402,7 @@ export const DATASETS = {
 		},
 	},
 	expenses: {
-		label: "Expenses",
+		label: __("Expenses"),
 		can: (s) => s.canReadExpenses,
 		words: ["expense", "expenses", "spend", "spending", "overhead", "overheads"],
 		rows: (s) => s.expenses,
@@ -411,17 +412,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			costType: { label: "Cost type", get: (r) => r.costType || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			employee: { label: "Paid by", get: (r) => r.employee || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			costType: { label: __("Cost type"), get: (r) => r.costType || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			employee: { label: __("Paid by"), get: (r) => r.employee || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "costType", label: "Cost type" },
-				{ key: "project", label: "Project" },
-				{ key: "date", label: "Date" },
-				{ key: "amount", label: "Amount", align: "right", money: true },
+				{ key: "costType", label: __("Cost type") },
+				{ key: "project", label: __("Project") },
+				{ key: "date", label: __("Date") },
+				{ key: "amount", label: __("Amount"), align: "right", money: true },
 			],
 			row: (r, s) => ({
 				costType: r.costType || "—",
@@ -432,7 +433,7 @@ export const DATASETS = {
 		},
 	},
 	pettyCash: {
-		label: "Petty cash",
+		label: __("Petty cash"),
 		can: (s) => s.canReadPettyCash,
 		words: ["petty cash", "float", "cash advance"],
 		rows: (s) => s.pettyCash,
@@ -442,17 +443,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "count"],
 		dims: {
-			status: { label: "Status", get: (r) => r.status || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			holder: { label: "Holder", get: (r) => r.requested_by || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.request_date) },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			holder: { label: __("Holder"), get: (r) => r.requested_by || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.request_date) },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Request" },
-				{ key: "holder", label: "Holder" },
-				{ key: "status", label: "Status" },
-				{ key: "amount", label: "Amount", align: "right", money: true },
+				{ key: "name", label: __("Request") },
+				{ key: "holder", label: __("Holder") },
+				{ key: "status", label: __("Status") },
+				{ key: "amount", label: __("Amount"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.name,
@@ -463,7 +464,7 @@ export const DATASETS = {
 		},
 	},
 	attendance: {
-		label: "Labour attendance",
+		label: __("Labour attendance"),
 		can: (s) => s.canReadAttendance,
 		words: ["attendance", "labour", "labor", "manpower", "man-days", "mandays", "workers", "wages"],
 		rows: (s) => s.attendance,
@@ -473,17 +474,17 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["mandays", "count"],
 		dims: {
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			worker: { label: "Worker", get: (r) => r.employee || "—" },
-			status: { label: "Status", get: (r) => r.status || "—" },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			worker: { label: __("Worker"), get: (r) => r.employee || "—" },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "date", label: "Date" },
-				{ key: "worker", label: "Worker" },
-				{ key: "status", label: "Status" },
-				{ key: "project", label: "Project" },
+				{ key: "date", label: __("Date") },
+				{ key: "worker", label: __("Worker") },
+				{ key: "status", label: __("Status") },
+				{ key: "project", label: __("Project") },
 			],
 			row: (r, s) => ({
 				date: r.date || "—",
@@ -494,7 +495,7 @@ export const DATASETS = {
 		},
 	},
 	receiptLines: {
-		label: "Items received",
+		label: __("Items received"),
 		can: (s) => s.canReadReceipts,
 		words: ["purchase receipt", "purchase receipts", "goods receipt", "goods received", "items received", "received", "grn", "delivery", "deliveries"],
 		rows: (s) => s.receiptLines,
@@ -504,18 +505,18 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["qty", "amount", "count"],
 		dims: {
-			item: { label: "Item", get: (r) => r.item_name || r.item || "—" },
-			supplier: { label: "Supplier", get: (r) => r.supplier || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			item: { label: __("Item"), get: (r) => r.item_name || r.item || "—" },
+			supplier: { label: __("Supplier"), get: (r) => r.supplier || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "date", label: "Date" },
-				{ key: "item", label: "Item" },
-				{ key: "qty", label: "Qty", align: "right" },
-				{ key: "supplier", label: "Supplier" },
-				{ key: "project", label: "Project" },
+				{ key: "date", label: __("Date") },
+				{ key: "item", label: __("Item") },
+				{ key: "qty", label: __("Qty"), align: "right" },
+				{ key: "supplier", label: __("Supplier") },
+				{ key: "project", label: __("Project") },
 			],
 			row: (r, s) => ({
 				date: r.date || "—",
@@ -527,7 +528,7 @@ export const DATASETS = {
 		},
 	},
 	consumptionLines: {
-		label: "Material consumed",
+		label: __("Material consumed"),
 		can: (s) => s.canReadConsumption,
 		words: ["consumption", "consumed", "material used", "site use", "material consumption"],
 		rows: (s) => s.consumptionLines,
@@ -537,16 +538,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["qty", "count"],
 		dims: {
-			item: { label: "Item", get: (r) => r.item_name || r.item || "—" },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			item: { label: __("Item"), get: (r) => r.item_name || r.item || "—" },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "date", label: "Date" },
-				{ key: "item", label: "Item" },
-				{ key: "qty", label: "Qty", align: "right" },
-				{ key: "project", label: "Project" },
+				{ key: "date", label: __("Date") },
+				{ key: "item", label: __("Item") },
+				{ key: "qty", label: __("Qty"), align: "right" },
+				{ key: "project", label: __("Project") },
 			],
 			row: (r, s) => ({
 				date: r.date || "—",
@@ -557,7 +558,7 @@ export const DATASETS = {
 		},
 	},
 	items: {
-		label: "Item master",
+		label: __("Item master"),
 		can: (s) => s.canReadItems,
 		words: ["item master", "items list", "item list", "catalogue", "catalog"],
 		rows: (s) => s.items,
@@ -567,15 +568,15 @@ export const DATASETS = {
 		project: () => null,
 		measures: ["count", "amount"],
 		dims: {
-			group: { label: "Item group", get: (r) => r.item_group || "—" },
-			uom: { label: "UOM", get: (r) => r.stock_uom || "—" },
+			group: { label: __("Item group"), get: (r) => r.item_group || "—" },
+			uom: { label: __("UOM"), get: (r) => r.stock_uom || "—" },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Item" },
-				{ key: "group", label: "Group" },
-				{ key: "uom", label: "UOM" },
-				{ key: "rate", label: "Rate", align: "right", money: true },
+				{ key: "name", label: __("Item") },
+				{ key: "group", label: __("Group") },
+				{ key: "uom", label: __("UOM") },
+				{ key: "rate", label: __("Rate"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.item_name || r.name,
@@ -586,7 +587,7 @@ export const DATASETS = {
 		},
 	},
 	machineryUsage: {
-		label: "Machinery usage",
+		label: __("Machinery usage"),
 		can: (s) => s.canReadMachineryUsage,
 		words: ["machinery usage", "machinery", "equipment usage", "plant usage", "machine hours"],
 		rows: (s) => s.machineryUsage,
@@ -596,16 +597,16 @@ export const DATASETS = {
 		project: (r) => r.project,
 		measures: ["amount", "qty", "count"],
 		dims: {
-			machine: { label: "Machine", get: (r, s) => s.machineryName(r.machine) },
-			project: { label: "Project", get: (r, s) => pName(s, r.project) },
-			month: { label: "Month", get: (r) => monthOf(r.date) },
+			machine: { label: __("Machine"), get: (r, s) => s.machineryName(r.machine) },
+			project: { label: __("Project"), get: (r, s) => pName(s, r.project) },
+			month: { label: __("Month"), get: (r) => monthOf(r.date) },
 		},
 		list: {
 			columns: [
-				{ key: "date", label: "Date" },
-				{ key: "machine", label: "Machine" },
-				{ key: "hours", label: "Qty", align: "right" },
-				{ key: "project", label: "Project" },
+				{ key: "date", label: __("Date") },
+				{ key: "machine", label: __("Machine") },
+				{ key: "hours", label: __("Qty"), align: "right" },
+				{ key: "project", label: __("Project") },
 			],
 			row: (r, s) => ({
 				date: r.date || "—",
@@ -616,7 +617,7 @@ export const DATASETS = {
 		},
 	},
 	fieldEmployees: {
-		label: "Field employees",
+		label: __("Field employees"),
 		can: (s) => s.canReadFieldEmployees,
 		words: ["field employee", "field employees", "labour list", "worker list", "workers list"],
 		rows: (s) => s.fieldEmployees,
@@ -626,16 +627,16 @@ export const DATASETS = {
 		project: () => null,
 		measures: ["count", "amount"],
 		dims: {
-			trade: { label: "Trade", get: (r) => r.custom_trade || "—" },
-			contractor: { label: "Contractor", get: (r) => r.custom_contractor || "—" },
-			status: { label: "Status", get: (r) => r.status || "—" },
+			trade: { label: __("Trade"), get: (r) => r.custom_trade || "—" },
+			contractor: { label: __("Contractor"), get: (r) => r.custom_contractor || "—" },
+			status: { label: __("Status"), get: (r) => r.status || "—" },
 		},
 		list: {
 			columns: [
-				{ key: "name", label: "Employee" },
-				{ key: "trade", label: "Trade" },
-				{ key: "contractor", label: "Contractor" },
-				{ key: "wage", label: "Daily wage", align: "right", money: true },
+				{ key: "name", label: __("Employee") },
+				{ key: "trade", label: __("Trade") },
+				{ key: "contractor", label: __("Contractor") },
+				{ key: "wage", label: __("Daily wage"), align: "right", money: true },
 			],
 			row: (r) => ({
 				name: r.employee_name || r.name,
@@ -657,7 +658,7 @@ export function availableDatasets(store) {
 	});
 }
 
-export const MEASURE_LABEL = { count: "Count", amount: "Value", mandays: "Man-days", qty: "Quantity" };
+export const MEASURE_LABEL = { count: __("Count"), amount: __("Value"), mandays: __("Man-days"), qty: __("Quantity") };
 export const VIZ = ["bar", "column", "line", "donut", "table", "kpi"];
 
 // ---------------------------------------------------------------------------
@@ -763,7 +764,7 @@ export function parsePrompt(prompt, store, base = null) {
 
 	if (hit(text, LIST_WORDS)) {
 		spec.mode = "list";
-		understood.push("as a list");
+		understood.push(__("as a list"));
 	}
 
 	let measured = false;
@@ -798,7 +799,7 @@ export function parsePrompt(prompt, store, base = null) {
 	}
 	if (dim) {
 		spec.dimension = dim;
-		understood.push(`by ${ds.dims[dim].label}`);
+		understood.push(__("by {0}", [ds.dims[dim].label]));
 	}
 	if (!spec.dimension || !ds.dims[spec.dimension]) spec.dimension = Object.keys(ds.dims)[0];
 
@@ -828,25 +829,25 @@ export function parsePrompt(prompt, store, base = null) {
 	const back = (days) => iso(new Date(now.getTime() - days * 86400000));
 	if (text.includes("today")) {
 		spec.filters.from = iso(now);
-		understood.push("today");
+		understood.push(__("today"));
 	} else if (text.includes("last 7") || text.includes("this week") || text.includes("past week")) {
 		spec.filters.from = back(7);
-		understood.push("last 7 days");
+		understood.push(__("last 7 days"));
 	} else if (text.includes("last month") || text.includes("last 30") || text.includes("this month") || text.includes("past month")) {
 		spec.filters.from = back(30);
-		understood.push("last 30 days");
+		understood.push(__("last 30 days"));
 	} else if (text.includes("last 90") || text.includes("quarter")) {
 		spec.filters.from = back(90);
-		understood.push("last 90 days");
+		understood.push(__("last 90 days"));
 	} else if (text.includes("this year") || text.includes("ytd")) {
 		spec.filters.from = `${now.getFullYear()}-01-01`;
-		understood.push("year to date");
+		understood.push(__("year to date"));
 	}
 
 	const topMatch = text.match(/\btop (\d{1,2})/);
 	if (topMatch) {
 		spec.limit = Number(topMatch[1]);
-		understood.push(`top ${spec.limit}`);
+		understood.push(__("top {0}", [spec.limit]));
 	}
 	if (text.includes("ascending") || text.includes("lowest") || text.includes("smallest")) spec.sort = "asc";
 	if (text.includes("descending") || text.includes("highest") || text.includes("largest")) spec.sort = "desc";
@@ -872,7 +873,7 @@ function applyValueFilters(spec, text, store, understood) {
 		const v = num(over[1]);
 		if (v != null) {
 			spec.filters.min = v;
-			understood.push(`over ${over[1]}`);
+			understood.push(__("over {0}", [over[1]]));
 		}
 	}
 	const under = text.match(/\b(?:under|below|less than|up to)\s+[₹₦]?\s*([\d,]+)/);
@@ -880,7 +881,7 @@ function applyValueFilters(spec, text, store, understood) {
 		const v = num(under[1]);
 		if (v != null) {
 			spec.filters.max = v;
-			understood.push(`under ${under[1]}`);
+			understood.push(__("under {0}", [under[1]]));
 		}
 	}
 
@@ -908,17 +909,17 @@ export function refineSpec(spec, prompt) {
 
 	if (hit(text, LIST_WORDS)) {
 		next.mode = "list";
-		applied.push("as a list");
+		applied.push(__("as a list"));
 	}
 	if (text.includes("summar") || text.includes("roll up") || text.includes("rollup") || text.includes("group it")) {
 		next.mode = "aggregate";
-		applied.push("summarised");
+		applied.push(__("summarised"));
 	}
 	for (const [v, words] of Object.entries(VIZ_WORDS)) {
 		if (hit(text, words)) {
 			next.viz = v;
 			next.mode = "aggregate";
-			applied.push(`shown as ${v}`);
+			applied.push(__("shown as {0}", [v]));
 			break;
 		}
 	}
@@ -929,7 +930,7 @@ export function refineSpec(spec, prompt) {
 			if ((DIM_WORDS[k] || []).some((w) => phrase.startsWith(w))) {
 				next.dimension = k;
 				next.mode = "aggregate";
-				applied.push(`grouped by ${ds.dims[k].label}`);
+				applied.push(__("grouped by {0}", [ds.dims[k].label]));
 				break;
 			}
 		}
@@ -944,36 +945,36 @@ export function refineSpec(spec, prompt) {
 	const topMatch = text.match(/\btop (\d{1,2})/);
 	if (topMatch) {
 		next.limit = Number(topMatch[1]);
-		applied.push(`top ${next.limit}`);
+		applied.push(__("top {0}", [next.limit]));
 	}
 	if (text.includes("show all") || text.includes("all rows") || text.includes("remove limit")) {
 		next.limit = null;
-		applied.push("all rows");
+		applied.push(__("all rows"));
 	}
 	if (text.includes("ascending") || text.includes("lowest")) {
 		next.sort = "asc";
-		applied.push("ascending");
+		applied.push(__("ascending"));
 	}
 	if (text.includes("descending") || text.includes("highest")) {
 		next.sort = "desc";
-		applied.push("descending");
+		applied.push(__("descending"));
 	}
 	if (text.includes("alphabetical") || text.includes("a-z")) {
 		next.sort = "label";
-		applied.push("alphabetical");
+		applied.push(__("alphabetical"));
 	}
 	if (text.includes("all projects") || text.includes("every project")) {
 		delete next.filters.project;
-		applied.push("all projects");
+		applied.push(__("all projects"));
 	}
 	if (text.includes("all time") || text.includes("no date") || text.includes("remove date")) {
 		delete next.filters.from;
 		delete next.filters.to;
-		applied.push("all dates");
+		applied.push(__("all dates"));
 	}
 	if (text.includes("clear filter") || text.includes("remove filter") || text.includes("no filter")) {
 		next.filters = {};
-		applied.push("filters cleared");
+		applied.push(__("filters cleared"));
 	}
 
 	if (!applied.length) return null;
@@ -1126,10 +1127,10 @@ function monthKey(label) {
 export function describeSpec(spec) {
 	const ds = DATASETS[spec.source];
 	if (!ds) return "";
-	if (spec.mode === "list") return `${ds.label} — detail`;
+	if (spec.mode === "list") return __("{0} — detail", [ds.label]);
 	const dim = ds.dims[spec.dimension];
-	const bits = [`${MEASURE_LABEL[spec.measure]} of ${ds.label.toLowerCase()}`];
-	if (dim) bits.push(`by ${dim.label.toLowerCase()}`);
+	const bits = [__("{0} of {1}", [MEASURE_LABEL[spec.measure], ds.label.toLowerCase()])];
+	if (dim) bits.push(__("by {0}", [dim.label.toLowerCase()]));
 	return bits.join(" ");
 }
 
@@ -1150,18 +1151,18 @@ const P = (source, measure, dimension, viz, extra = {}) => ({
 });
 
 export const ALL_PRESETS = [
-	{ id: "spend-by-supplier", title: "Spend by supplier", prompt: "supplier bill value by supplier, top 8", spec: P("bills", "amount", "supplier", "bar", { limit: 8 }) },
-	{ id: "revenue-by-month", title: "Revenue by month", prompt: "invoice value by month", spec: P("invoices", "amount", "month", "line") },
-	{ id: "tasks-by-status", title: "Tasks by status", prompt: "tasks by status as a pie", spec: P("tasks", "count", "status", "donut") },
-	{ id: "cost-by-type", title: "Expenses by cost type", prompt: "expense value by cost type", spec: P("expenses", "amount", "costType", "donut") },
-	{ id: "manpower", title: "Man-days by project", prompt: "man-days by project", spec: P("attendance", "mandays", "project", "bar") },
-	{ id: "sub-billing", title: "Subcontractor billing", prompt: "subcontractor bill value by subcontractor", spec: P("subBills", "amount", "subcontractor", "bar") },
-	{ id: "received-by-item", title: "Material received", prompt: "items received by item", spec: P("receiptLines", "qty", "item", "bar") },
-	{ id: "received-detail", title: "Deliveries — detail", prompt: "list items received last month", spec: P("receiptLines", "qty", "item", "table", { mode: "list" }) },
-	{ id: "consumed-by-item", title: "Material consumed", prompt: "consumption by item", spec: P("consumptionLines", "qty", "item", "bar") },
-	{ id: "po-by-status", title: "POs by status", prompt: "purchase order value by status", spec: P("purchaseOrders", "amount", "status", "bar") },
-	{ id: "reporting", title: "Site reporting by month", prompt: "progress entries by month", spec: P("progress", "count", "month", "line") },
-	{ id: "variations", title: "Scope changes", prompt: "scope change value by status", spec: P("scos", "amount", "status", "bar") },
+	{ id: "spend-by-supplier", title: __("Spend by supplier"), prompt: "supplier bill value by supplier, top 8", spec: P("bills", "amount", "supplier", "bar", { limit: 8 }) },
+	{ id: "revenue-by-month", title: __("Revenue by month"), prompt: "invoice value by month", spec: P("invoices", "amount", "month", "line") },
+	{ id: "tasks-by-status", title: __("Tasks by status"), prompt: "tasks by status as a pie", spec: P("tasks", "count", "status", "donut") },
+	{ id: "cost-by-type", title: __("Expenses by cost type"), prompt: "expense value by cost type", spec: P("expenses", "amount", "costType", "donut") },
+	{ id: "manpower", title: __("Man-days by project"), prompt: "man-days by project", spec: P("attendance", "mandays", "project", "bar") },
+	{ id: "sub-billing", title: __("Subcontractor billing"), prompt: "subcontractor bill value by subcontractor", spec: P("subBills", "amount", "subcontractor", "bar") },
+	{ id: "received-by-item", title: __("Material received"), prompt: "items received by item", spec: P("receiptLines", "qty", "item", "bar") },
+	{ id: "received-detail", title: __("Deliveries — detail"), prompt: "list items received last month", spec: P("receiptLines", "qty", "item", "table", { mode: "list" }) },
+	{ id: "consumed-by-item", title: __("Material consumed"), prompt: "consumption by item", spec: P("consumptionLines", "qty", "item", "bar") },
+	{ id: "po-by-status", title: __("POs by status"), prompt: "purchase order value by status", spec: P("purchaseOrders", "amount", "status", "bar") },
+	{ id: "reporting", title: __("Site reporting by month"), prompt: "progress entries by month", spec: P("progress", "count", "month", "line") },
+	{ id: "variations", title: __("Scope changes"), prompt: "scope change value by status", spec: P("scos", "amount", "status", "bar") },
 ];
 
 export function availablePresets(store) {

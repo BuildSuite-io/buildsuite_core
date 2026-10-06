@@ -3145,3 +3145,88 @@ Billing and Collection,Facturation et encaissement
 Delay Analysis,Analyse des retards
 Material Status,État des matériaux
 Subcontractor Position,Situation des sous-traitants
+Reading your question…,Lecture de votre question…
+Selecting records…,Sélection des enregistrements…
+Building the report…,Construction du rapport…
+Couldn't tell which records you mean. Try naming one: {0}.,Impossible de déterminer les enregistrements visés. Essayez d'en nommer un : {0}.
+Read as: {0},Interprété comme : {0}
+"Nothing in that changed the report. Try ""as a pie"", ""top 5"", ""by month"", ""over 10000"", ""show all"", or ""clear filters"".","Cela n'a rien changé au rapport. Essayez « as a pie », « top 5 », « by month », « over 10000 », « show all » ou « clear filters »."
+Applied: {0},Appliqué : {0}
+Reverted the last change.,Dernière modification annulée.
+Preset: {0},Préréglage : {0}
+Project: {0},Projet : {0}
+Over {0},Plus de {0}
+"Contains ""{0}""",Contient « {0} »
+Column,Colonnes
+Donut,Anneau
+Table,Tableau
+Figure,Chiffre
+Insights is available to leadership roles.,Les analyses sont réservées aux rôles de direction.
+Ask your data,Interrogez vos données
+Describe the report you want. Reshape it afterwards in plain language.,Décrivez le rapport souhaité. Remodelez-le ensuite en langage courant.
+"e.g. supplier bill value by supplier, top 5","p. ex. valeur des factures fournisseurs par fournisseur, top 5"
+Build report,Générer le rapport
+Loading data…,Chargement des données…
+record,enregistrement
+records,enregistrements
+group,groupe
+groups,groupes
+{0} more not shown,{0} de plus non affichés
+Search records…,Rechercher des enregistrements…
+Field…,Champ…
+Value…,Valeur…
+Clear all,Tout effacer
+No records match this scope.,Aucun enregistrement ne correspond à ce périmètre.
+‹ Prev,‹ Préc.
+Page {0} of {1},Page {0} sur {1}
+Next ›,Suiv. ›
+"Change it — e.g. show as a pie, top 5, group by month, all projects","Modifiez-le — p. ex. show as a pie, top 5, group by month, all projects"
+Apply,Appliquer
+Preset reports,Rapports prédéfinis
+"Prompts are matched against BuildSuite's own data — every figure here comes from your records, and a question it can't map says so rather than guessing.","Les requêtes sont rapprochées des données de BuildSuite — chaque chiffre ici provient de vos enregistrements, et une question qu'il ne peut pas interpréter le signale plutôt que de deviner."
+Subcontractor bills,Factures de sous-traitants
+Purchase orders,Bons de commande
+Work packages,Lots de travaux
+Work orders,Ordres de travaux
+Measurement books,Carnets de métré
+Supplier bills,Factures fournisseurs
+Petty cash,Petite caisse
+Labour attendance,Présence de la main-d'œuvre
+Material consumed,Matériaux consommés
+Item master,Référentiel des articles
+Machinery usage,Utilisation des machines
+Field employees,Employés de terrain
+Approval state,État d'approbation
+Cost type,Type de coût
+Paid by,Payé par
+Item group,Groupe d'articles
+Work package,Lot de travaux
+Spend by supplier,Dépenses par fournisseur
+Revenue by month,Revenus par mois
+Tasks by status,Tâches par statut
+Expenses by cost type,Dépenses par type de coût
+Man-days by project,Jours-homme par projet
+Subcontractor billing,Facturation des sous-traitants
+Material received,Matériaux reçus
+Deliveries — detail,Livraisons — détail
+POs by status,Commandes par statut
+Site reporting by month,Rapports de chantier par mois
+{0} — detail,{0} — détail
+as a list,sous forme de liste
+today,aujourd'hui
+last 7 days,7 derniers jours
+last 30 days,30 derniers jours
+last 90 days,90 derniers jours
+year to date,depuis le début de l'année
+over {0},plus de {0}
+under {0},moins de {0}
+summarised,synthétisé
+shown as {0},affiché en {0}
+grouped by {0},groupé par {0}
+all rows,toutes les lignes
+ascending,croissant
+descending,décroissant
+alphabetical,alphabétique
+all projects,tous les projets
+all dates,toutes les dates
+filters cleared,filtres effacés
