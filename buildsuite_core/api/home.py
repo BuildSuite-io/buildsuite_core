@@ -388,8 +388,22 @@ def get_home_dashboard():
 		return _count("BOQ", {**proj_in, "status": "Draft"}), _count("BOQ", {**proj_in, "status": "Approved"})
 
 	def finance():
-		recv = _sum("Sales Invoice", {"company": company, "docstatus": 1}, "outstanding_amount")
-		pay = _sum("Purchase Invoice", {"company": company, "docstatus": 1}, "outstanding_amount")
+		# Outstanding totals in COMPANY currency (base_grand_total × unpaid fraction) so invoices
+		# in other currencies roll up correctly. Hardcoded table names (no interpolation).
+		recv = flt(
+			frappe.db.sql(
+				"""SELECT IFNULL(SUM(base_grand_total * outstanding_amount / NULLIF(grand_total, 0)), 0)
+				FROM `tabSales Invoice` WHERE docstatus = 1 AND company = %s AND outstanding_amount > 0""",
+				(company,),
+			)[0][0]
+		)
+		pay = flt(
+			frappe.db.sql(
+				"""SELECT IFNULL(SUM(base_grand_total * outstanding_amount / NULLIF(grand_total, 0)), 0)
+				FROM `tabPurchase Invoice` WHERE docstatus = 1 AND company = %s AND outstanding_amount > 0""",
+				(company,),
+			)[0][0]
+		)
 		overdue_recv = _count(
 			"Sales Invoice",
 			{
@@ -410,7 +424,7 @@ def get_home_dashboard():
 				"status": ["not in", ["Closed", "Cancelled"]],
 				"per_received": ["<", 100],
 			},
-			"grand_total",
+			"base_grand_total",  # company currency, so foreign POs roll up correctly
 		)
 		on_order_ct = _count(
 			"Purchase Order",

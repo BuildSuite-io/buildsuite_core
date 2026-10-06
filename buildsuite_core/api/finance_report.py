@@ -32,9 +32,12 @@ def receivables_and_payables(company: str | None = None):
 	"""Aged open receivables (Sales Invoices) and payables (Purchase Invoices), each row bucketed
 	by days overdue. Payables carry a supplier/subcontractor kind + any retention withheld."""
 	company = company or default_company()
+	# Outstanding is in the party-account currency; convert to COMPANY currency (base_grand_total
+	# scaled by the unpaid fraction) so a mixed-currency ledger buckets and totals in one currency.
 	receivables = frappe.db.sql(
 		"""SELECT name AS id, customer_name AS party, due_date AS due,
-			outstanding_amount AS outstanding, GREATEST(DATEDIFF(CURDATE(), due_date), 0) AS days_overdue
+			(base_grand_total * outstanding_amount / NULLIF(grand_total, 0)) AS outstanding,
+			GREATEST(DATEDIFF(CURDATE(), due_date), 0) AS days_overdue
 		FROM `tabSales Invoice`
 		WHERE docstatus = 1 AND outstanding_amount > 0 AND company = %s
 		ORDER BY due_date""",
@@ -43,7 +46,8 @@ def receivables_and_payables(company: str | None = None):
 	)
 	payables = frappe.db.sql(
 		"""SELECT pi.name AS id, pi.supplier_name AS party, pi.due_date AS due,
-			pi.outstanding_amount AS outstanding, GREATEST(DATEDIFF(CURDATE(), pi.due_date), 0) AS days_overdue,
+			(pi.base_grand_total * pi.outstanding_amount / NULLIF(pi.grand_total, 0)) AS outstanding,
+			GREATEST(DATEDIFF(CURDATE(), pi.due_date), 0) AS days_overdue,
 			IFNULL((SELECT SUM(sb.retention_amount) FROM `tabSubcontractor Bill` sb
 				WHERE sb.purchase_invoice = pi.name AND sb.docstatus = 1), 0) AS retention,
 			(SELECT s.supplier_group FROM `tabSupplier` s WHERE s.name = pi.supplier) AS supplier_group
@@ -129,7 +133,16 @@ def financial_position(company: str | None = None):
 	bank = _gl_balance(company, _account_names(company, "Bank"))
 	cash = _gl_balance(company, _account_names(company, "Cash", excludes=["Petty"]))
 	petty_out, to_reimburse = _petty_split(company)
-	customers_owe = doc_sum("Sales Invoice", "outstanding_amount")
+	# Outstanding in COMPANY currency (base_grand_total × unpaid fraction) so foreign invoices
+	# roll into the position correctly; retention lives on the Subcontractor Bill in company
+	# currency already, so a plain sum is right there.
+	customers_owe = flt(
+		frappe.db.sql(
+			"""SELECT IFNULL(SUM(base_grand_total * outstanding_amount / NULLIF(grand_total, 0)), 0)
+			FROM `tabSales Invoice` WHERE docstatus = 1 AND company = %s AND outstanding_amount > 0""",
+			(company,),
+		)[0][0]
+	)
 	retention = doc_sum("Subcontractor Bill", "retention_amount")
 
 	# Advances = the still-unallocated portion of a party's advance Payment Entries: money we
@@ -152,7 +165,7 @@ def financial_position(company: str | None = None):
 
 	# Split open payables into supplier vs subcontractor by the supplier's group.
 	pay_rows = frappe.db.sql(
-		"""SELECT pi.outstanding_amount AS amt,
+		"""SELECT (pi.base_grand_total * pi.outstanding_amount / NULLIF(pi.grand_total, 0)) AS amt,
 			(SELECT s.supplier_group FROM `tabSupplier` s WHERE s.name = pi.supplier) AS grp
 		FROM `tabPurchase Invoice` pi
 		WHERE pi.docstatus = 1 AND pi.company = %s AND pi.outstanding_amount > 0""",
