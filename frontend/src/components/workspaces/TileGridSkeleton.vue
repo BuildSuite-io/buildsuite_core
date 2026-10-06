@@ -4,6 +4,7 @@
 // description line) — and the same 3-up responsive grid, so content swaps in without
 // layout shift. Pure pulse, matching the animate-pulse idiom already used in InsightsView.
 import { computed } from "vue";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	// How many placeholder tiles to render (roughly the count you expect back).
@@ -23,7 +24,7 @@ const tiles = computed(() => Array.from({ length: Math.max(1, props.count) }, (_
 		aria-busy="true"
 		aria-live="polite"
 	>
-		<span class="sr-only">Loading…</span>
+		<span class="sr-only">{{ __("Loading…") }}</span>
 		<div
 			v-for="i in tiles"
 			:key="i"

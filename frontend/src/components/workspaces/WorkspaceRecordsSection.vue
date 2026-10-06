@@ -6,6 +6,7 @@
 import { ref, onMounted } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceDoctypes } from "@/data/workspaceSettingApi";
+import { __ } from "@/utils/translate";
 
 const props = defineProps({ workspace: { type: String, required: true } });
 
@@ -24,7 +25,9 @@ onMounted(async () => {
 
 <template>
 	<div v-if="records.length" class="mb-8">
-		<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">Records</h2>
+		<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
+			{{ __("Records") }}
+		</h2>
 		<div class="border-t border-ink-200 mb-3"></div>
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 			<WorkspaceShortcut
@@ -39,7 +42,7 @@ onMounted(async () => {
 					<span
 						class="text-[9px] px-1 py-0.5 bg-ink-100 text-ink-600 font-medium uppercase tracking-wider"
 						style="border-radius: 2px"
-						>Records</span
+						>{{ __("Records") }}</span
 					>
 				</template>
 			</WorkspaceShortcut>

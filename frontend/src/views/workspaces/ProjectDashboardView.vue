@@ -13,13 +13,14 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtCompactINR, fmtDate } from "@/utils/format";
+import { __, currentLang } from "@/utils/translate";
 
 const data = ref(null);
 const loading = ref(true);
 const error = ref("");
 const scope = ref(""); // "" = portfolio, else a project id
 
-const todayLabel = new Date().toLocaleDateString("en-IN", {
+const todayLabel = new Date().toLocaleDateString(currentLang(), {
 	weekday: "long",
 	day: "2-digit",
 	month: "short",
@@ -32,7 +33,7 @@ async function load() {
 	try {
 		data.value = await getProjectDashboard(scope.value || undefined);
 	} catch (err) {
-		error.value = err.message || "Failed to load the dashboard.";
+		error.value = err.message || __("Failed to load the dashboard.");
 	} finally {
 		loading.value = false;
 	}
@@ -65,13 +66,14 @@ function progressTone(r) {
 }
 // One schedule figure per row — late wins when late; else time remaining.
 function schedule(r) {
-	if (r.progress >= 100) return { text: "Complete", tone: "text-success-700" };
-	if (r.delayed > 0) return { text: `${r.delayed}d late`, tone: "text-danger-700 font-medium" };
+	if (r.progress >= 100) return { text: __("Complete"), tone: "text-success-700" };
+	if (r.delayed > 0)
+		return { text: `${r.delayed}${__("d late")}`, tone: "text-danger-700 font-medium" };
 	if (r.days_to_end === null || r.days_to_end === undefined)
-		return { text: "No end date", tone: "text-ink-400" };
+		return { text: __("No end date"), tone: "text-ink-400" };
 	if (r.days_to_end < 0)
-		return { text: `${-r.days_to_end}d over`, tone: "text-danger-700 font-medium" };
-	return { text: `${r.days_to_end}d left`, tone: "text-ink-700" };
+		return { text: `${-r.days_to_end}${__("d over")}`, tone: "text-danger-700 font-medium" };
+	return { text: `${r.days_to_end}${__("d left")}`, tone: "text-ink-700" };
 }
 </script>
 
@@ -81,10 +83,10 @@ function schedule(r) {
 			<!-- Breadcrumb -->
 			<div class="text-[11px] text-ink-500 mb-3">
 				<RouterLink to="/site-execution" class="hover:underline"
-					>Site Execution</RouterLink
+					>{{ __("Site Execution") }}</RouterLink
 				>
 				<span class="mx-1">›</span>
-				<span class="text-ink-700">Project Dashboard</span>
+				<span class="text-ink-700">{{ __("Project Dashboard") }}</span>
 			</div>
 
 			<!-- Title + scope picker -->
@@ -93,16 +95,16 @@ function schedule(r) {
 					<div
 						class="text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 					>
-						{{ scope ? "Project overview" : "Portfolio overview" }}
+						{{ scope ? __("Project overview") : __("Portfolio overview") }}
 					</div>
 					<h1 class="text-2xl font-semibold text-ink-900 tracking-tight">
-						Project Dashboard
+						{{ __("Project Dashboard") }}
 					</h1>
 					<p class="text-sm text-ink-500 mt-1">{{ todayLabel }}</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>Scope</span
+						>{{ __("Scope") }}</span
 					>
 					<div class="w-56">
 						<DeskLinkPicker
@@ -110,7 +112,7 @@ function schedule(r) {
 							doctype="Project"
 							label-field="project_name"
 							value-field="name"
-							placeholder="All projects"
+							:placeholder="__('All projects')"
 							@update:model-value="setScope"
 						/>
 					</div>
@@ -120,13 +122,13 @@ function schedule(r) {
 						class="text-[11px] text-brand-600 hover:underline whitespace-nowrap"
 						@click="setScope('')"
 					>
-						Portfolio
+						{{ __("Portfolio") }}
 					</button>
 				</div>
 			</div>
 
 			<div v-if="loading" class="py-20 text-center text-sm text-ink-400">
-				Loading portfolio…
+				{{ __("Loading portfolio…") }}
 			</div>
 			<div
 				v-else-if="error"
@@ -140,7 +142,7 @@ function schedule(r) {
 				<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 					<div class="bg-white border border-ink-200 rounded-xl p-4">
 						<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-							Active projects
+							{{ __("Active projects") }}
 						</div>
 						<div class="text-2xl font-semibold text-ink-900 mt-1 tabular-nums">
 							{{ kpis.active_projects }}
@@ -151,25 +153,25 @@ function schedule(r) {
 								kpis.at_risk ? 'text-danger-700 font-medium' : 'text-success-700'
 							"
 						>
-							{{ kpis.at_risk }} at risk
+							{{ kpis.at_risk }} {{ __("at risk") }}
 						</div>
 					</div>
 
 					<div class="bg-white border border-ink-200 rounded-xl p-4">
 						<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-							Contract value
+							{{ __("Contract value") }}
 						</div>
 						<div
 							class="text-2xl font-semibold text-ink-900 mt-1 tabular-nums whitespace-nowrap"
 						>
 							{{ fmtCompactINR(kpis.contract_value) }}
 						</div>
-						<div class="text-[11px] text-ink-400 mt-1">Approved BOQ, else budget</div>
+						<div class="text-[11px] text-ink-400 mt-1">{{ __("Approved BOQ, else budget") }}</div>
 					</div>
 
 					<div class="bg-white border border-ink-200 rounded-xl p-4">
 						<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-							Work done
+							{{ __("Work done") }}
 						</div>
 						<div
 							class="text-2xl font-semibold text-ink-900 mt-1 tabular-nums whitespace-nowrap"
@@ -178,23 +180,23 @@ function schedule(r) {
 						</div>
 						<div class="text-[11px] text-ink-400 mt-1 tabular-nums">
 							<template v-if="kpis.boq_with < kpis.boq_total"
-								>from {{ kpis.boq_with }} of {{ kpis.boq_total }} with a
-								BOQ</template
+								>{{ __("from") }} {{ kpis.boq_with }} {{ __("of") }}
+								{{ kpis.boq_total }} {{ __("with a BOQ") }}</template
 							>
-							<template v-else>{{ kpis.earned_pct }}% of contract value</template>
+							<template v-else>{{ kpis.earned_pct }}% {{ __("of contract value") }}</template>
 						</div>
 					</div>
 
 					<div class="bg-white border border-ink-200 rounded-xl p-4">
 						<div class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
-							Schedule
+							{{ __("Schedule") }}
 						</div>
 						<div class="flex items-baseline gap-1 mt-1 tabular-nums">
 							<span class="text-2xl font-semibold text-ink-900"
 								>{{ kpis.avg_progress }}%</span
 							>
 							<span class="text-sm text-ink-400"
-								>vs {{ kpis.avg_expected }}% planned</span
+								>{{ __("vs") }} {{ kpis.avg_expected }}% {{ __("planned") }}</span
 							>
 						</div>
 						<div
@@ -204,9 +206,10 @@ function schedule(r) {
 							"
 						>
 							<template v-if="kpis.behind"
-								>{{ kpis.behind }} behind · worst {{ kpis.worst_delay }}d</template
+								>{{ kpis.behind }} {{ __("behind · worst") }}
+								{{ kpis.worst_delay }}d</template
 							>
-							<template v-else>All on or ahead of plan</template>
+							<template v-else>{{ __("All on or ahead of plan") }}</template>
 						</div>
 					</div>
 				</div>
@@ -217,26 +220,26 @@ function schedule(r) {
 						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between gap-3"
 					>
 						<div>
-							<h2 class="font-semibold text-ink-900 text-sm">Project health</h2>
+							<h2 class="font-semibold text-ink-900 text-sm">{{ __("Project health") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5">
-								Progress against plan · work done against contract value
+								{{ __("Progress against plan · work done against contract value") }}
 							</p>
 						</div>
 						<RouterLink
 							v-if="showAllProjects"
 							to="/projects"
 							class="text-xs text-brand-600 hover:underline flex-shrink-0"
-							>All projects →</RouterLink
+							>{{ __("All projects →") }}</RouterLink
 						>
 					</div>
 
 					<div
 						class="hidden lg:grid grid-cols-[minmax(240px,1.8fr)_220px_170px_120px] gap-4 px-4 py-2 bg-ink-50 border-b border-ink-100 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 					>
-						<span>Project</span>
-						<span>Progress vs plan</span>
-						<span class="text-right">Work done / value</span>
-						<span class="text-right">Schedule</span>
+						<span>{{ __("Project") }}</span>
+						<span>{{ __("Progress vs plan") }}</span>
+						<span class="text-right">{{ __("Work done / value") }}</span>
+						<span class="text-right">{{ __("Schedule") }}</span>
 					</div>
 
 					<div class="divide-y divide-ink-100">
@@ -260,7 +263,7 @@ function schedule(r) {
 								</div>
 								<div class="text-xs text-ink-500 mt-0.5 truncate">
 									<span v-if="r.client">{{ r.client }} · </span
-									>{{ r.open_tasks }}/{{ r.total_tasks }} tasks open
+									>{{ r.open_tasks }}/{{ r.total_tasks }} {{ __("tasks open") }}
 								</div>
 							</div>
 
@@ -274,14 +277,14 @@ function schedule(r) {
 									<span
 										class="absolute top-0 bottom-0 w-0.5 stage-progress-tick"
 										:style="`left:${Math.min(99.5, r.expected)}%`"
-										:title="`Expected ${r.expected}% by today`"
+										:title="`${__('Expected')} ${r.expected}% ${__('by today')}`"
 									></span>
 								</div>
 								<div
 									class="flex items-center justify-between mt-1 text-[11px] tabular-nums"
 								>
 									<span class="text-ink-700 font-medium">{{ r.progress }}%</span>
-									<span class="text-ink-400">plan {{ r.expected }}%</span>
+									<span class="text-ink-400">{{ __("plan") }} {{ r.expected }}%</span>
 								</div>
 							</div>
 
@@ -295,13 +298,13 @@ function schedule(r) {
 									<div
 										class="text-[11px] text-ink-400 tabular-nums whitespace-nowrap"
 									>
-										of {{ fmtCompactINR(r.planned) }}
+										{{ __("of") }} {{ fmtCompactINR(r.planned) }}
 									</div>
 								</template>
 								<template v-else>
 									<div class="text-sm text-ink-400">—</div>
 									<div class="text-[11px] text-ink-400 whitespace-nowrap">
-										no approved BOQ
+										{{ __("no approved BOQ") }}
 									</div>
 								</template>
 							</div>
@@ -320,9 +323,9 @@ function schedule(r) {
 							v-if="!health.length"
 							class="px-4 py-10 text-center text-sm text-ink-400"
 						>
-							No projects in scope ·
+							{{ __("No projects in scope") }} ·
 							<RouterLink to="/projects/new" class="text-brand-600 hover:underline"
-								>Create one →</RouterLink
+								>{{ __("Create one →") }}</RouterLink
 							>
 						</div>
 					</div>
@@ -333,9 +336,9 @@ function schedule(r) {
 					<!-- Cost booked by head -->
 					<div class="bg-white border border-ink-200 rounded-xl overflow-hidden">
 						<div class="px-4 py-3 border-b border-ink-200">
-							<h2 class="font-semibold text-ink-900 text-sm">Cost booked to date</h2>
+							<h2 class="font-semibold text-ink-900 text-sm">{{ __("Cost booked to date") }}</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5">
-								Actual spend by head — not the BOQ view above
+								{{ __("Actual spend by head — not the BOQ view above") }}
 							</p>
 						</div>
 						<div class="p-4">
@@ -345,14 +348,14 @@ function schedule(r) {
 								{{ fmtCompactINR(cost.total_actual) }}
 							</div>
 							<div class="text-[11px] text-ink-400 mb-4">
-								across every task in scope
+								{{ __("across every task in scope") }}
 							</div>
 
 							<div v-for="h in cost.heads" :key="h.key" class="mb-3 last:mb-0">
 								<div class="flex items-baseline justify-between text-xs mb-1">
-									<span class="text-ink-700">{{ h.label }}</span>
+									<span class="text-ink-700">{{ __(h.label) }}</span>
 									<span v-if="h.pending" class="text-[11px] text-ink-400 italic"
-										>no source yet</span
+										>{{ __("no source yet") }}</span
 									>
 									<span v-else class="text-ink-900 tabular-nums font-medium">{{
 										fmtCompactINR(h.value)
@@ -375,9 +378,9 @@ function schedule(r) {
 							class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 						>
 							<div>
-								<h2 class="font-semibold text-ink-900 text-sm">Waiting on you</h2>
+								<h2 class="font-semibold text-ink-900 text-sm">{{ __("Waiting on you") }}</h2>
 								<p class="text-[11px] text-ink-500 mt-0.5">
-									Approvals across every module
+									{{ __("Approvals across every module") }}
 								</p>
 							</div>
 							<span
@@ -414,13 +417,13 @@ function schedule(r) {
 									/>
 								</span>
 								<div class="flex-1 min-w-0">
-									<div class="text-sm text-ink-900">{{ d.label }}</div>
+									<div class="text-sm text-ink-900">{{ __(d.label) }}</div>
 									<div class="text-[11px] text-ink-500 truncate">
 										<template v-if="d.count && d.value"
 											>{{ fmtCompactINR(d.value) }} {{ d.sub }}</template
 										>
 										<template v-else-if="d.count">{{ d.sub }}</template>
-										<template v-else>Nothing pending</template>
+										<template v-else>{{ __("Nothing pending") }}</template>
 									</div>
 								</div>
 								<span
@@ -435,8 +438,8 @@ function schedule(r) {
 					<!-- Site activity -->
 					<div class="bg-white border border-ink-200 rounded-xl overflow-hidden">
 						<div class="px-4 py-3 border-b border-ink-200">
-							<h2 class="font-semibold text-ink-900 text-sm">Site activity</h2>
-							<p class="text-[11px] text-ink-500 mt-0.5">Last 7 days</p>
+							<h2 class="font-semibold text-ink-900 text-sm">{{ __("Site activity") }}</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">{{ __("Last 7 days") }}</p>
 						</div>
 						<div class="p-4">
 							<div class="grid grid-cols-2 gap-3 mb-4">
@@ -447,7 +450,7 @@ function schedule(r) {
 									<div
 										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5"
 									>
-										Progress entries
+										{{ __("Progress entries") }}
 									</div>
 								</div>
 								<div>
@@ -457,7 +460,7 @@ function schedule(r) {
 									<div
 										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5"
 									>
-										Man-days
+										{{ __("Man-days") }}
 									</div>
 								</div>
 								<div>
@@ -472,7 +475,7 @@ function schedule(r) {
 									<div
 										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5"
 									>
-										Blockers
+										{{ __("Blockers") }}
 									</div>
 								</div>
 								<div>
@@ -482,7 +485,7 @@ function schedule(r) {
 									<div
 										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5"
 									>
-										Deliveries
+										{{ __("Deliveries") }}
 									</div>
 								</div>
 							</div>
@@ -492,17 +495,17 @@ function schedule(r) {
 								class="text-[11px] text-ink-400 italic mb-3 -mt-1"
 							>
 								<template v-if="activity.last_activity_date"
-									>Nothing reported this week — the last report was
+									>{{ __("Nothing reported this week — the last report was") }}
 									{{ fmtDate(activity.last_activity_date) }}.</template
 								>
-								<template v-else>No site reporting yet.</template>
+								<template v-else>{{ __("No site reporting yet.") }}</template>
 							</p>
 
 							<div class="border-t border-ink-100 pt-3">
 								<div
 									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-2"
 								>
-									Latest reports
+									{{ __("Latest reports") }}
 								</div>
 								<div
 									v-for="e in activity.recent"
@@ -522,14 +525,14 @@ function schedule(r) {
 									<span
 										v-if="e.blocker"
 										class="text-[10px] px-1.5 py-0.5 rounded-full bg-danger-50 text-danger-700 flex-shrink-0"
-										>Blocked</span
+										>{{ __("Blocked") }}</span
 									>
 								</div>
 								<div
 									v-if="!activity.recent.length"
 									class="text-xs text-ink-400 italic py-2"
 								>
-									No progress entries filed yet.
+									{{ __("No progress entries filed yet.") }}
 								</div>
 							</div>
 						</div>
@@ -540,10 +543,10 @@ function schedule(r) {
 				<div class="bg-white border border-ink-200 rounded-xl overflow-hidden mt-6">
 					<div class="px-4 py-3 border-b border-ink-200">
 						<h2 class="font-semibold text-ink-900 text-sm">
-							Commitments &amp; exposure
+							{{ __("Commitments & exposure") }}
 						</h2>
 						<p class="text-[11px] text-ink-500 mt-0.5">
-							Money promised to third parties, and what is still to come
+							{{ __("Money promised to third parties, and what is still to come") }}
 						</p>
 					</div>
 					<div
@@ -553,7 +556,7 @@ function schedule(r) {
 							<div
 								class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 							>
-								Subcontract committed
+								{{ __("Subcontract committed") }}
 							</div>
 							<div
 								class="text-lg font-semibold text-ink-900 mt-1 tabular-nums whitespace-nowrap"
@@ -561,15 +564,15 @@ function schedule(r) {
 								{{ fmtCompactINR(commitments.committed) }}
 							</div>
 							<div class="text-[11px] text-ink-400 mt-0.5 tabular-nums">
-								{{ fmtCompactINR(commitments.billed) }} billed ·
-								{{ fmtCompactINR(commitments.remaining) }} to come
+								{{ fmtCompactINR(commitments.billed) }} {{ __("billed") }} ·
+								{{ fmtCompactINR(commitments.remaining) }} {{ __("to come") }}
 							</div>
 						</div>
 						<div class="p-4">
 							<div
 								class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 							>
-								On order
+								{{ __("On order") }}
 							</div>
 							<div
 								class="text-lg font-semibold text-ink-900 mt-1 tabular-nums whitespace-nowrap"
@@ -577,14 +580,14 @@ function schedule(r) {
 								{{ fmtCompactINR(commitments.on_order) }}
 							</div>
 							<div class="text-[11px] text-ink-400 mt-0.5">
-								{{ commitments.on_order_count }} open purchase orders
+								{{ commitments.on_order_count }} {{ __("open purchase orders") }}
 							</div>
 						</div>
 						<div class="p-4">
 							<div
 								class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
 							>
-								Retention held
+								{{ __("Retention held") }}
 							</div>
 							<div
 								class="text-lg font-semibold text-ink-900 mt-1 tabular-nums whitespace-nowrap"
@@ -592,7 +595,7 @@ function schedule(r) {
 								{{ fmtCompactINR(commitments.retention) }}
 							</div>
 							<div class="text-[11px] text-ink-400 mt-0.5">
-								withheld from subcontractors
+								{{ __("withheld from subcontractors") }}
 							</div>
 						</div>
 					</div>
@@ -601,9 +604,9 @@ function schedule(r) {
 				<!-- ===== Needs attention ===== -->
 				<div class="bg-white border border-ink-200 rounded-xl overflow-hidden mt-6 mb-4">
 					<div class="px-4 py-3 border-b border-ink-200">
-						<h2 class="font-semibold text-ink-900 text-sm">Needs attention</h2>
+						<h2 class="font-semibold text-ink-900 text-sm">{{ __("Needs attention") }}</h2>
 						<p class="text-[11px] text-ink-500 mt-0.5">
-							Schedule · cost · decisions · supply
+							{{ __("Schedule · cost · decisions · supply") }}
 						</p>
 					</div>
 					<div class="divide-y divide-ink-100">
@@ -621,7 +624,7 @@ function schedule(r) {
 								<div
 									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 								>
-									{{ a.kind }}
+									{{ __(a.kind) }}
 								</div>
 								<div class="text-sm text-ink-900 leading-snug mt-0.5">
 									{{ a.title }}
@@ -633,9 +636,9 @@ function schedule(r) {
 							<span class="text-brand-600 text-sm flex-shrink-0">→</span>
 						</RouterLink>
 						<div v-if="!attention.length" class="px-4 py-10 text-center">
-							<div class="text-sm text-ink-700">Nothing needs attention</div>
+							<div class="text-sm text-ink-700">{{ __("Nothing needs attention") }}</div>
 							<p class="text-xs text-ink-500 mt-1">
-								Schedule, cost, decisions and supply are all within tolerance.
+								{{ __("Schedule, cost, decisions and supply are all within tolerance.") }}
 							</p>
 						</div>
 					</div>

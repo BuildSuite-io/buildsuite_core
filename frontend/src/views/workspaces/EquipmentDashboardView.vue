@@ -9,12 +9,13 @@ import { getEquipmentDashboard } from "@/data/equipmentApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import StatusBadge from "@/components/StatusBadge.vue";
+import { __, currentLang } from "@/utils/translate";
 
 const router = useRouter();
 const { projectName } = useProjectNames();
 
 const today = computed(() =>
-	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+	new Date().toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" })
 );
 
 const loading = ref(true);
@@ -32,7 +33,7 @@ async function loadDashboard() {
 	try {
 		kpis.value = await getEquipmentDashboard();
 	} catch (e) {
-		error.value = e.message || "Could not load the dashboard.";
+		error.value = e.message || __("Could not load the dashboard.");
 	} finally {
 		loading.value = false;
 	}
@@ -47,19 +48,19 @@ const register = computed(() => kpis.value?.register || []);
 		<div class="max-w-6xl mx-auto px-6 py-8">
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1 flex items-center gap-2">
-					<RouterLink to="/equipment" class="hover:text-brand-700">Equipment</RouterLink>
+					<RouterLink to="/equipment" class="hover:text-brand-700">{{ __("Equipment") }}</RouterLink>
 					<span class="text-ink-300">/</span>
-					<span>Dashboard</span>
+					<span>{{ __("Dashboard") }}</span>
 					<span class="text-ink-300 mx-2">·</span>
 					<span>{{ today }}</span>
 				</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Equipment Dashboard</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Equipment Dashboard") }}</h1>
 				<p class="text-xs text-ink-500 mt-1">
-					Plant register, utilisation and equipment cost at a glance.
+					{{ __("Plant register, utilisation and equipment cost at a glance.") }}
 				</p>
 			</div>
 
-			<div v-if="loading" class="text-sm text-ink-500 py-8">Loading…</div>
+			<div v-if="loading" class="text-sm text-ink-500 py-8">{{ __("Loading…") }}</div>
 			<div v-else-if="error" class="text-sm text-danger-700 py-8">{{ error }}</div>
 
 			<template v-else-if="kpis">
@@ -67,42 +68,42 @@ const register = computed(() => kpis.value?.register || []);
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 					<div class="card p-4 bg-white border border-ink-200">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Machines
+							{{ __("Machines") }}
 						</div>
 						<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
 							{{ kpis.machines }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">In the register</div>
+						<div class="text-[10px] text-ink-400 mt-1">{{ __("In the register") }}</div>
 					</div>
 
 					<div class="card p-4 bg-white border border-ink-200">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Owned
+							{{ __("Owned") }}
 						</div>
 						<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
 							{{ kpis.owned }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">Company-owned plant</div>
+						<div class="text-[10px] text-ink-400 mt-1">{{ __("Company-owned plant") }}</div>
 					</div>
 
 					<div class="card p-4 bg-white border border-ink-200">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Hired
+							{{ __("Hired") }}
 						</div>
 						<div class="text-2xl font-semibold text-warning-700 tabular-nums mt-1.5">
 							{{ kpis.hired }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">On hire from vendors</div>
+						<div class="text-[10px] text-ink-400 mt-1">{{ __("On hire from vendors") }}</div>
 					</div>
 
 					<div class="card p-4 bg-white border border-ink-200">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Equipment cost
+							{{ __("Equipment cost") }}
 						</div>
 						<div class="text-2xl font-semibold text-info-700 tabular-nums mt-1.5">
 							{{ fmtCompactINR(kpis.equipment_cost) }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">Usage + fuel logged</div>
+						<div class="text-[10px] text-ink-400 mt-1">{{ __("Usage + fuel logged") }}</div>
 					</div>
 				</div>
 
@@ -125,12 +126,12 @@ const register = computed(() => kpis.value?.register || []);
 									aria-hidden="true"
 									v-html="getWorkspaceIconPath('clipboard-list')"
 								/>
-								<h2 class="text-sm font-semibold text-ink-900">Recent usage</h2>
+								<h2 class="text-sm font-semibold text-ink-900">{{ __("Recent usage") }}</h2>
 							</div>
 							<RouterLink
 								to="/machinery-usage"
 								class="text-xs text-brand-700 hover:underline"
-								>View all →</RouterLink
+								>{{ __("View all") }} →</RouterLink
 							>
 						</div>
 						<ul v-if="recentUsage.length" class="divide-y divide-ink-50">
@@ -155,7 +156,7 @@ const register = computed(() => kpis.value?.register || []);
 							</li>
 						</ul>
 						<div v-else class="px-4 py-6 text-sm text-ink-400">
-							No usage logged yet.
+							{{ __("No usage logged yet.") }}
 						</div>
 					</div>
 
@@ -176,12 +177,12 @@ const register = computed(() => kpis.value?.register || []);
 									aria-hidden="true"
 									v-html="getWorkspaceIconPath('wrench')"
 								/>
-								<h2 class="text-sm font-semibold text-ink-900">Register</h2>
+								<h2 class="text-sm font-semibold text-ink-900">{{ __("Register") }}</h2>
 							</div>
 							<RouterLink
 								to="/machinery"
 								class="text-xs text-brand-700 hover:underline"
-								>View all →</RouterLink
+								>{{ __("View all") }} →</RouterLink
 							>
 						</div>
 						<ul v-if="register.length" class="divide-y divide-ink-50">
@@ -210,7 +211,7 @@ const register = computed(() => kpis.value?.register || []);
 							</li>
 						</ul>
 						<div v-else class="px-4 py-6 text-sm text-ink-400">
-							No machines registered.
+							{{ __("No machines registered.") }}
 						</div>
 					</div>
 				</div>

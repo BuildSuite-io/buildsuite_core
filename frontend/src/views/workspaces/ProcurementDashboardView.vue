@@ -7,9 +7,10 @@ import { getProcurementDashboard } from "@/data/procurementApi";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { dayjs } from "frappe-ui";
+import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() =>
-	new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+	new Date().toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" })
 );
 
 const { projectName } = useProjectNames();
@@ -28,7 +29,7 @@ async function loadDashboard() {
 	try {
 		kpis.value = await getProcurementDashboard();
 	} catch (e) {
-		error.value = e.message || "Could not load the dashboard.";
+		error.value = e.message || __("Could not load the dashboard.");
 	} finally {
 		loading.value = false;
 	}
@@ -56,19 +57,24 @@ const actionRows = computed(() => {
 	let overdueSub = "—";
 	if (overdue.count && overdue.first) {
 		const f = overdue.first;
-		overdueSub = `${f.item || "material"} from ${f.supplier} · req. ${fmtDate(f.required_by)}`;
+		overdueSub = __("{0} from {1} · req. {2}", [
+			f.item || __("material"),
+			f.supplier,
+			fmtDate(f.required_by),
+		]);
 	}
 	return [
 		{
 			key: "approved",
 			tone: "info",
 			icon: "check-circle",
-			label: "Approved requests to order",
+			label: __("Approved requests to order"),
 			sub: na.approved_to_order.count
-				? `Oldest waiting ${na.approved_to_order.oldest_days} day${plural(
-						na.approved_to_order.oldest_days
-				  )}`
-				: "All caught up",
+				? __("Oldest waiting {0} day{1}", [
+						na.approved_to_order.oldest_days,
+						plural(na.approved_to_order.oldest_days),
+				  ])
+				: __("All caught up"),
 			count: na.approved_to_order.count,
 			href: deskUrl("material-request", {
 				docstatus: 1,
@@ -80,7 +86,7 @@ const actionRows = computed(() => {
 			key: "overdue",
 			tone: "danger",
 			icon: "refresh-ccw",
-			label: "Deliveries overdue",
+			label: __("Deliveries overdue"),
 			sub: overdueSub,
 			count: overdue.count,
 			href: deskUrl("purchase-order", {
@@ -93,12 +99,13 @@ const actionRows = computed(() => {
 			key: "partial",
 			tone: "warning",
 			icon: "chart-bar",
-			label: "Partial deliveries",
+			label: __("Partial deliveries"),
 			sub: na.partial_deliveries.count
-				? `${na.partial_deliveries.count} PO${plural(
-						na.partial_deliveries.count
-				  )} between 1–99% received`
-				: "No partial deliveries pending",
+				? __("{0} PO{1} between 1–99% received", [
+						na.partial_deliveries.count,
+						plural(na.partial_deliveries.count),
+				  ])
+				: __("No partial deliveries pending"),
 			count: na.partial_deliveries.count,
 			href: deskUrl("purchase-order", {
 				docstatus: 1,
@@ -112,12 +119,13 @@ const actionRows = computed(() => {
 			key: "unbilled",
 			tone: "ink",
 			icon: "file-text",
-			label: "Received, not billed",
+			label: __("Received, not billed"),
 			sub: na.received_not_billed.count
-				? `${na.received_not_billed.count} GRN${plural(
-						na.received_not_billed.count
-				  )} awaiting supplier invoice`
-				: "All receipts billed",
+				? __("{0} GRN{1} awaiting supplier invoice", [
+						na.received_not_billed.count,
+						plural(na.received_not_billed.count),
+				  ])
+				: __("All receipts billed"),
 			count: na.received_not_billed.count,
 			href: deskUrl("purchase-receipt", { docstatus: 1, per_billed: ["<", 100] }),
 		},
@@ -166,22 +174,21 @@ function grnTone(status) {
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1 flex items-center gap-2">
 					<RouterLink to="/procurement" class="hover:text-brand-700"
-						>Procurement</RouterLink
+						>{{ __("Procurement") }}</RouterLink
 					>
 					<span class="text-ink-300">/</span>
-					<span>Dashboard</span>
+					<span>{{ __("Dashboard") }}</span>
 					<span class="text-ink-300 mx-2">·</span>
 					<span>{{ today }}</span>
 				</div>
-				<h1 class="text-2xl font-semibold text-ink-900">Procurement Dashboard</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Procurement Dashboard") }}</h1>
 				<p class="text-xs text-ink-500 mt-1">
-					Open material requests, on-order value, site receipts and rate variances at a
-					glance.
+					{{ __("Open material requests, on-order value, site receipts and rate variances at a glance.") }}
 				</p>
 			</div>
 
 			<!-- Loading / error states -->
-			<div v-if="loading" class="text-sm text-ink-500 py-8">Loading…</div>
+			<div v-if="loading" class="text-sm text-ink-500 py-8">{{ __("Loading…") }}</div>
 			<div v-else-if="error" class="text-sm text-danger-700 py-8">{{ error }}</div>
 
 			<template v-else-if="kpis">
@@ -193,7 +200,7 @@ function grnTone(status) {
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Open material requests
+							{{ __("Open material requests") }}
 						</div>
 						<div class="flex items-baseline gap-2 mt-1.5">
 							<div class="text-2xl font-semibold text-ink-900 tabular-nums">
@@ -204,7 +211,7 @@ function grnTone(status) {
 							</div>
 						</div>
 						<div class="text-[10px] text-ink-400 mt-1">
-							Pending + Approved + Partially Ordered
+							{{ __("Pending + Approved + Partially Ordered") }}
 						</div>
 					</a>
 
@@ -214,7 +221,7 @@ function grnTone(status) {
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							On order · awaiting delivery
+							{{ __("On order · awaiting delivery") }}
 						</div>
 						<div class="flex items-baseline gap-2 mt-1.5">
 							<div class="text-2xl font-semibold text-ink-900 tabular-nums">
@@ -224,7 +231,7 @@ function grnTone(status) {
 								{{ fmtCompactINR(kpis.on_order.value) }}
 							</div>
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">POs not yet fully received</div>
+						<div class="text-[10px] text-ink-400 mt-1">{{ __("POs not yet fully received") }}</div>
 					</a>
 
 					<!-- 3 — Received this week -->
@@ -233,20 +240,20 @@ function grnTone(status) {
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Received this week
+							{{ __("Received this week") }}
 						</div>
 						<div class="text-2xl font-semibold text-success-700 tabular-nums mt-1.5">
 							{{ kpis.received_this_week.count }}
 						</div>
 						<div class="text-[10px] text-ink-400 mt-1">
-							Goods receipts in last 7 days
+							{{ __("Goods receipts in last 7 days") }}
 						</div>
 					</a>
 
 					<!-- 4 — Above estimated rate -->
 					<div class="card p-4 bg-white border border-ink-200">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-							Above estimated rate
+							{{ __("Above estimated rate") }}
 						</div>
 						<div
 							class="text-2xl font-semibold tabular-nums mt-1.5"
@@ -259,7 +266,7 @@ function grnTone(status) {
 							{{ kpis.above_estimated_rate.count }}
 						</div>
 						<div class="text-[10px] text-ink-400 mt-1">
-							PO line items priced above Rate Master
+							{{ __("PO line items priced above Rate Master") }}
 						</div>
 					</div>
 				</div>
@@ -284,8 +291,8 @@ function grnTone(status) {
 								aria-hidden="true"
 								v-html="getWorkspaceIconPath('check-circle')"
 							/>
-							<h2 class="text-sm font-semibold text-ink-900">Needs action</h2>
-							<span class="ml-auto text-[11px] text-ink-500">Today</span>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Needs action") }}</h2>
+							<span class="ml-auto text-[11px] text-ink-500">{{ __("Today") }}</span>
 						</div>
 						<ul class="divide-y divide-ink-100">
 							<li v-for="row in actionRows" :key="row.key">
@@ -349,12 +356,12 @@ function grnTone(status) {
 								v-html="getWorkspaceIconPath('paperclip')"
 							/>
 							<h2 class="text-sm font-semibold text-ink-900">
-								Recent site receipts
+								{{ __("Recent site receipts") }}
 							</h2>
 							<a
 								href="/app/purchase-receipt"
 								class="ml-auto text-xs text-brand-700 hover:underline"
-								>View all →</a
+								>{{ __("View all") }} →</a
 							>
 						</div>
 						<ul v-if="kpis.recent_receipts.length" class="divide-y divide-ink-100">
@@ -378,7 +385,7 @@ function grnTone(status) {
 										<span
 											v-if="grn.item_count > 1"
 											class="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-ink-100 text-ink-700 whitespace-nowrap"
-											>+{{ grn.item_count - 1 }} more</span
+											>+{{ grn.item_count - 1 }} {{ __("more") }}</span
 										>
 									</div>
 									<div class="text-[11px] text-ink-500 mt-0.5 truncate">
@@ -396,7 +403,7 @@ function grnTone(status) {
 							</li>
 						</ul>
 						<div v-else class="px-4 py-8 text-center text-xs text-ink-400 italic">
-							No goods receipts recorded yet.
+							{{ __("No goods receipts recorded yet.") }}
 						</div>
 					</div>
 				</div>
