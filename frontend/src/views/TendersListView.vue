@@ -72,7 +72,7 @@ const columns = [
 <template>
 	<DeskPage :title="__('Tenders')"
 		:subtitle="__('Formal bids against published invitations. Nothing here touches an estimate — a bid you lose must cost the estimate nothing.')"
-		:breadcrumbs="breadcrumbs" printable>
+		:breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink to="/tenders/new" class="desk-save-btn !text-xs">{{ __("+ New") }}</RouterLink>
 		</template>

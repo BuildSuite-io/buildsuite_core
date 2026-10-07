@@ -81,15 +81,6 @@ class ExpenseEntry(Document):
 		self.validate_single_company()
 		self.set_description()
 
-	def after_insert(self):
-		# Hand `owner` to the holder the expense belongs to (the Employee's linked User) so the
-		# if_owner DocPerms let them see it even when an approver recorded it for them; keep the
-		# real creator in `raised_by`. A Company-paid expense has no holder — owner stays the raiser.
-		from buildsuite_core.utils.petty_cash import assign_beneficiary_owner
-
-		beneficiary = frappe.db.get_value("Employee", self.employee, "user_id") if self.employee else None
-		assign_beneficiary_owner(self, beneficiary)
-
 	def enforce_site_confinement(self):
 		"""Confine site roles to petty cash + themselves as holder (M3). Keyed to the
 		acting session user, so an Accountant editing a site user's entry is unrestricted."""

@@ -66,12 +66,12 @@ def context():
 def list_expenses():
 	"""Flattened expense records (one per Expense Entry) shaped like the prototype's
 	list: date, description, holder, source, account, cost type, amount, status."""
-	# get_list (NOT get_all) so the if_owner DocPerms scope the list: the four finance/admin roles
-	# + System Manager see every entry; everyone else sees only their own (owner == them, which is
-	# the holder the expense belongs to — see after_insert).
+	# get_list (NOT get_all) so the finance_access hook scopes the list: the finance/admin roles +
+	# System Manager see every entry; everyone else sees only the ones that are theirs — created by
+	# them (owner) OR belonging to them (the holder Employee's linked User).
 	entries = frappe.get_list(
 		DOCTYPE,
-		fields=["name", "creation", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description", "owner", "raised_by"],
+		fields=["name", "creation", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description", "owner"],
 		order_by="date desc, creation desc",
 		limit_page_length=0,
 	)
@@ -97,6 +97,23 @@ def list_expenses():
 			pluck="attached_to_name",
 		)
 	)
+
+	# For the "raised for me" cue: the holder Employee's linked User (beneficiary) and the owner's
+	# display name (the creator).
+	emp_user = {}
+	emp_names = list({e.employee for e in entries if e.employee})
+	if emp_names:
+		emp_user = {
+			r.name: r.user_id
+			for r in frappe.get_all("Employee", filters={"name": ["in", emp_names]}, fields=["name", "user_id"])
+		}
+	owner_names = {}
+	owners = list({e.owner for e in entries if e.owner})
+	if owners:
+		owner_names = {
+			r.name: r.full_name
+			for r in frappe.get_all("User", filters={"name": ["in", owners]}, fields=["name", "full_name"])
+		}
 
 	proj = {}
 	pids = list({e.project for e in entries if e.project})
@@ -128,10 +145,11 @@ def list_expenses():
 				"has_attachment": bool(fr.get("attachment")) or e.name in native_attached,
 				"amount": e.total_amount,
 				"status": status_map.get(e.docstatus, "Draft"),
-				# Visual cue: raised FOR me by someone else (I'm the holder/owner, another created it).
-				"raised_by": e.raised_by,
-				"raised_by_name": frappe.db.get_value("User", e.raised_by, "full_name") if e.raised_by else None,
-				"raised_for_me": bool(e.raised_by) and e.raised_by != e.owner and e.owner == frappe.session.user,
+				# Visual cue: I'm the holder (beneficiary) but didn't create it → raised FOR me.
+				"owner": e.owner,
+				"raised_by_name": owner_names.get(e.owner) or e.owner,
+				"raised_for_me": emp_user.get(e.employee) == frappe.session.user
+				and e.owner != frappe.session.user,
 			}
 		)
 	return out
@@ -205,16 +223,13 @@ def get_expense(name: str):
 		"paid_from": doc.paid_from,
 		"journal_entry": doc.journal_entry,
 		"description": doc.description,
-		# Audit + visual cue: `owner` is the holder the expense belongs to; `raised_by` is who
-		# actually created it. When they differ and I'm the holder, it was raised FOR me.
+		# Visual cue: `owner` is the creator; the beneficiary is the holder Employee's linked User.
+		# When I'm the beneficiary but didn't create it, it was raised FOR me (by the owner).
 		"owner": doc.owner,
-		"raised_by": doc.get("raised_by"),
-		"raised_by_name": frappe.db.get_value("User", doc.get("raised_by"), "full_name")
-		if doc.get("raised_by")
-		else None,
-		"raised_for_me": bool(doc.get("raised_by"))
-		and doc.get("raised_by") != doc.owner
-		and doc.owner == frappe.session.user,
+		"raised_by_name": frappe.db.get_value("User", doc.owner, "full_name") if doc.owner else None,
+		"raised_for_me": doc.owner != frappe.session.user
+		and (frappe.db.get_value("Employee", doc.employee, "user_id") if doc.employee else None)
+		== frappe.session.user,
 		"attachments": attachments,
 		"rows": [
 			{

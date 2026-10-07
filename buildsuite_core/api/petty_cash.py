@@ -42,16 +42,11 @@ def _serialize(doc):
 		"journal_entry": doc.journal_entry,
 		"can_disburse": _can_disburse(),
 		"is_mine": doc.requested_by == frappe.session.user,
-		# Audit + visual cue: `owner` is the holder this float belongs to; `raised_by` is who
-		# actually created it. When they differ and I'm the holder, it was raised FOR me.
+		# Visual cue: `owner` is the creator; the beneficiary is `requested_by`. When I'm the
+		# beneficiary but didn't create it, it was raised FOR me (by the owner).
 		"owner": doc.owner,
-		"raised_by": doc.get("raised_by"),
-		"raised_by_name": frappe.db.get_value("User", doc.get("raised_by"), "full_name")
-		if doc.get("raised_by")
-		else None,
-		"raised_for_me": bool(doc.get("raised_by"))
-		and doc.get("raised_by") != doc.owner
-		and doc.owner == frappe.session.user,
+		"raised_by_name": frappe.db.get_value("User", doc.owner, "full_name") if doc.owner else None,
+		"raised_for_me": doc.requested_by == frappe.session.user and doc.owner != frappe.session.user,
 		"activity": [
 			{"by": c.owner, "at": str(c.creation), "text": frappe.utils.strip_html(c.content or "").strip()}
 			for c in comments

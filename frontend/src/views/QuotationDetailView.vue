@@ -88,12 +88,11 @@ const breadcrumbs = computed(() => [
 <template>
 	<DeskPage v-if="doc" :title="doc.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<a :href="`/printview?doctype=Quotation&name=${encodeURIComponent(id)}`" target="_blank"
-				rel="noopener"
+			<RouterLink :to="`/quotations/${encodeURIComponent(id)}/print`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px">
 				{{ __("Print / PDF") }}
-			</a>
+			</RouterLink>
 			<RouterLink :to="`/quotations/${encodeURIComponent(id)}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px">

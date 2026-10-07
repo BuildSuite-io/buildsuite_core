@@ -46,6 +46,16 @@ _SHARED_CSS = """
 .bs-print .bs-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 8px; }
 .bs-print .bs-sign .sig { border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 36px; font-size: 9pt; color: #475569; }
 .bs-print .bs-footer { text-align: center; font-size: 8pt; color: #94a3b8; padding-top: 10px; border-top: 1px solid #e2e8f0; margin-top: 20px; }
+/* A priced offer — quotation or tender — leads with the job it is for, so the title
+   carries the page and the figures the reader checks first sit in a strip under it. */
+.bs-print .bs-offer-title { background: #0f172a; color: #ffffff; padding: 18px 20px; border-radius: 6px 6px 0 0; font-size: 17pt; font-weight: 600; line-height: 1.25; }
+.bs-print .bs-offer-title .ref { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+.bs-print .bs-strip { display: flex; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 6px 6px; margin-bottom: 20px; }
+.bs-print .bs-strip > div { flex: 1; padding: 10px 18px; border-right: 1px solid #e2e8f0; }
+.bs-print .bs-strip > div:last-child { border-right: none; }
+.bs-print .bs-strip .val { font-weight: 600; font-size: 11pt; margin-top: 4px; }
+.bs-print .bs-lh { flex: 1; min-width: 0; }
+.bs-print .bs-lh > div { border-bottom: none !important; padding-bottom: 0 !important; }
 """
 
 _INVOICE_CSS = _SHARED_CSS + """
@@ -212,9 +222,176 @@ _WO_HTML = """
 </div>
 """
 
+# The customer's copy. It prints `rate` — what they are asked to pay. `price_list_rate` is our
+# own cost and must never appear here.
+_QUOTATION_HTML = """
+<div class="bs-print">
+  <div class="bs-title-row">
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
+      <div class="bs-doc-title">QUOTATION</div>
+      <div class="bold">{{ doc.name }}</div>
+      <div class="muted">{{ frappe.utils.formatdate(doc.transaction_date) }}</div>
+    </div>
+  </div>
+
+  <div class="bs-offer-title">{{ doc.title or doc.name }}</div>
+  <div class="bs-strip">
+    <div>
+      <div class="bs-label">For</div>
+      <div class="val">{{ doc.customer_name or doc.party_name }}</div>
+      {% if doc.tax_id %}<div class="mono muted">{{ doc.tax_id }}</div>{% endif %}
+    </div>
+    <div>
+      <div class="bs-label">Dated</div>
+      <div class="val">{{ frappe.utils.formatdate(doc.transaction_date) }}</div>
+    </div>
+    <div>
+      <div class="bs-label">Valid until</div>
+      <div class="val">{{ frappe.utils.formatdate(doc.valid_till) if doc.valid_till else "&mdash;" }}</div>
+    </div>
+    <div>
+      <div class="bs-label">Total</div>
+      <div class="val">{{ doc.get_formatted("grand_total") }}</div>
+    </div>
+  </div>
+
+  <div class="bs-label">Schedule of prices</div>
+  <table class="bs-lines bordered">
+    <thead><tr><th class="l" style="width:24px">#</th><th class="l">Description</th><th class="r" style="width:64px">Qty</th><th class="l" style="width:64px">Unit</th><th class="r" style="width:90px">Rate</th><th class="r" style="width:110px">Amount</th></tr></thead>
+    <tbody>
+      {% for item in doc.items %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td>{{ item.item_name or item.description }}</td>
+        <td class="r nums muted">{{ item.get_formatted("qty") }}</td>
+        <td class="muted">{{ item.uom or "" }}</td>
+        <td class="r nums muted">{{ item.get_formatted("rate") }}</td>
+        <td class="r nums">{{ item.get_formatted("amount") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="bs-totals-wrap">
+    <div class="bs-totals">
+      <div class="row"><span>Price</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>
+      {% for tax in doc.taxes %}
+      <div class="row"><span>{{ tax.description }}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>
+      {% endfor %}
+      <div class="row grand"><span>Total</span><span class="nums">{{ doc.get_formatted("grand_total") }}</span></div>
+    </div>
+  </div>
+
+  {% if doc.terms %}
+  <div class="bs-label">Terms &amp; conditions</div>
+  <div class="bs-terms-text">{{ doc.terms }}</div>
+  {% endif %}
+
+  <div class="bs-sign">
+    <div class="c"><div class="sig">For {{ doc.company }}</div></div>
+    <div class="c"><div class="sig">Accepted for {{ doc.customer_name or doc.party_name }}</div></div>
+  </div>
+
+  <div class="bs-footer">Generated using <span class="bold">BuildSuite</span></div>
+</div>
+"""
+
+# The bid as the issuing body reads it. Lines print `sell_rate` — what we are bidding.
+# `rate` is our cost, and `notes` is the internal note; neither leaves the building.
+# BuildSuite Tenders carries no `company` field, so api.printing falls back to the is_default
+# Letter Head rather than resolving one per company. Correct for a bid, just not per-company.
+_TENDER_HTML = """
+<div class="bs-print">
+  <div class="bs-title-row">
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
+      <div class="bs-doc-title">TENDER</div>
+      <div class="bold">{{ doc.name }}</div>
+      <div class="muted">{{ frappe.utils.formatdate(doc.date_issued) if doc.date_issued else "" }}</div>
+    </div>
+  </div>
+
+  <div class="bs-offer-title">
+    {% if doc.tender_reference %}<div class="ref">{{ doc.tender_reference }}</div>{% endif %}
+    {{ doc.title or doc.name }}
+  </div>
+  <div class="bs-strip">
+    <div>
+      <div class="bs-label">Submitted to</div>
+      <div class="val">{{ doc.issuing_body or "&mdash;" }}</div>
+    </div>
+    <div>
+      <div class="bs-label">Submission deadline</div>
+      <div class="val">{{ frappe.utils.formatdate(doc.submission_deadline) if doc.submission_deadline else "&mdash;" }}</div>
+    </div>
+    <div>
+      <div class="bs-label">Envelope</div>
+      <div class="val">{{ doc.envelope_structure or "&mdash;" }}</div>
+    </div>
+    <div>
+      <div class="bs-label">Bid total</div>
+      <div class="val">{{ doc.get_formatted("bid_value") }}</div>
+    </div>
+  </div>
+
+  {% for s in doc.preamble_sections %}
+    <div class="bs-label">{{ s.heading }}</div>
+    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+  {% endfor %}
+
+  <div class="bs-label">Schedule of prices</div>
+  <table class="bs-lines bordered">
+    <thead><tr><th class="l" style="width:24px">#</th><th class="l">Description</th><th class="r" style="width:64px">Qty</th><th class="l" style="width:64px">Unit</th><th class="r" style="width:90px">Rate</th><th class="r" style="width:110px">Amount</th></tr></thead>
+    <tbody>
+      {% for item in doc.buildsuite_tenders_items %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td>{{ item.description }}</td>
+        <td class="r nums muted">{{ item.get_formatted("qty") }}</td>
+        <td class="muted">{{ item.unit or "" }}</td>
+        <td class="r nums muted">{{ item.get_formatted("sell_rate") }}</td>
+        <td class="r nums">{{ item.get_formatted("amount") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="bs-totals-wrap">
+    <div class="bs-totals">
+      <div class="row"><span>Price</span><span class="nums">{{ doc.get_formatted("bid_before_tax") }}</span></div>
+      {% if doc.tax_percent %}<div class="row"><span>Tax @ {{ doc.tax_percent }}%</span><span class="nums">{{ doc.get_formatted("tax_amount") }}</span></div>{% endif %}
+      <div class="row grand"><span>Bid total</span><span class="nums">{{ doc.get_formatted("bid_value") }}</span></div>
+    </div>
+  </div>
+
+  {% if doc.emd_amount or doc.performance_guarantee_percent %}
+  <div class="bs-label">Earnest money and guarantee</div>
+  <div class="bs-terms-text" style="margin-bottom:16px;">
+    {% if doc.emd_amount %}<div>Earnest money deposit: {{ doc.get_formatted("emd_amount") }}{% if doc.emd_instrument %} &mdash; {{ doc.emd_instrument }}{% endif %}{% if doc.emd_valid_until %}, valid to {{ frappe.utils.formatdate(doc.emd_valid_until) }}{% endif %}</div>{% endif %}
+    {% if doc.performance_guarantee_percent %}<div>Performance guarantee: {{ doc.performance_guarantee_percent }}% of the contract value ({{ frappe.utils.fmt_money((doc.bid_before_tax or 0) * (doc.performance_guarantee_percent | float) / 100, currency=frappe.defaults.get_global_default("currency")) }}), to be furnished on award.</div>{% endif %}
+  </div>
+  {% endif %}
+
+  {% for s in doc.terms_sections %}
+    <div class="bs-label">{{ s.heading }}</div>
+    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+  {% endfor %}
+
+  <div class="bs-sign">
+    <div class="c"><div class="sig">For {{ frappe.defaults.get_user_default("Company") or "" }}</div></div>
+    <div class="c"><div class="sig">Received for {{ doc.issuing_body or "" }}</div></div>
+  </div>
+
+  <div class="bs-footer">Generated using <span class="bold">BuildSuite</span></div>
+</div>
+"""
+
 _FORMATS = (
 	{"name": "BuildSuite Tax Invoice", "doc_type": "Sales Invoice", "html": _INVOICE_HTML, "css": _INVOICE_CSS},
 	{"name": "BuildSuite Work Order", "doc_type": "Subcontractor Work Order", "html": _WO_HTML, "css": _WO_CSS},
+	{"name": "BuildSuite Quotation", "doc_type": "Quotation", "html": _QUOTATION_HTML, "css": _SHARED_CSS},
+	{"name": "BuildSuite Tender", "doc_type": "BuildSuite Tenders", "html": _TENDER_HTML, "css": _SHARED_CSS},
 )
 
 
