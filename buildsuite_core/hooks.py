@@ -191,6 +191,9 @@ doc_events = {
 	"Payment Entry": {
 		"before_validate": "buildsuite_core.utils.payment.default_bank_reference"
 	},
+	# ERPNext stamps the global default company; BuildSuite resolves the working one (which
+	# follows the topbar switcher), and the print's letter head is picked from it.
+	"Quotation": {"before_insert": "buildsuite_core.utils.quotation.set_company"},
 	# ERPNext auto-creates a self-service User Permission (own Employee only) when a user is linked
 	# to their Employee. For a roster-managing persona that wrongly hides every OTHER employee
 	# (empty field-employee list, 403 on any other worker) — drop it so access matches the matrix.

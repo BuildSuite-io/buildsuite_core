@@ -11,6 +11,7 @@
   "title",
   "issuing_body",
   "project",
+  "company",
   "column_break_vvzt",
   "issued_by",
   "date_issued",
@@ -62,6 +63,14 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "Project"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "who_and_what_section",

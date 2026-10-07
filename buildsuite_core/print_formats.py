@@ -299,9 +299,9 @@ _QUOTATION_HTML = """
 
 # The bid as the issuing body reads it. Lines print `sell_rate` — what we are bidding.
 # `rate` is our cost, and `notes` is the internal note; neither leaves the building.
-# BuildSuite Tenders carries no `company` field, so api.printing falls back to the is_default
-# Letter Head rather than resolving one per company. Correct for a bid, just not per-company.
+# The letter head is the bidding company's, resolved from `company` by api.printing.
 _TENDER_HTML = """
+{% set currency = frappe.db.get_value("Company", doc.company, "default_currency") if doc.company else None %}
 <div class="bs-print">
   <div class="bs-title-row">
     <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
@@ -369,17 +369,18 @@ _TENDER_HTML = """
   <div class="bs-label">Earnest money and guarantee</div>
   <div class="bs-terms-text" style="margin-bottom:16px;">
     {% if doc.emd_amount %}<div>Earnest money deposit: {{ doc.get_formatted("emd_amount") }}{% if doc.emd_instrument %} &mdash; {{ doc.emd_instrument }}{% endif %}{% if doc.emd_valid_until %}, valid to {{ frappe.utils.formatdate(doc.emd_valid_until) }}{% endif %}</div>{% endif %}
-    {% if doc.performance_guarantee_percent %}<div>Performance guarantee: {{ doc.performance_guarantee_percent }}% of the contract value ({{ frappe.utils.fmt_money((doc.bid_before_tax or 0) * (doc.performance_guarantee_percent | float) / 100, currency=frappe.defaults.get_global_default("currency")) }}), to be furnished on award.</div>{% endif %}
+    {% if doc.performance_guarantee_percent %}<div>Performance guarantee: {{ doc.performance_guarantee_percent }}% of the contract value ({{ frappe.utils.fmt_money((doc.bid_before_tax or 0) * (doc.performance_guarantee_percent | float) / 100, currency=currency) }}), to be furnished on award.</div>{% endif %}
   </div>
   {% endif %}
 
+  {# Numbered: a tender's terms get quoted back by number in correspondence. #}
   {% for s in doc.terms_sections %}
-    <div class="bs-label">{{ s.heading }}</div>
+    <div class="bs-label">{{ loop.index }}. {{ s.heading }}</div>
     <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
   {% endfor %}
 
   <div class="bs-sign">
-    <div class="c"><div class="sig">For {{ frappe.defaults.get_user_default("Company") or "" }}</div></div>
+    <div class="c"><div class="sig">For {{ doc.company or "" }}</div></div>
     <div class="c"><div class="sig">Received for {{ doc.issuing_body or "" }}</div></div>
   </div>
 

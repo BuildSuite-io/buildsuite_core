@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, formatdate, getdate
 
+from buildsuite_core.utils.project import anchor_company_to_project
+
 
 class BuildSuiteTenders(Document):
 	# begin: auto-generated types
@@ -21,6 +23,7 @@ class BuildSuiteTenders(Document):
 		bid_before_tax: DF.Currency
 		bid_value: DF.Currency
 		buildsuite_tenders_items: DF.Table[BuildSuiteTendersItems]
+		company: DF.Link | None
 		date_issued: DF.Date | None
 		emd_amount: DF.Currency
 		emd_instrument: DF.Data | None
@@ -46,6 +49,8 @@ class BuildSuiteTenders(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		
+		anchor_company_to_project(self)
 		self.items_count = len(self.buildsuite_tenders_items)
 		self.validate_dates()
 		self.calculate_items()
