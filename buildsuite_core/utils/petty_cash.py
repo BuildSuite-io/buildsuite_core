@@ -71,26 +71,6 @@ def employee_for_user(user):
 	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
 
 
-def assign_beneficiary_owner(doc, beneficiary):
-	"""Visibility helper for Petty Cash Request + Expense Entry (after_insert).
-
-	The app scopes "see your own" via if_owner DocPerms, so a float/expense is visible to the
-	person it belongs to only when they are the record `owner`. When an approver raises it FOR
-	someone else, hand `owner` to that beneficiary so they can see it, and stamp `raised_by` with
-	the real creator so the audit trail (who actually raised it) survives the owner reassignment.
-	A self-raised record keeps its natural owner; `raised_by` is still recorded (same person)."""
-	creator = doc.owner  # the session user at insert, before any reassignment
-	updates = {}
-	if not doc.get("raised_by"):
-		updates["raised_by"] = creator
-	if beneficiary and beneficiary != doc.owner and frappe.db.exists("User", beneficiary):
-		updates["owner"] = beneficiary
-	if updates:
-		frappe.db.set_value(doc.doctype, doc.name, updates, update_modified=False)
-		for key, value in updates.items():
-			doc.set(key, value)
-
-
 def post_disbursement_journal_entry(doc):
 	"""Build + submit the disbursement JE and return its name."""
 	amount = flt(doc.amount)

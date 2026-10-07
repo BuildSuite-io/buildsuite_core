@@ -146,6 +146,8 @@ permission_query_conditions = {
 	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
 	"Scope Change Order": "buildsuite_core.permissions.sco.get_sco_permission_query",
+	"Petty Cash Request": "buildsuite_core.permissions.finance_access.get_petty_cash_permission_query",
+	"Expense Entry": "buildsuite_core.permissions.finance_access.get_expense_permission_query",
 }
 
 has_permission = {
@@ -155,6 +157,8 @@ has_permission = {
 	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 	"Scope Change Order": "buildsuite_core.permissions.sco.has_sco_permission",
+	"Petty Cash Request": "buildsuite_core.permissions.finance_access.has_petty_cash_permission",
+	"Expense Entry": "buildsuite_core.permissions.finance_access.has_expense_permission",
 }
 
 # Override the Project controller so its record name honours the BuildSuite Core

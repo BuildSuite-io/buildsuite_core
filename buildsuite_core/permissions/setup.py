@@ -646,25 +646,26 @@ def setup_sco_permissions():
 # roles have full access. Disbursing is gated in the API by PETTY_CASH_DISBURSE_ROLES,
 # not a DocPerm (any writer can save a request; only approvers can disburse).
 # Visibility rule (petty cash + expense): the four finance/admin roles below + System Manager see
-# EVERY record; every other role sees only its OWN (owner == the user). `owner` is handed to the
-# beneficiary on create (see the doctype after_insert), so a float raised FOR someone is visible to
-# them even though an approver created it; `raised_by` keeps the real creator for audit.
-_OWN = {"if_owner": 1}  # scope marker, merged into the own-only grants below
-_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
-_RAISE_OWN = {**_RAISE, **_OWN}  # raise + see own only
-_READ_OWN = {**_READ, **_OWN}  # see own only
+# EVERY record; every other role sees only the ones that are THEIRS — created by them (owner) OR
+# belonging to them (beneficiary). That own/beneficiary scoping is enforced in
+# permissions/finance_access (permission_query_conditions + has_permission), NOT via if_owner here,
+# so `owner` stays the real creator (Frappe's "Only If Creator" / "Created By" keep working). These
+# DocPerms therefore stay flat — they grant the ptypes; the hook narrows the rows.
+# Site Engineer / Foreman: manage their OWN requests fully, including delete (the finance_access
+# hook limits write/delete to the owner, so they can only remove a draft they raised themselves).
+_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
 PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 	"BuildSuite Director": _FULL,
 	"BuildSuite PM": _FULL,
 	"BuildSuite Accountant": _FULL,
-	"BuildSuite Site Engineer": {**_PETTY_CASH_SITE, **_OWN},  # own requests only
-	"BuildSuite Foreman": {**_PETTY_CASH_SITE, **_OWN},
-	"BuildSuite Store Keeper": _RAISE_OWN,  # raises petty-cash requests (create + read own)
-	"BuildSuite Procurement Officer": _RAISE_OWN,
-	"BuildSuite Estimator": _RAISE_OWN,
-	"BuildSuite HR Manager": _RAISE_OWN,
-	"BuildSuite QS": _READ_OWN,
+	"BuildSuite Site Engineer": _PETTY_CASH_SITE,  # own/beneficiary scoped by finance_access
+	"BuildSuite Foreman": _PETTY_CASH_SITE,
+	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read)
+	"BuildSuite Procurement Officer": _RAISE,
+	"BuildSuite Estimator": _RAISE,
+	"BuildSuite HR Manager": _RAISE,
+	"BuildSuite QS": _READ,
 }
 PETTY_CASH_DISBURSE_ROLES = (
 	"BuildSuite Accountant",
@@ -677,19 +678,21 @@ PETTY_CASH_DISBURSE_ROLES = (
 # Expense Entry (petty-cash / other spend). Site roles raise a draft (which counts
 # as "pending approval"); finance roles submit it, which posts the Journal Entry.
 # So submit/cancel is held by the finance approvers only, mirroring petty cash.
-_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+# Site Engineer / Foreman: full control of their own drafts, including delete (hook-scoped to the
+# owner). Finance approvers submit; a submitted entry is immutable, so delete only ever hits drafts.
+_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
 EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _FULL_SUB,
 	"BuildSuite PM": _FULL_SUB,
 	"BuildSuite Accountant": _FULL_SUB,
-	"BuildSuite Site Engineer": {**_EXPENSE_ENTRY_DRAFT, **_OWN},  # own entries only
-	"BuildSuite Foreman": {**_EXPENSE_ENTRY_DRAFT, **_OWN},
-	"BuildSuite Store Keeper": _RAISE_OWN,  # raises expense entries (create + read own); finance submits
-	"BuildSuite Procurement Officer": _RAISE_OWN,
-	"BuildSuite QS": _RAISE_OWN,  # per the QS ruling
-	"BuildSuite Estimator": _RAISE_OWN,
-	"BuildSuite HR Manager": _RAISE_OWN,
+	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,  # own/beneficiary scoped by finance_access
+	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
+	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance submits
+	"BuildSuite Procurement Officer": _RAISE,
+	"BuildSuite QS": _RAISE,  # per the QS ruling
+	"BuildSuite Estimator": _RAISE,
+	"BuildSuite HR Manager": _RAISE,
 }
 
 

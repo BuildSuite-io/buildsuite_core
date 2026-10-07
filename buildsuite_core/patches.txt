@@ -59,3 +59,4 @@ buildsuite_core.patches.rebaseline_report_role_matrix # 2026-09-23 re-baseline r
 buildsuite_core.patches.tile_rate_check_in_estimation # 2026-09-24 rate-check also an Estimation tile
 buildsuite_core.patches.seed_project_settings # 2026-09-24 seed the project page-tab template
 buildsuite_core.patches.scope_petty_cash_expense_visibility # 2026-10-07
+buildsuite_core.patches.restore_petty_cash_expense_owner_to_creator # 2026-10-07
