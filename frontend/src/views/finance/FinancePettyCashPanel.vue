@@ -69,7 +69,6 @@ const res = useDocTypeList("Petty Cash Request", {
 		"paid_from",
 		"disbursed_by",
 		"owner",
-		"raised_by",
 	],
 	orderBy: "request_date desc",
 	pageLength: 0,
@@ -93,8 +92,9 @@ if (!canDisburse.value) tab.value = "mine";
 const requested = computed(() => all.value.filter((r) => r.status === "Requested"));
 const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
 // Raised FOR me by someone else: I'm the holder (owner), but another user created it.
+// Raised FOR me: I'm the holder (requested_by) but someone else created it (owner != me).
 const raisedForMe = (row) =>
-	row.owner === session.user && row.raised_by && row.raised_by !== row.owner;
+	row.requested_by === session.user && row.owner && row.owner !== session.user;
 const filteredAll = computed(() => {
 	const q = search.value.trim().toLowerCase();
 	return all.value.filter((r) => {
@@ -461,7 +461,7 @@ const rowsForTab = computed(() => {
 					<span
 						v-if="raisedForMe(row)"
 						class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
-						:title="__('Raised for you by {0}', [userName(row.raised_by)])"
+						:title="__('Raised for you by {0}', [userName(row.owner)])"
 						>{{ __("Raised for you") }}</span
 					>
 				</div>
