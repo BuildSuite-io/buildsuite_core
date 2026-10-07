@@ -315,6 +315,12 @@ const routes = [
 				props: true,
 			},
 			{
+				path: "quotations/:id/print",
+				name: "quotation-print",
+				component: () => import("@/views/QuotationPrintView.vue"),
+				props: true,
+			},
+			{
 				path: "quotations/:id",
 				name: "quotation-detail",
 				component: () => import("@/views/QuotationDetailView.vue"),

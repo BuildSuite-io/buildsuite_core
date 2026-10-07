@@ -57,7 +57,7 @@ const columns = [
 <template>
 	<DeskPage :title="__('Quotations')"
 		:subtitle="__('Priced offers to customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.')"
-		:breadcrumbs="breadcrumbs" printable>
+		:breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink to="/quotations/new" class="desk-save-btn !text-xs">{{ __("+ New") }}</RouterLink>
 		</template>
