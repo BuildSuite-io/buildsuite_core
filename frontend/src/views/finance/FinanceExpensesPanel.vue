@@ -384,7 +384,7 @@ const expenseAccountFilters = computed(() => [
 						<tr v-for="e in toSubmitPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(e)">
 							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
-							<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
+							<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span><span v-if="e.raised_for_me" class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap" :title="__('Raised for you by {0}', [e.raised_by_name || e.raised_by])">{{ __("Raised for you") }}</span></div></td>
 							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 							<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>
@@ -430,7 +430,7 @@ const expenseAccountFilters = computed(() => [
 							<tr v-for="e in allExpensesPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
 								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
-								<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span></div></td>
+								<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span><span v-if="e.raised_for_me" class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap" :title="__('Raised for you by {0}', [e.raised_by_name || e.raised_by])">{{ __("Raised for you") }}</span></div></td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
 								<td class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900">{{ fmtINR(e.amount) }}</td>

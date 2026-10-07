@@ -26,6 +26,13 @@ class PettyCashRequest(Document):
 			)
 		self.company = employee.company
 
+	def after_insert(self):
+		# Hand `owner` to the holder (requested_by) so the if_owner DocPerms let them see their
+		# float even when an approver raised it for them; keep the real creator in `raised_by`.
+		from buildsuite_core.utils.petty_cash import assign_beneficiary_owner
+
+		assign_beneficiary_owner(self, self.requested_by)
+
 	def on_trash(self):
 		if self.status == "Disbursed":
 			frappe.throw(_("A disbursed request can't be deleted — cancel the disbursement first."))

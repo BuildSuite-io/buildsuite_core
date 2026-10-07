@@ -397,6 +397,9 @@ def _apply_role_perms(doctype, role_perms, ptypes=_PTYPES):
 				perms.get(ptype, 0),
 				validate=False,
 			)
+		# `if_owner` scopes the whole grant to records the user owns (owner == user). Always set
+		# it (default 0) so the matrix stays authoritative — a role never keeps a stale own-scope.
+		update_permission_property(doctype, role, 0, "if_owner", perms.get("if_owner", 0), validate=False)
 
 
 def _upgrade_role_perms(doctype, role_perms, ptypes=_PTYPES):
@@ -642,19 +645,26 @@ def setup_sco_permissions():
 # Site roles (Site Engineer / Foreman) raise + manage their own requests; finance
 # roles have full access. Disbursing is gated in the API by PETTY_CASH_DISBURSE_ROLES,
 # not a DocPerm (any writer can save a request; only approvers can disburse).
+# Visibility rule (petty cash + expense): the four finance/admin roles below + System Manager see
+# EVERY record; every other role sees only its OWN (owner == the user). `owner` is handed to the
+# beneficiary on create (see the doctype after_insert), so a float raised FOR someone is visible to
+# them even though an approver created it; `raised_by` keeps the real creator for audit.
+_OWN = {"if_owner": 1}  # scope marker, merged into the own-only grants below
 _PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+_RAISE_OWN = {**_RAISE, **_OWN}  # raise + see own only
+_READ_OWN = {**_READ, **_OWN}  # see own only
 PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 	"BuildSuite Director": _FULL,
 	"BuildSuite PM": _FULL,
 	"BuildSuite Accountant": _FULL,
-	"BuildSuite Site Engineer": _PETTY_CASH_SITE,
-	"BuildSuite Foreman": _PETTY_CASH_SITE,
-	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read); no edit/disburse
-	"BuildSuite Procurement Officer": _RAISE,  # raises petty-cash requests (create + read)
-	"BuildSuite Estimator": _RAISE,  # raises petty-cash requests (create + read)
-	"BuildSuite HR Manager": _RAISE,  # raises petty-cash requests (create + read)
-	"BuildSuite QS": _READ,
+	"BuildSuite Site Engineer": {**_PETTY_CASH_SITE, **_OWN},  # own requests only
+	"BuildSuite Foreman": {**_PETTY_CASH_SITE, **_OWN},
+	"BuildSuite Store Keeper": _RAISE_OWN,  # raises petty-cash requests (create + read own)
+	"BuildSuite Procurement Officer": _RAISE_OWN,
+	"BuildSuite Estimator": _RAISE_OWN,
+	"BuildSuite HR Manager": _RAISE_OWN,
+	"BuildSuite QS": _READ_OWN,
 }
 PETTY_CASH_DISBURSE_ROLES = (
 	"BuildSuite Accountant",
@@ -673,13 +683,13 @@ EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Director": _FULL_SUB,
 	"BuildSuite PM": _FULL_SUB,
 	"BuildSuite Accountant": _FULL_SUB,
-	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,
-	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
-	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance approves/submits
-	"BuildSuite Procurement Officer": _RAISE,  # raises expense entries (create + read)
-	"BuildSuite QS": _RAISE,  # raises expense entries (create + read), per the QS ruling
-	"BuildSuite Estimator": _RAISE,  # raises expense entries (create + read)
-	"BuildSuite HR Manager": _RAISE,  # raises expense entries (create + read)
+	"BuildSuite Site Engineer": {**_EXPENSE_ENTRY_DRAFT, **_OWN},  # own entries only
+	"BuildSuite Foreman": {**_EXPENSE_ENTRY_DRAFT, **_OWN},
+	"BuildSuite Store Keeper": _RAISE_OWN,  # raises expense entries (create + read own); finance submits
+	"BuildSuite Procurement Officer": _RAISE_OWN,
+	"BuildSuite QS": _RAISE_OWN,  # per the QS ruling
+	"BuildSuite Estimator": _RAISE_OWN,
+	"BuildSuite HR Manager": _RAISE_OWN,
 }
 
 

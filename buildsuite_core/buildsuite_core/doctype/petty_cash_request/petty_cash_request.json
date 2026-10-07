@@ -7,6 +7,7 @@
  "field_order": [
   "project",
   "requested_by",
+  "raised_by",
   "request_date",
   "column_break_hdr",
   "amount",
@@ -37,6 +38,15 @@
    "in_standard_filter": 1,
    "label": "Requested By",
    "options": "User"
+  },
+  {
+   "fieldname": "raised_by",
+   "fieldtype": "Link",
+   "label": "Raised By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Who actually created this record (audit). Owner is handed to the beneficiary so they can see it."
   },
   {
    "default": "Today",

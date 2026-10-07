@@ -68,6 +68,8 @@ const res = useDocTypeList("Petty Cash Request", {
 		"company",
 		"paid_from",
 		"disbursed_by",
+		"owner",
+		"raised_by",
 	],
 	orderBy: "request_date desc",
 	pageLength: 0,
@@ -90,6 +92,9 @@ if (!canDisburse.value) tab.value = "mine";
 
 const requested = computed(() => all.value.filter((r) => r.status === "Requested"));
 const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
+// Raised FOR me by someone else: I'm the holder (owner), but another user created it.
+const raisedForMe = (row) =>
+	row.owner === session.user && row.raised_by && row.raised_by !== row.owner;
 const filteredAll = computed(() => {
 	const q = search.value.trim().toLowerCase();
 	return all.value.filter((r) => {
@@ -452,6 +457,12 @@ const rowsForTab = computed(() => {
 					<UserAvatar :user-id="row.requested_by" size="xs" /><span
 						class="text-xs text-ink-900"
 						>{{ userName(row.requested_by) }}</span
+					>
+					<span
+						v-if="raisedForMe(row)"
+						class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
+						:title="__('Raised for you by {0}', [userName(row.raised_by)])"
+						>{{ __("Raised for you") }}</span
 					>
 				</div>
 			</template>
