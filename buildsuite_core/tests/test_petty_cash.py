@@ -76,6 +76,58 @@ class TestPettyCash(BuildSuiteTestCase):
 		)
 		self.assertEqual(req.company, emp_company)
 
+	def test_visibility_scoping_and_raised_for(self):
+		"""Own-only scoping + owner handed to the beneficiary. A float an approver raises FOR a
+		site user is owned by that user (so if_owner lets them see it), keeps the real creator in
+		raised_by, flags raised_for_me, is hidden from a different site user, and is visible to a
+		see-all role."""
+		import json
+
+		from buildsuite_core.api.petty_cash import get_request, issue_direct
+
+		def role_user(role):
+			email = f"pcvis-{frappe.generate_hash(length=5)}@example.com"
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": email,
+					"first_name": "Vis",
+					"user_type": "System User",
+					"send_welcome_email": 0,
+					"roles": [{"role": role}],
+				}
+			).insert(ignore_permissions=True)
+			self._ensure_employee(email)
+			return email
+
+		beneficiary = role_user("BuildSuite Site Engineer")
+		other = role_user("BuildSuite Site Engineer")
+		cash = self._cash_account()
+
+		# Administrator (a disburser) issues a direct float FOR the beneficiary.
+		frappe.set_user("Administrator")
+		name = issue_direct(
+			json.dumps(
+				{"requested_by": beneficiary, "amount": 500, "purpose": "Site float", "paid_from": cash}
+			)
+		)["name"]
+		doc = frappe.get_doc("Petty Cash Request", name)
+		self.assertEqual(doc.owner, beneficiary)  # owner handed to the holder
+		self.assertEqual(doc.raised_by, "Administrator")  # real creator kept for audit
+
+		# The beneficiary can see it (if_owner) and sees the "raised for me" cue.
+		self.assertTrue(frappe.has_permission("Petty Cash Request", "read", doc=name, user=beneficiary))
+		frappe.set_user(beneficiary)
+		ser = get_request(name)
+		self.assertTrue(ser["raised_for_me"])
+		self.assertEqual(ser["raised_by"], "Administrator")
+		frappe.set_user("Administrator")
+
+		# A different site user canNOT see it; a see-all role (Accountant) can.
+		self.assertFalse(frappe.has_permission("Petty Cash Request", "read", doc=name, user=other))
+		acct = role_user("BuildSuite Accountant")
+		self.assertTrue(frappe.has_permission("Petty Cash Request", "read", doc=name, user=acct))
+
 	def test_non_employee_cannot_request(self):
 		user = (
 			frappe.get_doc(

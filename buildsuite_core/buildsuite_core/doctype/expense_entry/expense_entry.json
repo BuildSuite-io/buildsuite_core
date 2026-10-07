@@ -20,6 +20,7 @@
   "payment_account_name",
   "column_break_oofb",
   "employee",
+  "raised_by",
   "employee_name",
   "section_break_cjvh",
   "expense_entry_table",
@@ -116,6 +117,15 @@
    "fieldtype": "Link",
    "label": "Employee",
    "options": "Employee"
+  },
+  {
+   "fieldname": "raised_by",
+   "fieldtype": "Link",
+   "label": "Raised By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Who actually created this record (audit). Owner is handed to the beneficiary so they can see it."
   },
   {
    "fieldname": "expense_entry_table",

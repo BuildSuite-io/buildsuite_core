@@ -66,9 +66,12 @@ def context():
 def list_expenses():
 	"""Flattened expense records (one per Expense Entry) shaped like the prototype's
 	list: date, description, holder, source, account, cost type, amount, status."""
-	entries = frappe.get_all(
+	# get_list (NOT get_all) so the if_owner DocPerms scope the list: the four finance/admin roles
+	# + System Manager see every entry; everyone else sees only their own (owner == them, which is
+	# the holder the expense belongs to — see after_insert).
+	entries = frappe.get_list(
 		DOCTYPE,
-		fields=["name", "creation", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description"],
+		fields=["name", "creation", "date", "project", "company", "employee", "employee_name", "total_amount", "docstatus", "paid_from", "payment_account", "description", "owner", "raised_by"],
 		order_by="date desc, creation desc",
 		limit_page_length=0,
 	)
@@ -114,6 +117,10 @@ def list_expenses():
 				"attachment": fr.get("attachment"),
 				"amount": e.total_amount,
 				"status": status_map.get(e.docstatus, "Draft"),
+				# Visual cue: raised FOR me by someone else (I'm the holder/owner, another created it).
+				"raised_by": e.raised_by,
+				"raised_by_name": frappe.db.get_value("User", e.raised_by, "full_name") if e.raised_by else None,
+				"raised_for_me": bool(e.raised_by) and e.raised_by != e.owner and e.owner == frappe.session.user,
 			}
 		)
 	return out
@@ -137,6 +144,16 @@ def get_expense(name: str):
 		"paid_from": doc.paid_from,
 		"journal_entry": doc.journal_entry,
 		"description": doc.description,
+		# Audit + visual cue: `owner` is the holder the expense belongs to; `raised_by` is who
+		# actually created it. When they differ and I'm the holder, it was raised FOR me.
+		"owner": doc.owner,
+		"raised_by": doc.get("raised_by"),
+		"raised_by_name": frappe.db.get_value("User", doc.get("raised_by"), "full_name")
+		if doc.get("raised_by")
+		else None,
+		"raised_for_me": bool(doc.get("raised_by"))
+		and doc.get("raised_by") != doc.owner
+		and doc.owner == frappe.session.user,
 		"rows": [
 			{
 				"expense_account": r.expense_account,
