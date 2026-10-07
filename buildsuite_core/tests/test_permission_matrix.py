@@ -184,10 +184,10 @@ class TestPersonaRoleSync(_PersonaBase):
 		)
 
 
-# The six role-gated Script Reports, transcribed from the "Report access by persona"
-# sheet: the personas each report should be runnable by. "O" (by-decision) cells are
-# treated as expected-access. The other matrix rows are ungated route tiles / bespoke
-# Vue views (no Report to gate) and can't be asserted here.
+# The six role-gated reports, mirroring the authoritative roles in report_access.py (which were
+# re-baselined to the access sheet and are what fresh installs + migrate apply). Each value is the
+# personas that report should be runnable by. The other matrix rows are ungated route tiles /
+# bespoke Vue views (no Report to gate) and can't be asserted here.
 REPORT_MATRIX = {
 	"Billing and Collection": {
 		"Director / Owner",
@@ -199,8 +199,6 @@ REPORT_MATRIX = {
 	"Subcontractor Position": {
 		"Director / Owner",
 		"Project Manager",
-		"Quantity Surveyor",
-		"Procurement Officer",  # "O" — by decision (T3 exception)
 		"Accountant",
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
@@ -208,11 +206,8 @@ REPORT_MATRIX = {
 	"Material Status": {
 		"Director / Owner",
 		"Project Manager",
-		"Quantity Surveyor",
 		"Site Engineer",
 		"Foreman / Supervisor",
-		"Procurement Officer",
-		"Store Keeper",
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
 	},
@@ -220,6 +215,8 @@ REPORT_MATRIX = {
 		"Director / Owner",
 		"Project Manager",
 		"Quantity Surveyor",
+		"Site Engineer",
+		"Procurement Officer",
 		"Accountant",
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
@@ -229,7 +226,6 @@ REPORT_MATRIX = {
 		"Project Manager",
 		"Quantity Surveyor",
 		"Site Engineer",
-		"Accountant",
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
 	},
@@ -237,6 +233,7 @@ REPORT_MATRIX = {
 		"Director / Owner",
 		"Project Manager",
 		"Quantity Surveyor",
+		"Procurement Officer",
 		"Accountant",
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
