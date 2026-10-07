@@ -88,6 +88,16 @@ def list_expenses():
 	):
 		first.setdefault(r.parent, r)
 
+	# Entries that carry a native document attachment (mobile/Desk receipts) — so the 📎 shows even
+	# when the legacy per-line field is empty.
+	native_attached = set(
+		frappe.get_all(
+			"File",
+			filters={"attached_to_doctype": DOCTYPE, "attached_to_name": ["in", names]},
+			pluck="attached_to_name",
+		)
+	)
+
 	# For the "raised for me" cue: the holder Employee's linked User (beneficiary) and the owner's
 	# display name (the creator).
 	emp_user = {}
@@ -132,6 +142,7 @@ def list_expenses():
 				"expense_account": fr.get("expense_account"),
 				"cost_code": fr.get("cost_code_label"),
 				"attachment": fr.get("attachment"),
+				"has_attachment": bool(fr.get("attachment")) or e.name in native_attached,
 				"amount": e.total_amount,
 				"status": status_map.get(e.docstatus, "Draft"),
 				# Visual cue: I'm the holder (beneficiary) but didn't create it → raised FOR me.
@@ -144,11 +155,61 @@ def list_expenses():
 	return out
 
 
+def _native_attachments(name):
+	"""Frappe's native document attachments (File records) on an Expense Entry — the same ones
+	Desk shows in its Attachments sidebar and the mobile app writes. The SPA used to read only a
+	custom per-line `attachment` field, so a receipt added on mobile/Desk never showed here."""
+	return frappe.get_all(
+		"File",
+		filters={"attached_to_doctype": DOCTYPE, "attached_to_name": name},
+		fields=["name", "file_name", "file_url", "is_private"],
+		order_by="creation asc",
+	)
+
+
+def _ensure_native_attachment(doc, file_url):
+	"""Attach a receipt the SPA uploaded (a per-line `attachment` URL) to the document natively,
+	so it also shows in Desk and the mobile app. Re-links an unattached File (uploaded before the
+	doc existed) or creates the link; idempotent."""
+	if not file_url:
+		return
+	files = frappe.get_all(
+		"File", filters={"file_url": file_url}, fields=["name", "attached_to_doctype", "attached_to_name"]
+	)
+	# Already attached to this Expense Entry — nothing to do.
+	if any(f.attached_to_doctype == DOCTYPE and f.attached_to_name == doc.name for f in files):
+		return
+	# Re-link a File that isn't attached to anything yet (the SPA uploads it before the doc exists).
+	orphan = next((f for f in files if not f.attached_to_name), None)
+	if orphan:
+		frappe.db.set_value(
+			"File", orphan.name, {"attached_to_doctype": DOCTYPE, "attached_to_name": doc.name}
+		)
+	else:
+		frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_url": file_url,
+				"attached_to_doctype": DOCTYPE,
+				"attached_to_name": doc.name,
+				"folder": "Home/Attachments",
+			}
+		).insert(ignore_permissions=True)
+
+
 @frappe.whitelist()
 def get_expense(name: str):
 	"""Full expense entry (parent + lines) for the detail modal."""
 	doc = frappe.get_doc(DOCTYPE, name)
 	doc.check_permission("read")
+	# Native attachments are the authoritative receipt list; fold in any legacy per-line URLs that
+	# aren't already attached natively, deduped, so nothing uploaded the old way is lost.
+	attachments = _native_attachments(doc.name)
+	seen = {a["file_url"] for a in attachments}
+	for r in doc.expense_entry_table:
+		if r.attachment and r.attachment not in seen:
+			attachments.append({"name": None, "file_name": None, "file_url": r.attachment, "is_private": None})
+			seen.add(r.attachment)
 	return {
 		"name": doc.name,
 		"date": str(doc.date) if doc.date else None,
@@ -169,6 +230,7 @@ def get_expense(name: str):
 		"raised_for_me": doc.owner != frappe.session.user
 		and (frappe.db.get_value("Employee", doc.employee, "user_id") if doc.employee else None)
 		== frappe.session.user,
+		"attachments": attachments,
 		"rows": [
 			{
 				"expense_account": r.expense_account,
@@ -276,6 +338,10 @@ def save_expense(payload: str):
 		)
 	doc.flags.ignore_permissions = True
 	doc.save()
+	# Attach any SPA-uploaded receipts to the document natively, so they also show in Desk and the
+	# mobile app (which use Frappe's native attachments) — not just the SPA's per-line field.
+	for r in rows:
+		_ensure_native_attachment(doc, r.get("attachment"))
 	return {"name": doc.name}
 
 
