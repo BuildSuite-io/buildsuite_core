@@ -175,8 +175,12 @@ const myExpensesPager = usePagination(myExpenses);
 
 // --- detail modal ---
 const detail = ref(null);
-function openDetail(e) {
-	detail.value = e;
+async function openDetail(e) {
+	detail.value = e; // show list data immediately
+	// Enrich with the full entry so the Receipt section has the native document attachments
+	// (what the mobile app and Desk use) and not just the legacy per-line field.
+	const full = await getExpense(e.name).catch(() => null);
+	if (full && detail.value?.name === e.name) detail.value = { ...e, ...full };
 }
 function closeDetail() {
 	detail.value = null;
@@ -383,7 +387,7 @@ const expenseAccountFilters = computed(() => [
 					<tbody>
 						<tr v-for="e in toSubmitPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer" @click="openDetail(e)">
 							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
-							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
+							<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.has_attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 							<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span><span v-if="e.raised_for_me" class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap" :title="__('Raised for you by {0}', [e.raised_by_name || e.raised_by])">{{ __("Raised for you") }}</span></div></td>
 							<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 							<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
@@ -429,7 +433,7 @@ const expenseAccountFilters = computed(() => [
 						<tbody>
 							<tr v-for="e in allExpensesPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
-								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
+								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.has_attachment" class="ml-1 text-ink-400">📎</span><div class="text-[10px] text-ink-400">{{ projectName(e) }}</div></td>
 								<td class="px-4 py-2.5 text-ink-700"><div class="flex items-center gap-1.5"><UserAvatar :name="holderName(e)" size="xs" /><span>{{ holderName(e) }}</span><span v-if="e.raised_for_me" class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap" :title="__('Raised for you by {0}', [e.raised_by_name || e.raised_by])">{{ __("Raised for you") }}</span></div></td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
@@ -469,7 +473,7 @@ const expenseAccountFilters = computed(() => [
 						<tbody>
 							<tr v-for="e in myExpensesPager.pagedRows" :key="e.name" class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30 cursor-pointer" @click="openDetail(e)">
 								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
-								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.attachment" class="ml-1 text-ink-400">📎</span></td>
+								<td class="px-4 py-2.5 text-ink-900">{{ e.description }}<span v-if="e.has_attachment" class="ml-1 text-ink-400">📎</span></td>
 								<td class="px-4 py-2.5 text-ink-500">{{ projectName(e) }}</td>
 								<td class="px-4 py-2.5"><span class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" :class="sourceChipClass(e.source)">{{ __(e.source) }}</span></td>
 								<td class="px-4 py-2.5 text-ink-600">{{ e.expense_account || e.cost_code || "—" }}</td>
@@ -508,7 +512,10 @@ const expenseAccountFilters = computed(() => [
 						</div>
 						<div>
 							<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">{{ __("Receipt") }}</div>
-							<a v-if="detail.attachment" :href="detail.attachment" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline">{{ __("View receipt") }}</a>
+							<div v-if="detail.attachments && detail.attachments.length" class="flex flex-col gap-1 items-start">
+								<a v-for="(a, i) in detail.attachments" :key="a.file_url || i" :href="a.file_url" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline truncate max-w-full">{{ a.file_name || __("View receipt") }}</a>
+							</div>
+							<a v-else-if="detail.attachment" :href="detail.attachment" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline">{{ __("View receipt") }}</a>
 							<div v-else class="text-xs text-ink-400 italic">{{ __("No receipt attached.") }}</div>
 						</div>
 						<div v-if="detail.status === 'Cancelled'" class="px-3 py-2 bg-danger-50 border border-danger-200 rounded-md text-[11px] text-danger-700">
