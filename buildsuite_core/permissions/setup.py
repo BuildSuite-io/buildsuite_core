@@ -651,7 +651,9 @@ def setup_sco_permissions():
 # permissions/finance_access (permission_query_conditions + has_permission), NOT via if_owner here,
 # so `owner` stays the real creator (Frappe's "Only If Creator" / "Created By" keep working). These
 # DocPerms therefore stay flat — they grant the ptypes; the hook narrows the rows.
-_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+# Site Engineer / Foreman: manage their OWN requests fully, including delete (the finance_access
+# hook limits write/delete to the owner, so they can only remove a draft they raised themselves).
+_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
 PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 	"BuildSuite Director": _FULL,
@@ -676,7 +678,9 @@ PETTY_CASH_DISBURSE_ROLES = (
 # Expense Entry (petty-cash / other spend). Site roles raise a draft (which counts
 # as "pending approval"); finance roles submit it, which posts the Journal Entry.
 # So submit/cancel is held by the finance approvers only, mirroring petty cash.
-_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}
+# Site Engineer / Foreman: full control of their own drafts, including delete (hook-scoped to the
+# owner). Finance approvers submit; a submitted entry is immutable, so delete only ever hits drafts.
+_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
 EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _FULL_SUB,

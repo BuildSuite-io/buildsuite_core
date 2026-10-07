@@ -386,7 +386,7 @@ PERSONA_CRUD_MATRIX = {
 		"Overtime Attendance Register": "r",  # derived register — read-only
 		"Machinery": "r",  # register — read-only
 		"Machinery Usage": "crwd",  # usage log — full (not submittable, so the ruling's S/X are N/A)
-		"Expense Entry": "crw",  # raise + edit own draft; satisfies the "create + read" ruling
+		"Expense Entry": "crwd",  # raise + edit + delete own draft (hook-scoped to the owner)
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
 	"Estimator": {

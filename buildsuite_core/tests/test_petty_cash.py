@@ -115,9 +115,10 @@ class TestPettyCash(BuildSuiteTestCase):
 		self.assertEqual(doc.owner, "Administrator")  # owner stays the CREATOR
 		self.assertEqual(doc.requested_by, beneficiary)  # beneficiary recorded separately
 
-		# The beneficiary can READ it (hook: requested_by) and sees the cue, but can't edit it.
+		# The beneficiary can READ it (hook: requested_by) and sees the cue, but can't edit/delete it.
 		self.assertTrue(frappe.has_permission("Petty Cash Request", "read", doc=name, user=beneficiary))
 		self.assertFalse(frappe.has_permission("Petty Cash Request", "write", doc=name, user=beneficiary))
+		self.assertFalse(frappe.has_permission("Petty Cash Request", "delete", doc=name, user=beneficiary))
 		frappe.set_user(beneficiary)
 		self.assertTrue(get_request(name)["raised_for_me"])
 		frappe.set_user("Administrator")
@@ -133,6 +134,7 @@ class TestPettyCash(BuildSuiteTestCase):
 		frappe.set_user("Administrator")
 		self.assertEqual(frappe.db.get_value("Petty Cash Request", own, "owner"), other)
 		self.assertTrue(frappe.has_permission("Petty Cash Request", "write", doc=own, user=other))
+		self.assertTrue(frappe.has_permission("Petty Cash Request", "delete", doc=own, user=other))
 		self.assertFalse(frappe.has_permission("Petty Cash Request", "read", doc=own, user=beneficiary))
 
 	def test_expense_visibility_owner_is_creator(self):
