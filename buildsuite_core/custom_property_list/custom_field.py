@@ -19,6 +19,14 @@ CUSTOM_FIELD = {
 			"in_standard_filter": 1,
 			"module": "BuildSuite Core",
 		},
+		{
+			"fieldname": "custom_rate_master",
+			"fieldtype": "Link",
+			"label": "Rate Master",
+			"options": "Construction Rate Master",
+			"insert_after": "image",
+			"module": "BuildSuite Core",
+		},
 	],
 	# Company branding — drives the shared "BuildSuite Standard" Letter Head used by every
 	# print format. The logo + subtext are edited in the SPA (Settings → Company Branding) or
@@ -433,16 +441,6 @@ CUSTOM_FIELD = {
 			"read_only": 0,
 		}
 	],
-	"Item": [
-		{
-			"fieldname": "custom_rate_master",
-			"fieldtype": "Link",
-			"label": "Rate Master",
-			"options": "Construction Rate Master",
-			"insert_after": "image",
-			"module": "BuildSuite Core",
-		},
-	],
 	"Purchase Order": [
 		{
 			"fieldname": "custom_rate_master_banner",
@@ -568,6 +566,42 @@ CUSTOM_FIELD = {
 			"fetch_from": "custom_rate_master.current_rate",
 			"read_only": 1,
 			"insert_after": "custom_rate_master_name",
+			"module": "BuildSuite Core",
+		},
+		# The BOQ cost code this PO line commits against (S384). Same four fields as Subcontractor
+		# Work Order Line / Stock Entry, so CostCodePicker.vue works unchanged; a submitted PO line
+		# feeds the BOQ "Committed" column by cost-code group (see po_committed_by_cost_code).
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "custom_rate_master_rate",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
 			"module": "BuildSuite Core",
 		},
 	],

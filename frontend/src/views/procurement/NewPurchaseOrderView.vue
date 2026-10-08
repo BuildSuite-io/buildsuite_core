@@ -15,6 +15,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
@@ -31,7 +32,7 @@ const canSaveForm = computed(() =>
 );
 
 function emptyLine() {
-	return { item_code: "", description: "", qty: null, uom: "", rate: null };
+	return { item_code: "", description: "", qty: null, uom: "", rate: null, cost_code: null };
 }
 // Default the line's UOM (and description, when blank) from the Item master on pick — mirrors the
 // Supplier Bill direct-line behaviour so choosing an item never leaves UOM empty (get_item_details
@@ -102,6 +103,7 @@ watch(
 					qty: it.qty,
 					uom: it.uom || "",
 					rate: it.rate ?? null,
+					cost_code: it.cost_code || null,
 				})),
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
@@ -128,6 +130,7 @@ watch(
 					qty: l.qty,
 					uom: l.uom || "",
 					rate: l.rate ?? null,
+					cost_code: l.cost_code || null,
 				}));
 			}
 		} catch (err) {
@@ -180,6 +183,7 @@ async function onSave() {
 				qty: Number(l.qty),
 				uom: l.uom || null,
 				rate: Number(l.rate) || 0,
+				cost_code: l.cost_code || null,
 			})),
 		});
 		showToast(isEdit.value ? __("Order saved.") : __("Order created."));
@@ -290,13 +294,16 @@ const saveLabel = computed(() =>
 					</button>
 				</div>
 				<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
-					<table class="w-full text-xs" style="min-width: 760px">
+					<table class="w-full text-xs" style="min-width: 920px">
 						<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 							<tr>
 								<th class="text-left px-3 py-2" style="min-width: 200px">
 									{{ __("Item") }}
 								</th>
 								<th class="text-left px-3 py-2">{{ __("Notes") }}</th>
+								<th class="text-left px-3 py-2" style="min-width: 160px">
+									{{ __("Cost code") }}
+								</th>
 								<th class="text-right px-3 py-2 w-20">{{ __("Qty") }}</th>
 								<th class="text-left px-3 py-2 w-28">{{ __("UOM") }}</th>
 								<th class="text-right px-3 py-2 w-28">{{ __("Rate") }}</th>
@@ -329,6 +336,13 @@ const saveLabel = computed(() =>
 										v-model="line.description"
 										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
 										:placeholder="__('Notes…')"
+									/>
+								</td>
+								<td class="px-3 py-2" style="min-width: 160px">
+									<CostCodePicker
+										v-model="line.cost_code"
+										:project-id="form.project"
+										:placeholder="__('— Cost code —')"
 									/>
 								</td>
 								<td class="px-3 py-2">
@@ -377,7 +391,7 @@ const saveLabel = computed(() =>
 						<tfoot>
 							<tr class="border-t-2 border-ink-200 bg-ink-50">
 								<td
-									colspan="5"
+									colspan="6"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
 									{{ __("Total") }}
