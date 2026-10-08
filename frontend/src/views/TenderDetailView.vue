@@ -89,9 +89,13 @@ async function onDelete() {
 		</template>
 	</div>
 
-	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs"
-		printable>
+	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<template #actions>
+			<RouterLink :to="`/tenders/${id}/print`"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px">
+				{{ __("Print / PDF") }}
+			</RouterLink>
 			<RouterLink :to="`/tenders/${id}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px">

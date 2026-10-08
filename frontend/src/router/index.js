@@ -287,6 +287,12 @@ const routes = [
 				component: () => import("@/views/NewTenderView.vue"),
 			},
 			{
+				path: "tenders/:id/print",
+				name: "tender-print",
+				component: () => import("@/views/TenderPrintView.vue"),
+				props: true,
+			},
+			{
 				path: "tenders/:id/edit",
 				name: "tender-edit",
 				component: () => import("@/views/NewTenderView.vue"),
