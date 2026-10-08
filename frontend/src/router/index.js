@@ -185,13 +185,6 @@ const routes = [
 				props: true,
 			},
 			{ path: "tasks", name: "tasks", component: () => import("@/views/TasksView.vue") },
-			{ path: "todo", name: "todo", component: () => import("@/views/TodosView.vue") },
-			{
-				path: "todo/:id",
-				name: "todo-detail",
-				component: () => import("@/views/TodoDetailView.vue"),
-				props: true,
-			},
 			{
 				path: "notifications",
 				name: "notifications",
@@ -1057,6 +1050,21 @@ const routes = [
 			},
 		],
 	},
+	// To-dos run in their own thin, full-width shell (no desk sidebar) — prototype S365/S393.
+	// URLs stay /todo and /todo/:id so the top-nav slot and notification links still resolve.
+	{
+		path: "/todo",
+		component: () => import("@/layouts/TodoShell.vue"),
+		children: [
+			{ path: "", name: "todo", component: () => import("@/views/TodosView.vue") },
+			{
+				path: ":id",
+				name: "todo-detail",
+				component: () => import("@/views/TodoDetailView.vue"),
+				props: true,
+			},
+		],
+	},
 	{
 		path: "/forbidden",
 		name: "forbidden",
@@ -1289,8 +1297,8 @@ router.beforeEach(async (to) => {
 			action === "create"
 				? canCreate(capResource)
 				: action === "edit"
-					? canEdit(capResource)
-					: canRead(capResource);
+				? canEdit(capResource)
+				: canRead(capResource);
 		if (!allowedCap) return { path: "/" };
 	}
 
