@@ -78,6 +78,22 @@ class TestPoCommitted(BuildSuiteTestCase):
 		# The combined BOQ 'Committed' getter folds the PO in.
 		self.assertEqual(subcontract.committed_by_cost_code(p.name).get("A"), 200)
 
+	def test_committed_drill_down_lists_the_po_line(self):
+		p = self._make_project(company=self.company)
+		po = self._save_po(p.name, self._supplier().name, self._item().name, qty=3, rate=100, group="A")
+		frappe.get_doc("Purchase Order", po["name"]).submit()
+
+		res = subcontract.get_committed_for_code(p.name, "A")
+		self.assertEqual(res["total"], 300)
+		self.assertEqual(len(res["entries"]), 1)
+		e = res["entries"][0]
+		self.assertEqual(e["source_doctype"], "Purchase Order")
+		self.assertEqual(e["source_name"], po["name"])
+		self.assertEqual(e["cost_type"], "Purchase")
+		self.assertEqual(e["amount"], 300)
+		# A different group drills down to nothing.
+		self.assertEqual(subcontract.get_committed_for_code(p.name, "B")["entries"], [])
+
 	def test_line_without_cost_code_is_ignored(self):
 		p = self._make_project(company=self.company)
 		po = save_purchase_order(

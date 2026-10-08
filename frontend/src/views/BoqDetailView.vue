@@ -16,7 +16,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode, getCommittedForCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -38,12 +38,7 @@ const adapter = createDataAdapter(useDataStore());
 const confirmDialog = useConfirm();
 // Gate BOQ mutations by the persona's capability, not just docstatus. `canSubmit` is
 // aliased to canSubmitCap to avoid colliding with the local draft-status computed below.
-const {
-	canEdit,
-	canDelete,
-	canCreate,
-	canSubmit: canSubmitCap,
-} = usePermissions();
+const { canEdit, canDelete, canCreate, canSubmit: canSubmitCap } = usePermissions();
 
 // === Data load: BOQ header + the three child levels ===
 const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
@@ -388,6 +383,45 @@ function groupCommitted(group) {
 	return committedMap.value[group.code] || 0;
 }
 
+// ===== Committed drill-down — click a group's Committed to open the Work Orders / Purchase
+// Orders that make it up. Mirrors the Actuals drill-down; Committed is a group-level column so
+// there is no item-level variant.
+const committedDrill = ref(null); // null | { title, subtitle, entries, total, loading }
+async function openGroupCommitted(group) {
+	const pid = boq.value?.projectId;
+	if (!pid || !groupCommitted(group)) return;
+	committedDrill.value = {
+		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
+		subtitle: __("Group committed — contributing orders"),
+		entries: [],
+		total: 0,
+		loading: true,
+	};
+	try {
+		const res = await getCommittedForCode(pid, group.code);
+		committedDrill.value = {
+			...committedDrill.value,
+			entries: res.entries || [],
+			total: res.total || 0,
+			loading: false,
+		};
+	} catch (err) {
+		showToast(err.message || __("Failed to load committed"), "error");
+		committedDrill.value = null;
+	}
+}
+function closeCommittedDrill() {
+	committedDrill.value = null;
+}
+// Navigate to the order a committed entry was derived from — in-app where a screen exists.
+function openCommittedSource(e) {
+	if (e.source_doctype === "Subcontractor Work Order") {
+		router.push(`/subcontractor-work-orders/${e.source_name}`);
+	} else if (e.source_doctype === "Purchase Order") {
+		router.push(`/procurement/purchase-orders/${e.source_name}`);
+	}
+}
+
 // === Actual — the cost-code actuals log ===
 // Real spend reaches the BOQ through the cost code (Material Consumption + Subcontractor Bill +
 // Expense Entry), resolved by code against this project. The Actual column and the per-code
@@ -488,6 +522,7 @@ function openActualSource(e) {
 const COST_TYPE_TONE = {
 	Material: "bg-info-50 text-info-700",
 	Subcontract: "bg-brand-50 text-brand-700",
+	Purchase: "bg-success-50 text-success-700",
 	Overhead: "bg-warning-50 text-warning-700",
 	Labour: "bg-success-50 text-success-700",
 	Plant: "bg-ink-100 text-ink-700",
@@ -549,7 +584,10 @@ async function approve() {
 	void others;
 	const ok = await confirmDialog({
 		title: __("Approve revision"),
-		message: __("Approve revision {0}? Any other approved revision on this project is superseded.", [boq.value.revision]),
+		message: __(
+			"Approve revision {0}? Any other approved revision on this project is superseded.",
+			[boq.value.revision]
+		),
 		confirmLabel: __("Approve"),
 	});
 	if (!ok) return;
@@ -810,10 +848,18 @@ async function saveGroup() {
 async function deleteGroupConfirm(g) {
 	const items = boqItemsByGroup(g.id);
 	const msg = !items.length
-			? __('Delete group "{0} — {1}"?', [g.code, g.name])
-			: items.length === 1
-			? __('Delete group "{0} — {1}" with {2} item and their sub-items?', [g.code, g.name, items.length])
-			: __('Delete group "{0} — {1}" with {2} items and their sub-items?', [g.code, g.name, items.length]);
+		? __('Delete group "{0} — {1}"?', [g.code, g.name])
+		: items.length === 1
+		? __('Delete group "{0} — {1}" with {2} item and their sub-items?', [
+				g.code,
+				g.name,
+				items.length,
+		  ])
+		: __('Delete group "{0} — {1}" with {2} items and their sub-items?', [
+				g.code,
+				g.name,
+				items.length,
+		  ]);
 	if (
 		!(await confirmDialog({
 			title: __("Delete group"),
@@ -963,10 +1009,18 @@ async function saveItem() {
 async function deleteItemConfirm(item) {
 	const subs = boqSubItemsByItem(item.id);
 	const msg = !subs.length
-			? __('Delete item "{0} — {1}"?', [item.code, item.description])
-			: subs.length === 1
-			? __('Delete item "{0} — {1}" with {2} sub-item?', [item.code, item.description, subs.length])
-			: __('Delete item "{0} — {1}" with {2} sub-items?', [item.code, item.description, subs.length]);
+		? __('Delete item "{0} — {1}"?', [item.code, item.description])
+		: subs.length === 1
+		? __('Delete item "{0} — {1}" with {2} sub-item?', [
+				item.code,
+				item.description,
+				subs.length,
+		  ])
+		: __('Delete item "{0} — {1}" with {2} sub-items?', [
+				item.code,
+				item.description,
+				subs.length,
+		  ]);
 	if (
 		!(await confirmDialog({
 			title: __("Delete item"),
@@ -1079,9 +1133,7 @@ async function deleteSubItemConfirm(si) {
 }
 
 // Primary action dispatcher — Submit when Draft, Approve when Submitted.
-const showPrimary = computed(
-	() => (canSubmit.value || canApprove.value) && canSubmitCap("boq")
-);
+const showPrimary = computed(() => (canSubmit.value || canApprove.value) && canSubmitCap("boq"));
 const primaryLabel = computed(() =>
 	canSubmit.value ? __("Submit for approval") : canApprove.value ? __("Approve") : ""
 );
@@ -1110,7 +1162,9 @@ const breadcrumbs = computed(() => {
 		<div class="text-sm">
 			BOQ <span class="font-mono">{{ id }}</span> not found.
 		</div>
-		<DeskLink to="/boq" class="text-sm mt-2 inline-block">{{ __("← Back to BOQ list") }}</DeskLink>
+		<DeskLink to="/boq" class="text-sm mt-2 inline-block">{{
+			__("← Back to BOQ list")
+		}}</DeskLink>
 	</div>
 
 	<DeskPage
@@ -1293,7 +1347,9 @@ const breadcrumbs = computed(() => {
 							fmtDate(boq.approvedDate)
 						}}</span>
 					</div>
-					<div v-else class="text-[10px] text-ink-400 mt-1">{{ __("awaiting approval") }}</div>
+					<div v-else class="text-[10px] text-ink-400 mt-1">
+						{{ __("awaiting approval") }}
+					</div>
 				</div>
 			</div>
 
@@ -1344,9 +1400,9 @@ const breadcrumbs = computed(() => {
 				>
 					{{
 						filterState?.matchCount
-							? (filterState.matchCount === 1
+							? filterState.matchCount === 1
 								? __("{0} match", [filterState.matchCount])
-								: __("{0} matches", [filterState.matchCount]))
+								: __("{0} matches", [filterState.matchCount])
 							: __("No matches")
 					}}
 				</span>
@@ -1390,7 +1446,9 @@ const breadcrumbs = computed(() => {
 					<div class="px-3 py-2">{{ __("Description") }}</div>
 					<div class="px-3 py-2">{{ __("Unit") }}</div>
 					<div class="px-3 py-2 text-right">{{ __("Plan Qty") }}</div>
-					<div class="px-3 py-2 text-right">{{ __("Rate") }} ({{ currencySymbol() }})</div>
+					<div class="px-3 py-2 text-right">
+						{{ __("Rate") }} ({{ currencySymbol() }})
+					</div>
 					<div class="px-3 py-2 text-right">{{ __("Planned") }}</div>
 					<div class="px-3 py-2 text-right">{{ __("Committed") }}</div>
 					<div class="px-3 py-2 text-right">{{ __("Actual") }}</div>
@@ -1429,18 +1487,35 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupTotals(g.id).planned) }}
 						</div>
-						<div
-							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
-							:title="__('Open subcontractor work orders mapped to cost code {0}', [g.code])"
-						>
-							{{ fmtCompactINR(groupCommitted(g)) }}
+						<div class="px-3 py-2 text-right text-sm text-info-700">
+							<button
+								v-if="groupCommitted(g)"
+								type="button"
+								class="tabular-nums text-info-700 hover:text-brand-700 hover:underline decoration-dotted"
+								:title="
+									__(
+										'Committed for {0} — click to see the work orders and purchase orders',
+										[g.code]
+									)
+								"
+								@click.stop="openGroupCommitted(g)"
+							>
+								{{ fmtCompactINR(groupCommitted(g)) }}
+							</button>
+							<span v-else class="tabular-nums text-ink-400">{{
+								fmtCompactINR(groupCommitted(g))
+							}}</span>
 						</div>
 						<div class="px-3 py-2 text-right text-sm text-ink-700">
 							<span v-if="groupActual(g)" class="relative inline-block group/cov">
 								<button
 									type="button"
 									class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
-									:title="__('Actual for {0} — click to see the source documents', [g.code])"
+									:title="
+										__('Actual for {0} — click to see the source documents', [
+											g.code,
+										])
+									"
 									@click.stop="openGroupActuals(g)"
 								>
 									{{ fmtCompactINR(groupActual(g)) }}
@@ -1450,7 +1525,12 @@ const breadcrumbs = computed(() => {
 									v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
 									class="pointer-events-none absolute right-0 bottom-full mb-1 hidden group-hover/cov:block z-30 whitespace-nowrap bg-ink-900 text-white text-[10px] px-2 py-1 rounded shadow-lg"
 								>
-									{{ __("{0} of {1} at item level", [fmtCompactINR(groupCoverage(g).itemCoded), fmtCompactINR(groupCoverage(g).actual)]) }}
+									{{
+										__("{0} of {1} at item level", [
+											fmtCompactINR(groupCoverage(g).itemCoded),
+											fmtCompactINR(groupCoverage(g).actual),
+										])
+									}}
 								</span>
 							</span>
 							<span v-else class="text-ink-300">—</span>
@@ -1949,7 +2029,10 @@ const breadcrumbs = computed(() => {
 					</div>
 					<div class="p-4 space-y-3">
 						<div class="grid grid-cols-3 gap-3">
-							<DeskField :label="__('Code')" :hint="__('Leave blank to auto-generate (A, B, C…)')">
+							<DeskField
+								:label="__('Code')"
+								:hint="__('Leave blank to auto-generate (A, B, C…)')"
+							>
 								<DeskInput v-model="groupForm.code" :placeholder="__('Auto')" />
 							</DeskField>
 							<div class="col-span-2">
@@ -1972,8 +2055,15 @@ const breadcrumbs = computed(() => {
 						>
 							{{ __("Cancel") }}
 						</button>
-						<button v-if="canEdit('boq')" type="button" @click="saveGroup" class="desk-save-btn">
-							{{ groupModal.mode === "add" ? __("Create group") : __("Save changes") }}
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							@click="saveGroup"
+							class="desk-save-btn"
+						>
+							{{
+								groupModal.mode === "add" ? __("Create group") : __("Save changes")
+							}}
 						</button>
 					</div>
 				</div>
@@ -2016,7 +2106,11 @@ const breadcrumbs = computed(() => {
 					<div class="p-4 space-y-3">
 						<DeskField
 							:label="__('Source — Assembly')"
-							:hint="__('Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.')"
+							:hint="
+								__(
+									'Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.'
+								)
+							"
 						>
 							<DeskLinkPicker
 								v-model="itemForm.assemblyId"
@@ -2065,7 +2159,10 @@ const breadcrumbs = computed(() => {
 							>
 								<DeskInput v-model="itemForm.rate" type="number" />
 							</DeskField>
-							<DeskField :label="__('Planned amount')" :hint="__('qty × rate (auto)')">
+							<DeskField
+								:label="__('Planned amount')"
+								:hint="__('qty × rate (auto)')"
+							>
 								<div class="desk-input bg-ink-50 text-right tabular-nums">
 									{{ fmtINR(itemPlannedAmountPreview) }}
 								</div>
@@ -2088,7 +2185,11 @@ const breadcrumbs = computed(() => {
 							</DeskField>
 							<DeskField
 								:label="__('Cost head')"
-								:hint="__('Material / Labour / Equipment / Subcontract / Preliminaries / Other')"
+								:hint="
+									__(
+										'Material / Labour / Equipment / Subcontract / Preliminaries / Other'
+									)
+								"
 							>
 								<DeskSelect v-model="itemForm.costHead">
 									<option value="">—</option>
@@ -2096,7 +2197,9 @@ const breadcrumbs = computed(() => {
 									<option value="Labour">{{ __("Labour") }}</option>
 									<option value="Equipment">{{ __("Equipment") }}</option>
 									<option value="Subcontract">{{ __("Subcontract") }}</option>
-									<option value="Preliminaries">{{ __("Preliminaries") }}</option>
+									<option value="Preliminaries">
+										{{ __("Preliminaries") }}
+									</option>
 									<option value="Other">{{ __("Other") }}</option>
 								</DeskSelect>
 							</DeskField>
@@ -2126,7 +2229,12 @@ const breadcrumbs = computed(() => {
 						>
 							{{ __("Cancel") }}
 						</button>
-						<button v-if="canEdit('boq')" type="button" @click="saveItem" class="desk-save-btn">
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							@click="saveItem"
+							class="desk-save-btn"
+						>
 							{{ itemModal.mode === "add" ? __("Create item") : __("Save changes") }}
 						</button>
 					</div>
@@ -2174,7 +2282,11 @@ const breadcrumbs = computed(() => {
 					<div class="p-4 space-y-3">
 						<DeskField
 							:label="__('From Rate Master')"
-							:hint="__('Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.')"
+							:hint="
+								__(
+									'Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.'
+								)
+							"
 						>
 							<DeskSelect
 								:model-value="subItemForm.rateMasterId"
@@ -2191,17 +2303,17 @@ const breadcrumbs = computed(() => {
 									:key="rm.id"
 									:value="rm.id"
 								>
-									{{ rm.code }} · {{ rm.description }} · {{ currencySymbol() }}{{
-										rm.currentRate
-									}}
-									{{ __("per") }} {{ rm.unit }}
+									{{ rm.code }} · {{ rm.description }} · {{ currencySymbol()
+									}}{{ rm.currentRate }} {{ __("per") }} {{ rm.unit }}
 								</option>
 							</DeskSelect>
 						</DeskField>
 						<DeskField :label="__('Description')" required>
 							<DeskInput
 								v-model="subItemForm.description"
-								:placeholder="__('e.g. Mason (skilled), Cement OPC 53, Vibrator needle…')"
+								:placeholder="
+									__('e.g. Mason (skilled), Cement OPC 53, Vibrator needle…')
+								"
 							/>
 						</DeskField>
 						<div class="grid grid-cols-3 gap-3">
@@ -2232,8 +2344,17 @@ const breadcrumbs = computed(() => {
 						>
 							{{ __("Cancel") }}
 						</button>
-						<button v-if="canEdit('boq')" type="button" @click="saveSubItem" class="desk-save-btn">
-							{{ subItemModal.mode === "add" ? __("Create sub-item") : __("Save changes") }}
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							@click="saveSubItem"
+							class="desk-save-btn"
+						>
+							{{
+								subItemModal.mode === "add"
+									? __("Create sub-item")
+									: __("Save changes")
+							}}
 						</button>
 					</div>
 				</div>
@@ -2255,9 +2376,15 @@ const breadcrumbs = computed(() => {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div>
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("Create new revision") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Create new revision") }}
+							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5">
-								{{ __("A new Draft revision is cloned from this one. Optionally reference a Scope Change Order.") }}
+								{{
+									__(
+										"A new Draft revision is cloned from this one. Optionally reference a Scope Change Order."
+									)
+								}}
 							</p>
 						</div>
 						<button
@@ -2271,7 +2398,11 @@ const breadcrumbs = computed(() => {
 					<div class="p-5 overflow-y-auto flex-1 space-y-4">
 						<DeskField
 							:label="__('Linked SCO')"
-							:hint="__('Optional reference to a Scope Change Order this revision addresses.')"
+							:hint="
+								__(
+									'Optional reference to a Scope Change Order this revision addresses.'
+								)
+							"
 						>
 							<DeskLinkPicker
 								v-model="revisionModal.sourceSco"
@@ -2287,11 +2418,16 @@ const breadcrumbs = computed(() => {
 						<DeskField
 							:label="__('Revision title')"
 							:hint="
-								revisionTitleConflict ? '' : __('Optional. Auto-generated if blank.')
+								revisionTitleConflict
+									? ''
+									: __('Optional. Auto-generated if blank.')
 							"
 							:error="
 								revisionTitleConflict
-									? __('A revision titled “{0}” already exists on this project. Pick a different title.', [revisionModal.title.trim()])
+									? __(
+											'A revision titled “{0}” already exists on this project. Pick a different title.',
+											[revisionModal.title.trim()]
+									  )
 									: ''
 							"
 						>
@@ -2338,7 +2474,9 @@ const breadcrumbs = computed(() => {
 					@click.stop
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
-						<h2 class="text-sm font-semibold text-ink-900">{{ __("Import from template") }}</h2>
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ __("Import from template") }}
+						</h2>
 						<button
 							type="button"
 							@click="importModal = false"
@@ -2359,7 +2497,11 @@ const breadcrumbs = computed(() => {
 							/>
 						</DeskField>
 						<p class="text-[11px] text-ink-500">
-							{{ __("Adds the template's rows to this BOQ. Assembly lines explode into sub-items.") }}
+							{{
+								__(
+									"Adds the template's rows to this BOQ. Assembly lines explode into sub-items."
+								)
+							}}
 						</p>
 					</div>
 					<div
@@ -2447,7 +2589,10 @@ const breadcrumbs = computed(() => {
 							</DeskField>
 						</div>
 						<DeskField v-else :label="__('Title')">
-							<DeskInput v-model="cloneForm.title" :placeholder="__('Cloned BOQ title')" />
+							<DeskInput
+								v-model="cloneForm.title"
+								:placeholder="__('Cloned BOQ title')"
+							/>
 						</DeskField>
 					</div>
 					<div
@@ -2486,7 +2631,10 @@ const breadcrumbs = computed(() => {
 							stroke-linejoin="round"
 							aria-hidden="true"
 							v-html="getWorkspaceIconPath('message-circle')"
-						/><span>{{ __("Comments") }} — <span class="font-medium text-ink-700">0</span></span>
+						/><span
+							>{{ __("Comments") }} —
+							<span class="font-medium text-ink-700">0</span></span
+						>
 						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
@@ -2501,7 +2649,8 @@ const breadcrumbs = computed(() => {
 							aria-hidden="true"
 							v-html="getWorkspaceIconPath('paperclip')"
 						/><span
-							>{{ __("Attachments") }} — <span class="font-medium text-ink-700">0</span></span
+							>{{ __("Attachments") }} —
+							<span class="font-medium text-ink-700">0</span></span
 						>
 						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
 					</div>
@@ -2627,7 +2776,128 @@ const breadcrumbs = computed(() => {
 						</tfoot>
 					</table>
 					<p class="text-[10px] text-ink-400 mt-3">
-						{{ __("Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only.") }}
+						{{
+							__(
+								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only."
+							)
+						}}
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Committed drill-down — the orders behind a group's Committed total -->
+		<div
+			v-if="committedDrill"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto"
+			@click.self="closeCommittedDrill"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-start justify-between gap-3"
+				>
+					<div class="min-w-0">
+						<h2 class="text-sm font-semibold text-ink-900 truncate">
+							{{ committedDrill.title }}
+						</h2>
+						<p class="text-[11px] text-ink-500">{{ committedDrill.subtitle }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+						@click="closeCommittedDrill"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-3">
+					<div
+						v-if="committedDrill.loading"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("Loading…") }}
+					</div>
+					<div
+						v-else-if="!committedDrill.entries.length"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("No committed orders against this cost code yet.") }}
+					</div>
+					<table v-else class="w-full text-xs">
+						<thead
+							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+						>
+							<tr>
+								<th class="text-left py-2 pr-2">{{ __("Type") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Source document") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Party") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Date") }}</th>
+								<th class="text-right py-2">{{ __("Amount") }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="(e, i) in committedDrill.entries"
+								:key="i"
+								class="border-b border-ink-100 last:border-0"
+							>
+								<td class="py-2 pr-2">
+									<span
+										class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+										:class="
+											COST_TYPE_TONE[e.cost_type] ||
+											'bg-ink-100 text-ink-700'
+										"
+										>{{ __(e.cost_type) }}</span
+									>
+								</td>
+								<td class="py-2 pr-2">
+									<button
+										type="button"
+										class="text-brand-700 hover:underline text-left"
+										@click="openCommittedSource(e)"
+									>
+										{{ e.source_doctype }} ·
+										<span class="font-mono">{{ e.source_name }}</span>
+									</button>
+									<div v-if="e.label" class="text-[10px] text-ink-400 truncate">
+										{{ e.label }}
+									</div>
+								</td>
+								<td class="py-2 pr-2 text-ink-600">{{ e.party || "—" }}</td>
+								<td class="py-2 pr-2 text-ink-500 whitespace-nowrap">
+									{{ e.date ? fmtDate(e.date) : "—" }}
+								</td>
+								<td class="py-2 text-right tabular-nums text-ink-900 font-medium">
+									{{ fmtINR(e.amount) }}
+								</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr class="border-t-2 border-ink-200">
+								<td
+									colspan="4"
+									class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+								>
+									{{ __("Total committed") }}
+								</td>
+								<td
+									class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+								>
+									{{ fmtINR(committedDrill.total) }}
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+					<p class="text-[10px] text-ink-400 mt-3">
+						{{
+							__(
+								"Committed is the value promised on submitted work orders and purchase orders. Cancelling an order removes its entry."
+							)
+						}}
 					</p>
 				</div>
 			</div>

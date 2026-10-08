@@ -511,6 +511,56 @@ def po_committed_by_cost_code(project: str):
 	return out
 
 
+def po_committed_entries(project: str):
+	"""Per-line committed detail for submitted Purchase Orders — the drill-down behind the BOQ
+	'Committed' column (same entry shape as boq_actuals). One row per cost-coded PO line, carrying
+	the supplier and order it commits against."""
+	if not project:
+		return []
+	pos = {
+		p.name: p
+		for p in frappe.get_all(
+			PURCHASE_ORDER,
+			filters={"project": project, "docstatus": 1},
+			fields=["name", "transaction_date", "supplier_name"],
+		)
+	}
+	if not pos:
+		return []
+	out = []
+	for l in frappe.get_all(
+		"Purchase Order Item",
+		filters={"parent": ["in", list(pos)]},
+		fields=[
+			"parent",
+			"custom_cost_code_type",
+			"custom_cost_code_group",
+			"custom_cost_code_item",
+			"custom_cost_code_label",
+			"amount",
+			"item_name",
+		],
+	):
+		if not (l.custom_cost_code_group or l.custom_cost_code_item):
+			continue
+		p = pos[l.parent]
+		out.append(
+			{
+				"cost_code_type": l.custom_cost_code_type,
+				"group_code": l.custom_cost_code_group or "",
+				"item_code": l.custom_cost_code_item or "",
+				"cost_type": "Purchase",
+				"amount": flt(l.amount),
+				"source_doctype": "Purchase Order",
+				"source_name": l.parent,
+				"party": p.supplier_name,
+				"date": str(p.transaction_date) if p.transaction_date else None,
+				"label": l.custom_cost_code_label or l.item_name or "",
+			}
+		)
+	return out
+
+
 @frappe.whitelist()
 def delete_purchase_order(name: str):
 	frappe.delete_doc(PURCHASE_ORDER, name)

@@ -36,6 +36,10 @@ export const createSubcontractor = (payload) => call("create_subcontractor", pay
 export const updateSubcontractor = (name, payload) =>
 	call("update_subcontractor", { name, ...payload });
 export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
+// The commitment lines (Subcontractor Work Orders + Purchase Orders) behind one BOQ group —
+// the Committed drill-down, mirroring the Actuals drill-down.
+export const getCommittedForCode = (project, groupCode) =>
+	call("get_committed_for_code", { project, group_code: groupCode });
 // Subcontract actual (submitted bill this-period amounts) by cost-code group — added to the
 // BOQ's task-progress actuals.
 export const getSubcontractActualByCostCode = (project) =>

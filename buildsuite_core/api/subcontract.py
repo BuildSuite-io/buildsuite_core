@@ -9,6 +9,7 @@ manual status field — Draft (0) → Submitted (1) → Cancelled (2), plus Amen
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 WORK_ORDER = "Subcontractor Work Order"
 
@@ -247,6 +248,75 @@ def committed_by_cost_code(project: str):
 	for code, amount in (po_committed_by_cost_code(project) or {}).items():
 		out[code] = out.get(code, 0) + amount
 	return out
+
+
+def swo_committed_entries(project: str):
+	"""Per-line committed detail for submitted Subcontractor Work Orders — the drill-down behind
+	the BOQ 'Committed' column (same entry shape as boq_actuals). One row per cost-coded WO line,
+	carrying the subcontractor and work order it commits against."""
+	if not project:
+		return []
+	wos = {
+		w.name: w
+		for w in frappe.get_all(
+			WORK_ORDER,
+			filters={"project": project, "docstatus": 1},
+			fields=["name", "date", "subcontractor_name"],
+		)
+	}
+	if not wos:
+		return []
+	out = []
+	for l in frappe.get_all(
+		"Subcontractor Work Order Line",
+		filters={"parent": ["in", list(wos)]},
+		fields=[
+			"parent",
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+			"amount",
+			"scope",
+		],
+	):
+		if not (l.cost_code_group or l.cost_code_item):
+			continue
+		w = wos[l.parent]
+		out.append(
+			{
+				"cost_code_type": l.cost_code_type,
+				"group_code": l.cost_code_group or "",
+				"item_code": l.cost_code_item or "",
+				"cost_type": "Subcontract",
+				"amount": flt(l.amount),
+				"source_doctype": WORK_ORDER,
+				"source_name": l.parent,
+				"party": w.subcontractor_name,
+				"date": str(w.date) if w.date else None,
+				"label": l.cost_code_label or l.scope or "",
+			}
+		)
+	return out
+
+
+@frappe.whitelist()
+def get_committed_for_code(project: str, group_code: str | None = None):
+	"""The contributing commitment lines behind one BOQ cost-code group, for the Committed
+	drill-down — mirrors boq_actuals.get_actuals_for_code. Combines submitted Subcontractor Work
+	Order lines and Purchase Order lines carrying that group. Committed is a group-level column,
+	so only a group_code is accepted."""
+	from buildsuite_core.api.procurement_docs import po_committed_entries
+
+	if not project or not group_code:
+		return {"entries": [], "total": 0}
+	entries = [
+		e
+		for e in (swo_committed_entries(project) + po_committed_entries(project))
+		if e["group_code"] == group_code
+	]
+	entries.sort(key=lambda e: (e["cost_type"], e["date"] or "", e["source_name"]))
+	return {"entries": entries, "total": sum(flt(e["amount"]) for e in entries)}
 
 
 @frappe.whitelist()
