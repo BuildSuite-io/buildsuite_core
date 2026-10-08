@@ -1,0 +1,22 @@
+{
+ "app": "buildsuite_core",
+ "creation": "2026-09-06 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "production",
+ "icon_type": "Link",
+ "idx": 3,
+ "label": "Production",
+ "link_to": "",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/buildsuite_core/icons/desktop_icons/subtle/production.svg",
+ "modified": "2026-09-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Production",
+ "owner": "Administrator",
+ "parent_icon": "Group",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}
