@@ -218,6 +218,38 @@ def delete_material_request(name: str):
 # ==========================================================================
 
 
+def _po_cost_code_fields(cost_code):
+	"""Flatten the picker's cost-code object → the four custom_cost_code_* line fields on
+	Purchase Order Item (an ERPNext child, so the fields carry the custom_ prefix). Mirrors
+	expense_entry._cost_code_fields; accepts {type, group_code, item_code, label} or None."""
+	if not cost_code or not isinstance(cost_code, dict):
+		return {
+			"custom_cost_code_type": "",
+			"custom_cost_code_group": "",
+			"custom_cost_code_item": "",
+			"custom_cost_code_label": "",
+		}
+	return {
+		"custom_cost_code_type": "Item" if cost_code.get("type") == "item" else "Group",
+		"custom_cost_code_group": cost_code.get("group_code") or "",
+		"custom_cost_code_item": cost_code.get("item_code") or "",
+		"custom_cost_code_label": cost_code.get("label") or "",
+	}
+
+
+def _po_cost_code_obj(it):
+	"""Rebuild the picker object from a line's stored custom_cost_code_* fields (inverse of
+	_po_cost_code_fields), or None when the line commits against no cost code."""
+	if not it.get("custom_cost_code_label"):
+		return None
+	return {
+		"type": (it.get("custom_cost_code_type") or "").lower(),
+		"group_code": it.get("custom_cost_code_group") or "",
+		"item_code": it.get("custom_cost_code_item") or None,
+		"label": it.get("custom_cost_code_label") or "",
+	}
+
+
 def _serialize_po(doc):
 	return {
 		"name": doc.name,
@@ -252,6 +284,7 @@ def _serialize_po(doc):
 				"received_qty": flt(it.received_qty),
 				"warehouse": it.warehouse,
 				"project": it.project,
+				"cost_code": _po_cost_code_obj(it),
 			}
 			for it in doc.items
 		],
@@ -408,6 +441,7 @@ def save_purchase_order(
 				"warehouse": default_wh,
 				"project": project,
 				"material_request": material_request or None,
+				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)
 	if not doc.get("items"):
@@ -446,6 +480,35 @@ def amend_purchase_order(name: str):
 	amended.docstatus = 0
 	amended.insert()
 	return get_purchase_order(amended.name)
+
+
+def po_committed_by_cost_code(project: str):
+	"""Sum of SUBMITTED Purchase Order line amounts for a project, grouped by cost-code group.
+	Feeds the BOQ 'Committed' column alongside subcontractor work orders — a submitted PO is
+	money committed to a supplier against that BOQ group. Only submitted (docstatus 1) orders
+	count; drafts and cancelled orders are excluded. POs are single company currency
+	(conversion 1), so the line `amount` is already in company currency."""
+	if not project:
+		return {}
+	pos = frappe.get_all(
+		PURCHASE_ORDER,
+		filters={"project": project, "docstatus": 1},
+		pluck="name",
+	)
+	if not pos:
+		return {}
+	rows = frappe.get_all(
+		"Purchase Order Item",
+		filters={"parent": ["in", pos]},
+		fields=["custom_cost_code_group", "amount"],
+	)
+	out = {}
+	for r in rows:
+		code = r.custom_cost_code_group or ""
+		if not code:
+			continue
+		out[code] = out.get(code, 0) + (r.amount or 0)
+	return out
 
 
 @frappe.whitelist()

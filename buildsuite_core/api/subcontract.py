@@ -217,30 +217,35 @@ def get_wo_transitions(name: str):
 
 @frappe.whitelist()
 def committed_by_cost_code(project: str):
-	"""Sum of SUBMITTED Subcontractor Work Order line amounts for a project, grouped by
-	cost-code group. Feeds the BOQ 'Committed' column — how much of each BOQ group's scope is
-	already committed to subcontractors. Only submitted (docstatus 1) WOs count as committed;
-	drafts and cancelled WOs are excluded."""
+	"""Total SUBMITTED commitment for a project grouped by cost-code group — the BOQ
+	'Committed' column. Combines both commitment sources: Subcontractor Work Order lines
+	(committed to subcontractors) and Purchase Order lines (committed to suppliers). Only
+	submitted (docstatus 1) documents count; drafts and cancelled ones are excluded."""
 	if not project:
 		return {}
+	out = {}
 	wos = frappe.get_all(
 		WORK_ORDER,
 		filters={"project": project, "docstatus": 1},
 		pluck="name",
 	)
-	if not wos:
-		return {}
-	rows = frappe.get_all(
-		"Subcontractor Work Order Line",
-		filters={"parent": ["in", wos]},
-		fields=["cost_code_group", "amount"],
-	)
-	out = {}
-	for r in rows:
-		code = r.cost_code_group or ""
-		if not code:
-			continue
-		out[code] = out.get(code, 0) + (r.amount or 0)
+	if wos:
+		rows = frappe.get_all(
+			"Subcontractor Work Order Line",
+			filters={"parent": ["in", wos]},
+			fields=["cost_code_group", "amount"],
+		)
+		for r in rows:
+			code = r.cost_code_group or ""
+			if not code:
+				continue
+			out[code] = out.get(code, 0) + (r.amount or 0)
+
+	# Purchase Orders commit against the same BOQ groups (S384); fold their submitted lines in.
+	from buildsuite_core.api.procurement_docs import po_committed_by_cost_code
+
+	for code, amount in (po_committed_by_cost_code(project) or {}).items():
+		out[code] = out.get(code, 0) + amount
 	return out
 
 
@@ -523,7 +528,7 @@ def get_wo_measurements(work_order: str):
 # phone / email live on its native Contact (via utils.party). These endpoints own the
 # join so the Vue master screens read/write all of it in one call.
 # ---------------------------------------------------------------------------
-from buildsuite_core.utils.party import primary_contact, upsert_primary_contact  # noqa: E402
+from buildsuite_core.utils.party import primary_contact, upsert_primary_contact
 
 SUBCONTRACTOR_TYPE = "Subcontractor"
 

@@ -178,7 +178,9 @@ const breadcrumbs = computed(() => [
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 flex items-center gap-1.5"
 				style="border-radius: 6px"
-				:title="__('Open the printable purchase order (Save as PDF from the print dialog)')"
+				:title="
+					__('Open the printable purchase order (Save as PDF from the print dialog)')
+				"
 				@click="onPrint"
 			>
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,6 +355,12 @@ const breadcrumbs = computed(() => [
 								v-if="it.description"
 								class="block text-[11px] text-ink-500 mt-0.5"
 								>{{ it.description }}</span
+							>
+							<span
+								v-if="it.cost_code && it.cost_code.label"
+								class="inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-100"
+								:title="__('Committed against this BOQ cost code')"
+								>{{ it.cost_code.label }}</span
 							>
 						</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
