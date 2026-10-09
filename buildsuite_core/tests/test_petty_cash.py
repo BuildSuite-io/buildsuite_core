@@ -77,10 +77,10 @@ class TestPettyCash(BuildSuiteTestCase):
 		self.assertEqual(req.company, emp_company)
 
 	def test_visibility_scoping_and_raised_for(self):
-		"""Visibility via the finance_access hook, with `owner` kept as the creator. A float an
-		approver raises FOR a site user: the approver stays owner, the holder (requested_by) can
-		READ it (and sees the cue) but can't edit it; a creator can edit their OWN; a different site
-		user can't see it; a see-all role sees everything."""
+		"""Native if_owner on `owner` = the BENEFICIARY. A float an approver raises FOR a site user:
+		owner is handed to the beneficiary (so they see + manage it via "Only If Creator"), the real
+		entry-maker is kept in `raised_by`; a different site user can't see it; a see-all role sees
+		everything."""
 		import json
 
 		from buildsuite_core.api.petty_cash import get_request, issue_direct, save_request
@@ -112,13 +112,13 @@ class TestPettyCash(BuildSuiteTestCase):
 			)
 		)["name"]
 		doc = frappe.get_doc("Petty Cash Request", name)
-		self.assertEqual(doc.owner, "Administrator")  # owner stays the CREATOR
-		self.assertEqual(doc.requested_by, beneficiary)  # beneficiary recorded separately
+		self.assertEqual(doc.owner, beneficiary)  # owner handed to the BENEFICIARY
+		self.assertEqual(doc.raised_by, "Administrator")  # real entry-maker preserved
+		self.assertEqual(doc.requested_by, beneficiary)
 
-		# The beneficiary can READ it (hook: requested_by) and sees the cue, but can't edit/delete it.
+		# The beneficiary OWNS it → native if_owner read + write; and sees the "raised for me" cue.
 		self.assertTrue(frappe.has_permission("Petty Cash Request", "read", doc=name, user=beneficiary))
-		self.assertFalse(frappe.has_permission("Petty Cash Request", "write", doc=name, user=beneficiary))
-		self.assertFalse(frappe.has_permission("Petty Cash Request", "delete", doc=name, user=beneficiary))
+		self.assertTrue(frappe.has_permission("Petty Cash Request", "write", doc=name, user=beneficiary))
 		frappe.set_user(beneficiary)
 		self.assertTrue(get_request(name)["raised_for_me"])
 		frappe.set_user("Administrator")
@@ -128,19 +128,20 @@ class TestPettyCash(BuildSuiteTestCase):
 		acct = role_user("BuildSuite Accountant")
 		self.assertTrue(frappe.has_permission("Petty Cash Request", "read", doc=name, user=acct))
 
-		# A self-raised request: the creator owns it and CAN edit it ("Only If Creator" works).
+		# A self-raised request: owner = the raiser (= beneficiary), who can edit it. raised_for_me
+		# is False (they entered it themselves).
 		frappe.set_user(other)
 		own = save_request(json.dumps({"amount": 100, "purpose": "mine"}))["name"]
 		frappe.set_user("Administrator")
 		self.assertEqual(frappe.db.get_value("Petty Cash Request", own, "owner"), other)
 		self.assertTrue(frappe.has_permission("Petty Cash Request", "write", doc=own, user=other))
-		self.assertTrue(frappe.has_permission("Petty Cash Request", "delete", doc=own, user=other))
 		self.assertFalse(frappe.has_permission("Petty Cash Request", "read", doc=own, user=beneficiary))
 
-	def test_expense_visibility_owner_is_creator(self):
+	def test_expense_visibility_owner_is_beneficiary(self):
 		"""Expense Entry scopes the same way (beneficiary = the holder Employee's User): an approver
-		recording an expense FOR a site user stays the owner; the holder can read but not edit it;
-		a different site user can't see it."""
+		recording an expense FOR a site user hands `owner` to the holder (who then sees + manages it
+		via native if_owner), keeps the entry-maker in `raised_by`; a different site user can't see
+		it."""
 		import json
 
 		from buildsuite_core.api.expense_entry import save_expense
@@ -181,11 +182,14 @@ class TestPettyCash(BuildSuiteTestCase):
 				}
 			)
 		)["name"]
-		self.assertEqual(frappe.db.get_value("Expense Entry", name, "owner"), "Administrator")  # creator
+		self.assertEqual(frappe.db.get_value("Expense Entry", name, "owner"), holder)  # beneficiary
+		self.assertEqual(
+			frappe.db.get_value("Expense Entry", name, "raised_by"), "Administrator"
+		)  # entry-maker
 
-		# The holder (beneficiary) can read it, but not edit; a different site user can't see it.
+		# The holder (beneficiary) OWNS it → native if_owner read + write; a different site user can't see it.
 		self.assertTrue(frappe.has_permission("Expense Entry", "read", doc=name, user=holder))
-		self.assertFalse(frappe.has_permission("Expense Entry", "write", doc=name, user=holder))
+		self.assertTrue(frappe.has_permission("Expense Entry", "write", doc=name, user=holder))
 		self.assertFalse(frappe.has_permission("Expense Entry", "read", doc=name, user=other))
 
 	def test_non_employee_cannot_request(self):
@@ -481,7 +485,9 @@ class TestPettyCash(BuildSuiteTestCase):
 		from buildsuite_core.utils.petty_cash import PETTY_CASH_ACCOUNT_NAME, create_account
 
 		# Already exists for the real company — must be a safe no-op (doesn't duplicate).
-		before = frappe.db.count("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": self.company})
+		before = frappe.db.count(
+			"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": self.company}
+		)
 		create_account(frappe._dict(name=self.company))
 		after = frappe.db.count("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": self.company})
 		self.assertEqual(after, before)
@@ -489,7 +495,9 @@ class TestPettyCash(BuildSuiteTestCase):
 		# No matching parent account for a company that doesn't exist -> logs an error, no throw.
 		create_account(frappe._dict(name="No Such Company XYZ"))  # must not raise
 		self.assertFalse(
-			frappe.db.exists("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": "No Such Company XYZ"})
+			frappe.db.exists(
+				"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": "No Such Company XYZ"}
+			)
 		)
 
 	# --- api/petty_cash.py endpoints not yet covered above ------------------

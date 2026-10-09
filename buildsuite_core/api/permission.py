@@ -107,25 +107,31 @@ def _resource_permissions() -> dict:
 			out[key] = {c: False for c in _CAP_PTYPES}
 			out[key].update({"writeScope": "none", "deleteScope": "none"})
 			continue
-		caps = {
-			cap: bool(frappe.has_permission(doctype, ptype=ptype))
-			for cap, ptype in _CAP_PTYPES.items()
-		}
-		caps["writeScope"] = _ptype_scope(doctype, "write") if caps["e"] else "none"
-		caps["deleteScope"] = _ptype_scope(doctype, "delete") if caps["d"] else "none"
+		caps = {cap: bool(frappe.has_permission(doctype, ptype=ptype)) for cap, ptype in _CAP_PTYPES.items()}
+		# write/delete only: a bare has_permission is False for an if_owner-only grant (Frappe
+		# resolves them per-document), which would wrongly hide the SPA's edit/delete. Read the
+		# resolved role perms (is_owner=True exposes the `if_owner` map) so "own" surfaces as a
+		# capability + scope; the SPA pairs it with its per-record gate. create/read/submit are
+		# never owner-downgraded, so their has_permission values above stand.
+		perms = frappe.permissions.get_role_permissions(doctype, user=frappe.session.user, is_owner=True)
+		ifo = perms.get("if_owner") or {}
+		caps["writeScope"] = _scope(perms, ifo, "write")
+		caps["deleteScope"] = _scope(perms, ifo, "delete")
+		caps["e"] = caps["writeScope"] != "none"
+		caps["d"] = caps["deleteScope"] != "none"
 		out[key] = caps
 	return out
 
 
-def _ptype_scope(doctype: str, ptype: str) -> str:
-	"""Whether the user's grant of ``ptype`` on ``doctype`` is unrestricted ("all") or
-	limited to their own records ("own"). ``has_permission`` alone can't tell these apart —
-	it's True for both — so we inspect the resolved role perms' ``if_owner`` map."""
-	perms = frappe.permissions.get_role_permissions(doctype, user=frappe.session.user)
-	if not perms.get(ptype):
-		return "none"
-	# if_owner may be absent or present-but-None; normalise before indexing.
-	return "own" if (perms.get("if_owner") or {}).get(ptype) else "all"
+def _scope(perms: dict, ifo: dict, ptype: str) -> str:
+	"""Whether the user's grant of ``ptype`` is unrestricted ("all"), limited to their own records
+	("own", an if_owner DocPerm), or absent ("none"). ``perms[ptype]`` carries the unrestricted
+	grant; ``ifo[ptype]`` the owner-only one (the per-document check is the SPA's job)."""
+	if perms.get(ptype):
+		return "all"
+	if ifo.get(ptype):
+		return "own"
+	return "none"
 
 
 @frappe.whitelist(methods=["GET"])

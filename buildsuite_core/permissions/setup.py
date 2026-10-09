@@ -130,7 +130,7 @@ RATE_MASTER_ROLE_PERMS = {
 	"BuildSuite Procurement Officer": _READ,
 }
 # UOM is resolved by the BOQ / Rate Master link pickers, so those roles need read.
-_UOM_READ_ROLES = _ESTIMATION_ROLES + ("BuildSuite Procurement Officer",)
+_UOM_READ_ROLES = (*_ESTIMATION_ROLES, "BuildSuite Procurement Officer")
 
 # Purchase & Stock (native ERPNext doctypes). `project` is required per config and
 # drives warehouse defaulting; the rate-update prompt on PO submit is gated
@@ -339,10 +339,10 @@ BUILDSUITE_ROLES = tuple(PROJECT_ROLE_PERMS.keys())
 _PTYPES = ("read", "write", "create", "delete", "report", "export", "print")
 # Submittable doctypes (Material Request, Purchase Order, Stock Entry, …) also carry
 # the transition ptypes.
-_SUBMIT_PTYPES = _PTYPES + ("submit", "cancel", "amend")
+_SUBMIT_PTYPES = (*_PTYPES, "submit", "cancel", "amend")
 # Picker-only reference masters carry `select` too — include it so a _SELECT grant sets select=1
 # AND clears read/report/export/print (which are in _PTYPES).
-_SELECT_PTYPES = _PTYPES + ("select",)
+_SELECT_PTYPES = (*_PTYPES, "select")
 
 
 def _ensure_role(role_name):
@@ -580,7 +580,8 @@ SUBCONTRACT_MASTER_ROLE_PERMS = {
 # oversight-only (read, per the Director/Owner ruling). The Procurement Officer has NO
 # MB access at all (per the Procurement ruling), so it is excluded from the full roles
 # and gets no grant (revoked by _apply_role_perms).
-_MB_FULL_ROLES = tuple(r for r in _SUBCONTRACT_FULL_ROLES if r != "BuildSuite Procurement Officer") + (
+_MB_FULL_ROLES = (
+	*(r for r in _SUBCONTRACT_FULL_ROLES if r != "BuildSuite Procurement Officer"),
 	"BuildSuite QS",
 )
 MEASUREMENT_BOOK_ROLE_PERMS = {
@@ -597,7 +598,7 @@ MEASUREMENT_BOOK_ROLE_PERMS = {
 # NOTE: `_BILL_FULL_ROLES` is shared with the Work Order matrix (where the Director stays
 # full CRWDSX). On the Bill, the Director is oversight-only — the explicit `_READ` below wins
 # over the `_FULL_SUB` spread, so the Director reads bills but never raises/submits them.
-_BILL_FULL_ROLES = _SUBCONTRACT_FULL_ROLES + ("BuildSuite QS",)
+_BILL_FULL_ROLES = (*_SUBCONTRACT_FULL_ROLES, "BuildSuite QS")
 SUBCONTRACT_BILL_ROLE_PERMS = {
 	**{role: _FULL_SUB for role in _BILL_FULL_ROLES},
 	"BuildSuite Director": _READ,  # oversight only — read, never raise/submit a bill
@@ -645,27 +646,28 @@ def setup_sco_permissions():
 # Site roles (Site Engineer / Foreman) raise + manage their own requests; finance
 # roles have full access. Disbursing is gated in the API by PETTY_CASH_DISBURSE_ROLES,
 # not a DocPerm (any writer can save a request; only approvers can disburse).
-# Visibility rule (petty cash + expense): the four finance/admin roles below + System Manager see
-# EVERY record; every other role sees only the ones that are THEIRS — created by them (owner) OR
-# belonging to them (beneficiary). That own/beneficiary scoping is enforced in
-# permissions/finance_access (permission_query_conditions + has_permission), NOT via if_owner here,
-# so `owner` stays the real creator (Frappe's "Only If Creator" / "Created By" keep working). These
-# DocPerms therefore stay flat — they grant the ptypes; the hook narrows the rows.
-# Site Engineer / Foreman: manage their OWN requests fully, including delete (the finance_access
-# hook limits write/delete to the owner, so they can only remove a draft they raised themselves).
-_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
+#
+# Visibility is NATIVE — no permission hook. `owner` is the BENEFICIARY (the person the float /
+# expense is FOR; see utils/beneficiary_owner), so a role granted "Only If Creator" (if_owner) sees
+# exactly the records that belong to them, whether they raised it themselves or an approver raised
+# it for them. The real entry-maker is kept in `raised_by`. The four finance/admin roles below +
+# System Manager get an UN-scoped grant (if_owner off) → they see every record. All of this is
+# retunable in Role Permission Manager with no code change.
+_PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1, "if_owner": 1}
+_RAISE_OWN = {**_RAISE, "if_owner": 1}  # raise + read own (beneficiary) records only
+_READ_OWN = {**_READ, "if_owner": 1}  # read own (beneficiary) records only
 PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 	"BuildSuite Director": _FULL,
 	"BuildSuite PM": _FULL,
 	"BuildSuite Accountant": _FULL,
-	"BuildSuite Site Engineer": _PETTY_CASH_SITE,  # own/beneficiary scoped by finance_access
+	"BuildSuite Site Engineer": _PETTY_CASH_SITE,  # own (beneficiary) scoped natively via if_owner
 	"BuildSuite Foreman": _PETTY_CASH_SITE,
-	"BuildSuite Store Keeper": _RAISE,  # raises petty-cash requests (create + read)
-	"BuildSuite Procurement Officer": _RAISE,
-	"BuildSuite Estimator": _RAISE,
-	"BuildSuite HR Manager": _RAISE,
-	"BuildSuite QS": _READ,
+	"BuildSuite Store Keeper": _RAISE_OWN,  # raises petty-cash requests (create + read own)
+	"BuildSuite Procurement Officer": _RAISE_OWN,
+	"BuildSuite Estimator": _RAISE_OWN,
+	"BuildSuite HR Manager": _RAISE_OWN,
+	"BuildSuite QS": _READ_OWN,
 }
 PETTY_CASH_DISBURSE_ROLES = (
 	"BuildSuite Accountant",
@@ -675,24 +677,32 @@ PETTY_CASH_DISBURSE_ROLES = (
 )
 
 
-# Expense Entry (petty-cash / other spend). Site roles raise a draft (which counts
-# as "pending approval"); finance roles submit it, which posts the Journal Entry.
-# So submit/cancel is held by the finance approvers only, mirroring petty cash.
-# Site Engineer / Foreman: full control of their own drafts, including delete (hook-scoped to the
-# owner). Finance approvers submit; a submitted entry is immutable, so delete only ever hits drafts.
-_EXPENSE_ENTRY_DRAFT = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1}
+# Expense Entry (petty-cash / other spend). Site roles raise a draft (which counts as "pending
+# approval"); finance roles submit it, which posts the Journal Entry. So submit/cancel is held by
+# the finance approvers only, mirroring petty cash. Same native-owner model: `owner` is the
+# beneficiary, so own rows are if_owner-scoped; finance/admin see every entry. A submitted entry is
+# immutable, so delete only ever hits drafts.
+_EXPENSE_ENTRY_DRAFT = {
+	"read": 1,
+	"write": 1,
+	"create": 1,
+	"delete": 1,
+	"report": 1,
+	"print": 1,
+	"if_owner": 1,
+}
 EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _FULL_SUB,
 	"BuildSuite PM": _FULL_SUB,
 	"BuildSuite Accountant": _FULL_SUB,
-	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,  # own/beneficiary scoped by finance_access
+	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,  # own (beneficiary) scoped natively via if_owner
 	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
-	"BuildSuite Store Keeper": _RAISE,  # raises expense entries (create + read); finance submits
-	"BuildSuite Procurement Officer": _RAISE,
-	"BuildSuite QS": _RAISE,  # per the QS ruling
-	"BuildSuite Estimator": _RAISE,
-	"BuildSuite HR Manager": _RAISE,
+	"BuildSuite Store Keeper": _RAISE_OWN,  # raises expense entries (create + read own); finance submits
+	"BuildSuite Procurement Officer": _RAISE_OWN,
+	"BuildSuite QS": _RAISE_OWN,  # per the QS ruling
+	"BuildSuite Estimator": _RAISE_OWN,
+	"BuildSuite HR Manager": _RAISE_OWN,
 }
 
 
@@ -721,7 +731,7 @@ def setup_subcontract_permissions():
 	# The bill's billing pickers (expense account, tax template, withholding category) read
 	# ERPNext's accounting masters — grant the finance-facing BuildSuite roles read so the
 	# Vue dropdowns populate for non-admin personas.
-	_billing_roles = _BILL_FULL_ROLES + ("BuildSuite Accountant",)
+	_billing_roles = (*_BILL_FULL_ROLES, "BuildSuite Accountant")
 	# Account keeps read (it has a Finance Accounts screen + the disburse/JE context reads it).
 	_apply_role_perms("Account", {role: _READ for role in _billing_roles})
 	# The tax-template masters are pure billing-picker targets (no screen) — select, not read.
@@ -977,6 +987,7 @@ _READ_MIRROR_DENYLIST = {
 	"Webhook",
 	"Email Account",
 }
+
 
 def setup_child_table_read_access():
 	"""Give each BuildSuite role the MINIMAL grant on the doctypes referenced by every parent it
