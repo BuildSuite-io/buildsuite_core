@@ -146,8 +146,9 @@ permission_query_conditions = {
 	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.get_task_progress_entry_permission_query",
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.get_stage_planning_permission_query",
 	"Scope Change Order": "buildsuite_core.permissions.sco.get_sco_permission_query",
-	"Petty Cash Request": "buildsuite_core.permissions.finance_access.get_petty_cash_permission_query",
-	"Expense Entry": "buildsuite_core.permissions.finance_access.get_expense_permission_query",
+	# Petty Cash Request + Expense Entry are scoped NATIVELY: `owner` is the beneficiary
+	# (utils/beneficiary_owner), so Role-Permission-Manager "Only If Creator" (if_owner) shows a
+	# record to the person it is for — no permission_query_conditions hook needed.
 }
 
 has_permission = {
@@ -157,8 +158,7 @@ has_permission = {
 	"Task Progress Entry": "buildsuite_core.permissions.task_progress_entry.has_task_progress_entry_permission",
 	"Stage Planning": "buildsuite_core.permissions.stage_planning.has_stage_planning_permission",
 	"Scope Change Order": "buildsuite_core.permissions.sco.has_sco_permission",
-	"Petty Cash Request": "buildsuite_core.permissions.finance_access.has_petty_cash_permission",
-	"Expense Entry": "buildsuite_core.permissions.finance_access.has_expense_permission",
+	# Petty Cash Request + Expense Entry: native if_owner on `owner` (the beneficiary) — no hook.
 }
 
 # Override the Project controller so its record name honours the BuildSuite Core
@@ -180,9 +180,7 @@ doc_events = {
 	# 	"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
 	# },
-    "Purchase Receipt": {
-        "on_update":"buildsuite_core.utils.purchase_receipt.create_remarks"
-    },
+	"Purchase Receipt": {"on_update": "buildsuite_core.utils.purchase_receipt.create_remarks"},
 	# A report's roles can't exceed the visibility of a workspace it's tiled in — grant a role a
 	# report only if that role can see the workspace (else the tile never shows). Interactive only;
 	# skipped during install/migrate/patch where seeders set the baseline.
@@ -192,12 +190,21 @@ doc_events = {
 	"Item": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
 	# Reference No is optional in BuildSuite (SPA + mobile); default it for a bank Payment
 	# Entry so no path (advance / receipt / bill payment) hits ERPNext's mandatory check.
-	"Payment Entry": {
-		"before_validate": "buildsuite_core.utils.payment.default_bank_reference"
-	},
+	"Payment Entry": {"before_validate": "buildsuite_core.utils.payment.default_bank_reference"},
 	# ERPNext stamps the global default company; BuildSuite resolves the working one (which
 	# follows the topbar switcher), and the print's letter head is picked from it.
 	"Quotation": {"before_insert": "buildsuite_core.utils.quotation.set_company"},
+	# Petty Cash Request + Expense Entry: the beneficiary (requested_by / holder Employee's user)
+	# becomes `owner` so native "Only If Creator" DocPerms scope to them; the real entry-maker is
+	# kept in `raised_by`. owner must be swapped after_insert (insert() force-sets owner=session.user).
+	"Petty Cash Request": {
+		"before_insert": "buildsuite_core.utils.beneficiary_owner.stamp_raised_by",
+		"after_insert": "buildsuite_core.utils.beneficiary_owner.reassign_owner_to_beneficiary",
+	},
+	"Expense Entry": {
+		"before_insert": "buildsuite_core.utils.beneficiary_owner.stamp_raised_by",
+		"after_insert": "buildsuite_core.utils.beneficiary_owner.reassign_owner_to_beneficiary",
+	},
 	# ERPNext auto-creates a self-service User Permission (own Employee only) when a user is linked
 	# to their Employee. For a roster-managing persona that wrongly hides every OTHER employee
 	# (empty field-employee list, 403 on any other worker) — drop it so access matches the matrix.
@@ -255,8 +262,8 @@ doc_events = {
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
 	},
-	"Company":{
-		"on_update":[
+	"Company": {
+		"on_update": [
 			"buildsuite_core.utils.petty_cash.create_account",
 			"buildsuite_core.utils.branding.rebuild_letter_head_on_company_change",
 		],
@@ -431,15 +438,15 @@ fixtures = [
 
 # include js in doctype views
 doctype_js = {
-    "Project": "public/js/project.js",
-    "Task": "public/js/task.js",
-    "Stock Entry":"public/js/stock_entry.js",
-    "Material Request": "public/js/material_request.js",
-    "Purchase Order": "public/js/purchase_order.js",
-    "Purchase Invoice": "public/js/purchase_invoice.js",
-    "Purchase Receipt": "public/js/purchase_receipt.js",
-    "Journal Entry": "public/js/journal_entry.js",
-    "Petty Cash Request": "public/js/petty_cash_request.js",
+	"Project": "public/js/project.js",
+	"Task": "public/js/task.js",
+	"Stock Entry": "public/js/stock_entry.js",
+	"Material Request": "public/js/material_request.js",
+	"Purchase Order": "public/js/purchase_order.js",
+	"Purchase Invoice": "public/js/purchase_invoice.js",
+	"Purchase Receipt": "public/js/purchase_receipt.js",
+	"Journal Entry": "public/js/journal_entry.js",
+	"Petty Cash Request": "public/js/petty_cash_request.js",
 }
 
 doctype_list_js = {"Task": "public/js/task_list.js"}
