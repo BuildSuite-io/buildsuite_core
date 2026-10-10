@@ -36,7 +36,9 @@ class TestQuotation(BuildSuiteTestCase):
 					"description": "Site supervision",
 					"uom": "Nos",
 					"qty": 2,
-					"rate": 500,
+					"price_list_rate": 500,
+					"margin_type": "Percentage",
+					"margin_rate_or_amount": 0,
 					"source": "Manual",
 				}
 			],
@@ -99,3 +101,77 @@ class TestQuotation(BuildSuiteTestCase):
 
 		self.assertEqual(doc.customer_type, "Main Contractor")
 		self.assertEqual(doc.internal_note, "Chase on Friday")
+
+	# --- margin ------------------------------------------------------------
+	def _line(self, margin, cost=100, qty=2):
+		return {
+			"item_code": self.item,
+			"item_name": "Site supervision",
+			"description": "Site supervision",
+			"uom": "Nos",
+			"qty": qty,
+			"price_list_rate": cost,
+			"margin_type": "Percentage",
+			"margin_rate_or_amount": margin,
+		}
+
+	def test_the_margin_is_added_to_every_line_not_lumped_on_the_total(self):
+		"""A customer expects the rate they are quoted to be the rate they pay, so the rows have
+		to sum to the total under them. ERPNext derives rate from price_list_rate + margin."""
+		doc = self._save(items=[self._line(10)])
+
+		line = doc.items[0]
+		self.assertEqual(flt(line.price_list_rate), 100)
+		self.assertEqual(line.margin_type, "Percentage")
+		self.assertEqual(flt(line.rate), 110)
+		self.assertEqual(flt(line.amount), 220)
+		self.assertEqual(flt(doc.net_total), 220)
+
+	def test_changing_the_margin_reprices_on_every_save_not_only_the_first(self):
+		"""taxes_and_totals.py:1162 rewrites margin_type to "Amount" whenever it finds a rate
+		above the cost, which after one save it always is. Replacing the whole items table —
+		what the form does — means rows arrive with no stale rate, so the percentage survives.
+		This is the regression an earlier attempt shipped."""
+		doc = self._save(items=[self._line(10)])
+
+		doc.set("items", [])
+		doc.append("items", self._line(20))
+		doc.save()
+		self.assertEqual(flt(doc.items[0].rate), 120)
+		self.assertEqual(flt(doc.net_total), 240)
+		self.assertEqual(doc.items[0].margin_type, "Percentage")
+
+		doc.set("items", [])
+		doc.append("items", self._line(0))
+		doc.save()
+		self.assertEqual(flt(doc.items[0].rate), 100)
+		self.assertEqual(flt(doc.net_total), 200)
+
+	def test_an_old_line_survives_being_opened_and_saved_again(self):
+		"""Quotations saved before margin existed carry a rate and no cost. The form reads the
+		cost, so without a fallback it loads zero and the next save wipes the line. Testing the
+		insert alone missed this — it is the round trip that breaks."""
+		doc = self._save(
+			items=[
+				{
+					"item_code": self.item,
+					"item_name": "Old line",
+					"description": "Old line",
+					"uom": "Nos",
+					"qty": 1,
+					"rate": 500,
+				}
+			]
+		)
+		self.assertEqual(flt(doc.items[0].price_list_rate), 0)
+
+		# What the form posts back: the cost it read, falling back to the rate.
+		line = doc.items[0]
+		cost = flt(line.price_list_rate) or flt(line.rate)
+		doc.set("items", [])
+		doc.append("items", dict(self._line(0, cost=cost, qty=1), item_name="Old line",
+		                         description="Old line"))
+		doc.save()
+
+		self.assertEqual(flt(doc.items[0].rate), 500)
+		self.assertEqual(flt(doc.net_total), 500)

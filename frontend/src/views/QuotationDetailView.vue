@@ -49,6 +49,22 @@ const validityNote = computed(() => {
 
 const lines = computed(() => doc.value?.items || []);
 
+// A line saved before the margin change has a rate and no cost; its rate IS the cost.
+const lineCost = (l) => Number(l.price_list_rate) || Number(l.rate) || 0;
+
+// Margin is the DIFFERENCE rather than a stored figure, so it can never disagree with the rows
+// above by a rounding step.
+const cost = computed(() =>
+	lines.value.reduce((a, l) => a + (Number(l.qty) || 0) * lineCost(l), 0)
+);
+const margin = computed(() => (Number(doc.value?.net_total) || 0) - cost.value);
+
+const marginPct = computed(() => Number(lines.value[0]?.margin_rate_or_amount) || 0);
+// A margin of nothing has no sell rate worth a column — the rate IS the rate.
+const hasMargin = computed(() => marginPct.value !== 0);
+// Source · Description · Unit · Qty · Rate [· Sell rate] · Amount
+const cols = computed(() => 6 + (hasMargin.value ? 1 : 0));
+
 const lineCount = computed(() => {
 	const n = lines.value.length;
 	return n === 1 ? __("{0} line", [n]) : __("{0} lines", [n]);
@@ -169,6 +185,12 @@ const breadcrumbs = computed(() => [
 							<th class="text-left font-medium px-3 py-2 w-28">{{ __("Unit") }}</th>
 							<th class="text-right font-medium px-3 py-2 w-28">{{ __("Qty") }}</th>
 							<th class="text-right font-medium px-3 py-2 w-32">{{ __("Rate") }}</th>
+							<th v-if="hasMargin" class="text-right font-medium px-3 py-2 w-32">
+								{{ __("Sell rate") }}
+								<span class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal">
+									+{{ marginPct }}% {{ __("margin") }}
+								</span>
+							</th>
 							<th class="text-right font-medium px-3 py-2 w-36">{{ __("Amount") }}</th>
 						</tr>
 					</thead>
@@ -189,6 +211,9 @@ const breadcrumbs = computed(() => [
 								{{ l.qty }}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
+								{{ fmtCurrency(lineCost(l), doc.currency) }}
+							</td>
+							<td v-if="hasMargin" class="px-3 py-2 text-right tabular-nums text-ink-600">
 								{{ fmtCurrency(l.rate, doc.currency) }}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
@@ -197,7 +222,7 @@ const breadcrumbs = computed(() => [
 						</tr>
 
 						<tr v-if="!lines.length">
-							<td colspan="6" class="px-3 py-6 text-center text-ink-500 text-xs">
+							<td :colspan="cols" class="px-3 py-6 text-center text-ink-500 text-xs">
 								{{ __("No lines on this quotation.") }}
 							</td>
 						</tr>
@@ -205,12 +230,19 @@ const breadcrumbs = computed(() => [
 
 					<tfoot>
 						<tr v-if="lines.length" class="border-t-2 border-ink-200 bg-ink-50">
-							<td colspan="5"
+							<td :colspan="cols - 1"
 								class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider">
-								{{ __("Net total") }}
+								{{ __("Price before tax") }}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900">
 								{{ fmtCurrency(doc.net_total, doc.currency) }}
+							</td>
+						</tr>
+						<tr v-if="lines.length && hasMargin">
+							<td :colspan="cols"
+								class="px-3 pb-3 pt-1 text-right text-[10px] uppercase tracking-wider text-ink-500">
+								{{ __("of which cost") }} {{ fmtCurrency(cost, doc.currency) }} ·
+								{{ __("margin") }} {{ fmtCurrency(margin, doc.currency) }}
 							</td>
 						</tr>
 					</tfoot>
@@ -244,8 +276,17 @@ const breadcrumbs = computed(() => [
 					</div>
 				</header>
 				<div class="p-4 space-y-2 text-sm">
+					<!-- Each row says how the one under it was reached, so a zero margin still shows. -->
 					<div class="flex justify-between">
-						<span class="text-ink-600">{{ __("Net total") }}</span>
+						<span class="text-ink-600">{{ __("Subtotal") }}</span>
+						<span class="tabular-nums text-ink-900">{{ fmtCurrency(cost, doc.currency) }}</span>
+					</div>
+					<div class="flex justify-between">
+						<span class="text-ink-600">{{ __("Margin {0}%", [marginPct]) }}</span>
+						<span class="tabular-nums text-ink-900">{{ fmtCurrency(margin, doc.currency) }}</span>
+					</div>
+					<div class="flex justify-between border-t border-ink-100 pt-2">
+						<span class="text-ink-600">{{ __("Price before tax") }}</span>
 						<span class="tabular-nums text-ink-900">
 							{{ fmtCurrency(doc.net_total, doc.currency) }}
 						</span>
