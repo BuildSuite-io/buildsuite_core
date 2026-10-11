@@ -650,17 +650,19 @@ def setup_sco_permissions():
 # Visibility is NATIVE — no permission hook. `owner` is the BENEFICIARY (the person the float /
 # expense is FOR; see utils/beneficiary_owner), so a role granted "Only If Creator" (if_owner) sees
 # exactly the records that belong to them, whether they raised it themselves or an approver raised
-# it for them. The real entry-maker is kept in `raised_by`. The four finance/admin roles below +
-# System Manager get an UN-scoped grant (if_owner off) → they see every record. All of this is
-# retunable in Role Permission Manager with no code change.
+# it for them. The real entry-maker is kept in `raised_by`.
+#
+# SEE-ALL (un-scoped, if_owner off) = System Manager + BuildSuite Administrator / Director /
+# Accountant. EVERY other role — the PM included — is if_owner-scoped (own records only). All of
+# this is retunable in Role Permission Manager with no code change.
 _PETTY_CASH_SITE = {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "print": 1, "if_owner": 1}
 _RAISE_OWN = {**_RAISE, "if_owner": 1}  # raise + read own (beneficiary) records only
 _READ_OWN = {**_READ, "if_owner": 1}  # read own (beneficiary) records only
 PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL,
 	"BuildSuite Director": _FULL,
-	"BuildSuite PM": _FULL,
 	"BuildSuite Accountant": _FULL,
+	"BuildSuite PM": _PETTY_CASH_SITE,  # own-scoped: PM manages its OWN requests (not an approver here)
 	"BuildSuite Site Engineer": _PETTY_CASH_SITE,  # own (beneficiary) scoped natively via if_owner
 	"BuildSuite Foreman": _PETTY_CASH_SITE,
 	"BuildSuite Store Keeper": _RAISE_OWN,  # raises petty-cash requests (create + read own)
@@ -694,8 +696,8 @@ _EXPENSE_ENTRY_DRAFT = {
 EXPENSE_ENTRY_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _FULL_SUB,
-	"BuildSuite PM": _FULL_SUB,
 	"BuildSuite Accountant": _FULL_SUB,
+	"BuildSuite PM": _EXPENSE_ENTRY_DRAFT,  # own-scoped: PM raises + manages its OWN drafts (finance submits)
 	"BuildSuite Site Engineer": _EXPENSE_ENTRY_DRAFT,  # own (beneficiary) scoped natively via if_owner
 	"BuildSuite Foreman": _EXPENSE_ENTRY_DRAFT,
 	"BuildSuite Store Keeper": _RAISE_OWN,  # raises expense entries (create + read own); finance submits

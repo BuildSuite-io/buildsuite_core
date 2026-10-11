@@ -192,6 +192,50 @@ class TestPettyCash(BuildSuiteTestCase):
 		self.assertTrue(frappe.has_permission("Expense Entry", "write", doc=name, user=holder))
 		self.assertFalse(frappe.has_permission("Expense Entry", "read", doc=name, user=other))
 
+	def test_default_access_see_all_vs_own_scope(self):
+		"""The authoritative default: System Manager + BuildSuite Administrator / Director /
+		Accountant see EVERY record (if_owner off); every other granted role — the PM included — is
+		own-scoped (if_owner on). Asserted against the applied DocPerms, not the dicts."""
+		from buildsuite_core.permissions.setup import setup_petty_cash_permissions
+
+		setup_petty_cash_permissions()
+		frappe.db.commit()
+
+		see_all = {
+			"System Manager",
+			"BuildSuite Administrator",
+			"BuildSuite Director",
+			"BuildSuite Accountant",
+		}
+		own_scoped = {
+			"BuildSuite PM",
+			"BuildSuite Site Engineer",
+			"BuildSuite Foreman",
+			"BuildSuite Store Keeper",
+			"BuildSuite Procurement Officer",
+			"BuildSuite Estimator",
+			"BuildSuite HR Manager",
+			"BuildSuite QS",
+		}
+		for dt in ("Petty Cash Request", "Expense Entry"):
+			for role in see_all:
+				flags = frappe.get_all(
+					"Custom DocPerm",
+					filters={"parent": dt, "role": role, "permlevel": 0, "read": 1},
+					pluck="if_owner",
+				)
+				self.assertTrue(flags, f"{role} should have read on {dt}")
+				self.assertTrue(all(v == 0 for v in flags), f"{role} must be SEE-ALL (if_owner off) on {dt}")
+			for role in own_scoped:
+				flags = frappe.get_all(
+					"Custom DocPerm",
+					filters={"parent": dt, "role": role, "permlevel": 0, "read": 1},
+					pluck="if_owner",
+				)
+				if not flags:
+					continue  # role carries no grant on this doctype — nothing to scope
+				self.assertTrue(all(v == 1 for v in flags), f"{role} must be OWN-scoped (if_owner) on {dt}")
+
 	def test_non_employee_cannot_request(self):
 		user = (
 			frappe.get_doc(
