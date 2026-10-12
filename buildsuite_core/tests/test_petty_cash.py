@@ -236,6 +236,21 @@ class TestPettyCash(BuildSuiteTestCase):
 					continue  # role carries no grant on this doctype — nothing to scope
 				self.assertTrue(all(v == 1 for v in flags), f"{role} must be OWN-scoped (if_owner) on {dt}")
 
+	def test_field_roles_select_read_account(self):
+		"""Site Engineer / Foreman / Procurement Officer pick the payment + expense Account when
+		raising petty cash / expenses, so the BASE setup grants them select + read on Account —
+		independent of the mobile layer. Cleared first so this tests the grant, not drift."""
+		from buildsuite_core.permissions.setup import setup_petty_cash_permissions
+
+		roles = ("BuildSuite Site Engineer", "BuildSuite Foreman", "BuildSuite Procurement Officer")
+		for r in roles:
+			frappe.db.delete("Custom DocPerm", {"parent": "Account", "role": r})
+		setup_petty_cash_permissions()
+		for r in roles:
+			flt = {"parent": "Account", "role": r, "permlevel": 0}
+			self.assertTrue(frappe.db.get_value("Custom DocPerm", flt, "select"), f"{r} select on Account")
+			self.assertTrue(frappe.db.get_value("Custom DocPerm", flt, "read"), f"{r} read on Account")
+
 	def test_non_employee_cannot_request(self):
 		user = (
 			frappe.get_doc(

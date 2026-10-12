@@ -715,6 +715,21 @@ def setup_petty_cash_permissions():
 	_read = {role: _READ for role in PETTY_CASH_DISBURSE_ROLES}
 	for dt in ("Account", "Journal Entry"):
 		_apply_role_perms(dt, _read)
+	# Site Engineer / Foreman / Procurement Officer pick the payment + expense Account when raising
+	# petty cash / expenses, so they get select + read on Account. Additive (_upgrade) so it never
+	# revokes the read other roles already hold.
+	_upgrade_role_perms(
+		"Account",
+		{
+			role: {"select": 1, "read": 1}
+			for role in (
+				"BuildSuite Site Engineer",
+				"BuildSuite Foreman",
+				"BuildSuite Procurement Officer",
+			)
+		},
+		ptypes=("select", "read"),
+	)
 
 
 def setup_subcontract_permissions():
