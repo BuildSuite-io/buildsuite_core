@@ -4,7 +4,7 @@
 
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useSessionStore } from "@/stores/session";
+import { getSessionUser } from "@/utils/session";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -35,7 +35,6 @@ import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
-const session = useSessionStore();
 // Funding-source accounts are scoped to the working company (default when awareness is off,
 // selected when on) so a site holding more than one company's ledgers never offers another
 // company's Bank/Cash account to disburse from.
@@ -69,6 +68,7 @@ const res = useDocTypeList("Petty Cash Request", {
 		"paid_from",
 		"disbursed_by",
 		"owner",
+		"raised_by",
 	],
 	orderBy: "request_date desc",
 	pageLength: 0,
@@ -90,11 +90,14 @@ const tabs = computed(() => [
 if (!canDisburse.value) tab.value = "mine";
 
 const requested = computed(() => all.value.filter((r) => r.status === "Requested"));
-const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
-// Raised FOR me by someone else: I'm the holder (owner), but another user created it.
-// Raised FOR me: I'm the holder (requested_by) but someone else created it (owner != me).
+// "My Requests" = the ones that belong to ME — I'm the owner (owner = the beneficiary /
+// requested_by; see utils/beneficiary_owner). Keyed off the logged-in user so a see-all role (who
+// gets every request from the list API) still sees only their own here.
+const currentUser = getSessionUser();
+const mine = computed(() => all.value.filter((r) => r.owner === currentUser));
+// Raised FOR me: I own it (I'm the beneficiary) but someone else entered it (`raised_by` != me).
 const raisedForMe = (row) =>
-	row.requested_by === session.user && row.owner && row.owner !== session.user;
+	row.owner === currentUser && row.raised_by && row.raised_by !== currentUser;
 const filteredAll = computed(() => {
 	const q = search.value.trim().toLowerCase();
 	return all.value.filter((r) => {
@@ -257,7 +260,7 @@ async function confirmDisburse() {
 }
 
 async function onWithdraw(row) {
-	const mine = row.requested_by === session.user;
+	const mine = row.owner === currentUser;
 	const ok = await confirmDialog({
 		title: mine ? __("Withdraw request?") : __("Cancel request?"),
 		message: mine
@@ -283,8 +286,14 @@ async function onUndisburse(row) {
 	const ok = await confirmDialog({
 		title: __("Cancel disbursement?"),
 		message: row.is_direct
-			? __("Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.", [fmtINR(row.amount), userName(row.requested_by)])
-			: __("Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.", [fmtINR(row.amount), userName(row.requested_by)]),
+			? __(
+					"Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.",
+					[fmtINR(row.amount), userName(row.requested_by)]
+			  )
+			: __(
+					"Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.",
+					[fmtINR(row.amount), userName(row.requested_by)]
+			  ),
 		confirmLabel: __("Cancel disbursement"),
 		cancelLabel: __("Keep"),
 		destructive: true,
@@ -317,7 +326,8 @@ const rowsForTab = computed(() => {
 		<div class="flex items-center justify-between gap-3 mb-4">
 			<div class="text-sm text-ink-600">
 				{{ __("Advances to site holders. Spend is logged separately under") }}
-				<span class="font-medium">{{ __("Expenses") }}</span>.
+				<span class="font-medium">{{ __("Expenses") }}</span
+				>.
 			</div>
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<button
@@ -402,9 +412,9 @@ const rowsForTab = computed(() => {
 							class="px-3 py-2 text-right tabular-nums font-semibold"
 							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
 						>
-							<template v-if="b.balance < 0"
-								>{{ __("{0} owed to holder", [fmtINR(-b.balance)]) }}</template
-							>
+							<template v-if="b.balance < 0">{{
+								__("{0} owed to holder", [fmtINR(-b.balance)])
+							}}</template>
 							<template v-else>{{ fmtINR(b.balance) }}</template>
 						</td>
 						<td class="px-3 py-2 text-right whitespace-nowrap">
@@ -420,7 +430,11 @@ const rowsForTab = computed(() => {
 			</table>
 			<DeskPaginationFooter :pager="balancesPager" />
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				{{ __("Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.") }}
+				{{
+					__(
+						"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
+					)
+				}}
 			</p>
 		</div>
 
@@ -499,13 +513,13 @@ const rowsForTab = computed(() => {
 					<button
 						v-if="
 							row.status === 'Requested' &&
-							(row.requested_by === session.user || canDisburse)
+							(row.owner === currentUser || canDisburse)
 						"
 						type="button"
 						class="text-[11px] px-2 py-0.5 border border-ink-200 text-ink-600 rounded"
 						@click.stop="onWithdraw(row)"
 					>
-						{{ row.requested_by === session.user ? __("Withdraw") : __("Cancel") }}
+						{{ row.owner === currentUser ? __("Withdraw") : __("Cancel") }}
 					</button>
 					<button
 						v-if="row.status === 'Disbursed' && canDisburse"
@@ -531,7 +545,9 @@ const rowsForTab = computed(() => {
 			@click.self="reqForm.open = false"
 		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">{{ __("Request petty cash") }}</h3>
+				<h3 class="text-sm font-semibold text-ink-900 mb-4">
+					{{ __("Request petty cash") }}
+				</h3>
 				<div class="space-y-3">
 					<DeskField :label="__('Amount')" required
 						><DeskInput v-model.number="reqForm.amount" type="number" min="0"
@@ -541,7 +557,9 @@ const rowsForTab = computed(() => {
 					/></DeskField>
 				</div>
 				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="reqForm.open = false">{{ __("Cancel") }}</button>
+					<button class="desk-btn" @click="reqForm.open = false">
+						{{ __("Cancel") }}
+					</button>
 					<button
 						class="desk-save-btn"
 						:disabled="reqForm.saving"
@@ -566,7 +584,9 @@ const rowsForTab = computed(() => {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Issue petty cash directly") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Issue petty cash directly") }}
+					</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -579,7 +599,11 @@ const rowsForTab = computed(() => {
 					<p
 						class="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-md px-2.5 py-2"
 					>
-						{{ __("No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request.") }}
+						{{
+							__(
+								"No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request."
+							)
+						}}
 					</p>
 					<div>
 						<label
@@ -665,7 +689,12 @@ const rowsForTab = computed(() => {
 					{{ __("Disburse {0}", [fmtINR(disb.row?.amount)]) }}
 				</h3>
 				<p class="text-xs text-ink-500 mb-4">
-					{{ __("to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).", [userName(disb.row?.requested_by)]) }}
+					{{
+						__(
+							"to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).",
+							[userName(disb.row?.requested_by)]
+						)
+					}}
 				</p>
 				<DeskField :label="__('Pay from')" required>
 					<DeskSelect v-model="disb.paidFrom">
