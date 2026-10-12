@@ -42,11 +42,15 @@ def _serialize(doc):
 		"journal_entry": doc.journal_entry,
 		"can_disburse": _can_disburse(),
 		"is_mine": doc.requested_by == frappe.session.user,
-		# Visual cue: `owner` is the creator; the beneficiary is `requested_by`. When I'm the
-		# beneficiary but didn't create it, it was raised FOR me (by the owner).
+		# Visual cue: `owner` is the beneficiary (requested_by); `raised_by` is the real entry-maker.
+		# When I'm the owner/beneficiary but someone else entered it, it was raised FOR me.
 		"owner": doc.owner,
-		"raised_by_name": frappe.db.get_value("User", doc.owner, "full_name") if doc.owner else None,
-		"raised_for_me": doc.requested_by == frappe.session.user and doc.owner != frappe.session.user,
+		"raised_by_name": frappe.db.get_value("User", doc.raised_by or doc.owner, "full_name")
+		if (doc.raised_by or doc.owner)
+		else None,
+		"raised_for_me": doc.owner == frappe.session.user
+		and bool(doc.raised_by)
+		and doc.raised_by != frappe.session.user,
 		"activity": [
 			{"by": c.owner, "at": str(c.creation), "text": frappe.utils.strip_html(c.content or "").strip()}
 			for c in comments

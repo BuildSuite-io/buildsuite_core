@@ -383,7 +383,10 @@ PERSONA_CRUD_MATRIX = {
 		"Overtime Attendance Register": "r",  # derived register — read-only
 		"Machinery": "r",  # register — read-only
 		"Machinery Usage": "crwd",  # usage log — full (not submittable, so the ruling's S/X are N/A)
-		"Expense Entry": "crwd",  # raise + edit + delete own draft (hook-scoped to the owner)
+		# if_owner scopes write/delete per-document, so a doc-less has_permission reports only create
+		# + read here; editing/deleting their OWN draft (owner = beneficiary) is covered per-record in
+		# test_petty_cash, and surfaced to the SPA as writeScope/deleteScope = "own".
+		"Expense Entry": "cr",
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
 	"Estimator": {
@@ -648,7 +651,8 @@ class TestResourcePermissionDerivation(_PersonaBase):
 
 			for key, doctype in RESOURCE_DOCTYPES.items():
 				caps = payload[key]
-				for cap, ptype in _CAP_PTYPES.items():
+				# create / read / submit are reported verbatim — Frappe never owner-scopes them.
+				for cap, ptype in (("c", "create"), ("r", "read"), ("x", "submit")):
 					expected = bool(frappe.has_permission(doctype, ptype=ptype, user=email))
 					with self.subTest(persona=persona, resource=key, ptype=ptype):
 						self.assertEqual(
@@ -657,12 +661,24 @@ class TestResourcePermissionDerivation(_PersonaBase):
 							f"{persona}: {key} ({doctype}) {ptype} — payload {caps[cap]} "
 							f"≠ has_permission {expected}",
 						)
-				# Scope is reported only when the action is granted; "none" iff denied.
-				with self.subTest(persona=persona, resource=key, check="scope"):
-					self.assertEqual(caps["writeScope"] == "none", not caps["e"])
-					self.assertEqual(caps["deleteScope"] == "none", not caps["d"])
-					self.assertIn(caps["writeScope"], ("all", "own", "none"))
-					self.assertIn(caps["deleteScope"], ("all", "own", "none"))
+				# write / delete: granted outright ("all") OR only on own records via if_owner
+				# ("own"); the payload surfaces both as a capability + scope. has_permission alone
+				# reports an if_owner-only grant as False (it's resolved per-document), so resolve
+				# the owner-aware role perms here.
+				owner_perms = frappe.permissions.get_role_permissions(doctype, user=email, is_owner=True)
+				ifo = owner_perms.get("if_owner") or {}
+				for cap, ptype, scope_key in (("e", "write", "writeScope"), ("d", "delete", "deleteScope")):
+					expected_scope = (
+						"all" if owner_perms.get(ptype) else ("own" if ifo.get(ptype) else "none")
+					)
+					with self.subTest(persona=persona, resource=key, ptype=ptype):
+						self.assertEqual(
+							caps[scope_key],
+							expected_scope,
+							f"{persona}: {key} ({doctype}) {scope_key} — {caps[scope_key]} ≠ {expected_scope}",
+						)
+						self.assertEqual(caps[cap], expected_scope != "none")
+						self.assertEqual(caps[scope_key] == "none", not caps[cap])
 
 	def test_subcontractor_and_supplier_are_identical_aliases(self):
 		# Both keys back onto the Supplier doctype (a subcontractor IS a Supplier of type

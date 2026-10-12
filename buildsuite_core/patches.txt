@@ -60,3 +60,4 @@ buildsuite_core.patches.tile_rate_check_in_estimation # 2026-09-24 rate-check al
 buildsuite_core.patches.seed_project_settings # 2026-09-24 seed the project page-tab template
 buildsuite_core.patches.scope_petty_cash_expense_visibility # 2026-10-07
 buildsuite_core.patches.restore_petty_cash_expense_owner_to_creator # 2026-10-07
+buildsuite_core.patches.adopt_beneficiary_owner_for_petty_cash_expense # 2026-10-09 owner=beneficiary + raised_by=creator; native if_owner (no finance_access hook)
