@@ -19,10 +19,7 @@ import { setCompanyAwareness } from "@/composables/useActiveCompany";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
-import {
-	restoreDefaultRolePermissions,
-	exportRolePermissions,
-} from "@/data/rolePermissionsApi";
+import { restoreDefaultRolePermissions, exportRolePermissions } from "@/data/rolePermissionsApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -106,6 +103,9 @@ const pettyCashOptions = ref([]);
 
 // Company-awareness master switch (server-persisted). Off = single-company UX.
 const multiCompanyEnabled = ref(false);
+// The real default company (from the backend / Global Defaults) — shown read-only. New records
+// default to it; in single-company mode it's the one company the app runs on.
+const defaultCompany = ref("");
 
 onMounted(async () => {
 	try {
@@ -115,6 +115,7 @@ onMounted(async () => {
 		pettyCashAccount.value = res.petty_cash_account || "";
 		pettyCashOptions.value = res.petty_cash_options || [];
 		multiCompanyEnabled.value = !!res.multi_company_enabled;
+		defaultCompany.value = res.default_company || "";
 	} catch {
 		/* leave defaults; non-admins can't read it */
 	}
@@ -212,7 +213,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 						:label="__('Enable company awareness')"
 						:hint="
 							__(
-								'Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.',
+								'Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.'
 							)
 						"
 					>
@@ -225,28 +226,22 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								v-model="form.multi_company_enabled"
 								class="accent-brand-600"
 							/>
-							<span>{{ form.multi_company_enabled ? __("Enabled") : __("Disabled") }}</span>
+							<span>{{
+								form.multi_company_enabled ? __("Enabled") : __("Disabled")
+							}}</span>
 						</label>
 					</DeskField>
 					<DeskField
 						:label="__('Default company')"
 						:hint="
 							__(
-								'The company pre-selected on Project create when the user doesn\'t pick one explicitly. Must exist in the Companies fixture.',
+								'The company new records default to — the system default company (Global Defaults). Read-only here while the app runs single-company.'
 							)
 						"
 					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{
-								store.companyById(store.coreSettings.default_company)?.name ||
-								store.coreSettings.default_company
-							}}
+						<div class="text-sm text-ink-900 py-1">
+							{{ store.companyById(defaultCompany)?.name || defaultCompany || "—" }}
 						</div>
-						<DeskSelect v-else v-model="form.default_company">
-							<option v-for="c in store.companies" :key="c.id" :value="c.id">
-								{{ c.name }}
-							</option>
-						</DeskSelect>
 					</DeskField>
 				</DeskSection>
 
@@ -259,14 +254,16 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 							{{ __(store.coreSettings.default_project_type) }}
 						</div>
 						<DeskSelect v-else v-model="form.default_project_type">
-							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">{{ __(t) }}</option>
+							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">
+								{{ __(t) }}
+							</option>
 						</DeskSelect>
 					</DeskField>
 					<DeskField
 						:label="__('Project naming')"
 						:hint="
 							__(
-								'How a new project\'s record ID is generated. \'Project ID\' uses the entered Project ID as the record name; \'Name Series\' lets the creator pick a naming series on the New Project form.',
+								'How a new project\'s record ID is generated. \'Project ID\' uses the entered Project ID as the record name; \'Name Series\' lets the creator pick a naming series on the New Project form.'
 							)
 						"
 					>
@@ -274,7 +271,9 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 							{{ __(projectNaming) }}
 						</div>
 						<DeskSelect v-else v-model="form.naming_mode">
-							<option v-for="m in namingModes" :key="m" :value="m">{{ __(m) }}</option>
+							<option v-for="m in namingModes" :key="m" :value="m">
+								{{ __(m) }}
+							</option>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
@@ -284,7 +283,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 						:label="__('Petty Cash Account')"
 						:hint="
 							__(
-								'The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded \'Petty Cash\' account; change it to post to a different float.',
+								'The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded \'Petty Cash\' account; change it to post to a different float.'
 							)
 						"
 					>
@@ -305,7 +304,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 						:label="__('Default permission matrix')"
 						:hint="
 							__(
-								'App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.',
+								'App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.'
 							)
 						"
 					>
@@ -317,7 +316,11 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								:disabled="!!permBusy"
 								@click="onExportPermissions"
 							>
-								{{ permBusy === "export" ? __("Exporting…") : __("Export permissions") }}
+								{{
+									permBusy === "export"
+										? __("Exporting…")
+										: __("Export permissions")
+								}}
 							</button>
 							<button
 								type="button"
@@ -326,14 +329,18 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								:disabled="!!permBusy"
 								@click="onRestoreDefaults"
 							>
-								{{ permBusy === "restore" ? __("Restoring…") : __("Restore defaults") }}
+								{{
+									permBusy === "restore"
+										? __("Restoring…")
+										: __("Restore defaults")
+								}}
 							</button>
 						</div>
 						<p class="text-[11px] text-warning-700 mt-1.5 flex items-start gap-1">
 							<span aria-hidden="true">⚠</span>
 							<span>{{
 								__(
-									"Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone.",
+									"Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone."
 								)
 							}}</span>
 						</p>

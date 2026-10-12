@@ -56,6 +56,9 @@ def get_core_settings():
 	return {
 		"project_naming": project_naming_mode(),
 		"project_naming_modes": NAMING_MODES,
+		# The real default company (Global Defaults), not a seeded placeholder — shown read-only
+		# on the settings screen. New records default to it (the single-company seam).
+		"default_company": company,
 		"petty_cash_account": settings.default_petty_cash_account,
 		"petty_cash_options": _petty_cash_options(company),
 		"multi_company_enabled": bool(settings.multi_company_enabled),
