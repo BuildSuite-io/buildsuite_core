@@ -12,7 +12,11 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import { fmtCurrency } from "@/utils/format";
 
-const props = defineProps({ open: Boolean });
+const props = defineProps({
+	open: Boolean,
+	// The quotation's margin, so the picker can show what the line will be sold at.
+	marginPercent: { type: [Number, String], default: 0 },
+});
 const emit = defineEmits(["update:open", "add"]);
 
 const BLANK = { assembly: "", code: "", description: "", uom: "Nos", qty: 1, rate: 0 };
@@ -40,7 +44,9 @@ const assemblyOptions = computed(() =>
 	})),
 );
 
-const amount = computed(() => (Number(row.qty) || 0) * (Number(row.rate) || 0));
+const marginPct = computed(() => Number(props.marginPercent) || 0);
+const sellRate = computed(() => (Number(row.rate) || 0) * (1 + marginPct.value / 100));
+const amount = computed(() => (Number(row.qty) || 0) * sellRate.value);
 
 watch(
 	() => props.open,
@@ -87,7 +93,7 @@ function submit() {
 		description: row.description.trim(),
 		uom: row.uom,
 		qty: Number(row.qty),
-		rate: Number(row.rate),
+		price_list_rate: Number(row.rate),
 	});
 	close();
 }
@@ -151,6 +157,10 @@ function submit() {
 						<span class="text-sm font-semibold text-ink-900 tabular-nums">
 							{{ fmtCurrency(amount) }}
 						</span>
+					</div>
+					<div v-if="marginPct" class="flex items-center justify-between px-3 text-[11px] text-ink-500">
+						<span>Sell rate &middot; +{{ marginPct }}% margin</span>
+						<span class="tabular-nums">{{ fmtCurrency(sellRate) }}</span>
 					</div>
 
 					<p v-if="error" class="text-xs text-danger-700">{{ error }}</p>

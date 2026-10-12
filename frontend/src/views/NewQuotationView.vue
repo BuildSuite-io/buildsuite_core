@@ -46,8 +46,9 @@ function isoPlusDays(iso, days) {
 }
 
 // A line is a scope of work, not a stock item. `source` records which button added it.
+// `price_list_rate` is the COST; ERPNext derives the rate from it plus the margin on save.
 function blankLine() {
-	return { description: "", uom: "Nos", qty: 1, rate: 0, source: "Manual" };
+	return { description: "", uom: "Nos", qty: 1, price_list_rate: 0, source: "Manual" };
 }
 
 // Field names match the doctype bar one: the offer is made in days ("this price holds 30
@@ -60,6 +61,7 @@ const form = reactive({
 	party_name: "",
 	customer_type: "",
 	project: "",
+	margin_percent: 10,
 	items: [blankLine()],
 	tc_name: "",
 	terms: "",
@@ -89,11 +91,16 @@ watch(
 			description: l.item_name || "",
 			uom: l.uom,
 			qty: l.qty,
-			rate: l.rate,
+			// A line saved before the margin change has a rate and no cost — its rate IS the
+			// cost. Reading the cost alone would load zero and wipe the line on the next save.
+			price_list_rate: l.price_list_rate || l.rate,
 			source: l.source || "Manual",
 			code: l.code,
 			source_ref: l.source_ref,
 		}));
+		// The margin is stored per line, which is where ERPNext keeps it; the form shows one
+		// figure for the document, so read it back off the lines.
+		if (doc.items?.length) form.margin_percent = Number(doc.items[0].margin_rate_or_amount) || 0;
 		if (!form.items.length) form.items = [blankLine()];
 	},
 	{ immediate: true }
@@ -110,11 +117,25 @@ function removeLine(i) {
 	form.items.splice(i, 1);
 }
 
-function lineAmount(l) {
-	return (Number(l.qty) || 0) * (Number(l.rate) || 0);
+const marginPct = computed(() => Number(form.margin_percent) || 0);
+// A margin of nothing has no sell rate worth a column — the rate IS the rate.
+const hasMargin = computed(() => marginPct.value !== 0);
+// Source · Description · Unit · Qty · Rate [· Sell rate] · Amount · remove
+const cols = computed(() => 7 + (hasMargin.value ? 1 : 0));
+
+// Mirrors ERPNext's calculate_margin, so the grid shows what the save will store.
+function sellRate(l) {
+	return (Number(l.price_list_rate) || 0) * (1 + marginPct.value / 100);
 }
 
-const subtotal = computed(() => form.items.reduce((a, l) => a + lineAmount(l), 0));
+function lineAmount(l) {
+	return (Number(l.qty) || 0) * sellRate(l);
+}
+
+// Summed from the rounded line amounts, so the rows add up to the figure under them.
+const subtotal = computed(() =>
+	form.items.reduce((a, l) => a + Math.round(lineAmount(l) * 100) / 100, 0)
+);
 
 // A template copies its text in; editing afterwards makes the terms ours, so the link drops.
 async function onPickTerms(name) {
@@ -142,6 +163,7 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 	title: "title",
 	transaction_date: "transaction_date",
 	valid_till: "validity_days",
+	margin_percent: "margin_percent",
 });
 const saving = ref(false);
 
@@ -152,6 +174,8 @@ function validate() {
 	if (!form.transaction_date) found.transaction_date = __("An issue date is required.");
 	if (form.validity_days !== "" && Number(form.validity_days) < 0)
 		found.validity_days = __("Cannot be negative — a price cannot expire before it is offered.");
+	if (Number(form.margin_percent) < 0)
+		found.margin_percent = __("Cannot be negative — that would quote below cost.");
 	// Rows with no description are dropped on save, so only the ones that will be sent count.
 	const lines = form.items.filter((l) => l.description.trim());
 	if (!lines.length) {
@@ -192,7 +216,11 @@ async function onSave() {
 				description: l.description.trim(),
 				uom: l.uom || "Nos",
 				qty: Number(l.qty) || 1,
-				rate: Number(l.rate) || 0,
+				// Cost and margin only. ERPNext derives `rate` from the two
+				// (taxes_and_totals.calculate_margin), so sending one would just be overwritten.
+				price_list_rate: Number(l.price_list_rate) || 0,
+				margin_type: "Percentage",
+				margin_rate_or_amount: marginPct.value,
 				source: l.source || "Manual",
 				code: l.code || null,
 				source_ref: l.source_ref || null,
@@ -272,9 +300,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<!-- No margin or tax fields: neither is applied yet, and a number on screen reads as
-				 a number in the price. They arrive with the working that uses them. -->
-			<DeskSection :title="__('Dates')" :cols="2">
+			<DeskSection :title="__('Dates and pricing')" :cols="3">
 				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
 					<DeskInput v-model="form.transaction_date" type="date" />
 				</DeskField>
@@ -282,6 +308,11 @@ const breadcrumbs = computed(() => [
 				<DeskField :label="__('Valid for (days)')" :error="errors.validity_days"
 					:hint="__('Counted from the issue date. Leave blank for no expiry.')">
 					<DeskInput v-model="form.validity_days" type="number" min="0" />
+				</DeskField>
+
+				<DeskField :label="__('Margin %')" :error="errors.margin_percent"
+					:hint="__('Added to every line, so the rate quoted is the rate charged.')">
+					<DeskInput v-model="form.margin_percent" type="number" min="0" step="any" />
 				</DeskField>
 			</DeskSection>
 
@@ -298,6 +329,12 @@ const breadcrumbs = computed(() => [
 									<th class="text-left font-medium px-3 py-2 w-32">{{ __("Unit") }}</th>
 									<th class="text-right font-medium px-3 py-2 w-24">{{ __("Qty") }}</th>
 									<th class="text-right font-medium px-3 py-2 w-32">{{ __("Rate") }}</th>
+									<th v-if="hasMargin" class="text-right font-medium px-3 py-2 w-32">
+										{{ __("Sell rate") }}
+										<span class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal">
+											+{{ marginPct }}% {{ __("margin") }}
+										</span>
+									</th>
 									<th class="text-right font-medium px-3 py-2 w-36">{{ __("Amount") }}</th>
 									<th class="w-10"></th>
 								</tr>
@@ -339,12 +376,17 @@ const breadcrumbs = computed(() => [
 									</td>
 									<td class="px-3 py-2">
 										<input
-											v-model.number="l.rate"
+											v-model.number="l.price_list_rate"
 											type="number"
 											min="0"
 											step="any"
 											class="w-full bg-transparent text-sm text-right tabular-nums py-1 focus:outline-none"
 										/>
+									</td>
+									<!-- Not editable: it is the rate plus the margin, and typing over it
+										 would only be recomputed on save. -->
+									<td v-if="hasMargin" class="px-3 py-2 text-right tabular-nums text-ink-600">
+										{{ fmtCurrency(sellRate(l)) }}
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums text-ink-900">
 										{{ fmtCurrency(lineAmount(l)) }}
@@ -364,7 +406,7 @@ const breadcrumbs = computed(() => [
 
 							<tfoot>
 								<tr class="border-t border-ink-100">
-									<td colspan="7" class="px-3 py-2">
+									<td :colspan="cols" class="px-3 py-2">
 										<div class="flex items-center gap-3">
 											<button
 												type="button"
@@ -392,7 +434,7 @@ const breadcrumbs = computed(() => [
 									class="border-t-2 border-ink-200 bg-ink-50"
 								>
 									<td
-										colspan="5"
+										:colspan="cols - 2"
 										class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider"
 									>
 										{{ __("Subtotal") }}
@@ -452,6 +494,7 @@ const breadcrumbs = computed(() => [
 
 		<QuotationLineModal
 			v-model:open="pickerOpen"
+			:margin-percent="form.margin_percent"
 			@add="addFromLibrary"
 		/>
 	</DeskPage>
