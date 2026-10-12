@@ -85,7 +85,7 @@ const groups = computed(() => [
 				icon: "puzzle",
 				label: __("BuildSuite Core Settings"),
 				desc: __(
-					"Org-wide BuildSuite toggles — company segregation, default project type, default company.",
+					"Org-wide BuildSuite toggles — company segregation, default project type, default company."
 				),
 				to: "/settings/core",
 				adminOnly: true,
@@ -95,7 +95,7 @@ const groups = computed(() => [
 				icon: "clipboard-list",
 				label: __("Project Settings"),
 				desc: __(
-					"The standard project page — which tabs every project offers by default. Each project can overrule it.",
+					"The standard project page — which tabs every project offers by default. Each project can overrule it."
 				),
 				to: "/settings/project",
 				adminOnly: true,
@@ -105,16 +105,35 @@ const groups = computed(() => [
 				icon: "wallet",
 				label: __("Bank & Cash Accounts"),
 				desc: __(
-					"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances.",
+					"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances."
 				),
 				to: "/settings/finance-accounts",
 				adminOnly: true,
 			},
 			{
+				slug: "terms",
+				icon: "file",
+				label: __("Terms & Conditions"),
+				desc: __(
+					"The clause library printed documents pull from, grouped by the document (Quotation, Purchase Order, …). Rich text with tables."
+				),
+				to: "/settings/terms",
+				// Managed by the admin + the roles that author document terms; everyone else gets
+				// select-only and doesn't see the library.
+				rolesAny: [
+					"BuildSuite Administrator",
+					"BuildSuite Accountant",
+					"BuildSuite Procurement Officer",
+					"BuildSuite Estimator",
+				],
+			},
+			{
 				slug: "workspace-setting",
 				icon: "site-execution",
 				label: __("Workspace Setting"),
-				desc: __("Report-style shortcut tiles shown in each workspace — one tab per workspace."),
+				desc: __(
+					"Report-style shortcut tiles shown in each workspace — one tab per workspace."
+				),
 				to: "/settings/workspaces",
 				adminOnly: true,
 			},
@@ -131,7 +150,7 @@ const groups = computed(() => [
 				icon: "tag",
 				label: __("Project Categories"),
 				desc: __(
-					"Construction categories that drive project templating, each with its own Work Package label.",
+					"Construction categories that drive project templating, each with its own Work Package label."
 				),
 				to: "/settings/project-categories",
 				adminOnly: true,
@@ -223,6 +242,9 @@ const visibleGroups = computed(() =>
 			tiles: g.tiles.filter((t) => {
 				if (t.bsaOnly && !isBSA.value) return false;
 				if (t.adminOnly && !isAdmin.value) return false;
+				// rolesAny: show when the user is an admin or holds one of the listed roles.
+				if (t.rolesAny && !isAdmin.value && !t.rolesAny.some((r) => store.hasRole(r)))
+					return false;
 				return true;
 			}),
 		}))

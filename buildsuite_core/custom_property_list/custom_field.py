@@ -801,4 +801,18 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Terms & Conditions are segregated in the SPA settings by the document they apply to
+	# (Quotation, Purchase Order, …). This Select is that reference — the "category" the Terms
+	# settings screen groups clauses under. Native `terms` (Text Editor) stays the rich-text body.
+	"Terms and Conditions": [
+		{
+			"fieldname": "custom_applicable_for",
+			"fieldtype": "Select",
+			"label": "Applicable For",
+			"options": "\nQuotation\nTender\nPurchase Order\nSubcontractor Work Order\nSubcontractor Bill\nSales Invoice\nPurchase Invoice",
+			"insert_after": "title",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 }

@@ -121,6 +121,7 @@ const PAGE_TITLES = {
 	"settings-user-new": "New User",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
+	"settings-terms": "Terms & Conditions",
 	"settings-workspaces": "Workspace Setting",
 	"settings-workspace-structure": "Workspace Structure",
 	"settings-project-categories": "Project Categories",
@@ -986,6 +987,13 @@ const routes = [
 				path: "settings/finance-accounts",
 				name: "settings-finance-accounts",
 				component: () => import("@/views/settings/FinanceAccountsView.vue"),
+			},
+			{
+				// Access is enforced in the view + backend (full-access roles manage; the rest get
+				// select-only and see a no-access message), so no requiresAdmin gate here.
+				path: "settings/terms",
+				name: "settings-terms",
+				component: () => import("@/views/settings/TermsSettingsView.vue"),
 			},
 			{
 				path: "settings/workspaces",

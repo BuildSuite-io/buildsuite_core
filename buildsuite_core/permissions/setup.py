@@ -717,6 +717,27 @@ def setup_petty_cash_permissions():
 		_apply_role_perms(dt, _read)
 
 
+# --- Terms & Conditions library ---------------------------------------------
+# The admin + the roles that author document terms (Accountant / Procurement / Estimator) manage
+# the clause library; System Manager is granted by _apply_role_perms. EVERY other BuildSuite role
+# gets `select` only — it can pick a clause on a document (the tc_name picker) but never read or
+# manage the library here. One combined call: _apply_role_perms drops any BuildSuite role it isn't
+# given, so full + select must be applied together (a second call would wipe the first's roles).
+_TERMS_FULL_ROLES = (
+	"BuildSuite Administrator",
+	"BuildSuite Accountant",
+	"BuildSuite Procurement Officer",
+	"BuildSuite Estimator",
+)
+
+
+def setup_terms_permissions():
+	perms = {role: _FULL for role in _TERMS_FULL_ROLES}
+	for role in BUILDSUITE_ROLES:
+		perms.setdefault(role, _SELECT)  # the rest: select-only
+	_apply_role_perms("Terms and Conditions", perms, _SELECT_PTYPES)
+
+
 def setup_subcontract_permissions():
 	# Subcontractors are native Suppliers (supplier_type="Subcontractor") — grant the
 	# BuildSuite roles CRUD on Supplier so the Vue "Subcontractor" screens work.
@@ -1183,6 +1204,7 @@ def restore_role_permissions():
 	setup_subcontract_permissions()
 	setup_sco_permissions()
 	setup_petty_cash_permissions()
+	setup_terms_permissions()
 	setup_workforce_permissions()
 	setup_equipment_permissions()
 	setup_project_finance_permissions()
