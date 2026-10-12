@@ -8,8 +8,7 @@
 // Accountant / Procurement Officer / Estimator manage the library (can_write); every other role
 // gets select-only and never reaches this screen.
 import { ref, reactive, computed, onMounted } from "vue";
-import { TextEditor } from "frappe-ui";
-import "frappe-ui/editor-style.css";
+import RichTextEditor from "@/components/RichTextEditor.vue";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -283,18 +282,7 @@ const breadcrumbs = [
 							)
 						"
 					>
-						<div
-							class="bg-white border border-ink-200 rounded-md overflow-hidden terms-editor"
-						>
-							<TextEditor
-								:key="editorKey"
-								:content="form.terms"
-								:fixed-menu="true"
-								:editable="true"
-								editor-class="prose-sm px-3 py-2 min-h-[12rem] focus:outline-none"
-								@change="(html) => (form.terms = html)"
-							/>
-						</div>
+						<RichTextEditor :key="editorKey" v-model="form.terms" min-height="12rem" />
 					</DeskField>
 					<label class="inline-flex items-center gap-2 text-xs text-ink-700 mt-3">
 						<input v-model="form.disabled" type="checkbox" />
