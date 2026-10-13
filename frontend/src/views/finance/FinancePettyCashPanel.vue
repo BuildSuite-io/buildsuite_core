@@ -40,7 +40,7 @@ const session = useSessionStore();
 // selected when on) so a site holding more than one company's ledgers never offers another
 // company's Bank/Cash account to disburse from.
 const activeCompany = useActiveCompany();
-const { canCreate } = usePermissions();
+const { canCreate, canReadAll } = usePermissions();
 const { userName } = useUserNames();
 const confirmDialog = useConfirm();
 const router = useRouter();
@@ -76,18 +76,26 @@ const res = useDocTypeList("Petty Cash Request", {
 });
 const all = computed(() => res.data || []);
 
-const tab = ref("disburse");
+// Default to "My Requests" — always available to every role; disbursers / see-all roles pick the
+// disburse queue / All / Balances from the tabs when they have them.
+const tab = ref("mine");
 const search = ref("");
 const statusFilter = ref(""); // All Requests tab status dropdown
+// Org-wide tabs (All / Balances) only for roles NOT limited by ownership; the disburse queue only
+// for disbursers; My Requests for everyone. An own-scoped role therefore sees just "My Requests".
+const canSeeAll = computed(() => canReadAll("pettyCash"));
 const tabs = computed(() => [
 	...(canDisburse.value
 		? [{ id: "disburse", label: __("To Disburse"), count: requested.value.length }]
 		: []),
-	{ id: "all", label: __("All Requests"), count: all.value.length },
-	{ id: "balances", label: __("Balances"), count: null },
+	...(canSeeAll.value
+		? [
+				{ id: "all", label: __("All Requests"), count: all.value.length },
+				{ id: "balances", label: __("Balances"), count: null },
+		  ]
+		: []),
 	{ id: "mine", label: __("My Requests"), count: mine.value.length },
 ]);
-if (!canDisburse.value) tab.value = "mine";
 
 const requested = computed(() => all.value.filter((r) => r.status === "Requested"));
 const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
@@ -283,8 +291,14 @@ async function onUndisburse(row) {
 	const ok = await confirmDialog({
 		title: __("Cancel disbursement?"),
 		message: row.is_direct
-			? __("Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.", [fmtINR(row.amount), userName(row.requested_by)])
-			: __("Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.", [fmtINR(row.amount), userName(row.requested_by)]),
+			? __(
+					"Reverse the {0} issued to {1}? It was issued directly, so the record is removed and their float drops.",
+					[fmtINR(row.amount), userName(row.requested_by)]
+			  )
+			: __(
+					"Reverse the {0} disbursed to {1}? The request returns to the disburse queue and their float drops.",
+					[fmtINR(row.amount), userName(row.requested_by)]
+			  ),
 		confirmLabel: __("Cancel disbursement"),
 		cancelLabel: __("Keep"),
 		destructive: true,
@@ -317,7 +331,8 @@ const rowsForTab = computed(() => {
 		<div class="flex items-center justify-between gap-3 mb-4">
 			<div class="text-sm text-ink-600">
 				{{ __("Advances to site holders. Spend is logged separately under") }}
-				<span class="font-medium">{{ __("Expenses") }}</span>.
+				<span class="font-medium">{{ __("Expenses") }}</span
+				>.
 			</div>
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<button
@@ -402,9 +417,9 @@ const rowsForTab = computed(() => {
 							class="px-3 py-2 text-right tabular-nums font-semibold"
 							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
 						>
-							<template v-if="b.balance < 0"
-								>{{ __("{0} owed to holder", [fmtINR(-b.balance)]) }}</template
-							>
+							<template v-if="b.balance < 0">{{
+								__("{0} owed to holder", [fmtINR(-b.balance)])
+							}}</template>
 							<template v-else>{{ fmtINR(b.balance) }}</template>
 						</td>
 						<td class="px-3 py-2 text-right whitespace-nowrap">
@@ -420,7 +435,11 @@ const rowsForTab = computed(() => {
 			</table>
 			<DeskPaginationFooter :pager="balancesPager" />
 			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				{{ __("Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement.") }}
+				{{
+					__(
+						"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
+					)
+				}}
 			</p>
 		</div>
 
@@ -531,7 +550,9 @@ const rowsForTab = computed(() => {
 			@click.self="reqForm.open = false"
 		>
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
-				<h3 class="text-sm font-semibold text-ink-900 mb-4">{{ __("Request petty cash") }}</h3>
+				<h3 class="text-sm font-semibold text-ink-900 mb-4">
+					{{ __("Request petty cash") }}
+				</h3>
 				<div class="space-y-3">
 					<DeskField :label="__('Amount')" required
 						><DeskInput v-model.number="reqForm.amount" type="number" min="0"
@@ -541,7 +562,9 @@ const rowsForTab = computed(() => {
 					/></DeskField>
 				</div>
 				<div class="flex justify-end gap-2 mt-5">
-					<button class="desk-btn" @click="reqForm.open = false">{{ __("Cancel") }}</button>
+					<button class="desk-btn" @click="reqForm.open = false">
+						{{ __("Cancel") }}
+					</button>
 					<button
 						class="desk-save-btn"
 						:disabled="reqForm.saving"
@@ -566,7 +589,9 @@ const rowsForTab = computed(() => {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Issue petty cash directly") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Issue petty cash directly") }}
+					</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -579,7 +604,11 @@ const rowsForTab = computed(() => {
 					<p
 						class="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-md px-2.5 py-2"
 					>
-						{{ __("No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request.") }}
+						{{
+							__(
+								"No request precedes this — the record you create here is the only trail. Use it when cash genuinely moved before anyone could raise a request."
+							)
+						}}
 					</p>
 					<div>
 						<label
@@ -665,7 +694,12 @@ const rowsForTab = computed(() => {
 					{{ __("Disburse {0}", [fmtINR(disb.row?.amount)]) }}
 				</h3>
 				<p class="text-xs text-ink-500 mb-4">
-					{{ __("to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).", [userName(disb.row?.requested_by)]) }}
+					{{
+						__(
+							"to {0} · posts a Journal Entry (Dr Petty Cash / Cr the source account).",
+							[userName(disb.row?.requested_by)]
+						)
+					}}
 				</p>
 				<DeskField :label="__('Pay from')" required>
 					<DeskSelect v-model="disb.paidFrom">
