@@ -65,7 +65,9 @@ onMounted(load);
 const scoped = computed(() => {
 	if (scope.value === "mine") return todos.value.filter((t) => t.allocated_to === me.value);
 	if (scope.value === "raised")
-		return todos.value.filter((t) => t.assigned_by === me.value && t.allocated_to !== me.value);
+		return todos.value.filter(
+			(t) => t.assigned_by === me.value && t.allocated_to !== me.value
+		);
 	return todos.value;
 });
 
@@ -188,29 +190,43 @@ function onDrop(status) {
 			<div class="min-w-0">
 				<h1 class="text-lg font-semibold text-ink-900">{{ __("To-dos") }}</h1>
 				<p class="text-xs text-ink-500 mt-0.5">
-					{{ rows.length }} {{ rows.length === 1 ? __("to-do") : __("to-dos") }} · {{ scopeNote
+					{{ rows.length }} {{ rows.length === 1 ? __("to-do") : __("to-dos") }} ·
+					{{ scopeNote
 					}}<template v-if="overdueCount">
-						· <span class="text-danger-700 font-medium">{{ overdueCount }} {{ __("overdue") }}</span></template
+						·
+						<span class="text-danger-700 font-medium"
+							>{{ overdueCount }} {{ __("overdue") }}</span
+						></template
 					>
 				</p>
 			</div>
-			<button type="button" class="desk-save-btn !h-9" @click="newOpen = true">+ {{ __("New to-do") }}</button>
-			<div class="ml-auto flex items-center gap-1 bg-ink-100 rounded-lg p-0.5 shrink-0">
-				<button
-					v-for="v in [
-						{ id: 'list', label: __('List'), icon: 'clipboard-list' },
-						{ id: 'board', label: __('Board'), icon: 'layout-grid' },
-					]"
-					:key="v.id"
-					type="button"
-					class="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-xs font-medium transition-colors"
-					:class="view === v.id ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-900'"
-					:aria-pressed="view === v.id"
-					:title="v.label"
-					@click="view = v.id"
-				>
-					<WorkspaceIcon :slug="v.icon" :size="14" />
-					<span class="hidden sm:inline">{{ v.label }}</span>
+			<!-- Right edge: the view toggle, then the create action LAST — the primary action belongs
+			     where the eye looks for it (matches the prototype). -->
+			<div class="ml-auto flex items-center gap-2 shrink-0">
+				<div class="flex items-center gap-1 bg-ink-100 rounded-lg p-0.5">
+					<button
+						v-for="v in [
+							{ id: 'list', label: __('List'), icon: 'clipboard-list' },
+							{ id: 'board', label: __('Board'), icon: 'layout-grid' },
+						]"
+						:key="v.id"
+						type="button"
+						class="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-xs font-medium transition-colors"
+						:class="
+							view === v.id
+								? 'bg-white text-ink-900 shadow-sm'
+								: 'text-ink-600 hover:text-ink-900'
+						"
+						:aria-pressed="view === v.id"
+						:title="v.label"
+						@click="view = v.id"
+					>
+						<WorkspaceIcon :slug="v.icon" :size="14" />
+						<span class="hidden sm:inline">{{ v.label }}</span>
+					</button>
+				</div>
+				<button type="button" class="desk-save-btn !h-9" @click="newOpen = true">
+					+ {{ __("New to-do") }}
 				</button>
 			</div>
 		</div>
@@ -227,7 +243,11 @@ function onDrop(status) {
 					:key="s.id"
 					type="button"
 					class="px-2.5 h-8 rounded-md text-xs font-medium transition-colors"
-					:class="scope === s.id ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-900'"
+					:class="
+						scope === s.id
+							? 'bg-white text-ink-900 shadow-sm'
+							: 'text-ink-600 hover:text-ink-900'
+					"
 					:aria-pressed="scope === s.id"
 					@click="scope = s.id"
 				>
@@ -235,7 +255,11 @@ function onDrop(status) {
 				</button>
 			</div>
 
-			<DeskInput v-model="search" class="!w-full sm:!w-56" :placeholder="__('Search to-dos…')" />
+			<DeskInput
+				v-model="search"
+				class="!w-full sm:!w-56"
+				:placeholder="__('Search to-dos…')"
+			/>
 
 			<button
 				type="button"
@@ -244,14 +268,26 @@ function onDrop(status) {
 				@click="filtersOpen = !filtersOpen"
 			>
 				<span>{{ __("Filters") }}</span>
-				<span v-if="activeFilterCount" class="text-[10px] tabular-nums px-1.5 py-0.5 rounded-full bg-brand-700 text-white">{{ activeFilterCount }}</span>
+				<span
+					v-if="activeFilterCount"
+					class="text-[10px] tabular-nums px-1.5 py-0.5 rounded-full bg-brand-700 text-white"
+					>{{ activeFilterCount }}</span
+				>
 			</button>
 
-			<DeskSelect v-model="statusFilter" class="!w-auto" :class="filtersOpen ? '' : 'hidden sm:block'">
+			<DeskSelect
+				v-model="statusFilter"
+				class="!w-auto"
+				:class="filtersOpen ? '' : 'hidden sm:block'"
+			>
 				<option value="">{{ __("Any status") }}</option>
 				<option v-for="s in TODO_STATUSES" :key="s" :value="s">{{ __(s) }}</option>
 			</DeskSelect>
-			<DeskSelect v-model="priorityFilter" class="!w-auto" :class="filtersOpen ? '' : 'hidden sm:block'">
+			<DeskSelect
+				v-model="priorityFilter"
+				class="!w-auto"
+				:class="filtersOpen ? '' : 'hidden sm:block'"
+			>
 				<option value="">{{ __("Any priority") }}</option>
 				<option v-for="p in TODO_PRIORITIES" :key="p" :value="p">{{ __(p) }}</option>
 			</DeskSelect>
@@ -265,21 +301,50 @@ function onDrop(status) {
 				:class="filtersOpen ? '' : 'hidden sm:block'"
 				:placeholder="__('Anyone')"
 			/>
-			<button v-if="anyFilter" type="button" class="text-xs text-brand-700 hover:underline px-1" @click="clearFilters">{{ __("Clear filters") }}</button>
+			<button
+				v-if="anyFilter"
+				type="button"
+				class="text-xs text-brand-700 hover:underline px-1"
+				@click="clearFilters"
+			>
+				{{ __("Clear filters") }}
+			</button>
 		</div>
 
-		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">{{ __("Loading…") }}</div>
+		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">
+			{{ __("Loading…") }}
+		</div>
 
 		<!-- Empty -->
-		<div v-else-if="!rows.length" class="border border-dashed border-ink-200 rounded-xl px-4 py-14 text-center">
+		<div
+			v-else-if="!rows.length"
+			class="border border-dashed border-ink-200 rounded-xl px-4 py-14 text-center"
+		>
 			<WorkspaceIcon slug="check-circle" :size="28" class="text-ink-300 mx-auto mb-3" />
 			<div class="text-sm text-ink-700">
-				{{ anyFilter ? __("Nothing matches those filters.") : scope === "mine" ? __("Nothing on your plate.") : __("Nothing here yet.") }}
+				{{
+					anyFilter
+						? __("Nothing matches those filters.")
+						: scope === "mine"
+						? __("Nothing on your plate.")
+						: __("Nothing here yet.")
+				}}
 			</div>
 			<div class="text-xs text-ink-500 mt-1">
-				{{ anyFilter ? __("Clear them to see the rest.") : __("To-dos are the office jobs that aren't on a project.") }}
+				{{
+					anyFilter
+						? __("Clear them to see the rest.")
+						: __("To-dos are the office jobs that aren't on a project.")
+				}}
 			</div>
-			<button v-if="!anyFilter" type="button" class="desk-save-btn !h-10 !px-4 mt-4" @click="newOpen = true">+ {{ __("New to-do") }}</button>
+			<button
+				v-if="!anyFilter"
+				type="button"
+				class="desk-save-btn !h-10 !px-4 mt-4"
+				@click="newOpen = true"
+			>
+				+ {{ __("New to-do") }}
+			</button>
 		</div>
 
 		<!-- List -->
@@ -299,19 +364,30 @@ function onDrop(status) {
 
 		<!-- Board -->
 		<div v-else>
-			<div class="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 lg:overflow-x-visible">
+			<div
+				class="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 lg:overflow-x-visible"
+			>
 				<section
 					v-for="col in columns"
 					:key="col.status"
 					class="snap-start shrink-0 w-[82vw] sm:w-72 lg:w-auto lg:flex-1 flex flex-col rounded-xl border transition-colors"
-					:class="dropTarget === col.status ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-ink-100'"
+					:class="
+						dropTarget === col.status
+							? 'border-brand-400 bg-brand-50'
+							: 'border-ink-200 bg-ink-100'
+					"
 					@dragover.prevent="dropTarget = col.status"
 					@dragleave="dropTarget === col.status && (dropTarget = null)"
 					@drop.prevent="onDrop(col.status)"
 				>
 					<header class="px-3 py-2.5 flex items-center gap-2 border-b border-ink-200">
-						<span class="text-xs font-semibold uppercase tracking-wider text-ink-600">{{ __(col.status) }}</span>
-						<span class="text-xs text-ink-600 tabular-nums ml-auto">{{ col.items.length }}</span>
+						<span
+							class="text-xs font-semibold uppercase tracking-wider text-ink-600"
+							>{{ __(col.status) }}</span
+						>
+						<span class="text-xs text-ink-600 tabular-nums ml-auto">{{
+							col.items.length
+						}}</span>
 					</header>
 					<div class="p-2 space-y-2 flex-1 min-h-[6rem]">
 						<ToDoCard
@@ -325,15 +401,23 @@ function onDrop(status) {
 							@dragstart="dragging = $event"
 							@dragend="dragging = null"
 						/>
-						<p v-if="!col.items.length" class="text-xs text-ink-600 text-center py-6">{{ __("Nothing here") }}</p>
+						<p v-if="!col.items.length" class="text-xs text-ink-600 text-center py-6">
+							{{ __("Nothing here") }}
+						</p>
 					</div>
 				</section>
 			</div>
 			<p v-if="hiddenOnBoard" class="text-xs text-ink-500 mt-3">
 				{{
 					hiddenOnBoard === 1
-						? __("{0} cancelled to-do is not shown — switch to the list to see them.", [hiddenOnBoard])
-						: __("{0} cancelled to-dos are not shown — switch to the list to see them.", [hiddenOnBoard])
+						? __(
+								"{0} cancelled to-do is not shown — switch to the list to see them.",
+								[hiddenOnBoard]
+						  )
+						: __(
+								"{0} cancelled to-dos are not shown — switch to the list to see them.",
+								[hiddenOnBoard]
+						  )
 				}}
 			</p>
 		</div>

@@ -37,7 +37,14 @@ const form = reactive({ doctype: props.doctype });
 const loading = ref(false);
 const busy = ref(false);
 const formError = ref("");
-const perms = ref({ read: true, write: true, create: true, delete: true, submit: true, cancel: true });
+const perms = ref({
+	read: true,
+	write: true,
+	create: true,
+	delete: true,
+	submit: true,
+	cancel: true,
+});
 
 const isEdit = computed(() => !!props.name);
 const docstatus = computed(() => Number(form.docstatus || 0));
@@ -114,13 +121,18 @@ const tabs = computed(() => {
 		else section.fields.push(f);
 	}
 	const pruned = out
-		.map((t) => ({ ...t, sections: t.sections.filter((s) => s.fields.length || s.tables.length) }))
+		.map((t) => ({
+			...t,
+			sections: t.sections.filter((s) => s.fields.length || s.tables.length),
+		}))
 		.filter((t) => t.sections.length);
 	if (pruned.length > 1 && !pruned[0].label) pruned[0].label = "Details";
 	return pruned;
 });
 
-const currentTab = computed(() => tabs.value[activeTab.value] || tabs.value[0] || { sections: [] });
+const currentTab = computed(
+	() => tabs.value[activeTab.value] || tabs.value[0] || { sections: [] }
+);
 
 // Dirty tracking: while a draft has unsaved edits, Save is the primary action;
 // once clean, Submit becomes primary (Frappe's Save-then-Submit behaviour).
@@ -218,7 +230,8 @@ function missingRequired() {
 				if (v === undefined || v === null || v === "") flag(f.label || f.fieldname, ti);
 			}
 			for (const tb of s.tables) {
-				if (tb.reqd && !(form[tb.fieldname] || []).length) flag(tb.label || tb.fieldname, ti);
+				if (tb.reqd && !(form[tb.fieldname] || []).length)
+					flag(tb.label || tb.fieldname, ti);
 			}
 		}
 	});
@@ -334,10 +347,7 @@ const DANGER =
 
 <template>
 	<div>
-		<div
-			v-if="isEdit && submittable"
-			class="mb-4 flex items-center gap-2"
-		>
+		<div v-if="isEdit && submittable" class="mb-4 flex items-center gap-2">
 			<StatusBadge :status="statusLabel" />
 			<span v-if="isDraft" class="text-[11px] text-ink-500">Not submitted yet.</span>
 		</div>
@@ -354,70 +364,9 @@ const DANGER =
 		</div>
 
 		<form v-else @submit.prevent="onSave">
-			<!-- Tabs (Tab Break fields) -->
-			<div
-				v-if="tabs.length > 1"
-				class="flex items-center gap-1 border-b border-ink-200 mb-5 overflow-x-auto"
-			>
-				<button
-					v-for="(t, ti) in tabs"
-					:key="ti"
-					type="button"
-					class="px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors"
-					:class="
-						activeTab === ti
-							? 'border-brand-600 text-brand-700 font-medium'
-							: 'border-transparent text-ink-500 hover:text-ink-800'
-					"
-					@click="activeTab = ti"
-				>
-					{{ t.label || "Details" }}
-				</button>
-			</div>
-
-			<section v-for="(s, si) in currentTab.sections" :key="si" class="mb-6">
-				<h3
-					v-if="s.label"
-					class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-3 pb-1.5 border-b border-ink-200"
-				>
-					{{ s.label }}
-				</h3>
-
-				<div
-					v-if="s.fields.length"
-					class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-4"
-				>
-					<DeskField
-						v-for="f in s.fields"
-						:key="f.fieldname"
-						:label="f.label || f.fieldname"
-						:required="!!f.reqd"
-						:hint="f.description || ''"
-					>
-						<DocTypeFieldControl
-							v-model="form[f.fieldname]"
-							:field="f"
-							:context="form"
-							:disabled="isReadOnly(f)"
-						/>
-					</DeskField>
-				</div>
-
-				<div v-for="t in s.tables" :key="t.fieldname" class="mb-4">
-					<div class="text-[11px] font-medium text-ink-700 mb-1.5">
-						{{ t.label || t.fieldname }}<span v-if="t.reqd" class="text-danger-600"> *</span>
-					</div>
-					<DocTypeChildTable
-						v-model="form[t.fieldname]"
-						:doctype="t.options"
-						:disabled="isReadOnly(t)"
-					/>
-				</div>
-			</section>
-
-			<div
-				class="flex items-center gap-2 pt-2 border-t border-ink-200 sticky bottom-0 bg-white py-3"
-			>
+			<!-- Actions, top-right — the primary action sits where the eye looks for it, as on every
+			     other form. Primary = desk-save-btn (theme primary: near-black in light, green in dark). -->
+			<div class="flex flex-wrap items-center justify-end gap-2 mb-5">
 				<!-- New -->
 				<button
 					v-if="!isEdit && perms.create"
@@ -495,6 +444,68 @@ const DANGER =
 
 				<button type="button" :class="SECONDARY" @click="goList">Back</button>
 			</div>
+
+			<!-- Tabs (Tab Break fields) -->
+			<div
+				v-if="tabs.length > 1"
+				class="flex items-center gap-1 border-b border-ink-200 mb-5 overflow-x-auto"
+			>
+				<button
+					v-for="(t, ti) in tabs"
+					:key="ti"
+					type="button"
+					class="px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors"
+					:class="
+						activeTab === ti
+							? 'border-brand-600 text-brand-700 font-medium'
+							: 'border-transparent text-ink-500 hover:text-ink-800'
+					"
+					@click="activeTab = ti"
+				>
+					{{ t.label || "Details" }}
+				</button>
+			</div>
+
+			<section v-for="(s, si) in currentTab.sections" :key="si" class="mb-6">
+				<h3
+					v-if="s.label"
+					class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-3 pb-1.5 border-b border-ink-200"
+				>
+					{{ s.label }}
+				</h3>
+
+				<div
+					v-if="s.fields.length"
+					class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-4"
+				>
+					<DeskField
+						v-for="f in s.fields"
+						:key="f.fieldname"
+						:label="f.label || f.fieldname"
+						:required="!!f.reqd"
+						:hint="f.description || ''"
+					>
+						<DocTypeFieldControl
+							v-model="form[f.fieldname]"
+							:field="f"
+							:context="form"
+							:disabled="isReadOnly(f)"
+						/>
+					</DeskField>
+				</div>
+
+				<div v-for="t in s.tables" :key="t.fieldname" class="mb-4">
+					<div class="text-[11px] font-medium text-ink-700 mb-1.5">
+						{{ t.label || t.fieldname
+						}}<span v-if="t.reqd" class="text-danger-600"> *</span>
+					</div>
+					<DocTypeChildTable
+						v-model="form[t.fieldname]"
+						:doctype="t.options"
+						:disabled="isReadOnly(t)"
+					/>
+				</div>
+			</section>
 		</form>
 	</div>
 </template>
