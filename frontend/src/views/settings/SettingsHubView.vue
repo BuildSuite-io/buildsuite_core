@@ -129,21 +129,13 @@ const groups = computed(() => [
 			},
 			{
 				slug: "workspace-setting",
-				icon: "site-execution",
+				icon: "layout-grid",
 				label: __("Workspace Setting"),
 				desc: __(
 					"Report-style shortcut tiles shown in each workspace — one tab per workspace."
 				),
 				to: "/settings/workspaces",
 				adminOnly: true,
-			},
-			{
-				slug: "workspace-structure",
-				icon: "layout-grid",
-				label: __("Workspace Structure"),
-				desc: __("Configure workspaces and per-role shortcut grids."),
-				to: "/settings/workspace-structure",
-				bsaOnly: true,
 			},
 			{
 				slug: "project-categories",
