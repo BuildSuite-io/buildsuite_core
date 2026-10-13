@@ -6,7 +6,7 @@
 // Architectural win: shortcuts are NOT hardcoded — they come from the backend
 // registry (BuildSuite Workspace Shortcut, role-filtered server-side by
 // get_workspace_shortcuts). A BSA at a customer org can reorder / hide / add
-// shortcuts via /settings/workspace-structure without developer involvement.
+// shortcuts via /settings/workspaces without developer involvement.
 //
 // Session 35 — EXPLORATORY DESIGN VISUALISATION (additive, NOT M1 scope):
 //   1. A prominent Project Dashboard tile rendered ABOVE the shortcuts grid,
@@ -37,13 +37,17 @@ import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSec
 const store = useDataStore();
 
 // Shortcuts come from the backend registry (BuildSuite Workspace Shortcut), role-filtered
-// server-side. A BSA configures them at /settings/workspace-structure.
+// server-side. A BSA configures them at /settings/workspaces.
 const shortcuts = ref([]);
 const shortcutsLoaded = ref(false);
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	});
 });
 
 // --- Session 35 additive: Project Dashboard tile -------------------------
@@ -51,7 +55,9 @@ const today = computed(() => {
 // here per the exploratory-visualisation framing; production would put this
 // on the workspace tile's `roles` child-table column.
 // Project dashboard = the oversight audience (leadership + the Accountant), from backend roles.
-const showProjectDashboard = computed(() => store.isLeadership || store.hasRole("BuildSuite Accountant"));
+const showProjectDashboard = computed(
+	() => store.isLeadership || store.hasRole("BuildSuite Accountant")
+);
 
 // Reports now render through the shared <WorkspaceReportsSection>, which owns its own
 // fetch + skeleton. This view only loads the shortcuts grid.
@@ -75,17 +81,20 @@ onMounted(async () => {
 				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Site Execution") }}</h1>
 			</div>
 
-			<!-- BSA hint banner — only visible to BSA (the audience who can reconfigure) -->
+			<!-- Admin hint banner — hidden by default; only an admin / System Manager (who can
+			     reconfigure) sees it. Configure opens the Workspace Setting page. -->
 			<div
-				v-if="store.isBSA"
+				v-if="store.isAdmin"
 				class="mb-5 px-3 py-2 bg-brand-50 border border-brand-100 text-[11px] text-brand-700 flex items-center justify-between"
 				style="border-radius: 6px"
 			>
-				<span
-					>{{ __("Customize shortcuts shown on this workspace — reorder, hide per role, or add new ones.") }}</span
-				>
+				<span>{{
+					__(
+						"Customize shortcuts shown on this workspace — reorder, hide per role, or add new ones."
+					)
+				}}</span>
 				<RouterLink
-					to="/settings/workspace-structure"
+					to="/settings/workspaces"
 					class="font-medium hover:underline whitespace-nowrap ml-3"
 				>
 					{{ __("Configure") }} →
@@ -129,7 +138,11 @@ onMounted(async () => {
 							>
 						</div>
 						<div class="text-xs text-brand-700 mt-1 leading-snug">
-							{{ __("Portfolio health, top risks, and high-value approvals at a glance.") }}
+							{{
+								__(
+									"Portfolio health, top risks, and high-value approvals at a glance."
+								)
+							}}
 						</div>
 					</div>
 					<svg
@@ -178,8 +191,8 @@ onMounted(async () => {
 					{{ __("No Site Execution shortcuts available.") }}
 				</div>
 				<RouterLink
-					v-if="store.isBSA"
-					to="/settings/workspace-structure"
+					v-if="store.isAdmin"
+					to="/settings/workspaces"
 					class="text-xs text-brand-700 hover:underline"
 				>
 					{{ __("Configure shortcuts") }} →

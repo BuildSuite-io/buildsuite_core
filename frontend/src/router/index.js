@@ -123,7 +123,6 @@ const PAGE_TITLES = {
 	"settings-core": "Core Settings",
 	"settings-terms": "Terms & Conditions",
 	"settings-workspaces": "Workspace Setting",
-	"settings-workspace-structure": "Workspace Structure",
 	"settings-project-categories": "Project Categories",
 	"settings-project-category-new": "New Project Category",
 	"settings-project-category-detail": "Project Category",
@@ -1005,11 +1004,6 @@ const routes = [
 			{
 				path: "settings/site-execution",
 				redirect: "/settings/workspaces",
-			},
-			{
-				path: "settings/workspace-structure",
-				name: "settings-workspace-structure",
-				component: () => import("@/views/settings/WorkspaceStructureView.vue"),
 			},
 			{
 				path: "settings/project-categories",
