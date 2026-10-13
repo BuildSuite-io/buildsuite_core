@@ -2,11 +2,13 @@
 // One meta-driven field control, shared by the main form (DocTypeForm) and the
 // child-table grid (DocTypeChildTable). Picks a Desk control by fieldtype and
 // resolves a Dynamic Link's target DocType from a sibling value in `context`.
-import { computed } from "vue";
+import { computed, defineAsyncComponent } from "vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+// Rich text (Text Editor) is heavy (TipTap) — load it only when such a field is actually rendered.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const props = defineProps({
 	field: { type: Object, required: true },
@@ -24,7 +26,6 @@ const TEXTAREA = new Set([
 	"Text",
 	"Long Text",
 	"Code",
-	"Text Editor",
 	"HTML Editor",
 	"Markdown Editor",
 	"JSON",
@@ -37,6 +38,9 @@ const kind = computed(() => {
 	if (t === "Check") return "check";
 	if (t === "Date") return "date";
 	if (t === "Datetime") return "datetime";
+	// Text Editor is a WYSIWYG rich-text field in Frappe — render it the same way (not a textarea),
+	// except in compact (child-grid) cells where a full editor won't fit.
+	if (t === "Text Editor") return props.compact ? "textarea" : "richtext";
 	if (TEXTAREA.has(t)) return props.compact ? "data" : "textarea";
 	if (NUMERIC.has(t)) return "number";
 	return "data";
@@ -79,7 +83,9 @@ function onCheck(e) {
 		:doctype="linkDoctype || 'DocType'"
 		value-field="name"
 		:disabled="linkDisabled"
-		:placeholder="field.fieldtype === 'Dynamic Link' && !linkDoctype ? 'Pick type first' : 'Search…'"
+		:placeholder="
+			field.fieldtype === 'Dynamic Link' && !linkDoctype ? 'Pick type first' : 'Search…'
+		"
 	/>
 	<DeskSelect v-else-if="kind === 'select'" v-model="val" :disabled="disabled">
 		<option value="">—</option>
@@ -99,6 +105,7 @@ function onCheck(e) {
 		type="datetime-local"
 		:disabled="disabled"
 	/>
+	<RichTextEditor v-else-if="kind === 'richtext'" v-model="val" :editable="!disabled" />
 	<DeskTextarea v-else-if="kind === 'textarea'" v-model="val" :rows="3" :disabled="disabled" />
 	<DeskInput
 		v-else-if="kind === 'number'"
