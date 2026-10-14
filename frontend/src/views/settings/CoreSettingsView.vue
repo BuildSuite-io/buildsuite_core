@@ -19,7 +19,11 @@ import { setCompanyAwareness } from "@/composables/useActiveCompany";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
-import { restoreDefaultRolePermissions, exportRolePermissions } from "@/data/rolePermissionsApi";
+import {
+	restoreDefaultRolePermissions,
+	exportRolePermissions,
+	setupAppData,
+} from "@/data/rolePermissionsApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -62,6 +66,30 @@ async function onRestoreDefaults() {
 		);
 	} catch (err) {
 		showToast(err.message || __("Failed to restore default permissions"), "error");
+	} finally {
+		permBusy.value = "";
+	}
+}
+
+async function onSetupAppData() {
+	const ok = await confirmDialog({
+		title: __("Set up app data?"),
+		message: __(
+			"Seeds the BuildSuite roles, personas, workspaces, approval workflows and report tiles, and re-applies the default permission matrix. Use this on a new site whose persona list or roles are empty. Re-running it backfills anything missing, but it will overwrite any BuildSuite role-permission changes made in Desk back to the shipped defaults."
+		),
+		confirmLabel: __("Set up app data"),
+	});
+	if (!ok) return;
+	permBusy.value = "setup";
+	try {
+		await setupAppData();
+		showToast(
+			__(
+				"Setup started — roles, personas and workspaces are being seeded in the background. This can take a few minutes; refresh once it completes."
+			)
+		);
+	} catch (err) {
+		showToast(err.message || __("Failed to set up app data"), "error");
 	} finally {
 		permBusy.value = "";
 	}
@@ -296,6 +324,33 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 								{{ a.name }} ({{ a.account_type }})
 							</option>
 						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection v-if="store.isAdmin" :title="__('App setup')">
+					<DeskField
+						:label="__('Set up app data')"
+						:hint="
+							__(
+								'Seeds the BuildSuite roles, personas, workspaces, approval workflows and report tiles for this site (and re-applies the default permission matrix). Run this on a new site whose Persona list or roles are empty — a fresh install seeds master data but not these registries. Safe to re-run: it backfills anything missing.'
+							)
+						"
+					>
+						<div class="flex flex-wrap items-center gap-2 py-1">
+							<button
+								type="button"
+								class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 font-medium disabled:opacity-60"
+								style="border-radius: 6px"
+								:disabled="!!permBusy"
+								@click="onSetupAppData"
+							>
+								{{
+									permBusy === "setup"
+										? __("Setting up…")
+										: __("Set up app data")
+								}}
+							</button>
+						</div>
 					</DeskField>
 				</DeskSection>
 

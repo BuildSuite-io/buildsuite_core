@@ -5,6 +5,7 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 
 from buildsuite_core.custom_property_list.custom_field import CUSTOM_FIELD
 from buildsuite_core.custom_property_list.property_field import get_property_setters
+
 # Default DocPerms are applied by permissions.setup.setup_record_permissions — invoked on
 # demand via the Restore Default Permissions admin action (api.role_permissions), NOT on migrate.
 from buildsuite_core.utils.project import backfill_project_status
@@ -16,6 +17,16 @@ def after_install():
 	create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
 	make_property_setters()
 	seed_master_data()
+	# A fresh install has no DocPerms/personas/workspaces to clobber, so seed the full registry
+	# (roles + personas + workspaces + workflows + report tiles + the default DocPerm matrix) here.
+	# This is NOT done on migrate — an app update must not reset a client's permission tuning (see
+	# after_migrate). The persona-seeding patches don't help a fresh site either: Frappe marks every
+	# patches.txt entry complete-without-running on install, so without this the new site would boot
+	# with an empty persona list and no BuildSuite roles. An admin can re-run it any time via the
+	# "Set up app data" action in BuildSuite Core Settings (api.role_permissions.setup_app_data).
+	from buildsuite_core.permissions.setup import setup_record_permissions
+
+	setup_record_permissions()
 
 
 def after_migrate():
