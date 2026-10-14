@@ -52,6 +52,8 @@ export function usePermissions() {
 				e: scopeToCap(p.writeScope),
 				d: scopeToCap(p.deleteScope),
 				x: p.x === true,
+				// "all" → the role reads every record (not ownership-limited); "own" → only its own.
+				rAll: p.readScope === "all",
 			};
 		}
 		return out;
@@ -80,6 +82,9 @@ export function usePermissions() {
 		// Create is an unconditional capability (no record context).
 		canCreate: (resource) => cap(resource, "c") === true,
 		canRead: (resource) => cap(resource, "r") !== false,
+		// True when the role reads EVERY record of this resource (not ownership-limited) — used to
+		// show org-wide finance tabs (All / Balances / approval queues) only to see-all roles.
+		canReadAll: (resource) => cap(resource, "rAll") === true,
 		// Coarse (no record) — true for full + own-scope personas. Use for
 		// list-level affordances; prefer the record-aware variants on detail pages.
 		canEdit: (resource) => cap(resource, "e") !== false,

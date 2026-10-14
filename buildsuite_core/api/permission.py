@@ -94,10 +94,12 @@ def _resource_permissions() -> dict:
 	"""The current user's effective caps for every mapped resource, derived from
 	``frappe.has_permission`` — the single source of truth the SPA gates on.
 
-	Each resource → ``{c, r, e, d, x, writeScope, deleteScope}``. ``writeScope`` /
-	``deleteScope`` are ``"all" | "own" | "none"``: a persona whose write is granted only
-	via an ``if_owner`` DocPerm reports ``"own"`` so the SPA can keep its own-record gating
-	(edit/delete only your own drafts) that a bare boolean can't express.
+	Each resource → ``{c, r, e, d, x, readScope, writeScope, deleteScope}``. The scopes are
+	``"all" | "own" | "none"``: a persona whose read/write/delete is granted only via an
+	``if_owner`` DocPerm reports ``"own"`` so the SPA can tell "sees every record" from "sees only
+	their own" — which a bare boolean (always True for an if_owner read) can't express. The finance
+	panels use ``readScope`` to show the org-wide tabs (All / Balances / approval queues) only to
+	roles that are NOT ownership-limited.
 	"""
 	out = {}
 	for key, doctype in RESOURCE_DOCTYPES.items():
@@ -105,7 +107,7 @@ def _resource_permissions() -> dict:
 			# A Doctype absent on this site (e.g. an ERPNext module not installed) is simply
 			# "no access" rather than an error — keeps the payload shape stable.
 			out[key] = {c: False for c in _CAP_PTYPES}
-			out[key].update({"writeScope": "none", "deleteScope": "none"})
+			out[key].update({"readScope": "none", "writeScope": "none", "deleteScope": "none"})
 			continue
 		caps = {cap: bool(frappe.has_permission(doctype, ptype=ptype)) for cap, ptype in _CAP_PTYPES.items()}
 		# write/delete only: a bare has_permission is False for an if_owner-only grant (Frappe
@@ -115,6 +117,9 @@ def _resource_permissions() -> dict:
 		# never owner-downgraded, so their has_permission values above stand.
 		perms = frappe.permissions.get_role_permissions(doctype, user=frappe.session.user, is_owner=True)
 		ifo = perms.get("if_owner") or {}
+		# Read is never downgraded doc-less (perms["read"] stays 1 even for an if_owner grant), so
+		# the `if_owner` map — not perms["read"] — is what tells "own" from "all".
+		caps["readScope"] = "own" if ifo.get("read") else ("all" if perms.get("read") else "none")
 		caps["writeScope"] = _scope(perms, ifo, "write")
 		caps["deleteScope"] = _scope(perms, ifo, "delete")
 		caps["e"] = caps["writeScope"] != "none"
