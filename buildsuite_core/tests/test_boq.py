@@ -201,6 +201,48 @@ class TestBOQ(BuildSuiteTestCase):
 		self.assertEqual(frappe.db.get_value("BOQ", b.name, "status"), "Superseded")
 		self.assertEqual(frappe.db.get_value("BOQ", new, "status"), "Approved")
 
+	# --- project-less estimates -----------------------------------------
+	def test_estimate_without_project_anchors_default_company(self):
+		# A BOQ priced before the work is won has no project; its company falls back to the
+		# default company rather than failing the mandatory-project check (now relaxed).
+		from buildsuite_core.utils.project import default_company
+
+		b = frappe.get_doc({"doctype": "BOQ", "title": "Unwon estimate", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		self.assertFalse(b.project)
+		self.assertEqual(b.company, default_company())
+
+	def test_approve_estimate_does_not_supersede_other_estimates(self):
+		# Estimates aren't revisions of one another, so approving one must leave every other
+		# project-less estimate untouched (a blank project must not group them).
+		a = frappe.get_doc({"doctype": "BOQ", "title": "Estimate A", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		b = frappe.get_doc({"doctype": "BOQ", "title": "Estimate B", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		api.submit_boq(a.name)
+		api.approve_boq(a.name)
+		api.submit_boq(b.name)
+		api.approve_boq(b.name)
+		self.assertEqual(frappe.db.get_value("BOQ", a.name, "status"), "Approved")
+		self.assertEqual(frappe.db.get_value("BOQ", b.name, "status"), "Approved")
+
+	def test_create_revision_of_estimate_numbers_within_its_lineage(self):
+		# A revision of a project-less estimate increments within its own base_revision lineage,
+		# independent of unrelated estimates (which would collide if numbered by a blank project).
+		frappe.get_doc(
+			{"doctype": "BOQ", "title": "Unrelated estimate", "revision": 7, "status": "Draft"}
+		).insert(ignore_permissions=True)
+		base = frappe.get_doc({"doctype": "BOQ", "title": "My estimate", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		rev = frappe.get_doc("BOQ", api.create_revision(base.name))
+		self.assertEqual(rev.revision, base.revision + 1)  # 2, not 8
+		self.assertEqual(rev.base_revision, base.name)
+		self.assertFalse(rev.project)
+
 	# --- actuals --------------------------------------------------------
 	def test_recalculate_actuals_from_task(self):
 		p = self._make_project(company=self.company)
@@ -236,8 +278,18 @@ class TestBOQ(BuildSuiteTestCase):
 				"template_code": f"TPL-{frappe.generate_hash(length=5)}",
 				"template_name": "Tpl",
 				"rows": [
-					{"group_name": "Civil", "line_type": "Assembly", "assembly": asm.name, "placeholder_qty": 4},
-					{"group_name": "Civil", "line_type": "Resource", "resource": rm.name, "placeholder_qty": 3},
+					{
+						"group_name": "Civil",
+						"line_type": "Assembly",
+						"assembly": asm.name,
+						"placeholder_qty": 4,
+					},
+					{
+						"group_name": "Civil",
+						"line_type": "Resource",
+						"resource": rm.name,
+						"placeholder_qty": 3,
+					},
 				],
 			}
 		).insert(ignore_permissions=True)
@@ -401,9 +453,7 @@ class TestBOQ(BuildSuiteTestCase):
 
 		it = self._item(b.name, g.name, 1, 0, assembly=asm.name, driving_qty=1)
 		api.explode_item(it.name)
-		subs = frappe.get_all(
-			"BOQ Sub Item", filters={"boq_item": it.name}, fields=["rate_master", "amount"]
-		)
+		subs = frappe.get_all("BOQ Sub Item", filters={"boq_item": it.name}, fields=["rate_master", "amount"])
 		self.assertEqual(len(subs), 2)
 		by_resource = {s.rate_master: s for s in subs}
 		self.assertEqual(by_resource[r_nos.name].amount, 200)

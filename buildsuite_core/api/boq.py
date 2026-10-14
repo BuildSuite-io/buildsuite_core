@@ -60,6 +60,12 @@ def _validate_codes_for_approval(doc):
 			)
 		)
 
+	# A project-less estimate stands alone — there is no sibling "current Approved revision of the
+	# same project" to protect cost codes against, and filtering by a blank project would wrongly
+	# match every other estimate. The duplicate-code guard above still applies.
+	if not doc.project:
+		return
+
 	prior = frappe.db.get_value(
 		"BOQ", {"project": doc.project, "status": "Approved", "name": ("!=", doc.name)}, "name"
 	)
@@ -95,12 +101,15 @@ def approve_boq(boq: str):
 	if doc.status not in ("Submitted", "Draft"):
 		frappe.throw(_("Only a Draft or Submitted BOQ can be approved."))
 	_validate_codes_for_approval(doc)
-	for other in frappe.get_all(
-		"BOQ",
-		filters={"project": doc.project, "status": "Approved", "name": ("!=", doc.name)},
-		pluck="name",
-	):
-		frappe.db.set_value("BOQ", other, "status", "Superseded")
+	# Supersede the other Approved revision of the SAME project. A project-less estimate has no
+	# such sibling (a blank project would match every other estimate), so it supersedes nothing.
+	if doc.project:
+		for other in frappe.get_all(
+			"BOQ",
+			filters={"project": doc.project, "status": "Approved", "name": ("!=", doc.name)},
+			pluck="name",
+		):
+			frappe.db.set_value("BOQ", other, "status", "Superseded")
 	doc.status = "Approved"
 	doc.approved_by = frappe.session.user
 	doc.approved_date = today()
@@ -256,13 +265,38 @@ def _clone_tree(src_boq, dst_boq, reset_actuals=True, src_wp=None, wp_override=N
 	return count
 
 
+def _revision_peers(doc):
+	"""The BOQ names sharing a revision lineage with ``doc``.
+
+	For a project BOQ that's every BOQ on the project. A project-less estimate isn't grouped by a
+	project, so its lineage is the ``base_revision`` chain — the root plus every descendant — which
+	keeps estimate revision numbers independent of other, unrelated estimates.
+	"""
+	if doc.get("project"):
+		return frappe.get_all("BOQ", filters={"project": doc.project}, pluck="name")
+	# Walk up to the lineage root, then collect every descendant by base_revision.
+	root, cur, seen = doc.name, doc.name, set()
+	while cur and cur not in seen:
+		seen.add(cur)
+		parent = frappe.db.get_value("BOQ", cur, "base_revision")
+		root = parent or cur
+		cur = parent
+	lineage, frontier = {root}, [root]
+	while frontier:
+		children = frappe.get_all("BOQ", filters={"base_revision": ("in", frontier)}, pluck="name")
+		frontier = [c for c in children if c not in lineage]
+		lineage.update(frontier)
+	return list(lineage)
+
+
 @frappe.whitelist()
 def create_revision(boq: str, source_sco: str | None = None, title: str | None = None):
 	"""Clone a BOQ into a new Draft revision (revision = max+1, base_revision = src)."""
 	if not frappe.has_permission("BOQ", "create"):
 		frappe.throw(_("You are not permitted to create a BOQ."), frappe.PermissionError)
 	src = frappe.get_doc("BOQ", boq)
-	revs = frappe.get_all("BOQ", filters={"project": src.project}, pluck="revision")
+	peers = _revision_peers(src)
+	revs = frappe.get_all("BOQ", filters={"name": ("in", peers)}, pluck="revision") if peers else []
 	next_rev = (max(revs) if revs else 0) + 1
 	new = frappe.get_doc(
 		{
@@ -287,7 +321,13 @@ def create_revision(boq: str, source_sco: str | None = None, title: str | None =
 
 
 @frappe.whitelist()
-def clone_boq(from_project: str, to_project: str, from_work_package: str | None = None, to_work_package: str | None = None, title: str | None = None):
+def clone_boq(
+	from_project: str,
+	to_project: str,
+	from_work_package: str | None = None,
+	to_work_package: str | None = None,
+	title: str | None = None,
+):
 	"""project->project: a new Draft BOQ on the target. wp->wp (same project):
 	retag the source WP's lines onto the project's latest BOQ."""
 	if not frappe.has_permission("BOQ", "create"):

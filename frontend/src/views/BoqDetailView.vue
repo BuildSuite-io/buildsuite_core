@@ -856,6 +856,11 @@ const itemForm = ref({
 // The BOQ's project — scopes the Work Package + Task pickers in the item modal
 // so you can only link records that belong to this BOQ's project.
 const boqProjectId = computed(() => boq.value?.projectId || "");
+// WP + Task link pickers in the item modal are project-scoped. A project-less estimate has no work
+// packages or tasks to link, so match nothing rather than leaking every project's records.
+const itemLinkFilters = computed(() =>
+	boqProjectId.value ? [["project", "=", boqProjectId.value]] : [["name", "=", "__none__"]]
+);
 const itemPlannedAmountPreview = computed(
 	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
 );
@@ -2193,9 +2198,7 @@ const breadcrumbs = computed(() => {
 										label-field="work_package_name"
 										value-field="name"
 										:search-fields="['work_package_name', 'code', 'name']"
-										:filters="
-											boqProjectId ? [['project', '=', boqProjectId]] : []
-										"
+										:filters="itemLinkFilters"
 										:placeholder="__('— None —')"
 									/>
 								</DeskField>
@@ -2209,9 +2212,7 @@ const breadcrumbs = computed(() => {
 										label-field="subject"
 										value-field="name"
 										:search-fields="['subject', 'name']"
-										:filters="
-											boqProjectId ? [['project', '=', boqProjectId]] : []
-										"
+										:filters="itemLinkFilters"
 										:placeholder="__('— Not linked —')"
 									/>
 								</DeskField>
