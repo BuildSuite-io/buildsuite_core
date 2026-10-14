@@ -8,6 +8,7 @@ import frappe
 from buildsuite_core.api.role_permissions import (
 	export_role_permissions,
 	restore_default_role_permissions,
+	setup_app_data,
 )
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
@@ -35,8 +36,7 @@ class TestRolePermissionActions(BuildSuiteTestCase):
 		# A known managed doctype is present with the PO's full+submit grant
 		self.assertIn("Material Request", exp["permissions"])
 		po = next(
-			r for r in exp["permissions"]["Material Request"]
-			if r["role"] == "BuildSuite Procurement Officer"
+			r for r in exp["permissions"]["Material Request"] if r["role"] == "BuildSuite Procurement Officer"
 		)
 		self.assertEqual(po["read"], 1)
 		self.assertEqual(po["create"], 1)
@@ -55,6 +55,8 @@ class TestRolePermissionActions(BuildSuiteTestCase):
 				restore_default_role_permissions()
 			with self.assertRaises(frappe.PermissionError):
 				export_role_permissions()
+			with self.assertRaises(frappe.PermissionError):
+				setup_app_data()
 		finally:
 			frappe.set_user("Administrator")
 

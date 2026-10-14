@@ -46,9 +46,7 @@ _PERM_FIELDS = (
 
 def _require_admin():
 	if not (set(frappe.get_roles()) & ADMIN_ROLES):
-		frappe.throw(
-			_("Only an administrator can manage role permissions."), frappe.PermissionError
-		)
+		frappe.throw(_("Only an administrator can manage role permissions."), frappe.PermissionError)
 
 
 @frappe.whitelist()
@@ -67,6 +65,34 @@ def restore_default_role_permissions():
 		queue="long",
 		timeout=1800,
 		job_name="buildsuite-restore-role-permissions",
+	)
+	return {"ok": True, "queued": True, "roles": list(BUILDSUITE_ROLES)}
+
+
+@frappe.whitelist()
+def setup_app_data():
+	"""Seed the full BuildSuite registry — roles, personas, workspaces, approval workflows, report
+	tiles AND the default DocPerm matrix — on demand.
+
+	Unlike ``restore_default_role_permissions`` (the perm-only slice), this runs the complete
+	``setup_record_permissions`` wrapper, so it also creates the Persona records, the BuildSuite
+	Workspace registry and the workflows. It is the no-SSH equivalent of
+	``bench execute buildsuite_core.permissions.setup.setup_record_permissions``.
+
+	Primary use: a FRESH install. ``after_install`` seeds master data but not the permission/persona/
+	workspace registries (and patches are marked complete-without-running on a fresh site), so a new
+	site has an empty persona list and no BuildSuite roles until this runs. Idempotent: personas and
+	workspaces are create-if-missing/repair, so re-running it on a configured site backfills what is
+	missing. Note it DOES re-apply the default DocPerm matrix (overwriting in-Desk perm edits), same
+	as Restore Defaults. Enqueued because the full seed (chiefly the child-table read mirror) is
+	minutes-long.
+	"""
+	_require_admin()
+	frappe.enqueue(
+		"buildsuite_core.permissions.setup.setup_record_permissions",
+		queue="long",
+		timeout=1800,
+		job_name="buildsuite-setup-app-data",
 	)
 	return {"ok": True, "queued": True, "roles": list(BUILDSUITE_ROLES)}
 
@@ -111,7 +137,9 @@ def export_role_permissions():
 
 	# Report access — the roles on every BuildSuite report (anchors + file-based), grouped by report.
 	reports = {}
-	for name in frappe.get_all("Report", filters={"module": "BuildSuite Core"}, pluck="name", order_by="name asc"):
+	for name in frappe.get_all(
+		"Report", filters={"module": "BuildSuite Core"}, pluck="name", order_by="name asc"
+	):
 		reports[name] = sorted(
 			frappe.get_all("Has Role", filters={"parent": name, "parenttype": "Report"}, pluck="role")
 		)

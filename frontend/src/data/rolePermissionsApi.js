@@ -19,5 +19,9 @@ async function call(method, args) {
 // Re-apply BuildSuite's shipped default DocPerm matrix (overwrites in-Desk customizations).
 export const restoreDefaultRolePermissions = () => call("restore_default_role_permissions");
 
+// Seed the full BuildSuite registry — roles, personas, workspaces, workflows, report tiles AND the
+// default DocPerm matrix. The no-SSH fix for a fresh install whose persona list / roles are empty.
+export const setupAppData = () => call("setup_app_data");
+
 // The site's current BuildSuite-role DocPerms, grouped by doctype (JSON snapshot to hand back).
 export const exportRolePermissions = () => call("export_role_permissions");
