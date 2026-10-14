@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
+  "customer",
   "company",
   "title",
   "revision",
@@ -32,13 +33,22 @@
  ],
  "fields": [
   {
+   "description": "Blank for an estimate priced before the work is won; set once it is attached to a project.",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Project",
-   "options": "Project",
-   "reqd": 1
+   "options": "Project"
+  },
+  {
+   "description": "Who the estimate is being priced for. Optional; mainly used for a project-less estimate.",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer"
   },
   {
    "fieldname": "company",
@@ -185,7 +195,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-26 00:00:00.000000",
+ "modified": "2026-10-14 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Buildsuite Core",
  "name": "BOQ",

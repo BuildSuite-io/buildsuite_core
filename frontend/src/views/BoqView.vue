@@ -32,8 +32,12 @@ const companyFilter = activeCompanyFilter();
 const search = ref("");
 const projectFilter = ref("");
 const statusFilter = ref("");
+// Estimates (no project yet) and project BOQs are one doctype — one list with a scope filter.
+const scopeFilter = ref("");
 const showNew = ref(false);
-const newForm = ref({ projectId: "", title: "" });
+// `for` decides what is being made: an estimate priced before the work is won (customer + title,
+// no project), or a revision under a project that already exists. Same doctype either way.
+const newForm = ref({ for: "estimate", projectId: "", title: "", customer: "" });
 const creating = ref(false);
 
 // Projects (for filter labels + the new-BOQ picker).
@@ -57,11 +61,29 @@ function projectName(id) {
 	return projectsMap.value[id]?.name || id;
 }
 
+// Customers — for the new-BOQ customer picker label + resolving an estimate's customer name in
+// the list (the BOQ stores the Customer link id).
+const customersRes = useDocTypeList("Customer", {
+	fields: ["name", "customer_name"],
+	orderBy: "customer_name asc",
+	pageLength: 5000,
+	cache: "buildsuite-boq-customers",
+});
+const customersMap = computed(() => {
+	const map = {};
+	for (const c of customersRes.data || []) map[c.name] = c.customer_name || c.name;
+	return map;
+});
+function customerName(id) {
+	return id ? customersMap.value[id] || id : "";
+}
+
 const boqRes = useDocTypeList("BOQ", {
 	fields: [
 		"name",
 		"title",
 		"project",
+		"customer",
 		"revision",
 		"status",
 		"planned_amount",
@@ -82,6 +104,8 @@ const boqRes = useDocTypeList("BOQ", {
 				id: b.name,
 				title: b.title,
 				projectId: b.project,
+				customer: b.customer,
+				isEstimate: !b.project,
 				revision: b.revision,
 				status: b.status,
 				preparedDate: b.prepared_date,
@@ -98,17 +122,22 @@ const boqRes = useDocTypeList("BOQ", {
 const rows = computed(() => {
 	const term = search.value.trim().toLowerCase();
 	let list = boqRes.data || [];
+	if (scopeFilter.value === "estimate") list = list.filter((b) => b.isEstimate);
+	if (scopeFilter.value === "project") list = list.filter((b) => !b.isEstimate);
 	if (projectFilter.value) list = list.filter((b) => b.projectId === projectFilter.value);
 	if (statusFilter.value) list = list.filter((b) => b.status === statusFilter.value);
 	if (term)
 		list = list.filter(
 			(b) =>
-				b.id.toLowerCase().includes(term) || (b.title || "").toLowerCase().includes(term)
+				b.id.toLowerCase().includes(term) ||
+				(b.title || "").toLowerCase().includes(term) ||
+				customerName(b.customer).toLowerCase().includes(term)
 		);
 	return list.map((b) => ({
 		...b,
 		projectName: projectsMap.value[b.projectId]?.name || b.projectId,
 		projectCode: projectsMap.value[b.projectId]?.code || "",
+		customerName: customerName(b.customer),
 	}));
 });
 
@@ -140,16 +169,26 @@ function statusLabel(s) {
 }
 
 function openNew() {
-	newForm.value = { projectId: "", title: "" };
+	newForm.value = { for: "estimate", projectId: "", title: "", customer: "" };
 	showNew.value = true;
 }
+// An estimate needs a title (it is how it is found until it has a project); a project BOQ needs a
+// project (its title can auto-name). Distinct from the `canCreate('boq')` permission gate.
+const formValid = computed(() =>
+	newForm.value.for === "estimate" ? !!newForm.value.title.trim() : !!newForm.value.projectId
+);
 async function createBoq() {
-	if (!newForm.value.projectId || creating.value) return;
+	if (!formValid.value || creating.value) return;
 	creating.value = true;
 	try {
-		const title =
-			newForm.value.title?.trim() || `${projectName(newForm.value.projectId)} — BOQ`;
-		const res = await adapter.create("BOQ", { project: newForm.value.projectId, title });
+		const forProject = newForm.value.for === "project";
+		const title = forProject
+			? newForm.value.title?.trim() || `${projectName(newForm.value.projectId)} — BOQ`
+			: newForm.value.title.trim();
+		const payload = forProject
+			? { project: newForm.value.projectId, title }
+			: { project: null, customer: newForm.value.customer || null, title };
+		const res = await adapter.create("BOQ", payload);
 		showNew.value = false;
 		router.push(`/boq/${res.name}`);
 	} catch (err) {
@@ -174,8 +213,8 @@ const columns = [
 ];
 
 const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("BOQ") }];
-const subtitle = computed(
-	() => __("{0} of {1} · estimation", [rows.value.length, (boqRes.data || []).length])
+const subtitle = computed(() =>
+	__("{0} of {1} · estimation", [rows.value.length, (boqRes.data || []).length])
 );
 </script>
 
@@ -251,23 +290,31 @@ const subtitle = computed(
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
-				<div v-if="!projectFilter" class="w-48">
-					<DeskLinkPicker
-						v-model="projectFilter"
-						doctype="Project"
-						label-field="project_name"
-						value-field="name"
-						:search-fields="['project_name', 'custom_project_id', 'name']"
-						:filters="companyFilter"
-						:placeholder="__('Project: Any')"
+				<DeskSelect v-model="scopeFilter" class="!w-48">
+					<option value="">{{ __("Estimates and BOQs") }}</option>
+					<option value="estimate">{{ __("Estimates only") }}</option>
+					<option value="project">{{ __("Project BOQs only") }}</option>
+				</DeskSelect>
+
+				<template v-if="scopeFilter !== 'estimate'">
+					<div v-if="!projectFilter" class="w-48">
+						<DeskLinkPicker
+							v-model="projectFilter"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							:search-fields="['project_name', 'custom_project_id', 'name']"
+							:filters="companyFilter"
+							:placeholder="__('Project: Any')"
+						/>
+					</div>
+					<DeskFilterChip
+						v-else
+						:label="__('Project')"
+						:value="projectName(projectFilter)"
+						@remove="projectFilter = ''"
 					/>
-				</div>
-				<DeskFilterChip
-					v-else
-					:label="__('Project')"
-					:value="projectName(projectFilter)"
-					@remove="projectFilter = ''"
-				/>
+				</template>
 
 				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
 					<option value="">{{ __("Status: Any") }}</option>
@@ -291,8 +338,14 @@ const subtitle = computed(
 			</template>
 			<template #cell-project="{ row }">
 				<div class="text-xs">
-					<div class="text-ink-900">{{ row.projectName }}</div>
-					<div class="font-mono text-ink-400">{{ row.projectCode }}</div>
+					<template v-if="row.isEstimate">
+						<div class="text-ink-900">{{ row.customerName || "—" }}</div>
+						<div class="text-ink-500">{{ __("Estimate · not yet won") }}</div>
+					</template>
+					<template v-else>
+						<div class="text-ink-900">{{ row.projectName }}</div>
+						<div class="font-mono text-ink-400">{{ row.projectCode }}</div>
+					</template>
 				</div>
 			</template>
 			<template #cell-revision="{ row }">
@@ -346,7 +399,54 @@ const subtitle = computed(
 					</button>
 				</div>
 				<div class="p-4 space-y-3">
-					<DeskField :label="__('Project')" required>
+					<!-- The one question that decides the rest of the form: an estimate has no
+					     project yet; a project BOQ has one already. -->
+					<DeskField :label="__('What is this for')" required>
+						<div class="space-y-2">
+							<button
+								type="button"
+								class="w-full text-left border px-3 py-2.5"
+								style="border-radius: 6px"
+								:class="
+									newForm.for === 'estimate'
+										? 'border-brand-600 bg-brand-50'
+										: 'border-ink-200'
+								"
+								@click="newForm.for = 'estimate'"
+							>
+								<div class="text-sm font-medium text-ink-900">
+									{{ __("Work we have not won yet") }}
+								</div>
+								<div class="text-xs text-ink-500">
+									{{
+										__(
+											"Price it, bid it, and attach it to a project if it lands"
+										)
+									}}
+								</div>
+							</button>
+							<button
+								type="button"
+								class="w-full text-left border px-3 py-2.5"
+								style="border-radius: 6px"
+								:class="
+									newForm.for === 'project'
+										? 'border-brand-600 bg-brand-50'
+										: 'border-ink-200'
+								"
+								@click="newForm.for = 'project'"
+							>
+								<div class="text-sm font-medium text-ink-900">
+									{{ __("An existing project") }}
+								</div>
+								<div class="text-xs text-ink-500">
+									{{ __("A revision of that project's BOQ") }}
+								</div>
+							</button>
+						</div>
+					</DeskField>
+
+					<DeskField v-if="newForm.for === 'project'" :label="__('Project')" required>
 						<DeskLinkPicker
 							v-model="newForm.projectId"
 							doctype="Project"
@@ -357,8 +457,41 @@ const subtitle = computed(
 							:placeholder="__('Select a project')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Title')" :hint="__('Leave blank to auto-name.')">
-						<DeskInput v-model="newForm.title" :placeholder="__('e.g. Tender draft…')" />
+
+					<DeskField
+						v-else
+						:label="__('Customer')"
+						:hint="
+							__(
+								'Who it is being priced for. Optional, but it is how you will find it later.'
+							)
+						"
+					>
+						<DeskLinkPicker
+							v-model="newForm.customer"
+							doctype="Customer"
+							label-field="customer_name"
+							value-field="name"
+							:search-fields="['customer_name', 'name']"
+							:placeholder="__('Pick a customer…')"
+						/>
+					</DeskField>
+
+					<DeskField
+						:label="__('Title')"
+						:required="newForm.for === 'estimate'"
+						:hint="
+							newForm.for === 'estimate'
+								? __(
+										'What the job is — this is how the estimate is identified until it has a project.'
+								  )
+								: __('Leave blank to auto-name.')
+						"
+					>
+						<DeskInput
+							v-model="newForm.title"
+							:placeholder="__('e.g. Whitefield villa — interior fit-out')"
+						/>
 					</DeskField>
 				</div>
 				<div class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2">
@@ -373,7 +506,7 @@ const subtitle = computed(
 						type="button"
 						@click="createBoq"
 						class="desk-save-btn"
-						:disabled="creating"
+						:disabled="creating || !formValid"
 					>
 						{{ creating ? __("Creating…") : __("Create draft") }}
 					</button>
