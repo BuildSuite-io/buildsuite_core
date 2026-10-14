@@ -1,0 +1,42 @@
+{
+ "app": "buildsuite_core",
+ "doctype": "Sidebar",
+ "header_icon": null,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "doctype": "Sidebar Item",
+   "icon": "\ud83c\udfd7\ufe0f",
+   "idx": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Site Execution",
+   "link_to": "BuildSuite",
+   "link_type": "Workspace",
+   "parentfield": "items",
+   "parenttype": "Sidebar",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "doctype": "Sidebar Item",
+   "idx": 2,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Projects",
+   "link_to": "Project",
+   "link_type": "DocType",
+   "parentfield": "items",
+   "parenttype": "Sidebar",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "module": "BuildSuite Core",
+ "name": "BuildSuite",
+ "standard": 1,
+ "title": "BuildSuite"
+}
