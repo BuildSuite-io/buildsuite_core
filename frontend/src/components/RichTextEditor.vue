@@ -33,6 +33,12 @@ const emit = defineEmits(["update:modelValue"]);
 .rich-text-editor :deep(.rte-content) {
 	min-height: v-bind(minHeight);
 }
+/* frappe-ui's fixed toolbar ships a tight `p-1` (4px) with the buttons flush against the
+   border and the scroll track. Give it breathing room and align its left edge with the
+   editor content (px-3). Targets the toolbar bar (Menu.vue root) inside the fixed menu. */
+.rich-text-editor :deep(.inline-flex.bg-surface-white) {
+	padding: 0.5rem 0.75rem;
+}
 /* Keep tables legible both while editing and read-only. */
 .rich-text-editor :deep(table) {
 	border-collapse: collapse;
