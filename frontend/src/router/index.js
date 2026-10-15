@@ -38,6 +38,7 @@ const PAGE_TITLES = {
 	"sco-detail": "Scope Change Order",
 	boq: "Bill of Quantities",
 	"boq-detail": "BOQ",
+	"boq-import": "Import BOQ",
 	tenders: "Tenders",
 	"tender-new": "New Tender",
 	"tender-detail": "Tender",
@@ -267,6 +268,12 @@ const routes = [
 				path: "boq/:id",
 				name: "boq-detail",
 				component: () => import("@/views/BoqDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "boq/:id/import",
+				name: "boq-import",
+				component: () => import("@/views/BoqImportView.vue"),
 				props: true,
 			},
 			{
@@ -1118,6 +1125,7 @@ const ROUTE_CAPS = {
 	// Estimation
 	boq: "boq",
 	"boq-detail": "boq",
+	"boq-import": "boq",
 	"rate-master": "rateMaster",
 	"rate-master-detail": "rateMaster",
 	assembly: "assembly",

@@ -660,3 +660,99 @@ def import_template(boq: str, estimate_template: str):
 		frappe.flags.boq_skip_rollup = False
 	recompute_boq(boq)
 	return {"boq": boq, "seeded": seeded}
+
+
+@frappe.whitelist()
+def import_rows(boq: str, payload):
+	"""Create groups + items on a Draft BOQ from a parsed spreadsheet import.
+
+	``payload`` (the frontend ``buildPayload`` output) is
+	``{units: [uom names to create], groups: [{key, existingId, code, name}],
+	items: [{groupKey, code, description, unit, plannedQty, rate, costHead}]}``.
+	The planner has already classified rows, resolved/blanked duplicate codes and listed only the
+	units the user approved; this persists them. Draft only; missing UOMs are created."""
+	_require_write(boq)
+	boq_doc = frappe.get_doc("BOQ", boq)
+	_require_draft(boq_doc)
+	data = frappe.parse_json(payload) if isinstance(payload, str) else payload
+
+	# Units the user chose to create (the planner only lists approved ones).
+	for uom in data.get("units") or []:
+		uom = (uom or "").strip()
+		if uom and not frappe.db.exists("UOM", uom):
+			frappe.get_doc({"doctype": "UOM", "uom_name": uom}).insert(ignore_permissions=True)
+
+	# Resolve every group key to a BOQ Group — reuse an existing one (by id or name), else create.
+	existing = {
+		g.group_name: g.name
+		for g in frappe.get_all("BOQ Group", filters={"boq": boq}, fields=["name", "group_name"])
+	}
+	group_count = len(existing)
+	by_key = {}
+	for g in data.get("groups") or []:
+		if g.get("existingId") and frappe.db.exists("BOQ Group", g["existingId"]):
+			by_key[g["key"]] = g["existingId"]
+			continue
+		gname = (g.get("name") or "General").strip() or "General"
+		if gname in existing:
+			by_key[g["key"]] = existing[gname]
+			continue
+		code = (g.get("code") or "").strip() or (
+			chr(ord("A") + group_count) if group_count < 26 else f"G{group_count + 1}"
+		)
+		ng = frappe.get_doc(
+			{
+				"doctype": "BOQ Group",
+				"boq": boq,
+				"code": code,
+				"group_name": gname,
+				"idx_order": group_count + 1,
+			}
+		).insert(ignore_permissions=True)
+		existing[gname] = ng.name
+		by_key[g["key"]] = ng.name
+		group_count += 1
+
+	# Allocate item codes: keep a provided (already-deduped) code, generate a free one otherwise.
+	used = {c.lower() for c in frappe.get_all("BOQ Item", filters={"boq": boq}, pluck="code") if c}
+	counter = [0]
+
+	def _alloc(code):
+		code = (code or "").strip()
+		if code and code.lower() not in used:
+			used.add(code.lower())
+			return code
+		counter[0] += 1
+		while str(counter[0]) in used:
+			counter[0] += 1
+		used.add(str(counter[0]))
+		return str(counter[0])
+
+	seeded = 0
+	frappe.flags.boq_skip_rollup = True
+	try:
+		for it in data.get("items") or []:
+			group = by_key.get(it.get("groupKey"))
+			if not group:
+				continue
+			qty = flt(it.get("plannedQty"))
+			frappe.get_doc(
+				{
+					"doctype": "BOQ Item",
+					"boq": boq,
+					"boq_group": group,
+					"code": _alloc(it.get("code")),
+					"description": it.get("description") or "Item",
+					"unit": it.get("unit") or "Nos",
+					"planned_qty": qty,
+					"driving_qty": qty,
+					"rate": flt(it.get("rate")),
+					"cost_head": it.get("costHead") or None,
+					"quantity_source": "Manual",
+				}
+			).insert(ignore_permissions=True)
+			seeded += 1
+	finally:
+		frappe.flags.boq_skip_rollup = False
+	recompute_boq(boq)
+	return {"boq": boq, "items": seeded, "groups": len(by_key)}
