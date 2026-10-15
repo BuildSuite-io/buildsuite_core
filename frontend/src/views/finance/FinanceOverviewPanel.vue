@@ -13,6 +13,7 @@
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useFinanceMock } from "@/data/financeMock";
+import { useDocTypeList } from "@/composables/useDocTypeList";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getFinancialPosition, getReceivablesPayables } from "@/data/financeReportApi";
 import { listFinanceAccounts } from "@/data/financeAccountApi";
@@ -57,9 +58,31 @@ async function loadFinance() {
 }
 watch(activeCompany, loadFinance, { immediate: true });
 
+// ---- Live draft counts for "Needs attention" (replacing the finance mock) ----
+// Expenses awaiting submit = Draft (docstatus 0) Expense Entries; permission- + company-scoped
+// like every other list, so a user sees exactly the queue they can act on.
+const expenseDraftsRes = useDocTypeList("Expense Entry", {
+	fields: ["name"],
+	filters: [["docstatus", "=", 0]],
+	pageLength: 0,
+	cache: "buildsuite-finance-overview-expense-drafts",
+});
+const invoiceDraftsRes = useDocTypeList("Sales Invoice", {
+	fields: ["name"],
+	filters: [["docstatus", "=", 0]],
+	pageLength: 0,
+	cache: "buildsuite-finance-overview-invoice-drafts",
+});
+const expensesAwaitingSubmit = computed(() => (expenseDraftsRes.data || []).length);
+
 // ---- KPIs (live) ----
 const accounts = computed(() => financeAccounts.value);
 const cashBankAccounts = computed(() => accounts.value.filter((a) => a.type !== "Petty Cash"));
+// Petty cash out — the imprest float currently held (sum of the Petty Cash account balances).
+const pettyCashAccounts = computed(() => accounts.value.filter((a) => a.type === "Petty Cash"));
+const pettyCashOut = computed(() =>
+	pettyCashAccounts.value.reduce((s, a) => s + (Number(a.current_balance) || 0), 0)
+);
 const totalCashBank = computed(
 	() => (Number(fp.value.have?.bank) || 0) + (Number(fp.value.have?.cash) || 0)
 );
@@ -75,20 +98,19 @@ const retention = computed(() => Number(fp.value.owe?.retention) || 0);
 // which is where the KPI links, rather than a looser cash+receivable−payable estimate.
 const netPosition = computed(() => Number(fp.value.net) || 0);
 
-// ---- Needs attention (each row jumps to its queue) ----
-const draftInvoices = computed(
-	() => fin.invoices.filter((i) => (i.workflow_state || "Submitted") === "Draft").length
-);
+// ---- Needs attention (live; each row jumps to its queue) ----
+const draftInvoices = computed(() => (invoiceDraftsRes.data || []).length);
 const attention = computed(() => {
 	const out = [];
-	const ex = fin.expensesToVerify.length;
+	const ex = expensesAwaitingSubmit.value;
 	if (ex > 0)
 		out.push({
 			text:
 				ex === 1
 					? __("{0} expense awaiting submit", [ex])
 					: __("{0} expenses awaiting submit", [ex]),
-			section: "expenses",
+			// Deep-link to the expenses "To Submit" queue, not just the panel.
+			to: "/project-finance/expenses?tab=queue",
 			tone: "warning",
 		});
 	if (draftInvoices.value > 0)
@@ -131,10 +153,34 @@ const topPayables = computed(() =>
 const recentMovements = computed(() => fin.allPayments.slice(0, 5));
 
 const quickActions = [
-	{ key: "new-expense", section: "expenses", icon: "receipt", label: __("New Expense"), caps: ["expense"] },
-	{ key: "req-petty", section: "petty-cash", icon: "hand-coins", label: __("Request Petty Cash"), caps: ["pettyCash"] },
-	{ key: "new-invoice", section: "invoices", icon: "file-text", label: __("New Invoice"), caps: ["salesInvoice"] },
-	{ key: "new-bill", section: "bills", icon: "banknote", label: __("New Bill"), caps: ["supplierBill", "subcontractorBill"] },
+	{
+		key: "new-expense",
+		section: "expenses",
+		icon: "receipt",
+		label: __("New Expense"),
+		caps: ["expense"],
+	},
+	{
+		key: "req-petty",
+		section: "petty-cash",
+		icon: "hand-coins",
+		label: __("Request Petty Cash"),
+		caps: ["pettyCash"],
+	},
+	{
+		key: "new-invoice",
+		section: "invoices",
+		icon: "file-text",
+		label: __("New Invoice"),
+		caps: ["salesInvoice"],
+	},
+	{
+		key: "new-bill",
+		section: "bills",
+		icon: "banknote",
+		label: __("New Bill"),
+		caps: ["supplierBill", "subcontractorBill"],
+	},
 ];
 // Only surface a quick action the persona can actually act on (its create capability).
 const visibleQuickActions = computed(() =>
@@ -187,7 +233,11 @@ const toneDot = {
 						class="text-[10px]"
 						:class="overdueCount > 0 ? 'text-danger-700 font-medium' : 'text-ink-500'"
 					>
-						{{ overdueCount > 0 ? __("{0} overdue", [overdueCount]) : __("none overdue") }}
+						{{
+							overdueCount > 0
+								? __("{0} overdue", [overdueCount])
+								: __("none overdue")
+						}}
 					</div>
 				</button>
 				<button
@@ -208,15 +258,21 @@ const toneDot = {
 				<button
 					type="button"
 					class="bg-white border border-ink-200 hover:border-brand-400 px-3 py-2.5 rounded-lg text-left transition-colors"
-					@click="go('bills')"
+					@click="go('petty-cash')"
 				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Retention held") }}
+						{{ __("Petty cash out") }}
 					</div>
-					<div class="text-lg font-semibold text-warning-700 tabular-nums mt-0.5">
-						{{ fmtCompactINR(retention) }}
+					<div class="text-lg font-semibold text-ink-900 tabular-nums mt-0.5">
+						{{ fmtCompactINR(pettyCashOut) }}
 					</div>
-					<div class="text-[10px] text-ink-500">{{ __("withheld on sub-bills") }}</div>
+					<div class="text-[10px] text-ink-500">
+						{{
+							pettyCashAccounts.length === 1
+								? __("{0} float", [pettyCashAccounts.length])
+								: __("{0} floats", [pettyCashAccounts.length])
+						}}
+					</div>
 				</button>
 				<button
 					type="button"
@@ -327,11 +383,6 @@ const toneDot = {
 						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
 							{{ __("Needs attention") }}
 						</h3>
-						<span
-							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
-							:title="__('Draft/expense counts are sample data pending live finance registers.')"
-							>{{ __("Sample") }}</span
-						>
 					</div>
 					<div v-if="attention.length" class="divide-y divide-ink-100">
 						<button
@@ -339,7 +390,7 @@ const toneDot = {
 							:key="i"
 							type="button"
 							class="w-full text-left px-4 py-2.5 flex items-center gap-2 hover:bg-brand-50/40 transition-colors"
-							@click="go(a.section)"
+							@click="a.to ? router.push(a.to) : go(a.section)"
 						>
 							<span
 								class="w-1.5 h-1.5 rounded-full flex-shrink-0"
