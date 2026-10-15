@@ -236,6 +236,21 @@ class TestPettyCash(BuildSuiteTestCase):
 					continue  # role carries no grant on this doctype — nothing to scope
 				self.assertTrue(all(v == 1 for v in flags), f"{role} must be OWN-scoped (if_owner) on {dt}")
 
+	def test_pm_is_not_a_disburse_role(self):
+		# The PM manages its own petty-cash requests + expense drafts but is NOT an approver: it
+		# cannot submit an Expense Entry or set the petty-cash holder for someone else. Disbursing
+		# is finance + admins only.
+		from buildsuite_core.permissions.setup import PETTY_CASH_DISBURSE_ROLES
+
+		self.assertNotIn("BuildSuite PM", PETTY_CASH_DISBURSE_ROLES)
+		for role in (
+			"BuildSuite Accountant",
+			"BuildSuite Director",
+			"BuildSuite Administrator",
+			"System Manager",
+		):
+			self.assertIn(role, PETTY_CASH_DISBURSE_ROLES)
+
 	def test_non_employee_cannot_request(self):
 		user = (
 			frappe.get_doc(

@@ -671,11 +671,17 @@ PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite HR Manager": _RAISE_OWN,
 	"BuildSuite QS": _READ_OWN,
 }
+# Who may DISBURSE — approve/submit a petty-cash disbursement or an Expense Entry, and (on an
+# Expense Entry) set the petty-cash holder for someone else. Finance + admins only: the Accountant,
+# the Director/Owner, the BuildSuite Administrator and the System Manager. The PM is intentionally
+# NOT here — it manages its OWN petty-cash requests + expense drafts (own-scoped, see
+# PETTY_CASH_ROLE_PERMS) but is not an approver. Every non-disburse role's entries stay in Draft and
+# default the holder to themselves.
 PETTY_CASH_DISBURSE_ROLES = (
 	"BuildSuite Accountant",
 	"BuildSuite Director",
-	"BuildSuite PM",
 	"BuildSuite Administrator",
+	"System Manager",
 )
 
 
