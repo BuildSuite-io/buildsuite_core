@@ -225,7 +225,14 @@ const navGroups = computed(() => {
 	// PM / Administrator); it's a standalone feature, not a workspace, so it's pinned
 	// here rather than driven off the workspace-visibility matrix.
 	if (store.isLeadership) {
-		buildsuiteItems.push({ slug: "insights", name: "Insights", to: "/insights", icon: "💡", group: "buildsuite", hint: null });
+		buildsuiteItems.push({
+			slug: "insights",
+			name: "Insights",
+			to: "/insights",
+			icon: "💡",
+			group: "buildsuite",
+			hint: null,
+		});
 	}
 	const erpnextItems = [];
 	// store.workspaces is the backend registry list — role-filtered, ordered (sort_order),
@@ -233,7 +240,14 @@ const navGroups = computed(() => {
 	// therefore flows into the sidebar with no frontend edit.
 	for (const ws of store.workspaces) {
 		const hint = ws.access && ws.access !== "full" ? ACCESS_HINTS[ws.access] : null;
-		const item = { slug: ws.slug, name: ws.name, icon: ws.icon, to: ws.to, group: ws.group, hint };
+		const item = {
+			slug: ws.slug,
+			name: ws.name,
+			icon: ws.icon,
+			to: ws.to,
+			group: ws.group,
+			hint,
+		};
 		if (ws.group === "erpnext") {
 			// Link to the real ERPNext desk workspace (full-page nav), not the SPA route.
 			erpnextItems.push({ ...item, external: true, href: deskWorkspaceUrl(ws.slug) });
@@ -252,7 +266,9 @@ const navGroups = computed(() => {
 			items: buildsuiteItems,
 		});
 	}
-	if (erpnextItems.length) {
+	// The ERPNext section is shown only when the site-wide Workspace Setting toggle is on
+	// (default off). The inherited ERPNext workspaces still exist; this just hides their nav.
+	if (erpnextItems.length && store.showErpnextNav) {
 		groups.push({
 			key: "erpnext",
 			title: "ERPNext",
@@ -294,13 +310,18 @@ const navGroups = computed(() => {
 				<button
 					type="button"
 					class="w-full h-full flex items-center justify-between text-left hover:bg-ink-50 pl-3 pr-2"
-					:class="[appMenuOpen ? 'bg-ink-50' : '', collapsed ? 'lg:justify-center lg:px-0' : '']"
+					:class="[
+						appMenuOpen ? 'bg-ink-50' : '',
+						collapsed ? 'lg:justify-center lg:px-0' : '',
+					]"
 					title="BuildSuite"
 					@click="toggleAppMenu"
 				>
 					<span class="flex items-center gap-2">
 						<LogoIcon :size="26" />
-						<span class="font-semibold text-ink-900 text-sm" :class="collapsed ? 'lg:hidden' : ''"
+						<span
+							class="font-semibold text-ink-900 text-sm"
+							:class="collapsed ? 'lg:hidden' : ''"
 							>BuildSuite</span
 						>
 					</span>
@@ -379,7 +400,12 @@ const navGroups = computed(() => {
 					:class="collapsed ? 'lg:justify-center lg:px-0' : ''"
 					:title="collapsed ? __('Search (⌘K)') : ''"
 				>
-					<svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg
+						class="w-3.5 h-3.5 flex-shrink-0"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -387,7 +413,9 @@ const navGroups = computed(() => {
 							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 						/>
 					</svg>
-					<span :class="collapsed ? 'lg:hidden' : ''">{{ __("Search or jump to...") }}</span>
+					<span :class="collapsed ? 'lg:hidden' : ''">{{
+						__("Search or jump to...")
+					}}</span>
 					<span
 						class="ml-auto text-[10px] text-ink-400 font-mono bg-white px-1.5 py-0.5 rounded border border-ink-200"
 						:class="collapsed ? 'lg:hidden' : ''"
@@ -410,7 +438,9 @@ const navGroups = computed(() => {
 						:type="group.collapsible ? 'button' : null"
 						class="px-2 py-1.5 w-full text-left"
 						:class="[
-							group.collapsible ? 'flex items-center gap-1.5 rounded hover:bg-ink-50' : '',
+							group.collapsible
+								? 'flex items-center gap-1.5 rounded hover:bg-ink-50'
+								: '',
 							collapsed ? 'lg:hidden' : '',
 						]"
 						@click="group.collapsible ? toggleGroup(group.key) : null"
@@ -450,7 +480,11 @@ const navGroups = computed(() => {
 						:is="item.external ? 'a' : 'RouterLink'"
 						v-for="item in renderItems(group)"
 						:key="item.slug || item.to"
-						v-bind="item.external ? { href: item.href } : { to: item.to, activeClass: 'active' }"
+						v-bind="
+							item.external
+								? { href: item.href }
+								: { to: item.to, activeClass: 'active' }
+						"
 						class="desk-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-ink-50"
 						:class="[
 							group.muted ? 'text-sm text-ink-500' : 'text-sm text-ink-700',
@@ -475,7 +509,9 @@ const navGroups = computed(() => {
 								v-html="getWorkspaceIconPath(item.slug)"
 							/>
 						</span>
-						<span class="flex-1 truncate" :class="collapsed ? 'lg:hidden' : ''">{{ __(item.name) }}</span>
+						<span class="flex-1 truncate" :class="collapsed ? 'lg:hidden' : ''">{{
+							__(item.name)
+						}}</span>
 						<span
 							v-if="item.hint"
 							:title="__(item.hint.title)"
@@ -554,9 +590,19 @@ const navGroups = computed(() => {
 				<RouterLink
 					to="/todo"
 					class="flex items-center gap-2 h-8 px-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-50 shrink-0"
-					:title="store.unreadTodoCount ? __('To-dos — {0} unread', [store.unreadTodoCount]) : __('To-dos — your to-do list')"
+					:title="
+						store.unreadTodoCount
+							? __('To-dos — {0} unread', [store.unreadTodoCount])
+							: __('To-dos — your to-do list')
+					"
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+					<svg
+						class="w-4 h-4"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						viewBox="0 0 24 24"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -729,7 +775,9 @@ const navGroups = computed(() => {
 									v-html="getWorkspaceIconPath(p.icon)"
 								/>
 							</span>
-							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{ p.label }}</span>
+							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{
+								p.label
+							}}</span>
 							<span class="text-[10px] text-ink-400 flex-shrink-0">{{
 								p.isReport ? "report" : "list"
 							}}</span>
@@ -749,7 +797,9 @@ const navGroups = computed(() => {
 							type="button"
 							class="w-full text-left px-3 py-2 flex items-center gap-2.5"
 							:class="
-								searchCursor === places.length + ri ? 'bg-brand-50' : 'hover:bg-ink-50'
+								searchCursor === places.length + ri
+									? 'bg-brand-50'
+									: 'hover:bg-ink-50'
 							"
 							@mouseenter="searchCursor = places.length + ri"
 							@click="goSearch(r)"
@@ -769,8 +819,12 @@ const navGroups = computed(() => {
 									v-html="getWorkspaceIconPath(r.icon)"
 								/>
 							</span>
-							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{ r.title }}</span>
-							<span class="text-[10px] text-ink-400 flex-shrink-0">{{ r.type }}</span>
+							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{
+								r.title
+							}}</span>
+							<span class="text-[10px] text-ink-400 flex-shrink-0">{{
+								r.type
+							}}</span>
 						</button>
 					</div>
 

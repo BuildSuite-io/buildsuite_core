@@ -55,3 +55,12 @@ class TestWorkspaceSetting(BuildSuiteTestCase):
 	def test_rows_without_destination_dropped(self):
 		self._set("estimation", [{"label": "no dest", "icon": "x"}])
 		self.assertEqual(ws.get_workspace_reports("estimation"), [])
+
+	def test_erpnext_nav_toggle_defaults_off_and_round_trips(self):
+		# The requirement: the ERPNext sidebar section is HIDDEN by default.
+		self.assertEqual(frappe.get_meta("Workspace Setting").get_field("show_erpnext_nav").default, "0")
+		# Admin turns it on, then off; the public getter reflects each change.
+		self.assertTrue(ws.set_erpnext_nav_enabled(1)["show_erpnext_nav"])
+		self.assertTrue(ws.get_erpnext_nav_enabled())
+		self.assertFalse(ws.set_erpnext_nav_enabled(0)["show_erpnext_nav"])
+		self.assertFalse(ws.get_erpnext_nav_enabled())

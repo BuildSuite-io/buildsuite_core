@@ -13,6 +13,7 @@ import {
 	getWorkspaceSettings,
 	setWorkspaceReports,
 	setWorkspaceDoctypes,
+	setErpnextNavEnabled,
 } from "@/data/workspaceSettingApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -30,6 +31,9 @@ const docByWorkspace = ref({}); // { slug: [doctype row, …] }
 const activeSlug = ref("");
 const saving = ref(false);
 const loading = ref(true);
+// Site-wide sidebar toggle: show the ERPNext nav section (default off). Saved on change.
+const showErpnextNav = ref(false);
+const savingNav = ref(false);
 
 const rows = computed(() => byWorkspace.value[activeSlug.value] || []);
 const docRows = computed(() => docByWorkspace.value[activeSlug.value] || []);
@@ -51,6 +55,7 @@ async function load() {
 	try {
 		const res = await getWorkspaceSettings();
 		workspaces.value = res?.workspaces || [];
+		showErpnextNav.value = !!res?.show_erpnext_nav;
 		hydrate(res);
 		if (!activeSlug.value && workspaces.value.length)
 			activeSlug.value = workspaces.value[0].slug;
@@ -58,6 +63,27 @@ async function load() {
 		showToast(err.message || __("Failed to load settings"), "error");
 	} finally {
 		loading.value = false;
+	}
+}
+
+// Toggle the ERPNext sidebar section site-wide, saving immediately and updating the live sidebar.
+async function onToggleErpnextNav(val) {
+	if (savingNav.value) return;
+	savingNav.value = true;
+	try {
+		const res = await setErpnextNavEnabled(val);
+		showErpnextNav.value = !!res.show_erpnext_nav;
+		store.showErpnextNav = showErpnextNav.value; // reflect in the sidebar now
+		showToast(
+			showErpnextNav.value
+				? __("ERPNext navigation shown.")
+				: __("ERPNext navigation hidden.")
+		);
+	} catch (err) {
+		showErpnextNav.value = !val; // revert the control on failure
+		showToast(err.message || __("Failed to update the setting"), "error");
+	} finally {
+		savingNav.value = false;
 	}
 }
 
@@ -105,7 +131,7 @@ async function save() {
 }
 
 const activeLabel = computed(
-	() => workspaces.value.find((w) => w.slug === activeSlug.value)?.label || __("Workspace"),
+	() => workspaces.value.find((w) => w.slug === activeSlug.value)?.label || __("Workspace")
 );
 
 const breadcrumbs = [
@@ -139,9 +165,38 @@ onMounted(() => {
 				/>
 			</template>
 
-			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">{{ __("Loading…") }}</div>
+			<div v-if="loading" class="py-12 text-center text-sm text-ink-500">
+				{{ __("Loading…") }}
+			</div>
 
 			<template v-else>
+				<!-- Site-wide sidebar toggle: show/hide the ERPNext nav section. -->
+				<DeskSection :title="__('Sidebar')">
+					<label
+						class="flex items-start gap-3 py-1 text-sm cursor-pointer"
+						:class="{ 'opacity-60 pointer-events-none': savingNav }"
+					>
+						<input
+							type="checkbox"
+							class="mt-0.5 accent-brand-600"
+							:checked="showErpnextNav"
+							@change="onToggleErpnextNav($event.target.checked)"
+						/>
+						<span>
+							<span class="text-ink-900 font-medium">{{
+								__("Show ERPNext navigation in sidebar")
+							}}</span>
+							<span class="block text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"When on, the ERPNext section appears in the app sidebar for everyone. Off (default) hides it — the ERPNext workspaces still exist, only their nav is hidden."
+									)
+								}}
+							</span>
+						</span>
+					</label>
+				</DeskSection>
+
 				<!-- Workspace tabs -->
 				<div class="flex items-center gap-1 border-b border-ink-200 mb-4 overflow-x-auto">
 					<button
@@ -176,10 +231,14 @@ onMounted(() => {
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium w-8">#</th>
 									<th class="py-1.5 pr-2 font-medium w-44">{{ __("Label") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-52">{{ __("Report") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-52">
+										{{ __("Report") }}
+									</th>
 									<th class="py-1.5 pr-2 font-medium w-52">{{ __("Route") }}</th>
 									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Icon") }}</th>
-									<th class="py-1.5 pr-2 font-medium">{{ __("Description") }}</th>
+									<th class="py-1.5 pr-2 font-medium">
+										{{ __("Description") }}
+									</th>
 									<th class="w-20"></th>
 								</tr>
 							</thead>
@@ -193,7 +252,10 @@ onMounted(() => {
 										{{ i + 1 }}
 									</td>
 									<td class="py-1 pr-2">
-										<DeskInput v-model="r.label" :placeholder="__('Tile title')" />
+										<DeskInput
+											v-model="r.label"
+											:placeholder="__('Tile title')"
+										/>
 									</td>
 									<td class="py-1 pr-2">
 										<DeskLinkPicker
@@ -249,7 +311,9 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!rows.length">
 									<td colspan="7" class="py-3 text-center text-ink-400">
-										{{ __("No reports configured for {0} yet.", [activeLabel]) }}
+										{{
+											__("No reports configured for {0} yet.", [activeLabel])
+										}}
 									</td>
 								</tr>
 							</tbody>
@@ -272,9 +336,13 @@ onMounted(() => {
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium w-8">#</th>
 									<th class="py-1.5 pr-2 font-medium w-44">{{ __("Label") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-52">{{ __("DocType") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-52">
+										{{ __("DocType") }}
+									</th>
 									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Icon") }}</th>
-									<th class="py-1.5 pr-2 font-medium">{{ __("Description") }}</th>
+									<th class="py-1.5 pr-2 font-medium">
+										{{ __("Description") }}
+									</th>
 									<th class="w-20"></th>
 								</tr>
 							</thead>
@@ -340,7 +408,9 @@ onMounted(() => {
 								</tr>
 								<tr v-if="!docRows.length">
 									<td colspan="6" class="py-3 text-center text-ink-400">
-										{{ __("No records configured for {0} yet.", [activeLabel]) }}
+										{{
+											__("No records configured for {0} yet.", [activeLabel])
+										}}
 									</td>
 								</tr>
 							</tbody>
