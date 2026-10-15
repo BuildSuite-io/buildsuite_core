@@ -243,6 +243,75 @@ class TestBOQ(BuildSuiteTestCase):
 		self.assertEqual(rev.base_revision, base.name)
 		self.assertFalse(rev.project)
 
+	# --- estimate -> bid (Quotation / Tender) ---------------------------
+	def _approved_estimate(self, with_customer=True):
+		"""An Approved, project-less estimate with one group of two priced items."""
+		cust = self._make_customer().name if with_customer else None
+		b = frappe.get_doc(
+			{
+				"doctype": "BOQ",
+				"customer": cust,
+				"title": "Estimate to bid",
+				"margin_rate": 12,
+				"tax_rate": 18,
+			}
+		).insert(ignore_permissions=True)
+		g = self._group(b.name)
+		self._item(b.name, g.name, 10, 100)  # 1000
+		self._item(b.name, g.name, 5, 200)  # 1000
+		api.submit_boq(b.name)
+		api.approve_boq(b.name)
+		return b
+
+	def test_create_tender_from_estimate_item_and_group(self):
+		from frappe.utils import add_days, today
+
+		b = self._approved_estimate()
+		dl = add_days(today(), 30)
+		res = api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline=dl)
+		self.assertEqual(res["doctype"], "BuildSuite Tenders")
+		self.assertEqual(frappe.db.count("BuildSuite Tenders Items", {"parent": res["name"]}), 2)
+		# Tender derives the sell value from cost + margin (12%): (1000+1000)*1.12 = 2240 before tax.
+		self.assertEqual(frappe.db.get_value("BuildSuite Tenders", res["name"], "bid_before_tax"), 2240)
+
+		grp = api.create_bid_from_boq(b.name, "Tender", "group", submission_deadline=dl)
+		self.assertEqual(frappe.db.count("BuildSuite Tenders Items", {"parent": grp["name"]}), 1)
+		line = frappe.get_all(
+			"BuildSuite Tenders Items", filters={"parent": grp["name"]}, fields=["rate", "unit"]
+		)[0]
+		self.assertEqual(line.rate, 2000)  # the group's lump sum
+
+	def test_create_quotation_from_estimate(self):
+		b = self._approved_estimate()
+		res = api.create_bid_from_boq(b.name, "Quotation", "item")
+		self.assertEqual(res["doctype"], "Quotation")
+		items = frappe.get_all(
+			"Quotation Item",
+			filters={"parent": res["name"]},
+			fields=["source", "price_list_rate", "rate", "qty"],
+			order_by="idx asc",
+		)
+		self.assertEqual(len(items), 2)
+		self.assertEqual(items[0].source, "BOQ")
+		self.assertEqual(items[0].price_list_rate, 100)  # cost carried as price-list rate
+		self.assertEqual(items[0].rate, 112)  # +12% margin derived by ERPNext
+
+	def test_bid_rejects_non_approved_boq(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)  # Draft
+		with self.assertRaises(frappe.ValidationError):
+			api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline="2026-12-31")
+
+	def test_quotation_requires_a_customer(self):
+		b = self._approved_estimate(with_customer=False)
+		with self.assertRaises(frappe.ValidationError):
+			api.create_bid_from_boq(b.name, "Quotation", "item")
+		# a Tender does not need one
+		from frappe.utils import add_days, today
+
+		res = api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline=add_days(today(), 15))
+		self.assertEqual(res["doctype"], "BuildSuite Tenders")
+
 	# --- actuals --------------------------------------------------------
 	def test_recalculate_actuals_from_task(self):
 		p = self._make_project(company=self.company)
