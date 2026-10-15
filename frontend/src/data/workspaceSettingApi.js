@@ -18,8 +18,15 @@ async function call(method, args) {
 // Ordered, renderable report tiles for a workspace (any signed-in user).
 export const getWorkspaceReports = (workspace) => call("get_workspace_reports", { workspace });
 
-// Admin config for the settings screen: { workspaces: [{slug,label}], reports: {slug:[…]} }.
+// Admin config for the settings screen: { workspaces: [{slug,label}], reports: {slug:[…]},
+// doctypes: {slug:[…]}, show_erpnext_nav }.
 export const getWorkspaceSettings = () => call("get_workspace_settings");
+
+// Whether the ERPNext sidebar nav section is shown (site-wide, default off). Any signed-in user.
+export const getErpnextNavEnabled = () => call("get_erpnext_nav_enabled");
+// Toggle the ERPNext sidebar nav section site-wide. Admin only.
+export const setErpnextNavEnabled = (enabled) =>
+	call("set_erpnext_nav_enabled", { enabled: enabled ? 1 : 0 });
 
 // Replace one workspace's rows (order preserved). Admin only.
 export const setWorkspaceReports = (workspace, reports) =>

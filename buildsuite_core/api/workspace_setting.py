@@ -132,7 +132,12 @@ def get_workspace_settings():
 					"description": row.description or "",
 				}
 			)
-	return {"workspaces": list(WORKSPACES), "reports": by_ws, "doctypes": by_dt}
+	return {
+		"workspaces": list(WORKSPACES),
+		"reports": by_ws,
+		"doctypes": by_dt,
+		"show_erpnext_nav": bool(settings.show_erpnext_nav),
+	}
 
 
 @frappe.whitelist()
@@ -223,9 +228,7 @@ def _require_allowed(doctype):
 	if not doctype or not frappe.db.exists("DocType", doctype):
 		frappe.throw(_("{0} is not available here.").format(doctype or "DocType"), frappe.PermissionError)
 	if not frappe.has_permission(doctype, "read"):
-		frappe.throw(
-			_("You don't have access to {0}.").format(doctype), frappe.PermissionError
-		)
+		frappe.throw(_("You don't have access to {0}.").format(doctype), frappe.PermissionError)
 
 
 @frappe.whitelist()
@@ -294,9 +297,7 @@ def get_doctype_list_config(doctype: str):
 	meta = frappe.get_meta(doctype)
 
 	list_fields = [
-		df.fieldname
-		for df in meta.fields
-		if df.in_list_view and df.fieldtype not in _NON_LIST_FIELDTYPES
+		df.fieldname for df in meta.fields if df.in_list_view and df.fieldtype not in _NON_LIST_FIELDTYPES
 	]
 	if meta.title_field and meta.title_field not in list_fields:
 		list_fields.insert(0, meta.title_field)
@@ -436,8 +437,14 @@ def get_visible_workspaces():
 
 # Precedence for the cosmetic access hint when a user holds several roles on one workspace.
 _ACCESS_RANK = {
-	"full": 6, "approve": 5, "create-own": 4, "mr-only": 3,
-	"read": 2, "pay-only": 2, "self-service": 1, "team-only": 1,
+	"full": 6,
+	"approve": 5,
+	"create-own": 4,
+	"mr-only": 3,
+	"read": 2,
+	"pay-only": 2,
+	"self-service": 1,
+	"team-only": 1,
 }
 
 
@@ -556,7 +563,9 @@ def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
 	rows = frappe.parse_json(shortcuts) or []
 
 	# Rebuild: drop this workspace's shortcuts, recreate from the payload.
-	for name in frappe.get_all("BuildSuite Workspace Shortcut", filters={"workspace": workspace}, pluck="name"):
+	for name in frappe.get_all(
+		"BuildSuite Workspace Shortcut", filters={"workspace": workspace}, pluck="name"
+	):
 		frappe.delete_doc("BuildSuite Workspace Shortcut", name, ignore_permissions=True, force=True)
 	for i, row in enumerate(rows):
 		label = (row.get("label") or "").strip()
@@ -575,3 +584,24 @@ def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
 		doc.insert(ignore_permissions=True)
 	frappe.db.commit()
 	return get_workspace_shortcuts_config()
+
+
+# --- ERPNext sidebar nav toggle ---------------------------------------------
+
+
+@frappe.whitelist(methods=["GET"])
+def get_erpnext_nav_enabled():
+	"""Whether the ERPNext navigation section is shown in the app sidebar (site-wide). Any
+	signed-in user — the sidebar reads it on boot. Default off (the section is hidden)."""
+	return bool(frappe.db.get_single_value(SETTINGS, "show_erpnext_nav"))
+
+
+@frappe.whitelist()
+def set_erpnext_nav_enabled(enabled):
+	"""Show/hide the ERPNext navigation section in the app sidebar, site-wide. Admin only."""
+	_require_admin()
+	settings = frappe.get_single(SETTINGS)
+	settings.show_erpnext_nav = frappe.utils.cint(enabled)
+	settings.flags.ignore_permissions = True
+	settings.save()
+	return {"show_erpnext_nav": bool(settings.show_erpnext_nav)}
