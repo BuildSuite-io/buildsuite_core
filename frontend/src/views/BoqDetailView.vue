@@ -1658,7 +1658,7 @@ const breadcrumbs = computed(() => {
 								<div class="px-3 py-1.5 font-mono text-xs text-ink-700">
 									{{ item.code }}
 								</div>
-								<div class="px-3 py-1.5 text-sm text-ink-800">
+								<div class="px-3 py-1.5 text-sm text-ink-800 min-w-0 break-words">
 									{{ item.description }}
 									<!-- LEFT AS-IS per prompt (Phase-5 prelude): Δ chip uses brand-tinted danger/success styling -->
 									<span
@@ -1802,7 +1802,9 @@ const breadcrumbs = computed(() => {
 								>
 									<div></div>
 									<div></div>
-									<div class="px-3 py-1 text-xs text-ink-600 pl-10">
+									<div
+										class="px-3 py-1 text-xs text-ink-600 pl-10 min-w-0 break-words"
+									>
 										↳ {{ si.description }}
 										<DeskLink
 											v-if="si.rateMasterId"
