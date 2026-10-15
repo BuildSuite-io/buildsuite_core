@@ -1197,6 +1197,29 @@ async function confirmCreateBid() {
 	}
 }
 
+// ---- Attach this estimate to a project (once the work is won) ---------------
+const attachModalOpen = ref(false);
+const attachTarget = ref("");
+const attachBusy = ref(false);
+function openAttachModal() {
+	attachTarget.value = "";
+	attachModalOpen.value = true;
+}
+async function confirmAttach() {
+	if (!attachTarget.value || attachBusy.value) return;
+	attachBusy.value = true;
+	try {
+		const res = await boqApi.attachEstimateToProject(boq.value.id, attachTarget.value);
+		attachModalOpen.value = false;
+		showToast(__("Attached to the project ({0} revision(s) moved).", [res.moved]));
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not attach to the project"), "error");
+	} finally {
+		attachBusy.value = false;
+	}
+}
+
 // The BOQ id + revision live in the subtitle (as in the prototype), so the
 // breadcrumb trail ends at the project — not a raw BOQ-id crumb.
 const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.revision}` : ""));
@@ -1309,6 +1332,16 @@ const breadcrumbs = computed(() => {
 							@click="openClone"
 						>
 							{{ __("Clone…") }}
+						</button>
+
+						<button
+							v-if="!hasProject && canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openAttachModal"
+						>
+							{{ __("Attach to a project…") }}
 						</button>
 
 						<button
@@ -2524,6 +2557,78 @@ const breadcrumbs = computed(() => {
 							@click="submitRevision"
 						>
 							{{ __("Create revision") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Attach-to-project modal (estimate → project) ========== -->
+			<div
+				v-if="attachModalOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="attachModalOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Attach to a project") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Moves this estimate and all its revisions onto the project as its baseline. The project carries one baseline, so it must not already have an approved BOQ."
+									)
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="attachModalOpen = false"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Project')" required>
+							<DeskLinkPicker
+								v-model="attachTarget"
+								doctype="Project"
+								label-field="project_name"
+								value-field="name"
+								:search-fields="['project_name', 'custom_project_id', 'name']"
+								order-by="creation desc"
+								:placeholder="__('Search projects…')"
+							/>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="attachModalOpen = false"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="!attachTarget || attachBusy"
+							@click="confirmAttach"
+						>
+							{{ attachBusy ? __("Attaching…") : __("Attach") }}
 						</button>
 					</footer>
 				</div>

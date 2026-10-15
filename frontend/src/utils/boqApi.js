@@ -86,3 +86,8 @@ export const createBidFromBoq = (
 		title,
 		submission_deadline: submissionDeadline,
 	});
+
+// Attach a project-less estimate (and its whole revision lineage) to a project once the work is
+// won. Returns { moved, project }.
+export const attachEstimateToProject = (boq, project) =>
+	request("attach_estimate_to_project", { boq, project });

@@ -312,6 +312,41 @@ class TestBOQ(BuildSuiteTestCase):
 		res = api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline=add_days(today(), 15))
 		self.assertEqual(res["doctype"], "BuildSuite Tenders")
 
+	# --- attach an estimate to a project --------------------------------
+	def _project_with_customer(self):
+		cust = self._make_customer().name
+		p = self._make_project(company=self.company)
+		frappe.db.set_value("Project", p.name, "customer", cust)
+		return p.name, cust
+
+	def test_attach_estimate_moves_whole_lineage(self):
+		project, cust = self._project_with_customer()
+		est = frappe.get_doc({"doctype": "BOQ", "title": "Unwon"}).insert(ignore_permissions=True)
+		self._item(est.name, self._group(est.name).name, 1, 10)
+		rev = api.create_revision(est.name)  # a 2-revision lineage, both project-less
+		res = api.attach_estimate_to_project(est.name, project)
+		self.assertEqual(res["moved"], 2)
+		for name in (est.name, rev):
+			self.assertEqual(frappe.db.get_value("BOQ", name, "project"), project)
+			self.assertEqual(frappe.db.get_value("BOQ", name, "company"), self.company)
+			self.assertEqual(frappe.db.get_value("BOQ", name, "customer"), cust)
+
+	def test_attach_rejects_already_attached(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)  # already has a project
+		with self.assertRaises(frappe.ValidationError):
+			api.attach_estimate_to_project(b.name, p.name)
+
+	def test_attach_rejects_project_with_approved_baseline(self):
+		# A project that already carries an approved BOQ can't take another estimate.
+		p = self._make_project(company=self.company)
+		base = self._boq(p.name)
+		api.submit_boq(base.name)
+		api.approve_boq(base.name)
+		est = frappe.get_doc({"doctype": "BOQ", "title": "Unwon"}).insert(ignore_permissions=True)
+		with self.assertRaises(frappe.ValidationError):
+			api.attach_estimate_to_project(est.name, p.name)
+
 	# --- actuals --------------------------------------------------------
 	def test_recalculate_actuals_from_task(self):
 		p = self._make_project(company=self.company)

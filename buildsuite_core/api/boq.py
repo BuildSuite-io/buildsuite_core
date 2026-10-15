@@ -117,6 +117,50 @@ def approve_boq(boq: str):
 	return doc.status
 
 
+# --- attach an estimate to a project --------------------------------------
+
+
+def _attach_blocker(src, project: str) -> str | None:
+	"""Why this estimate can't attach to ``project``, or None if it can. A project carries one
+	baseline, so a project that already has an Approved BOQ is not a target."""
+	if src.project:
+		return _("This estimate is already attached to a project.")
+	if not project or not frappe.db.exists("Project", project):
+		return _("Pick a project to attach this estimate to.")
+	existing = frappe.db.get_value("BOQ", {"project": project, "status": "Approved"}, "name")
+	if existing:
+		return _("{0} already has an approved BOQ ({1}) — a project carries one baseline.").format(
+			project, existing
+		)
+	return None
+
+
+@frappe.whitelist()
+def attach_estimate_to_project(boq: str, project: str):
+	"""Attach a project-less estimate (and its whole revision lineage) to a project once the work
+	is won. Re-anchors each revision's company to the project (the controller derives it) and sets
+	the customer from the project. Returns ``{moved, project}``."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "write", doc=src):
+		frappe.throw(_("You are not permitted to modify this BOQ."), frappe.PermissionError)
+	blocker = _attach_blocker(src, project)
+	if blocker:
+		frappe.throw(blocker)
+	customer = frappe.db.get_value("Project", project, "customer")
+	# Move the lineage parent-first (revision asc) so the same-company guard never trips on a
+	# child whose base_revision hasn't moved yet. The controller re-anchors company on save.
+	peers = frappe.get_all(
+		"BOQ", filters={"name": ("in", _revision_peers(src))}, pluck="name", order_by="revision asc"
+	)
+	for name in peers:
+		peer = frappe.get_doc("BOQ", name)
+		peer.project = project
+		if customer:
+			peer.customer = customer
+		peer.save(ignore_permissions=True)
+	return {"moved": len(peers), "project": project}
+
+
 # --- bid from an approved estimate ----------------------------------------
 
 BID_KINDS = ("Quotation", "Tender")
