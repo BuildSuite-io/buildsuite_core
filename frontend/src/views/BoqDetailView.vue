@@ -1235,6 +1235,16 @@ const breadcrumbs = computed(() => {
 						</button>
 
 						<button
+							v-if="isEditable && canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="router.push(`/boq/${boq.id}/import`)"
+						>
+							{{ __("Import from Excel…") }}
+						</button>
+
+						<button
 							v-if="canCreate('boq')"
 							type="button"
 							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"

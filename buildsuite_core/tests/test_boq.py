@@ -312,6 +312,74 @@ class TestBOQ(BuildSuiteTestCase):
 		self.assertEqual(len(subs), 1)
 		self.assertEqual(subs[0].rate_master, rm.name)
 
+	def test_import_rows_creates_groups_items_and_units(self):
+		# S430 — the parsed-spreadsheet import persists groups + items on a Draft BOQ, creating any
+		# missing UOM, auto-coding groups, and reallocating a duplicate item code.
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		payload = {
+			"units": ["Running Meter"],  # not in the UOM master -> created
+			"groups": [
+				{"key": "new:civil", "existingId": None, "code": "", "name": "Civil works"},
+				{"key": "new:finishes", "existingId": None, "code": "", "name": "Finishes"},
+			],
+			"items": [
+				{
+					"groupKey": "new:civil",
+					"code": "1",
+					"description": "PCC",
+					"unit": "Cubic Meter",
+					"plannedQty": 12.5,
+					"rate": 5200,
+					"costHead": "Material",
+				},
+				{
+					"groupKey": "new:civil",
+					"code": "1",
+					"description": "RCC (dup code)",
+					"unit": "Cubic Meter",
+					"plannedQty": 40,
+					"rate": 7800,
+					"costHead": "Material",
+				},
+				{
+					"groupKey": "new:finishes",
+					"code": "",
+					"description": "Tile",
+					"unit": "Square Meter",
+					"plannedQty": 850,
+					"rate": 1250,
+					"costHead": "",
+				},
+				{
+					"groupKey": "new:finishes",
+					"code": "",
+					"description": "Custom-unit line",
+					"unit": "Running Meter",
+					"plannedQty": 10,
+					"rate": 100,
+					"costHead": "",
+				},
+			],
+		}
+		res = api.import_rows(b.name, payload)
+		self.assertEqual(res["items"], 4)
+		self.assertEqual(res["groups"], 2)
+		self.assertTrue(frappe.db.exists("UOM", "Running Meter"))  # created on the user's choice
+		self.assertEqual(frappe.db.count("BOQ Group", {"boq": b.name}), 2)
+		# The duplicate "1" is reallocated, so all four codes are distinct.
+		codes = frappe.get_all("BOQ Item", filters={"boq": b.name}, pluck="code")
+		self.assertEqual(len(set(codes)), 4)
+		b.reload()
+		self.assertEqual(b.planned_amount, 12.5 * 5200 + 40 * 7800 + 850 * 1250 + 10 * 100)
+
+	def test_import_rows_rejects_non_draft(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		api.submit_boq(b.name)
+		with self.assertRaises(frappe.ValidationError):
+			api.import_rows(b.name, {"groups": [], "items": []})
+
 	def test_clone_estimate_project_to_project(self):
 		# EST-019 — cloning to a different project creates a fresh Draft BOQ
 		# there; items carry over but with actuals reset (task cleared) and no

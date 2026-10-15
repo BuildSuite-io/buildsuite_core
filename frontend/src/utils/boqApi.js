@@ -70,3 +70,7 @@ export const createRevision = (boq, sourceSco = null, title = null) =>
 export const cloneBoq = (payload) => request("clone_boq", payload);
 export const importTemplate = (boq, estimateTemplate) =>
 	request("import_template", { boq, estimate_template: estimateTemplate });
+// Create groups + items on a Draft BOQ from a parsed spreadsheet import (buildPayload output).
+// Returns { boq, items, groups }.
+export const importBoqRows = (boq, payload) =>
+	request("import_rows", { boq, payload: JSON.stringify(payload) });
