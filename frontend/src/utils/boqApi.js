@@ -70,3 +70,24 @@ export const createRevision = (boq, sourceSco = null, title = null) =>
 export const cloneBoq = (payload) => request("clone_boq", payload);
 export const importTemplate = (boq, estimateTemplate) =>
 	request("import_template", { boq, estimate_template: estimateTemplate });
+// Raise a bid from an Approved BOQ. kind = "Quotation" | "Tender"; lineMode = "item" | "group".
+// Returns { doctype, name } so the caller can route to the new document.
+export const createBidFromBoq = (
+	boq,
+	kind,
+	lineMode = "item",
+	title = null,
+	submissionDeadline = null
+) =>
+	request("create_bid_from_boq", {
+		boq,
+		kind,
+		line_mode: lineMode,
+		title,
+		submission_deadline: submissionDeadline,
+	});
+
+// Attach a project-less estimate (and its whole revision lineage) to a project once the work is
+// won. Returns { moved, project }.
+export const attachEstimateToProject = (boq, project) =>
+	request("attach_estimate_to_project", { boq, project });
