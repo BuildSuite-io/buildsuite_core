@@ -214,6 +214,16 @@ const groups = computed(() => [
 				to: "/settings/data",
 			},
 			{
+				slug: "app-icon-diagnostics",
+				icon: "activity",
+				label: __("App Icon Diagnostics"),
+				desc: __(
+					"Why the BuildSuite app icon may not be showing — a copyable server report."
+				),
+				to: "/settings/app-icon-diagnostics",
+				adminOnly: true,
+			},
+			{
 				slug: "audit",
 				icon: "clipboard-list",
 				label: __("Audit Log"),
