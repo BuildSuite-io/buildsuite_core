@@ -47,13 +47,15 @@ def execute(filters=None):
 		c = committed.get(sub) or 0
 		b = billed.get(sub) or 0
 		r = retention.get(sub) or 0
-		data.append({
-			"subcontractor": names.get(sub) or sub,
-			"committed": c,
-			"billed": b,
-			"retention": r,
-			"to_bill": c - b,
-		})
+		data.append(
+			{
+				"subcontractor": names.get(sub) or sub,
+				"committed": c,
+				"billed": b,
+				"retention": r,
+				"to_bill": c - b,
+			}
+		)
 		tot["committed"] += c
 		tot["billed"] += b
 		tot["retention"] += r
@@ -62,12 +64,19 @@ def execute(filters=None):
 	# A bold, ruled Total row so the roll-up reads apart from the per-subcontractor rows
 	# (is_total is styled by the report renderer).
 	if data:
-		data.append({
-			"subcontractor": _("Total"),
-			"committed": tot["committed"],
-			"billed": tot["billed"],
-			"retention": tot["retention"],
-			"to_bill": tot["to_bill"],
-			"is_total": 1,
-		})
-	return columns, data
+		data.append(
+			{
+				"subcontractor": _("Total"),
+				"committed": tot["committed"],
+				"billed": tot["billed"],
+				"retention": tot["retention"],
+				"to_bill": tot["to_bill"],
+				"is_total": 1,
+			}
+		)
+	# The report emits its OWN bold Total row (is_total) above, so tell Frappe NOT to append its
+	# auto-total — otherwise query_report sums every row INCLUDING that Total and shows a second,
+	# doubled Total. skip_total_row (the 6th return value) overrides the Report's add_total_row flag,
+	# so this holds even before the add_total_row=0 setting syncs to the Report record on migrate.
+	skip_total_row = True
+	return columns, data, None, None, None, skip_total_row
