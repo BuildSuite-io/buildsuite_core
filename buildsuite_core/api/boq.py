@@ -117,6 +117,227 @@ def approve_boq(boq: str):
 	return doc.status
 
 
+# --- attach an estimate to a project --------------------------------------
+
+
+def _attach_blocker(src, project: str) -> str | None:
+	"""Why this estimate can't attach to ``project``, or None if it can. A project carries one
+	baseline, so a project that already has an Approved BOQ is not a target."""
+	if src.project:
+		return _("This estimate is already attached to a project.")
+	if not project or not frappe.db.exists("Project", project):
+		return _("Pick a project to attach this estimate to.")
+	existing = frappe.db.get_value("BOQ", {"project": project, "status": "Approved"}, "name")
+	if existing:
+		return _("{0} already has an approved BOQ ({1}) — a project carries one baseline.").format(
+			project, existing
+		)
+	return None
+
+
+@frappe.whitelist()
+def attach_estimate_to_project(boq: str, project: str):
+	"""Attach a project-less estimate (and its whole revision lineage) to a project once the work
+	is won. Re-anchors each revision's company to the project (the controller derives it) and sets
+	the customer from the project. Returns ``{moved, project}``."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "write", doc=src):
+		frappe.throw(_("You are not permitted to modify this BOQ."), frappe.PermissionError)
+	blocker = _attach_blocker(src, project)
+	if blocker:
+		frappe.throw(blocker)
+	customer = frappe.db.get_value("Project", project, "customer")
+	# Move the lineage parent-first (revision asc) so the same-company guard never trips on a
+	# child whose base_revision hasn't moved yet. The controller re-anchors company on save.
+	peers = frappe.get_all(
+		"BOQ", filters={"name": ("in", _revision_peers(src))}, pluck="name", order_by="revision asc"
+	)
+	for name in peers:
+		peer = frappe.get_doc("BOQ", name)
+		peer.project = project
+		if customer:
+			peer.customer = customer
+		peer.save(ignore_permissions=True)
+	return {"moved": len(peers), "project": project}
+
+
+# --- bid from an approved estimate ----------------------------------------
+
+BID_KINDS = ("Quotation", "Tender")
+# Every ERPNext sales line hangs off an Item; a BOQ line is a scope of work, not stock, so
+# the Quotation points every line at one generic service item and the description carries the
+# real text (mirrors the SPA's New Quotation form).
+_QUOTATION_SERVICE_ITEM = "Professional Services"
+
+
+def _lump_sum_uom() -> str:
+	"""The UOM for a group-mode lump-sum line. Both the Tender and the Quotation link `unit`/`uom`
+	to the UOM master, so a plain "LS" string fails validation — ensure a real "Lump Sum" UOM
+	(idempotent; mirrors the import flow that creates missing units on demand)."""
+	name = "Lump Sum"
+	if not frappe.db.exists("UOM", name):
+		frappe.get_doc({"doctype": "UOM", "uom_name": name}).insert(ignore_permissions=True)
+	return name
+
+
+def _bid_lines_from_boq(boq_name: str, line_mode: str) -> list[dict]:
+	"""Snapshot the BOQ into bid lines. ``item`` = one line per BOQ item; ``group`` = one lump-sum
+	line per group (rate = sum of the group's planned amounts). Group lines with no value drop out.
+	"""
+	line_mode = "group" if line_mode == "group" else "item"
+	groups = frappe.get_all(
+		"BOQ Group",
+		filters={"boq": boq_name},
+		fields=["name", "code", "group_name"],
+		order_by="idx asc, creation asc",
+	)
+	lines = []
+	if line_mode == "group":
+		lump_sum = _lump_sum_uom()
+		for g in groups:
+			items = frappe.get_all("BOQ Item", filters={"boq_group": g.name}, pluck="planned_amount")
+			amount = sum(flt(a) for a in items)
+			if amount > 0:
+				lines.append(
+					{
+						"source_ref": g.name,
+						"code": g.code,
+						"description": g.group_name,
+						"unit": lump_sum,
+						"qty": 1,
+						"rate": flt(amount, 2),
+					}
+				)
+	else:
+		for g in groups:
+			for i in frappe.get_all(
+				"BOQ Item",
+				filters={"boq_group": g.name},
+				fields=["name", "code", "description", "unit", "planned_qty", "rate"],
+				order_by="idx asc, creation asc",
+			):
+				lines.append(
+					{
+						"source_ref": i.name,
+						"code": i.code,
+						"description": i.description,
+						"unit": i.unit or "Nos",
+						"qty": flt(i.planned_qty),
+						"rate": flt(i.rate),
+					}
+				)
+	return lines
+
+
+@frappe.whitelist()
+def create_bid_from_boq(
+	boq: str,
+	kind: str,
+	line_mode: str = "item",
+	title: str | None = None,
+	submission_deadline: str | None = None,
+):
+	"""Raise a bid (a Quotation or a Tender) from an Approved BOQ — the terminal step of the
+	estimate workflow: price it, approve it, then bid it when you pursue the work. Returns
+	``{doctype, name}`` so the SPA routes to the new document."""
+	kind = (kind or "").strip()
+	if kind not in BID_KINDS:
+		frappe.throw(_("A bid is a Quotation or a Tender."))
+	src = frappe.get_doc("BOQ", boq)
+	if src.status != "Approved":
+		frappe.throw(_("Only an Approved BOQ can become a bid."))
+	target = "BuildSuite Tenders" if kind == "Tender" else "Quotation"
+	if not frappe.has_permission(target, "create"):
+		frappe.throw(_("You are not permitted to create a {0}.").format(kind), frappe.PermissionError)
+	lines = _bid_lines_from_boq(src.name, line_mode)
+	if not lines:
+		frappe.throw(_("This BOQ has no priced lines to bid."))
+	title = (title or src.title or "").strip()
+	name = (
+		_tender_from_boq(src, lines, title, submission_deadline)
+		if kind == "Tender"
+		else _quotation_from_boq(src, lines, title)
+	)
+	return {"doctype": target, "name": name}
+
+
+def _tender_from_boq(src, lines: list[dict], title: str, submission_deadline: str | None) -> str:
+	"""A BuildSuite Tender whose item rows carry the BOQ lines. The Tender controller derives
+	sell rate / amount / totals from the cost ``rate`` + ``margin_percent`` on validate.
+
+	A Tender hard-requires a submission deadline, an issuing body and a reference; the deadline
+	comes from the bid form, and the issuing body / reference are seeded from the estimate (the
+	customer and the BOQ id) for the user to refine on the Tender form."""
+	if not submission_deadline:
+		frappe.throw(_("A tender needs a submission deadline."))
+	doc = frappe.get_doc(
+		{
+			"doctype": "BuildSuite Tenders",
+			"title": title,
+			"issuing_body": src.customer or _("To be confirmed"),
+			"tender_reference": src.name,
+			"project": src.project or None,
+			"company": src.company,
+			"date_issued": today(),
+			"submission_deadline": submission_deadline,
+			"margin_percent": flt(src.margin_rate),
+			"tax_percent": flt(src.tax_rate),
+			"buildsuite_tenders_items": [
+				{
+					"source": "BOQ",
+					"source_ref": line["source_ref"],
+					"code": line["code"],
+					"description": line["description"],
+					"unit": line["unit"],
+					"qty": line["qty"],
+					"rate": line["rate"],
+				}
+				for line in lines
+			],
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc.name
+
+
+def _quotation_from_boq(src, lines: list[dict], title: str) -> str:
+	"""An ERPNext Quotation for the estimate's customer, every line on the generic service item
+	with the BOQ text + cost as price-list rate and the BOQ margin applied (ERPNext derives the
+	sell rate). A Quotation is party-bound, so the estimate needs a customer."""
+	if not src.customer:
+		frappe.throw(_("Set a customer on the estimate to raise a quotation (or raise a tender instead)."))
+	margin = flt(src.margin_rate)
+	doc = frappe.get_doc(
+		{
+			"doctype": "Quotation",
+			"quotation_to": "Customer",
+			"party_name": src.customer,
+			"title": title,
+			"project": src.project or None,
+			"transaction_date": today(),
+			"items": [
+				{
+					"item_code": _QUOTATION_SERVICE_ITEM,
+					"item_name": (line["description"] or line["code"] or "Item")[:140],
+					"description": line["description"],
+					# A synthetic lump-sum unit (group mode) isn't a UOM master; fall back to Nos.
+					"uom": line["unit"] if frappe.db.exists("UOM", line["unit"]) else "Nos",
+					"qty": line["qty"] or 1,
+					"price_list_rate": line["rate"],
+					"margin_type": "Percentage",
+					"margin_rate_or_amount": margin,
+					"source": "BOQ",
+					"code": line["code"],
+					"source_ref": line["source_ref"],
+				}
+				for line in lines
+			],
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc.name
+
+
 # --- assembly explosion ---------------------------------------------------
 
 

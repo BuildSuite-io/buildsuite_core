@@ -71,6 +71,7 @@ const boq = computed(() => {
 		revision: d.revision,
 		title: d.title,
 		projectId: d.project,
+		customer: d.customer,
 		preparedBy: d.prepared_by,
 		preparedDate: d.prepared_date,
 		approvedBy: d.approved_by,
@@ -1120,14 +1121,103 @@ async function deleteSubItemConfirm(si) {
 	}
 }
 
-// Primary action dispatcher — Submit when Draft, Approve when Submitted.
-const showPrimary = computed(() => (canSubmit.value || canApprove.value) && canSubmitCap("boq"));
+// An Approved estimate (no project) is ready to be bid — the terminal step of the estimate
+// workflow: price it, approve it, then raise a Quotation/Tender when you pursue the work.
+const hasProject = computed(() => !!boq.value?.projectId);
+const canRaiseBid = computed(() => boq.value?.status === "Approved" && !hasProject.value);
+
+// Primary action dispatcher — Submit when Draft, Approve when Submitted, Create bid when it's an
+// approved estimate.
+const showPrimary = computed(
+	() => ((canSubmit.value || canApprove.value) && canSubmitCap("boq")) || canRaiseBid.value
+);
 const primaryLabel = computed(() =>
-	canSubmit.value ? __("Submit for approval") : canApprove.value ? __("Approve") : ""
+	canSubmit.value
+		? __("Submit for approval")
+		: canApprove.value
+		? __("Approve")
+		: canRaiseBid.value
+		? __("Create bid from this estimate")
+		: ""
 );
 function primaryAction() {
 	if (canSubmit.value) submit();
 	else if (canApprove.value) approve();
+	else if (canRaiseBid.value) openBidModal();
+}
+
+// ---- Raise a bid (Quotation or Tender) from this estimate ------------------
+const bidModalOpen = ref(false);
+const bidForm = ref({ kind: "Quotation", lineMode: "item", title: "", deadline: "" });
+const bidBusy = ref(false);
+// A bid can price every BOQ item, or roll each group into one lump-sum line. Show the count for
+// each so the choice is made with the answer in front of you.
+const bidLineCounts = computed(() => ({
+	item: allItems.value.length,
+	group: groups.value.filter((g) => boqItemsByGroup(g.id).length).length,
+}));
+function openBidModal() {
+	bidForm.value = {
+		kind: boq.value?.customer ? "Quotation" : "Tender",
+		lineMode: "item",
+		title: boq.value?.title || "",
+		deadline: "",
+	};
+	bidModalOpen.value = true;
+}
+async function confirmCreateBid() {
+	if (bidBusy.value) return;
+	if (bidForm.value.kind === "Quotation" && !boq.value?.customer) {
+		showToast(
+			__("Set a customer on the estimate to raise a quotation, or raise a tender."),
+			"error"
+		);
+		return;
+	}
+	if (bidForm.value.kind === "Tender" && !bidForm.value.deadline) {
+		showToast(__("A tender needs a submission deadline."), "error");
+		return;
+	}
+	bidBusy.value = true;
+	try {
+		const res = await boqApi.createBidFromBoq(
+			boq.value.id,
+			bidForm.value.kind,
+			bidForm.value.lineMode,
+			bidForm.value.title?.trim() || null,
+			bidForm.value.kind === "Tender" ? bidForm.value.deadline : null
+		);
+		bidModalOpen.value = false;
+		const path = res.doctype === "Quotation" ? "quotations" : "tenders";
+		router.push(`/${path}/${encodeURIComponent(res.name)}`);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to create the bid"), "error");
+	} finally {
+		bidBusy.value = false;
+	}
+}
+
+// ---- Attach this estimate to a project (once the work is won) ---------------
+const attachModalOpen = ref(false);
+const attachTarget = ref("");
+const attachBusy = ref(false);
+function openAttachModal() {
+	attachTarget.value = "";
+	attachModalOpen.value = true;
+}
+async function confirmAttach() {
+	if (!attachTarget.value || attachBusy.value) return;
+	attachBusy.value = true;
+	try {
+		const res = await boqApi.attachEstimateToProject(boq.value.id, attachTarget.value);
+		attachModalOpen.value = false;
+		showToast(__("Attached to the project ({0} revision(s) moved).", [res.moved]));
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not attach to the project"), "error");
+	} finally {
+		attachBusy.value = false;
+	}
 }
 
 // The BOQ id + revision live in the subtitle (as in the prototype), so the
@@ -1252,6 +1342,16 @@ const breadcrumbs = computed(() => {
 							@click="openClone"
 						>
 							{{ __("Clone…") }}
+						</button>
+
+						<button
+							v-if="!hasProject && canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openAttachModal"
+						>
+							{{ __("Attach to a project…") }}
 						</button>
 
 						<button
@@ -2467,6 +2567,247 @@ const breadcrumbs = computed(() => {
 							@click="submitRevision"
 						>
 							{{ __("Create revision") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Attach-to-project modal (estimate → project) ========== -->
+			<div
+				v-if="attachModalOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="attachModalOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Attach to a project") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Moves this estimate and all its revisions onto the project as its baseline. The project carries one baseline, so it must not already have an approved BOQ."
+									)
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="attachModalOpen = false"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Project')" required>
+							<DeskLinkPicker
+								v-model="attachTarget"
+								doctype="Project"
+								label-field="project_name"
+								value-field="name"
+								:search-fields="['project_name', 'custom_project_id', 'name']"
+								order-by="creation desc"
+								:placeholder="__('Search projects…')"
+							/>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="attachModalOpen = false"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="!attachTarget || attachBusy"
+							@click="confirmAttach"
+						>
+							{{ attachBusy ? __("Attaching…") : __("Attach") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Raise-a-bid modal (estimate → Quotation / Tender) ========== -->
+			<div
+				v-if="bidModalOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="bidModalOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Create a bid from this estimate") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Snapshots this estimate's lines into a new Quotation or Tender you can price and send."
+									)
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="bidModalOpen = false"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Bid type')">
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+									style="border-radius: 6px"
+									:class="
+										bidForm.kind === 'Quotation'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									:disabled="!boq.customer"
+									@click="bidForm.kind = 'Quotation'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Quotation") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{
+											boq.customer
+												? __("A priced offer to {0}", [boq.customer])
+												: __("Needs a customer on the estimate")
+										}}
+									</div>
+								</button>
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.kind === 'Tender'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.kind = 'Tender'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Tender") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("A formal tender submission") }}
+									</div>
+								</button>
+							</div>
+						</DeskField>
+
+						<DeskField
+							:label="__('Lines')"
+							:hint="
+								__(
+									'Price every item, or roll each group into a single lump-sum line.'
+								)
+							"
+						>
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.lineMode === 'item'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.lineMode = 'item'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Per item") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("{0} lines", [bidLineCounts.item]) }}
+									</div>
+								</button>
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.lineMode === 'group'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.lineMode = 'group'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Per group") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("{0} lines", [bidLineCounts.group]) }}
+									</div>
+								</button>
+							</div>
+						</DeskField>
+
+						<DeskField :label="__('Title')">
+							<DeskInput
+								v-model="bidForm.title"
+								:placeholder="__('e.g. Whitefield villa — interior fit-out')"
+							/>
+						</DeskField>
+
+						<DeskField
+							v-if="bidForm.kind === 'Tender'"
+							:label="__('Submission deadline')"
+							required
+						>
+							<DeskInput v-model="bidForm.deadline" type="date" />
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="bidModalOpen = false"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="bidBusy"
+							@click="confirmCreateBid"
+						>
+							{{ bidBusy ? __("Creating…") : __("Create {0}", [__(bidForm.kind)]) }}
 						</button>
 					</footer>
 				</div>
