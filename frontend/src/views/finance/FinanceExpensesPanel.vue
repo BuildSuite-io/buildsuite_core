@@ -4,6 +4,7 @@
 // Cancelled. Submit = accountant verification; only Submitted expenses hit balances
 // & reports. Tabs: To Submit / All Expenses / My Expenses.
 import { computed, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import FileUploadHandler from "frappe-ui-file-upload-handler";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -109,7 +110,9 @@ const tabs = computed(() => {
 	t.push({ id: "mine", label: __("My Expenses") });
 	return t;
 });
-const tab = ref(null);
+// Deep-link: a dashboard row can open a specific tab via `?tab=<id>` (e.g. queue = To Submit).
+const route = useRoute();
+const tab = ref(typeof route.query.tab === "string" ? route.query.tab : null);
 const activeTab = computed(() =>
 	tab.value && tabs.value.some((t) => t.id === tab.value) ? tab.value : tabs.value[0]?.id
 );

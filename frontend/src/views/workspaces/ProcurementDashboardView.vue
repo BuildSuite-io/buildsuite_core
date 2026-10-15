@@ -10,7 +10,11 @@ import { dayjs } from "frappe-ui";
 import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() =>
-	new Date().toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" })
+	new Date().toLocaleDateString(currentLang(), {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	})
 );
 
 const { projectName } = useProjectNames();
@@ -40,13 +44,34 @@ function plural(n) {
 }
 
 // Frappe Desk list URL with filters, e.g. per_received=["<",100].
-function deskUrl(doctype, filters = {}) {
-	const qs = Object.entries(filters)
-		.map(
-			([k, v]) => `${k}=${encodeURIComponent(typeof v === "string" ? v : JSON.stringify(v))}`
-		)
-		.join("&");
-	return `/app/${doctype}?${qs}`;
+// The SPA list route for each procurement doctype (not the Desk /app/ list).
+const LIST_ROUTE = {
+	"material-request": "/procurement/material-requests",
+	"purchase-order": "/procurement/purchase-orders",
+	"purchase-receipt": "/procurement/receipts",
+};
+// A Frappe-style filters dict -> the [[field, op, value], …] array the list reads from ?filters.
+// Handles a plain value, a single [op, value], and nested [[op,v],[op,v]] conditions on one field.
+function toFilterArray(filters) {
+	const out = [];
+	for (const [field, v] of Object.entries(filters || {})) {
+		if (Array.isArray(v) && v.length && Array.isArray(v[0])) {
+			for (const cond of v)
+				if (Array.isArray(cond) && cond.length === 2) out.push([field, cond[0], cond[1]]);
+		} else if (Array.isArray(v) && v.length === 2 && typeof v[0] === "string") {
+			out.push([field, v[0], v[1]]);
+		} else {
+			out.push([field, "=", v]);
+		}
+	}
+	return out;
+}
+// A link to the SPA list with the filters pre-applied (replaces the old Desk /app/ URL).
+function listUrl(doctype, filters = {}) {
+	const route = LIST_ROUTE[doctype];
+	if (!route) return "/";
+	const arr = toFilterArray(filters);
+	return arr.length ? `${route}?filters=${encodeURIComponent(JSON.stringify(arr))}` : route;
 }
 
 // Needs-action rows, composed from the API's needs_action block.
@@ -76,7 +101,7 @@ const actionRows = computed(() => {
 				  ])
 				: __("All caught up"),
 			count: na.approved_to_order.count,
-			href: deskUrl("material-request", {
+			href: listUrl("material-request", {
 				docstatus: 1,
 				material_request_type: "Purchase",
 				per_ordered: ["<", 100],
@@ -89,7 +114,7 @@ const actionRows = computed(() => {
 			label: __("Deliveries overdue"),
 			sub: overdueSub,
 			count: overdue.count,
-			href: deskUrl("purchase-order", {
+			href: listUrl("purchase-order", {
 				docstatus: 1,
 				per_received: ["<", 100],
 				schedule_date: ["<", dayjs().format("YYYY-MM-DD")],
@@ -107,7 +132,7 @@ const actionRows = computed(() => {
 				  ])
 				: __("No partial deliveries pending"),
 			count: na.partial_deliveries.count,
-			href: deskUrl("purchase-order", {
+			href: listUrl("purchase-order", {
 				docstatus: 1,
 				per_received: [
 					[">", 0],
@@ -127,20 +152,20 @@ const actionRows = computed(() => {
 				  ])
 				: __("All receipts billed"),
 			count: na.received_not_billed.count,
-			href: deskUrl("purchase-receipt", { docstatus: 1, per_billed: ["<", 100] }),
+			href: listUrl("purchase-receipt", { docstatus: 1, per_billed: ["<", 100] }),
 		},
 	];
 });
 
 // "Above estimated rate" is intentionally left unlinked (added later).
 const kpiLinks = {
-	open_material_requests: deskUrl("material-request", {
+	open_material_requests: listUrl("material-request", {
 		docstatus: 1,
 		material_request_type: "Purchase",
 		per_ordered: ["<", 100],
 	}),
-	on_order: deskUrl("purchase-order", { docstatus: 1, per_received: ["<", 100] }),
-	received_this_week: deskUrl("purchase-receipt", {
+	on_order: listUrl("purchase-order", { docstatus: 1, per_received: ["<", 100] }),
+	received_this_week: listUrl("purchase-receipt", {
 		docstatus: 1,
 		posting_date: [">=", dayjs().subtract(7, "day").format("YYYY-MM-DD")],
 	}),
@@ -173,17 +198,23 @@ function grnTone(status) {
 			<!-- Header strip — breadcrumb + date eyebrow + title -->
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1 flex items-center gap-2">
-					<RouterLink to="/procurement" class="hover:text-brand-700"
-						>{{ __("Procurement") }}</RouterLink
-					>
+					<RouterLink to="/procurement" class="hover:text-brand-700">{{
+						__("Procurement")
+					}}</RouterLink>
 					<span class="text-ink-300">/</span>
 					<span>{{ __("Dashboard") }}</span>
 					<span class="text-ink-300 mx-2">·</span>
 					<span>{{ today }}</span>
 				</div>
-				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Procurement Dashboard") }}</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">
+					{{ __("Procurement Dashboard") }}
+				</h1>
 				<p class="text-xs text-ink-500 mt-1">
-					{{ __("Open material requests, on-order value, site receipts and rate variances at a glance.") }}
+					{{
+						__(
+							"Open material requests, on-order value, site receipts and rate variances at a glance."
+						)
+					}}
 				</p>
 			</div>
 
@@ -195,8 +226,8 @@ function grnTone(status) {
 				<!-- ===== KPI strip ===== -->
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 					<!-- 1 — Open material requests -->
-					<a
-						:href="kpiLinks.open_material_requests"
+					<RouterLink
+						:to="kpiLinks.open_material_requests"
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -213,11 +244,11 @@ function grnTone(status) {
 						<div class="text-[10px] text-ink-400 mt-1">
 							{{ __("Pending + Approved + Partially Ordered") }}
 						</div>
-					</a>
+					</RouterLink>
 
 					<!-- 2 — On order · awaiting delivery -->
-					<a
-						:href="kpiLinks.on_order"
+					<RouterLink
+						:to="kpiLinks.on_order"
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -231,12 +262,14 @@ function grnTone(status) {
 								{{ fmtCompactINR(kpis.on_order.value) }}
 							</div>
 						</div>
-						<div class="text-[10px] text-ink-400 mt-1">{{ __("POs not yet fully received") }}</div>
-					</a>
+						<div class="text-[10px] text-ink-400 mt-1">
+							{{ __("POs not yet fully received") }}
+						</div>
+					</RouterLink>
 
 					<!-- 3 — Received this week -->
-					<a
-						:href="kpiLinks.received_this_week"
+					<RouterLink
+						:to="kpiLinks.received_this_week"
 						class="card p-4 bg-white border border-ink-200 block hover:border-brand-400 hover:bg-brand-50 cursor-pointer transition-colors"
 					>
 						<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -248,7 +281,7 @@ function grnTone(status) {
 						<div class="text-[10px] text-ink-400 mt-1">
 							{{ __("Goods receipts in last 7 days") }}
 						</div>
-					</a>
+					</RouterLink>
 
 					<!-- 4 — Above estimated rate -->
 					<div class="card p-4 bg-white border border-ink-200">
@@ -291,13 +324,15 @@ function grnTone(status) {
 								aria-hidden="true"
 								v-html="getWorkspaceIconPath('check-circle')"
 							/>
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("Needs action") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Needs action") }}
+							</h2>
 							<span class="ml-auto text-[11px] text-ink-500">{{ __("Today") }}</span>
 						</div>
 						<ul class="divide-y divide-ink-100">
 							<li v-for="row in actionRows" :key="row.key">
-								<a
-									:href="row.href"
+								<RouterLink
+									:to="row.href"
 									class="px-4 py-3 flex items-center gap-3 hover:bg-ink-50 transition-colors"
 								>
 									<span
@@ -334,7 +369,7 @@ function grnTone(status) {
 										>{{ row.count }}</span
 									>
 									<span class="text-ink-300">›</span>
-								</a>
+								</RouterLink>
 							</li>
 						</ul>
 					</div>
@@ -358,10 +393,10 @@ function grnTone(status) {
 							<h2 class="text-sm font-semibold text-ink-900">
 								{{ __("Recent site receipts") }}
 							</h2>
-							<a
-								href="/app/purchase-receipt"
+							<RouterLink
+								to="/procurement/receipts"
 								class="ml-auto text-xs text-brand-700 hover:underline"
-								>{{ __("View all") }} →</a
+								>{{ __("View all") }} →</RouterLink
 							>
 						</div>
 						<ul v-if="kpis.recent_receipts.length" class="divide-y divide-ink-100">
