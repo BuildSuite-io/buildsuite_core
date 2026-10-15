@@ -122,6 +122,7 @@ const PAGE_TITLES = {
 	"settings-user-new": "New User",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
+	"settings-app-icon-diagnostics": "App Icon Diagnostics",
 	"settings-terms": "Terms & Conditions",
 	"settings-workspaces": "Workspace Setting",
 	"settings-project-categories": "Project Categories",
@@ -983,6 +984,11 @@ const routes = [
 				path: "settings/core",
 				name: "settings-core",
 				component: () => import("@/views/settings/CoreSettingsView.vue"),
+			},
+			{
+				path: "settings/app-icon-diagnostics",
+				name: "settings-app-icon-diagnostics",
+				component: () => import("@/views/settings/AppIconDiagnosticsView.vue"),
 			},
 			{
 				path: "settings/project",
