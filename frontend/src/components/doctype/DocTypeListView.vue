@@ -293,10 +293,25 @@ function clearFilters() {
 	dynamicFilters.value = [];
 }
 
-// Deep-link filters: a dashboard tile can link here with `?filter.<field>=<value>` (comma-separated
-// value => an "in" filter) and the list opens with that dynamic filter pre-applied — the same
-// chip-based filters the user can add by hand. Seeded once from the initial route query.
+// Deep-link filters: a dashboard tile can open this list with a filter already applied — the same
+// chip-based filters a user can add by hand — seeded once from the initial route query. Two forms:
+//   • `?filter.<field>=<value>`  — simple equality (a comma value becomes an "in" filter).
+//   • `?filters=<JSON>`          — a Frappe filter array `[[field, op, value], …]` for operators,
+//                                   ranges and dates (what a Desk list link carries).
 const route = useRoute();
+// Frappe operator -> the dynamicFilter `condition` the editor + toServerFilter use.
+const _COND = { between: "Between", timespan: "Timespan" };
+function _tupleToFilter(field, op, value) {
+	const meta = fieldMetaMap.value.get(field) || {};
+	return {
+		fieldname: field,
+		label: meta.label || field,
+		fieldtype: meta.fieldtype || "Data",
+		options: meta.options || "",
+		condition: _COND[op] || op || "=",
+		value,
+	};
+}
 (function seedFiltersFromQuery() {
 	const seeded = [];
 	for (const [key, raw] of Object.entries(route.query || {})) {
@@ -319,6 +334,21 @@ const route = useRoute();
 						.filter(Boolean)
 				: val,
 		});
+	}
+	// Rich filter array (operators / ranges / dates).
+	try {
+		const rawFilters = route.query.filters;
+		if (rawFilters) {
+			const arr = JSON.parse(Array.isArray(rawFilters) ? rawFilters[0] : rawFilters);
+			if (Array.isArray(arr)) {
+				for (const t of arr) {
+					if (Array.isArray(t) && t.length >= 3)
+						seeded.push(_tupleToFilter(t[0], t[1], t[2]));
+				}
+			}
+		}
+	} catch {
+		/* malformed filters query — ignore */
 	}
 	if (seeded.length) dynamicFilters.value = seeded;
 })();
