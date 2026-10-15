@@ -15,6 +15,7 @@ persona lacking read on it and 500s the whole landing page (it did, for Task Pro
 Single-company for now."""
 
 import json
+from urllib.parse import quote
 
 import frappe
 from frappe.utils import add_days, date_diff, flt, getdate, nowdate
@@ -51,9 +52,9 @@ def _sum(doctype, filters, field):
 
 	try:
 		table = frappe.qb.DocType(doctype)
-		rows = frappe.qb.get_query(
-			doctype, filters=filters or {}, fields=[Sum(table[field]).as_("t")]
-		).run(as_dict=True)
+		rows = frappe.qb.get_query(doctype, filters=filters or {}, fields=[Sum(table[field]).as_("t")]).run(
+			as_dict=True
+		)
 		return flt(rows[0].t) if rows and rows[0].t is not None else 0.0
 	except Exception:
 		return 0.0
@@ -138,6 +139,12 @@ def _cash_and_bank(company):
 # --------------------------------------------------------------------------- #
 # snapshot / CTA / alerts — per role
 # --------------------------------------------------------------------------- #
+def _filtered(route, filters):
+	"""A list route carrying a ?filters=<JSON> deep link — the SPA list (DocTypeListView) seeds its
+	dynamic filters from it, so a Home tile opens the list already filtered to match its count."""
+	return f"{route}?filters={quote(json.dumps(filters))}"
+
+
 def _tile(label, value, slug, tone="brand", fmt="int", to=None):
 	# `to` makes a snapshot tile clickable — it opens the matching SPA list (with a filter query),
 	# so the number and the list it drills into stay in step.
@@ -341,7 +348,7 @@ def get_home_dashboard():
 		"Task", {**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]}
 	)
 	progress_today = _count("Task Progress Entry", {"entry_date": str(today)})
-	# Count the team — enabled users carrying a BuildSuite persona (what Settings › Users lists) —
+	# Count the team — enabled users carrying a BuildSuite persona (what Settings > Users lists) —
 	# not every enabled Frappe user (which pulled in integration/system accounts).
 	users = _count("User", {"enabled": 1, "persona": ["is", "set"]})
 	stage_pending = _count("Stage Planning", {**proj_in, "workflow_state": "Pending Approval"})
@@ -517,7 +524,9 @@ def get_home_dashboard():
 				mrs_pending,
 				"procurement",
 				"warning" if mrs_pending else "muted",
-				to="/procurement/material-requests?status=Pending Approval",
+				# Match the count (docstatus 0 = drafts awaiting approval); the old ?status=Pending
+				# Approval was neither a real MR state nor read by the list.
+				to=_filtered("/procurement/material-requests", [["docstatus", "=", 0]]),
 			),
 		]
 		alerts = [
@@ -528,7 +537,7 @@ def get_home_dashboard():
 				mrs_pending,
 				f"{mrs_pending} request(s) to review" if mrs_pending else "No requests waiting",
 				"procurement",
-				"/procurement/material-requests",
+				_filtered("/procurement/material-requests", [["docstatus", "=", 0]]),
 				mrs_pending > 0,
 			),
 			_alert(
