@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskFilterEditor from "@/components/desk/DeskFilterEditor.vue";
@@ -133,7 +134,9 @@ const resolvedFields = computed(() => {
 		: props.fieldOrder;
 
 	const valid = meta.value
-		? candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname) || STANDARD_FIELDS.has(fieldname))
+		? candidates.filter(
+				(fieldname) => fieldMetaMap.value.has(fieldname) || STANDARD_FIELDS.has(fieldname)
+		  )
 		: candidates;
 	const withName = valid.includes("name") ? valid : ["name", ...valid];
 	return Array.from(new Set(withName));
@@ -189,8 +192,18 @@ const resolvedColumns = computed(() => {
 // --- Dynamic (ad-hoc) filters — Frappe-style field/condition/value builder ---------
 // Layout / no-value fieldtypes can't be filtered on, so they're excluded from the picker.
 const NO_VALUE_FIELDTYPES = new Set([
-	"Section Break", "Column Break", "Tab Break", "HTML", "Table", "Table MultiSelect",
-	"Button", "Image", "Fold", "Heading", "Signature", "Geolocation",
+	"Section Break",
+	"Column Break",
+	"Tab Break",
+	"HTML",
+	"Table",
+	"Table MultiSelect",
+	"Button",
+	"Image",
+	"Fold",
+	"Heading",
+	"Signature",
+	"Geolocation",
 ]);
 const STANDARD_FILTER_FIELDS = [
 	{ fieldname: "name", label: "ID", fieldtype: "Data" },
@@ -207,7 +220,8 @@ const filterableFields = computed(() => {
 	const out = [...STANDARD_FILTER_FIELDS];
 	const seen = new Set(out.map((f) => f.fieldname));
 	for (const f of meta.value?.fields || []) {
-		if (!f?.fieldname || NO_VALUE_FIELDTYPES.has(f.fieldtype) || seen.has(f.fieldname)) continue;
+		if (!f?.fieldname || NO_VALUE_FIELDTYPES.has(f.fieldtype) || seen.has(f.fieldname))
+			continue;
 		out.push({
 			fieldname: f.fieldname,
 			label: f.label || f.fieldname,
@@ -236,7 +250,10 @@ function toServerFilter(f) {
 		case "not in": {
 			const list = Array.isArray(v)
 				? v.filter(Boolean)
-				: String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+				: String(v ?? "")
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean);
 			return list.length ? [field, f.condition, list] : null;
 		}
 		case "is":
@@ -276,15 +293,57 @@ function clearFilters() {
 	dynamicFilters.value = [];
 }
 
+// Deep-link filters: a dashboard tile can link here with `?filter.<field>=<value>` (comma-separated
+// value => an "in" filter) and the list opens with that dynamic filter pre-applied — the same
+// chip-based filters the user can add by hand. Seeded once from the initial route query.
+const route = useRoute();
+(function seedFiltersFromQuery() {
+	const seeded = [];
+	for (const [key, raw] of Object.entries(route.query || {})) {
+		if (!key.startsWith("filter.")) continue;
+		const field = key.slice("filter.".length);
+		const val = Array.isArray(raw) ? raw[0] : raw;
+		if (!field || val == null || val === "") continue;
+		const meta = fieldMetaMap.value.get(field) || {};
+		const isList = String(val).includes(",");
+		seeded.push({
+			fieldname: field,
+			label: meta.label || field,
+			fieldtype: meta.fieldtype || "Data",
+			options: meta.options || "",
+			condition: isList ? "in" : "=",
+			value: isList
+				? String(val)
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean)
+				: val,
+		});
+	}
+	if (seeded.length) dynamicFilters.value = seeded;
+})();
+
 // Chip text: "Label operator value".
 const CONDITION_SYMBOL = {
-	"=": "=", "!=": "≠", like: "like", "not like": "not like", in: "in", "not in": "not in",
-	is: "is", ">": ">", "<": "<", ">=": "≥", "<=": "≤", Between: "between", Timespan: "in",
+	"=": "=",
+	"!=": "≠",
+	like: "like",
+	"not like": "not like",
+	in: "in",
+	"not in": "not in",
+	is: "is",
+	">": ">",
+	"<": "<",
+	">=": "≥",
+	"<=": "≤",
+	Between: "between",
+	Timespan: "in",
 };
 function chipLabel(f) {
 	let text;
 	if (f.condition === "is") text = f.value === "not set" ? "Not Set" : "Set";
-	else if (f.condition === "Between" && Array.isArray(f.value)) text = `${f.value[0]} – ${f.value[1]}`;
+	else if (f.condition === "Between" && Array.isArray(f.value))
+		text = `${f.value[0]} – ${f.value[1]}`;
 	else if (Array.isArray(f.value)) text = f.value.join(", ");
 	else if (f.fieldtype === "Check") text = f.value === "0" || f.value === 0 ? "No" : "Yes";
 	else text = String(f.value ?? "");

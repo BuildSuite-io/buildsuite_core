@@ -17,7 +17,11 @@ import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	});
 });
 
 const { projectName } = useProjectNames();
@@ -30,35 +34,49 @@ function scoped(rows) {
 }
 
 const wosRes = useDocTypeList("Subcontractor Work Order", {
-	fields: ["company",
+	fields: [
+		"company",
 		"name",
 		"subcontractor_name",
 		"project",
 		"date",
 		"delivery_type",
 		"total_value",
-		"status",
+		// The WO has no `status` field — fetching it returned nothing, which left the panel empty.
+		// Status is derived from docstatus (Draft / Submitted / Cancelled), like the WO list view.
+		"docstatus",
 		"modified",
 	],
 	orderBy: "modified desc",
 	pageLength: 0,
 	cache: "buildsuite-subcontract-wo-dashboard",
 });
+function woStatus(wo) {
+	return { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[wo.docstatus] || "Draft";
+}
 const subsRes = useDocTypeList("Supplier", {
-	fields: ["company","name", "supplier_name", "disabled"],
+	fields: ["company", "name", "supplier_name", "disabled"],
 	filters: [["supplier_type", "=", "Subcontractor"]],
 	orderBy: "supplier_name asc",
 	pageLength: 0,
 	cache: "buildsuite-subcontractor-dashboard",
 });
 const mbsRes = useDocTypeList("Measurement Book", {
-	fields: ["company","name", "project", "work_order", "date", "measured_total", "status"],
+	fields: ["company", "name", "project", "work_order", "date", "measured_total", "status"],
 	orderBy: "date desc",
 	pageLength: 0,
 	cache: "buildsuite-measurement-book-dashboard",
 });
+// Client billing (Sales Invoices) — the "Client billed to date" tile, next to subcontractor billing.
+const sisRes = useDocTypeList("Sales Invoice", {
+	fields: ["company", "name", "grand_total"],
+	orderBy: "modified desc",
+	pageLength: 0,
+	cache: "buildsuite-sales-invoice-sc-dashboard",
+});
 const billsRes = useDocTypeList("Subcontractor Bill", {
-	fields: ["company",
+	fields: [
+		"company",
 		"name",
 		"ra_no",
 		"subcontractor_name",
@@ -83,9 +101,8 @@ const recentMBs = computed(() => scoped(mbsRes.data).slice(0, 5));
 const recentWorkOrders = computed(() => wos.value.slice(0, 6));
 const recentBills = computed(() => bills.value.slice(0, 6));
 
-const openWos = computed(() =>
-	wos.value.filter((w) => w.status === "Awarded" || w.status === "In Progress")
-);
+// Open = a submitted (committed) work order; a draft isn't a commitment yet, a cancelled one is gone.
+const openWos = computed(() => wos.value.filter((w) => w.docstatus === 1));
 const openWosValue = computed(() =>
 	openWos.value.reduce((a, w) => a + (Number(w.total_value) || 0), 0)
 );
@@ -93,6 +110,9 @@ const activeSubs = computed(() => subs.value.filter((s) => !s.disabled).length);
 
 const totalBilledToDate = computed(() =>
 	bills.value.reduce((a, b) => a + (Number(b.gross) || 0), 0)
+);
+const totalClientBilled = computed(() =>
+	scoped(sisRes.data).reduce((a, s) => a + (Number(s.grand_total) || 0), 0)
 );
 const totalRetentionHeld = computed(() =>
 	bills.value.reduce((a, b) => a + (Number(b.retention_amount) || 0), 0)
@@ -123,23 +143,32 @@ function woPercent(wo) {
 			<!-- Header strip -->
 			<div class="mb-6">
 				<div class="text-xs text-ink-500 mb-1 flex items-center gap-2">
-					<RouterLink to="/subcontract" class="hover:text-brand-700"
-						>{{ __("Subcontractors") }}</RouterLink
-					>
+					<RouterLink to="/subcontract" class="hover:text-brand-700">{{
+						__("Subcontractors")
+					}}</RouterLink>
 					<span class="text-ink-300">/</span>
 					<span>{{ __("Dashboard") }}</span>
 					<span class="text-ink-300 mx-2">·</span>
 					<span>{{ today }}</span>
 				</div>
-				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Subcontractor Dashboard") }}</h1>
+				<h1 class="text-2xl font-semibold text-ink-900">
+					{{ __("Subcontractor Dashboard") }}
+				</h1>
 				<p class="text-xs text-ink-500 mt-1">
-					{{ __("Open commitments, billing momentum, and certified measurements at a glance.") }}
+					{{
+						__(
+							"Open commitments, billing momentum, and certified measurements at a glance."
+						)
+					}}
 				</p>
 			</div>
 
-			<!-- KPI strip -->
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-				<div class="p-4 bg-white border border-ink-200 rounded-lg">
+			<!-- KPI strip — each card links to its list (with the relevant filter pre-applied). -->
+			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+				<RouterLink
+					to="/subcontractor-work-orders?filter.docstatus=1"
+					class="p-4 bg-white border border-ink-200 rounded-lg block hover:border-brand-300 transition-colors"
+				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 						{{ __("Open work orders") }}
 					</div>
@@ -151,18 +180,42 @@ function woPercent(wo) {
 							{{ fmtCompactINR(openWosValue) }}
 						</div>
 					</div>
-					<div class="text-[10px] text-ink-400 mt-1">{{ __("Awarded · In Progress") }}</div>
-				</div>
-				<div class="p-4 bg-white border border-ink-200 rounded-lg">
+					<div class="text-[10px] text-ink-400 mt-1">
+						{{ __("Submitted commitments") }}
+					</div>
+				</RouterLink>
+				<RouterLink
+					to="/subcontractor-bills"
+					class="p-4 bg-white border border-ink-200 rounded-lg block hover:border-brand-300 transition-colors"
+				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 						{{ __("Billed to date") }}
 					</div>
 					<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
 						{{ fmtCompactINR(totalBilledToDate) }}
 					</div>
-					<div class="text-[10px] text-ink-400 mt-1">{{ __("Sum across all bills") }}</div>
-				</div>
-				<div class="p-4 bg-white border border-ink-200 rounded-lg">
+					<div class="text-[10px] text-ink-400 mt-1">
+						{{ __("Sum across all bills") }}
+					</div>
+				</RouterLink>
+				<RouterLink
+					to="/project-finance/invoices"
+					class="p-4 bg-white border border-ink-200 rounded-lg block hover:border-brand-300 transition-colors"
+				>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Client billed to date") }}
+					</div>
+					<div class="text-2xl font-semibold text-ink-900 tabular-nums mt-1.5">
+						{{ fmtCompactINR(totalClientBilled) }}
+					</div>
+					<div class="text-[10px] text-ink-400 mt-1">
+						{{ __("Sales invoices to clients") }}
+					</div>
+				</RouterLink>
+				<RouterLink
+					to="/subcontractor-bills"
+					class="p-4 bg-white border border-ink-200 rounded-lg block hover:border-brand-300 transition-colors"
+				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 						{{ __("Retention held") }}
 					</div>
@@ -172,8 +225,11 @@ function woPercent(wo) {
 					<div class="text-[10px] text-ink-400 mt-1">
 						{{ __("Withheld pending defect-liability period") }}
 					</div>
-				</div>
-				<div class="p-4 bg-white border border-ink-200 rounded-lg">
+				</RouterLink>
+				<RouterLink
+					to="/subcontractors"
+					class="p-4 bg-white border border-ink-200 rounded-lg block hover:border-brand-300 transition-colors"
+				>
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 						{{ __("Active subcontractors") }}
 					</div>
@@ -181,7 +237,7 @@ function woPercent(wo) {
 						{{ activeSubs }}
 					</div>
 					<div class="text-[10px] text-ink-400 mt-1">{{ __("In the master") }}</div>
-				</div>
+				</RouterLink>
 			</div>
 
 			<!-- Recent work orders + Recent bills -->
@@ -201,7 +257,9 @@ function woPercent(wo) {
 							stroke-linejoin="round"
 							v-html="getWorkspaceIconPath('clipboard-list')"
 						/>
-						<h2 class="text-sm font-semibold text-ink-900">{{ __("Recent work orders") }}</h2>
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ __("Recent work orders") }}
+						</h2>
 						<RouterLink
 							to="/subcontractor-work-orders"
 							class="ml-auto text-xs text-brand-700 hover:underline"
@@ -212,7 +270,9 @@ function woPercent(wo) {
 						<li v-for="wo in recentWorkOrders" :key="wo.name" class="px-4 py-3">
 							<div class="flex items-baseline justify-between gap-2">
 								<RouterLink
-									:to="`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`"
+									:to="`/subcontractor-work-orders/${encodeURIComponent(
+										wo.name
+									)}`"
 									class="text-sm text-ink-900 font-medium hover:text-brand-700 truncate"
 								>
 									{{ wo.subcontractor_name || wo.name }}
@@ -224,7 +284,7 @@ function woPercent(wo) {
 							<div
 								class="text-[11px] text-ink-500 mt-0.5 truncate flex items-center gap-1.5 flex-wrap"
 							>
-								<StatusBadge :status="wo.status" size="xs" />
+								<StatusBadge :status="woStatus(wo)" size="xs" />
 								<span>· {{ projectName(wo.project) }}</span>
 								<span class="text-ink-400">· {{ fmtDate(wo.date) }}</span>
 								<span v-if="wo.delivery_type" class="text-ink-400"
@@ -280,7 +340,8 @@ function woPercent(wo) {
 									:to="`/subcontractor-bills/${b.name}`"
 									class="text-sm text-ink-900 font-medium hover:text-brand-700 truncate"
 								>
-									{{ __("RA") }} {{ b.ra_no }} · {{ b.subcontractor_name || b.name }}
+									{{ __("RA") }} {{ b.ra_no }} ·
+									{{ b.subcontractor_name || b.name }}
 								</RouterLink>
 								<span class="text-xs tabular-nums text-ink-700">{{
 									fmtCompactINR(b.gross)
@@ -326,7 +387,9 @@ function woPercent(wo) {
 						stroke-linejoin="round"
 						v-html="getWorkspaceIconPath('chart-bar')"
 					/>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Recent measurement books") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Recent measurement books") }}
+					</h2>
 					<RouterLink
 						to="/measurement-books"
 						class="ml-auto text-xs text-brand-700 hover:underline"
@@ -351,7 +414,9 @@ function woPercent(wo) {
 							<div class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ projectName(mb.project) }} ·
 								<RouterLink
-									:to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`"
+									:to="`/subcontractor-work-orders/${encodeURIComponent(
+										mb.work_order
+									)}`"
 									class="text-brand-700 hover:underline"
 									>{{ mb.work_order }}</RouterLink
 								>
