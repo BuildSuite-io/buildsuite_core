@@ -60,6 +60,10 @@ export const getActualsForCode = (project, groupCode = null, itemCode = null) =>
 	});
 export const getActualsLog = (project, filters = {}) =>
 	requestActuals("get_actuals_log", { project, ...filters });
+// {project: total} for many projects in one call — the BOQ list's Actual column, same cost-code
+// calculation path as getActualsSummary so a row reconciles with the BOQ page.
+export const getActualsTotals = (projects) =>
+	requestActuals("get_actuals_totals", { projects: JSON.stringify(projects || []) });
 
 export const submitBoq = (boq) => request("submit_boq", { boq });
 export const approveBoq = (boq) => request("approve_boq", { boq });
