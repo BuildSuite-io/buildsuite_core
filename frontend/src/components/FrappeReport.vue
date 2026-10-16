@@ -142,6 +142,9 @@ async function runWith() {
 				label: c.label || c.fieldname || `Column ${i + 1}`,
 				fieldname: c.fieldname || c.label || String(i),
 				fieldtype: c.fieldtype || "Data",
+				// The link target doctype — without it recordRoute() can't build a route, so a
+				// Link column renders as plain text instead of a clickable link.
+				options: c.options || "",
 				index: i,
 				align: NUMERIC.has(c.fieldtype) ? "right" : "left",
 			}));
