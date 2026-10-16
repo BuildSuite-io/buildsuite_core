@@ -2,7 +2,7 @@
 // The six Procurement reports, computed from live records via
 // buildsuite_core.api.procurement_report. One view, one section per :slug on
 // /procurement/report/:slug — matching the finance report pattern. An optional ?project=
-// narrows every report to that project and its sub-projects (resolved server-side); the rest
+// narrows every report to exactly that project (resolved server-side); the rest
 // of the filters — search, supplier, status, dates, the one-click narrowings — are applied
 // here over the rows the backend returns.
 
@@ -311,9 +311,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 			class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-500 rounded-lg"
 		>
 			{{ __("No report is registered under that name.") }}
-			<RouterLink to="/procurement" class="text-brand-700 hover:underline ml-1"
-				>{{ __("Back to Procurement →") }}</RouterLink
-			>
+			<RouterLink to="/procurement" class="text-brand-700 hover:underline ml-1">{{
+				__("Back to Procurement →")
+			}}</RouterLink>
 		</div>
 
 		<template v-else>
@@ -325,9 +325,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 				@clear="clearFilters"
 			>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Project") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Project")
+					}}</span>
 					<span class="w-56 inline-block">
 						<DeskSearchableSelect
 							:model-value="projectId"
@@ -341,16 +341,16 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 				</label>
 
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Find") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Find")
+					}}</span>
 					<DeskInput v-model="f.q" :placeholder="counts.find" class="!w-52" />
 				</label>
 
 				<label v-if="slug === 'requests-to-order'" class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Status") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Status")
+					}}</span>
 					<DeskSelect v-model="f.status" class="!w-44">
 						<option value="">{{ __("Any") }}</option>
 						<option v-for="o in statusOptions" :key="o.value" :value="o.value">
@@ -363,9 +363,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					v-if="slug === 'delivery-followup' || slug === 'purchase-register'"
 					class="flex items-center gap-1.5"
 				>
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Supplier") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Supplier")
+					}}</span>
 					<span class="w-52 inline-block">
 						<DeskSearchableSelect
 							v-model="f.supplier"
@@ -381,9 +381,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					v-if="slug === 'consumption-by-cost-code'"
 					class="flex items-center gap-1.5"
 				>
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Cost code") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Cost code")
+					}}</span>
 					<span class="w-56 inline-block">
 						<DeskSearchableSelect
 							v-model="f.code"
@@ -427,10 +427,6 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 				</label>
 			</ReportFilters>
 
-			<p v-if="projectId" class="text-[11px] text-ink-500 -mt-1 mb-3">
-				{{ __("Includes sub-projects.") }}
-			</p>
-
 			<div v-if="loading" class="text-sm text-ink-500 italic py-10 text-center">
 				{{ __("Loading…") }}
 			</div>
@@ -450,13 +446,27 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Request") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Raised") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Needed by") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Items") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Value") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Status") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Request") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Project") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Raised") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Needed by") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Items") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Value") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Status") }}
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -510,8 +520,12 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 									<td class="px-3 py-2" colspan="5">
 										{{
 											requestsToOrder.length === 1
-												? __("{0} request waiting", [requestsToOrder.length])
-												: __("{0} requests waiting", [requestsToOrder.length])
+												? __("{0} request waiting", [
+														requestsToOrder.length,
+												  ])
+												: __("{0} requests waiting", [
+														requestsToOrder.length,
+												  ])
 										}}
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums">
@@ -546,12 +560,24 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Order") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Supplier") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Needed by") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Received") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Still due") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Order") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Supplier") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Project") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Needed by") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Received") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Still due") }}
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -654,12 +680,24 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Project store") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Received") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Consumed") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("At site") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Unit") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Project store") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Item") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Received") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Consumed") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("At site") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Unit") }}
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -696,7 +734,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						<template v-if="anyFilter">{{
 							__("No items match these filters.")
 						}}</template>
-						<template v-else>{{ __("Nothing received at site yet in scope.") }}</template>
+						<template v-else>{{
+							__("Nothing received at site yet in scope.")
+						}}</template>
 					</div>
 					<p class="text-[11px] text-ink-500 mt-2">
 						{{
@@ -718,13 +758,21 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Item") }}
+									</th>
 									<th class="text-left font-medium px-3 py-2">
 										{{ __("Last bought from") }}
 									</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Paid") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Rate Master") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Variance") }}</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Paid") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Rate Master") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Variance") }}
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -786,12 +834,14 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 					<p v-if="rateUnlinked" class="text-[11px] text-ink-500 mt-2">
 						{{
 							rateUnlinked === 1
-								? __("{0} order line could not be checked — no rate code on the line.", [
-										rateUnlinked,
-								  ])
-								: __("{0} order lines could not be checked — no rate code on the line.", [
-										rateUnlinked,
-								  ])
+								? __(
+										"{0} order line could not be checked — no rate code on the line.",
+										[rateUnlinked]
+								  )
+								: __(
+										"{0} order lines could not be checked — no rate code on the line.",
+										[rateUnlinked]
+								  )
 						}}
 						Linking the item to a Rate Master entry under
 						<RouterLink to="/items" class="text-brand-700 hover:underline"
@@ -812,13 +862,27 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Date") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Order") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Supplier") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Qty") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Rate") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Amount") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Date") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Order") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Supplier") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Item") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Qty") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Rate") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Amount") }}
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -892,10 +956,18 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2">{{ __("Cost code") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Project") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Item") }}</th>
-									<th class="text-right font-medium px-3 py-2">{{ __("Issued") }}</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Cost code") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Project") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Item") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2">
+										{{ __("Issued") }}
+									</th>
 									<th class="text-right font-medium px-3 py-2">
 										{{ __("At standard rate") }}
 									</th>
@@ -942,7 +1014,9 @@ const inr = (n) => (n || n === 0 ? Number(n).toLocaleString("en-IN") : n);
 						<template v-if="anyFilter">{{
 							__("No lines match these filters.")
 						}}</template>
-						<template v-else>{{ __("Nothing issued to site yet in scope.") }}</template>
+						<template v-else>{{
+							__("Nothing issued to site yet in scope.")
+						}}</template>
 					</div>
 					<p class="text-[11px] text-ink-500 mt-2">
 						{{

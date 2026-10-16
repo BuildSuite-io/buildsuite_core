@@ -15,7 +15,11 @@ const PILL = {
 	Draft: "bg-ink-100 text-ink-700",
 	Cancelled: "bg-ink-100 text-ink-500",
 	Closed: "bg-ink-100 text-ink-500",
-	// Material Request
+	// Material Request — approval axis (workflow_state), matching the prototype's StatusBadge map
+	"Pending Approval": "bg-warning-50 text-warning-700",
+	Approved: "bg-success-50 text-success-700",
+	Rejected: "bg-danger-50 text-danger-700",
+	// Material Request — ordering axis (native status)
 	Pending: "bg-warning-50 text-warning-700",
 	"Partially Ordered": "bg-info-50 text-info-700",
 	Ordered: "bg-success-50 text-success-700",
