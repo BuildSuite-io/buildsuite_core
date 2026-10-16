@@ -94,6 +94,10 @@
     @apply w-full text-sm bg-white border border-ink-200 text-ink-900;
     padding: 6px 10px;
     border-radius: 6px;
+    /* Native inputs (notably type="date") keep an intrinsic min-width that w-full doesn't
+       override, so in a grid/flex cell they overflow into the next field on narrow (tablet)
+       widths. min-width:0 lets w-full actually shrink the control to its cell. */
+    min-width: 0;
   }
   .desk-input:focus {
     outline: none;
