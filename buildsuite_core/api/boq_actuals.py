@@ -247,7 +247,13 @@ COST_TYPES = ("Material", "Labour", "Plant", "Subcontract", "Overhead")
 
 
 @frappe.whitelist()
-def get_actuals_log(project: str, cost_type: str | None = None, from_date: str | None = None, to_date: str | None = None, source_doctype: str | None = None):
+def get_actuals_log(
+	project: str,
+	cost_type: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	source_doctype: str | None = None,
+):
 	"""The actuals log, optionally filtered by cost type / date range / source doctype (R4).
 	Also the data source for cost-vs-budget."""
 	entries = _actual_entries(project)
@@ -302,6 +308,20 @@ def get_actuals_summary(project: str):
 		"by_group": by_group,
 		"by_item": by_item,
 		"total": sum(flt(e["amount"]) for e in entries),
+	}
+
+
+@frappe.whitelist()
+def get_actuals_totals(projects):
+	"""Total actual cost per project — the cost-code actuals log summed per project, for the BOQ
+	list's Actual column. Takes a JSON list (or comma string) of project ids and returns
+	{project: total} in ONE call, so the list doesn't fire a summary request per BOQ. Same
+	calculation path as get_actuals_summary, so the list figure reconciles with the BOQ page (R2)."""
+	if isinstance(projects, str):
+		projects = frappe.parse_json(projects) if projects.strip().startswith("[") else projects.split(",")
+	return {
+		p: sum(flt(e["amount"]) for e in _actual_entries(p))
+		for p in {str(x).strip() for x in (projects or []) if str(x).strip()}
 	}
 
 

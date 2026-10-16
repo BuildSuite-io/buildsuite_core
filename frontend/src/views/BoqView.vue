@@ -2,9 +2,10 @@
 // BOQ list — backend-backed via the data adapter (Construction Rate Master / Assembly
 // pattern). Rows/KPIs are transformed into the same shape the Desk template expects.
 
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
+import { getActualsTotals } from "@/utils/boqApi";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
@@ -87,7 +88,6 @@ const boqRes = useDocTypeList("BOQ", {
 		"revision",
 		"status",
 		"planned_amount",
-		"actual_amount",
 		"prepared_date",
 	],
 	orderBy: "creation desc",
@@ -95,33 +95,67 @@ const boqRes = useDocTypeList("BOQ", {
 	// `pageLength: 0` capped the list at 20. Explicit high cap = "effectively all".
 	pageLength: 5000,
 	cache: "buildsuite-boq-list",
+	// Actual/variance are layered on in `withActuals` from the cost-code log, not the stored
+	// actual_amount — so only planned is carried here.
 	transform: (data) =>
-		data.map((b) => {
-			const planned = b.planned_amount || 0;
-			const actual = b.actual_amount || 0;
-			const variance = actual - planned;
-			return {
-				id: b.name,
-				title: b.title,
-				projectId: b.project,
-				customer: b.customer,
-				isEstimate: !b.project,
-				revision: b.revision,
-				status: b.status,
-				preparedDate: b.prepared_date,
-				totals: {
-					planned,
-					actual,
-					variance,
-					variancePct: planned ? (variance / planned) * 100 : 0,
-				},
-			};
-		}),
+		data.map((b) => ({
+			id: b.name,
+			title: b.title,
+			projectId: b.project,
+			customer: b.customer,
+			isEstimate: !b.project,
+			revision: b.revision,
+			status: b.status,
+			preparedDate: b.prepared_date,
+			totals: { planned: b.planned_amount || 0 },
+		})),
 });
+
+// Actual is COST, not progress: the stored BOQ.actual_amount is task-progress earned value
+// (0 until a task-linked recalc runs), which disagreed with the BOQ page — that reads the
+// cost-code actuals log (Material + Subcontract + Expense + JV by cost code, per project). Pull
+// the same per-project totals here so the list reconciles with the page (R2). Actuals are a
+// project quantity, so every revision of a project shows the same actual; an estimate (no
+// project) has none.
+const actualsByProject = ref({});
+watch(
+	() => boqRes.data,
+	async (data) => {
+		const pids = [...new Set((data || []).map((b) => b.projectId).filter(Boolean))];
+		if (!pids.length) {
+			actualsByProject.value = {};
+			return;
+		}
+		try {
+			actualsByProject.value = (await getActualsTotals(pids)) || {};
+		} catch {
+			actualsByProject.value = {};
+		}
+	},
+	{ immediate: true }
+);
+
+// The fetched BOQs with Actual sourced from the cost-code log (not the stored field).
+const withActuals = computed(() =>
+	(boqRes.data || []).map((b) => {
+		const planned = b.totals.planned;
+		const actual = b.isEstimate ? 0 : actualsByProject.value[b.projectId] || 0;
+		const variance = actual - planned;
+		return {
+			...b,
+			totals: {
+				planned,
+				actual,
+				variance,
+				variancePct: planned ? (variance / planned) * 100 : 0,
+			},
+		};
+	})
+);
 
 const rows = computed(() => {
 	const term = search.value.trim().toLowerCase();
-	let list = boqRes.data || [];
+	let list = withActuals.value;
 	if (scopeFilter.value === "estimate") list = list.filter((b) => b.isEstimate);
 	if (scopeFilter.value === "project") list = list.filter((b) => !b.isEstimate);
 	if (projectFilter.value) list = list.filter((b) => b.projectId === projectFilter.value);
@@ -142,7 +176,7 @@ const rows = computed(() => {
 });
 
 const kpis = computed(() => {
-	const all = boqRes.data || [];
+	const all = withActuals.value;
 	const approved = all.filter((b) => b.status === "Approved");
 	const totalPlanned = approved.reduce((a, b) => a + b.totals.planned, 0);
 	const totalActual = approved.reduce((a, b) => a + b.totals.actual, 0);
