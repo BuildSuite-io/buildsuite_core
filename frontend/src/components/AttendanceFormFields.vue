@@ -6,6 +6,8 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import { computed } from "vue";
+
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { ATTENDANCE_STATUSES } from "@/utils/workforceForms";
@@ -20,8 +22,10 @@ defineProps({
 // so the two can never disagree.
 const emit = defineEmits(["status", "overtime", "comments", "project"]);
 
-// Project picker scoped to the switcher's working company (per-company projects).
+// Project picker scoped to the switcher's working company (per-company projects), and limited to
+// live projects — attendance is logged against open work, so a Completed project is never offered.
 const companyFilter = activeCompanyFilter();
+const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "Completed"]]);
 </script>
 
 <template>
@@ -32,7 +36,7 @@ const companyFilter = activeCompanyFilter();
 				doctype="Project"
 				label-field="project_name"
 				value-field="name"
-				:filters="companyFilter"
+				:filters="projectFilter"
 				:placeholder="__('Pick a project…')"
 				:search-placeholder="__('Search projects…')"
 				@update:model-value="(v) => emit('project', v)"
@@ -56,7 +60,10 @@ const companyFilter = activeCompanyFilter();
 				:placeholder="__('Deploy to task…')"
 			/>
 		</DeskField>
-		<DeskField :label="__('Crew (optional)')" :hint="__('Records which gang worked this sheet.')">
+		<DeskField
+			:label="__('Crew (optional)')"
+			:hint="__('Records which gang worked this sheet.')"
+		>
 			<DeskLinkPicker
 				v-model="form.crew"
 				doctype="Crew"
