@@ -119,6 +119,7 @@ _CRW = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}  # CRW — 
 # `select` — verified) but cannot list / report / export it. Used for reference masters a persona
 # only ever picks, never opens a screen for. Applied with _SELECT_PTYPES so read is cleared.
 _SELECT = {"select": 1, "print": 1}  # S — pick in a link field, no read
+_SELECT_READ = {"select": 1, "read": 1, "print": 1}  # SR — pick in a link field AND view the record
 
 # Assembly + Estimate Template: full for the estimation roles, hidden for the rest.
 ASSEMBLY_TEMPLATE_ROLE_PERMS = {role: _FULL for role in _ESTIMATION_ROLES}
@@ -719,8 +720,16 @@ def setup_petty_cash_permissions():
 	_apply_role_perms("Expense Entry", EXPENSE_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
 	# The disburse / expense Journal Entry + its account picker read accounting masters.
 	_read = {role: _READ for role in PETTY_CASH_DISBURSE_ROLES}
-	for dt in ("Account", "Journal Entry"):
-		_apply_role_perms(dt, _read)
+	_apply_role_perms("Journal Entry", _read)
+	# Account also backs the expense_account picker for the roles that RAISE expenses but don't
+	# disburse — they must resolve + view an Account in the link field, nothing more (select + read).
+	account_perms = {
+		**_read,
+		"BuildSuite Site Engineer": _SELECT_READ,
+		"BuildSuite Foreman": _SELECT_READ,
+		"BuildSuite Procurement Officer": _SELECT_READ,
+	}
+	_apply_role_perms("Account", account_perms, _SELECT_PTYPES)
 
 
 # --- Terms & Conditions library ---------------------------------------------
