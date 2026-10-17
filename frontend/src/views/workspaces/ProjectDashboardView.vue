@@ -519,7 +519,7 @@ function schedule(r) {
 										}}</span>
 										<span class="block text-[10px] text-ink-500"
 											>{{ fmtDate(e.entry_date) }} ·
-											{{ Math.round(e.progress) }}%</span
+											{{ e.progress }}%</span
 										>
 									</span>
 									<span
