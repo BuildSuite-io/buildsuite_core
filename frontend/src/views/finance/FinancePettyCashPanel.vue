@@ -81,19 +81,19 @@ const all = computed(() => res.data || []);
 const tab = ref("mine");
 const search = ref("");
 const statusFilter = ref(""); // All Requests tab status dropdown
-// Org-wide tabs (All / Balances) only for roles NOT limited by ownership; the disburse queue only
-// for disbursers; My Requests for everyone. An own-scoped role therefore sees just "My Requests".
+// "All Requests" is org-wide, so only for roles NOT limited by ownership; the disburse queue only
+// for disbursers; My Requests for everyone. Balances is for everyone too — a self-service (own-scoped)
+// holder sees only their own balance (the backend scopes holder_balances to the caller), so they get
+// the Balances tab alongside My Requests.
 const canSeeAll = computed(() => canReadAll("pettyCash"));
 const tabs = computed(() => [
 	...(canDisburse.value
 		? [{ id: "disburse", label: __("To Disburse"), count: requested.value.length }]
 		: []),
 	...(canSeeAll.value
-		? [
-				{ id: "all", label: __("All Requests"), count: all.value.length },
-				{ id: "balances", label: __("Balances"), count: null },
-		  ]
+		? [{ id: "all", label: __("All Requests"), count: all.value.length }]
 		: []),
+	{ id: "balances", label: __("Balances"), count: null },
 	{ id: "mine", label: __("My Requests"), count: mine.value.length },
 ]);
 
