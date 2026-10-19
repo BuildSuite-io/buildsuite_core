@@ -253,7 +253,6 @@ function resolvedUnit(it) {
 		return { text: __('{0} (file says "{1}")', [d.value, it.unit.raw]), tone: "set" };
 	return { text: __('Skipped: "{0}"', [it.unit.raw]), tone: "skip" };
 }
-const groupName = (key) => plan.value?.groups.find((g) => g.key === key)?.name || "";
 const showNotesOnly = ref(false);
 const previewRows = computed(() => {
 	const list = (plan.value?.items || []).filter(
@@ -261,6 +260,35 @@ const previewRows = computed(() => {
 	);
 	return list.slice(0, 300);
 });
+// The preview reads like the estimate it will become: one collapsible section per group, in file
+// order, all open to start. The subtotal counts only the rows that will come in (a row whose unit
+// is skipped is left out of it).
+const previewGroups = computed(() =>
+	(plan.value?.groups || [])
+		.map((g) => {
+			const its = previewRows.value.filter((it) => it.groupKey === g.key);
+			return {
+				...g,
+				rows: its,
+				amount: its
+					.filter((it) => resolvedUnit(it).tone !== "skip")
+					.reduce((a, it) => a + (Number(it.amount) || 0), 0),
+				noted: its.filter((it) => it.notes.length || it.unit.status !== "exact").length,
+			};
+		})
+		.filter((g) => g.rows.length)
+);
+const collapsed = ref([]);
+const isOpen = (key) => !collapsed.value.includes(key);
+function toggleGroup(key) {
+	collapsed.value = isOpen(key)
+		? [...collapsed.value, key]
+		: collapsed.value.filter((k) => k !== key);
+}
+const allOpen = computed(() => previewGroups.value.every((g) => isOpen(g.key)));
+function setAll(open) {
+	collapsed.value = open ? [] : previewGroups.value.map((g) => g.key);
+}
 const notedCount = computed(
 	() =>
 		(plan.value?.items || []).filter((it) => it.notes.length || it.unit.status !== "exact")
@@ -799,25 +827,42 @@ const breadcrumbs = computed(() => [
 						>
 							<div class="text-sm font-semibold text-ink-900">
 								{{ __("Preview") }}
+								<span class="text-xs font-normal text-ink-500"
+									>·
+									{{
+										previewGroups.length === 1
+											? __("{0} group", [previewGroups.length])
+											: __("{0} groups", [previewGroups.length])
+									}}</span
+								>
 							</div>
-							<label class="flex items-center gap-2 text-xs text-ink-700">
-								<input
-									v-model="showNotesOnly"
-									type="checkbox"
-									class="accent-brand-600"
-								/>
-								{{ __("Only rows with notes ({0})", [notedCount]) }}
-							</label>
+							<div class="flex flex-wrap items-center gap-4">
+								<button
+									v-if="previewGroups.length > 1"
+									type="button"
+									class="text-xs text-brand-700 hover:underline"
+									@click="setAll(!allOpen)"
+								>
+									{{ allOpen ? __("Collapse all") : __("Expand all") }}
+								</button>
+								<label class="flex items-center gap-2 text-xs text-ink-700">
+									<input
+										v-model="showNotesOnly"
+										type="checkbox"
+										class="accent-brand-600"
+									/>
+									{{ __("Only rows with notes ({0})", [notedCount]) }}
+								</label>
+							</div>
 						</header>
 						<div class="overflow-x-auto">
-							<table class="w-full text-sm min-w-[960px]">
+							<table class="w-full text-sm min-w-[900px]">
 								<thead class="bg-ink-50 border-b border-ink-200">
 									<tr
 										class="text-[11px] uppercase tracking-wider text-ink-500 text-left"
 									>
 										<th class="px-3 py-2 font-medium w-14">{{ __("Row") }}</th>
-										<th class="px-3 py-2 font-medium">{{ __("Group") }}</th>
-										<th class="px-3 py-2 font-medium w-20">
+										<th class="px-3 py-2 font-medium w-24">
 											{{ __("Code") }}
 										</th>
 										<th class="px-3 py-2 font-medium">
@@ -836,25 +881,99 @@ const breadcrumbs = computed(() => [
 										<th class="px-3 py-2 font-medium">{{ __("Notes") }}</th>
 									</tr>
 								</thead>
-								<tbody>
-									<tr v-if="!previewRows.length">
-										<td colspan="9" class="px-3 py-4 text-sm text-ink-500">
+								<tbody v-if="!previewRows.length">
+									<tr>
+										<td colspan="8" class="px-3 py-4 text-sm text-ink-500">
 											{{ __("No lines found with these columns.") }}
 										</td>
 									</tr>
+								</tbody>
+								<tbody v-for="g in previewGroups" :key="g.key">
+									<!-- The group's own row: click to fold its lines away. -->
+									<tr class="bg-ink-50 border-b border-ink-200">
+										<td colspan="6" class="p-0">
+											<button
+												type="button"
+												class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-ink-100"
+												:aria-expanded="isOpen(g.key)"
+												:data-group="g.name"
+												@click="toggleGroup(g.key)"
+											>
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													class="text-ink-500 flex-shrink-0 transition-transform"
+													:class="isOpen(g.key) ? 'rotate-90' : ''"
+												>
+													<path d="m9 18 6-6-6-6" />
+												</svg>
+												<span
+													v-if="g.code"
+													class="font-mono text-xs text-ink-500"
+													>{{ g.code }}</span
+												>
+												<span class="font-semibold text-ink-900">{{
+													g.name
+												}}</span>
+												<span
+													class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+													:class="
+														g.existingId
+															? 'bg-ink-100 text-ink-600'
+															: 'bg-brand-50 text-brand-700'
+													"
+													>{{
+														g.existingId
+															? __("Existing group")
+															: __("New group")
+													}}</span
+												>
+												<span class="text-xs text-ink-500">
+													{{
+														g.count === 1
+															? __("{0} line", [g.count])
+															: __("{0} lines", [g.count])
+													}}<template
+														v-if="
+															g.rows.length < g.count &&
+															!showNotesOnly
+														"
+													>
+														·
+														{{
+															__("first {0} shown", [g.rows.length])
+														}}</template
+													>
+												</span>
+											</button>
+										</td>
+										<td
+											class="px-3 py-2 text-right tabular-nums font-semibold text-ink-900 whitespace-nowrap"
+										>
+											{{ fmtINR(g.amount) }}
+										</td>
+										<td
+											class="px-3 py-2 text-[11px] text-ink-500 whitespace-nowrap"
+										>
+											{{ g.noted ? __("{0} with notes", [g.noted]) : "" }}
+										</td>
+									</tr>
 									<tr
-										v-for="it in previewRows"
+										v-for="it in isOpen(g.key) ? g.rows : []"
 										:key="it.rowNo"
-										class="border-b border-ink-100 last:border-0 align-top"
+										class="border-b border-ink-100 align-top"
 										:class="
 											resolvedUnit(it).tone === 'skip' ? 'opacity-50' : ''
 										"
 									>
 										<td class="px-3 py-2 text-ink-500 tabular-nums">
 											{{ it.rowNo }}
-										</td>
-										<td class="px-3 py-2 text-ink-700">
-											{{ groupName(it.groupKey) }}
 										</td>
 										<td class="px-3 py-2 text-ink-700">
 											{{ it.code || __("auto") }}
