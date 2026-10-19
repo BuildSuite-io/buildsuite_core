@@ -13,6 +13,20 @@ from frappe.utils import flt
 from buildsuite_core.utils.project import default_company
 
 EMPLOYEE = "Employee"
+# The Employment Type that marks a field worker. The Field Attendance roster filters employees by
+# employment_type == "Labour" on hrms sites (field_attendance._labour_filters), so a field employee
+# must carry it to be offered there — not just the BuildSuite `is_labour` flag the roster falls back
+# to without hrms.
+LABOUR_EMPLOYMENT_TYPE = "Labour"
+
+
+def ensure_labour_employment_type():
+	"""The 'Labour' Employment Type, created on first use. Idempotent."""
+	if not frappe.db.exists("Employment Type", LABOUR_EMPLOYMENT_TYPE):
+		frappe.get_doc({"doctype": "Employment Type", "employee_type_name": LABOUR_EMPLOYMENT_TYPE}).insert(
+			ignore_permissions=True
+		)
+	return LABOUR_EMPLOYMENT_TYPE
 
 
 def _parse_rows(payload) -> list:
@@ -68,9 +82,7 @@ def save_field_employee(
 	# self-service scope that must not apply to roster management.
 	manage_ptype = "write" if name else "create"
 	if not frappe.has_permission(EMPLOYEE, manage_ptype):
-		frappe.throw(
-			_("You do not have permission to manage field employees."), frappe.PermissionError
-		)
+		frappe.throw(_("You do not have permission to manage field employees."), frappe.PermissionError)
 
 	if name:
 		if not frappe.db.exists(EMPLOYEE, name):
@@ -85,6 +97,11 @@ def save_field_employee(
 		# The code becomes the record name, so it is fixed at creation.
 		doc.employee = (employee or "").strip()
 		status = status or "Active"
+		# Stamp the field-worker Employment Type so the Field Attendance roster (which filters
+		# employment_type == "Labour" on hrms sites) offers this employee — otherwise a new field
+		# employee has is_labour=1 but no employment_type and never shows up to be rostered.
+		if doc.meta.has_field("employment_type"):
+			doc.employment_type = ensure_labour_employment_type()
 
 	doc.is_labour = 1
 	doc.first_name = first_name
