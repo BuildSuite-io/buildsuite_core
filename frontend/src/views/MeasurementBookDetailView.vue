@@ -28,7 +28,7 @@ const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
 // The Site Engineer only raises MBs (create + read); edit/certify/delete are QS/PM actions.
 // canEdit/canDelete resolve the persona's measurementBook caps (see roles.js).
-const { canEdit, canDelete, canCreate, canSubmit } = usePermissions();
+const { canEdit, canDelete, canCreate } = usePermissions();
 
 const mb = ref(null);
 const woLines = ref([]);
@@ -150,7 +150,7 @@ const breadcrumbs = computed(() => [
 				{{ __("Edit") }}
 			</button>
 			<button
-				v-if="isDraft && canSubmit('measurementBook')"
+				v-if="isDraft && canEdit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-success-200 bg-success-50 hover:bg-success-100 text-success-700 font-medium"
 				style="border-radius: 6px"
@@ -160,7 +160,7 @@ const breadcrumbs = computed(() => [
 				{{ __("Certify") }}
 			</button>
 			<button
-				v-if="!isDraft && canSubmit('measurementBook')"
+				v-if="!isDraft && canEdit('measurementBook')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -205,9 +205,10 @@ const breadcrumbs = computed(() => [
 					{{ __("Work order") }}
 				</div>
 				<div class="text-sm mt-0.5">
-					<DeskLink :to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`">{{
-						mb.work_order
-					}}</DeskLink>
+					<DeskLink
+						:to="`/subcontractor-work-orders/${encodeURIComponent(mb.work_order)}`"
+						>{{ mb.work_order }}</DeskLink
+					>
 				</div>
 				<div class="text-[10px] text-ink-500">
 					{{ mb.subcontractor_name || "—"
@@ -270,7 +271,9 @@ const breadcrumbs = computed(() => [
 					{{ __("Entries") }}
 				</h3>
 				<span class="text-[10px] text-ink-500 italic">{{
-					__("Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract.")
+					__(
+						"Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract."
+					)
 				}}</span>
 			</div>
 			<table class="w-full text-xs" style="min-width: 720px">
