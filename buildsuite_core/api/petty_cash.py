@@ -18,6 +18,16 @@ def _can_disburse():
 	return bool(set(frappe.get_roles()) & set(PETTY_CASH_DISBURSE_ROLES))
 
 
+def _read_scope():
+	"""The caller's read scope on Petty Cash Request — "all" | "own" | "none" — mirroring
+	api.permission.readScope: an if_owner-only read is "own" (sees only their own records), an
+	unrestricted read is "all". Self-service holders are "own", so the balances + statement must
+	narrow to their own holder."""
+	perms = frappe.permissions.get_role_permissions(DOCTYPE, user=frappe.session.user, is_owner=True)
+	ifo = perms.get("if_owner") or {}
+	return "own" if ifo.get("read") else ("all" if perms.get("read") else "none")
+
+
 def _serialize(doc):
 	comments = frappe.get_all(
 		"Comment",
@@ -197,10 +207,17 @@ def list_cash_bank_accounts(company: str | None = None):
 def holder_balances(company: str | None = None):
 	"""Reconciled per-holder petty-cash position from the GL: disbursed (float in),
 	spent (verified expense out) and the net balance in hand. One view over both the
-	Petty Cash Request (disburse) and Expense Entry (spend) legs."""
-	from buildsuite_core.utils.petty_cash import reconciled_holder_balances
+	Petty Cash Request (disburse) and Expense Entry (spend) legs.
 
-	return reconciled_holder_balances(company)
+	A self-service (if_owner-scoped) holder sees only their own balance — never the whole org's —
+	both here (the Balances tab) and in the report's holder picker, which reads this endpoint."""
+	from buildsuite_core.utils.petty_cash import employee_for_user, reconciled_holder_balances
+
+	rows = reconciled_holder_balances(company)
+	if _read_scope() != "all":
+		own = employee_for_user(frappe.session.user)
+		rows = [r for r in rows if own and r["employee"] == own]
+	return rows
 
 
 @frappe.whitelist()
@@ -246,6 +263,14 @@ def statement(employee: str):
 	# Whitelisted: without this any signed-in user could read another holder's statement.
 	if not frappe.has_permission("Employee", doc=employee):
 		raise frappe.PermissionError
+
+	# A self-service (if_owner-scoped) holder may only read their OWN statement, regardless of any
+	# broader Employee read they hold — the report tab is scoped to them.
+	if _read_scope() != "all":
+		from buildsuite_core.utils.petty_cash import employee_for_user
+
+		if employee != employee_for_user(frappe.session.user):
+			raise frappe.PermissionError
 
 	rows = []
 
