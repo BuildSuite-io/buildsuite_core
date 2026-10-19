@@ -470,6 +470,12 @@ def setup_purchase_stock_permissions():
 	_apply_role_perms("Purchase Invoice", PURCHASE_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Stock Entry", STOCK_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Item", ITEM_ROLE_PERMS)
+	# Item Group backs the Item form's item_group picker (and item-group filters on item lists /
+	# pickers). Every role that can touch an Item must resolve it, so grant `select` — pick in the
+	# link field, never read / list / report — to the same roles that have Item access. Natively only
+	# ERPNext roles (Purchase User / Stock Manager / …) read Item Group, so a BuildSuite persona had
+	# no grant and the picker 403'd on a clean site.
+	_apply_role_perms("Item Group", {role: _SELECT for role in ITEM_ROLE_PERMS}, _SELECT_PTYPES)
 
 
 def _readonly_mirror(role_perms):

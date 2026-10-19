@@ -64,3 +64,4 @@ buildsuite_core.patches.adopt_beneficiary_owner_for_petty_cash_expense # 2026-10
 buildsuite_core.patches.seed_terms_permissions # 2026-10-12 Terms & Conditions DocPerms (admin/accountant/procurement/estimator full; rest select)
 buildsuite_core.patches.fix_buildsuite_workspace_app # 2026-10-14 strip stray backtick from desk Workspace app (icon missing on Frappe 16.50)
 buildsuite_core.patches.grant_account_select_read # 2026-10-16 Account select+read for Site Engineer / Foreman / Procurement Officer
+buildsuite_core.patches.grant_item_group_select # 2026-10-19 Item Group select for Item-accessible BuildSuite roles (item_group picker)
