@@ -278,6 +278,11 @@ const PAID_FROM = [
 	{ value: "petty", label: __("Petty Cash") },
 	{ value: "company", label: __("Company") },
 ];
+// Paying straight from a company account is a finance action — only approvers (admins / Accountant)
+// may choose it; everyone else is restricted to the petty-cash float. The backend enforces the same.
+const paidFromOptions = computed(() =>
+	canVerify.value ? PAID_FROM : PAID_FROM.filter((p) => p.value === "petty")
+);
 const modalOpen = ref(false);
 const editingId = ref(null);
 const form = reactive({
@@ -1090,7 +1095,7 @@ const expenseAccountFilters = computed(() => [
 									v-model="form.paid_from"
 									@update:model-value="onPaidFromChange"
 									><option
-										v-for="p in PAID_FROM"
+										v-for="p in paidFromOptions"
 										:key="p.value"
 										:value="p.value"
 									>
