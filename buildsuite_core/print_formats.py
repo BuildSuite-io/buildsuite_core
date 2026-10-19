@@ -43,6 +43,11 @@ _SHARED_CSS = """
 .bs-print .bs-totals .due { color: #b91c1c; font-weight: 600; }
 .bs-print .bs-totals .paid { color: #15803d; font-weight: 600; }
 .bs-print .bs-terms-text { font-size: 9pt; color: #475569; line-height: 1.5; white-space: pre-line; }
+/* Rich text brings its own block tags; pre-line would print every tag boundary as a blank line.
+   Terms typed before the editor landed are plain text and keep pre-line, so both print right. */
+.bs-print .bs-terms-text.bs-rich { white-space: normal; }
+.bs-print .bs-terms-text.bs-rich > :first-child { margin-top: 0; }
+.bs-print .bs-terms-text.bs-rich > :last-child { margin-bottom: 0; }
 .bs-print .bs-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 8px; }
 .bs-print .bs-sign .sig { border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 36px; font-size: 9pt; color: #475569; }
 .bs-print .bs-footer { text-align: center; font-size: 8pt; color: #94a3b8; padding-top: 10px; border-top: 1px solid #e2e8f0; margin-top: 20px; }
@@ -285,7 +290,7 @@ _QUOTATION_HTML = """
 
   {% if doc.terms %}
   <div class="bs-label">Terms &amp; conditions</div>
-  <div class="bs-terms-text">{{ doc.terms }}</div>
+  <div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
   {% endif %}
 
   <div class="bs-sign">
@@ -337,7 +342,7 @@ _TENDER_HTML = """
 
   {% for s in doc.preamble_sections %}
     <div class="bs-label">{{ s.heading }}</div>
-    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+    <div class="bs-terms-text{{ ' bs-rich' if '<' in (s.text or '') else '' }}" style="margin-bottom:16px;">{{ s.text }}</div>
   {% endfor %}
 
   <div class="bs-label">Schedule of prices</div>
@@ -376,7 +381,7 @@ _TENDER_HTML = """
   {# Numbered: a tender's terms get quoted back by number in correspondence. #}
   {% for s in doc.terms_sections %}
     <div class="bs-label">{{ loop.index }}. {{ s.heading }}</div>
-    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+    <div class="bs-terms-text{{ ' bs-rich' if '<' in (s.text or '') else '' }}" style="margin-bottom:16px;">{{ s.text }}</div>
   {% endfor %}
 
   <div class="bs-sign">
