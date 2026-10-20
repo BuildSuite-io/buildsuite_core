@@ -26,7 +26,16 @@ add_to_apps_screen = [
 		"title": "BuildSuite Core",
 		"route": f"/{APP_ROUTE}",
 		"has_permission": "buildsuite_core.api.permission.has_app_permission",
-	}
+	},
+	# To-dos are embedded in Core but presented as their own app — own launcher tile, own
+	# full-width shell, and Home returns to the desk. The tile opens the SPA's /todo route.
+	{
+		"name": "buildsuite_todo",
+		"logo": "/assets/buildsuite_core/images/to-do-icon.png",
+		"title": "To-dos",
+		"route": f"/{APP_ROUTE}/todo",
+		"has_permission": "buildsuite_core.api.permission.has_app_permission",
+	},
 ]
 
 website_route_rules = [

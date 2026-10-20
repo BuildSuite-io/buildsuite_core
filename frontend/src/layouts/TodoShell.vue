@@ -45,11 +45,13 @@ const profileRole = computed(() => {
 		<header
 			class="h-14 bg-white border-b border-ink-200 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 sticky top-0 z-30"
 		>
-			<!-- Back to the app home. Label hides on a phone; the chevron carries it. -->
-			<RouterLink
-				to="/home"
+			<!-- To-dos run as their own app (opened from the /apps launcher), so Home leaves the
+			     SPA entirely and returns to the Frappe desk — a full page navigation, not a router
+			     link. Label hides on a phone; the chevron carries it. -->
+			<a
+				href="/app"
 				class="flex items-center gap-1.5 text-ink-600 hover:text-ink-900 hover:bg-ink-50 rounded-lg px-2 h-10 shrink-0"
-				:title="__('Back to home')"
+				:title="__('Back to desk')"
 			>
 				<svg
 					class="w-4 h-4 shrink-0"
@@ -65,7 +67,7 @@ const profileRole = computed(() => {
 					/>
 				</svg>
 				<span class="text-sm hidden sm:inline">{{ __("Home") }}</span>
-			</RouterLink>
+			</a>
 
 			<div class="w-px h-6 bg-ink-200 shrink-0 hidden sm:block"></div>
 

@@ -18,6 +18,10 @@ import { commandPalette } from "@/data/searchApi";
 
 const route = useRoute();
 const router = useRouter();
+// To-dos run as their own app (own /apps tile + full-width shell), so the top-nav slot opens them
+// in a NEW TAB via a real href — router.resolve() includes the /core base — instead of navigating
+// in-SPA, which keeps the two feeling like separate apps.
+const todoHref = computed(() => router.resolve({ name: "todo" }).href);
 const store = useDataStore();
 const session = useSessionStore();
 const { userName } = useUserNames();
@@ -586,9 +590,12 @@ const navGroups = computed(() => {
 						/>
 					</svg>
 				</button>
-				<!-- To-dos — a permanent slot in the top nav; the badge counts your open items. -->
-				<RouterLink
-					to="/todo"
+				<!-- To-dos — a permanent slot in the top nav; the badge counts your open items.
+				     Opens in a NEW TAB (own app), not in-SPA. -->
+				<a
+					:href="todoHref"
+					target="_blank"
+					rel="noopener"
 					class="flex items-center gap-2 h-8 px-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-50 shrink-0"
 					:title="
 						store.unreadTodoCount
@@ -615,7 +622,7 @@ const navGroups = computed(() => {
 						class="text-[10px] font-semibold tabular-nums leading-none px-1.5 py-1 rounded-full bg-brand-700 text-white"
 						>{{ store.unreadTodoCount }}</span
 					>
-				</RouterLink>
+				</a>
 
 				<div class="ml-auto flex items-center gap-1 sm:gap-2">
 					<!-- Theme toggle — sun in dark mode, moon in light mode -->
