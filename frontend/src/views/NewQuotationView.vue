@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, defineAsyncComponent, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
@@ -23,6 +23,8 @@ import { showToast } from "@/utils/appToast";
 import { getInvoiceTerms } from "@/data/invoiceApi";
 import { daysBetween, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
+// Rich text (Text Editor) is heavy (TipTap) — load it only when this form is opened.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 // Same form for both: with an id it edits that draft, without one it creates.
 const props = defineProps({ id: { type: String, default: "" } });
@@ -68,6 +70,10 @@ const form = reactive({
 	internal_note: "",
 });
 
+// Remount the rich-text editor when the terms are set for us, so it initialises with that
+// body rather than reporting it as an edit and dropping the template link.
+const editorKey = ref(0);
+
 // Read straight off the doctype — no endpoint. Only the line text needs translating: the form
 // calls it `description`, and on a Quotation Item that text lives in `item_name`.
 const adapter = createDataAdapter(useDataStore());
@@ -102,6 +108,7 @@ watch(
 		// figure for the document, so read it back off the lines.
 		if (doc.items?.length) form.margin_percent = Number(doc.items[0].margin_rate_or_amount) || 0;
 		if (!form.items.length) form.items = [blankLine()];
+		editorKey.value += 1;
 	},
 	{ immediate: true }
 );
@@ -143,6 +150,7 @@ async function onPickTerms(name) {
 	if (!name) return;
 	try {
 		form.terms = (await getInvoiceTerms(name)).terms || "";
+		editorKey.value += 1;
 	} catch {
 		showToast(__("Could not read that terms template."), "error");
 	}
@@ -463,6 +471,7 @@ const breadcrumbs = computed(() => [
 						doctype="Terms and Conditions"
 						label-field="name"
 						value-field="name"
+						:filters="{ custom_applicable_for: 'Quotation' }"
 						:placeholder="__('Load standard terms from the library…')"
 						@update:model-value="onPickTerms"
 					/>
@@ -476,12 +485,7 @@ const breadcrumbs = computed(() => [
 							: __('Typed for this quotation.')
 					"
 				>
-					<DeskTextarea
-						v-model="form.terms"
-						:rows="6"
-						:placeholder="__('Type the terms, or load a standard set above.')"
-						@input="onTermsEdited"
-					/>
+					<RichTextEditor :key="editorKey" v-model="form.terms" @update:model-value="onTermsEdited" />
 				</DeskField>
 			</DeskSection>
 

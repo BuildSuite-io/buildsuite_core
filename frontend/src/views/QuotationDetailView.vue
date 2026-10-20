@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
@@ -10,6 +10,8 @@ import { fmtCurrency, fmtDate, daysBetween } from "@/utils/format";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+// Rich text (Text Editor) is heavy (TipTap) — load it only when a quotation is opened.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const props = defineProps({ id: String });
 const adapter = createDataAdapter(useDataStore());
@@ -262,9 +264,8 @@ const breadcrumbs = computed(() => [
 					</span>
 				</header>
 				<div class="p-4">
-					<p v-if="doc.terms" class="text-sm text-ink-700 whitespace-pre-line leading-relaxed">
-						{{ doc.terms }}
-					</p>
+					<RichTextEditor v-if="doc.terms" :model-value="doc.terms" :editable="false"
+						min-height="auto" />
 					<p v-else class="text-sm text-ink-400">{{ __("No terms recorded.") }}</p>
 				</div>
 			</div>

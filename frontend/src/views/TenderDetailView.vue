@@ -185,7 +185,7 @@ async function onDelete() {
 		</div>
 
 		<TenderSections :sections="doc?.preamble_sections || []" editable :title="__('Before the items')"
-			class="mb-4" :empty-hint="__('Nothing ahead of the item table.')"
+			class="mb-4" applicable-for="Tender" :empty-hint="__('Nothing ahead of the item table.')"
 			:purpose-hint="__('Optional — scope of work, preamble or method of measurement, printed above the priced schedule.')"
 			@update:sections="(v) => persistSections('preamble_sections', v)" />
 
@@ -261,7 +261,7 @@ async function onDelete() {
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
 			<TenderSections :sections="doc?.terms_sections || []" editable class="lg:col-span-2"
-				:title="__('Terms & conditions')" :empty-hint="__('No terms sections yet.')"
+				applicable-for="Tender" :title="__('Terms & conditions')" :empty-hint="__('No terms sections yet.')"
 				:purpose-hint="__('A tender usually carries several — general conditions, payment, eligibility, defect liability.')"
 				@update:sections="(v) => persistSections('terms_sections', v)" />
 
