@@ -383,3 +383,91 @@ html.dark .print-document .report-content {
   html.dark .bg-brand-700 { background-color: #3BD273; color: #052E16; }
   html.dark .hover\:bg-brand-700:hover { background-color: #3BD273; color: #052E16; }
 }
+
+/* ── frappe-ui TextEditor design tokens ──────────────────────────────────────
+   The rich-text editor (RichTextEditor.vue) is frappe-ui's TextEditor; its menus
+   and dialogs — colour picker, Insert Embed, link popup, selects — are styled with
+   frappe-ui's own token classes (bg-surface-*, text-ink-gray-*, border-outline-*),
+   each mapped to a CSS variable. Our Tailwind theme defines neither the classes nor
+   the variables, so those popups rendered transparent or unstyled. Define the
+   variables (light + dark) and the token classes the editor uses, so the named
+   classes work and frappe-ui's arbitrary-value classes resolve too. These token
+   names are frappe-ui's own; the rest of the app uses the ink and brand scale and
+   never touches them. */
+:root {
+  --surface-white: #ffffff;
+  --surface-modal: #ffffff;
+  --surface-cards: #ffffff;
+  --surface-menu-bar: #f9fafb;
+  --surface-gray-1: #f9fafb;
+  --surface-gray-2: #f3f4f6;
+  --surface-gray-3: #e5e7eb;
+  --surface-gray-4: #d1d5db;
+  --surface-gray-5: #374151;
+  --text-ink-gray-1: #e5e7eb;
+  --text-ink-gray-2: #d1d5db;
+  --text-ink-gray-3: #9ca3af;
+  --text-ink-gray-4: #6b7280;
+  --text-ink-gray-5: #4b5563;
+  --text-ink-gray-6: #374151;
+  --text-ink-gray-7: #374151;
+  --text-ink-gray-8: #1f2937;
+  --text-ink-gray-9: #111827;
+  --outline-gray-1: #e5e7eb;
+  --outline-gray-2: #d1d5db;
+  --outline-gray-3: #9ca3af;
+  --outline-gray-4: #6b7280;
+  --outline-gray-5: #1f2937;
+  --outline-gray-modals: #e5e7eb;
+}
+html.dark {
+  --surface-white: #1a1a1a;
+  --surface-modal: #242424;
+  --surface-cards: #1f1f1f;
+  --surface-menu-bar: #171717;
+  --surface-gray-1: #242424;
+  --surface-gray-2: #2d2d2d;
+  --surface-gray-3: #363636;
+  --surface-gray-4: #404040;
+  --surface-gray-5: #525252;
+  --text-ink-gray-1: #333333;
+  --text-ink-gray-2: #525252;
+  --text-ink-gray-3: #737373;
+  --text-ink-gray-4: #a3a3a3;
+  --text-ink-gray-5: #cbcbcb;
+  --text-ink-gray-6: #d4d4d4;
+  --text-ink-gray-7: #e5e5e5;
+  --text-ink-gray-8: #f5f5f5;
+  --text-ink-gray-9: #fafafa;
+  --outline-gray-1: #333333;
+  --outline-gray-2: #404040;
+  --outline-gray-3: #525252;
+  --outline-gray-4: #737373;
+  --outline-gray-5: #a3a3a3;
+  --outline-gray-modals: #333333;
+}
+.bg-surface-white { background-color: var(--surface-white); }
+.bg-surface-modal { background-color: var(--surface-modal); }
+.bg-surface-cards { background-color: var(--surface-cards); }
+.bg-surface-menu-bar { background-color: var(--surface-menu-bar); }
+.bg-surface-gray-1 { background-color: var(--surface-gray-1); }
+.bg-surface-gray-2, .hover\:bg-surface-gray-2:hover { background-color: var(--surface-gray-2); }
+.bg-surface-gray-3, .hover\:bg-surface-gray-3:hover { background-color: var(--surface-gray-3); }
+.bg-surface-gray-4 { background-color: var(--surface-gray-4); }
+.bg-surface-gray-5 { background-color: var(--surface-gray-5); }
+.text-ink-gray-1 { color: var(--text-ink-gray-1); }
+.text-ink-gray-2 { color: var(--text-ink-gray-2); }
+.text-ink-gray-3 { color: var(--text-ink-gray-3); }
+.text-ink-gray-4 { color: var(--text-ink-gray-4); }
+.text-ink-gray-5 { color: var(--text-ink-gray-5); }
+.text-ink-gray-6 { color: var(--text-ink-gray-6); }
+.text-ink-gray-7, .text-ink-gray-700 { color: var(--text-ink-gray-7); }
+.text-ink-gray-8 { color: var(--text-ink-gray-8); }
+.text-ink-gray-9 { color: var(--text-ink-gray-9); }
+.placeholder-ink-gray-4::placeholder { color: var(--text-ink-gray-4); }
+.border-outline-gray-1 { border-color: var(--outline-gray-1); }
+.border-outline-gray-2, .hover\:border-outline-gray-2:hover { border-color: var(--outline-gray-2); }
+.border-outline-gray-3 { border-color: var(--outline-gray-3); }
+.border-outline-gray-4, .focus\:border-outline-gray-4:focus { border-color: var(--outline-gray-4); }
+.border-outline-gray-5 { border-color: var(--outline-gray-5); }
+.border-outline-gray-modals, .hover\:border-outline-gray-modals:hover { border-color: var(--outline-gray-modals); }
