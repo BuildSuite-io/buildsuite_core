@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "field:payment_term_name",
+ "creation": "2026-10-20 15:37:32.325726",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_term_name",
+  "enabled",
+  "column_break_azhq",
+  "project_category",
+  "section_break_owdm",
+  "description",
+  "milestones",
+  "milestones_count",
+  "total_percentage"
+ ],
+ "fields": [
+  {
+   "fieldname": "payment_term_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "placeholder": "e.g. Residential, stage-wise",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_azhq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_owdm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "milestones",
+   "fieldtype": "Table",
+   "label": "Milestones",
+   "options": "BuildSuite Payment Milestone"
+  },
+  {
+   "fieldname": "milestones_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Milestones Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_percentage",
+   "fieldtype": "Percent",
+   "hidden": 1,
+   "label": "Total Percentage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_category",
+   "fieldtype": "Link",
+   "label": "Project Category",
+   "options": "Project Category"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-21 19:58:53.846116",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Payment Term Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "payment_term_name"
+}
