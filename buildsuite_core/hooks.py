@@ -23,7 +23,7 @@ add_to_apps_screen = [
 	{
 		"name": "buildsuite_core",
 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
-		"title": "BuildSuite Core",
+		"title": "BuildSuite",
 		"route": f"/{APP_ROUTE}",
 		"has_permission": "buildsuite_core.api.permission.has_app_permission",
 	},
