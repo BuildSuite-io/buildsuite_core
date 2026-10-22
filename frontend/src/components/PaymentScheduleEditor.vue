@@ -8,10 +8,13 @@
 
 import { computed } from "vue";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
+import { fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({
 	rows: { type: Array, default: () => [] },
+	// Price before tax; null hides the Amount column (a template has no price).
+	base: { type: Number, default: null },
 });
 const emit = defineEmits(["update:rows"]);
 
@@ -26,6 +29,19 @@ const TIMING_TEXT = {
 
 const total = computed(() => props.rows.reduce((a, r) => a + (Number(r.percentage) || 0), 0));
 const totalOk = computed(() => Math.abs(total.value - 100) < 0.01);
+const showAmount = computed(() => props.base != null);
+
+// Rounded shares rarely add back to the price, so when the milestones total 100%
+// the last one takes the difference.
+const amounts = computed(() => {
+	const base = props.base || 0;
+	const list = props.rows.map((r) => Math.round((base * (Number(r.percentage) || 0)) / 100));
+	if (list.length && totalOk.value) {
+		list[list.length - 1] += Math.round(base) - list.reduce((a, b) => a + b, 0);
+	}
+	return list;
+});
+const amountTotal = computed(() => amounts.value.reduce((a, b) => a + b, 0));
 
 function setRow(i, patch) {
 	emit(
@@ -66,6 +82,9 @@ function removeRow(i) {
 					<th class="px-3 py-2 font-medium w-48">{{ __("Payable") }}</th>
 					<th class="px-3 py-2 font-medium">{{ __("Stage or timing") }}</th>
 					<th class="px-3 py-2 font-medium w-20 text-right">%</th>
+					<th v-if="showAmount" class="px-3 py-2 font-medium w-32 text-right">
+						{{ __("Amount") }}
+					</th>
 					<th class="px-3 py-2 font-medium w-24 text-center">
 						{{ __("Client sign-off") }}
 					</th>
@@ -74,7 +93,7 @@ function removeRow(i) {
 			</thead>
 			<tbody>
 				<tr v-if="!rows.length">
-					<td colspan="6" class="px-3 py-4 text-sm text-ink-500">
+					<td :colspan="showAmount ? 7 : 6" class="px-3 py-4 text-sm text-ink-500">
 						{{ __("No milestones yet.") }}
 					</td>
 				</tr>
@@ -135,6 +154,12 @@ function removeRow(i) {
 							@change="(e) => setRow(i, { percentage: Number(e.target.value) || 0 })"
 						/>
 					</td>
+					<td
+						v-if="showAmount"
+						class="px-3 py-2 text-right tabular-nums text-ink-900 whitespace-nowrap"
+					>
+						{{ fmtCurrency(amounts[i]) }}
+					</td>
 					<td class="px-3 py-2 text-center">
 						<input
 							type="checkbox"
@@ -174,6 +199,12 @@ function removeRow(i) {
 						:class="!rows.length || totalOk ? 'text-ink-900' : 'text-danger-700'"
 					>
 						{{ +total.toFixed(2) }}%
+					</td>
+					<td
+						v-if="showAmount"
+						class="px-3 py-2 text-right tabular-nums font-semibold text-ink-900 whitespace-nowrap"
+					>
+						{{ fmtCurrency(amountTotal) }}
 					</td>
 					<td colspan="2"></td>
 				</tr>
