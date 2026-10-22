@@ -41,6 +41,12 @@ const SETUP = [
 		description: "Reusable BOQ skeletons of assemblies and resources.",
 		cap: "estimateTemplate",
 	},
+	{
+		to: "/payment-term-templates",
+		icon: "hand-coins",
+		label: "Payment Term Templates",
+		description: "Reusable payment schedules to load into a quotation or tender.",
+	},
 ];
 </script>
 

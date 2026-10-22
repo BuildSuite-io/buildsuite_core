@@ -52,6 +52,7 @@ const PAGE_TITLES = {
 	assembly: "Assemblies",
 	"assembly-new": "New Assembly",
 	"assembly-detail": "Assembly",
+	"payment-term-templates": "Payment Term Templates",
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",
@@ -375,6 +376,11 @@ const routes = [
 				name: "estimate-template-detail",
 				component: () => import("@/views/EstimateTemplateDetailView.vue"),
 				props: true,
+			},
+			{
+				path: "payment-term-templates",
+				name: "payment-term-templates",
+				component: () => import("@/views/PaymentTermTemplatesView.vue"),
 			},
 
 			{
