@@ -50,7 +50,7 @@ const amountTotal = computed(() => toCents(amounts.value.reduce((a, b) => a + b,
 function setRow(i, patch) {
 	emit(
 		"update:rows",
-		props.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)),
+		props.rows.map((r, j) => (j === i ? { ...r, ...patch } : r))
 	);
 }
 function setDays(i, value) {
@@ -72,7 +72,7 @@ function addRow() {
 function removeRow(i) {
 	emit(
 		"update:rows",
-		props.rows.filter((_, j) => j !== i),
+		props.rows.filter((_, j) => j !== i)
 	);
 }
 </script>
