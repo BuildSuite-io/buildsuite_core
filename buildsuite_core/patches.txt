@@ -68,3 +68,4 @@ buildsuite_core.patches.grant_item_group_select # 2026-10-19 Item Group select f
 buildsuite_core.patches.backfill_field_employee_employment_type # 2026-10-19 field employees get the Labour Employment Type (attendance roster visibility)
 buildsuite_core.patches.submit_existing_machinery_usage # 2026-10-25 Machinery Usage submittable: existing logs -> Submitted, re-grant submit perms
 buildsuite_core.patches.seed_sales_workspace # 2026-10-25 register Sales in the live workspace sidebar
+buildsuite_core.patches.grant_foreman_item_select_read # 2026-10-25 Foreman Item select+read in the seeded matrix
