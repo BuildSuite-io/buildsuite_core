@@ -20,6 +20,7 @@ Rails (all post on Submit, reverse on Cancel):
   Subcontractor Bill     this-period amount    (Subcontractor Bill Line)           -> "Subcontract"
   Expense Entry          expense amount        (Expense Entry Table)               -> "Overhead"
   Journal Entry          line debit            (Journal Entry Account.debit)        -> "Overhead"
+  Machinery Usage        qty x rate + fuel     (Machinery Usage)                    -> "Plant"
 
 Cost is recognised at consumption, not at purchase — a Purchase Receipt increases stock but
 does not touch BOQ actual. The Subcontractor Work Order (Committed) is a separate promise and
@@ -227,6 +228,64 @@ def _journal_entries(project):
 	return out
 
 
+def _machinery_entries(project):
+	"""Submitted Machinery Usage logs charged to a cost code: quantity x rate + fuel. A Draft
+	does not count; cancelling a submitted log removes it."""
+	filters = {"project": project, "docstatus": 1, "cost_code_type": ["in", ["Group", "Item"]]}
+	rows = frappe.get_all(
+		"Machinery Usage",
+		filters=filters,
+		fields=[
+			"name",
+			"machine",
+			"date",
+			"quantity",
+			"unit",
+			"rate",
+			"fuel_cost",
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+		],
+	)
+	machine_names = {
+		m.name: m.machinery_name
+		for m in frappe.get_all(
+			"Machinery",
+			filters={"name": ["in", list({r.machine for r in rows})]},
+			fields=["name", "machinery_name"],
+		)
+	}
+	out = []
+	for r in rows:
+		amount = flt(r.quantity) * flt(r.rate) + flt(r.fuel_cost)
+		if not (r.cost_code_group or r.cost_code_item) or amount == 0:
+			continue
+		out.append(
+			{
+				"cost_code_type": r.cost_code_type,
+				"group_code": r.cost_code_group or "",
+				"item_code": r.cost_code_item or "",
+				"cost_type": "Plant",
+				"amount": amount,
+				"source_doctype": "Machinery Usage",
+				"source_name": r.name,
+				"source_line": r.name,
+				"party": machine_names.get(r.machine) or r.machine,
+				"date": str(r.date) if r.date else None,
+				"label": r.cost_code_label or "",
+				"machine": r.machine,
+				"machine_name": machine_names.get(r.machine) or r.machine,
+				"quantity": flt(r.quantity),
+				"unit": r.unit,
+				"rate": flt(r.rate),
+				"fuel": flt(r.fuel_cost),
+			}
+		)
+	return out
+
+
 def _actual_entries(project):
 	"""The full actuals log for a project — one line per contributing source line, across all
 	rails. Derived live from submitted documents (never stored). This is the single source
@@ -238,6 +297,7 @@ def _actual_entries(project):
 		+ _subcontract_entries(project)
 		+ _expense_entries(project)
 		+ _journal_entries(project)
+		+ _machinery_entries(project)
 	)
 
 

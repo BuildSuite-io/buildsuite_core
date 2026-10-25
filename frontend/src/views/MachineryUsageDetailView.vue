@@ -11,6 +11,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { showToast } from "@/utils/appToast";
 import { createDataAdapter } from "@/data/adapters";
+import { submitMachineryUsage, cancelMachineryUsage } from "@/data/equipmentApi";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -19,14 +20,15 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
+import { costCodeToFields, costCodeFromDoc } from "@/utils/costCode";
 import DeskLink from "@/components/desk/DeskLink.vue";
 
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
-const { canEdit, canDelete } = usePermissions();
+const { canEdit, canDelete, canSubmit } = usePermissions();
 const { projectName } = useProjectNames();
 const { errors, applyServerErrors, setErrors } = useFormErrors({ machine: "machine" });
 
@@ -58,6 +60,16 @@ const projectOptions = computed(() =>
 	(projectRes.data || []).map((p) => ({ value: p.name, label: p.project_name, hint: p.name }))
 );
 
+const isDraft = computed(() => doc.value?.docstatus === 0);
+const isSubmitted = computed(() => doc.value?.docstatus === 1);
+const statusLabel = computed(() =>
+	isSubmitted.value
+		? __("Submitted")
+		: doc.value?.docstatus === 2
+		? __("Cancelled")
+		: __("Draft")
+);
+
 const editing = ref(false);
 const saving = ref(false);
 const form = ref({});
@@ -68,7 +80,7 @@ function snapshot() {
 	return {
 		machine: d.machine || "",
 		project: d.project || "",
-		task: d.task || "",
+		cost_code: costCodeFromDoc(d),
 		date: d.date || "",
 		quantity: d.quantity || 0,
 		unit: d.unit || "Days",
@@ -83,12 +95,12 @@ watch(
 	},
 	{ immediate: true }
 );
-// In edit mode, changing the project clears the task (the picker is scoped to the project,
-// and the server rejects a cross-project task).
+// In edit mode, changing the project clears the cost code (codes come from the project's
+// estimate, and the server rejects a code from another project).
 watch(
 	() => form.value.project,
 	(_new, _old) => {
-		if (editing.value) form.value.task = "";
+		if (editing.value) form.value.cost_code = null;
 	}
 );
 
@@ -119,7 +131,7 @@ async function saveEdit() {
 		await adapter.update("Machinery Usage", props.id, {
 			machine: f.machine,
 			project: f.project,
-			task: f.task,
+			...costCodeToFields(f.cost_code),
 			date: f.date,
 			quantity: f.quantity,
 			unit: f.unit,
@@ -133,6 +145,35 @@ async function saveEdit() {
 	} finally {
 		saving.value = false;
 	}
+}
+
+async function runLifecycle(fn, okMsg) {
+	try {
+		await fn(props.id);
+		await resource?.reload?.();
+		showToast(okMsg, "success");
+	} catch (err) {
+		showToast(err?.message || __("Action failed"), "error");
+	}
+}
+async function onSubmit() {
+	const ok = await confirmDialog({
+		title: __("Submit usage log?"),
+		message: doc.value?.cost_code_label
+			? __("Its cost will be posted to the estimate's Actual at its cost code.")
+			: __("It has no cost code, so nothing will post to the estimate."),
+		confirmLabel: __("Submit"),
+	});
+	if (ok) await runLifecycle(submitMachineryUsage, __("Usage submitted"));
+}
+async function onCancelLog() {
+	const ok = await confirmDialog({
+		title: __("Cancel usage log?"),
+		message: __("Its cost will be removed from the estimate's Actual."),
+		confirmLabel: __("Cancel log"),
+		destructive: true,
+	});
+	if (ok) await runLifecycle(cancelMachineryUsage, __("Usage cancelled"));
 }
 
 async function onDelete() {
@@ -155,7 +196,11 @@ const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Equipment"), to: "/equipment" },
 	{ label: __("Machinery Usage"), to: "/machinery-usage" },
-	{ label: doc.value ? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}` : props.id },
+	{
+		label: doc.value
+			? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}`
+			: props.id,
+	},
 ]);
 </script>
 
@@ -168,7 +213,7 @@ const breadcrumbs = computed(() => [
 	>
 		<template #actions>
 			<button
-				v-if="!editing && canEdit('machineryUsage')"
+				v-if="!editing && isDraft && canEdit('machineryUsage')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -177,13 +222,30 @@ const breadcrumbs = computed(() => [
 				{{ __("Edit") }}
 			</button>
 			<button
-				v-if="!editing && canDelete('machineryUsage')"
+				v-if="!editing && isDraft && canDelete('machineryUsage')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
 				@click="onDelete"
 			>
 				{{ __("Delete") }}
+			</button>
+			<button
+				v-if="!editing && isDraft && canSubmit('machineryUsage')"
+				type="button"
+				class="desk-save-btn"
+				@click="onSubmit"
+			>
+				{{ __("Submit") }}
+			</button>
+			<button
+				v-if="!editing && isSubmitted && canSubmit('machineryUsage')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px"
+				@click="onCancelLog"
+			>
+				{{ __("Cancel") }}
 			</button>
 			<button
 				v-if="editing"
@@ -209,15 +271,23 @@ const breadcrumbs = computed(() => [
 		<div v-if="!editing">
 			<DeskSection :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')">
-					<DeskLink :to="`/machinery/${doc.machine}`">{{ machineName(doc.machine) }}</DeskLink>
+					<DeskLink :to="`/machinery/${doc.machine}`">{{
+						machineName(doc.machine)
+					}}</DeskLink>
 				</DeskField>
 				<DeskField :label="__('Project')"
 					><div class="text-sm text-ink-700">
 						{{ projectName(doc.project) || "—" }}
 					</div></DeskField
 				>
-				<DeskField :label="__('Task')"
-					><div class="text-sm text-ink-700">{{ doc.task || "—" }}</div></DeskField
+				<DeskField :label="__('Cost code')">
+					<div v-if="doc.cost_code_label" class="text-sm text-ink-800">
+						{{ doc.cost_code_label }}
+					</div>
+					<div v-else class="text-sm italic text-ink-500">{{ __("Not coded") }}</div>
+				</DeskField>
+				<DeskField v-if="doc.task" :label="__('Task')"
+					><div class="text-sm text-ink-700">{{ doc.task }}</div></DeskField
 				>
 				<DeskField :label="__('Date')"
 					><div class="text-sm text-ink-800">{{ fmtDate(doc.date) }}</div></DeskField
@@ -243,6 +313,18 @@ const breadcrumbs = computed(() => [
 					</div></DeskField
 				>
 			</DeskSection>
+			<p class="mt-3 text-xs text-ink-500">
+				<strong>{{ statusLabel }}.</strong>
+				{{
+					!doc.cost_code_label
+						? __("Not cost-coded, so this cost does not reach the estimate.")
+						: isSubmitted
+						? __("This cost is posted to the estimate's Actual at its cost code.")
+						: isDraft
+						? __("Draft — submit to post this cost to the estimate's Actual.")
+						: __("Cancelled — this cost no longer counts toward the estimate.")
+				}}
+			</p>
 		</div>
 
 		<!-- Edit mode -->
@@ -265,18 +347,19 @@ const breadcrumbs = computed(() => [
 						allow-clear
 					/>
 				</DeskField>
-				<DeskField :label="__('Task')">
-					<DeskLinkPicker
-						v-model="form.task"
-						doctype="Task"
-						label-field="subject"
-						value-field="name"
-						:filters="form.project ? [['project', '=', form.project]] : []"
-						:placeholder="__('Task…')"
+				<DeskField :label="__('Cost code')">
+					<CostCodePicker
+						v-model="form.cost_code"
+						:project-id="form.project"
+						:placeholder="
+							form.project ? __('Pick cost code…') : __('Pick a project first')
+						"
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Date')"
+					><DeskInput v-model="form.date" type="date"
+				/></DeskField>
 				<DeskField :label="__('Quantity')"
 					><DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5"
 				/></DeskField>
