@@ -14,5 +14,5 @@ async function call(method, args) {
 	}
 }
 
-export const listFinancePayments = () => call("list_payments", {});
+export const listFinancePayments = (company) => call("list_payments", company ? { company } : {});
 export const cancelFinancePayment = (name) => call("cancel_payment", { name });

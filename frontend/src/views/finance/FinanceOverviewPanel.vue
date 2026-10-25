@@ -6,13 +6,11 @@
 //
 // The KPI totals, the Accounts section and both chase-lists are LIVE and company-scoped —
 // they come from finance_report (financial_position + receivables_and_payables) and
-// finance_account.list_finance_accounts for the active company. The "Needs attention"
-// draft/expense counts and "Recent transactions" are still the finance demo mock (their
-// registers aren't uniformly company-scoped yet), so those two panels are clearly labelled
-// as sample data below.
+// finance_account.list_finance_accounts for the active company. "Recent transactions" are
+// the live submitted Payment Entries from finance_payment.list_payments.
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useFinanceMock } from "@/data/financeMock";
+import { listFinancePayments } from "@/data/financePaymentApi";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getFinancialPosition, getReceivablesPayables } from "@/data/financeReportApi";
@@ -23,7 +21,6 @@ import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtINR, fmtCompactINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
-const fin = useFinanceMock();
 const router = useRouter();
 const { canCreate } = usePermissions();
 const activeCompany = useActiveCompany();
@@ -40,18 +37,21 @@ function go(section) {
 const fp = ref({ have: {}, owe: {}, net: 0 });
 const rp = ref({ receivables: [], payables: [] });
 const financeAccounts = ref([]);
+const recentMovements = ref([]);
 
 async function loadFinance() {
 	const company = activeCompany.value;
 	try {
-		const [pos, recvPay, accts] = await Promise.all([
+		const [pos, recvPay, accts, payments] = await Promise.all([
 			getFinancialPosition(company),
 			getReceivablesPayables(company),
 			listFinanceAccounts(company),
+			listFinancePayments(company),
 		]);
 		fp.value = pos || { have: {}, owe: {}, net: 0 };
 		rp.value = recvPay || { receivables: [], payables: [] };
 		financeAccounts.value = accts || [];
+		recentMovements.value = (payments || []).slice(0, 5);
 	} catch {
 		/* keep whatever we last had; the panel degrades to zeros rather than mock */
 	}
@@ -149,8 +149,7 @@ const topPayables = computed(() =>
 		.slice(0, 4)
 );
 
-// ---- Recent movements (top 5 across all documents) ----
-const recentMovements = computed(() => fin.allPayments.slice(0, 5));
+// Recent transactions: the top 5 live payments, loaded in loadFinance().
 
 const quickActions = [
 	{
@@ -562,11 +561,6 @@ const toneDot = {
 						class="text-xs uppercase tracking-wider font-semibold text-ink-700 flex items-center gap-2"
 					>
 						{{ __("Recent transactions") }}
-						<span
-							class="text-[9px] px-1.5 py-0.5 bg-warning-50 text-warning-700 rounded-full uppercase tracking-wider"
-							:title="__('Sample data pending a live payments register.')"
-							>{{ __("Sample") }}</span
-						>
 					</h3>
 					<button
 						type="button"
@@ -578,8 +572,8 @@ const toneDot = {
 				</div>
 				<div v-if="recentMovements.length" class="divide-y divide-ink-100">
 					<div
-						v-for="(m, i) in recentMovements"
-						:key="i"
+						v-for="m in recentMovements"
+						:key="m.name"
 						class="px-4 py-2.5 flex items-center gap-3"
 					>
 						<span
