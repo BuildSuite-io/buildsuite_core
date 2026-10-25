@@ -15,6 +15,8 @@ const props = defineProps({
 	rows: { type: Array, default: () => [] },
 	// Price before tax; null hides the Amount column (a template has no price).
 	base: { type: Number, default: null },
+	// The offer's currency; unset falls back to the app's display currency.
+	currency: { type: String, default: undefined },
 });
 const emit = defineEmits(["update:rows"]);
 
@@ -31,17 +33,19 @@ const total = computed(() => props.rows.reduce((a, r) => a + (Number(r.percentag
 const totalOk = computed(() => Math.abs(total.value - 100) < 0.01);
 const showAmount = computed(() => props.base != null);
 
-// Rounded shares rarely add back to the price, so when the milestones total 100%
-// the last one takes the difference.
+// Shares are rounded to the cent. Rounded shares rarely add back to the price, so
+// when the milestones total 100% the last one takes the difference.
+const toCents = (v) => Math.round(v * 100) / 100;
 const amounts = computed(() => {
 	const base = props.base || 0;
-	const list = props.rows.map((r) => Math.round((base * (Number(r.percentage) || 0)) / 100));
+	const list = props.rows.map((r) => toCents((base * (Number(r.percentage) || 0)) / 100));
 	if (list.length && totalOk.value) {
-		list[list.length - 1] += Math.round(base) - list.reduce((a, b) => a + b, 0);
+		const rest = list.slice(0, -1).reduce((a, b) => a + b, 0);
+		list[list.length - 1] = toCents(base - rest);
 	}
 	return list;
 });
-const amountTotal = computed(() => amounts.value.reduce((a, b) => a + b, 0));
+const amountTotal = computed(() => toCents(amounts.value.reduce((a, b) => a + b, 0)));
 
 function setRow(i, patch) {
 	emit(
@@ -158,7 +162,7 @@ function removeRow(i) {
 						v-if="showAmount"
 						class="px-3 py-2 text-right tabular-nums text-ink-900 whitespace-nowrap"
 					>
-						{{ fmtCurrency(amounts[i]) }}
+						{{ fmtCurrency(amounts[i], currency) }}
 					</td>
 					<td class="px-3 py-2 text-center">
 						<input
@@ -204,7 +208,7 @@ function removeRow(i) {
 						v-if="showAmount"
 						class="px-3 py-2 text-right tabular-nums font-semibold text-ink-900 whitespace-nowrap"
 					>
-						{{ fmtCurrency(amountTotal) }}
+						{{ fmtCurrency(amountTotal, currency) }}
 					</td>
 					<td colspan="2"></td>
 				</tr>

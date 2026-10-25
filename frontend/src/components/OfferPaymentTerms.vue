@@ -1,5 +1,5 @@
 <script setup>
-// Payment schedule card on a tender (later a quotation). Ported from the demo's
+// Payment schedule card on a tender or a quotation. Ported from the demo's
 // OfferPaymentTerms. Loading a template COPIES its milestones onto the offer, so
 // editing the template later never moves an offer that already went out.
 // Every change is emitted as `save` — the page persists it (no Save button).
@@ -30,6 +30,7 @@ const props = defineProps({
 	kind: { type: String, default: "Tender" }, // "Tender" | "Quotation"
 	// Price before tax — each milestone's amount is its share of this.
 	base: { type: Number, default: null },
+	currency: { type: String, default: undefined },
 });
 const emit = defineEmits(["save"]);
 
@@ -143,6 +144,7 @@ function removeSchedule() {
 			<PaymentScheduleEditor
 				:rows="rows"
 				:base="base"
+				:currency="currency"
 				@update:rows="(v) => emit('save', { payment_milestones: v })"
 			/>
 			<p v-if="base != null" class="text-xs text-ink-500">
