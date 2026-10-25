@@ -66,3 +66,4 @@ buildsuite_core.patches.fix_buildsuite_workspace_app # 2026-10-14 strip stray ba
 buildsuite_core.patches.grant_account_select_read # 2026-10-16 Account select+read for Site Engineer / Foreman / Procurement Officer
 buildsuite_core.patches.grant_item_group_select # 2026-10-19 Item Group select for Item-accessible BuildSuite roles (item_group picker)
 buildsuite_core.patches.backfill_field_employee_employment_type # 2026-10-19 field employees get the Labour Employment Type (attendance roster visibility)
+buildsuite_core.patches.submit_existing_machinery_usage # 2026-10-25 Machinery Usage submittable: existing logs -> Submitted, re-grant submit perms

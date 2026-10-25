@@ -17,6 +17,7 @@ class MachineryUsage(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		amended_from: DF.Link | None
 		cost_code_group: DF.Data | None
 		cost_code_item: DF.Data | None
 		cost_code_label: DF.Data | None

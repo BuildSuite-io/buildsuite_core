@@ -869,13 +869,14 @@ MACHINERY_ROLE_PERMS = {
 	"BuildSuite Foreman": _READ,
 	"BuildSuite Accountant": _READ,
 }
-# Machinery Usage (the plant usage log) — the site records usage (Site Engineer +
-# PM full, Foreman edits, Store Keeper holds custody); Procurement reads it as the
-# basis for hire bills; Director + Accountant read. Non-submittable, so CRWD is full.
+# Machinery Usage (the plant usage log) — submittable: a saved log is a Draft and only a
+# submitted log posts to the BOQ Actual. The site records usage (Foreman + Store Keeper
+# create/edit drafts); Site Engineer + PM submit, cancel and amend (CRWDSX); Procurement
+# reads it as the basis for hire bills; Director + Accountant read.
 MACHINERY_USAGE_ROLE_PERMS = {
-	"BuildSuite Administrator": _FULL,
-	"BuildSuite PM": _FULL,
-	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite PM": _FULL_SUB,
+	"BuildSuite Site Engineer": _FULL_SUB,
 	"BuildSuite Store Keeper": _FULL,
 	"BuildSuite Foreman": _CRW,
 	"BuildSuite Director": _READ,
@@ -897,7 +898,7 @@ MACHINERY_TYPE_ROLE_PERMS = {
 
 def setup_equipment_permissions():
 	_apply_role_perms("Machinery", MACHINERY_ROLE_PERMS)
-	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS)
+	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Machinery Type", MACHINERY_TYPE_ROLE_PERMS)
 
 

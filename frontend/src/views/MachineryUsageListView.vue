@@ -91,7 +91,9 @@ const columns = [
 	{ key: "cost_code", label: __("Cost code") },
 	{ key: "quantity", label: __("Qty"), align: "right" },
 	{ key: "total", label: __("Total cost"), align: "right" },
+	{ key: "status", label: __("Status") },
 ];
+const statusLabel = (s) => (s === 1 ? __("Submitted") : s === 2 ? __("Cancelled") : __("Draft"));
 
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
@@ -189,6 +191,9 @@ function onRowClick(row) {
 				</template>
 				<template #cell-quantity="{ row }">
 					<span class="tabular-nums">{{ row.quantity }} {{ row.unit }}</span>
+				</template>
+				<template #cell-status="{ row }">
+					<span class="text-ink-700">{{ statusLabel(row.docstatus) }}</span>
 				</template>
 				<template #cell-total="{ row }">
 					<span class="tabular-nums text-ink-900 font-medium">{{

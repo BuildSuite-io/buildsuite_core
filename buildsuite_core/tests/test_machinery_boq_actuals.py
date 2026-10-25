@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 """Machinery Usage -> BOQ Actual: a coded log posts quantity x rate + fuel to its line and group
-as soon as it is saved; editing updates it and deleting removes it. Uncoded logs post nothing."""
+only once submitted; a Draft does not count and cancelling reverses it. Uncoded logs post nothing."""
 
 import frappe
 
@@ -76,30 +76,60 @@ class TestMachineryBoqActuals(BuildSuiteTestCase):
 		bucket = s["by_item"] if item else s["by_group"]
 		return (bucket.get(code) or {}).get("actual", 0)
 
-	def test_coded_log_posts_edits_and_deletes(self):
+	def test_coded_log_posts_on_submit_and_reverses_on_cancel(self):
 		p = self._project()
 		self._estimate(p.name)
 		m = self._machine()
 		log = self._usage(p.name, m, cost_code_type="Item", cost_code_group="A", cost_code_item="A.01")
-		self.assertEqual(log.cost_code_group, "A")
-		self.assertEqual(self._actual(p.name), 2 * 3000 + 1500)
-		self.assertEqual(self._actual(p.name, "A.01", item=True), 7500)
+		self.assertEqual(log.docstatus, 0)
+		self.assertEqual(self._actual(p.name), 0)  # Draft does not post
 
 		log.quantity = 3
 		log.save(ignore_permissions=True)
+		log.submit()
 		self.assertEqual(self._actual(p.name), 3 * 3000 + 1500)
+		self.assertEqual(self._actual(p.name, "A.01", item=True), 10500)
 
+		log.cancel()
+		self.assertEqual(self._actual(p.name), 0)
+
+	def test_draft_can_be_deleted_without_trace(self):
+		p = self._project()
+		self._estimate(p.name)
+		log = self._usage(p.name, self._machine(), cost_code_type="Group", cost_code_group="A")
 		frappe.delete_doc("Machinery Usage", log.name, ignore_permissions=True)
 		self.assertEqual(self._actual(p.name), 0)
+
+	def test_submit_requires_submit_permission(self):
+		from buildsuite_core.api.equipment import submit_machinery_usage
+
+		p = self._project()
+		log = self._usage(p.name, self._machine())
+		user = "foreman-md@example.com"
+		if not frappe.db.exists("User", user):
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": user,
+					"first_name": "Foreman",
+					"roles": [{"role": "BuildSuite Foreman"}],
+				}
+			).insert(ignore_permissions=True)
+		frappe.set_user(user)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				submit_machinery_usage(log.name)
+		finally:
+			frappe.set_user("Administrator")
 
 	def test_group_code_and_uncoded_and_task_only(self):
 		p = self._project()
 		self._estimate(p.name)
 		m = self._machine()
-		self._usage(p.name, m, cost_code_type="Group", cost_code_group="A")
+		self._usage(p.name, m, cost_code_type="Group", cost_code_group="A").submit()
 		self.assertEqual(self._actual(p.name), 7500)
-		self._usage(p.name, m)  # uncoded
-		self._usage(p.name, m, task=self._make_task(p.name).name)  # legacy task-only
+		self._usage(p.name, m).submit()  # uncoded
+		self._usage(p.name, m, task=self._make_task(p.name).name).submit()  # legacy task-only
 		self.assertEqual(self._actual(p.name), 7500)
 
 	def test_foreign_cost_code_rejected(self):

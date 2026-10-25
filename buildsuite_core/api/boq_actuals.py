@@ -15,8 +15,7 @@ its entries for free (R3), and actuals resolve identically in every revision (R8
 here is the single calculation path behind the BOQ Actual column (R2), and the same entries feed
 the per-code drill-down (R1).
 
-Rails (all post on Submit, reverse on Cancel, except Machinery Usage, which has no submit step:
-a coded log counts as soon as it is saved and drops out when deleted):
+Rails (all post on Submit, reverse on Cancel):
   Material Consumption   qty x valuation rate  (Stock Entry.total_outgoing_value)  -> "Material"
   Subcontractor Bill     this-period amount    (Subcontractor Bill Line)           -> "Subcontract"
   Expense Entry          expense amount        (Expense Entry Table)               -> "Overhead"
@@ -230,12 +229,9 @@ def _journal_entries(project):
 
 
 def _machinery_entries(project):
-	"""Machinery Usage logs charged to a cost code: quantity x rate + fuel. The doctype is not
-	submittable, so every saved log counts (edit updates it, delete removes it). If it becomes
-	submittable, only submitted logs count, so submit posts and cancel reverses."""
-	filters = {"project": project, "cost_code_type": ["in", ["Group", "Item"]]}
-	if frappe.get_meta("Machinery Usage").is_submittable:
-		filters["docstatus"] = 1
+	"""Submitted Machinery Usage logs charged to a cost code: quantity x rate + fuel. A Draft
+	does not count; cancelling a submitted log removes it."""
+	filters = {"project": project, "docstatus": 1, "cost_code_type": ["in", ["Group", "Item"]]}
 	rows = frappe.get_all(
 		"Machinery Usage",
 		filters=filters,

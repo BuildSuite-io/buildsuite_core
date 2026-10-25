@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.query_builder.functions import Sum
 from frappe.utils import flt
 
@@ -23,7 +24,7 @@ def get_dashboard() -> dict:
 def _equipment_cost(company=None) -> float:
 	mu = frappe.qb.DocType("Machinery Usage")
 	# qty * rate + fuel, summed across usage rows (scoped to the company when set)
-	q = frappe.qb.from_(mu).select(Sum(mu.quantity * mu.rate), Sum(mu.fuel_cost))
+	q = frappe.qb.from_(mu).select(Sum(mu.quantity * mu.rate), Sum(mu.fuel_cost)).where(mu.docstatus == 1)
 	if company:
 		q = q.where(mu.company == company)
 	row = q.run()[0]
@@ -71,6 +72,7 @@ def machinery_usage_report() -> list[dict]:
 			"machine",
 			"project",
 			"task",
+			"docstatus",
 			"cost_code_type",
 			"cost_code_group",
 			"cost_code_item",
@@ -124,3 +126,31 @@ def _register(company=None) -> list[dict]:
 		order_by="machinery_name asc",
 		limit=6,
 	)
+
+
+def _guard_workflow():
+	"""An active workflow owns submit and cancel; stop these endpoints bypassing it."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active("Machinery Usage"):
+		frappe.throw(_("Machinery Usage is governed by a workflow — use a workflow action."))
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_machinery_usage(name: str) -> dict:
+	"""Post the log. Only a submitted log reaches the BOQ Actual (at its cost code)."""
+	_guard_workflow()
+	doc = frappe.get_doc("Machinery Usage", name)
+	doc.check_permission("submit")
+	doc.submit()
+	return doc.as_dict()
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_machinery_usage(name: str) -> dict:
+	"""Reverse a posted log — it drops out of the BOQ Actual."""
+	_guard_workflow()
+	doc = frappe.get_doc("Machinery Usage", name)
+	doc.check_permission("cancel")
+	doc.cancel()
+	return doc.as_dict()
