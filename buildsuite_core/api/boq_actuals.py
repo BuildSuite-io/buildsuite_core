@@ -21,6 +21,10 @@ Rails (all post on Submit, reverse on Cancel):
   Expense Entry          expense amount        (Expense Entry Table)               -> "Overhead"
   Journal Entry          line debit            (Journal Entry Account.debit)        -> "Overhead"
   Machinery Usage        qty x rate + fuel     (Machinery Usage)                    -> "Plant"
+  Labour Attendance      daily wage            (Labour Attendance Register)         -> "Labour"
+  Overtime Attendance    hours x overtime rate (Overtime Attendance Register)       -> "Labour"
+  The two attendance rails read the registers a submitted Field Attendance creates, not the sheet;
+  cancelling the sheet cancels them. A register with no cost code does not post.
 
 Cost is recognised at consumption, not at purchase — a Purchase Receipt increases stock but
 does not touch BOQ actual. The Subcontractor Work Order (Committed) is a separate promise and
@@ -286,6 +290,76 @@ def _machinery_entries(project):
 	return out
 
 
+def _labour_entries(project):
+	"""Submitted Labour and Overtime Attendance registers charged to a cost code. The wage is
+	the register's own calculated amount (full day = daily wage, half day = half, absent = 0;
+	overtime = hours x overtime rate)."""
+	out = []
+	specs = (
+		("Labour Attendance Register", "attendance_date", "daily_wage_calculated", "wage_rate", None),
+		(
+			"Overtime Attendance Register",
+			"overtime_date",
+			"overtime_wage_calculated",
+			"overtime_rate",
+			"overtime_hours",
+		),
+	)
+	for doctype, date_field, amount_field, rate_field, hours_field in specs:
+		fields = [
+			"name",
+			"employee",
+			"employee_name",
+			"field_attendance",
+			date_field,
+			amount_field,
+			rate_field,
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+		]
+		if hours_field:
+			fields.append(hours_field)
+		else:
+			fields.append("status")
+		rows = frappe.get_all(
+			doctype,
+			filters={"project": project, "docstatus": 1, "cost_code_type": ["in", ["Group", "Item"]]},
+			fields=fields,
+		)
+		is_overtime = bool(hours_field)
+		for r in rows:
+			amount = flt(r.get(amount_field))
+			if not (r.cost_code_group or r.cost_code_item) or amount == 0:
+				continue
+			out.append(
+				{
+					"cost_code_type": r.cost_code_type,
+					"group_code": r.cost_code_group or "",
+					"item_code": r.cost_code_item or "",
+					"cost_type": "Labour",
+					"amount": amount,
+					"source_doctype": doctype,
+					"source_name": r.name,
+					"source_line": r.name,
+					"party": r.employee_name or r.employee,
+					"date": str(r.get(date_field)) if r.get(date_field) else None,
+					"label": r.cost_code_label or "",
+					"employee": r.employee,
+					"employee_name": r.employee_name or r.employee,
+					"field_attendance": r.field_attendance,
+					"kind": "Overtime" if is_overtime else r.status,
+					"quantity": flt(r.get(hours_field))
+					if is_overtime
+					else (0.5 if r.status == "Half Day" else 1),
+					"unit": "h" if is_overtime else "day",
+					"rate": flt(r.get(rate_field)),
+				}
+			)
+	return out
+
+
 def _actual_entries(project):
 	"""The full actuals log for a project — one line per contributing source line, across all
 	rails. Derived live from submitted documents (never stored). This is the single source
@@ -298,6 +372,7 @@ def _actual_entries(project):
 		+ _expense_entries(project)
 		+ _journal_entries(project)
 		+ _machinery_entries(project)
+		+ _labour_entries(project)
 	)
 
 

@@ -1,5 +1,6 @@
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { parseFrappeError } from "@/utils/frappeError";
+import { costCodeToFields } from "@/utils/costCode";
 
 // Thin wrapper over buildsuite_core.api.field_attendance — a day's attendance
 // sheet for one project. The save goes through here because its `employee_list`
@@ -18,10 +19,17 @@ async function call(method, args) {
 
 export const getFieldAttendance = (name) => call("get_field_attendance", { name });
 
-export const saveFieldAttendance = (payload) =>
+// The form holds cost codes as CostCodePicker objects; the server takes the flat fields.
+export const saveFieldAttendance = ({ cost_code, ...payload }) =>
 	call("save_field_attendance", {
 		...payload,
-		employee_list: JSON.stringify(payload.employee_list || []),
+		...costCodeToFields(cost_code),
+		employee_list: JSON.stringify(
+			(payload.employee_list || []).map(({ cost_code: rowCode, ...row }) => ({
+				...row,
+				...costCodeToFields(rowCode),
+			}))
+		),
 	});
 
 // These refuse while a workflow governs Field Attendance — its transitions take over.

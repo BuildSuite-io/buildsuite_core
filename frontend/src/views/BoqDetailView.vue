@@ -423,11 +423,16 @@ function groupCoverage(group) {
 // source documents. A group rolls up every line carrying its code (item-coded + group-coded);
 // an item shows only its own lines. Each entry links to the source document it was derived from.
 const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
-const drillTab = ref("all"); // "all" | "machinery"
+const drillTab = ref("all"); // "all" | "machinery" | "labour"
 const machineryEntries = computed(() =>
 	(actualsDrill.value?.entries || []).filter((e) => e.source_doctype === "Machinery Usage")
 );
 const machineryTotal = computed(() => machineryEntries.value.reduce((t, e) => t + e.amount, 0));
+const LABOUR_SOURCES = ["Labour Attendance Register", "Overtime Attendance Register"];
+const labourEntries = computed(() =>
+	(actualsDrill.value?.entries || []).filter((e) => LABOUR_SOURCES.includes(e.source_doctype))
+);
+const labourTotal = computed(() => labourEntries.value.reduce((t, e) => t + e.amount, 0));
 async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
 	const pid = boq.value?.projectId;
 	if (!pid || (!groupCode && !itemCode)) return;
@@ -473,6 +478,8 @@ function openActualSource(e) {
 		router.push(`/subcontractor-bills/${e.source_name}`);
 	} else if (e.source_doctype === "Machinery Usage") {
 		router.push(`/machinery-usage/${e.source_name}`);
+	} else if (LABOUR_SOURCES.includes(e.source_doctype)) {
+		router.push(`/field-attendance/${e.field_attendance}`);
 	} else if (e.source_doctype === "Stock Entry") {
 		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
 	} else if (e.source_doctype === "Expense Entry") {
@@ -3078,6 +3085,7 @@ const breadcrumbs = computed(() => {
 							v-for="t in [
 								{ key: 'all', label: __('All') },
 								{ key: 'machinery', label: __('Machinery usage') },
+								{ key: 'labour', label: __('Labour attendance') },
 							]"
 							:key="t.key"
 							type="button"
@@ -3092,7 +3100,75 @@ const breadcrumbs = computed(() => {
 							{{ t.label }}
 						</button>
 					</div>
-					<template v-if="drillTab === 'machinery' && actualsDrill.entries.length">
+					<template v-if="drillTab === 'labour' && actualsDrill.entries.length">
+						<div
+							v-if="!labourEntries.length"
+							class="py-8 text-center text-xs text-ink-400"
+						>
+							{{ __("No labour attendance is coded to this cost code.") }}
+						</div>
+						<table v-else class="w-full text-xs">
+							<thead
+								class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+							>
+								<tr>
+									<th class="text-left py-2 pr-2">{{ __("Worker") }}</th>
+									<th class="text-left py-2 pr-2">{{ __("Day / overtime") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Rate") }}</th>
+									<th class="text-right py-2">{{ __("Amount") }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="e in labourEntries"
+									:key="e.source_doctype + e.source_name"
+									class="border-b border-ink-100 last:border-0"
+								>
+									<td class="py-2 pr-2">
+										<button
+											type="button"
+											class="text-brand-700 hover:underline text-left"
+											@click="openActualSource(e)"
+										>
+											{{ e.employee_name }}
+										</button>
+										<div class="text-[10px] text-ink-400">
+											<span class="font-mono">{{ e.field_attendance }}</span>
+											<span v-if="e.date"> · {{ fmtDate(e.date) }}</span>
+										</div>
+									</td>
+									<td class="py-2 pr-2 text-ink-600 whitespace-nowrap">
+										{{ e.kind === "Overtime" ? __("Overtime") : __(e.kind) }}
+										· {{ e.quantity }} {{ e.unit }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.rate) }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ fmtINR(e.amount) }}
+									</td>
+								</tr>
+							</tbody>
+							<tfoot>
+								<tr class="border-t-2 border-ink-200">
+									<td
+										colspan="3"
+										class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+									>
+										{{ __("Labour total") }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+									>
+										{{ fmtINR(labourTotal) }}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</template>
+					<template v-else-if="drillTab === 'machinery' && actualsDrill.entries.length">
 						<div
 							v-if="!machineryEntries.length"
 							class="py-8 text-center text-xs text-ink-400"
@@ -3232,7 +3308,7 @@ const breadcrumbs = computed(() => {
 					<p class="text-[10px] text-ink-400 mt-3">
 						{{
 							__(
-								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only. A machinery usage log counts once submitted and drops out when cancelled."
+								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only. A machinery usage log counts once submitted and drops out when cancelled. Labour counts from the attendance registers a submitted Field Attendance creates; rows without a cost code do not post."
 							)
 						}}
 					</p>

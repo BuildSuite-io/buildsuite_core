@@ -19,6 +19,10 @@
   "project_name",
   "column_break_rg0g",
   "overtime_hours",
+  "cost_code_label",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
   "section_break_p3ti",
   "comments",
   "section_break_20su",
@@ -85,13 +89,15 @@
    "fieldname": "task",
    "fieldtype": "Link",
    "label": "Task",
-   "options": "Task"
+   "options": "Task",
+   "hidden": 1
   },
   {
    "fieldname": "crew",
    "fieldtype": "Link",
    "label": "Crew",
-   "options": "Crew"
+   "options": "Crew",
+   "hidden": 1
   },
   {
    "fieldname": "section_break_dkns",
@@ -148,6 +154,34 @@
    "hidden": 1,
    "label": "Employees Count",
    "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
+   "label": "Cost code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_type",
+   "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item",
+   "read_only": 1,
+   "hidden": 1
   }
  ],
  "grid_page_length": 50,
