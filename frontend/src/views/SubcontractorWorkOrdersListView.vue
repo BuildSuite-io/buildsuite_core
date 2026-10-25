@@ -1,11 +1,15 @@
 <script setup>
 // Subcontractor Work Order list — Desk-styled, mirrors the prototype.
 
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { usePermissions } from "@/composables/usePermissions";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import { useProjectOptions } from "@/composables/useProjectOptions";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -16,6 +20,43 @@ import { __ } from "@/utils/translate";
 const router = useRouter();
 const { projectName } = useProjectNames();
 const { canCreate, canRead } = usePermissions();
+const { projectOptions } = useProjectOptions();
+
+// Register filters: subcontractor, project, state, order period.
+const subFilter = ref("");
+const projectFilter = ref("");
+// String, not number: the filter builder drops falsy values, so 0 (Draft) would never apply.
+const statusFilter = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const filterValues = computed(() => ({
+	subcontractor: subFilter.value,
+	project: projectFilter.value,
+	docstatus: statusFilter.value,
+	from: fromDate.value,
+	to: toDate.value,
+}));
+const filterFieldMap = {
+	subcontractor: "subcontractor",
+	project: "project",
+	docstatus: "docstatus",
+	from: { field: "date", op: ">=" },
+	to: { field: "date", op: "<=" },
+};
+const subRes = useDocTypeList("Subcontractor Work Order", {
+	fields: ["subcontractor", "subcontractor_name"],
+	pageLength: 0,
+	cache: "buildsuite-wo-subcontractor-options",
+});
+const subOptions = computed(() => {
+	const seen = new Map();
+	for (const w of subRes.data || []) {
+		if (w.subcontractor) seen.set(w.subcontractor, w.subcontractor_name || w.subcontractor);
+	}
+	return [...seen]
+		.map(([value, label]) => ({ value, label }))
+		.sort((a, b) => a.label.localeCompare(b.label));
+});
 
 // The "% Billed" column is sourced from Subcontractor Bills. A persona without Bill read
 // (e.g. Estimator) neither fetches them (which would 403) nor sees the column.
@@ -108,8 +149,45 @@ function onRowClick(row) {
 			row-key="name"
 			:search-placeholder="__('Search WO, subcontractor, project…')"
 			:empty-message="__('No work orders raised yet.')"
+			:filter-values="filterValues"
+			:filter-field-map="filterFieldMap"
 			@row-click="onRowClick"
 		>
+			<template #filter-chips>
+				<div class="w-56">
+					<DeskSearchableSelect
+						v-model="subFilter"
+						:options="subOptions"
+						:placeholder="__('All subcontractors')"
+						:search-placeholder="__('Search subcontractors…')"
+						allow-clear
+					/>
+				</div>
+				<div class="w-56">
+					<DeskSearchableSelect
+						v-model="projectFilter"
+						:options="projectOptions"
+						:placeholder="__('All projects')"
+						:search-placeholder="__('Search projects…')"
+						allow-clear
+					/>
+				</div>
+				<DeskSelect v-model="statusFilter" class="!w-36">
+					<option value="">{{ __("Any status") }}</option>
+					<option value="0">{{ __("Draft") }}</option>
+					<option value="1">{{ __("Submitted") }}</option>
+					<option value="2">{{ __("Cancelled") }}</option>
+				</DeskSelect>
+				<label class="flex items-center gap-1.5">
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Dated")
+					}}</span>
+					<DeskInput v-model="fromDate" type="date" class="!w-36" />
+					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
+					<DeskInput v-model="toDate" type="date" class="!w-36" />
+				</label>
+			</template>
+
 			<template #cell-name="{ row }">
 				<DeskLink
 					:to="`/subcontractor-work-orders/${encodeURIComponent(row.name)}`"
