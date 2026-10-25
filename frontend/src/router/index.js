@@ -57,6 +57,9 @@ const PAGE_TITLES = {
 	"report-stub": "Report",
 	"report-delay-analysis": "Delay Analysis",
 	estimation: "Estimation",
+	sales: "Sales",
+	customers: "Customers",
+	"payment-terms": "Payment terms templates",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
@@ -425,6 +428,24 @@ const routes = [
 				name: "estimation",
 				meta: { workspace: "estimation" },
 				component: () => import("@/views/workspaces/EstimationWorkspace.vue"),
+			},
+			{
+				path: "sales",
+				name: "sales",
+				meta: { workspace: "sales" },
+				component: () => import("@/views/workspaces/SalesWorkspace.vue"),
+			},
+			{
+				path: "customers",
+				name: "customers",
+				meta: { cap: "customer" },
+				component: () => import("@/views/sales/SalesCustomersView.vue"),
+			},
+			{
+				path: "payment-terms",
+				name: "payment-terms",
+				meta: { workspace: "sales" },
+				component: () => import("@/views/sales/PaymentTermsTemplatesView.vue"),
 			},
 			{
 				path: "procurement",
@@ -1196,6 +1217,7 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
+	customers: "customer",
 	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
 	"finance-invoice-new": "salesInvoice",
 	"finance-invoice-edit": "salesInvoice",

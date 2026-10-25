@@ -27,6 +27,7 @@ SETTINGS = "Workspace Setting"
 WORKSPACES = (
 	{"slug": "site-execution", "label": "Site Execution"},
 	{"slug": "estimation", "label": "Estimation"},
+	{"slug": "sales", "label": "Sales"},
 	{"slug": "procurement", "label": "Procurement"},
 	{"slug": "subcontract", "label": "Subcontract"},
 	{"slug": "project-finance", "label": "Project Finance"},

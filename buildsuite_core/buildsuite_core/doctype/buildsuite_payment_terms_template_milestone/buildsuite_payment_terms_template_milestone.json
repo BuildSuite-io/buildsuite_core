@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "creation": "2026-10-25 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "milestone",
+  "trigger",
+  "stage_key",
+  "days_after",
+  "percent",
+  "certify"
+ ],
+ "fields": [
+  {
+   "fieldname": "milestone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Milestone"
+  },
+  {
+   "default": "stage",
+   "fieldname": "trigger",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payable",
+   "options": "signing\nstage\ndate\nrunning",
+   "reqd": 1
+  },
+  {
+   "fieldname": "stage_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Stage"
+  },
+  {
+   "fieldname": "days_after",
+   "fieldtype": "Int",
+   "label": "Days After Project Starts"
+  },
+  {
+   "fieldname": "percent",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Percent"
+  },
+  {
+   "default": "0",
+   "fieldname": "certify",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Client Sign-off"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-25 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite Payment Terms Template Milestone",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
