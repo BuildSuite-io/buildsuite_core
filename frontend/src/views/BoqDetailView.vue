@@ -1454,15 +1454,6 @@ const breadcrumbs = computed(() => {
 							fmtDate(boq.preparedDate)
 						}}</span>
 					</div>
-					<div v-if="boq.approvedBy" class="flex items-center gap-1 mt-1">
-						<UserAvatar :user-id="boq.approvedBy" size="xs" />
-						<span class="text-[11px] text-success-700">{{
-							fmtDate(boq.approvedDate)
-						}}</span>
-					</div>
-					<div v-else class="text-[10px] text-ink-400 mt-1">
-						{{ __("awaiting approval") }}
-					</div>
 				</div>
 			</div>
 
