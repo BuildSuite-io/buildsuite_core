@@ -6,7 +6,7 @@
 
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useDataStore } from "@/stores";
-import { useRouter, RouterLink } from "vue-router";
+import { useRoute, RouterLink } from "vue-router";
 
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
@@ -19,7 +19,7 @@ import { getMachineryUsageReport } from "@/data/equipmentApi";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
-const router = useRouter();
+const route = useRoute();
 const store = useDataStore();
 const { canCreate } = usePermissions();
 
@@ -101,9 +101,17 @@ const breadcrumbs = [
 	{ label: __("Machinery Usage") },
 ];
 
+// Row click opens a read-only summary modal (as in the prototype); editing and the
+// submit / cancel lifecycle stay on the full record, linked from the modal footer.
+const detailId = ref(route.query.open ? String(route.query.open) : null);
+const detail = computed(() => all.value.find((u) => u.name === detailId.value) || null);
 function onRowClick(row) {
-	router.push(`/machinery-usage/${row.name}`);
+	detailId.value = row.name;
 }
+function closeDetail() {
+	detailId.value = null;
+}
+const unitLabel = (unit) => (unit || "").replace(/s$/, "");
 </script>
 
 <template>
@@ -214,5 +222,193 @@ function onRowClick(row) {
 				</template>
 			</DeskList>
 		</template>
+
+		<Teleport to="body">
+			<div
+				v-if="detail"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6"
+				@click.self="closeDetail"
+				@keydown.esc="closeDetail"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg rounded-xl flex flex-col"
+					style="max-height: 88vh"
+					@click.stop
+				>
+					<header
+						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0"
+					>
+						<div class="flex items-center gap-2 min-w-0">
+							<h2 class="text-sm font-semibold text-ink-900 truncate">
+								{{ detail.machine_name }}
+							</h2>
+							<span
+								class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600 rounded-full font-mono"
+								>{{ detail.name }}</span
+							>
+							<span class="text-[10px] text-ink-500">{{
+								statusLabel(detail.docstatus)
+							}}</span>
+						</div>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+							@click="closeDetail"
+						>
+							✕
+						</button>
+					</header>
+
+					<div class="px-4 py-4 overflow-y-auto flex-1 space-y-4">
+						<div
+							class="flex items-center justify-between bg-ink-50 rounded-lg px-4 py-3"
+						>
+							<div
+								class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+							>
+								{{ __("Total cost") }}
+							</div>
+							<div class="text-xl font-semibold text-ink-900 tabular-nums">
+								{{ fmtINR(detail.total) }}
+							</div>
+						</div>
+
+						<div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Date") }}
+								</div>
+								<div class="text-ink-900 mt-0.5">{{ fmtDate(detail.date) }}</div>
+							</div>
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Machine") }}
+								</div>
+								<div class="mt-0.5">
+									<DeskLink :to="`/machinery/${detail.machine}`">{{
+										detail.machine_name
+									}}</DeskLink>
+								</div>
+							</div>
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Project") }}
+								</div>
+								<div class="text-ink-900 mt-0.5">
+									{{ detail.project_name || "—" }}
+								</div>
+							</div>
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Cost code") }}
+								</div>
+								<div
+									class="mt-0.5"
+									:class="
+										detail.cost_code_label
+											? 'text-ink-900'
+											: 'text-ink-400 italic'
+									"
+								>
+									{{ detail.cost_code_label || __("Not coded") }}
+								</div>
+							</div>
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Quantity") }}
+								</div>
+								<div class="text-ink-900 mt-0.5 tabular-nums">
+									{{ detail.quantity }} {{ detail.unit }}
+								</div>
+							</div>
+							<div>
+								<div
+									class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Rate") }}
+								</div>
+								<div class="text-ink-900 mt-0.5 tabular-nums">
+									{{ fmtINR(detail.rate) }} / {{ unitLabel(detail.unit) }}
+								</div>
+							</div>
+						</div>
+
+						<div class="bg-ink-50 rounded-lg px-4 py-3 text-sm space-y-1">
+							<div class="flex justify-between text-ink-600">
+								<span
+									>{{ __("Usage") }} ({{ detail.quantity }} {{ detail.unit }} ×
+									{{ fmtINR(detail.rate) }})</span
+								>
+								<span class="tabular-nums">{{
+									fmtINR((detail.quantity || 0) * (detail.rate || 0))
+								}}</span>
+							</div>
+							<div class="flex justify-between text-ink-600">
+								<span>{{ __("Fuel") }}</span>
+								<span class="tabular-nums">{{
+									detail.fuel_cost ? fmtINR(detail.fuel_cost) : "—"
+								}}</span>
+							</div>
+							<div
+								class="flex justify-between font-semibold text-ink-900 border-t border-ink-200 pt-1.5"
+							>
+								<span>{{ __("Total") }}</span>
+								<span class="tabular-nums">{{ fmtINR(detail.total) }}</span>
+							</div>
+						</div>
+
+						<div
+							class="text-[11px]"
+							:class="
+								detail.docstatus === 1 && detail.cost_code_label
+									? 'text-ink-500'
+									: 'text-warning-700'
+							"
+						>
+							{{
+								detail.docstatus !== 1
+									? __(
+											"Not submitted yet, so this cost is not posted to the estimate."
+									  )
+									: detail.cost_code_label
+									? __(
+											"This cost is posted to the estimate's Actual at its cost code."
+									  )
+									: __(
+											"Not cost-coded, so this cost does not reach the estimate."
+									  )
+							}}
+						</div>
+					</div>
+
+					<footer
+						class="px-4 py-3 border-t border-ink-200 flex items-center justify-between gap-2 flex-shrink-0"
+					>
+						<RouterLink
+							:to="`/machinery-usage/${detail.name}`"
+							class="desk-link text-xs"
+							>{{ __("Open full record →") }}</RouterLink
+						>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
+							@click="closeDetail"
+						>
+							{{ __("Close") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+		</Teleport>
 	</DeskPage>
 </template>
