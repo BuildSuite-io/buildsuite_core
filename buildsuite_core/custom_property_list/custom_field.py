@@ -766,6 +766,41 @@ CUSTOM_FIELD = {
 			"print_hide": 1,
 			"module": "BuildSuite Core",
 		},
+		# Payment schedule, copied from a BuildSuite Payment Term Template. Same field names as
+		# BuildSuite Tenders. ERPNext's own payment_schedule_section / payment_terms_template /
+		# payment_schedule already exist on Quotation (different doctypes), so none of these
+		# fieldnames may reuse them.
+		{
+			"fieldname": "payment_milestones_section",
+			"fieldtype": "Section Break",
+			"label": "Payment Milestones",
+			"insert_after": "internal_note",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"options": "Project Category",
+			"label": "Project Category",
+			"insert_after": "payment_milestones_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_term_template",
+			"fieldtype": "Link",
+			"options": "BuildSuite Payment Term Template",
+			"label": "Payment Term Template",
+			"insert_after": "project_category",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_milestones",
+			"fieldtype": "Table",
+			"options": "BuildSuite Payment Milestone",
+			"label": "Payment Milestones",
+			"insert_after": "payment_term_template",
+			"module": "BuildSuite Core",
+		},
 	],
 	# Where the line came from: typed on this quotation, or pulled from the assembly
 	# catalogue. Same three fields BuildSuite Tenders Items carries, under the same names.

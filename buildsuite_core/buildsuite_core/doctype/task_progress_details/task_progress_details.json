@@ -28,7 +28,7 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Cumulative progress",
-   "precision": "0"
+   "precision": "2"
   },
   {
    "fieldname": "user",

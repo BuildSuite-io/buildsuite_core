@@ -19,9 +19,9 @@ const SHORTCUTS = [
 ];
 const SETUP = [
 	{
-		to: "/payment-terms",
+		to: "/payment-term-templates",
 		icon: "calendar",
-		label: "Payment terms templates",
+		label: "Payment Term Templates",
 		description: "Reusable payment schedules for quotations and tenders.",
 	},
 ];

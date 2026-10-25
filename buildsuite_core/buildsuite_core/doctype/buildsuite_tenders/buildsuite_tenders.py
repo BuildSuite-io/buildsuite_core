@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, formatdate, getdate
 
+from buildsuite_core.utils.payment_terms import clear_unused_timing
 from buildsuite_core.utils.project import anchor_company_to_project
 
 
@@ -16,6 +17,7 @@ class BuildSuiteTenders(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
+		from buildsuite_core.buildsuite_core.doctype.buildsuite_payment_milestone.buildsuite_payment_milestone import BuildSuitePaymentMilestone
 		from buildsuite_core.buildsuite_core.doctype.buildsuite_tender_section.buildsuite_tender_section import BuildSuiteTenderSection
 		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import BuildSuiteTendersItems
 		from frappe.types import DF
@@ -35,10 +37,13 @@ class BuildSuiteTenders(Document):
 		margin_amount: DF.Currency
 		margin_percent: DF.Float
 		notes: DF.SmallText | None
+		payment_milestones: DF.Table[BuildSuitePaymentMilestone]
+		payment_term_template: DF.Link | None
 		performance_guarantee_percent: DF.Data | None
 		portal: DF.Data | None
 		preamble_sections: DF.Table[BuildSuiteTenderSection]
 		project: DF.Link | None
+		project_category: DF.Link | None
 		submission_deadline: DF.Date
 		subtotal: DF.Currency
 		tax_amount: DF.Currency
@@ -54,6 +59,7 @@ class BuildSuiteTenders(Document):
 		self.items_count = len(self.buildsuite_tenders_items)
 		self.validate_dates()
 		self.calculate_items()
+		clear_unused_timing(self.payment_milestones)
 
 	def calculate_items(self):
 		# Sell rate is the cost rate plus the margin; the amount is the qty at that sell rate.
