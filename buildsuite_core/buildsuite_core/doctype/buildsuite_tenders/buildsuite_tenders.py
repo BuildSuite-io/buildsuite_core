@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, formatdate, getdate
 
+from buildsuite_core.utils.payment_terms import clear_unused_timing
 from buildsuite_core.utils.project import anchor_company_to_project
 
 
@@ -58,6 +59,7 @@ class BuildSuiteTenders(Document):
 		self.items_count = len(self.buildsuite_tenders_items)
 		self.validate_dates()
 		self.calculate_items()
+		clear_unused_timing(self.payment_milestones)
 
 	def calculate_items(self):
 		# Sell rate is the cost rate plus the margin; the amount is the qty at that sell rate.

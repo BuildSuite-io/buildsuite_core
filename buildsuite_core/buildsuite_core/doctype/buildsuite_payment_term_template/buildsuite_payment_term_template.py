@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from buildsuite_core.utils.payment_terms import clear_unused_timing
+
 
 class BuildSuitePaymentTermTemplate(Document):
 	# begin: auto-generated types
@@ -27,18 +29,10 @@ class BuildSuitePaymentTermTemplate(Document):
 	# end: auto-generated types
 
 	def validate(self):
-		self._clear_unused_timing()
+		clear_unused_timing(self.milestones)
 		self.milestones_count = len(self.milestones)
 		self.total_percentage = sum(flt(row.percentage) for row in self.milestones)
 		self._validate_total()
-
-	def _clear_unused_timing(self):
-		"""A row keeps only the timing its Payable uses: a stage or a day count."""
-		for row in self.milestones:
-			if row.payable != "Stage completes":
-				row.stage = None
-			if row.payable != "On a date":
-				row.days_after_project_start = None
 
 	def _validate_total(self):
 		if self.milestones and abs(self.total_percentage - 100) > 0.01:

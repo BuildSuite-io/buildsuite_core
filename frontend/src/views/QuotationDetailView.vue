@@ -10,6 +10,7 @@ import { fmtCurrency, fmtDate, daysBetween } from "@/utils/format";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import OfferPaymentTerms from "@/components/OfferPaymentTerms.vue";
 // Rich text (Text Editor) is heavy (TipTap) — load it only when a quotation is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -73,6 +74,16 @@ const lineCount = computed(() => {
 });
 
 const busy = ref(false);
+
+// The payment schedule saves as each change is made — like the tender page.
+async function persist(values) {
+	try {
+		await adapter.update("Quotation", props.id, values);
+		await resource.value?.reload?.();
+	} catch (err) {
+		showToast(err.message || __("Could not update the payment schedule"), "error");
+	}
+}
 
 async function onDelete() {
 	const ok = await confirmDialog({
@@ -251,6 +262,16 @@ const breadcrumbs = computed(() => [
 				</table>
 			</div>
 		</div>
+
+		<OfferPaymentTerms
+			v-if="doc"
+			:doc="doc"
+			kind="Quotation"
+			:base="Number(doc.net_total) || 0"
+			:currency="doc.currency"
+			class="mt-4"
+			@save="persist"
+		/>
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
 			<div class="lg:col-span-2 border border-ink-200 overflow-hidden" style="border-radius: 8px">

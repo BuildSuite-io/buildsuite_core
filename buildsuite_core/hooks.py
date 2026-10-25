@@ -204,7 +204,10 @@ doc_events = {
 	"Payment Entry": {"before_validate": "buildsuite_core.utils.payment.default_bank_reference"},
 	# ERPNext stamps the global default company; BuildSuite resolves the working one (which
 	# follows the topbar switcher), and the print's letter head is picked from it.
-	"Quotation": {"before_insert": "buildsuite_core.utils.quotation.set_company"},
+	"Quotation": {
+		"before_insert": "buildsuite_core.utils.quotation.set_company",
+		"validate": "buildsuite_core.utils.quotation.clear_milestone_timing",
+	},
 	# Petty Cash Request + Expense Entry: the beneficiary (requested_by / holder Employee's user)
 	# becomes `owner` so native "Only If Creator" DocPerms scope to them; the real entry-maker is
 	# kept in `raised_by`. owner must be swapped after_insert (insert() force-sets owner=session.user).
