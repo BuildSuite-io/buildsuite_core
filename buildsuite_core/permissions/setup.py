@@ -190,6 +190,7 @@ ITEM_ROLE_PERMS = {
 	"BuildSuite Procurement Officer": _FULL,  # maintains Item.rate_master
 	"BuildSuite Store Keeper": _FULL,
 	"BuildSuite Accountant": _READ,
+	"BuildSuite Foreman": _SELECT_READ,  # picks + views items on requests / issues
 }
 
 # Roles that may confirm a Rate Master rate update from the PO-submit dialog. The
