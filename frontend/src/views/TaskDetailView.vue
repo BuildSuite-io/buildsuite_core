@@ -10,6 +10,7 @@ import { fetchProjectBounds } from "@/utils/projectBounds";
 import { ref, reactive, computed, watch, nextTick } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
 import AccessDenied from "@/components/AccessDenied.vue";
@@ -42,6 +43,7 @@ import { __ } from "@/utils/translate";
 const props = defineProps({ id: String });
 const router = useRouter();
 const store = useDataStore();
+const session = useSessionStore();
 const adapter = createDataAdapter(store);
 const { canEdit, canDelete, canCreate, canEditRecord, canDeleteRecord } = usePermissions();
 const { taskTypes } = useTaskTypes();
@@ -172,8 +174,8 @@ function depTypeTitle(t) {
 	return t === "FS"
 		? __("Finish to Start")
 		: t === "SS"
-			? __("Start to Start")
-			: __("Finish to Finish");
+		? __("Start to Start")
+		: __("Finish to Finish");
 }
 
 // Add/edit modal. role: 'pred' (other task is the predecessor of this one) or
@@ -241,14 +243,14 @@ async function saveDep() {
 				props.id,
 				depForm.otherTaskId,
 				depForm.dependency_type,
-				Number(depForm.lag) || 0,
+				Number(depForm.lag) || 0
 			);
 		} else {
 			await addTaskPredecessor(
 				depForm.otherTaskId,
 				props.id,
 				depForm.dependency_type,
-				Number(depForm.lag) || 0,
+				Number(depForm.lag) || 0
 			);
 		}
 		await loadDeps();
@@ -276,8 +278,8 @@ const depPickerFilters = computed(() =>
 		? [
 				["project", "=", task.value.projectId],
 				["name", "!=", props.id],
-			]
-		: [["name", "!=", props.id]],
+		  ]
+		: [["name", "!=", props.id]]
 );
 
 const projectResource = ref(null);
@@ -483,7 +485,7 @@ function clearPendingAttachments() {
 
 function resetProgressForm() {
 	progressForm.entryDate = new Date().toISOString().slice(0, 10);
-	progressForm.enteredBy = store.user?.id || store.team[0]?.id || "";
+	progressForm.enteredBy = session.user && session.user !== "Guest" ? session.user : "";
 	progressForm.progressPct = task.value?.progress ?? 0;
 	progressForm.narrative = "";
 	progressForm.skilledLabour = 0;
@@ -516,7 +518,7 @@ function validateProgressEntry() {
 		// Progress is cumulative + strictly increasing — it must exceed the current value.
 		e.progressPct = __(
 			"Progress must increase — enter a value above the current {0}%. Entries are cumulative.",
-			[floor],
+			[floor]
 		);
 	}
 	if (progressForm.blockerFlag && !progressForm.blockerNote.trim()) {
@@ -606,7 +608,7 @@ watch(
 	() => {
 		if (task.value && !editing.value) form.value = buildEditForm(task.value);
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -625,11 +627,11 @@ async function saveEdit() {
 			form.value.endDate,
 			b.start,
 			b.end,
-			"project",
+			"project"
 		);
 	if (boundsErr) {
 		setEditErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -802,7 +804,9 @@ usePageTitle(() => task.value?.name);
 								aria-hidden="true"
 								v-html="getWorkspaceIconPath('chart-bar')"
 							/>
-							<h3 class="text-sm font-semibold text-ink-900">{{ __("Progress") }}</h3>
+							<h3 class="text-sm font-semibold text-ink-900">
+								{{ __("Progress") }}
+							</h3>
 						</div>
 						<button
 							v-if="
@@ -848,7 +852,7 @@ usePageTitle(() => task.value?.name);
 							<template v-else>
 								{{
 									__(
-										"No progress entries filed yet — progress derives from the latest entry.",
+										"No progress entries filed yet — progress derives from the latest entry."
 									)
 								}}
 							</template>
@@ -1128,7 +1132,9 @@ usePageTitle(() => task.value?.name);
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit task") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Edit task") }}
+							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">{{ task.name }}</p>
 						</div>
 						<button
@@ -1152,7 +1158,7 @@ usePageTitle(() => task.value?.name);
 								required
 								:hint="
 									__(
-										'Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate.',
+										'Activity = standard work with progress entries; Milestone = checkpoint with no qty progress; Inspection = pass/fail gate.'
 									)
 								"
 							>
@@ -1288,7 +1294,9 @@ usePageTitle(() => task.value?.name);
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("File progress entry") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("File progress entry") }}
+							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ task.name }} · {{ __("currently") }} {{ task.progress }}% ·
 								{{ __(task.status) }}
@@ -1313,7 +1321,7 @@ usePageTitle(() => task.value?.name);
 								:hint="
 									__(
 										'The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.',
-										[task.progress || 0],
+										[task.progress || 0]
 									)
 								"
 								:error="progressErrors.progressPct"
@@ -1342,7 +1350,9 @@ usePageTitle(() => task.value?.name);
 								<div class="flex items-center gap-2 py-1">
 									<UserAvatar :user-id="progressForm.enteredBy" size="xs" />
 									<span class="text-sm text-ink-800">{{
-										store.teamMember(progressForm.enteredBy)?.name || "—"
+										store.teamMember(progressForm.enteredBy)?.name ||
+										progressForm.enteredBy ||
+										"—"
 									}}</span>
 									<span
 										v-if="store.teamMember(progressForm.enteredBy)?.role"
@@ -1355,14 +1365,18 @@ usePageTitle(() => task.value?.name);
 							<div class="md:col-span-2">
 								<DeskField
 									:label="__('Narrative')"
-									:hint="__('What was completed today? Any context worth recording?')"
+									:hint="
+										__(
+											'What was completed today? Any context worth recording?'
+										)
+									"
 								>
 									<DeskTextarea
 										v-model="progressForm.narrative"
 										:rows="3"
 										:placeholder="
 											__(
-												'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.',
+												'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.'
 											)
 										"
 									/>
@@ -1421,7 +1435,7 @@ usePageTitle(() => task.value?.name);
 										:rows="2"
 										:placeholder="
 											__(
-												'e.g. Afternoon shower delayed final bay by 2 hours',
+												'e.g. Afternoon shower delayed final bay by 2 hours'
 											)
 										"
 										@input="clearProgressError('blockerNote')"
@@ -1450,7 +1464,7 @@ usePageTitle(() => task.value?.name);
 								:label="__('Files')"
 								:hint="
 									__(
-										'Site photos, QC reports, drawings — picked here and saved with the entry.',
+										'Site photos, QC reports, drawings — picked here and saved with the entry.'
 									)
 								"
 							>
@@ -1593,8 +1607,8 @@ usePageTitle(() => task.value?.name);
 								depForm.mode === "edit"
 									? __("Edit dependency")
 									: depForm.mode === "add-pred"
-										? __("Add predecessor")
-										: __("Add successor")
+									? __("Add predecessor")
+									: __("Add successor")
 							}}
 						</h2>
 						<button
