@@ -11,6 +11,7 @@ import { ref, reactive, computed, watch, nextTick } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
+import { useUserNames } from "@/composables/useUserNames";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
 import AccessDenied from "@/components/AccessDenied.vue";
@@ -44,6 +45,16 @@ const props = defineProps({ id: String });
 const router = useRouter();
 const store = useDataStore();
 const session = useSessionStore();
+const { userName } = useUserNames();
+const enteredByName = computed(
+	() => store.teamMember(progressForm.enteredBy)?.name || userName(progressForm.enteredBy) || "—"
+);
+const enteredByRole = computed(
+	() =>
+		store.teamMember(progressForm.enteredBy)?.role ||
+		(progressForm.enteredBy === session.user ? session.access?.persona : "") ||
+		""
+);
 const adapter = createDataAdapter(store);
 const { canEdit, canDelete, canCreate, canEditRecord, canDeleteRecord } = usePermissions();
 const { taskTypes } = useTaskTypes();
@@ -1349,16 +1360,9 @@ usePageTitle(() => task.value?.name);
 							>
 								<div class="flex items-center gap-2 py-1">
 									<UserAvatar :user-id="progressForm.enteredBy" size="xs" />
-									<span class="text-sm text-ink-800">{{
-										store.teamMember(progressForm.enteredBy)?.name ||
-										progressForm.enteredBy ||
-										"—"
-									}}</span>
-									<span
-										v-if="store.teamMember(progressForm.enteredBy)?.role"
-										class="text-[11px] text-ink-500"
-										>·
-										{{ store.teamMember(progressForm.enteredBy).role }}</span
+									<span class="text-sm text-ink-800">{{ enteredByName }}</span>
+									<span v-if="enteredByRole" class="text-[11px] text-ink-500"
+										>· {{ enteredByRole }}</span
 									>
 								</div>
 							</DeskField>
