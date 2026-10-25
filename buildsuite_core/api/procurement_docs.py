@@ -511,6 +511,22 @@ def po_committed_by_cost_code(project: str):
 	return out
 
 
+def po_uncoded_committed(project: str):
+	"""Total of SUBMITTED Purchase Order line amounts with no cost-code group — spend that is
+	ordered but cannot appear in the BOQ 'Committed' column."""
+	if not project:
+		return 0
+	pos = frappe.get_all(PURCHASE_ORDER, filters={"project": project, "docstatus": 1}, pluck="name")
+	if not pos:
+		return 0
+	rows = frappe.get_all(
+		"Purchase Order Item",
+		filters={"parent": ["in", pos]},
+		fields=["custom_cost_code_group", "amount"],
+	)
+	return sum((r.amount or 0) for r in rows if not r.custom_cost_code_group)
+
+
 @frappe.whitelist()
 def delete_purchase_order(name: str):
 	frappe.delete_doc(PURCHASE_ORDER, name)

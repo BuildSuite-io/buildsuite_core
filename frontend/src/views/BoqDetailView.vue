@@ -16,7 +16,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode, getUncodedPoCommitted } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -367,15 +367,19 @@ function groupTotals(groupId) {
 // Committed is a group-level column: the sum of open WO line amounts mapped to the
 // group's cost code. WP + Cost Head are per-item (already on the item).
 const committedMap = ref({}); // { cost_code_group: amount }
+const uncodedCommitted = ref(0); // submitted PO value with no cost code
 watch(
 	() => boq.value?.projectId,
 	async (pid) => {
 		committedMap.value = {};
+		uncodedCommitted.value = 0;
 		if (!pid) return;
 		try {
 			committedMap.value = (await getCommittedByCostCode(pid)) || {};
+			uncodedCommitted.value = Number(await getUncodedPoCommitted(pid)) || 0;
 		} catch {
 			committedMap.value = {};
+			uncodedCommitted.value = 0;
 		}
 	},
 	{ immediate: true }
@@ -2076,6 +2080,21 @@ const breadcrumbs = computed(() => {
 						</div>
 					</template>
 				</template>
+
+				<div
+					v-if="hasProject && uncodedCommitted > 0"
+					class="px-4 py-2 border-t border-ink-200 bg-warning-50 text-[11px] text-ink-700"
+				>
+					{{
+						__(
+							"{0} of material has been ordered on this project without a cost code, so it is not in Committed above.",
+							[fmtCompactINR(uncodedCommitted)]
+						)
+					}}
+					<router-link to="/procurement/purchase-orders" class="desk-link">{{
+						__("Open purchase orders")
+					}}</router-link>
+				</div>
 
 				<div v-if="!groups.length" class="px-4 py-12 text-center text-sm text-ink-400">
 					{{ __("This BOQ has no groups yet.") }}

@@ -250,6 +250,14 @@ def committed_by_cost_code(project: str):
 
 
 @frappe.whitelist()
+def uncoded_po_committed(project: str):
+	"""Submitted Purchase Order value with no cost code, i.e. not in the BOQ 'Committed' column."""
+	from buildsuite_core.api.procurement_docs import po_uncoded_committed
+
+	return po_uncoded_committed(project)
+
+
+@frappe.whitelist()
 def subcontract_actual_by_cost_code(project: str):
 	"""Sum of SUBMITTED Subcontractor Bill line `this_period_amount` for a project, grouped by
 	cost-code group. Feeds the BOQ 'Actual' — the subcontracted spend billed so far. It is ADDED
