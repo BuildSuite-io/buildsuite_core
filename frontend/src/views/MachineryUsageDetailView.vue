@@ -19,7 +19,8 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
+import { costCodeToFields, costCodeFromDoc } from "@/utils/costCode";
 import DeskLink from "@/components/desk/DeskLink.vue";
 
 const props = defineProps({ id: String });
@@ -68,7 +69,7 @@ function snapshot() {
 	return {
 		machine: d.machine || "",
 		project: d.project || "",
-		task: d.task || "",
+		cost_code: costCodeFromDoc(d),
 		date: d.date || "",
 		quantity: d.quantity || 0,
 		unit: d.unit || "Days",
@@ -83,12 +84,12 @@ watch(
 	},
 	{ immediate: true }
 );
-// In edit mode, changing the project clears the task (the picker is scoped to the project,
-// and the server rejects a cross-project task).
+// In edit mode, changing the project clears the cost code (codes come from the project's
+// estimate, and the server rejects a code from another project).
 watch(
 	() => form.value.project,
 	(_new, _old) => {
-		if (editing.value) form.value.task = "";
+		if (editing.value) form.value.cost_code = null;
 	}
 );
 
@@ -119,7 +120,7 @@ async function saveEdit() {
 		await adapter.update("Machinery Usage", props.id, {
 			machine: f.machine,
 			project: f.project,
-			task: f.task,
+			...costCodeToFields(f.cost_code),
 			date: f.date,
 			quantity: f.quantity,
 			unit: f.unit,
@@ -155,7 +156,11 @@ const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Equipment"), to: "/equipment" },
 	{ label: __("Machinery Usage"), to: "/machinery-usage" },
-	{ label: doc.value ? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}` : props.id },
+	{
+		label: doc.value
+			? `${machineName(doc.value.machine)} · ${fmtDate(doc.value.date)}`
+			: props.id,
+	},
 ]);
 </script>
 
@@ -209,15 +214,23 @@ const breadcrumbs = computed(() => [
 		<div v-if="!editing">
 			<DeskSection :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')">
-					<DeskLink :to="`/machinery/${doc.machine}`">{{ machineName(doc.machine) }}</DeskLink>
+					<DeskLink :to="`/machinery/${doc.machine}`">{{
+						machineName(doc.machine)
+					}}</DeskLink>
 				</DeskField>
 				<DeskField :label="__('Project')"
 					><div class="text-sm text-ink-700">
 						{{ projectName(doc.project) || "—" }}
 					</div></DeskField
 				>
-				<DeskField :label="__('Task')"
-					><div class="text-sm text-ink-700">{{ doc.task || "—" }}</div></DeskField
+				<DeskField :label="__('Cost code')">
+					<div v-if="doc.cost_code_label" class="text-sm text-ink-800">
+						{{ doc.cost_code_label }}
+					</div>
+					<div v-else class="text-sm italic text-ink-500">{{ __("Not coded") }}</div>
+				</DeskField>
+				<DeskField v-if="doc.task" :label="__('Task')"
+					><div class="text-sm text-ink-700">{{ doc.task }}</div></DeskField
 				>
 				<DeskField :label="__('Date')"
 					><div class="text-sm text-ink-800">{{ fmtDate(doc.date) }}</div></DeskField
@@ -243,6 +256,13 @@ const breadcrumbs = computed(() => [
 					</div></DeskField
 				>
 			</DeskSection>
+			<p class="mt-3 text-xs text-ink-500">
+				{{
+					doc.cost_code_label
+						? __("This cost is posted to the estimate's Actual at its cost code.")
+						: __("Not cost-coded, so this cost does not reach the estimate.")
+				}}
+			</p>
 		</div>
 
 		<!-- Edit mode -->
@@ -265,18 +285,19 @@ const breadcrumbs = computed(() => [
 						allow-clear
 					/>
 				</DeskField>
-				<DeskField :label="__('Task')">
-					<DeskLinkPicker
-						v-model="form.task"
-						doctype="Task"
-						label-field="subject"
-						value-field="name"
-						:filters="form.project ? [['project', '=', form.project]] : []"
-						:placeholder="__('Task…')"
+				<DeskField :label="__('Cost code')">
+					<CostCodePicker
+						v-model="form.cost_code"
+						:project-id="form.project"
+						:placeholder="
+							form.project ? __('Pick cost code…') : __('Pick a project first')
+						"
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Date')"
+					><DeskInput v-model="form.date" type="date"
+				/></DeskField>
 				<DeskField :label="__('Quantity')"
 					><DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5"
 				/></DeskField>

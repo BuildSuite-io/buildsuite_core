@@ -386,7 +386,7 @@ function groupCommitted(group) {
 
 // === Actual — the cost-code actuals log ===
 // Real spend reaches the BOQ through the cost code (Material Consumption + Subcontractor Bill +
-// Expense Entry), resolved by code against this project. The Actual column and the per-code
+// Expense Entry + Journal Entry + Machinery Usage), resolved by code against this project. The Actual column and the per-code
 // drill-down both read this one summary, so the row figure and the modal total always reconcile
 // (one calculation path — R2). Derived live from submitted docs, so a cancelled source drops
 // out for free (R3).
@@ -423,9 +423,15 @@ function groupCoverage(group) {
 // source documents. A group rolls up every line carrying its code (item-coded + group-coded);
 // an item shows only its own lines. Each entry links to the source document it was derived from.
 const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
+const drillTab = ref("all"); // "all" | "machinery"
+const machineryEntries = computed(() =>
+	(actualsDrill.value?.entries || []).filter((e) => e.source_doctype === "Machinery Usage")
+);
+const machineryTotal = computed(() => machineryEntries.value.reduce((t, e) => t + e.amount, 0));
 async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
 	const pid = boq.value?.projectId;
 	if (!pid || (!groupCode && !itemCode)) return;
+	drillTab.value = "all";
 	actualsDrill.value = { title, subtitle, entries: [], total: 0, loading: true };
 	try {
 		const res = await boqApi.getActualsForCode(pid, groupCode, itemCode);
@@ -465,6 +471,8 @@ function closeActualsDrill() {
 function openActualSource(e) {
 	if (e.source_doctype === "Subcontractor Bill") {
 		router.push(`/subcontractor-bills/${e.source_name}`);
+	} else if (e.source_doctype === "Machinery Usage") {
+		router.push(`/machinery-usage/${e.source_name}`);
 	} else if (e.source_doctype === "Stock Entry") {
 		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
 	} else if (e.source_doctype === "Expense Entry") {
@@ -3062,7 +3070,100 @@ const breadcrumbs = computed(() => {
 					>
 						{{ __("No source documents yet — this actual is “— pending”.") }}
 					</div>
-					<table v-else class="w-full text-xs">
+					<div
+						v-if="!actualsDrill.loading && actualsDrill.entries.length"
+						class="flex gap-1 mb-3"
+					>
+						<button
+							v-for="t in [
+								{ key: 'all', label: __('All') },
+								{ key: 'machinery', label: __('Machinery usage') },
+							]"
+							:key="t.key"
+							type="button"
+							class="text-xs px-2.5 py-1 rounded-full border"
+							:class="
+								drillTab === t.key
+									? 'bg-brand-50 text-brand-700 border-brand-200'
+									: 'text-ink-600 border-ink-200 hover:bg-ink-50'
+							"
+							@click="drillTab = t.key"
+						>
+							{{ t.label }}
+						</button>
+					</div>
+					<template v-if="drillTab === 'machinery' && actualsDrill.entries.length">
+						<div
+							v-if="!machineryEntries.length"
+							class="py-8 text-center text-xs text-ink-400"
+						>
+							{{ __("No machinery usage is coded to this cost code.") }}
+						</div>
+						<table v-else class="w-full text-xs">
+							<thead
+								class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+							>
+								<tr>
+									<th class="text-left py-2 pr-2">{{ __("Machine") }}</th>
+									<th class="text-left py-2 pr-2">{{ __("Time used") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Rate") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Fuel") }}</th>
+									<th class="text-right py-2">{{ __("Amount") }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="e in machineryEntries"
+									:key="e.source_name"
+									class="border-b border-ink-100 last:border-0"
+								>
+									<td class="py-2 pr-2">
+										<button
+											type="button"
+											class="text-brand-700 hover:underline text-left"
+											@click="openActualSource(e)"
+										>
+											{{ e.machine_name }}
+										</button>
+										<div class="text-[10px] text-ink-400">
+											<span class="font-mono">{{ e.source_name }}</span>
+											<span v-if="e.date"> · {{ fmtDate(e.date) }}</span>
+										</div>
+									</td>
+									<td class="py-2 pr-2 text-ink-600 whitespace-nowrap">
+										{{ e.quantity }} {{ e.unit }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.rate) }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.fuel) }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ fmtINR(e.amount) }}
+									</td>
+								</tr>
+							</tbody>
+							<tfoot>
+								<tr class="border-t-2 border-ink-200">
+									<td
+										colspan="4"
+										class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+									>
+										{{ __("Machinery total") }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+									>
+										{{ fmtINR(machineryTotal) }}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</template>
+					<table v-else-if="actualsDrill.entries.length" class="w-full text-xs">
 						<thead
 							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
 						>
@@ -3131,7 +3232,7 @@ const breadcrumbs = computed(() => {
 					<p class="text-[10px] text-ink-400 mt-3">
 						{{
 							__(
-								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only."
+								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only. A machinery usage log counts once saved and drops out when deleted."
 							)
 						}}
 					</p>

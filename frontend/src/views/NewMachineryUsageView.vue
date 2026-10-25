@@ -20,7 +20,8 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
-import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
+import { costCodeToFields } from "@/utils/costCode";
 
 const router = useRouter();
 const route = useRoute();
@@ -49,7 +50,7 @@ const today = new Date().toISOString().slice(0, 10);
 const form = reactive({
 	machine: route.query.machine || "",
 	project: "",
-	task: "",
+	cost_code: null,
 	date: today,
 	quantity: 1,
 	unit: "Days",
@@ -77,12 +78,12 @@ watch(
 	{ immediate: true }
 );
 
-// Changing the project clears the task — the task picker is scoped to the project, so a
-// stale cross-project task must never linger (the server rejects it too).
+// Changing the project clears the cost code — codes come from the project's estimate, so a
+// stale code from another project must never linger (the server rejects it too).
 watch(
 	() => form.project,
-	() => {
-		form.task = "";
+	(now, before) => {
+		if (before && now !== before) form.cost_code = null;
 	}
 );
 
@@ -109,7 +110,7 @@ async function onSave() {
 		const res = await adapter.create("Machinery Usage", {
 			machine: form.machine,
 			project: form.project,
-			task: form.task,
+			...costCodeToFields(form.cost_code),
 			date: form.date,
 			quantity: form.quantity,
 			unit: form.unit,
@@ -171,18 +172,26 @@ const breadcrumbs = [
 						:search-placeholder="__('Search project…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Task')">
-					<DeskLinkPicker
-						v-model="form.task"
-						doctype="Task"
-						label-field="subject"
-						value-field="name"
-						:filters="form.project ? [['project', '=', form.project]] : []"
-						:placeholder="__('Task…')"
+				<DeskField
+					:label="__('Cost code')"
+					:hint="
+						__(
+							'Coded usage posts quantity × rate + fuel to the BOQ Actual. Uncoded usage does not.'
+						)
+					"
+				>
+					<CostCodePicker
+						v-model="form.cost_code"
+						:project-id="form.project"
+						:placeholder="
+							form.project ? __('Pick cost code…') : __('Pick a project first')
+						"
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Date')"
+					><DeskInput v-model="form.date" type="date"
+				/></DeskField>
 				<DeskField :label="__('Quantity')">
 					<DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5" />
 				</DeskField>

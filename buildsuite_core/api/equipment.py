@@ -66,7 +66,21 @@ def machinery_usage_report() -> list[dict]:
 	rows = frappe.get_list(
 		"Machinery Usage",
 		filters=({"company": company_scope()} if company_scope() else {}),
-		fields=["name", "machine", "project", "task", "date", "quantity", "unit", "rate", "fuel_cost"],
+		fields=[
+			"name",
+			"machine",
+			"project",
+			"task",
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+			"date",
+			"quantity",
+			"unit",
+			"rate",
+			"fuel_cost",
+		],
 		order_by="date desc",
 		limit_page_length=0,
 	)

@@ -1,7 +1,7 @@
 <script setup>
 // Machinery Usage Log — the Machinery Utilisation report (Equipment workspace). Plant usage +
-// cost by machine / project / task, with the prototype's filter strip (machine, project,
-// period). Rows come resolved from the server (machine / project / task names + total cost) so
+// cost by machine / project / cost code, with the prototype's filter strip (machine, project,
+// period). Rows come resolved from the server (machine / project names, cost code + total cost) so
 // nothing is looked up a second time on the client — see ISS-142.
 
 import { computed, onMounted, reactive, ref, watch } from "vue";
@@ -80,7 +80,7 @@ const rows = computed(() => {
 			(!t ||
 				(u.machine_name || "").toLowerCase().includes(t) ||
 				(u.project_name || "").toLowerCase().includes(t) ||
-				(u.task_subject || "").toLowerCase().includes(t))
+				(u.cost_code_label || u.task_subject || "").toLowerCase().includes(t))
 	);
 });
 
@@ -88,7 +88,7 @@ const columns = [
 	{ key: "date", label: __("Date") },
 	{ key: "machine", label: __("Machine") },
 	{ key: "project", label: __("Project") },
-	{ key: "task", label: __("Task") },
+	{ key: "cost_code", label: __("Cost code") },
 	{ key: "quantity", label: __("Qty"), align: "right" },
 	{ key: "total", label: __("Total cost"), align: "right" },
 ];
@@ -107,7 +107,12 @@ function onRowClick(row) {
 <template>
 	<DeskPage :title="__('Machinery Usage Log')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-save-btn">+ {{ __("Log usage") }}</RouterLink>
+			<RouterLink
+				v-if="canCreate('machineryUsage')"
+				to="/machinery-usage/new"
+				class="desk-save-btn"
+				>+ {{ __("Log usage") }}</RouterLink
+			>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -120,9 +125,9 @@ function onRowClick(row) {
 				@clear="clearFilters"
 			>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Machine") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Machine")
+					}}</span>
 					<span class="w-48 inline-block">
 						<DeskSearchableSelect
 							v-model="f.machine"
@@ -134,9 +139,9 @@ function onRowClick(row) {
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Project") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Project")
+					}}</span>
 					<span class="w-52 inline-block">
 						<DeskSearchableSelect
 							v-model="f.project"
@@ -148,9 +153,9 @@ function onRowClick(row) {
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Used") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Used")
+					}}</span>
 					<DeskInput v-model="f.from" type="date" class="!w-36" />
 					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 					<DeskInput v-model="f.to" type="date" class="!w-36" />
@@ -176,8 +181,11 @@ function onRowClick(row) {
 				<template #cell-project="{ row }">
 					<span class="text-ink-700">{{ row.project_name || "—" }}</span>
 				</template>
-				<template #cell-task="{ row }">
-					<span class="text-ink-500">{{ row.task ? row.task_subject : "—" }}</span>
+				<template #cell-cost_code="{ row }">
+					<span v-if="row.cost_code_label" class="text-ink-700">{{
+						row.cost_code_label
+					}}</span>
+					<span v-else class="italic text-ink-500">{{ __("Not coded") }}</span>
 				</template>
 				<template #cell-quantity="{ row }">
 					<span class="tabular-nums">{{ row.quantity }} {{ row.unit }}</span>
@@ -191,7 +199,10 @@ function onRowClick(row) {
 				<template #empty>
 					<div class="text-sm text-ink-500">
 						{{ loading ? __("Loading usage log…") : __("No usage logged yet.") }}
-						<RouterLink v-if="!loading && canCreate('machineryUsage')" to="/machinery-usage/new" class="desk-link"
+						<RouterLink
+							v-if="!loading && canCreate('machineryUsage')"
+							to="/machinery-usage/new"
+							class="desk-link"
 							>{{ __("Log usage →") }}</RouterLink
 						>
 					</div>
