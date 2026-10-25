@@ -74,17 +74,19 @@ class TestWorkspaceRegistry(_PersonaBase):
 					f"{persona} visible workspaces drifted from the registry",
 				)
 
-	def test_admin_sees_all_twelve(self):
+	def test_admin_sees_all_workspaces(self):
 		email = self._make_user("System Manager (Admin)")
 		self.assertEqual(len(self._visible(email)), len(WORKSPACES))
 
 	def test_independent_exclusions(self):
 		# Straight from the WORKSPACE_VISIBILITY sheet — hard "must not see" cases.
 		cases = {
-			"Estimator": {"exclude": {"procurement", "workforce", "equipment", "accounting"}},
+			"Estimator": {"exclude": {"sales", "procurement", "workforce", "equipment", "accounting"}},
 			"Procurement Officer": {"exclude": {"estimation"}},
 			"HR Manager": {"exclude": {"estimation", "subcontract", "equipment", "accounting"}},
-			"Foreman / Supervisor": {"exclude": {"estimation", "subcontract", "accounting", "buying", "stock"}},
+			"Foreman / Supervisor": {
+				"exclude": {"estimation", "subcontract", "accounting", "buying", "stock"}
+			},
 		}
 		for persona, spec in cases.items():
 			email = self._make_user(persona)
@@ -92,6 +94,12 @@ class TestWorkspaceRegistry(_PersonaBase):
 			for slug in spec["exclude"]:
 				with self.subTest(persona=persona, slug=slug):
 					self.assertNotIn(slug, visible, f"{persona} must NOT see {slug}")
+
+		director = self._make_user("Director / Owner")
+		admin = self._make_user("System Manager (Admin)")
+		bsa = self._make_user("BuildSuite Administrator")
+		for email in (director, admin, bsa):
+			self.assertIn("sales", self._visible(email))
 
 	def test_access_hint_reflects_the_persona(self):
 		# The cosmetic hint returned per workspace matches the sheet for the persona.
@@ -176,9 +184,7 @@ class TestWorkspaceRegistry(_PersonaBase):
 			self.assertIn("Purchase Orders (test)", admin_labels)  # Admin reads PO -> shown
 		finally:
 			frappe.set_user("Administrator")
-			frappe.delete_doc(
-				"BuildSuite Workspace Shortcut", sc.name, ignore_permissions=True, force=True
-			)
+			frappe.delete_doc("BuildSuite Workspace Shortcut", sc.name, ignore_permissions=True, force=True)
 			frappe.db.commit()
 
 	def test_ordering_is_by_sort_order(self):

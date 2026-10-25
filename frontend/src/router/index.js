@@ -52,11 +52,14 @@ const PAGE_TITLES = {
 	assembly: "Assemblies",
 	"assembly-new": "New Assembly",
 	"assembly-detail": "Assembly",
+	"payment-term-templates": "Payment Term Templates",
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",
 	"report-delay-analysis": "Delay Analysis",
 	estimation: "Estimation",
+	sales: "Sales",
+	customers: "Customers",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
@@ -376,6 +379,11 @@ const routes = [
 				component: () => import("@/views/EstimateTemplateDetailView.vue"),
 				props: true,
 			},
+			{
+				path: "payment-term-templates",
+				name: "payment-term-templates",
+				component: () => import("@/views/PaymentTermTemplatesView.vue"),
+			},
 
 			{
 				path: "site-execution",
@@ -425,6 +433,18 @@ const routes = [
 				name: "estimation",
 				meta: { workspace: "estimation" },
 				component: () => import("@/views/workspaces/EstimationWorkspace.vue"),
+			},
+			{
+				path: "sales",
+				name: "sales",
+				meta: { workspace: "sales" },
+				component: () => import("@/views/workspaces/SalesWorkspace.vue"),
+			},
+			{
+				path: "customers",
+				name: "customers",
+				meta: { cap: "customer" },
+				component: () => import("@/views/sales/SalesCustomersView.vue"),
 			},
 			{
 				path: "procurement",
@@ -1196,6 +1216,7 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
+	customers: "customer",
 	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
 	"finance-invoice-new": "salesInvoice",
 	"finance-invoice-edit": "salesInvoice",
