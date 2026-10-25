@@ -43,11 +43,20 @@ export function useAttendanceSheet(getForm) {
 		eachRow((r) => (r.comments = v));
 	}
 
-	// Task is scoped to the project, so a project change drops it. A handler, not a
-	// watcher, for the reason above: Edit swaps the whole form in.
+	// Choosing a header cost code codes every row; a row can then be changed on its own.
+	function setHeaderCostCode(v) {
+		form.value.cost_code = v;
+		eachRow((r) => (r.cost_code = v));
+	}
+
+	// A cost code belongs to one project's estimate, so a project change drops the header's
+	// and every row's. A handler, not a watcher, for the reason above: Edit swaps the whole form in.
 	function setHeaderProject(v) {
+		if (form.value.project !== v) {
+			form.value.cost_code = null;
+			eachRow((r) => (r.cost_code = null));
+		}
 		form.value.project = v;
-		form.value.task = "";
 	}
 
 	const inTable = computed(
@@ -65,6 +74,7 @@ export function useAttendanceSheet(getForm) {
 			status: form.value?.status,
 			overtime_hours: headerOt(),
 			comments: form.value?.comments,
+			cost_code: form.value?.cost_code || null,
 		};
 	}
 
@@ -125,6 +135,7 @@ export function useAttendanceSheet(getForm) {
 		setHeaderStatus,
 		setHeaderOvertime,
 		setHeaderComments,
+		setHeaderCostCode,
 		setHeaderProject,
 		rosterToAdd,
 		rosterTitle,

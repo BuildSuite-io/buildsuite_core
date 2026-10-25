@@ -16,12 +16,14 @@ from frappe import _
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
 	get_assigned_employees,
 	sheet_labour_cost,
+	uncoded_wage,
 )
 
 FIELD_ATTENDANCE = "Field Attendance"
 
 # The only columns read off each employee row — the client can't inject rates.
-_ROW_FIELDS = ("employee", "status", "overtime_hours", "comments")
+_COST_CODE_FIELDS = ("cost_code_type", "cost_code_group", "cost_code_item", "cost_code_label")
+_ROW_FIELDS = ("employee", "status", "overtime_hours", "comments", *_COST_CODE_FIELDS)
 
 
 def _parse_rows(payload) -> list:
@@ -44,6 +46,9 @@ def _serialize(doc) -> dict:
 		"crew": doc.crew,
 		"crew_name": frappe.db.get_value("Crew", doc.crew, "crew_name") if doc.crew else None,
 		"labour_cost": sheet_labour_cost(doc),
+		# Wages on uncoded rows: their registers exist but they do not post to the BOQ Actual.
+		"unposted_cost": uncoded_wage(doc),
+		**{f: doc.get(f) or "" for f in _COST_CODE_FIELDS},
 		"overtime_hours": doc.overtime_hours,
 		"comments": doc.comments,
 		"docstatus": doc.docstatus,
@@ -58,6 +63,7 @@ def _serialize(doc) -> dict:
 				"comments": row.comments,
 				"labour_rate": row.labour_rate,
 				"overtime_rate": row.overtime_rate,
+				**{f: row.get(f) or "" for f in _COST_CODE_FIELDS},
 			}
 			for row in doc.employee_list
 		],
@@ -82,6 +88,10 @@ def save_field_attendance(
 	overtime_hours: float | None = None,
 	comments: str | None = None,
 	employee_list: str | None = None,
+	cost_code_type: str | None = None,
+	cost_code_group: str | None = None,
+	cost_code_item: str | None = None,
+	cost_code_label: str | None = None,
 ) -> dict:
 	"""Create or update a draft attendance sheet (header + employee rows)."""
 	rows = _parse_rows(employee_list)
@@ -120,6 +130,15 @@ def save_field_attendance(
 		doc.overtime_hours = overtime_hours
 	if comments is not None:
 		doc.comments = comments
+	header_code = {
+		"cost_code_type": cost_code_type,
+		"cost_code_group": cost_code_group,
+		"cost_code_item": cost_code_item,
+		"cost_code_label": cost_code_label,
+	}
+	if any(v is not None for v in header_code.values()):
+		for f, v in header_code.items():
+			doc.set(f, v or "")
 
 	doc.set("employee_list", [])
 	for row in rows:

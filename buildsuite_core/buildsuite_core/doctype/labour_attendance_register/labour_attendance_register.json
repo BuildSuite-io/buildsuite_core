@@ -19,6 +19,10 @@
   "project_name",
   "task",
   "task_subject",
+  "cost_code_label",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
   "comments",
   "details_section",
   "wage_rate",
@@ -178,6 +182,34 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
+   "label": "Cost code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_type",
+   "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item",
+   "read_only": 1,
+   "hidden": 1
   }
  ],
  "grid_page_length": 50,
