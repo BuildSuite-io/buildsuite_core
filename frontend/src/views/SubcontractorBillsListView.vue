@@ -138,9 +138,9 @@ function onRowClick(row) {
 			@clear="clearFilters"
 		>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>{{ __("Subcontractor") }}</span
-				>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+					__("Subcontractor")
+				}}</span>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.sub"
@@ -152,9 +152,9 @@ function onRowClick(row) {
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>{{ __("Project") }}</span
-				>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+					__("Project")
+				}}</span>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.project"
@@ -166,9 +166,9 @@ function onRowClick(row) {
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>{{ __("State") }}</span
-				>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+					__("Status")
+				}}</span>
 				<DeskSelect v-model="f.state" class="!w-36">
 					<option value="">{{ __("Any") }}</option>
 					<option value="Draft">{{ __("Draft") }}</option>
@@ -177,9 +177,9 @@ function onRowClick(row) {
 				</DeskSelect>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-					>{{ __("Billed") }}</span
-				>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+					__("Billed")
+				}}</span>
 				<DeskInput v-model="f.from" type="date" class="!w-36" />
 				<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 				<DeskInput v-model="f.to" type="date" class="!w-36" />
@@ -205,7 +205,9 @@ function onRowClick(row) {
 			<template #cell-ra_no="{ row }">
 				<span class="text-xs text-ink-700"
 					>{{ __("Bill") }} {{ row.ra_no
-					}}<span v-if="row.is_direct" class="text-ink-400"> · {{ __("direct") }}</span></span
+					}}<span v-if="row.is_direct" class="text-ink-400">
+						· {{ __("direct") }}</span
+					></span
 				>
 			</template>
 			<template #cell-subcontractor="{ row }">
