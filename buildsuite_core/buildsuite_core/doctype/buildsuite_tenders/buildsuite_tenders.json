@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "TN-.YYYY.-.######",
  "creation": "2026-09-15 21:37:49.665425",

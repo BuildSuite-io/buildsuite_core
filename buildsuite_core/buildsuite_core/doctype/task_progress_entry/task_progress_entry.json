@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "TPE-.{YYYY}.#####",
  "creation": "2026-06-04 18:18:21.036362",
