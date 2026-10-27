@@ -9,15 +9,17 @@ import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSec
 import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() =>
-	new Date().toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" }),
+	new Date().toLocaleDateString(currentLang(), {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	})
 );
-
-
 
 const ESTIMATES = [
 	{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" },
-	{ to: "/quotations", icon: "file-text", label: "Quotations" },
-	{ to: "/tenders", icon: "clipboard-list", label: "Tenders" },
+	// Quotations and Tenders moved to the Sales workspace. An estimate still
+	// raises one ("Create bid from this estimate" on an approved BOQ).
 ];
 const SETUP = [
 	{
@@ -41,12 +43,8 @@ const SETUP = [
 		description: "Reusable BOQ skeletons of assemblies and resources.",
 		cap: "estimateTemplate",
 	},
-	{
-		to: "/payment-term-templates",
-		icon: "hand-coins",
-		label: "Payment Term Templates",
-		description: "Reusable payment schedules to load into a quotation or tender.",
-	},
+	// Payment Term Templates moved to the Sales workspace alongside Quotations
+	// and Tenders, the records that load a payment schedule.
 ];
 </script>
 
