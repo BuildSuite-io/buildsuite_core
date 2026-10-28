@@ -1148,16 +1148,42 @@ const canSetUpWork = computed(
 // The secondary actions collapse into a single ⋯ overflow menu (was a flat row of buttons).
 const mobileMenuOpen = ref(false);
 
+// A bid raised from this estimate, still waiting to become a project. When present, creating the
+// project is the suggested next step (primary action) and its contract value + payment schedule
+// come across — see create_project_from_boq.
+const wonOffer = ref(null);
+watch(
+	() => [boq.value?.id, boq.value?.status, hasProject.value],
+	async () => {
+		wonOffer.value = null;
+		if (boq.value?.status === "Approved" && !hasProject.value) {
+			try {
+				wonOffer.value = await boqApi.boqWonOffer(boq.value.id);
+			} catch {
+				wonOffer.value = null;
+			}
+		}
+	},
+	{ immediate: true }
+);
+// Create project leads over create bid once a bid exists (the bid was the point; now bank it).
+const projectIsPrimary = computed(() => canCreateProjectHere.value && !!wonOffer.value);
+
 // Primary action dispatcher — Submit when Draft, Approve when Submitted, Create bid when it's an
 // approved estimate.
 const showPrimary = computed(
-	() => ((canSubmit.value || canApprove.value) && canSubmitCap("boq")) || canRaiseBid.value
+	() =>
+		((canSubmit.value || canApprove.value) && canSubmitCap("boq")) ||
+		projectIsPrimary.value ||
+		canRaiseBid.value
 );
 const primaryLabel = computed(() =>
 	canSubmit.value
 		? __("Submit for approval")
 		: canApprove.value
 		? __("Approve")
+		: projectIsPrimary.value
+		? __("Create project")
 		: canRaiseBid.value
 		? __("Create bid from this estimate")
 		: ""
@@ -1165,6 +1191,7 @@ const primaryLabel = computed(() =>
 function primaryAction() {
 	if (canSubmit.value) submit();
 	else if (canApprove.value) approve();
+	else if (projectIsPrimary.value) openProjectModal("create");
 	else if (canRaiseBid.value) openBidModal();
 }
 
@@ -1381,7 +1408,7 @@ const breadcrumbs = computed(() => {
 						<!-- Create project sits outside the overflow menu so it's one click from an
                  approved estimate; everything else collapses under ⋯. -->
 						<button
-							v-if="canCreateProjectHere"
+							v-if="canCreateProjectHere && !projectIsPrimary"
 							type="button"
 							class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 rounded"
 							@click="openProjectModal('create')"
@@ -2987,6 +3014,20 @@ const breadcrumbs = computed(() => {
 						</button>
 					</header>
 					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<!-- Carried from the won bid -->
+						<div
+							v-if="projectModal === 'create' && wonOffer"
+							class="bg-brand-50 border border-brand-200 px-3 py-2 text-xs text-brand-800"
+							style="border-radius: 6px"
+						>
+							{{
+								__(
+									"Won from {0} {1} — its contract value and payment schedule carry onto the project.",
+									[wonOffer.kind, wonOffer.name]
+								)
+							}}
+						</div>
+
 						<!-- Project details (create only) -->
 						<div v-if="projectModal === 'create'" class="grid grid-cols-2 gap-3">
 							<DeskField :label="__('Project name')" required>

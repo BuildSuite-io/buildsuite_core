@@ -128,3 +128,7 @@ export const setUpWorkFromBoq = (boq, data = {}) =>
 // The BOQ's groups with amount / item count / existing-WP / tasks-to-create — drives the
 // "create project" modal checklist. Returns { groups, total, has_project }.
 export const boqWorkPlan = (boq) => request("boq_work_plan", { boq });
+
+// The bid (if any) a project would be created from — its kind, name and priced total. Returns
+// { kind, doctype, name, taxable } or null. Drives the "Create project" primary action.
+export const boqWonOffer = (boq) => request("boq_won_offer", { boq });

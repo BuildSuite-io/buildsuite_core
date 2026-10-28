@@ -282,6 +282,8 @@ def _tender_from_boq(src, lines: list[dict], title: str, submission_deadline: st
 			"submission_deadline": submission_deadline,
 			"margin_percent": flt(src.margin_rate),
 			"tax_percent": flt(src.tax_rate),
+			"source_boq": src.name,
+			"source_boq_revision": src.revision,
 			"buildsuite_tenders_items": [
 				{
 					"source": "BOQ",
@@ -314,6 +316,8 @@ def _quotation_from_boq(src, lines: list[dict], title: str) -> str:
 			"party_name": src.customer,
 			"title": title,
 			"project": src.project or None,
+			"source_boq": src.name,
+			"source_boq_revision": src.revision,
 			"transaction_date": today(),
 			"items": [
 				{
@@ -434,6 +438,42 @@ def _set_up_work_from_boq(src, work: str, group_ids=None) -> dict:
 	return out
 
 
+def _won_offer_for_boq(src):
+	"""The bid a project should be made from: a Quotation or BuildSuite Tender raised from this
+	estimate's lineage (``source_boq``) that isn't attached to a project yet. Live has no formal
+	"awarded" status, so a raised, still-unattached bid is taken as the winning one; the most recent
+	wins. Returns ``{kind, doctype, name, taxable}`` (``taxable`` = the priced total before tax) or
+	``None``."""
+	lineage = _revision_peers(src)
+	if not lineage:
+		return None
+	cands = []
+	# Quotation prices into net_total (pre-tax); a BuildSuite Tender into bid_before_tax.
+	for doctype, kind, total_field, date_field in (
+		("BuildSuite Tenders", "Tender", "bid_before_tax", "date_issued"),
+		("Quotation", "Quotation", "net_total", "transaction_date"),
+	):
+		for r in frappe.get_all(
+			doctype,
+			filters={"source_boq": ("in", lineage), "project": ("in", ["", None])},
+			fields=["name", f"{total_field} as taxable", f"{date_field} as decided"],
+		):
+			cands.append(
+				{
+					"kind": kind,
+					"doctype": doctype,
+					"name": r.name,
+					"taxable": flt(r.taxable),
+					"decided": str(r.decided or ""),
+				}
+			)
+	if not cands:
+		return None
+	cands.sort(key=lambda c: c["decided"], reverse=True)
+	top = cands[0]
+	return {"kind": top["kind"], "doctype": top["doctype"], "name": top["name"], "taxable": top["taxable"]}
+
+
 @frappe.whitelist()
 def create_project_from_boq(
 	boq: str,
@@ -466,6 +506,12 @@ def create_project_from_boq(
 	if not project_name:
 		frappe.throw(_("Give the project a name."))
 
+	# A bid raised from this estimate (not yet attached to a project) carries the agreed revenue and
+	# the payment schedule onto the project; otherwise the contract value is the estimate's own
+	# priced total (planned cost + margin).
+	won = _won_offer_for_boq(src)
+	contract_value = won["taxable"] if won else flt(src.planned_amount) * (1 + flt(src.margin_rate) / 100.0)
+
 	proj = frappe.get_doc(
 		{
 			"doctype": "Project",
@@ -478,6 +524,7 @@ def create_project_from_boq(
 			"expected_start_date": start_date or None,
 			"expected_end_date": end_date or None,
 			"estimated_costing": flt(src.planned_amount),
+			"contract_value": flt(contract_value),
 			"project_manager": pm or None,
 			"notes": _("Created from estimate {0}.").format(src.name),
 			# Build the work breakdown from this BOQ, not the category template.
@@ -486,7 +533,30 @@ def create_project_from_boq(
 			"custom_seed_default_work_packages": 0,
 		}
 	)
+	if won:
+		offer = frappe.get_doc(won["doctype"], won["name"])
+		if not proj.project_category:
+			proj.project_category = offer.get("project_category")
+		proj.payment_term_template = offer.get("payment_term_template")
+		# Project / Quotation / Tender all hold the schedule as BuildSuite Payment Milestone rows,
+		# so the agreed schedule copies across verbatim.
+		for m in offer.get("payment_milestones") or []:
+			proj.append(
+				"payment_milestones",
+				{
+					"payment_milestone": m.payment_milestone,
+					"payable": m.payable,
+					"percentage": m.percentage,
+					"client_sign_off": m.client_sign_off,
+					"stage": m.stage,
+					"days_after_project_start": m.days_after_project_start,
+				},
+			)
 	proj.insert(ignore_permissions=True)
+
+	# Link the won bid to the project it produced.
+	if won:
+		frappe.db.set_value(won["doctype"], won["name"], "project", proj.name, update_modified=False)
 
 	# Relink the whole revision lineage to the project, parent-first (revision asc) so the
 	# same-company guard never trips — mirrors attach_estimate_to_project.
@@ -501,6 +571,8 @@ def create_project_from_boq(
 	result = {
 		"project": proj.name,
 		"project_name": proj.project_name,
+		"contract_value": flt(contract_value),
+		"from_offer": won,
 		"work": {"work_packages": 0, "tasks": 0},
 	}
 	if work != "none":
@@ -563,6 +635,17 @@ def boq_work_plan(boq: str):
 			}
 		)
 	return {"groups": groups, "total": total, "has_project": bool(project)}
+
+
+@frappe.whitelist()
+def boq_won_offer(boq: str):
+	"""The bid (if any) a project would be created from — its kind, name and priced total. Drives
+	the "Create project" primary action and the contract-value hint. ``None`` when no bid from this
+	estimate is still waiting to become a project."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "read", doc=src):
+		frappe.throw(_("You are not permitted to read this BOQ."), frappe.PermissionError)
+	return _won_offer_for_boq(src)
 
 
 # --- assembly explosion ---------------------------------------------------
