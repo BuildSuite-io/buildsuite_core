@@ -974,40 +974,42 @@ def import_template(boq: str, estimate_template: str):
 
 @frappe.whitelist()
 def estimate_template_preview(estimate_template: str):
-	"""The rows an Estimate Template would seed into a BOQ — grouped, with each row's unit / qty /
-	rate / amount and a running total — so the import modal shows what will be created before it is.
-	Mirrors import_template's row resolution."""
+	"""What an Estimate Template would seed into a BOQ: the template's description, one entry per row
+	(its source + kind, group, unit, qty, rate, amount) and a total — so the import modal shows what
+	gets created before it does. Mirrors import_template's row resolution."""
 	if not frappe.has_permission("Estimate Template", "read"):
 		frappe.throw(_("You are not permitted to read estimate templates."), frappe.PermissionError)
 	tpl = frappe.get_doc("Estimate Template", estimate_template)
-	groups, order, total = {}, [], 0.0
+	rows, total = [], 0.0
 	for row in tpl.rows:
-		gname = row.group_name or "General"
-		if gname not in groups:
-			groups[gname] = []
-			order.append(gname)
 		qty = flt(row.placeholder_qty)
 		rate = flt(row.rate)
 		amount = flt(row.amount) or qty * rate
 		total += amount
-		groups[gname].append(
+		if row.line_type == "Assembly":
+			kind, label = "Assembly", (row.description or row.assembly or "")
+		elif row.line_type == "Resource":
+			kind, label = "Rate Master", (row.description or row.resource or "")
+		else:
+			kind, label = "", (row.description or "")
+		rows.append(
 			{
-				"description": row.description or (row.assembly or row.resource or _("Item")),
-				"line_type": row.line_type,
-				"unit": row.uom or "Nos",
+				"source_label": label,
+				"source_kind": kind,
+				"group_name": row.group_name or "",
+				"unit": row.uom or "",
 				"qty": qty,
 				"rate": rate,
 				"amount": amount,
+				"cost_head": row.cost_head or "",
 			}
 		)
 	return {
 		"template_name": tpl.template_name,
-		"row_count": len(tpl.rows),
+		"description": tpl.description or "",
+		"row_count": len(rows),
 		"total": total,
-		"groups": [
-			{"group_name": g, "rows": groups[g], "subtotal": sum(r["amount"] for r in groups[g])}
-			for g in order
-		],
+		"rows": rows,
 	}
 
 

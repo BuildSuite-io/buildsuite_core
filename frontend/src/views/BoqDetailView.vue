@@ -3232,148 +3232,221 @@ const breadcrumbs = computed(() => {
 			<!-- ========== Import template modal ========== -->
 			<div
 				v-if="importModal"
-				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
-				@click="importModal = false"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="importModal = false"
 			>
 				<div
-					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-2xl flex flex-col"
-					style="border-radius: 2px; max-height: calc(100vh - 2rem)"
+					class="bg-white border border-ink-200 w-full max-w-3xl shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
 					@click.stop
 				>
-					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
-						<h2 class="text-sm font-semibold text-ink-900">
-							{{ __("Import from template") }}
-						</h2>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Import from Template") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Seeds skeleton rows onto this Draft BOQ. Existing lines stay intact. Assembly-driven lines auto-explode into snapshot sub-items."
+									)
+								}}
+							</p>
+						</div>
 						<button
 							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
 							@click="importModal = false"
-							class="ml-auto text-ink-400 hover:text-ink-900"
 						>
-							✕
+							×
 						</button>
-					</div>
-					<div class="p-4 space-y-3 overflow-y-auto flex-1">
-						<DeskField :label="__('Estimate template')" required>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Template')" required>
 							<DeskLinkPicker
 								v-model="importForm.template"
 								doctype="Estimate Template"
 								label-field="template_name"
 								value-field="name"
 								:search-fields="['template_code', 'template_name', 'name']"
-								:placeholder="__('Pick a template')"
+								:placeholder="__('Pick a template…')"
 							/>
 						</DeskField>
-						<p class="text-[11px] text-ink-500">
-							{{
-								__(
-									"Adds the template's rows to this BOQ. Assembly lines explode into sub-items."
-								)
-							}}
-						</p>
 
-						<!-- Preview — what the template will create, before importing -->
+						<!-- Selected template description -->
+						<div
+							v-if="importPreview?.description"
+							class="px-3 py-2 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 italic"
+							style="border-radius: 6px"
+						>
+							{{ importPreview.description }}
+						</div>
+
 						<div
 							v-if="importPreviewLoading"
 							class="text-xs text-ink-500 py-4 text-center"
 						>
 							{{ __("Loading preview…") }}
 						</div>
+
+						<!-- Preview block — header strip + per-row grid + footer total -->
 						<div
-							v-else-if="importPreview"
-							class="border border-ink-200"
-							style="border-radius: 6px"
+							v-else-if="importPreview && importPreview.rows.length"
+							class="border border-ink-200 overflow-hidden"
+							style="border-radius: 8px"
 						>
 							<div
-								class="px-3 py-2 border-b border-ink-100 bg-ink-50 flex items-center justify-between text-[11px]"
+								class="px-3 py-2 bg-gradient-to-r from-brand-50 to-white border-b border-ink-200 flex items-center justify-between"
 							>
-								<span class="font-medium text-ink-700">{{
-									__("{0} row(s) across {1} group(s)", [
-										importPreview.row_count,
-										importPreview.groups.length,
-									])
-								}}</span>
-								<span class="text-ink-900 font-semibold tabular-nums">{{
-									fmtINR(importPreview.total)
-								}}</span>
-							</div>
-							<div class="max-h-72 overflow-y-auto">
-								<table class="w-full text-[11px]">
-									<template
-										v-for="g in importPreview.groups"
-										:key="g.group_name"
+								<div>
+									<div
+										class="text-[11px] uppercase tracking-wider text-ink-500 font-semibold"
 									>
-										<thead>
-											<tr class="bg-ink-50/60 text-ink-500">
-												<th
-													class="text-left px-3 py-1 font-medium"
-													colspan="3"
-												>
-													{{ g.group_name }}
-												</th>
-												<th
-													class="text-right px-3 py-1 font-medium tabular-nums"
-												>
-													{{ fmtINR(g.subtotal) }}
-												</th>
-											</tr>
-										</thead>
-										<tbody>
-											<tr
-												v-for="(r, i) in g.rows"
-												:key="g.group_name + '-' + i"
-												class="border-t border-ink-100"
-											>
-												<td class="px-3 py-1 text-ink-800">
-													{{ r.description }}
-												</td>
-												<td
-													class="px-3 py-1 text-ink-500 whitespace-nowrap"
-												>
-													{{ r.qty }} {{ r.unit }}
-												</td>
-												<td
-													class="px-3 py-1 text-right text-ink-500 tabular-nums"
-												>
-													{{ fmtINR(r.rate) }}
-												</td>
-												<td
-													class="px-3 py-1 text-right text-ink-800 tabular-nums"
-												>
-													{{ fmtINR(r.amount) }}
-												</td>
-											</tr>
-										</tbody>
-									</template>
-								</table>
-								<div
-									v-if="!importPreview.row_count"
-									class="px-3 py-3 text-xs text-ink-500 text-center"
-								>
-									{{ __("This template has no rows.") }}
+										{{ __("Preview · what gets created") }}
+									</div>
+									<div class="text-[11px] text-ink-500 mt-0.5">
+										{{
+											__("{0} line(s) · grouped by template's group names", [
+												importPreview.rows.length,
+											])
+										}}
+									</div>
+								</div>
+								<div class="text-right">
+									<div
+										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+									>
+										{{ __("Estimated total") }}
+									</div>
+									<div class="text-sm font-semibold text-ink-900 tabular-nums">
+										{{ fmtINR(importPreview.total) }}
+									</div>
 								</div>
 							</div>
+
+							<div
+								class="grid bg-ink-50 border-b border-ink-100 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								style="
+									grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+								"
+							>
+								<div class="px-2 py-1.5">#</div>
+								<div class="px-2 py-1.5">{{ __("Source") }}</div>
+								<div class="px-2 py-1.5">{{ __("Unit") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Qty") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Rate") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Amount") }}</div>
+								<div class="px-2 py-1.5">{{ __("Cost head") }}</div>
+							</div>
+
+							<div class="divide-y divide-ink-100 text-xs">
+								<div
+									v-for="(row, i) in importPreview.rows"
+									:key="i"
+									class="grid items-center"
+									style="
+										grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+									"
+								>
+									<div class="px-2 py-2 text-ink-400 tabular-nums">
+										{{ i + 1 }}
+									</div>
+									<div class="px-2 py-2 min-w-0">
+										<div class="text-ink-900 font-medium truncate">
+											{{ row.source_label || "—" }}
+										</div>
+										<div class="text-ink-500 text-[11px] truncate">
+											<span
+												v-if="row.source_kind"
+												class="text-[9px] px-1 py-0.5 mr-1 font-medium uppercase tracking-wider"
+												:class="
+													row.source_kind === 'Assembly'
+														? 'bg-brand-50 text-brand-700'
+														: 'bg-ink-100 text-ink-600'
+												"
+												style="border-radius: 2px"
+												>{{ row.source_kind }}</span
+											>
+											{{ row.group_name || __("Auto from template") }}
+										</div>
+									</div>
+									<div class="px-2 py-2 text-ink-700">{{ row.unit || "—" }}</div>
+									<div class="px-2 py-2 text-right tabular-nums text-ink-700">
+										{{ row.qty }}
+									</div>
+									<div class="px-2 py-2 text-right tabular-nums text-ink-700">
+										{{ fmtINR(row.rate) }}
+									</div>
+									<div
+										class="px-2 py-2 text-right tabular-nums font-medium text-ink-900"
+									>
+										{{ fmtINR(row.amount) }}
+									</div>
+									<div class="px-2 py-2 text-ink-700">
+										{{ row.cost_head || "—" }}
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="grid border-t border-ink-200 bg-ink-50 text-xs"
+								style="
+									grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+								"
+							>
+								<div
+									class="px-2 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+									style="grid-column: 1 / span 5"
+								>
+									{{ __("Total of imported lines") }}
+								</div>
+								<div
+									class="px-2 py-2 text-right tabular-nums font-semibold text-ink-900"
+								>
+									{{ fmtINR(importPreview.total) }}
+								</div>
+								<div></div>
+							</div>
+						</div>
+
+						<!-- Empty state -->
+						<div
+							v-else-if="importPreview"
+							class="px-3 py-4 bg-ink-50 border border-ink-200 text-xs text-ink-500 italic"
+							style="border-radius: 6px"
+						>
+							{{ __("No rows on the chosen template. Author rows on") }}
+							<DeskLink to="/estimate-template" class="desk-link">{{
+								__("Estimate Templates")
+							}}</DeskLink>
+							{{ __("or pick another template above.") }}
 						</div>
 					</div>
-					<div
-						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
 					>
 						<button
 							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
 							@click="importModal = false"
-							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
 							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canEdit('boq')"
 							type="button"
-							:disabled="!importForm.template"
-							@click="doImport"
 							class="desk-save-btn"
+							:disabled="!importPreview || !importPreview.rows.length"
+							@click="doImport"
 						>
-							{{ __("Import") }}
+							{{ __("Import {0} row(s)", [importPreview?.rows?.length || 0]) }}
 						</button>
-					</div>
+					</footer>
 				</div>
 			</div>
 
