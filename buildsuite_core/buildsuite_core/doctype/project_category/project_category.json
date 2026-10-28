@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:category_name",
  "creation": "2026-07-02 00:00:00.000000",

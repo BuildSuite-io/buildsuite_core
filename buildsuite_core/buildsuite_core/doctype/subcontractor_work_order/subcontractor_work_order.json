@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "SWO-.YYYY.-.#####",
  "creation": "2026-07-31 22:32:39.935541",
  "doctype": "DocType",

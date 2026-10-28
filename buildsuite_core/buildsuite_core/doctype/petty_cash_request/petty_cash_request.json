@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "PCR-.YYYY.-.#####",
  "creation": "2026-07-23 00:00:00.000000",
  "doctype": "DocType",
