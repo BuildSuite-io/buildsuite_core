@@ -973,6 +973,45 @@ def import_template(boq: str, estimate_template: str):
 
 
 @frappe.whitelist()
+def estimate_template_preview(estimate_template: str):
+	"""The rows an Estimate Template would seed into a BOQ — grouped, with each row's unit / qty /
+	rate / amount and a running total — so the import modal shows what will be created before it is.
+	Mirrors import_template's row resolution."""
+	if not frappe.has_permission("Estimate Template", "read"):
+		frappe.throw(_("You are not permitted to read estimate templates."), frappe.PermissionError)
+	tpl = frappe.get_doc("Estimate Template", estimate_template)
+	groups, order, total = {}, [], 0.0
+	for row in tpl.rows:
+		gname = row.group_name or "General"
+		if gname not in groups:
+			groups[gname] = []
+			order.append(gname)
+		qty = flt(row.placeholder_qty)
+		rate = flt(row.rate)
+		amount = flt(row.amount) or qty * rate
+		total += amount
+		groups[gname].append(
+			{
+				"description": row.description or (row.assembly or row.resource or _("Item")),
+				"line_type": row.line_type,
+				"unit": row.uom or "Nos",
+				"qty": qty,
+				"rate": rate,
+				"amount": amount,
+			}
+		)
+	return {
+		"template_name": tpl.template_name,
+		"row_count": len(tpl.rows),
+		"total": total,
+		"groups": [
+			{"group_name": g, "rows": groups[g], "subtotal": sum(r["amount"] for r in groups[g])}
+			for g in order
+		],
+	}
+
+
+@frappe.whitelist()
 def import_rows(boq: str, payload):
 	"""Create groups + items on a Draft BOQ from a parsed spreadsheet import.
 

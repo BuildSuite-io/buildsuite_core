@@ -73,6 +73,11 @@ export const createRevision = (boq, sourceSco = null, title = null) =>
 export const cloneBoq = (payload) => request("clone_boq", payload);
 export const importTemplate = (boq, estimateTemplate) =>
 	request("import_template", { boq, estimate_template: estimateTemplate });
+
+// What an Estimate Template would seed, grouped with per-row rate/amount + a total — the import
+// modal's preview. Returns { template_name, row_count, total, groups:[{group_name, rows, subtotal}] }.
+export const estimateTemplatePreview = (estimateTemplate) =>
+	request("estimate_template_preview", { estimate_template: estimateTemplate });
 // Create groups + items on a Draft BOQ from a parsed spreadsheet import (buildPayload output).
 // Returns { boq, items, groups }.
 export const importBoqRows = (boq, payload) =>

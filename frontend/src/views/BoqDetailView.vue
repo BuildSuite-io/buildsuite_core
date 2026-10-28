@@ -693,10 +693,32 @@ function exportCsv() {
 // === Import Estimate Template ===
 const importModal = ref(false);
 const importForm = ref({ template: "" });
+const importPreview = ref(null);
+const importPreviewLoading = ref(false);
 function openImport() {
 	importForm.value = { template: "" };
+	importPreview.value = null;
 	importModal.value = true;
 }
+// Preview what the picked template will seed — grouped rows, rates and total — before importing.
+watch(
+	() => importForm.value.template,
+	async (tpl) => {
+		importPreview.value = null;
+		if (!tpl) return;
+		importPreviewLoading.value = true;
+		try {
+			importPreview.value = await boqApi.estimateTemplatePreview(tpl);
+		} catch (err) {
+			showToast(
+				parseFrappeError(err).summary ?? __("Could not load the template preview"),
+				"error"
+			);
+		} finally {
+			importPreviewLoading.value = false;
+		}
+	}
+);
 async function doImport() {
 	if (!importForm.value.template) return;
 	try {
@@ -3214,8 +3236,8 @@ const breadcrumbs = computed(() => {
 				@click="importModal = false"
 			>
 				<div
-					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
-					style="border-radius: 2px"
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-2xl flex flex-col"
+					style="border-radius: 2px; max-height: calc(100vh - 2rem)"
 					@click.stop
 				>
 					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
@@ -3230,7 +3252,7 @@ const breadcrumbs = computed(() => {
 							✕
 						</button>
 					</div>
-					<div class="p-4 space-y-3">
+					<div class="p-4 space-y-3 overflow-y-auto flex-1">
 						<DeskField :label="__('Estimate template')" required>
 							<DeskLinkPicker
 								v-model="importForm.template"
@@ -3248,6 +3270,89 @@ const breadcrumbs = computed(() => {
 								)
 							}}
 						</p>
+
+						<!-- Preview — what the template will create, before importing -->
+						<div
+							v-if="importPreviewLoading"
+							class="text-xs text-ink-500 py-4 text-center"
+						>
+							{{ __("Loading preview…") }}
+						</div>
+						<div
+							v-else-if="importPreview"
+							class="border border-ink-200"
+							style="border-radius: 6px"
+						>
+							<div
+								class="px-3 py-2 border-b border-ink-100 bg-ink-50 flex items-center justify-between text-[11px]"
+							>
+								<span class="font-medium text-ink-700">{{
+									__("{0} row(s) across {1} group(s)", [
+										importPreview.row_count,
+										importPreview.groups.length,
+									])
+								}}</span>
+								<span class="text-ink-900 font-semibold tabular-nums">{{
+									fmtINR(importPreview.total)
+								}}</span>
+							</div>
+							<div class="max-h-72 overflow-y-auto">
+								<table class="w-full text-[11px]">
+									<template
+										v-for="g in importPreview.groups"
+										:key="g.group_name"
+									>
+										<thead>
+											<tr class="bg-ink-50/60 text-ink-500">
+												<th
+													class="text-left px-3 py-1 font-medium"
+													colspan="3"
+												>
+													{{ g.group_name }}
+												</th>
+												<th
+													class="text-right px-3 py-1 font-medium tabular-nums"
+												>
+													{{ fmtINR(g.subtotal) }}
+												</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr
+												v-for="(r, i) in g.rows"
+												:key="g.group_name + '-' + i"
+												class="border-t border-ink-100"
+											>
+												<td class="px-3 py-1 text-ink-800">
+													{{ r.description }}
+												</td>
+												<td
+													class="px-3 py-1 text-ink-500 whitespace-nowrap"
+												>
+													{{ r.qty }} {{ r.unit }}
+												</td>
+												<td
+													class="px-3 py-1 text-right text-ink-500 tabular-nums"
+												>
+													{{ fmtINR(r.rate) }}
+												</td>
+												<td
+													class="px-3 py-1 text-right text-ink-800 tabular-nums"
+												>
+													{{ fmtINR(r.amount) }}
+												</td>
+											</tr>
+										</tbody>
+									</template>
+								</table>
+								<div
+									v-if="!importPreview.row_count"
+									class="px-3 py-3 text-xs text-ink-500 text-center"
+								>
+									{{ __("This template has no rows.") }}
+								</div>
+							</div>
+						</div>
 					</div>
 					<div
 						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
@@ -3262,6 +3367,7 @@ const breadcrumbs = computed(() => {
 						<button
 							v-if="canEdit('boq')"
 							type="button"
+							:disabled="!importForm.template"
 							@click="doImport"
 							class="desk-save-btn"
 						>
