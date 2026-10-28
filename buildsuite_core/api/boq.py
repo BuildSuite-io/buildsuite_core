@@ -338,6 +338,233 @@ def _quotation_from_boq(src, lines: list[dict], title: str) -> str:
 	return doc.name
 
 
+# --- project from an approved estimate ------------------------------------
+
+
+def _task_subject(description: str | None, code: str | None) -> str:
+	"""A Task subject from a BOQ item: its first line / sentence, capped to the Task subject
+	length, falling back to the item code."""
+	text = (description or "").strip()
+	if not text:
+		return (code or _("Task"))[:140]
+	first = text.splitlines()[0]
+	for sep in (". ", "; "):
+		if sep in first:
+			first = first.split(sep, 1)[0]
+			break
+	return (first or code or _("Task"))[:140]
+
+
+def _set_up_work_from_boq(src, work: str, group_ids=None) -> dict:
+	"""Create Work Packages (one per BOQ group) and, unless ``work == 'packages'``, a Task per BOQ
+	item, on the project this estimate is attached to. Maps BOQ group -> Work Package and BOQ item
+	-> Task; sub-items only inherit the group's Work Package. Idempotent: a Work Package is matched
+	by ``code`` (reused, never duplicated) and an item that already carries a live Task is skipped.
+	Each item is stamped with its Work Package (and its sub-items) and, for tasks, its Task. Returns
+	the count of each NEWLY created. The caller is responsible for the BOQ rollup afterwards."""
+	project = src.get("project")
+	if not project:
+		frappe.throw(_("Attach this estimate to a project first."))
+	want_tasks = work != "packages"
+	selected = set(group_ids or [])
+
+	# Existing Work Packages by code, so a re-run reuses them (mirror _apply_template).
+	wp_by_code = {
+		wp.code: wp.name
+		for wp in frappe.get_all("Work Package", filters={"project": project}, fields=["name", "code"])
+		if wp.code
+	}
+	out = {"work_packages": 0, "tasks": 0}
+	groups = frappe.get_all(
+		"BOQ Group",
+		filters={"boq": src.name},
+		fields=["name", "code", "group_name"],
+		order_by="idx_order asc, creation asc",
+	)
+	for g in groups:
+		if selected and g.name not in selected:
+			continue
+		items = frappe.get_all(
+			"BOQ Item",
+			filters={"boq_group": g.name},
+			fields=["name", "code", "description", "planned_amount", "work_package", "task"],
+			order_by="idx asc, creation asc",
+		)
+		# Work Package for this group — reuse one with the same code, else create it.
+		wp_name = wp_by_code.get(g.code)
+		if not wp_name:
+			budget = sum(flt(i.planned_amount) for i in items)
+			wp = frappe.get_doc(
+				{
+					"doctype": "Work Package",
+					"project": project,
+					"code": g.code,
+					"work_package_name": g.group_name or g.code,
+					"budget": budget,
+					"description": _("From estimate {0}, group {1}.").format(src.name, g.code),
+					"status": "Planned",
+				}
+			).insert(ignore_permissions=True)
+			wp_name = wp.name
+			wp_by_code[g.code] = wp_name
+			out["work_packages"] += 1
+
+		for it in items:
+			# Stamp the Work Package onto the item (and its sub-items) unless already tagged.
+			if not it.work_package:
+				frappe.db.set_value("BOQ Item", it.name, "work_package", wp_name, update_modified=False)
+				for si in frappe.get_all("BOQ Sub Item", filters={"boq_item": it.name}, pluck="name"):
+					frappe.db.set_value("BOQ Sub Item", si, "work_package", wp_name, update_modified=False)
+			if not want_tasks:
+				continue
+			if it.task and frappe.db.exists("Task", it.task):
+				continue  # already has a live Task
+			task = frappe.get_doc(
+				{
+					"doctype": "Task",
+					"project": project,
+					"subject": _task_subject(it.description, it.code),
+					"work_package": it.work_package or wp_name,
+					"priority": "Medium",
+					"task_status": "Yet To Start",
+				}
+			).insert(ignore_permissions=True)
+			frappe.db.set_value("BOQ Item", it.name, "task", task.name, update_modified=False)
+			out["tasks"] += 1
+	return out
+
+
+@frappe.whitelist()
+def create_project_from_boq(
+	boq: str,
+	name: str | None = None,
+	code: str | None = None,
+	project_category: str | None = None,
+	project_type: str | None = None,
+	start_date: str | None = None,
+	end_date: str | None = None,
+	pm: str | None = None,
+	work: str = "tasks",
+	group_ids=None,
+):
+	"""Create a Project from an Approved, project-less BOQ, mapping its groups to Work Packages and
+	(unless ``work`` is ``'packages'`` / ``'none'``) its items to Tasks. Relinks the whole revision
+	lineage to the new project. Returns ``{project, project_name, work}``."""
+	src = frappe.get_doc("BOQ", boq)
+	_require_write(src)
+	if src.status != "Approved":
+		frappe.throw(_("Only an Approved BOQ can become a project."))
+	if src.get("project"):
+		frappe.throw(_("This estimate is already attached to a project."))
+	if not frappe.has_permission("Project", "create"):
+		frappe.throw(_("You are not permitted to create a project."), frappe.PermissionError)
+	if work != "none" and not frappe.has_permission("Work Package", "create"):
+		frappe.throw(_("You are not permitted to create work packages."), frappe.PermissionError)
+
+	group_ids = frappe.parse_json(group_ids) if isinstance(group_ids, str) else group_ids
+	project_name = (name or src.title or "").strip()
+	if not project_name:
+		frappe.throw(_("Give the project a name."))
+
+	proj = frappe.get_doc(
+		{
+			"doctype": "Project",
+			"project_name": project_name,
+			"custom_project_id": (code or "").strip() or None,
+			"company": src.company,
+			"customer": src.customer or None,
+			"project_category": project_category or None,
+			"project_type": project_type or None,
+			"expected_start_date": start_date or None,
+			"expected_end_date": end_date or None,
+			"estimated_costing": flt(src.planned_amount),
+			"project_manager": pm or None,
+			"notes": _("Created from estimate {0}.").format(src.name),
+			# Build the work breakdown from this BOQ, not the category template.
+			"custom_seed_default_stages": 0,
+			"custom_seed_default_tasks": 0,
+			"custom_seed_default_work_packages": 0,
+		}
+	)
+	proj.insert(ignore_permissions=True)
+
+	# Relink the whole revision lineage to the project, parent-first (revision asc) so the
+	# same-company guard never trips — mirrors attach_estimate_to_project.
+	peers = frappe.get_all(
+		"BOQ", filters={"name": ("in", _revision_peers(src))}, pluck="name", order_by="revision asc"
+	)
+	for pname in peers:
+		peer = frappe.get_doc("BOQ", pname)
+		peer.project = proj.name
+		peer.save(ignore_permissions=True)
+
+	result = {
+		"project": proj.name,
+		"project_name": proj.project_name,
+		"work": {"work_packages": 0, "tasks": 0},
+	}
+	if work != "none":
+		src.reload()
+		result["work"] = _set_up_work_from_boq(src, work, group_ids)
+		recompute_boq(src.name)
+	return result
+
+
+@frappe.whitelist()
+def set_up_work_from_boq(boq: str, work: str = "tasks", group_ids=None):
+	"""Create Work Packages and Tasks from an Approved BOQ already attached to a project — the
+	"set up work packages and tasks" path. Idempotent (see ``_set_up_work_from_boq``)."""
+	src = frappe.get_doc("BOQ", boq)
+	_require_write(src)
+	if src.status != "Approved":
+		frappe.throw(_("Only an Approved BOQ can set up work."))
+	if not src.get("project"):
+		frappe.throw(_("Attach this estimate to a project first."))
+	if not frappe.has_permission("Work Package", "create"):
+		frappe.throw(_("You are not permitted to create work packages."), frappe.PermissionError)
+	group_ids = frappe.parse_json(group_ids) if isinstance(group_ids, str) else group_ids
+	out = _set_up_work_from_boq(src, work, group_ids)
+	recompute_boq(src.name)
+	return out
+
+
+@frappe.whitelist()
+def boq_work_plan(boq: str):
+	"""The groups of a BOQ with what the "create project" modal needs: each group's amount, item
+	count, whether a Work Package already exists for it on the project, and how many items still
+	need a Task. Drives the per-group checklist."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "read", doc=src):
+		frappe.throw(_("You are not permitted to read this BOQ."), frappe.PermissionError)
+	project = src.get("project")
+	wp_codes = (
+		set(frappe.get_all("Work Package", filters={"project": project}, pluck="code")) if project else set()
+	)
+	groups, total = [], 0.0
+	for g in frappe.get_all(
+		"BOQ Group",
+		filters={"boq": src.name},
+		fields=["name", "code", "group_name"],
+		order_by="idx_order asc, creation asc",
+	):
+		items = frappe.get_all("BOQ Item", filters={"boq_group": g.name}, fields=["planned_amount", "task"])
+		amount = sum(flt(i.planned_amount) for i in items)
+		total += amount
+		new_tasks = sum(1 for i in items if not (i.task and frappe.db.exists("Task", i.task)))
+		groups.append(
+			{
+				"name": g.name,
+				"code": g.code,
+				"group_name": g.group_name,
+				"amount": amount,
+				"item_count": len(items),
+				"has_work_package": g.code in wp_codes,
+				"new_tasks": new_tasks,
+			}
+		)
+	return {"groups": groups, "total": total, "has_project": bool(project)}
+
+
 # --- assembly explosion ---------------------------------------------------
 
 

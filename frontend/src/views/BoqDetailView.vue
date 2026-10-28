@@ -530,15 +530,6 @@ function baseAmount(code) {
 }
 
 // === Workflow / advanced actions (boqApi) ===
-async function recalculate() {
-	try {
-		await boqApi.recalculateActuals(boq.value.id);
-		reloadTree();
-		showToast(__("Actuals recalculated"));
-	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? __("Failed to recalculate"), "error");
-	}
-}
 async function submit() {
 	const ok = await confirmDialog({
 		title: __("Submit for approval"),
@@ -1141,6 +1132,22 @@ async function deleteSubItemConfirm(si) {
 const hasProject = computed(() => !!boq.value?.projectId);
 const canRaiseBid = computed(() => boq.value?.status === "Approved" && !hasProject.value);
 
+// Create a project from this approved estimate (BOQ groups → Work Packages, items → Tasks), or
+// set up that work on a project it's already attached to.
+const canCreateProjectHere = computed(
+	() => boq.value?.status === "Approved" && !hasProject.value && canCreate("project")
+);
+const canSetUpWork = computed(
+	() =>
+		boq.value?.status === "Approved" &&
+		hasProject.value &&
+		canCreate("workPackage") &&
+		canCreate("task")
+);
+
+// The secondary actions collapse into a single ⋯ overflow menu (was a flat row of buttons).
+const mobileMenuOpen = ref(false);
+
 // Primary action dispatcher — Submit when Draft, Approve when Submitted, Create bid when it's an
 // approved estimate.
 const showPrimary = computed(
@@ -1235,6 +1242,95 @@ async function confirmAttach() {
 	}
 }
 
+// ---- Create a project from this estimate (groups → WPs, items → Tasks) ------
+// mode: 'create' spins up a new project from the estimate; 'setup' builds the work breakdown on
+// the project this estimate is already attached to.
+const projectModal = ref(null);
+const projectForm = ref({ name: "", code: "", category: "", startDate: "", endDate: "", pm: "" });
+const projectWork = ref("tasks"); // 'tasks' | 'packages' | 'none'
+const workPlan = ref({ groups: [], total: 0 });
+const workGroupIds = ref([]); // selected group names; all selected == build everything
+const projectBusy = ref(false);
+
+async function openProjectModal(mode) {
+	projectWork.value = "tasks";
+	workPlan.value = { groups: [], total: 0 };
+	workGroupIds.value = [];
+	if (mode === "create") {
+		projectForm.value = {
+			name: boq.value?.title || "",
+			code: "",
+			category: "",
+			startDate: "",
+			endDate: "",
+			pm: "",
+		};
+	}
+	projectModal.value = mode;
+	mobileMenuOpen.value = false;
+	try {
+		const plan = await boqApi.boqWorkPlan(boq.value.id);
+		workPlan.value = plan;
+		workGroupIds.value = plan.groups.map((g) => g.name); // everything selected by default
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not load the BOQ groups"), "error");
+	}
+}
+function toggleWorkGroup(name) {
+	const i = workGroupIds.value.indexOf(name);
+	if (i === -1) workGroupIds.value.push(name);
+	else workGroupIds.value.splice(i, 1);
+}
+async function confirmProject() {
+	if (projectBusy.value) return;
+	if (projectModal.value === "create" && !projectForm.value.name.trim()) {
+		showToast(__("Give the project a name."), "error");
+		return;
+	}
+	projectBusy.value = true;
+	try {
+		// null = build every group (the common case); a subset is only sent when the user unticks some.
+		const groupIds =
+			workGroupIds.value.length === workPlan.value.groups.length
+				? null
+				: [...workGroupIds.value];
+		if (projectModal.value === "create") {
+			const res = await boqApi.createProjectFromBoq(boq.value.id, {
+				name: projectForm.value.name.trim(),
+				code: projectForm.value.code.trim() || null,
+				projectCategory: projectForm.value.category || null,
+				startDate: projectForm.value.startDate || null,
+				endDate: projectForm.value.endDate || null,
+				pm: projectForm.value.pm || null,
+				work: projectWork.value,
+				groupIds,
+			});
+			projectModal.value = null;
+			showToast(
+				__("Project created — {0} work package(s), {1} task(s).", [
+					res.work.work_packages,
+					res.work.tasks,
+				])
+			);
+			router.push(`/projects/${encodeURIComponent(res.project)}`);
+		} else {
+			const res = await boqApi.setUpWorkFromBoq(boq.value.id, {
+				work: projectWork.value,
+				groupIds,
+			});
+			projectModal.value = null;
+			showToast(
+				__("Set up {0} work package(s) and {1} task(s).", [res.work_packages, res.tasks])
+			);
+			reloadTree();
+		}
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not create the project"), "error");
+	} finally {
+		projectBusy.value = false;
+	}
+}
+
 // The BOQ id + revision live in the subtitle (as in the prototype), so the
 // breadcrumb trail ends at the project — not a raw BOQ-id crumb.
 const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.revision}` : ""));
@@ -1282,102 +1378,119 @@ const breadcrumbs = computed(() => {
 						</span>
 					</template>
 					<template #menu>
-						<!-- Compare toggle — LEFT AS-IS per prompt (Phase-5 prelude: Revision Compare page).
-                 Uses brand-green styling and rounded corners deliberately. -->
+						<!-- Create project sits outside the overflow menu so it's one click from an
+                 approved estimate; everything else collapses under ⋯. -->
 						<button
-							v-if="baseBoq"
+							v-if="canCreateProjectHere"
 							type="button"
-							class="text-xs px-2.5 py-1.5 border border-ink-200 rounded hover:bg-ink-50"
-							:class="
-								compareMode ? 'bg-brand-50 border-brand-300 text-brand-700' : ''
-							"
-							@click="compareMode = !compareMode"
+							class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 rounded"
+							@click="openProjectModal('create')"
 						>
-							{{
-								compareMode
-									? __("✓ Comparing R{0}", [baseBoq.revision])
-									: __("Compare to R{0}", [baseBoq.revision])
-							}}
+							{{ __("Create project…") }}
 						</button>
 
-						<button
-							v-if="canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="recalculate"
-						>
-							↻ {{ __("Recalc actuals") }}
-						</button>
-
-						<button
-							v-if="canCreate('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openRevisionModal"
-						>
-							+ {{ __("Revision") }}
-						</button>
-
-						<button
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="exportCsv"
-						>
-							⬇ {{ __("Export CSV") }}
-						</button>
-
-						<button
-							v-if="isEditable && canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openImport"
-						>
-							{{ __("Import Template…") }}
-						</button>
-
-						<button
-							v-if="isEditable && canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="router.push(`/boq/${boq.id}/import`)"
-						>
-							{{ __("Import from Excel…") }}
-						</button>
-
-						<button
-							v-if="canCreate('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openClone"
-						>
-							{{ __("Clone…") }}
-						</button>
-
-						<button
-							v-if="!hasProject && canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openAttachModal"
-						>
-							{{ __("Attach to a project…") }}
-						</button>
-
-						<button
-							v-if="!isLocked && canDelete('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px; color: #b91c1c"
-							@click="removeBoq"
-						>
-							{{ __("Delete") }}
-						</button>
+						<div class="relative">
+							<button
+								type="button"
+								class="text-xs px-2 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded"
+								:aria-label="__('Actions menu')"
+								@click="mobileMenuOpen = !mobileMenuOpen"
+							>
+								⋯
+							</button>
+							<!-- click-away backdrop -->
+							<div
+								v-if="mobileMenuOpen"
+								class="fixed inset-0 z-30"
+								@click="mobileMenuOpen = false"
+							></div>
+							<div
+								v-if="mobileMenuOpen"
+								class="absolute right-0 top-full mt-1 z-40 w-60 bg-white border border-ink-200 shadow-fp-lg py-1"
+								style="border-radius: 6px"
+								@click="mobileMenuOpen = false"
+							>
+								<button
+									v-if="baseBoq"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									:class="compareMode ? 'text-brand-700 font-medium' : ''"
+									@click="compareMode = !compareMode"
+								>
+									{{
+										compareMode
+											? __("✓ Comparing R{0}", [baseBoq.revision])
+											: __("Compare to R{0}", [baseBoq.revision])
+									}}
+								</button>
+								<button
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="exportCsv"
+								>
+									⬇ {{ __("Export CSV") }}
+								</button>
+								<button
+									v-if="canCreate('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openRevisionModal"
+								>
+									+ {{ __("Revision") }}
+								</button>
+								<button
+									v-if="isEditable && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openImport"
+								>
+									{{ __("Import from Template…") }}
+								</button>
+								<button
+									v-if="isEditable && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="router.push(`/boq/${boq.id}/import`)"
+								>
+									{{ __("Import from Excel…") }}
+								</button>
+								<button
+									v-if="canCreate('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openClone"
+								>
+									{{ __("Clone…") }}
+								</button>
+								<button
+									v-if="!hasProject && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openAttachModal"
+								>
+									{{ __("Attach to a project…") }}
+								</button>
+								<button
+									v-if="canSetUpWork"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openProjectModal('setup')"
+								>
+									{{ __("Set up work packages and tasks…") }}
+								</button>
+								<template v-if="!isLocked && canDelete('boq')">
+									<div class="my-1 border-t border-ink-100"></div>
+									<button
+										type="button"
+										class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+										style="color: #b91c1c"
+										@click="removeBoq"
+									>
+										{{ __("Delete") }}
+									</button>
+								</template>
+							</div>
+						</div>
 					</template>
 				</DeskActionBar>
 			</template>
@@ -2825,6 +2938,229 @@ const breadcrumbs = computed(() => {
 							@click="confirmCreateBid"
 						>
 							{{ bidBusy ? __("Creating…") : __("Create {0}", [__(bidForm.kind)]) }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ===== Create-project / set-up-work modal (estimate → Project) ===== -->
+			<div
+				v-if="projectModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="projectModal = null"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{
+									projectModal === "create"
+										? __("Create a project from this estimate")
+										: __("Set up work packages and tasks")
+								}}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									projectModal === "create"
+										? __(
+												"Each BOQ group becomes a work package; each item becomes a task."
+										  )
+										: __(
+												"Builds the work breakdown on the attached project. Re-running only adds what's new."
+										  )
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="projectModal = null"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<!-- Project details (create only) -->
+						<div v-if="projectModal === 'create'" class="grid grid-cols-2 gap-3">
+							<DeskField :label="__('Project name')" required>
+								<DeskInput
+									v-model="projectForm.name"
+									:placeholder="__('Project name')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Project ID')">
+								<DeskInput v-model="projectForm.code" :placeholder="__('Auto')" />
+							</DeskField>
+							<DeskField :label="__('Category')">
+								<DeskLinkPicker
+									v-model="projectForm.category"
+									doctype="Project Category"
+									label-field="name"
+									value-field="name"
+									:placeholder="__('Optional')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Project manager')">
+								<DeskLinkPicker
+									v-model="projectForm.pm"
+									doctype="User"
+									label-field="full_name"
+									value-field="name"
+									:search-fields="['full_name', 'name']"
+									:placeholder="__('Optional')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Start date')">
+								<DeskInput v-model="projectForm.startDate" type="date" />
+							</DeskField>
+							<DeskField :label="__('End date')">
+								<DeskInput v-model="projectForm.endDate" type="date" />
+							</DeskField>
+						</div>
+
+						<!-- What to build -->
+						<DeskField :label="__('Set up the work')">
+							<div class="space-y-1.5">
+								<label class="flex items-start gap-2 text-xs cursor-pointer">
+									<input
+										type="radio"
+										value="tasks"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Work packages + tasks")
+										}}</span>
+										<span class="text-ink-500">
+											—
+											{{
+												__("a work package per group, a task per item")
+											}}</span
+										>
+									</span>
+								</label>
+								<label class="flex items-start gap-2 text-xs cursor-pointer">
+									<input
+										type="radio"
+										value="packages"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Work packages only")
+										}}</span>
+										<span class="text-ink-500"> — {{ __("no tasks") }}</span>
+									</span>
+								</label>
+								<label
+									v-if="projectModal === 'create'"
+									class="flex items-start gap-2 text-xs cursor-pointer"
+								>
+									<input
+										type="radio"
+										value="none"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Nothing yet")
+										}}</span>
+										<span class="text-ink-500">
+											—
+											{{
+												__("just the project; set up the work later")
+											}}</span
+										>
+									</span>
+								</label>
+							</div>
+						</DeskField>
+
+						<!-- Groups to include -->
+						<DeskField
+							v-if="projectWork !== 'none'"
+							:label="__('Groups ({0} selected)', [workGroupIds.length])"
+						>
+							<div
+								class="border border-ink-200 divide-y divide-ink-100 max-h-56 overflow-y-auto"
+								style="border-radius: 6px"
+							>
+								<label
+									v-for="g in workPlan.groups"
+									:key="g.name"
+									class="flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-ink-50"
+								>
+									<input
+										type="checkbox"
+										:checked="workGroupIds.includes(g.name)"
+										@change="toggleWorkGroup(g.name)"
+									/>
+									<span class="font-mono text-ink-500">{{ g.code }}</span>
+									<span class="text-ink-900 truncate flex-1">{{
+										g.group_name
+									}}</span>
+									<span
+										v-if="g.has_work_package"
+										class="text-[10px] px-1 py-0.5 bg-ink-100 text-ink-500"
+										style="border-radius: 2px"
+										>{{ __("WP exists") }}</span
+									>
+									<span class="text-ink-500">{{
+										projectWork === "tasks"
+											? __("{0} task(s)", [g.new_tasks])
+											: __("{0} item(s)", [g.item_count])
+									}}</span>
+									<span class="text-ink-700 tabular-nums">{{
+										fmtINR(g.amount)
+									}}</span>
+								</label>
+								<div
+									v-if="!workPlan.groups.length"
+									class="px-3 py-3 text-xs text-ink-500 text-center"
+								>
+									{{ __("This BOQ has no groups.") }}
+								</div>
+							</div>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="projectModal = null"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="
+								projectBusy ||
+								(projectModal === 'create' && !projectForm.name.trim())
+							"
+							@click="confirmProject"
+						>
+							{{
+								projectBusy
+									? __("Working…")
+									: projectModal === "create"
+									? __("Create project")
+									: __("Set up work")
+							}}
 						</button>
 					</footer>
 				</div>
