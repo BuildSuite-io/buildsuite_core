@@ -63,7 +63,9 @@ _SHARED_CSS = """
 .bs-print .bs-lh > div { border-bottom: none !important; padding-bottom: 0 !important; }
 """
 
-_INVOICE_CSS = _SHARED_CSS + """
+_INVOICE_CSS = (
+	_SHARED_CSS
+	+ """
 .bs-print .bs-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
 .bs-print .bs-meta .bs-name { font-size: 10.5pt; font-weight: 600; }
 .bs-print table.bs-kv { width: 100%; font-size: 9pt; }
@@ -71,16 +73,18 @@ _INVOICE_CSS = _SHARED_CSS + """
 .bs-print .bs-terms { margin-bottom: 28px; }
 .bs-print .bs-sign .c.r { text-align: right; }
 """
+)
 
 _INVOICE_HTML = """
 <div class="bs-print">
   <div class="bs-title-row">
-    <div>
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
       <div class="bs-doc-title">TAX INVOICE</div>
       {% if doc.docstatus == 0 %}<div class="bs-marker draft">Draft — not posted</div>
       {% elif doc.docstatus == 2 %}<div class="bs-marker cancelled">Cancelled</div>{% endif %}
+      <div class="bold mono" style="margin-top:4px">{{ doc.name }}</div>
     </div>
-    <div class="bs-doc-ref"><span class="mono">{{ doc.name }}</span></div>
   </div>
 
   <div class="bs-meta">
@@ -117,7 +121,7 @@ _INVOICE_HTML = """
   <div class="bs-totals-wrap">
     <div class="bs-totals">
       <div class="row"><span>Net total</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>
-      {% if doc.discount_amount %}<div class="row"><span>Discount</span><span class="nums">− {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
+      {% if doc.discount_amount %}<div class="row"><span>Discount</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
       {% for tax in doc.taxes %}<div class="row"><span>{{ tax.description }}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>{% endfor %}
       <div class="row grand"><span>Invoice total</span><span class="nums">{{ doc.get_formatted("grand_total") }}</span></div>
       {% if doc.docstatus == 1 %}
@@ -137,10 +141,14 @@ _INVOICE_HTML = """
     <div class="c"><div class="sig">Prepared by</div></div>
     <div class="c r"><div class="sig">For {{ doc.company }} — Authorised signatory</div></div>
   </div>
+
+  <div class="bs-footer">Generated {{ frappe.utils.format_datetime(frappe.utils.now()) }} using <span class="bold">BuildSuite</span></div>
 </div>
 """
 
-_WO_CSS = _SHARED_CSS + """
+_WO_CSS = (
+	_SHARED_CSS
+	+ """
 .bs-print .bs-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .bs-print .bs-party { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
 .bs-print .bs-party .bs-name { font-size: 10.5pt; font-weight: 600; }
@@ -154,15 +162,20 @@ _WO_CSS = _SHARED_CSS + """
 .bs-print .bs-wo-totals .due { color: #b91c1c; }
 .bs-print .bs-terms-list { font-size: 9pt; color: #475569; padding-left: 16px; line-height: 1.5; }
 """
+)
 
 _WO_HTML = """
 <div class="bs-print">
   <div class="bs-title-row">
-    <div><div class="bs-doc-title">WORK ORDER</div></div>
-    <div class="bs-doc-ref"><span class="bold">{{ doc.name }}</span><br><span class="muted">{{ frappe.utils.formatdate(doc.date) }}</span></div>
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
+      <div class="bs-doc-title">WORK ORDER</div>
+      <div class="bold mono" style="margin-top:4px">{{ doc.name }}</div>
+      <div class="muted">{{ frappe.utils.formatdate(doc.date) }}</div>
+    </div>
   </div>
 
-  {% set gstin = frappe.db.get_value("Supplier", doc.subcontractor, "tax_id") %}
+  {% set sub = frappe.db.get_value("Supplier", doc.subcontractor, ["custom_trade", "tax_id", "mobile_no", "email_id"], as_dict=True) or {} %}
   <div class="bs-parties">
     <div class="bs-party">
       <div class="bs-label">Issued by</div>
@@ -171,7 +184,9 @@ _WO_HTML = """
     <div class="bs-party">
       <div class="bs-label">To — Subcontractor</div>
       <div class="bs-name">{{ doc.subcontractor_name or doc.subcontractor }}</div>
-      {% if gstin %}<div class="muted small" style="margin-top:4px">GSTIN: {{ gstin }}</div>{% endif %}
+      {% if sub.custom_trade %}<div class="muted small" style="margin-top:2px">{{ sub.custom_trade }}</div>{% endif %}
+      {% if sub.mobile_no or sub.email_id %}<div class="muted small" style="margin-top:4px">{% if sub.mobile_no %}{{ sub.mobile_no }}{% endif %}{% if sub.mobile_no and sub.email_id %} &middot; {% endif %}{% if sub.email_id %}{{ sub.email_id }}{% endif %}</div>{% endif %}
+      {% if sub.tax_id %}<div class="muted small" style="margin-top:2px">GSTIN: {{ sub.tax_id }}</div>{% endif %}
     </div>
   </div>
 
@@ -215,7 +230,7 @@ _WO_HTML = """
     </div>
     <div class="bs-wo-totals">
       <div class="row"><span>Total order value</span><span class="nums">{{ doc.get_formatted("total_value") }}</span></div>
-      <div class="row"><span>Retention ({{ doc.retention_percent or 0 }}%)</span><span class="nums due">− {{ frappe.utils.fmt_money(retention, currency=currency) }}</span></div>
+      <div class="row"><span>Retention ({{ doc.retention_percent or 0 }}%)</span><span class="nums due">&minus; {{ frappe.utils.fmt_money(retention, currency=currency) }}</span></div>
       <div class="row grand"><span>Net of retention</span><span class="nums">{{ frappe.utils.fmt_money((doc.total_value or 0) - retention, currency=currency) }}</span></div>
     </div>
   </div>
@@ -224,6 +239,8 @@ _WO_HTML = """
     <div class="c"><div class="sig">For {{ doc.company }}</div><div class="muted small">Authorised signatory · Date</div></div>
     <div class="c"><div class="sig">For {{ doc.subcontractor_name or doc.subcontractor }}</div><div class="muted small">Accepted · Date</div></div>
   </div>
+
+  <div class="bs-footer">{{ doc.name }} &middot; Generated {{ frappe.utils.format_datetime(frappe.utils.now()) }} using <span class="bold">BuildSuite</span></div>
 </div>
 """
 
@@ -394,8 +411,18 @@ _TENDER_HTML = """
 """
 
 _FORMATS = (
-	{"name": "BuildSuite Tax Invoice", "doc_type": "Sales Invoice", "html": _INVOICE_HTML, "css": _INVOICE_CSS},
-	{"name": "BuildSuite Work Order", "doc_type": "Subcontractor Work Order", "html": _WO_HTML, "css": _WO_CSS},
+	{
+		"name": "BuildSuite Tax Invoice",
+		"doc_type": "Sales Invoice",
+		"html": _INVOICE_HTML,
+		"css": _INVOICE_CSS,
+	},
+	{
+		"name": "BuildSuite Work Order",
+		"doc_type": "Subcontractor Work Order",
+		"html": _WO_HTML,
+		"css": _WO_CSS,
+	},
 	{"name": "BuildSuite Quotation", "doc_type": "Quotation", "html": _QUOTATION_HTML, "css": _SHARED_CSS},
 	{"name": "BuildSuite Tender", "doc_type": "BuildSuite Tenders", "html": _TENDER_HTML, "css": _SHARED_CSS},
 )

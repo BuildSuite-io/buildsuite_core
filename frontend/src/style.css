@@ -288,6 +288,24 @@ html.dark .print-document .report-content {
   background: #fff !important;
   color: #0f172a !important;
 }
+/* The server-rendered format is authored for a white sheet, so pin the whole print subtree to a
+   light "paper" in dark mode — the earlier rule only corrected the root + report-content, leaving
+   the format's own containers (.bs-print / .po-print / .wo-print and any .bg-white it uses) on the
+   app's dark surface, which is why the dark preview read poorly. Default ink is dark; elements that
+   set their own colour (muted greys, the dark offer-title band, the letterhead monogram) still win
+   because those declarations sit on the element itself. Hairline borders are nudged up so they stay
+   visible against the white. */
+html.dark .print-document main,
+html.dark .print-document .bs-print,
+html.dark .print-document .po-print,
+html.dark .print-document .wo-print,
+html.dark .print-document .bg-white {
+  background: #fff !important;
+  color: #0f172a !important;
+}
+html.dark .print-document .bs-print .muted,
+html.dark .print-document .bs-print .bs-label,
+html.dark .print-document .bs-print table.bs-lines th { color: #64748b !important; }
 
 @media print {
   /* Force a light background regardless of dark-mode preference — PDFs read
