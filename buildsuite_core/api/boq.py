@@ -282,6 +282,8 @@ def _tender_from_boq(src, lines: list[dict], title: str, submission_deadline: st
 			"submission_deadline": submission_deadline,
 			"margin_percent": flt(src.margin_rate),
 			"tax_percent": flt(src.tax_rate),
+			"source_boq": src.name,
+			"source_boq_revision": src.revision,
 			"buildsuite_tenders_items": [
 				{
 					"source": "BOQ",
@@ -314,6 +316,8 @@ def _quotation_from_boq(src, lines: list[dict], title: str) -> str:
 			"party_name": src.customer,
 			"title": title,
 			"project": src.project or None,
+			"source_boq": src.name,
+			"source_boq_revision": src.revision,
 			"transaction_date": today(),
 			"items": [
 				{
@@ -336,6 +340,312 @@ def _quotation_from_boq(src, lines: list[dict], title: str) -> str:
 	)
 	doc.insert(ignore_permissions=True)
 	return doc.name
+
+
+# --- project from an approved estimate ------------------------------------
+
+
+def _task_subject(description: str | None, code: str | None) -> str:
+	"""A Task subject from a BOQ item: its first line / sentence, capped to the Task subject
+	length, falling back to the item code."""
+	text = (description or "").strip()
+	if not text:
+		return (code or _("Task"))[:140]
+	first = text.splitlines()[0]
+	for sep in (". ", "; "):
+		if sep in first:
+			first = first.split(sep, 1)[0]
+			break
+	return (first or code or _("Task"))[:140]
+
+
+def _set_up_work_from_boq(src, work: str, group_ids=None) -> dict:
+	"""Create Work Packages (one per BOQ group) and, unless ``work == 'packages'``, a Task per BOQ
+	item, on the project this estimate is attached to. Maps BOQ group -> Work Package and BOQ item
+	-> Task; sub-items only inherit the group's Work Package. Idempotent: a Work Package is matched
+	by ``code`` (reused, never duplicated) and an item that already carries a live Task is skipped.
+	Each item is stamped with its Work Package (and its sub-items) and, for tasks, its Task. Returns
+	the count of each NEWLY created. The caller is responsible for the BOQ rollup afterwards."""
+	project = src.get("project")
+	if not project:
+		frappe.throw(_("Attach this estimate to a project first."))
+	want_tasks = work != "packages"
+	selected = set(group_ids or [])
+
+	# Existing Work Packages by code, so a re-run reuses them (mirror _apply_template).
+	wp_by_code = {
+		wp.code: wp.name
+		for wp in frappe.get_all("Work Package", filters={"project": project}, fields=["name", "code"])
+		if wp.code
+	}
+	out = {"work_packages": 0, "tasks": 0}
+	groups = frappe.get_all(
+		"BOQ Group",
+		filters={"boq": src.name},
+		fields=["name", "code", "group_name"],
+		order_by="idx_order asc, creation asc",
+	)
+	for g in groups:
+		if selected and g.name not in selected:
+			continue
+		items = frappe.get_all(
+			"BOQ Item",
+			filters={"boq_group": g.name},
+			fields=["name", "code", "description", "planned_amount", "work_package", "task"],
+			order_by="idx asc, creation asc",
+		)
+		# Work Package for this group — reuse one with the same code, else create it.
+		wp_name = wp_by_code.get(g.code)
+		if not wp_name:
+			budget = sum(flt(i.planned_amount) for i in items)
+			wp = frappe.get_doc(
+				{
+					"doctype": "Work Package",
+					"project": project,
+					"code": g.code,
+					"work_package_name": g.group_name or g.code,
+					"budget": budget,
+					"description": _("From estimate {0}, group {1}.").format(src.name, g.code),
+					"status": "Planned",
+				}
+			).insert(ignore_permissions=True)
+			wp_name = wp.name
+			wp_by_code[g.code] = wp_name
+			out["work_packages"] += 1
+
+		for it in items:
+			# Stamp the Work Package onto the item (and its sub-items) unless already tagged.
+			if not it.work_package:
+				frappe.db.set_value("BOQ Item", it.name, "work_package", wp_name, update_modified=False)
+				for si in frappe.get_all("BOQ Sub Item", filters={"boq_item": it.name}, pluck="name"):
+					frappe.db.set_value("BOQ Sub Item", si, "work_package", wp_name, update_modified=False)
+			if not want_tasks:
+				continue
+			if it.task and frappe.db.exists("Task", it.task):
+				continue  # already has a live Task
+			task = frappe.get_doc(
+				{
+					"doctype": "Task",
+					"project": project,
+					"subject": _task_subject(it.description, it.code),
+					"work_package": it.work_package or wp_name,
+					"priority": "Medium",
+					"task_status": "Yet To Start",
+				}
+			).insert(ignore_permissions=True)
+			frappe.db.set_value("BOQ Item", it.name, "task", task.name, update_modified=False)
+			out["tasks"] += 1
+	return out
+
+
+def _won_offer_for_boq(src):
+	"""The bid a project should be made from: a Quotation or BuildSuite Tender raised from this
+	estimate's lineage (``source_boq``) that isn't attached to a project yet. Live has no formal
+	"awarded" status, so a raised, still-unattached bid is taken as the winning one; the most recent
+	wins. Returns ``{kind, doctype, name, taxable}`` (``taxable`` = the priced total before tax) or
+	``None``."""
+	lineage = _revision_peers(src)
+	if not lineage:
+		return None
+	cands = []
+	# Quotation prices into net_total (pre-tax); a BuildSuite Tender into bid_before_tax.
+	for doctype, kind, total_field, date_field in (
+		("BuildSuite Tenders", "Tender", "bid_before_tax", "date_issued"),
+		("Quotation", "Quotation", "net_total", "transaction_date"),
+	):
+		for r in frappe.get_all(
+			doctype,
+			filters={"source_boq": ("in", lineage), "project": ("in", ["", None])},
+			fields=["name", f"{total_field} as taxable", f"{date_field} as decided"],
+		):
+			cands.append(
+				{
+					"kind": kind,
+					"doctype": doctype,
+					"name": r.name,
+					"taxable": flt(r.taxable),
+					"decided": str(r.decided or ""),
+				}
+			)
+	if not cands:
+		return None
+	cands.sort(key=lambda c: c["decided"], reverse=True)
+	top = cands[0]
+	return {"kind": top["kind"], "doctype": top["doctype"], "name": top["name"], "taxable": top["taxable"]}
+
+
+@frappe.whitelist()
+def create_project_from_boq(
+	boq: str,
+	name: str | None = None,
+	code: str | None = None,
+	project_category: str | None = None,
+	project_type: str | None = None,
+	start_date: str | None = None,
+	end_date: str | None = None,
+	pm: str | None = None,
+	work: str = "tasks",
+	group_ids=None,
+):
+	"""Create a Project from an Approved, project-less BOQ, mapping its groups to Work Packages and
+	(unless ``work`` is ``'packages'`` / ``'none'``) its items to Tasks. Relinks the whole revision
+	lineage to the new project. Returns ``{project, project_name, work}``."""
+	src = frappe.get_doc("BOQ", boq)
+	_require_write(src)
+	if src.status != "Approved":
+		frappe.throw(_("Only an Approved BOQ can become a project."))
+	if src.get("project"):
+		frappe.throw(_("This estimate is already attached to a project."))
+	if not frappe.has_permission("Project", "create"):
+		frappe.throw(_("You are not permitted to create a project."), frappe.PermissionError)
+	if work != "none" and not frappe.has_permission("Work Package", "create"):
+		frappe.throw(_("You are not permitted to create work packages."), frappe.PermissionError)
+
+	group_ids = frappe.parse_json(group_ids) if isinstance(group_ids, str) else group_ids
+	project_name = (name or src.title or "").strip()
+	if not project_name:
+		frappe.throw(_("Give the project a name."))
+
+	# A bid raised from this estimate (not yet attached to a project) carries the agreed revenue and
+	# the payment schedule onto the project; otherwise the contract value is the estimate's own
+	# priced total (planned cost + margin).
+	won = _won_offer_for_boq(src)
+	contract_value = won["taxable"] if won else flt(src.planned_amount) * (1 + flt(src.margin_rate) / 100.0)
+
+	proj = frappe.get_doc(
+		{
+			"doctype": "Project",
+			"project_name": project_name,
+			"custom_project_id": (code or "").strip() or None,
+			"company": src.company,
+			"customer": src.customer or None,
+			"project_category": project_category or None,
+			"project_type": project_type or None,
+			"expected_start_date": start_date or None,
+			"expected_end_date": end_date or None,
+			"estimated_costing": flt(src.planned_amount),
+			"contract_value": flt(contract_value),
+			"project_manager": pm or None,
+			"notes": _("Created from estimate {0}.").format(src.name),
+			# Build the work breakdown from this BOQ, not the category template.
+			"custom_seed_default_stages": 0,
+			"custom_seed_default_tasks": 0,
+			"custom_seed_default_work_packages": 0,
+		}
+	)
+	if won:
+		offer = frappe.get_doc(won["doctype"], won["name"])
+		if not proj.project_category:
+			proj.project_category = offer.get("project_category")
+		proj.payment_term_template = offer.get("payment_term_template")
+		# Project / Quotation / Tender all hold the schedule as BuildSuite Payment Milestone rows,
+		# so the agreed schedule copies across verbatim.
+		for m in offer.get("payment_milestones") or []:
+			proj.append(
+				"payment_milestones",
+				{
+					"payment_milestone": m.payment_milestone,
+					"payable": m.payable,
+					"percentage": m.percentage,
+					"client_sign_off": m.client_sign_off,
+					"stage": m.stage,
+					"days_after_project_start": m.days_after_project_start,
+				},
+			)
+	proj.insert(ignore_permissions=True)
+
+	# Link the won bid to the project it produced.
+	if won:
+		frappe.db.set_value(won["doctype"], won["name"], "project", proj.name, update_modified=False)
+
+	# Relink the whole revision lineage to the project, parent-first (revision asc) so the
+	# same-company guard never trips — mirrors attach_estimate_to_project.
+	peers = frappe.get_all(
+		"BOQ", filters={"name": ("in", _revision_peers(src))}, pluck="name", order_by="revision asc"
+	)
+	for pname in peers:
+		peer = frappe.get_doc("BOQ", pname)
+		peer.project = proj.name
+		peer.save(ignore_permissions=True)
+
+	result = {
+		"project": proj.name,
+		"project_name": proj.project_name,
+		"contract_value": flt(contract_value),
+		"from_offer": won,
+		"work": {"work_packages": 0, "tasks": 0},
+	}
+	if work != "none":
+		src.reload()
+		result["work"] = _set_up_work_from_boq(src, work, group_ids)
+		recompute_boq(src.name)
+	return result
+
+
+@frappe.whitelist()
+def set_up_work_from_boq(boq: str, work: str = "tasks", group_ids=None):
+	"""Create Work Packages and Tasks from an Approved BOQ already attached to a project — the
+	"set up work packages and tasks" path. Idempotent (see ``_set_up_work_from_boq``)."""
+	src = frappe.get_doc("BOQ", boq)
+	_require_write(src)
+	if src.status != "Approved":
+		frappe.throw(_("Only an Approved BOQ can set up work."))
+	if not src.get("project"):
+		frappe.throw(_("Attach this estimate to a project first."))
+	if not frappe.has_permission("Work Package", "create"):
+		frappe.throw(_("You are not permitted to create work packages."), frappe.PermissionError)
+	group_ids = frappe.parse_json(group_ids) if isinstance(group_ids, str) else group_ids
+	out = _set_up_work_from_boq(src, work, group_ids)
+	recompute_boq(src.name)
+	return out
+
+
+@frappe.whitelist()
+def boq_work_plan(boq: str):
+	"""The groups of a BOQ with what the "create project" modal needs: each group's amount, item
+	count, whether a Work Package already exists for it on the project, and how many items still
+	need a Task. Drives the per-group checklist."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "read", doc=src):
+		frappe.throw(_("You are not permitted to read this BOQ."), frappe.PermissionError)
+	project = src.get("project")
+	wp_codes = (
+		set(frappe.get_all("Work Package", filters={"project": project}, pluck="code")) if project else set()
+	)
+	groups, total = [], 0.0
+	for g in frappe.get_all(
+		"BOQ Group",
+		filters={"boq": src.name},
+		fields=["name", "code", "group_name"],
+		order_by="idx_order asc, creation asc",
+	):
+		items = frappe.get_all("BOQ Item", filters={"boq_group": g.name}, fields=["planned_amount", "task"])
+		amount = sum(flt(i.planned_amount) for i in items)
+		total += amount
+		new_tasks = sum(1 for i in items if not (i.task and frappe.db.exists("Task", i.task)))
+		groups.append(
+			{
+				"name": g.name,
+				"code": g.code,
+				"group_name": g.group_name,
+				"amount": amount,
+				"item_count": len(items),
+				"has_work_package": g.code in wp_codes,
+				"new_tasks": new_tasks,
+			}
+		)
+	return {"groups": groups, "total": total, "has_project": bool(project)}
+
+
+@frappe.whitelist()
+def boq_won_offer(boq: str):
+	"""The bid (if any) a project would be created from — its kind, name and priced total. Drives
+	the "Create project" primary action and the contract-value hint. ``None`` when no bid from this
+	estimate is still waiting to become a project."""
+	src = frappe.get_doc("BOQ", boq)
+	if not frappe.has_permission("BOQ", "read", doc=src):
+		frappe.throw(_("You are not permitted to read this BOQ."), frappe.PermissionError)
+	return _won_offer_for_boq(src)
 
 
 # --- assembly explosion ---------------------------------------------------
@@ -660,6 +970,47 @@ def import_template(boq: str, estimate_template: str):
 		frappe.flags.boq_skip_rollup = False
 	recompute_boq(boq)
 	return {"boq": boq, "seeded": seeded}
+
+
+@frappe.whitelist()
+def estimate_template_preview(estimate_template: str):
+	"""What an Estimate Template would seed into a BOQ: the template's description, one entry per row
+	(its source + kind, group, unit, qty, rate, amount) and a total — so the import modal shows what
+	gets created before it does. Mirrors import_template's row resolution."""
+	if not frappe.has_permission("Estimate Template", "read"):
+		frappe.throw(_("You are not permitted to read estimate templates."), frappe.PermissionError)
+	tpl = frappe.get_doc("Estimate Template", estimate_template)
+	rows, total = [], 0.0
+	for row in tpl.rows:
+		qty = flt(row.placeholder_qty)
+		rate = flt(row.rate)
+		amount = flt(row.amount) or qty * rate
+		total += amount
+		if row.line_type == "Assembly":
+			kind, label = "Assembly", (row.description or row.assembly or "")
+		elif row.line_type == "Resource":
+			kind, label = "Rate Master", (row.description or row.resource or "")
+		else:
+			kind, label = "", (row.description or "")
+		rows.append(
+			{
+				"source_label": label,
+				"source_kind": kind,
+				"group_name": row.group_name or "",
+				"unit": row.uom or "",
+				"qty": qty,
+				"rate": rate,
+				"amount": amount,
+				"cost_head": row.cost_head or "",
+			}
+		)
+	return {
+		"template_name": tpl.template_name,
+		"description": tpl.description or "",
+		"row_count": len(rows),
+		"total": total,
+		"rows": rows,
+	}
 
 
 @frappe.whitelist()

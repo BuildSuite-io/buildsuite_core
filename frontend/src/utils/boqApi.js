@@ -68,12 +68,16 @@ export const getActualsTotals = (projects) =>
 export const submitBoq = (boq) => request("submit_boq", { boq });
 export const approveBoq = (boq) => request("approve_boq", { boq });
 export const explodeItem = (boqItem) => request("explode_item", { boq_item: boqItem });
-export const recalculateActuals = (boq) => request("recalculate_actuals", { boq });
 export const createRevision = (boq, sourceSco = null, title = null) =>
 	request("create_revision", { boq, source_sco: sourceSco, title });
 export const cloneBoq = (payload) => request("clone_boq", payload);
 export const importTemplate = (boq, estimateTemplate) =>
 	request("import_template", { boq, estimate_template: estimateTemplate });
+
+// What an Estimate Template would seed, grouped with per-row rate/amount + a total — the import
+// modal's preview. Returns { template_name, row_count, total, groups:[{group_name, rows, subtotal}] }.
+export const estimateTemplatePreview = (estimateTemplate) =>
+	request("estimate_template_preview", { estimate_template: estimateTemplate });
 // Create groups + items on a Draft BOQ from a parsed spreadsheet import (buildPayload output).
 // Returns { boq, items, groups }.
 export const importBoqRows = (boq, payload) =>
@@ -100,3 +104,36 @@ export const createBidFromBoq = (
 // won. Returns { moved, project }.
 export const attachEstimateToProject = (boq, project) =>
 	request("attach_estimate_to_project", { boq, project });
+
+// Create a Project from an Approved, project-less BOQ — maps BOQ groups to Work Packages and
+// (unless work is "packages"/"none") items to Tasks. Returns { project, project_name, work }.
+export const createProjectFromBoq = (boq, data = {}) =>
+	request("create_project_from_boq", {
+		boq,
+		name: data.name ?? null,
+		code: data.code ?? null,
+		project_category: data.projectCategory ?? null,
+		project_type: data.projectType ?? null,
+		start_date: data.startDate ?? null,
+		end_date: data.endDate ?? null,
+		pm: data.pm ?? null,
+		work: data.work ?? "tasks",
+		group_ids: JSON.stringify(data.groupIds ?? null),
+	});
+
+// Create Work Packages + Tasks from an Approved BOQ already attached to a project. Idempotent.
+// Returns { work_packages, tasks }.
+export const setUpWorkFromBoq = (boq, data = {}) =>
+	request("set_up_work_from_boq", {
+		boq,
+		work: data.work ?? "tasks",
+		group_ids: JSON.stringify(data.groupIds ?? null),
+	});
+
+// The BOQ's groups with amount / item count / existing-WP / tasks-to-create — drives the
+// "create project" modal checklist. Returns { groups, total, has_project }.
+export const boqWorkPlan = (boq) => request("boq_work_plan", { boq });
+
+// The bid (if any) a project would be created from — its kind, name and priced total. Returns
+// { kind, doctype, name, taxable } or null. Drives the "Create project" primary action.
+export const boqWonOffer = (boq) => request("boq_won_offer", { boq });

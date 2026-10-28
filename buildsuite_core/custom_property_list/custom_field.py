@@ -86,6 +86,42 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 		{
+			# The agreed revenue for the job, pre-tax. Set from the won bid's priced total when a
+			# project is created from an estimate, else the estimate's own priced total. Distinct
+			# from estimated_costing (what the work costs us).
+			"fieldname": "contract_value",
+			"fieldtype": "Currency",
+			"label": "Contract Value",
+			"insert_after": "estimated_costing",
+			"module": "BuildSuite Core",
+		},
+		# The agreed payment schedule — carried from the won bid when a project is created from an
+		# estimate. Same field names + child doctype as BuildSuite Tenders / Quotation, so the
+		# schedule copies across verbatim.
+		{
+			"fieldname": "payment_milestones_section",
+			"fieldtype": "Section Break",
+			"label": "Payment Milestones",
+			"insert_after": "contract_value",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_term_template",
+			"fieldtype": "Link",
+			"options": "BuildSuite Payment Term Template",
+			"label": "Payment Term Template",
+			"insert_after": "payment_milestones_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_milestones",
+			"fieldtype": "Table",
+			"options": "BuildSuite Payment Milestone",
+			"label": "Payment Milestones",
+			"insert_after": "payment_term_template",
+			"module": "BuildSuite Core",
+		},
+		{
 			"fieldname": "project_status",
 			"fieldtype": "Select",
 			"label": "Project Status",
@@ -755,6 +791,25 @@ CUSTOM_FIELD = {
 			"options": "Project",
 			"label": "Project",
 			"insert_after": "order_type",
+			"module": "BuildSuite Core",
+		},
+		# The estimate this bid was raised from (and its revision at the time). Lets a project
+		# created from the estimate find the won bid and carry its value + payment schedule.
+		{
+			"fieldname": "source_boq",
+			"fieldtype": "Link",
+			"options": "BOQ",
+			"label": "Source BOQ",
+			"insert_after": "project",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "source_boq_revision",
+			"fieldtype": "Int",
+			"label": "Source BOQ Revision",
+			"insert_after": "source_boq",
+			"read_only": 1,
 			"module": "BuildSuite Core",
 		},
 		# For whoever picks the quotation up next. print_hide keeps it off the customer's copy.

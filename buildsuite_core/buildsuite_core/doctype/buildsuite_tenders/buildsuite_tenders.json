@@ -12,6 +12,8 @@
   "title",
   "issuing_body",
   "project",
+  "source_boq",
+  "source_boq_revision",
   "company",
   "column_break_vvzt",
   "issued_by",
@@ -326,6 +328,19 @@
    "fieldtype": "Table",
    "label": "Payment Milestones",
    "options": "BuildSuite Payment Milestone"
+  },
+  {
+   "fieldname": "source_boq",
+   "fieldtype": "Link",
+   "label": "Source BOQ",
+   "options": "BOQ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_boq_revision",
+   "fieldtype": "Int",
+   "label": "Source BOQ Revision",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
