@@ -87,6 +87,7 @@ def _serialize_mr(doc):
 				"amount": flt(it.qty) * flt(it.rate),
 				"project": it.project,
 				"ordered_qty": flt(it.ordered_qty),
+				"cost_code": _po_cost_code_obj(it),
 			}
 			for it in doc.items
 		],
@@ -156,6 +157,7 @@ def save_material_request(
 				"schedule_date": row.get("schedule_date") or schedule_date or nowdate(),
 				"warehouse": default_wh,
 				"project": project,
+				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)
 	if not doc.get("items"):
@@ -376,6 +378,7 @@ def get_mr_for_po(material_request: str):
 				"qty": remaining,
 				"uom": it.uom,
 				"rate": flt(it.rate),
+				"cost_code": _po_cost_code_obj(it),
 			}
 		)
 	return {

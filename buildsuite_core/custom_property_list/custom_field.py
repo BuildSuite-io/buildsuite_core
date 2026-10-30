@@ -462,6 +462,45 @@ CUSTOM_FIELD = {
 			"read_only": 0,
 		}
 	],
+	"Material Request Item": [
+		# The BOQ cost code this request line is for (S384). Same four fields as Purchase Order Item
+		# / Stock Entry, so CostCodePicker.vue works unchanged. The code is carried into the PO
+		# raised from the request (get_mr_for_po), and the submitted PO feeds the BOQ "Committed"
+		# column — the Material Request itself does not touch Committed/Actuals.
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "uom",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order": [
 		{
 			"fieldname": "custom_rate_master_banner",
