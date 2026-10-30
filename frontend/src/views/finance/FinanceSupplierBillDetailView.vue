@@ -3,7 +3,7 @@
 // Invoice. Summary strip, item lines, payments, supplier-advance adjustment, and the docstatus
 // lifecycle: Submit/Delete/Edit (Draft), Pay/Cancel (Submitted). Pay = a real Payment Entry
 // from a Bank/Cash account. Mirrors the customer-invoice detail (payable side).
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -400,9 +400,14 @@ async function onDeleteFile(row) {
 		showToast(err.message || __("Failed to delete attachment"), "error");
 	}
 }
-function fileIcon(url) {
-	const ext = (url || "").split(".").pop().toLowerCase().split("?")[0];
-	if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "🖼️";
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"];
+function extOf(att) {
+	const url = typeof att === "string" ? att : att?.file_url || att?.file_name;
+	return (url || "").split(".").pop().toLowerCase().split("?")[0];
+}
+function fileIcon(att) {
+	const ext = extOf(att);
+	if (IMAGE_EXTS.includes(ext)) return "🖼️";
 	if (ext === "pdf") return "📕";
 	if (["dwg", "dxf"].includes(ext)) return "📐";
 	if (["doc", "docx"].includes(ext)) return "📝";
@@ -410,6 +415,29 @@ function fileIcon(url) {
 	if (["zip", "rar", "7z"].includes(ext)) return "🗜️";
 	return "📄";
 }
+function isImage(att) {
+	return IMAGE_EXTS.includes(extOf(att));
+}
+function isPdf(att) {
+	return extOf(att) === "pdf";
+}
+
+// Click-to-preview: images and PDFs open in an in-app lightbox instead of a new
+// tab; anything we can't render inline falls back to opening the file.
+const preview = ref(null);
+function openPreview(att) {
+	if (!att?.file_url) return;
+	if (isImage(att) || isPdf(att)) preview.value = att;
+	else window.open(att.file_url, "_blank", "noopener");
+}
+function closePreview() {
+	preview.value = null;
+}
+function onPreviewKey(e) {
+	if (e.key === "Escape" && preview.value) closePreview();
+}
+onMounted(() => window.addEventListener("keydown", onPreviewKey));
+onUnmounted(() => window.removeEventListener("keydown", onPreviewKey));
 function formatFileSize(bytes) {
 	if (!bytes) return "0 B";
 	const units = ["B", "KB", "MB", "GB"];
@@ -893,21 +921,31 @@ function formatFileSize(bytes) {
 							:key="att.name"
 							class="group flex items-center gap-3 px-4 py-2.5 hover:bg-ink-50/70"
 						>
-							<span
-								class="flex-shrink-0 w-9 h-9 rounded-md bg-ink-50 border border-ink-200 flex items-center justify-center text-base"
+							<button
+								type="button"
+								class="flex-shrink-0 w-9 h-9 rounded-md bg-ink-50 border border-ink-200 overflow-hidden flex items-center justify-center text-base hover:ring-2 hover:ring-brand-200"
+								:title="__('Preview {0}', [att.file_name])"
+								@click="openPreview(att)"
 							>
-								{{ fileIcon(att.file_url || att.file_name) }}
-							</span>
+								<img
+									v-if="isImage(att) && att.file_url"
+									:src="att.file_url"
+									:alt="att.file_name"
+									class="w-full h-full object-cover"
+									loading="lazy"
+								/>
+								<span v-else>{{ fileIcon(att) }}</span>
+							</button>
 							<div class="min-w-0 flex-1">
-								<a
+								<button
 									v-if="att.file_url"
-									:href="att.file_url"
-									target="_blank"
-									rel="noopener"
-									class="text-sm font-medium text-ink-900 hover:text-brand-700 hover:underline truncate block"
+									type="button"
+									class="text-sm font-medium text-ink-900 hover:text-brand-700 hover:underline truncate block max-w-full text-left"
 									:title="att.file_name"
-									>{{ att.file_name }}</a
+									@click="openPreview(att)"
 								>
+									{{ att.file_name }}
+								</button>
 								<span
 									v-else
 									class="text-sm font-medium text-ink-900 truncate block"
@@ -978,6 +1016,85 @@ function formatFileSize(bytes) {
 					</button>
 				</div>
 			</section>
+		</div>
+
+		<!-- Attachment preview (lightbox) — images inline, PDFs embedded -->
+		<div
+			v-if="preview"
+			class="fixed inset-0 bg-ink-900/70 z-[70] flex items-center justify-center p-4 sm:p-8"
+			@click.self="closePreview"
+		>
+			<div
+				class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between gap-3 flex-shrink-0"
+				>
+					<div class="min-w-0 flex items-center gap-2">
+						<span class="text-base flex-shrink-0">{{ fileIcon(preview) }}</span>
+						<div class="min-w-0">
+							<h2
+								class="text-sm font-semibold text-ink-900 truncate"
+								:title="preview.file_name"
+							>
+								{{ preview.file_name }}
+							</h2>
+							<div class="text-[11px] text-ink-400 tabular-nums">
+								{{ formatFileSize(preview.file_size) }}
+							</div>
+						</div>
+					</div>
+					<div class="flex items-center gap-1.5 flex-shrink-0">
+						<a
+							:href="preview.file_url"
+							target="_blank"
+							rel="noopener"
+							download
+							class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5"
+						>
+							<svg
+								class="w-3.5 h-3.5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.75"
+									d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"
+								/>
+							</svg>
+							{{ __("Download") }}
+						</a>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-900 p-1"
+							:title="__('Close')"
+							@click="closePreview"
+						>
+							✕
+						</button>
+					</div>
+				</header>
+				<div
+					class="flex-1 min-h-0 overflow-auto bg-ink-50 flex items-center justify-center"
+				>
+					<img
+						v-if="isImage(preview)"
+						:src="preview.file_url"
+						:alt="preview.file_name"
+						class="max-w-full max-h-[75vh] object-contain"
+					/>
+					<iframe
+						v-else-if="isPdf(preview)"
+						:src="preview.file_url"
+						class="w-full h-[75vh] bg-white"
+						:title="preview.file_name"
+					></iframe>
+				</div>
+			</div>
 		</div>
 
 		<!-- Pay modal -->
