@@ -6,7 +6,7 @@
 //   · Direct — no PO: pick the supplier and enter Item-master lines manually.
 // Item lines carry a real Item (qty × rate), then taxes & discount via templates + a live
 // waterfall, and terms. Mirrors the customer-invoice form.
-import { computed, reactive, ref, nextTick } from "vue";
+import { computed, defineAsyncComponent, reactive, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
@@ -32,6 +32,9 @@ import { getExchangeRate } from "@/data/companyApi";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: { type: String, default: "" } });
+// Heavy (TipTap) — loaded lazily, only when the terms section is opened.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
+
 const router = useRouter();
 const companyFilter = activeCompanyFilter();
 const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
@@ -105,6 +108,8 @@ async function onCurrencyChange() {
 	}
 }
 const termsOpen = ref(false);
+// Remount the editor when a template is pulled in, so it initialises with that body.
+const editorKey = ref(0);
 const errors = reactive({ supplier: "", po: "", lines: "" });
 const saving = ref(false);
 const loading = ref(isEdit.value);
@@ -249,6 +254,7 @@ async function onPickTerms(name) {
 	if (!name) return;
 	try {
 		form.terms = (await getSupplierBillTerms(name)).terms || "";
+		editorKey.value += 1;
 		termsOpen.value = true;
 	} catch {
 		/* ignore */
@@ -533,9 +539,12 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 						<div
 							class="hidden md:grid grid-cols-[1fr_100px_120px_120px_120px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"
 						>
-							<span>{{ __("Item") }}</span><span class="text-right">{{ __("Qty") }}</span
-							><span>{{ __("UOM") }}</span><span class="text-right">{{ __("Rate") }}</span
-							><span class="text-right">{{ __("Amount") }}</span><span></span>
+							<span>{{ __("Item") }}</span
+							><span class="text-right">{{ __("Qty") }}</span
+							><span>{{ __("UOM") }}</span
+							><span class="text-right">{{ __("Rate") }}</span
+							><span class="text-right">{{ __("Amount") }}</span
+							><span></span>
 						</div>
 						<div
 							v-for="(l, idx) in form.lines"
@@ -751,12 +760,11 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 										@update:model-value="onPickTerms"
 									/>
 								</div>
-								<textarea
+								<RichTextEditor
+									:key="editorKey"
 									v-model="form.terms"
-									rows="5"
-									:placeholder="__('Terms — import a template above or write your own.')"
-									class="w-full text-xs px-3 py-2 border border-ink-200 rounded-md leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
-								></textarea>
+									min-height="8rem"
+								/>
 							</div>
 						</div>
 					</div>
@@ -799,10 +807,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							<span>{{ __("Bill total") }}</span
 							><span class="tabular-nums">{{ fmtDoc(wf.billTotal) }}</span>
 						</div>
-						<div
-							v-if="isForeign"
-							class="flex justify-between text-xs text-ink-500"
-						>
+						<div v-if="isForeign" class="flex justify-between text-xs text-ink-500">
 							<span>{{ __("In company currency") }}</span
 							><span class="tabular-nums">{{
 								fmtCurrency(

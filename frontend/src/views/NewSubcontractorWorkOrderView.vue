@@ -6,7 +6,7 @@
 // SOV child table can't go through the generic adapter). Status is
 // workflow-driven, so it is never set from this form.
 
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
@@ -19,11 +19,13 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
+
+// Heavy (TipTap) — loaded lazily with the form.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -95,6 +97,7 @@ watch(
 					rate: l.rate || 0,
 				})),
 			};
+			editorKey.value += 1;
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
 		} catch (err) {
 			showToast(err.message || __("Failed to load work order"), "error");
@@ -119,6 +122,10 @@ function removeLine(idx) {
 	form.value.lines.splice(idx, 1);
 }
 
+// Remount the rich-text editor when terms are set for us (template pull or record load), so it
+// initialises with that body.
+const editorKey = ref(0);
+
 // Importing a Terms and Conditions template fills the editable terms box.
 async function onPickTermsTemplate(id) {
 	form.value.terms_template = id;
@@ -128,7 +135,10 @@ async function onPickTermsTemplate(id) {
 			url: "frappe.client.get_value",
 			params: { doctype: "Terms and Conditions", filters: id, fieldname: "terms" },
 		});
-		if (res?.terms) form.value.terms = res.terms;
+		if (res?.terms) {
+			form.value.terms = res.terms;
+			editorKey.value += 1;
+		}
 	} catch {
 		/* leave terms as-is if the template can't be read */
 	}
@@ -197,7 +207,10 @@ const breadcrumbs = computed(() => [
 	{ label: __("Subcontract"), to: "/subcontract" },
 	{ label: __("Work Orders"), to: "/subcontractor-work-orders" },
 	isEdit.value
-		? { label: editingId.value, to: `/subcontractor-work-orders/${encodeURIComponent(editingId.value)}` }
+		? {
+				label: editingId.value,
+				to: `/subcontractor-work-orders/${encodeURIComponent(editingId.value)}`,
+		  }
 		: { label: __("New") },
 	...(isEdit.value ? [{ label: __("Edit") }] : []),
 ]);
@@ -393,7 +406,11 @@ const saveLabel = computed(() =>
 			<DeskSection :title="__('Terms & conditions')" :cols="1" class="mt-8">
 				<DeskField
 					:label="__('Import from template')"
-					:hint="__('Pick a standard template to fill the box below. You can edit the text after importing.')"
+					:hint="
+						__(
+							'Pick a standard template to fill the box below. You can edit the text after importing.'
+						)
+					"
 				>
 					<DeskLinkPicker
 						:model-value="form.terms_template"
@@ -405,11 +422,7 @@ const saveLabel = computed(() =>
 					/>
 				</DeskField>
 				<DeskField :label="__('Terms')">
-					<DeskTextarea
-						v-model="form.terms"
-						:rows="8"
-						:placeholder="__('Terms & conditions printed on the work order…')"
-					/>
+					<RichTextEditor :key="editorKey" v-model="form.terms" min-height="10rem" />
 				</DeskField>
 			</DeskSection>
 		</DeskForm>
