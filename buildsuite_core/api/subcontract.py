@@ -9,6 +9,7 @@ manual status field — Draft (0) → Submitted (1) → Cancelled (2), plus Amen
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 WORK_ORDER = "Subcontractor Work Order"
 
@@ -247,6 +248,82 @@ def committed_by_cost_code(project: str):
 	for code, amount in (po_committed_by_cost_code(project) or {}).items():
 		out[code] = out.get(code, 0) + amount
 	return out
+
+
+@frappe.whitelist()
+def committed_for_code(project: str, group_code: str):
+	"""The submitted documents behind one cost-code group's Committed figure — the BOQ
+	'Committed' drill-down, mirroring committed_by_cost_code's two sources line by line:
+	Subcontractor Work Order lines (committed to subcontractors) and Purchase Order lines
+	(committed to suppliers). Returns ``{entries, total}``; each entry carries the source doctype +
+	name, the party, a description, its cost-code label and the committed amount."""
+	if not project or not group_code:
+		return {"entries": [], "total": 0}
+	from buildsuite_core.api.procurement_docs import PURCHASE_ORDER
+
+	entries = []
+
+	# --- Subcontractor Work Order lines -----------------------------------
+	wos = frappe.get_all(
+		WORK_ORDER,
+		filters={"project": project, "docstatus": 1},
+		fields=["name", "subcontractor_name", "subcontractor"],
+	)
+	wo_by_name = {w.name: w for w in wos}
+	if wo_by_name:
+		for line in frappe.get_all(
+			"Subcontractor Work Order Line",
+			filters={"parent": ["in", list(wo_by_name)], "cost_code_group": group_code},
+			fields=["parent", "scope", "cost_code_item", "cost_code_label", "amount"],
+		):
+			wo = wo_by_name[line.parent]
+			entries.append(
+				{
+					"source_doctype": WORK_ORDER,
+					"source_name": line.parent,
+					"party": wo.subcontractor_name or wo.subcontractor or "",
+					"description": line.scope or "",
+					"cost_code_label": line.cost_code_label or line.cost_code_item or group_code,
+					"amount": flt(line.amount),
+				}
+			)
+
+	# --- Purchase Order lines ---------------------------------------------
+	pos = frappe.get_all(
+		PURCHASE_ORDER,
+		filters={"project": project, "docstatus": 1},
+		fields=["name", "supplier_name", "supplier"],
+	)
+	po_by_name = {p.name: p for p in pos}
+	if po_by_name:
+		for line in frappe.get_all(
+			"Purchase Order Item",
+			filters={"parent": ["in", list(po_by_name)], "custom_cost_code_group": group_code},
+			fields=[
+				"parent",
+				"item_name",
+				"description",
+				"custom_cost_code_item",
+				"custom_cost_code_label",
+				"amount",
+			],
+		):
+			po = po_by_name[line.parent]
+			entries.append(
+				{
+					"source_doctype": PURCHASE_ORDER,
+					"source_name": line.parent,
+					"party": po.supplier_name or po.supplier or "",
+					"description": line.item_name or line.description or "",
+					"cost_code_label": line.custom_cost_code_label
+					or line.custom_cost_code_item
+					or group_code,
+					"amount": flt(line.amount),
+				}
+			)
+
+	entries.sort(key=lambda e: e["amount"], reverse=True)
+	return {"entries": entries, "total": sum(e["amount"] for e in entries)}
 
 
 @frappe.whitelist()

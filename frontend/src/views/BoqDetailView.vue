@@ -17,7 +17,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode, getCommittedForCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -385,6 +385,44 @@ watch(
 );
 function groupCommitted(group) {
 	return committedMap.value[group.code] || 0;
+}
+
+// Committed drill-down — the submitted PO + Subcontractor WO lines behind a group's Committed
+// figure (the counterpart to the Actual drill-down).
+const committedDrill = ref(null);
+async function openGroupCommitted(group) {
+	const pid = boq.value?.projectId;
+	if (!pid || !groupCommitted(group)) return;
+	committedDrill.value = {
+		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
+		subtitle: __("Committed — submitted orders against this cost code"),
+		entries: [],
+		total: 0,
+		loading: true,
+	};
+	try {
+		const res = await getCommittedForCode(pid, group.code);
+		committedDrill.value = {
+			...committedDrill.value,
+			entries: res.entries || [],
+			total: res.total || 0,
+			loading: false,
+		};
+	} catch (err) {
+		showToast(err.message || __("Failed to load committed"), "error");
+		committedDrill.value = null;
+	}
+}
+function closeCommittedDrill() {
+	committedDrill.value = null;
+}
+// Open the document behind a committed entry.
+function openCommittedSource(e) {
+	if (e.source_doctype === "Purchase Order") {
+		router.push(`/procurement/purchase-orders/${e.source_name}`);
+	} else if (e.source_doctype === "Subcontractor Work Order") {
+		router.push(`/subcontractor-work-orders/${e.source_name}`);
+	}
 }
 
 // === Actual — the cost-code actuals log ===
@@ -1785,15 +1823,19 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupTotals(g.id).planned) }}
 						</div>
-						<div
-							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
-							:title="
-								__('Open subcontractor work orders mapped to cost code {0}', [
-									g.code,
-								])
-							"
-						>
-							{{ fmtCompactINR(groupCommitted(g)) }}
+						<div class="px-3 py-2 text-right tabular-nums text-sm text-info-700">
+							<button
+								v-if="groupCommitted(g)"
+								type="button"
+								class="tabular-nums text-info-700 hover:underline decoration-dotted"
+								:title="
+									__('Committed for {0} — click to see the orders', [g.code])
+								"
+								@click.stop="openGroupCommitted(g)"
+							>
+								{{ fmtCompactINR(groupCommitted(g)) }}
+							</button>
+							<span v-else>{{ fmtCompactINR(groupCommitted(g)) }}</span>
 						</div>
 						<div class="px-3 py-2 text-right text-sm text-ink-700">
 							<span v-if="groupActual(g)" class="relative inline-block group/cov">
@@ -3888,6 +3930,117 @@ const breadcrumbs = computed(() => {
 						{{
 							__(
 								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only. A machinery usage log counts once submitted and drops out when cancelled. Labour counts from the attendance registers a submitted Field Attendance creates; rows without a cost code do not post."
+							)
+						}}
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Committed drill-down — the submitted PO + Subcontractor WO lines behind a group's Committed -->
+		<div
+			v-if="committedDrill"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto"
+			@click.self="closeCommittedDrill"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-start justify-between gap-3"
+				>
+					<div class="min-w-0">
+						<h2 class="text-sm font-semibold text-ink-900 truncate">
+							{{ committedDrill.title }}
+						</h2>
+						<p class="text-[11px] text-ink-500">{{ committedDrill.subtitle }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+						@click="closeCommittedDrill"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-3">
+					<div
+						v-if="committedDrill.loading"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("Loading…") }}
+					</div>
+					<div
+						v-else-if="!committedDrill.entries.length"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("No submitted orders are coded to this cost code yet.") }}
+					</div>
+					<table v-else class="w-full text-xs">
+						<thead
+							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+						>
+							<tr>
+								<th class="text-left py-2 pr-2">{{ __("Order") }}</th>
+								<th class="text-left py-2 pr-2">
+									{{ __("Supplier / subcontractor") }}
+								</th>
+								<th class="text-left py-2 pr-2">{{ __("Scope / item") }}</th>
+								<th class="text-right py-2">{{ __("Amount") }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="e in committedDrill.entries"
+								:key="e.source_doctype + e.source_name + e.description"
+								class="border-b border-ink-100 last:border-0"
+							>
+								<td class="py-2 pr-2">
+									<button
+										type="button"
+										class="text-brand-700 hover:underline text-left"
+										@click="openCommittedSource(e)"
+									>
+										{{ e.source_name }}
+									</button>
+									<div class="text-[10px] text-ink-400">
+										{{
+											e.source_doctype === "Purchase Order"
+												? __("Purchase Order")
+												: __("Work Order")
+										}}
+									</div>
+								</td>
+								<td class="py-2 pr-2 text-ink-600">{{ e.party || "—" }}</td>
+								<td class="py-2 pr-2 text-ink-600">
+									{{ e.description || e.cost_code_label || "—" }}
+								</td>
+								<td class="py-2 text-right tabular-nums text-ink-900 font-medium">
+									{{ fmtINR(e.amount) }}
+								</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr class="border-t-2 border-ink-200">
+								<td
+									colspan="3"
+									class="py-2 pr-2 text-right text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Total committed") }}
+								</td>
+								<td
+									class="py-2 text-right tabular-nums text-ink-900 font-semibold"
+								>
+									{{ fmtINR(committedDrill.total) }}
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+					<p class="text-[10px] text-ink-400 mt-3">
+						{{
+							__(
+								"Committed = submitted Purchase Orders and Subcontractor Work Orders coded to this group. Cancelling an order removes its line."
 							)
 						}}
 					</p>
