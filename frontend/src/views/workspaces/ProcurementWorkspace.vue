@@ -9,18 +9,42 @@ import { __, currentLang } from "@/utils/translate";
 
 const today = computed(() => {
 	const d = new Date();
-	return d.toLocaleDateString(currentLang(), { weekday: "long", month: "short", day: "numeric" });
+	return d.toLocaleDateString(currentLang(), {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	});
 });
 
 const shortcuts = [
-	{ label: "Material Requests", icon: "clipboard-list", to: "/procurement/material-requests", cap: "materialRequest" },
-	{ label: "Purchase Orders", icon: "file-text", to: "/procurement/purchase-orders", cap: "purchaseOrder" },
-	{ label: "Purchase Receipts", icon: "check-circle", to: "/procurement/receipts", cap: "purchaseReceipt" },
+	{
+		label: "Material Requests",
+		icon: "clipboard-list",
+		to: "/procurement/material-requests",
+		cap: "materialRequest",
+	},
+	{
+		label: "Purchase Orders",
+		icon: "file-text",
+		to: "/procurement/purchase-orders",
+		cap: "purchaseOrder",
+	},
+	{
+		label: "Purchase Receipts",
+		icon: "check-circle",
+		to: "/procurement/receipts",
+		cap: "purchaseReceipt",
+	},
 	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
 	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
 	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills", cap: "supplierBill" },
-	{ label: "Material Consumption", icon: "stock", to: "/material-consumption", cap: "materialConsumption" },
-	{ label: "Suppliers", icon: "building-2", href: "/app/supplier", cap: "supplier" },
+	{
+		label: "Material Consumption",
+		icon: "stock",
+		to: "/material-consumption",
+		cap: "materialConsumption",
+	},
+	{ label: "Suppliers", icon: "building-2", to: "/project-finance/suppliers", cap: "supplier" },
 	{ label: "Items", icon: "tag", to: "/items", cap: "item" },
 ];
 
@@ -69,7 +93,11 @@ const shortcuts = [
 							>
 						</div>
 						<div class="text-xs text-brand-700 mt-1 leading-snug">
-							{{ __("Open material requests, on-order value, site receipts and rate variances at a glance.") }}
+							{{
+								__(
+									"Open material requests, on-order value, site receipts and rate variances at a glance."
+								)
+							}}
 						</div>
 					</div>
 					<div
