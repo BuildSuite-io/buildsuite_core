@@ -70,3 +70,4 @@ buildsuite_core.patches.submit_existing_machinery_usage # 2026-10-25 Machinery U
 buildsuite_core.patches.seed_sales_workspace # 2026-10-25 register Sales in the live workspace sidebar
 buildsuite_core.patches.grant_foreman_item_select_read # 2026-10-25 Foreman Item select+read in the seeded matrix
 buildsuite_core.patches.retire_subcontractor_work_order_print_format # 2026-10-28 delete the orphaned Subcontractor Work Order print format (BuildSuite Work Order is the default)
+buildsuite_core.patches.drop_item_company_field # 2026-10-30 Item is a global master, not company-scoped: drop its BuildSuite company field

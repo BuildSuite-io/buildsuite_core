@@ -196,9 +196,6 @@ doc_events = {
 	# report only if that role can see the workspace (else the tile never shows). Interactive only;
 	# skipped during install/migrate/patch where seeders set the baseline.
 	"Report": {"validate": "buildsuite_core.report_access.validate_report_roles"},
-	# Org-wide ERPNext masters made company-scoped: stamp the working company on insert.
-	# Supplier / Customer are global ERPNext parties (no BuildSuite company field) — not stamped.
-	"Item": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
 	# Reference No is optional in BuildSuite (SPA + mobile); default it for a bank Payment
 	# Entry so no path (advance / receipt / bill payment) hits ERPNext's mandatory check.
 	"Payment Entry": {"before_validate": "buildsuite_core.utils.payment.default_bank_reference"},
