@@ -5,6 +5,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { listRateMasters } from "@/data/rateMasterApi";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
+import { useDynamicFilters } from "@/composables/useDynamicFilters";
 import { useConfirm } from "@/composables/useConfirm";
 import { usePermissions } from "@/composables/usePermissions";
 import { parseFrappeError } from "@/utils/frappeError";
@@ -72,6 +73,7 @@ async function reload({ withCounts = false } = {}) {
 			page_length: pageSize.value,
 			search: search.value.trim() || undefined,
 			category: categoryFilter.value || undefined,
+			filters: dynFiltersParam(),
 			with_counts: withCounts ? 1 : undefined,
 		});
 		if (my !== reqId) return;
@@ -87,6 +89,21 @@ async function reload({ withCounts = false } = {}) {
 		if (my === reqId) loading.value = false;
 	}
 }
+
+// Add filter: this list pages on the server, so the dynamic filters ride along with the query
+// (a server-mode instance — DeskList only draws the editor + chips) and reset to page 1.
+const dynFilters = useDynamicFilters("Construction Rate Master", { resolveNames: false });
+const dynFiltersParam = () =>
+	dynFilters.serverFilters.value.length
+		? JSON.stringify(dynFilters.serverFilters.value)
+		: undefined;
+watch(
+	() => JSON.stringify(dynFilters.serverFilters.value),
+	() => {
+		page.value = 1;
+		reload();
+	}
+);
 
 // Search debounced, category immediate; both reset to page 1.
 let searchTimer;
@@ -337,6 +354,7 @@ async function removeRate() {
 			:columns="columns"
 			row-key="id"
 			:search-placeholder="__('Search code or description…')"
+			:dynamic-filters="dynFilters"
 			:server-paginated="true"
 			:total-rows="totalCount"
 			:current-page="page"
@@ -432,7 +450,11 @@ async function removeRate() {
 			>
 				<div class="px-4 py-3 border-b border-ink-200 flex items-center">
 					<h2 class="text-sm font-semibold text-ink-900">
-						{{ editing === "new" ? __("New rate") : __("Edit rate · {0}", [editing.code]) }}
+						{{
+							editing === "new"
+								? __("New rate")
+								: __("Edit rate · {0}", [editing.code])
+						}}
 					</h2>
 					<button
 						type="button"
@@ -462,7 +484,9 @@ async function removeRate() {
 						</DeskField>
 						<DeskField :label="__('Category')">
 							<DeskSelect v-model="form.category">
-								<option v-for="c in categoryOptions" :key="c" :value="c">{{ __(c) }}</option>
+								<option v-for="c in categoryOptions" :key="c" :value="c">
+									{{ __(c) }}
+								</option>
 							</DeskSelect>
 						</DeskField>
 					</div>
@@ -494,7 +518,11 @@ async function removeRate() {
 					</div>
 					<DeskField
 						:label="__('Source')"
-						:hint="__('Manual edits stamp \'Manual\'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.')"
+						:hint="
+							__(
+								'Manual edits stamp \'Manual\'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.'
+							)
+						"
 					>
 						<DeskInput :model-value="'Manual'" disabled />
 					</DeskField>
@@ -516,7 +544,11 @@ async function removeRate() {
 						class="desk-save-btn"
 					>
 						{{
-							saving ? __("Saving…") : editing === "new" ? __("Create rate") : __("Save changes")
+							saving
+								? __("Saving…")
+								: editing === "new"
+								? __("Create rate")
+								: __("Save changes")
 						}}
 					</button>
 				</div>
@@ -565,7 +597,9 @@ async function removeRate() {
 							<span class="text-xl font-semibold text-ink-900 tabular-nums">{{
 								fmtINR(drawer.currentRate)
 							}}</span>
-							<span class="text-xs text-ink-500">{{ __("per {0}", [drawer.unit]) }}</span>
+							<span class="text-xs text-ink-500">{{
+								__("per {0}", [drawer.unit])
+							}}</span>
 						</div>
 					</div>
 
@@ -580,9 +614,15 @@ async function removeRate() {
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="px-3 py-1.5 text-right font-semibold">{{ __("Rate") }}</th>
-									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Effective") }}</th>
-									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Source") }}</th>
+									<th class="px-3 py-1.5 text-right font-semibold">
+										{{ __("Rate") }}
+									</th>
+									<th class="px-3 py-1.5 text-left font-semibold">
+										{{ __("Effective") }}
+									</th>
+									<th class="px-3 py-1.5 text-left font-semibold">
+										{{ __("Source") }}
+									</th>
 									<th class="px-3 py-1.5"></th>
 								</tr>
 							</thead>

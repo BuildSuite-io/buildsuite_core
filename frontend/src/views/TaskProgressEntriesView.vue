@@ -84,8 +84,7 @@ const allEntries = computed(() => toArray(entriesResource.data));
 // The set the page works from — scoped to the switcher's company when awareness is on (this view
 // fetches all + filters client-side). Everything else (search, task filter, KPIs) derives from it.
 const companyScopedEntries = computed(() => {
-	const scope =
-		store.multiCompanyEnabled && store.activeCompany ? store.activeCompany : null;
+	const scope = store.multiCompanyEnabled && store.activeCompany ? store.activeCompany : null;
 	return scope ? allEntries.value.filter((e) => e.company === scope) : allEntries.value;
 });
 
@@ -184,11 +183,7 @@ function onRowClick(row) {
 </script>
 
 <template>
-	<DeskPage
-		:title="__('Task Progress Entry')"
-		:subtitle="subtitle"
-		:breadcrumbs="breadcrumbs"
-	>
+	<DeskPage :title="__('Task Progress Entry')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink
 				v-if="canCreate('taskProgressEntry')"
@@ -244,6 +239,7 @@ function onRowClick(row) {
 		</div>
 
 		<DeskList
+			filter-doctype="Task Progress Entry"
 			v-if="canRead('taskProgressEntry')"
 			v-model="search"
 			:rows="items"

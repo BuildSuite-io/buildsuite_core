@@ -4,15 +4,25 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from buildsuite_core.utils.list_filters import parse_list_filters
+
 
 @frappe.whitelist()
-def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None = None, category: str | None = None, with_counts: bool = False):
+def list_rate_masters(
+	start: int = 0,
+	page_length: int = 10,
+	search: str | None = None,
+	category: str | None = None,
+	with_counts: bool = False,
+	filters: str | None = None,
+):
 	"""One page of rate masters + total_count (filtered, for the pager). When
-	with_counts is set, also the global total and per-category counts (KPI cards)."""
+	with_counts is set, also the global total and per-category counts (KPI cards). `filters` is the
+	list's dynamic Add-filter tuples (JSON), applied on top of the category + search."""
 	# Rate masters are a shared, company-agnostic catalog — no company scoping.
-	filters = {}
+	filter_list = parse_list_filters(filters)
 	if category:
-		filters["category"] = category
+		filter_list.append(["category", "=", category])
 	or_filters = None
 	if search:
 		or_filters = [
@@ -22,11 +32,18 @@ def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None 
 
 	rows = frappe.get_list(
 		"Construction Rate Master",
-		filters=filters,
+		filters=filter_list,
 		or_filters=or_filters,
 		fields=[
-			"name", "rate_code", "rate_name", "category", "uom",
-			"current_rate", "previous_rate", "effective_date", "modified_by",
+			"name",
+			"rate_code",
+			"rate_name",
+			"category",
+			"uom",
+			"current_rate",
+			"previous_rate",
+			"effective_date",
+			"modified_by",
 		],
 		order_by="modified desc",
 		start=cint(start),
@@ -34,7 +51,7 @@ def list_rate_masters(start: int = 0, page_length: int = 10, search: str | None 
 	)
 	total_count = frappe.get_list(
 		"Construction Rate Master",
-		filters=filters,
+		filters=filter_list,
 		or_filters=or_filters,
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0].count

@@ -173,6 +173,7 @@ const unitLabel = (unit) => (unit || "").replace(/s$/, "");
 			</ReportFilters>
 
 			<DeskList
+				filter-doctype="Machinery Usage"
 				v-model="search"
 				:rows="rows"
 				:columns="columns"

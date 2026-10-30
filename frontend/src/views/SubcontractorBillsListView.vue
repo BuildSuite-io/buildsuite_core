@@ -187,6 +187,7 @@ function onRowClick(row) {
 		</ReportFilters>
 
 		<DeskList
+			filter-doctype="Subcontractor Bill"
 			v-model="search"
 			:rows="rows"
 			:columns="columns"

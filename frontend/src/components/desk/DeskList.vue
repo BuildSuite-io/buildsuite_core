@@ -5,7 +5,11 @@
 // indicator + prev/next) renders below the table when pagination is enabled
 // AND the row set spans more than one page.
 //
-// The consumer passes pre-filtered rows in via props. DeskList owns the shared
+// The consumer passes pre-filtered rows in via props. Add filter: a list that is a view over a
+// doctype passes `filter-doctype` and DeskList offers the Frappe-style dynamic filter off the shelf
+// (field / condition / value from the doctype's meta, evaluated by Frappe and intersected with the
+// rows by `rowKey`); a list that does its own querying listens to `@add-filter` instead. With
+// neither, the Add filter button is not rendered. DeskList owns the shared
 // sort chrome and can apply client-side sorting using either explicit
 // `sortOptions` or the visible columns. The search input uses two-way binding
 // via v-model.
@@ -16,8 +20,11 @@
 //
 // Columns: [{ key, label, align?: 'left'|'right'|'center', render?: (row)=>string, class?: string }]
 
-import { computed, ref, watch } from "vue";
+import { computed, getCurrentInstance, ref, watch } from "vue";
 import DeskSortControl from "@/components/desk/DeskSortControl.vue";
+import DeskFilterPopover from "@/components/desk/DeskFilterPopover.vue";
+import DeskFilterChips from "@/components/desk/DeskFilterChips.vue";
+import { useDynamicFilters } from "@/composables/useDynamicFilters";
 
 const props = defineProps({
 	rows: { type: Array, required: true },
@@ -30,6 +37,11 @@ const props = defineProps({
 	showSort: { type: Boolean, default: true },
 	showColumns: { type: Boolean, default: true },
 	showAddFilter: { type: Boolean, default: true },
+	// Doctype the rows are records of — turns on the built-in dynamic filter (see header).
+	filterDoctype: { type: String, default: "" },
+	// A useDynamicFilters instance the list owns itself (server-paged lists): DeskList renders its
+	// editor + chips but leaves applying the filters to the list's own query.
+	dynamicFilters: { type: Object, default: null },
 	sortField: { type: String, default: "" },
 	sortDirection: { type: String, default: "desc" },
 	sortOptions: { type: Array, default: null },
@@ -65,6 +77,26 @@ const emit = defineEmits([
 	"page-change",
 	"page-size-change",
 ]);
+
+// Built-in dynamic filter (only when the list names its doctype) and the rows it leaves visible.
+// rowKey must be a field name here — the filter matches rows to records by it.
+const ownFilters = props.filterDoctype ? useDynamicFilters(props.filterDoctype) : null;
+const filters = props.dynamicFilters || ownFilters;
+const visibleRows = computed(() =>
+	ownFilters && typeof props.rowKey === "string"
+		? ownFilters.applyTo(props.rows, props.rowKey)
+		: props.rows
+);
+// A list that handles @add-filter itself (DocTypeListView) keeps the button; one with neither a
+// filter source nor a handler would render a button that does nothing, so it doesn't.
+const hasAddFilterListener = !!getCurrentInstance()?.vnode.props?.onAddFilter;
+const addFilterEnabled = computed(
+	() => props.showAddFilter && (!!filters || hasAddFilterListener)
+);
+function onAddFilter() {
+	if (filters) filters.openEditor();
+	emit("add-filter");
+}
 
 const internalSortField = ref(props.sortField);
 const internalSortDirection = ref(props.sortDirection);
@@ -127,12 +159,12 @@ function compareSortValues(a, b) {
 }
 
 const sortedRows = computed(() => {
-	if (!props.showSort || !internalSortField.value) return props.rows;
+	if (!props.showSort || !internalSortField.value) return visibleRows.value;
 
 	const direction = internalSortDirection.value === "asc" ? 1 : -1;
 	const field = internalSortField.value;
 
-	return [...props.rows].sort((left, right) => {
+	return [...visibleRows.value].sort((left, right) => {
 		const result = compareSortValues(sortValueFor(left, field), sortValueFor(right, field));
 		return result * direction;
 	});
@@ -143,12 +175,12 @@ function keyFor(row) {
 }
 
 const allSelected = computed(
-	() => props.rows.length > 0 && props.selected.length === props.rows.length
+	() => visibleRows.value.length > 0 && props.selected.length === visibleRows.value.length
 );
 
 function toggleAll() {
 	if (allSelected.value) emit("update:selected", []);
-	else emit("update:selected", props.rows.map(keyFor));
+	else emit("update:selected", visibleRows.value.map(keyFor));
 }
 
 function toggleRow(row) {
@@ -187,7 +219,7 @@ const pageValue = computed(() =>
 
 const totalRowsValue = computed(() => {
 	if (props.serverPaginated) {
-		return Number.isFinite(props.totalRows) ? props.totalRows : props.rows.length;
+		return Number.isFinite(props.totalRows) ? props.totalRows : visibleRows.value.length;
 	}
 	return sortedRows.value.length;
 });
@@ -215,7 +247,7 @@ const rangeEnd = computed(() =>
 // Clamp current page when rows shrink (filtering / search) so we don't end up
 // past the last available page.
 watch(
-	() => props.rows.length,
+	() => visibleRows.value.length,
 	() => {
 		if (props.serverPaginated) return;
 		if (currentPage.value > totalPages.value) currentPage.value = totalPages.value;
@@ -267,7 +299,12 @@ const showPagination = computed(() => {
 </script>
 
 <template>
-	<div data-test="desk-list" class="bg-white border border-ink-200" style="border-radius: 8px">
+	<div
+		data-test="desk-list"
+		class="relative bg-white border border-ink-200"
+		style="border-radius: 8px"
+	>
+		<DeskFilterPopover v-if="filters" :filters="filters" />
 		<!-- Filter bar — flat white background, pill inputs, soft small buttons -->
 		<div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
 			<!-- Search with leading magnifier icon -->
@@ -298,11 +335,12 @@ const showPagination = computed(() => {
 				/>
 			</div>
 			<slot name="filter-chips" />
+			<DeskFilterChips v-if="filters" :filters="filters" />
 			<button
-				v-if="showAddFilter"
+				v-if="addFilterEnabled"
 				type="button"
 				class="desk-link text-xs px-1.5"
-				@click="emit('add-filter')"
+				@click="onAddFilter"
 			>
 				+ Add filter
 			</button>
@@ -358,20 +396,26 @@ const showPagination = computed(() => {
 				<tbody>
 					<!-- First-load / page-change skeleton: pulsing cells matching the columns,
 					     shown only while loading and before any rows have arrived. -->
-					<template v-if="loading && !rows.length">
+					<template v-if="loading && !visibleRows.length">
 						<tr
 							v-for="n in skeletonRowCount"
 							:key="`sk-${n}`"
 							class="border-b border-ink-100"
 							aria-hidden="true"
 						>
-							<td v-if="bulkSelect" :class="['w-9 px-3', compact ? 'py-2' : 'py-3']"></td>
+							<td
+								v-if="bulkSelect"
+								:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
+							></td>
 							<td
 								v-for="col in columns"
 								:key="col.key"
 								:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
 							>
-								<div class="h-3 rounded bg-ink-100 animate-pulse" style="width: 70%"></div>
+								<div
+									class="h-3 rounded bg-ink-100 animate-pulse"
+									style="width: 70%"
+								></div>
 							</td>
 						</tr>
 					</template>
@@ -410,7 +454,7 @@ const showPagination = computed(() => {
 							}}</slot>
 						</td>
 					</tr>
-					<tr v-if="!rows.length && !loading">
+					<tr v-if="!visibleRows.length && !loading">
 						<td
 							:colspan="columns.length + (bulkSelect ? 1 : 0)"
 							class="px-3 py-12 text-center"

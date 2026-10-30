@@ -12,6 +12,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { usePermissions } from "@/composables/usePermissions";
+import { useDynamicFilters } from "@/composables/useDynamicFilters";
 import { listMaterialConsumption } from "@/data/materialConsumptionApi";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
@@ -43,6 +44,7 @@ async function reload() {
 			page_length: pageSize.value,
 			search: search.value.trim() || undefined,
 			project: projectFilter.value || undefined,
+			filters: dynFiltersParam(),
 		});
 		if (my !== reqId) return;
 		rows.value = res.rows || [];
@@ -53,6 +55,21 @@ async function reload() {
 		if (my === reqId) loading.value = false;
 	}
 }
+
+// Add filter: this list pages on the server, so the dynamic filters ride along with the query
+// (a server-mode instance — DeskList only draws the editor + chips) and reset to page 1.
+const dynFilters = useDynamicFilters("Stock Entry", { resolveNames: false });
+const dynFiltersParam = () =>
+	dynFilters.serverFilters.value.length
+		? JSON.stringify(dynFilters.serverFilters.value)
+		: undefined;
+watch(
+	() => JSON.stringify(dynFilters.serverFilters.value),
+	() => {
+		page.value = 1;
+		reload();
+	}
+);
 
 let searchTimer;
 watch(search, () => {
@@ -115,6 +132,7 @@ const breadcrumbs = [
 			:rows="rows"
 			:columns="columns"
 			row-key="name"
+			:dynamic-filters="dynFilters"
 			search-placeholder="Search consumption…"
 			@row-click="(row) => router.push(`/material-consumption/${row.name}`)"
 			:server-paginated="true"
