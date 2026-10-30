@@ -17,6 +17,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
@@ -32,7 +33,7 @@ const canSaveForm = computed(() =>
 );
 
 function emptyLine() {
-	return { item_code: "", description: "", qty: null, uom: "", rate: null };
+	return { item_code: "", description: "", qty: null, uom: "", rate: null, cost_code: null };
 }
 // Default the line's UOM (and description, when blank) from the Item master on pick — mirrors the
 // Supplier Bill direct-line behaviour so choosing an item never leaves UOM empty (get_item_details
@@ -98,6 +99,7 @@ watch(
 					qty: it.qty,
 					uom: it.uom || "",
 					rate: it.rate ?? null,
+					cost_code: it.cost_code || null,
 				})),
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
@@ -126,8 +128,7 @@ function removeLine(idx) {
 function validate() {
 	const e = {};
 	if (!form.value.project) e.project = __("Pick a project for the request.");
-	if (!validLines.value.length)
-		e.lines = __("Add at least one item with a quantity.");
+	if (!validLines.value.length) e.lines = __("Add at least one item with a quantity.");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -146,6 +147,7 @@ async function onSave() {
 				qty: Number(l.qty),
 				uom: l.uom || null,
 				rate: Number(l.rate) || 0,
+				cost_code: l.cost_code || null,
 			})),
 		});
 		showToast(isEdit.value ? __("Request saved.") : __("Request raised."));
@@ -173,11 +175,7 @@ const pageTitle = computed(() =>
 	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Material Request")
 );
 const saveLabel = computed(() =>
-	saving.value
-		? __("Saving…")
-		: isEdit.value
-			? __("Save changes")
-			: __("Raise request")
+	saving.value ? __("Saving…") : isEdit.value ? __("Save changes") : __("Raise request")
 );
 </script>
 
@@ -252,6 +250,9 @@ const saveLabel = computed(() =>
 									{{ __("Item") }}
 								</th>
 								<th class="text-left px-3 py-2">{{ __("Notes") }}</th>
+								<th class="text-left px-3 py-2" style="min-width: 160px">
+									{{ __("Cost code") }}
+								</th>
 								<th class="text-right px-3 py-2 w-24">{{ __("Qty") }}</th>
 								<th class="text-left px-3 py-2 w-32">{{ __("UOM") }}</th>
 								<th class="text-right px-3 py-2 w-28">{{ __("Est. rate") }}</th>
@@ -283,6 +284,13 @@ const saveLabel = computed(() =>
 										v-model="line.description"
 										class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
 										:placeholder="__('Brand, spec, where it\'s needed…')"
+									/>
+								</td>
+								<td class="px-3 py-2" style="min-width: 160px">
+									<CostCodePicker
+										v-model="line.cost_code"
+										:project-id="form.project"
+										:placeholder="__('— Cost code —')"
 									/>
 								</td>
 								<td class="px-3 py-2">
@@ -328,7 +336,7 @@ const saveLabel = computed(() =>
 						<tfoot>
 							<tr class="border-t-2 border-ink-200 bg-ink-50">
 								<td
-									colspan="4"
+									colspan="5"
 									class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
 								>
 									{{ __("Estimated value") }}
@@ -344,6 +352,13 @@ const saveLabel = computed(() =>
 					</table>
 				</div>
 				<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">{{ errors.lines }}</p>
+				<p class="text-[11px] text-ink-500 mt-2 leading-relaxed">
+					{{
+						__(
+							"Cost code is optional — it says which part of the estimate the material is for, and carries into the purchase order. General consumables the estimate has no group for can stay uncoded."
+						)
+					}}
+				</p>
 			</section>
 		</DeskForm>
 
