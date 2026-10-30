@@ -284,8 +284,14 @@ def seed_print_assets():
 
 
 def _set_default_print_format(doctype: str, print_format: str) -> None:
-	if frappe.get_meta(doctype).default_print_format:
-		return  # respect the existing default (Desk override or a prior seed)
+	"""Make the seeded BuildSuite format the doctype's default so the SPA print view (which reads
+	meta.default_print_format) uses it. Set it even when another default is already in place —
+	matching how buildsuite_core.print_formats seeds the .bs-print formats. The previous
+	only-if-empty guard left a site whose Purchase Order already had some other default (e.g.
+	ERPNext's "Standard") stuck on that format even though the BuildSuite one was seeded, so its
+	print view never used it."""
+	if frappe.get_meta(doctype).default_print_format == print_format:
+		return  # already the default — skip a redundant property-setter write
 	frappe.make_property_setter(
 		{
 			"doctype": doctype,
@@ -293,7 +299,8 @@ def _set_default_print_format(doctype: str, print_format: str) -> None:
 			"property": "default_print_format",
 			"value": print_format,
 			"property_type": "Data",
-		}
+		},
+		is_system_generated=True,
 	)
 	frappe.clear_cache(doctype=doctype)
 
