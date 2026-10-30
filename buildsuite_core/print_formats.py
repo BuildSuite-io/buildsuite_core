@@ -137,7 +137,7 @@ _INVOICE_HTML = """
 
   <div class="bs-terms">
     <div class="bs-label">Terms</div>
-    {% if doc.terms %}<div class="bs-terms-text">{{ doc.terms }}</div>
+    {% if doc.terms %}<div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
     {% else %}<div class="bs-terms-text">Payment due by {{ frappe.utils.formatdate(doc.due_date) }}. Interest may be charged on overdue amounts as per contract. This is a computer-generated invoice.</div>{% endif %}
   </div>
 
@@ -226,7 +226,7 @@ _WO_HTML = """
   <div class="bs-wo-footer">
     <div>
       <div class="bs-h3">Terms &amp; conditions</div>
-      {% if doc.terms %}<div class="bs-terms-text">{{ doc.terms }}</div>
+      {% if doc.terms %}<div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
       {% else %}<ul class="bs-terms-list">
         <li>Progress billing is measurement-based: certified Measurement Books drive each subcontractor bill.</li>
         <li>Retention of {{ doc.retention_percent or 0 }}% is withheld on each bill, released after completion and defect-liability sign-off.</li>
