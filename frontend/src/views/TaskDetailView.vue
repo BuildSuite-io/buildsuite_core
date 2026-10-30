@@ -29,6 +29,7 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import TaskAttachments from "@/components/TaskAttachments.vue";
 import { createDataAdapter } from "@/data/adapters";
 import {
 	getTaskDependencies,
@@ -892,6 +893,13 @@ usePageTitle(() => task.value?.name);
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.endDate) }}</div>
 					</DeskField>
 				</DeskSection>
+
+				<!-- Files — the task's own attachments + photos from its progress entries -->
+				<TaskAttachments
+					:task-id="id"
+					:entries="entryRows"
+					:can-manage="canEditRecord('task', task)"
+				/>
 			</div>
 
 			<!-- Connections panel — related records on the right -->
