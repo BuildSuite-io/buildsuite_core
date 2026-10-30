@@ -150,9 +150,13 @@ _PO_PRINT_HTML = """
 	.po-print .muted { color:#64748b; }
 	.po-print .label { font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; }
 	.po-print .right { text-align:right; }
-	.po-title-row { display:flex; justify-content:space-between; align-items:flex-start;
+	.po-title-row { display:flex; justify-content:space-between; align-items:flex-start; gap:24px;
 		border-bottom:2px solid #cbd5e1; padding-bottom:12px; margin-bottom:16px; }
 	.po-title { font-size:20px; font-weight:700; letter-spacing:1px; }
+	/* Letter head sits on the LEFT of the title row (brand left, PO title right) — matching the
+	   .bs-print formats. The head carries its own bottom rule, so drop it inside the title row. */
+	.po-lh { flex:1; min-width:0; }
+	.po-lh > div { border-bottom:none !important; padding-bottom:0 !important; }
 	.parties { display:flex; gap:16px; margin-bottom:16px; }
 	.party { flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:12px; }
 	.meta { display:flex; gap:16px; margin-bottom:16px; }
@@ -176,14 +180,12 @@ _PO_PRINT_HTML = """
 {% set currency = frappe.db.get_value("Company", doc.company, "default_currency") if doc.company else None %}
 
 <div class="po-print">
-	{% if letter_head and not no_letterhead %}<div style="margin-bottom:16px;">{{ letter_head }}</div>{% endif %}
 	<div class="po-title-row">
-		<div>
-			<div class="po-title">PURCHASE ORDER</div>
-			<div class="muted" style="font-size:11px;">{{ doc.name }}</div>
-		</div>
+		<div class="po-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
 		<div class="right">
-			<div class="muted">{{ frappe.utils.format_date(doc.transaction_date) }}</div>
+			<div class="po-title">PURCHASE ORDER</div>
+			<div class="muted" style="font-size:11px; margin-top:4px;">{{ doc.name }}</div>
+			<div class="muted" style="margin-top:2px;">{{ frappe.utils.format_date(doc.transaction_date) }}</div>
 		</div>
 	</div>
 
