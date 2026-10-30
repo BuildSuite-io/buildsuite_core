@@ -1,24 +1,9 @@
 CUSTOM_FIELD = {
-	# Company-scope the org-wide ERPNext masters so multi-company can isolate them: the field
-	# is `company` (matching every BuildSuite doctype) so it auto-integrates with the SPA's
-	# company-scoped lists/pickers and the cross-company guards. Stamped on insert
-	# (stamp_company_on_insert, hooks.py) and backfilled to the default company.
-	#
-	# NOTE: Supplier and Customer are intentionally NOT here. ERPNext parties are global masters
-	# (a single Supplier/Customer transacts with any company; the per-company payable/receivable
-	# account lives in the native Party Account child table). Gating them by a BuildSuite `company`
-	# field blocked reusing a supplier/customer across companies in procurement + finance, so the
-	# field was removed (see patches.drop_party_company_field). Item keeps its company field.
+	# The org-wide ERPNext masters — Supplier, Customer and Item — are global, NOT company-scoped.
+	# An Item (like a party) is reused across companies; gating it with a BuildSuite `company` field
+	# blocked that and bought nothing, so none of the three carry one. Supplier/Customer were
+	# removed in patches.drop_party_company_field; Item in patches.drop_item_company_field.
 	"Item": [
-		{
-			"fieldname": "company",
-			"fieldtype": "Link",
-			"label": "Company",
-			"options": "Company",
-			"insert_after": "item_group",
-			"in_standard_filter": 1,
-			"module": "BuildSuite Core",
-		},
 		{
 			"fieldname": "custom_rate_master",
 			"fieldtype": "Link",

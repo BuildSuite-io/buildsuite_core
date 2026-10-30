@@ -81,15 +81,6 @@ def company_scope():
 	return default_company() if is_multi_company_enabled() else None
 
 
-def stamp_company_on_insert(doc, method=None):
-	"""Stamp the working company on an org-wide ERPNext master (Supplier / Customer / Item) at
-	insert so it can be company-scoped. Only sets when blank — never overrides an explicit
-	choice. Wired via hooks.py doc_events for those doctypes.
-	"""
-	if not doc.get("company"):
-		doc.company = default_company()
-
-
 def anchor_company_to_project(doc, project_field="project"):
 	"""Anchor a document's company to its project's company (the accounting-company rule).
 
@@ -417,7 +408,9 @@ def _apply_template(project_doc, template, seed_wps, seed_stages, seed_tasks):
 
 
 @frappe.whitelist()
-def import_project_template(project: str, work_packages=0, stages=0, tasks=0, project_category: str | None = None):
+def import_project_template(
+	project: str, work_packages=0, stages=0, tasks=0, project_category: str | None = None
+):
 	"""Import a Project Template into an EXISTING project (⋯ menu → Import project template).
 	Appends the chosen layers — the project's existing Work Packages / Tasks / Stages are kept.
 	Defaults to the project's own Project Category template; pass `project_category` to import a
@@ -444,7 +437,7 @@ def import_project_template(project: str, work_packages=0, stages=0, tasks=0, pr
 
 
 @frappe.whitelist()
-def get_project_template_summary(project_category: str = None, project_type: str = None):
+def get_project_template_summary(project_category: str | None = None, project_type: str | None = None):
 	"""Preview of the template for a Project Category (used by the create form):
 	its stage names, work-package count and task count. `project_type` is accepted
 	for backward compatibility with older callers."""
