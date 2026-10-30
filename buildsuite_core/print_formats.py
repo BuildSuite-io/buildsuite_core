@@ -91,7 +91,9 @@ _INVOICE_HTML = """
     <div>
       <div class="bs-label">Bill to</div>
       <div class="bs-name">{{ doc.customer_name or doc.customer }}</div>
+      {% if doc.contact_display %}<div class="muted small">Attn: {{ doc.contact_display }}</div>{% endif %}
       {% if doc.tax_id %}<div class="mono muted">GSTIN: {{ doc.tax_id }}</div>{% endif %}
+      {% if doc.address_display %}<div class="muted small" style="margin-top:4px; line-height:1.5;">{{ doc.address_display | safe }}</div>{% endif %}
     </div>
     <div>
       <table class="bs-kv">
@@ -120,9 +122,11 @@ _INVOICE_HTML = """
 
   <div class="bs-totals-wrap">
     <div class="bs-totals">
-      <div class="row"><span>Net total</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>
-      {% if doc.discount_amount %}<div class="row"><span>Discount</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
-      {% for tax in doc.taxes %}<div class="row"><span>{{ tax.description }}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>{% endfor %}
+      <div class="row"><span>Net total</span><span class="nums">{{ doc.get_formatted("total") }}</span></div>
+      {% if doc.discount_amount and doc.apply_discount_on == "Net Total" %}<div class="row"><span>Discount (on net total)</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
+      {% if doc.total - doc.net_total > 0.005 %}<div class="row"><span>Taxable value</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>{% endif %}
+      {% for tax in doc.taxes %}<div class="row"><span>{{ tax.account_head.rsplit(" - ", 1)[0] }}{% if tax.rate %} ({{ tax.rate }}%){% endif %}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>{% endfor %}
+      {% if doc.discount_amount and doc.apply_discount_on == "Grand Total" %}<div class="row"><span>Discount (on grand total)</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
       <div class="row grand"><span>Invoice total</span><span class="nums">{{ doc.get_formatted("grand_total") }}</span></div>
       {% if doc.docstatus == 1 %}
       <div class="row"><span>Received</span><span class="nums">{{ frappe.utils.fmt_money(doc.grand_total - doc.outstanding_amount, currency=doc.currency) }}</span></div>
