@@ -9,6 +9,7 @@ import { usePageTitle } from "@/composables/usePageTitle";
 import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useConfirm } from "@/composables/useConfirm";
@@ -35,10 +36,12 @@ import { __ } from "@/utils/translate";
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
+const session = useSessionStore();
 const confirmDialog = useConfirm();
-// Gate BOQ mutations by the persona's capability, not just docstatus. `canSubmit` is
-// aliased to canSubmitCap to avoid colliding with the local draft-status computed below.
-const { canEdit, canDelete, canCreate, canSubmit: canSubmitCap } = usePermissions();
+// Gate BOQ mutations by the persona's capability, not just status. (Submit for approval and
+// Approve are gated by write / the approve-role list below — see the primary-action block — not
+// the "submit" DocPerm, which BOQ doesn't use.)
+const { canEdit, canDelete, canCreate } = usePermissions();
 
 // === Data load: BOQ header + the three child levels ===
 const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
@@ -767,6 +770,20 @@ async function doClone() {
 
 const canSubmit = computed(() => boq.value?.status === "Draft");
 const canApprove = computed(() => boq.value?.status === "Submitted");
+
+// Who may APPROVE a BOQ — mirrors the server's authoritative check
+// (buildsuite_core.permissions.setup.BOQ_APPROVE_ROLES, enforced in api.boq.approve_boq).
+// BOQ isn't a submittable doctype, so approval is a role gate, not the "submit" DocPerm — which
+// no role holds, so gating the button on it showed Approve to the Administrator alone.
+const BOQ_APPROVE_ROLES = [
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite Administrator",
+	"System Manager",
+];
+const canApproveBoq = computed(() =>
+	(session.access?.roles || []).some((r) => BOQ_APPROVE_ROLES.includes(r))
+);
 const isLocked = computed(
 	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded"
 );
@@ -1193,16 +1210,22 @@ const projectIsPrimary = computed(() => canCreateProjectHere.value && !!wonOffer
 
 // Primary action dispatcher — Submit when Draft, Approve when Submitted, Create bid when it's an
 // approved estimate.
+// Submit for approval is a write (server: submit_boq → _require_write); Approve is the role gate
+// above (server: approve_boq → BOQ_APPROVE_ROLES). Each button mirrors exactly what the server
+// allows, so the person who sees it can actually do it.
+const canSubmitForApproval = computed(() => canSubmit.value && canEdit("boq"));
+const canApproveHere = computed(() => canApprove.value && canApproveBoq.value);
 const showPrimary = computed(
 	() =>
-		((canSubmit.value || canApprove.value) && canSubmitCap("boq")) ||
+		canSubmitForApproval.value ||
+		canApproveHere.value ||
 		projectIsPrimary.value ||
 		canRaiseBid.value
 );
 const primaryLabel = computed(() =>
-	canSubmit.value
+	canSubmitForApproval.value
 		? __("Submit for approval")
-		: canApprove.value
+		: canApproveHere.value
 		? __("Approve")
 		: projectIsPrimary.value
 		? __("Create project")
@@ -1211,8 +1234,8 @@ const primaryLabel = computed(() =>
 		: ""
 );
 function primaryAction() {
-	if (canSubmit.value) submit();
-	else if (canApprove.value) approve();
+	if (canSubmitForApproval.value) submit();
+	else if (canApproveHere.value) approve();
 	else if (projectIsPrimary.value) openProjectModal("create");
 	else if (canRaiseBid.value) openBidModal();
 }
