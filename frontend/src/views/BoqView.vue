@@ -316,6 +316,7 @@ const subtitle = computed(() =>
 		</div>
 
 		<DeskList
+			filter-doctype="BOQ"
 			v-model="search"
 			:rows="rows"
 			:columns="columns"

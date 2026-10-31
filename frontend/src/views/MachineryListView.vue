@@ -92,7 +92,9 @@ function onRowClick(row) {
 <template>
 	<DeskPage :title="__('Machinery Register')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('machinery')" to="/machinery/new" class="desk-save-btn">+ {{ __("New") }}</RouterLink>
+			<RouterLink v-if="canCreate('machinery')" to="/machinery/new" class="desk-save-btn"
+				>+ {{ __("New") }}</RouterLink
+			>
 		</template>
 
 		<div v-if="error" class="text-sm text-danger-600 py-10 text-center">{{ error }}</div>
@@ -105,9 +107,9 @@ function onRowClick(row) {
 				@clear="clearFilters"
 			>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Type") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Type")
+					}}</span>
 					<span class="w-44 inline-block">
 						<DeskSearchableSelect
 							v-model="f.type"
@@ -119,9 +121,9 @@ function onRowClick(row) {
 					</span>
 				</label>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Ownership") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Ownership")
+					}}</span>
 					<DeskSelect v-model="f.ownership" class="!w-36">
 						<option value="">{{ __("Any") }}</option>
 						<option value="Owned">{{ __("Owned") }}</option>
@@ -129,9 +131,9 @@ function onRowClick(row) {
 					</DeskSelect>
 				</label>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Status") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Status")
+					}}</span>
 					<DeskSelect v-model="f.status" class="!w-36">
 						<option value="">{{ __("Any") }}</option>
 						<option value="Active">{{ __("Active") }}</option>
@@ -141,6 +143,7 @@ function onRowClick(row) {
 			</ReportFilters>
 
 			<DeskList
+				filter-doctype="Machinery"
 				v-model="search"
 				:rows="rows"
 				:columns="columns"
@@ -176,7 +179,10 @@ function onRowClick(row) {
 				<template #empty>
 					<div class="text-sm text-ink-500">
 						{{ loading ? __("Loading machinery…") : __("No machinery yet.") }}
-						<RouterLink v-if="!loading && canCreate('machinery')" to="/machinery/new" class="desk-link"
+						<RouterLink
+							v-if="!loading && canCreate('machinery')"
+							to="/machinery/new"
+							class="desk-link"
 							>{{ __("Add one →") }}</RouterLink
 						>
 					</div>

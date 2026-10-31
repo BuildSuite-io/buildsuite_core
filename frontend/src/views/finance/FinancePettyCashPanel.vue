@@ -445,6 +445,7 @@ const rowsForTab = computed(() => {
 
 		<!-- request lists -->
 		<DeskList
+			filter-doctype="Petty Cash Request"
 			v-else
 			v-model="search"
 			:rows="rowsForTab"

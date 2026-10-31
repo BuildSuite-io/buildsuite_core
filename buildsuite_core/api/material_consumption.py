@@ -16,6 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from buildsuite_core.utils.list_filters import parse_list_filters
 from buildsuite_core.utils.project import default_company
 from buildsuite_core.utils.stock_entry import get_warehouse_from_project
 
@@ -60,22 +61,30 @@ def get_material_consumption(name: str) -> dict:
 
 
 @frappe.whitelist()
-def list_material_consumption(start: int = 0, page_length: int = 10, search: str | None = None, project: str | None = None) -> dict:
-	"""One page of Material Issue entries + total_count for the pager."""
+def list_material_consumption(
+	start: int = 0,
+	page_length: int = 10,
+	search: str | None = None,
+	project: str | None = None,
+	filters: str | None = None,
+) -> dict:
+	"""One page of Material Issue entries + total_count for the pager. `filters` is the list's dynamic
+	Add-filter tuples (JSON), applied on top of the Material Issue scope."""
 	from buildsuite_core.utils.project import company_scope
 
-	filters = {"stock_entry_type": MATERIAL_ISSUE}
+	filter_list = parse_list_filters(filters)
+	filter_list.append(["stock_entry_type", "=", MATERIAL_ISSUE])
 	# Stock Entry carries a company; scope to the working company only when awareness is on.
 	scope = company_scope()
 	if scope:
-		filters["company"] = scope
+		filter_list.append(["company", "=", scope])
 	if project and isinstance(project, str):
-		filters["project"] = project
+		filter_list.append(["project", "=", project])
 	or_filters = [["name", "like", f"%{search}%"], ["remarks", "like", f"%{search}%"]] if search else None
 
 	rows = frappe.get_list(
 		STOCK_ENTRY,
-		filters=filters,
+		filters=filter_list,
 		or_filters=or_filters,
 		fields=[
 			"name",
@@ -91,7 +100,7 @@ def list_material_consumption(start: int = 0, page_length: int = 10, search: str
 	)
 	total_count = frappe.get_list(
 		STOCK_ENTRY,
-		filters=filters,
+		filters=filter_list,
 		or_filters=or_filters,
 		fields=[{"COUNT": "name", "as": "count"}],
 	)[0].count
