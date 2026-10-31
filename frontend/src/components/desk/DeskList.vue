@@ -291,9 +291,12 @@ function setPageSize(size) {
 	currentPage.value = 1;
 }
 
+// One rule for every list, server- or client-paged (and DeskPaginationFooter follows it too): the
+// pager is only worth showing once there is more than the smallest page size of rows. A server-paged
+// list that is already past page 1 keeps it, so a shrinking result can't strand the user.
 const showPagination = computed(() => {
 	if (!props.paginated) return false;
-	if (props.serverPaginated) return true;
+	if (props.serverPaginated && pageValue.value > 1) return true;
 	return totalRowsValue.value > Math.min(...props.pageSizeOptions);
 });
 </script>

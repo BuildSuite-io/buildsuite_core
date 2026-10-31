@@ -8,6 +8,8 @@ import { useDataStore } from "@/stores";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import { usePagination } from "@/composables/usePagination";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtINR } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
@@ -28,6 +30,8 @@ const canManage = computed(() => store.isAdmin);
 const accounts = ref([]);
 const loading = ref(true);
 const loadError = ref("");
+// Page the register like every other list (the footer only appears past the smallest page size).
+const pager = usePagination(accounts);
 
 async function reload() {
 	loading.value = true;
@@ -161,7 +165,7 @@ async function del(acc) {
 					</thead>
 					<tbody>
 						<tr
-							v-for="acc in accounts"
+							v-for="acc in pager.pagedRows"
 							:key="acc.id"
 							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30"
 						>
@@ -250,11 +254,14 @@ async function del(acc) {
 						</tr>
 					</tbody>
 				</table>
+				<DeskPaginationFooter :pager="pager" />
 			</section>
 
 			<p class="text-[11px] text-ink-400 mt-3">
 				{{
-					__("Current balance = opening balance ± every recorded movement (receipts, payments, disbursements, advances). Accounts with history can't be deleted.")
+					__(
+						"Current balance = opening balance ± every recorded movement (receipts, payments, disbursements, advances). Accounts with history can't be deleted."
+					)
 				}}
 			</p>
 		</template>
@@ -288,7 +295,8 @@ async function del(acc) {
 						<div>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>{{ __("Account name") }} <span class="text-danger-600">*</span></label
+								>{{ __("Account name") }}
+								<span class="text-danger-600">*</span></label
 							>
 							<input
 								v-model="form.name"
@@ -330,7 +338,9 @@ async function del(acc) {
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 								>{{ __("Account no.") }}
-								<span class="text-ink-400 normal-case">{{ __("(optional)") }}</span></label
+								<span class="text-ink-400 normal-case">{{
+									__("(optional)")
+								}}</span></label
 							>
 							<input
 								v-model="form.account_no"
