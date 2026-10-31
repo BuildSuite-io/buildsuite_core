@@ -8,10 +8,13 @@
 // ERPNext discipline: posted transactions are CANCELLED (reversed), never
 // edited — cancel the wrong entry and record a fresh one. Because all balances
 // are derived, cancelling recomputes accounts / outstandings / floats cleanly.
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
+import { usePagination } from "@/composables/usePagination";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -122,6 +125,23 @@ const filtered = computed(() => {
 				(m.ref || "").toLowerCase().includes(term))
 	);
 });
+// Page the filtered register (the In / Out totals above still cover every filtered row); a new
+// filter starts again from page 1.
+const pager = usePagination(filtered);
+watch(
+	() => [
+		search.value,
+		dirFilter.value,
+		accFilter.value,
+		typeFilter.value,
+		partyFilter.value,
+		from.value,
+		to.value,
+		amtMin.value,
+		amtMax.value,
+	],
+	() => (pager.page = 1)
+);
 const totalIn = computed(() =>
 	filtered.value.filter((m) => m.dir === "in").reduce((a, m) => a + m.amount, 0)
 );
@@ -205,17 +225,17 @@ const breadcrumbs = [
 					/>
 				</div>
 				<div class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("From") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("From")
+					}}</span>
 					<input
 						v-model="from"
 						type="date"
 						class="text-xs px-2 py-1 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200"
 					/>
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("To") }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("To")
+					}}</span>
 					<input
 						v-model="to"
 						type="date"
@@ -223,9 +243,9 @@ const breadcrumbs = [
 					/>
 				</div>
 				<div class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ currencySymbol() }}</span
-					>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						currencySymbol()
+					}}</span>
 					<input
 						v-model.number="amtMin"
 						type="number"
@@ -289,7 +309,7 @@ const breadcrumbs = [
 					</thead>
 					<tbody>
 						<tr
-							v-for="m in filtered"
+							v-for="m in pager.pagedRows"
 							:key="m.name"
 							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/30"
 						>
@@ -331,6 +351,7 @@ const breadcrumbs = [
 						</tr>
 					</tbody>
 				</table>
+				<DeskPaginationFooter v-if="filtered.length" :pager="pager" />
 				<div v-else class="px-4 py-12 text-center text-xs text-ink-400 italic">
 					{{
 						loading
@@ -341,6 +362,7 @@ const breadcrumbs = [
 					}}
 				</div>
 			</section>
+			<DeskListCount :pager="pager" />
 			<p class="text-[11px] text-ink-400">
 				{{
 					__(

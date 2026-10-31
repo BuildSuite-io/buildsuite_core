@@ -31,6 +31,7 @@ import { useUserNames } from "@/composables/useUserNames";
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
@@ -378,69 +379,71 @@ const rowsForTab = computed(() => {
 		</div>
 
 		<!-- balances — reconciled: disbursed float in − verified spend out = in hand -->
-		<div
-			v-if="tab === 'balances'"
-			class="bg-white border border-ink-200 rounded-lg overflow-hidden"
-		>
-			<table class="w-full text-xs">
-				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
-					<tr>
-						<th class="text-left px-3 py-2">{{ __("Holder") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Disbursed") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Submitted spend") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Balance") }}</th>
-						<th class="px-3 py-2"></th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr
-						v-for="b in balancesPager.pagedRows"
-						:key="b.employee || b.holder"
-						class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
-						:title="__('Open {0}\'s petty-cash report', [b.holder])"
-						@click="openHolderReport(b.employee)"
-					>
-						<td class="px-3 py-2 text-ink-900">
-							<div class="flex items-center gap-1.5">
-								<UserAvatar :name="b.holder" size="xs" /><span>{{
-									b.holder
-								}}</span>
-							</div>
-						</td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-							{{ fmtINR(b.disbursed) }}
-						</td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-							{{ fmtINR(b.spent) }}
-						</td>
-						<td
-							class="px-3 py-2 text-right tabular-nums font-semibold"
-							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
+		<div v-if="tab === 'balances'">
+			<div class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+				<table class="w-full text-xs">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">{{ __("Holder") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Disbursed") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Submitted spend") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Balance") }}</th>
+							<th class="px-3 py-2"></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="b in balancesPager.pagedRows"
+							:key="b.employee || b.holder"
+							class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
+							:title="__('Open {0}\'s petty-cash report', [b.holder])"
+							@click="openHolderReport(b.employee)"
 						>
-							<template v-if="b.balance < 0">{{
-								__("{0} owed to holder", [fmtINR(-b.balance)])
-							}}</template>
-							<template v-else>{{ fmtINR(b.balance) }}</template>
-						</td>
-						<td class="px-3 py-2 text-right whitespace-nowrap">
-							<span class="text-[11px] text-brand-700">{{ __("Report") }} →</span>
-						</td>
-					</tr>
-					<tr v-if="!balances.length">
-						<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
-							{{ __("No petty-cash activity yet.") }}
-						</td>
-					</tr>
-				</tbody>
-			</table>
-			<DeskPaginationFooter :pager="balancesPager" />
-			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				{{
-					__(
-						"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
-					)
-				}}
-			</p>
+							<td class="px-3 py-2 text-ink-900">
+								<div class="flex items-center gap-1.5">
+									<UserAvatar :name="b.holder" size="xs" /><span>{{
+										b.holder
+									}}</span>
+								</div>
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.disbursed) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.spent) }}
+							</td>
+							<td
+								class="px-3 py-2 text-right tabular-nums font-semibold"
+								:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
+							>
+								<template v-if="b.balance < 0">{{
+									__("{0} owed to holder", [fmtINR(-b.balance)])
+								}}</template>
+								<template v-else>{{ fmtINR(b.balance) }}</template>
+							</td>
+							<td class="px-3 py-2 text-right whitespace-nowrap">
+								<span class="text-[11px] text-brand-700"
+									>{{ __("Report") }} →</span
+								>
+							</td>
+						</tr>
+						<tr v-if="!balances.length">
+							<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
+								{{ __("No petty-cash activity yet.") }}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<DeskPaginationFooter :pager="balancesPager" />
+				<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
+					{{
+						__(
+							"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
+						)
+					}}
+				</p>
+			</div>
+			<DeskListCount :pager="balancesPager" />
 		</div>
 
 		<!-- request lists -->

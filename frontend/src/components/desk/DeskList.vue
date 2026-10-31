@@ -37,6 +37,8 @@ const props = defineProps({
 	showSort: { type: Boolean, default: true },
 	showColumns: { type: Boolean, default: true },
 	showAddFilter: { type: Boolean, default: true },
+	// The "1-8 of 8 records" line under the card (paginated lists). DocTypeListView renders its own.
+	showCount: { type: Boolean, default: true },
 	// Doctype the rows are records of — turns on the built-in dynamic filter (see header).
 	filterDoctype: { type: String, default: "" },
 	// A useDynamicFilters instance the list owns itself (server-paged lists): DeskList renders its
@@ -244,6 +246,14 @@ const rangeEnd = computed(() =>
 	Math.min(rangeStart.value + pagedRows.value.length - 1, totalRowsValue.value)
 );
 
+// "1-8 of 8 records" — same wording as DocTypeListView, so every list reads the same, with or
+// without the pager (which only appears past the smallest page size).
+const countText = computed(() =>
+	totalRowsValue.value
+		? `${rangeStart.value}-${rangeEnd.value} of ${totalRowsValue.value} records`
+		: "0 records"
+);
+
 // Clamp current page when rows shrink (filtering / search) so we don't end up
 // past the last available page.
 watch(
@@ -291,235 +301,248 @@ function setPageSize(size) {
 	currentPage.value = 1;
 }
 
+// One rule for every list, server- or client-paged (and DeskPaginationFooter follows it too): the
+// pager is only worth showing once there is more than the smallest page size of rows. A server-paged
+// list that is already past page 1 keeps it, so a shrinking result can't strand the user.
 const showPagination = computed(() => {
 	if (!props.paginated) return false;
-	if (props.serverPaginated) return true;
+	if (props.serverPaginated && pageValue.value > 1) return true;
 	return totalRowsValue.value > Math.min(...props.pageSizeOptions);
 });
 </script>
 
 <template>
-	<div
-		data-test="desk-list"
-		class="relative bg-white border border-ink-200"
-		style="border-radius: 8px"
-	>
-		<DeskFilterPopover v-if="filters" :filters="filters" />
-		<!-- Filter bar — flat white background, pill inputs, soft small buttons -->
-		<div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-			<!-- Search with leading magnifier icon -->
-			<div class="relative">
-				<svg
-					class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"
-					width="14"
-					height="14"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-				>
-					<circle cx="11" cy="11" r="7" />
-					<path d="m21 21-4.3-4.3" />
-				</svg>
-				<input
-					type="text"
-					data-test="list-search"
-					:value="modelValue"
-					:placeholder="searchPlaceholder"
-					class="desk-input"
-					style="width: 14rem; padding-left: 28px"
-					@input="emit('update:modelValue', $event.target.value)"
-				/>
-			</div>
-			<slot name="filter-chips" />
-			<DeskFilterChips v-if="filters" :filters="filters" />
-			<button
-				v-if="addFilterEnabled"
-				type="button"
-				class="desk-link text-xs px-1.5"
-				@click="onAddFilter"
-			>
-				+ Add filter
-			</button>
-
-			<div class="ml-auto flex items-center gap-1">
-				<DeskSortControl
-					v-if="showSort"
-					:sort-field="internalSortField"
-					:sort-direction="internalSortDirection"
-					:options="resolvedSortOptions"
-					@update:sort-field="updateSortField"
-					@update:sort-direction="updateSortDirection"
-				/>
-
+	<div>
+		<div
+			data-test="desk-list"
+			class="relative bg-white border border-ink-200"
+			style="border-radius: 8px"
+		>
+			<DeskFilterPopover v-if="filters" :filters="filters" />
+			<!-- Filter bar — flat white background, pill inputs, soft small buttons -->
+			<div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
+				<!-- Search with leading magnifier icon -->
+				<div class="relative">
+					<svg
+						class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="11" cy="11" r="7" />
+						<path d="m21 21-4.3-4.3" />
+					</svg>
+					<input
+						type="text"
+						data-test="list-search"
+						:value="modelValue"
+						:placeholder="searchPlaceholder"
+						class="desk-input"
+						style="width: 14rem; padding-left: 28px"
+						@input="emit('update:modelValue', $event.target.value)"
+					/>
+				</div>
+				<slot name="filter-chips" />
+				<DeskFilterChips v-if="filters" :filters="filters" />
 				<button
-					v-if="showColumns"
+					v-if="addFilterEnabled"
 					type="button"
-					class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border border-ink-200 bg-white"
-					style="border-radius: 6px"
-					@click="emit('toggle-columns')"
+					class="desk-link text-xs px-1.5"
+					@click="onAddFilter"
 				>
-					Columns ▾
+					+ Add filter
 				</button>
-				<!-- Consumer-supplied action button(s) sit at the far right, after
-             Sort + Columns. Convention: primary "+ New / + Add" CTAs go here. -->
-				<slot name="actions" />
-			</div>
-		</div>
 
-		<!-- Table — no row stripes, hover-only row tint, generous vertical padding -->
-		<div class="overflow-x-auto">
-			<table class="w-full text-sm border-collapse">
-				<thead>
-					<tr class="border-b border-ink-200">
-						<th v-if="bulkSelect" class="w-9 px-3 py-2.5">
-							<input
-								type="checkbox"
-								:checked="allSelected"
-								aria-label="Select all rows"
-								@change="toggleAll"
-							/>
-						</th>
-						<th
-							v-for="col in columns"
-							:key="col.key"
-							class="text-[11px] uppercase tracking-wider font-medium text-ink-500 px-3 py-2.5 whitespace-nowrap"
-							:class="alignClass(col)"
-						>
-							{{ col.label }}
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					<!-- First-load / page-change skeleton: pulsing cells matching the columns,
+				<div class="ml-auto flex items-center gap-1">
+					<DeskSortControl
+						v-if="showSort"
+						:sort-field="internalSortField"
+						:sort-direction="internalSortDirection"
+						:options="resolvedSortOptions"
+						@update:sort-field="updateSortField"
+						@update:sort-direction="updateSortDirection"
+					/>
+
+					<button
+						v-if="showColumns"
+						type="button"
+						class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border border-ink-200 bg-white"
+						style="border-radius: 6px"
+						@click="emit('toggle-columns')"
+					>
+						Columns ▾
+					</button>
+					<!-- Consumer-supplied action button(s) sit at the far right, after
+             Sort + Columns. Convention: primary "+ New / + Add" CTAs go here. -->
+					<slot name="actions" />
+				</div>
+			</div>
+
+			<!-- Table — no row stripes, hover-only row tint, generous vertical padding -->
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm border-collapse">
+					<thead>
+						<tr class="border-b border-ink-200">
+							<th v-if="bulkSelect" class="w-9 px-3 py-2.5">
+								<input
+									type="checkbox"
+									:checked="allSelected"
+									aria-label="Select all rows"
+									@change="toggleAll"
+								/>
+							</th>
+							<th
+								v-for="col in columns"
+								:key="col.key"
+								class="text-[11px] uppercase tracking-wider font-medium text-ink-500 px-3 py-2.5 whitespace-nowrap"
+								:class="alignClass(col)"
+							>
+								{{ col.label }}
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- First-load / page-change skeleton: pulsing cells matching the columns,
 					     shown only while loading and before any rows have arrived. -->
-					<template v-if="loading && !visibleRows.length">
+						<template v-if="loading && !visibleRows.length">
+							<tr
+								v-for="n in skeletonRowCount"
+								:key="`sk-${n}`"
+								class="border-b border-ink-100"
+								aria-hidden="true"
+							>
+								<td
+									v-if="bulkSelect"
+									:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
+								></td>
+								<td
+									v-for="col in columns"
+									:key="col.key"
+									:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
+								>
+									<div
+										class="h-3 rounded bg-ink-100 animate-pulse"
+										style="width: 70%"
+									></div>
+								</td>
+							</tr>
+						</template>
 						<tr
-							v-for="n in skeletonRowCount"
-							:key="`sk-${n}`"
-							class="border-b border-ink-100"
-							aria-hidden="true"
+							v-for="row in pagedRows"
+							:key="keyFor(row)"
+							:data-test="`row-${keyFor(row)}`"
+							data-test-row
+							class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
+							@click="emit('row-click', row)"
 						>
 							<td
 								v-if="bulkSelect"
 								:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
-							></td>
+								@click.stop
+							>
+								<input
+									type="checkbox"
+									:checked="isSelected(row)"
+									:aria-label="`Select row ${keyFor(row)}`"
+									@change="toggleRow(row)"
+								/>
+							</td>
 							<td
 								v-for="col in columns"
 								:key="col.key"
-								:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
+								:class="[
+									'px-3 text-ink-800',
+									compact ? 'py-2' : 'py-3',
+									alignClass(col),
+									col.class || '',
+								]"
 							>
-								<div
-									class="h-3 rounded bg-ink-100 animate-pulse"
-									style="width: 70%"
-								></div>
+								<slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">{{
+									col.render ? col.render(row) : row[col.key]
+								}}</slot>
 							</td>
 						</tr>
-					</template>
-					<tr
-						v-for="row in pagedRows"
-						:key="keyFor(row)"
-						:data-test="`row-${keyFor(row)}`"
-						data-test-row
-						class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
-						@click="emit('row-click', row)"
+						<tr v-if="!visibleRows.length && !loading">
+							<td
+								:colspan="columns.length + (bulkSelect ? 1 : 0)"
+								class="px-3 py-12 text-center"
+							>
+								<slot name="empty">
+									<div class="text-sm text-ink-500">No records found</div>
+								</slot>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Pagination footer — only renders when there's more than one page worth -->
+			<div
+				v-if="showPagination"
+				class="border-t border-ink-200 px-3 py-2 flex items-center gap-3 flex-wrap text-xs text-ink-600"
+			>
+				<div class="flex items-center gap-2">
+					<span class="text-ink-500">Rows per page</span>
+					<select
+						data-test="pager-size"
+						:value="pageSizeValue"
+						class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
+						style="border-radius: 6px; padding: 4px 8px"
+						@change="setPageSize($event.target.value)"
 					>
-						<td
-							v-if="bulkSelect"
-							:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
-							@click.stop
-						>
-							<input
-								type="checkbox"
-								:checked="isSelected(row)"
-								:aria-label="`Select row ${keyFor(row)}`"
-								@change="toggleRow(row)"
-							/>
-						</td>
-						<td
-							v-for="col in columns"
-							:key="col.key"
-							:class="[
-								'px-3 text-ink-800',
-								compact ? 'py-2' : 'py-3',
-								alignClass(col),
-								col.class || '',
-							]"
-						>
-							<slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">{{
-								col.render ? col.render(row) : row[col.key]
-							}}</slot>
-						</td>
-					</tr>
-					<tr v-if="!visibleRows.length && !loading">
-						<td
-							:colspan="columns.length + (bulkSelect ? 1 : 0)"
-							class="px-3 py-12 text-center"
-						>
-							<slot name="empty">
-								<div class="text-sm text-ink-500">No records found</div>
-							</slot>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+						<option v-for="opt in pageSizeOptions" :key="opt" :value="opt">
+							{{ opt }}
+						</option>
+					</select>
+				</div>
+
+				<div class="text-ink-500 tabular-nums">
+					Showing
+					<span class="text-ink-800 font-medium">{{ rangeStart }}–{{ rangeEnd }}</span>
+					of
+					<span class="text-ink-800 font-medium">{{ totalRowsValue }}</span>
+				</div>
+
+				<div class="ml-auto flex items-center gap-1">
+					<button
+						type="button"
+						data-test="pager-prev"
+						class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
+						style="border-radius: 6px; padding: 4px 10px"
+						:disabled="pageValue <= 1"
+						@click="goPrev"
+					>
+						‹ Prev
+					</button>
+					<span class="text-ink-500 tabular-nums px-2">
+						Page <span class="text-ink-800 font-medium">{{ pageValue }}</span> of
+						<span class="text-ink-800 font-medium">{{ totalPages }}</span>
+					</span>
+					<button
+						type="button"
+						data-test="pager-next"
+						class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
+						style="border-radius: 6px; padding: 4px 10px"
+						:disabled="pageValue >= totalPages"
+						@click="goNext"
+					>
+						Next ›
+					</button>
+				</div>
+			</div>
 		</div>
-
-		<!-- Pagination footer — only renders when there's more than one page worth -->
 		<div
-			v-if="showPagination"
-			class="border-t border-ink-200 px-3 py-2 flex items-center gap-3 flex-wrap text-xs text-ink-600"
+			v-if="showCount && paginated"
+			data-test="list-count"
+			class="mt-2 text-xs text-ink-500 tabular-nums"
 		>
-			<div class="flex items-center gap-2">
-				<span class="text-ink-500">Rows per page</span>
-				<select
-					data-test="pager-size"
-					:value="pageSizeValue"
-					class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
-					style="border-radius: 6px; padding: 4px 8px"
-					@change="setPageSize($event.target.value)"
-				>
-					<option v-for="opt in pageSizeOptions" :key="opt" :value="opt">
-						{{ opt }}
-					</option>
-				</select>
-			</div>
-
-			<div class="text-ink-500 tabular-nums">
-				Showing
-				<span class="text-ink-800 font-medium">{{ rangeStart }}–{{ rangeEnd }}</span> of
-				<span class="text-ink-800 font-medium">{{ totalRowsValue }}</span>
-			</div>
-
-			<div class="ml-auto flex items-center gap-1">
-				<button
-					type="button"
-					data-test="pager-prev"
-					class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
-					style="border-radius: 6px; padding: 4px 10px"
-					:disabled="pageValue <= 1"
-					@click="goPrev"
-				>
-					‹ Prev
-				</button>
-				<span class="text-ink-500 tabular-nums px-2">
-					Page <span class="text-ink-800 font-medium">{{ pageValue }}</span> of
-					<span class="text-ink-800 font-medium">{{ totalPages }}</span>
-				</span>
-				<button
-					type="button"
-					data-test="pager-next"
-					class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
-					style="border-radius: 6px; padding: 4px 10px"
-					:disabled="pageValue >= totalPages"
-					@click="goNext"
-				>
-					Next ›
-				</button>
-			</div>
+			{{ countText }}
 		</div>
 	</div>
 </template>
