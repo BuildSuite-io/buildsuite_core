@@ -34,6 +34,23 @@ const applyIdFilter = (value) => {
 	cy.contains("button", "Apply").click();
 };
 
+// Filter on the Project link by the project's NAME. A record is identified by its ID (PROJ-1644)
+// but people know it by name ("SC Demo — Riverside Residency"): the picker must search and show the
+// name, and the applied chip must read as the name — on both DeskList and the generic list.
+const applyProjectNameFilter = (fragment, name) => {
+	openEditor();
+	cy.contains("button", "Apply").closest(".shadow-lg").find("button").first().click();
+	cy.get('input[placeholder="Search fields…"]').type("Project");
+	cy.contains("button span.truncate", /^Project$/).click();
+	// value picker: search by name, pick the option showing the name (not the ID)
+	cy.contains("button", "Apply").closest(".shadow-lg").contains("button", "Select…").click();
+	cy.get(".desk-link-picker-popover input").type(fragment);
+	cy.get(".desk-link-picker-popover").contains(name).click();
+	cy.contains("button", "Apply").click();
+	cy.contains(`Project = ${name}`).should("be.visible");
+	cy.contains("Project = PROJ-").should("not.exist");
+};
+
 describe("Add filter on the hand-built lists", () => {
 	beforeEach(() => cy.login());
 
@@ -76,5 +93,20 @@ describe("Add filter on the hand-built lists", () => {
 		cy.dt("desk-list").find("tbody tr").should("have.length", 1); // the empty-state row
 		cy.contains("ID = NO-SUCH-RATE").parent().find("button").click();
 		cy.dt("desk-list").find("tbody tr").its("length").should("be.gt", 1);
+	});
+
+	it("Subcontractor bills (DeskList): the Project filter searches and shows the project name", () => {
+		cy.visitApp("/subcontractor-bills");
+		cy.dt("desk-list").contains("SB-2026-").should("be.visible");
+		applyProjectNameFilter("Riverside", "SC Demo — Riverside Residency");
+		// only that project's bills remain
+		cy.dt("desk-list").should("contain.text", "Riverside Residency");
+		cy.dt("desk-list").should("not.contain.text", "Project Seed 2");
+	});
+
+	it("Tasks (generic DocTypeListView): the Project filter searches and shows the project name", () => {
+		cy.visitApp("/tasks");
+		cy.dt("desk-list").should("exist");
+		applyProjectNameFilter("Riverside", "SC Demo — Riverside Residency");
 	});
 });

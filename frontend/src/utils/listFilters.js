@@ -1,3 +1,5 @@
+import { frappeRequest } from "frappe-ui-frappe-request";
+
 // Shared helpers for the Frappe-style dynamic "Add filter" builder — used by DocTypeListView and by
 // the hand-built lists (via useDynamicFilters), so every list offers the same fields, the same
 // operators and the same chip text.
@@ -27,6 +29,60 @@ export const STANDARD_FILTER_FIELDS = [
 	{ fieldname: "_assign", label: "Assigned To", fieldtype: "Data" },
 	{ fieldname: "idx", label: "Index", fieldtype: "Int" },
 ];
+
+// Doctype meta (fields, title_field…), fetched once per doctype per session.
+const metaCache = new Map(); // doctype -> Promise<meta | null>
+export function loadDoctypeMeta(doctype) {
+	if (!metaCache.has(doctype)) {
+		metaCache.set(
+			doctype,
+			frappeRequest({
+				url: "frappe.desk.form.load.getdoctype",
+				method: "POST",
+				params: { doctype, with_parent: 1 },
+			})
+				.then((res) => (res?.docs ? res : res?.message)?.docs?.[0] || null)
+				.catch((err) => {
+					metaCache.delete(doctype);
+					console.warn("[buildsuite] Failed to fetch doctype meta", err);
+					return null;
+				})
+		);
+	}
+	return metaCache.get(doctype);
+}
+
+// How a Link filter's value is shown and searched. Records are identified by an ID (PROJ-0042) but
+// people know them by name ("Aso Villa"), so the picker displays the doctype's title_field and
+// searches it as well as the ID — the same rule Frappe's own link search follows.
+export function linkPickerProps(meta) {
+	const title = meta?.title_field || "";
+	return {
+		labelField: title || "name",
+		searchFields: title ? [title, "name"] : ["name"],
+	};
+}
+
+// { id: title } for the given record IDs of a Link target (empty when it has no title field).
+export async function resolveLinkLabels(doctype, meta, ids) {
+	const title = meta?.title_field;
+	const wanted = [...new Set((ids || []).filter(Boolean))];
+	if (!title || !wanted.length) return {};
+	try {
+		const rows = await frappeRequest({
+			url: "frappe.client.get_list",
+			params: {
+				doctype,
+				fields: ["name", title],
+				filters: [["name", "in", wanted]],
+				limit_page_length: 0,
+			},
+		});
+		return Object.fromEntries((rows || []).map((r) => [r.name, r[title]]));
+	} catch {
+		return {};
+	}
+}
 
 // Standard metadata + the doctype's own value-bearing fields, mirroring Frappe's list filter list.
 export function filterableFieldsFromMeta(meta) {
@@ -96,11 +152,14 @@ const CONDITION_SYMBOL = {
 };
 export function chipLabel(f) {
 	let text;
+	// A Link filter keeps the record's name (valueLabel) beside its ID, so the chip reads
+	// "Project = Aso Villa" rather than "Project = PROJ-0042".
+	const shown = f.valueLabel ?? f.value;
 	if (f.condition === "is") text = f.value === "not set" ? "Not Set" : "Set";
 	else if (f.condition === "Between" && Array.isArray(f.value))
 		text = `${f.value[0]} – ${f.value[1]}`;
-	else if (Array.isArray(f.value)) text = f.value.join(", ");
+	else if (Array.isArray(shown)) text = shown.join(", ");
 	else if (f.fieldtype === "Check") text = f.value === "0" || f.value === 0 ? "No" : "Yes";
-	else text = String(f.value ?? "");
+	else text = String(shown ?? "");
 	return `${f.label} ${CONDITION_SYMBOL[f.condition] || f.condition} ${text}`.trim();
 }

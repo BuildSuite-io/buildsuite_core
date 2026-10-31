@@ -1,6 +1,11 @@
 import { computed, ref, watch } from "vue";
 import { frappeRequest } from "frappe-ui-frappe-request";
-import { filterableFieldsFromMeta, toServerFilter, chipLabel } from "@/utils/listFilters";
+import {
+	filterableFieldsFromMeta,
+	toServerFilter,
+	chipLabel,
+	loadDoctypeMeta,
+} from "@/utils/listFilters";
 
 // Frappe-style "Add filter" for the hand-built lists (the ones that load reshaped rows from a
 // custom API or a transformed list, so DocTypeListView can't own the query). Filters are field /
@@ -13,27 +18,6 @@ import { filterableFieldsFromMeta, toServerFilter, chipLabel } from "@/utils/lis
 // every row, so it creates the instance itself in server mode — `resolveNames: false` skips the
 // name lookup — sends `df.serverFilters` with its own query, and hands the instance to DeskList
 // as `:dynamic-filters` (the editor and chips only).
-
-const metaCache = new Map(); // doctype -> Promise<meta>
-function loadDoctypeMeta(doctype) {
-	if (!metaCache.has(doctype)) {
-		metaCache.set(
-			doctype,
-			frappeRequest({
-				url: "frappe.desk.form.load.getdoctype",
-				method: "POST",
-				params: { doctype, with_parent: 1 },
-			})
-				.then((res) => (res?.docs ? res : res?.message)?.docs?.[0] || null)
-				.catch((err) => {
-					metaCache.delete(doctype);
-					console.warn("[buildsuite] Failed to fetch doctype meta", err);
-					return null;
-				})
-		);
-	}
-	return metaCache.get(doctype);
-}
 
 export function useDynamicFilters(doctype, { resolveNames = true } = {}) {
 	const meta = ref(null);
