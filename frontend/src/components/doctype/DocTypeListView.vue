@@ -731,6 +731,7 @@ function onPageSizeChange(value) {
 
 		<DeskList
 			v-model="search"
+			:show-count="false"
 			:rows="filteredRows"
 			:columns="resolvedColumns"
 			:row-key="rowKey"

@@ -33,6 +33,7 @@ import {
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
@@ -481,86 +482,92 @@ const expenseAccountFilters = computed(() => [
 			</div>
 
 			<!-- To Submit queue -->
-			<section
-				v-if="activeTab === 'queue'"
-				class="bg-white border border-ink-200 rounded-lg overflow-hidden"
-			>
-				<table v-if="toSubmit.length" class="w-full text-xs">
-					<thead
-						class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
-					>
-						<tr>
-							<th class="text-left px-4 py-2">{{ __("Date") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Description") }}</th>
-							<th class="text-left px-4 py-2">{{ __("By") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Source") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Account") }}</th>
-							<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
-							<th class="px-4 py-2"></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr
-							v-for="e in toSubmitPager.pagedRows"
-							:key="e.name"
-							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer"
-							@click="openDetail(e)"
+			<div v-if="activeTab === 'queue'">
+				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+					<table v-if="toSubmit.length" class="w-full text-xs">
+						<thead
+							class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
 						>
-							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
-							<td class="px-4 py-2.5 text-ink-900">
-								{{ e.description
-								}}<span v-if="e.has_attachment" class="ml-1 text-ink-400">📎</span>
-								<div class="text-[10px] text-ink-400">{{ projectName(e) }}</div>
-							</td>
-							<td class="px-4 py-2.5 text-ink-700">
-								<div class="flex items-center gap-1.5">
-									<UserAvatar :name="holderName(e)" size="xs" /><span>{{
-										holderName(e)
-									}}</span
-									><span
-										v-if="e.raised_for_me"
-										class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
-										:title="
-											__('Raised for you by {0}', [
-												e.raised_by_name || e.raised_by,
-											])
-										"
-										>{{ __("Raised for you") }}</span
-									>
-								</div>
-							</td>
-							<td class="px-4 py-2.5">
-								<span
-									class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
-									:class="sourceChipClass(e.source)"
-									>{{ __(e.source) }}</span
-								>
-							</td>
-							<td class="px-4 py-2.5 text-ink-600">
-								{{ e.expense_account || e.cost_code || "—" }}
-							</td>
-							<td
-								class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900"
+							<tr>
+								<th class="text-left px-4 py-2">{{ __("Date") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Description") }}</th>
+								<th class="text-left px-4 py-2">{{ __("By") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Source") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Account") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
+								<th class="px-4 py-2"></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="e in toSubmitPager.pagedRows"
+								:key="e.name"
+								class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer"
+								@click="openDetail(e)"
 							>
-								{{ fmtINR(e.amount) }}
-							</td>
-							<td class="px-4 py-2.5 text-right">
-								<button
-									type="button"
-									class="desk-save-btn"
-									@click.stop="onSubmit(e)"
+								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
+								<td class="px-4 py-2.5 text-ink-900">
+									{{ e.description
+									}}<span v-if="e.has_attachment" class="ml-1 text-ink-400"
+										>📎</span
+									>
+									<div class="text-[10px] text-ink-400">
+										{{ projectName(e) }}
+									</div>
+								</td>
+								<td class="px-4 py-2.5 text-ink-700">
+									<div class="flex items-center gap-1.5">
+										<UserAvatar :name="holderName(e)" size="xs" /><span>{{
+											holderName(e)
+										}}</span
+										><span
+											v-if="e.raised_for_me"
+											class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
+											:title="
+												__('Raised for you by {0}', [
+													e.raised_by_name || e.raised_by,
+												])
+											"
+											>{{ __("Raised for you") }}</span
+										>
+									</div>
+								</td>
+								<td class="px-4 py-2.5">
+									<span
+										class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+										:class="sourceChipClass(e.source)"
+										>{{ __(e.source) }}</span
+									>
+								</td>
+								<td class="px-4 py-2.5 text-ink-600">
+									{{ e.expense_account || e.cost_code || "—" }}
+								</td>
+								<td
+									class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900"
 								>
-									{{ __("Submit") }}
-								</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">
-					{{ loading ? __("Loading…") : __("No draft expenses awaiting submission.") }}
-				</div>
-				<DeskPaginationFooter :pager="toSubmitPager" />
-			</section>
+									{{ fmtINR(e.amount) }}
+								</td>
+								<td class="px-4 py-2.5 text-right">
+									<button
+										type="button"
+										class="desk-save-btn"
+										@click.stop="onSubmit(e)"
+									>
+										{{ __("Submit") }}
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">
+						{{
+							loading ? __("Loading…") : __("No draft expenses awaiting submission.")
+						}}
+					</div>
+					<DeskPaginationFooter :pager="toSubmitPager" />
+				</section>
+				<DeskListCount :pager="toSubmitPager" />
+			</div>
 
 			<!-- All Expenses -->
 			<template v-else-if="activeTab === 'all'">
@@ -703,6 +710,7 @@ const expenseAccountFilters = computed(() => [
 					</div>
 					<DeskPaginationFooter :pager="allExpensesPager" />
 				</section>
+				<DeskListCount :pager="allExpensesPager" />
 			</template>
 
 			<!-- My Expenses -->
@@ -815,6 +823,7 @@ const expenseAccountFilters = computed(() => [
 					</div>
 					<DeskPaginationFooter :pager="myExpensesPager" />
 				</section>
+				<DeskListCount :pager="myExpensesPager" />
 			</template>
 
 			<!-- Detail modal -->

@@ -13,6 +13,7 @@ import { useDataStore } from "@/stores";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { usePagination } from "@/composables/usePagination";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
 import { useConfirm } from "@/composables/useConfirm";
@@ -361,6 +362,7 @@ const breadcrumbs = [
 					}}
 				</div>
 			</section>
+			<DeskListCount :pager="pager" />
 			<p class="text-[11px] text-ink-400">
 				{{
 					__(

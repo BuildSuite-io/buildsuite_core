@@ -9,6 +9,7 @@ import { useActiveCompany } from "@/composables/useActiveCompany";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { usePagination } from "@/composables/usePagination";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { fmtINR } from "@/utils/format";
@@ -256,6 +257,7 @@ async function del(acc) {
 				</table>
 				<DeskPaginationFooter :pager="pager" />
 			</section>
+			<DeskListCount :pager="pager" />
 
 			<p class="text-[11px] text-ink-400 mt-3">
 				{{

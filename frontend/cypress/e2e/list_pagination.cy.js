@@ -66,4 +66,39 @@ describe("Pagination is consistent across lists", () => {
 		cy.contains(/Showing\s+11–20 of\s+25/).should("be.visible");
 		cy.contains("Account 11").should("be.visible");
 	});
+
+	// The "1-8 of 8 records" line is part of the rule too: it shows with or without the pager, and
+	// every kind of list renders the same wording exactly once.
+	const COUNT = /\d+-\d+ of \d+ records/;
+	const countLines = () =>
+		cy.get("body").then(($b) => ($b.text().match(/\d+-\d+ of \d+ records/g) || []).length);
+
+	it("a short bespoke table (Accounts) shows the count line without a pager", () => {
+		cy.visitApp("/settings/finance-accounts");
+		cy.contains("Opening balance").should("be.visible");
+		cy.dt("list-count").contains(COUNT).should("be.visible");
+		cy.contains(PAGER).should("not.exist");
+	});
+
+	it("Payments shows the count line beside the pager", () => {
+		cy.visitApp("/project-finance/payments");
+		cy.contains(PAGER).should("be.visible");
+		cy.dt("list-count")
+			.contains(/1-10 of \d+ records/)
+			.should("be.visible");
+	});
+
+	it("a plain DeskList (Customers) shows the count line once", () => {
+		cy.visitApp("/customers");
+		cy.dt("desk-list").contains("tbody tr", /\S/).should("be.visible");
+		cy.dt("list-count").contains(COUNT).should("be.visible");
+		countLines().should("eq", 1);
+	});
+
+	it("the generic list (Companies) shows the count line once, not twice", () => {
+		cy.visitApp("/settings/companies");
+		cy.dt("desk-list").contains("tbody tr", /\S/).should("be.visible");
+		cy.contains(COUNT).should("be.visible");
+		countLines().should("eq", 1);
+	});
 });
