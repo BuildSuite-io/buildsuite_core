@@ -104,6 +104,8 @@ watch(
 					uom: it.uom || "",
 					rate: it.rate ?? null,
 					cost_code: it.cost_code || null,
+					material_request: it.material_request || null,
+					material_request_item: it.material_request_item || null,
 				})),
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
@@ -131,6 +133,8 @@ watch(
 					uom: l.uom || "",
 					rate: l.rate ?? null,
 					cost_code: l.cost_code || null,
+					material_request: pre.material_request,
+					material_request_item: l.material_request_item || null,
 				}));
 			}
 		} catch (err) {
@@ -184,6 +188,9 @@ async function onSave() {
 				uom: l.uom || null,
 				rate: Number(l.rate) || 0,
 				cost_code: l.cost_code || null,
+				// Keeps the line tied to its Material Request line, so the request shows as ordered.
+				material_request: l.material_request || null,
+				material_request_item: l.material_request_item || null,
 			})),
 		});
 		showToast(isEdit.value ? __("Order saved.") : __("Order created."));

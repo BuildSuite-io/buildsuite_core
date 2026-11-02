@@ -287,6 +287,8 @@ def _serialize_po(doc):
 				"warehouse": it.warehouse,
 				"project": it.project,
 				"cost_code": _po_cost_code_obj(it),
+				"material_request": it.material_request,
+				"material_request_item": it.material_request_item,
 			}
 			for it in doc.items
 		],
@@ -379,6 +381,7 @@ def get_mr_for_po(material_request: str):
 				"uom": it.uom,
 				"rate": flt(it.rate),
 				"cost_code": _po_cost_code_obj(it),
+				"material_request_item": it.name,
 			}
 		)
 	return {
@@ -443,7 +446,10 @@ def save_purchase_order(
 				"schedule_date": row.get("schedule_date") or schedule_date or nowdate(),
 				"warehouse": default_wh,
 				"project": project,
-				"material_request": material_request or None,
+				# ERPNext rolls the ordered qty (and so the request's status) up to the
+				# Material Request through the line link, not the request name alone.
+				"material_request": row.get("material_request") or material_request or None,
+				"material_request_item": row.get("material_request_item") or None,
 				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)
