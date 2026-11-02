@@ -5,11 +5,12 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { useListCounts } from "@/composables/useListCounts";
 import { fmtDate } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
@@ -19,7 +20,6 @@ const route = useRoute();
 const adapter = createDataAdapter(store);
 const { canCreate, canRead } = usePermissions();
 
-const search = ref("");
 const taskFilter = ref(route.query.task || "");
 const enteredByFilter = ref("");
 const blockerOnly = ref(false);
@@ -32,41 +32,31 @@ function daysAgo(n) {
 }
 const SEVEN_DAYS_AGO = daysAgo(6);
 
-const entriesResource = adapter.list("Task Progress Entry", {
-	fields: [
-		"name",
-		"task",
-		"company",
-		"entry_date",
-		"cumulative_progress",
-		"skilled",
-		"unskilled",
-		"weather",
-		"blocker",
-		"blocker_detail",
-		"narrative",
-		"owner",
-		"modified",
-		"creation",
-	],
-	orderBy: "entry_date desc",
-	pageLength: 0, // fetch all — DeskList paginates client-side; the filters need the full set
+// The generic DocTypeListView owns paging, sort and the Add-filter editor; the KPI strip counts the
+// whole (company-scoped) set on the server, independent of the list's filters.
+const { counts: kpis } = useListCounts("Task Progress Entry", () => ({
+	total: [],
+	today: [["entry_date", "=", TODAY]],
+	thisWeek: [["entry_date", ">=", SEVEN_DAYS_AGO]],
+	blockers: [["blocker", "=", 1]],
+}));
+
+// The list's own chips map onto doctype fields; "entered by" is the document owner.
+const filterValues = computed(() => ({
+	task: taskFilter.value,
+	enteredBy: enteredByFilter.value,
+	blocker: blockerOnly.value ? 1 : 0,
+}));
+
+// Task names for the Task column (the entry stores the Task id).
+const tasksResource = adapter.list("Task", {
+	fields: ["name", "subject", "status"],
+	orderBy: "modified desc",
+	pageLength: 0, // need every task so the name->subject map resolves all entries
 	transform(rows) {
 		return rows.map((row) => ({
 			id: row?.name || "",
-			task: row?.task || "",
-			company: row?.company || "",
-			entryDate: row?.entry_date || null,
-			progressPct: Number(row?.cumulative_progress) || 0,
-			narrative: row?.narrative || "",
-			skilledLabour: Number(row?.skilled) || 0,
-			unskilledLabour: Number(row?.unskilled) || 0,
-			weather: row?.weather || "",
-			blockerFlag: !!Number(row?.blocker),
-			blockerNote: row?.blocker_detail || "",
-			enteredBy: row?.owner || "",
-			modified: row?.modified || null,
-			creation: row?.creation || null,
+			name: row?.subject || row?.name || "",
 		}));
 	},
 	// Don't fetch (and 403) when the persona has no Task Progress Entry read — the
@@ -78,27 +68,6 @@ function toArray(data) {
 	if (Array.isArray(data?.value)) return data.value;
 	return [];
 }
-
-const allEntries = computed(() => toArray(entriesResource.data));
-
-// The set the page works from — scoped to the switcher's company when awareness is on (this view
-// fetches all + filters client-side). Everything else (search, task filter, KPIs) derives from it.
-const companyScopedEntries = computed(() => {
-	const scope = store.multiCompanyEnabled && store.activeCompany ? store.activeCompany : null;
-	return scope ? allEntries.value.filter((e) => e.company === scope) : allEntries.value;
-});
-
-const tasksResource = adapter.list("Task", {
-	fields: ["name", "subject", "status"],
-	orderBy: "modified desc",
-	pageLength: 0, // need every task so the name->subject map resolves all entries
-	transform(rows) {
-		return rows.map((row) => ({
-			id: row?.name || "",
-			name: row?.subject || row?.name || "",
-		}));
-	},
-});
 const tasksMap = computed(() => {
 	const map = {};
 	toArray(tasksResource.data).forEach((t) => {
@@ -111,44 +80,6 @@ function taskName(id) {
 	return tasksMap.value[id] || id;
 }
 
-const sortField = ref("entryDate");
-const sortDirection = ref("desc");
-
-const SORT_OPTIONS = [
-	{ value: "entryDate", label: __("Entry Date") },
-	{ value: "progressPct", label: __("Progress %") },
-	{ value: "task", label: __("Task") },
-	{ value: "enteredBy", label: __("Entered By") },
-	{ value: "modified", label: __("Last Updated") },
-	{ value: "creation", label: __("Created") },
-];
-
-const items = computed(() => {
-	const term = search.value.trim().toLowerCase();
-	return companyScopedEntries.value.filter((e) => {
-		if (taskFilter.value && e.task !== taskFilter.value) return false;
-		if (enteredByFilter.value && e.enteredBy !== enteredByFilter.value) return false;
-		if (blockerOnly.value && !e.blockerFlag) return false;
-		if (term) {
-			const hay = `${e.id} ${e.narrative} ${taskName(e.task)} ${
-				e.blockerNote
-			}`.toLowerCase();
-			if (!hay.includes(term)) return false;
-		}
-		return true;
-	});
-});
-
-const kpis = computed(() => {
-	const all = companyScopedEntries.value;
-	return {
-		total: all.length,
-		today: all.filter((e) => e.entryDate === TODAY).length,
-		thisWeek: all.filter((e) => e.entryDate >= SEVEN_DAYS_AGO).length,
-		blockers: all.filter((e) => e.blockerFlag).length,
-	};
-});
-
 const WEATHER_ICON = {
 	Clear: "☀️",
 	Rainy: "🌧️",
@@ -157,15 +88,16 @@ const WEATHER_ICON = {
 	Storm: "⛈️",
 };
 
+// Non-field columns name the real fields their cells read, so those are fetched.
 const columns = [
-	{ key: "id", label: __("ID") },
-	{ key: "entryDate", label: __("Date") },
+	{ key: "name", label: __("ID") },
+	{ key: "entry_date", label: __("Date") },
 	{ key: "task", label: __("Task") },
-	{ key: "progressPct", label: __("Progress"), align: "right" },
-	{ key: "labour", label: __("Labour"), align: "right" },
+	{ key: "cumulative_progress", label: __("Progress"), align: "right" },
+	{ key: "labour", label: __("Labour"), align: "right", fields: ["skilled", "unskilled"] },
 	{ key: "weather", label: __("Weather") },
-	{ key: "flags", label: __("Flags") },
-	{ key: "enteredBy", label: __("Entered by") },
+	{ key: "flags", label: __("Flags"), fields: ["blocker", "blocker_detail"] },
+	{ key: "owner", label: __("Entered by") },
 ];
 
 const breadcrumbs = [
@@ -173,12 +105,13 @@ const breadcrumbs = [
 	{ label: __("Task Progress Entry") },
 ];
 
+const shown = ref(0);
 const subtitle = computed(() =>
-	__("{0} of {1}", [items.value.length, companyScopedEntries.value.length])
+	kpis.value.total == null ? "" : __("{0} of {1}", [shown.value, kpis.value.total])
 );
 
 function onRowClick(row) {
-	router.push(`/progress-entries/${row.id}`);
+	router.push(`/progress-entries/${row.name}`);
 }
 </script>
 
@@ -211,19 +144,25 @@ function onRowClick(row) {
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					{{ __("Total entries") }}
 				</div>
-				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.total }}</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">
+					{{ kpis.total ?? "—" }}
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					{{ __("Filed today") }}
 				</div>
-				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.today }}</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">
+					{{ kpis.today ?? "—" }}
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					{{ __("Last 7 days") }}
 				</div>
-				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.thisWeek }}</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">
+					{{ kpis.thisWeek ?? "—" }}
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -233,25 +172,37 @@ function onRowClick(row) {
 					class="text-base font-semibold mt-0.5"
 					:class="kpis.blockers > 0 ? 'text-danger-700' : 'text-ink-900'"
 				>
-					{{ kpis.blockers }}
+					{{ kpis.blockers ?? "—" }}
 				</div>
 			</div>
 		</div>
 
-		<DeskList
-			filter-doctype="Task Progress Entry"
+		<DocTypeListView
 			v-if="canRead('taskProgressEntry')"
-			v-model="search"
-			:rows="items"
+			doctype="Task Progress Entry"
+			:field-order="[
+				'name',
+				'entry_date',
+				'task',
+				'cumulative_progress',
+				'skilled',
+				'unskilled',
+				'weather',
+				'blocker',
+				'blocker_detail',
+				'owner',
+			]"
 			:columns="columns"
-			row-key="id"
+			:search-fields="['name', 'narrative', 'blocker_detail']"
+			:link-search="[{ field: 'task', doctype: 'Task', titleField: 'subject' }]"
+			:filter-values="filterValues"
+			:filter-field-map="{ task: 'task', enteredBy: 'owner', blocker: 'blocker' }"
+			initial-order-by="entry_date desc"
+			cache-key="buildsuite-progress-entry-list"
+			row-key="name"
 			:search-placeholder="__('Search narrative, task, blocker note…')"
-			:sort-field="sortField"
-			:sort-direction="sortDirection"
-			:sort-options="SORT_OPTIONS"
-			@update:sort-field="sortField = $event"
-			@update:sort-direction="sortDirection = $event"
 			@row-click="onRowClick"
+			@total-change="shown = $event"
 		>
 			<template #filter-chips>
 				<!-- Task filter -->
@@ -296,47 +247,47 @@ function onRowClick(row) {
 				/>
 			</template>
 
-			<template #cell-id="{ row }">
+			<template #cell-name="{ row }">
 				<DeskLink
-					:to="`/progress-entries/${row.id}`"
+					:to="`/progress-entries/${row.name}`"
 					@click.stop
 					class="font-mono text-xs"
-					>{{ row.id }}</DeskLink
+					>{{ row.name }}</DeskLink
 				>
 			</template>
-			<template #cell-entryDate="{ row }">
-				<span class="text-xs text-ink-700">{{ fmtDate(row.entryDate) }}</span>
+			<template #cell-entry_date="{ row }">
+				<span class="text-xs text-ink-700">{{ fmtDate(row.entry_date) }}</span>
 			</template>
 			<template #cell-task="{ row }">
 				<DeskLink :to="`/tasks/${row.task}`" @click.stop>{{
 					taskName(row.task)
 				}}</DeskLink>
 			</template>
-			<template #cell-progressPct="{ row }">
+			<template #cell-cumulative_progress="{ row }">
 				<div class="flex items-center justify-end gap-2">
 					<div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px">
 						<div
 							class="h-full"
 							:class="
-								row.progressPct === 100
+								Number(row.cumulative_progress) === 100
 									? 'bg-success-500'
-									: row.progressPct > 0
+									: Number(row.cumulative_progress) > 0
 									? 'bg-brand-500'
 									: 'bg-ink-300'
 							"
-							:style="`width:${row.progressPct}%`"
+							:style="`width:${Number(row.cumulative_progress) || 0}%`"
 						></div>
 					</div>
 					<span class="text-xs tabular-nums w-8 text-right font-medium"
-						>{{ row.progressPct }}%</span
+						>{{ Number(row.cumulative_progress) || 0 }}%</span
 					>
 				</div>
 			</template>
 			<template #cell-labour="{ row }">
 				<span class="text-xs text-ink-700 tabular-nums">
-					{{ row.skilledLabour }}+{{ row.unskilledLabour }}
+					{{ Number(row.skilled) || 0 }}+{{ Number(row.unskilled) || 0 }}
 					<span class="text-ink-400"
-						>({{ row.skilledLabour + row.unskilledLabour }})</span
+						>({{ (Number(row.skilled) || 0) + (Number(row.unskilled) || 0) }})</span
 					>
 				</span>
 			</template>
@@ -349,18 +300,18 @@ function onRowClick(row) {
 			</template>
 			<template #cell-flags="{ row }">
 				<span
-					v-if="row.blockerFlag"
+					v-if="Number(row.blocker)"
 					class="text-[10px] px-1.5 py-0.5 bg-danger-50 text-danger-700 font-medium"
 					style="border-radius: 2px"
-					:title="row.blockerNote || __('Blocker flagged')"
+					:title="row.blocker_detail || __('Blocker flagged')"
 					>🚩 {{ __("Blocker") }}</span
 				>
 				<span v-else class="text-[10px] text-ink-300">—</span>
 			</template>
-			<template #cell-enteredBy="{ row }">
-				<div v-if="row.enteredBy" class="inline-flex items-center gap-2">
-					<UserAvatar :user-id="row.enteredBy" size="xs" />
-					<span class="text-xs text-ink-700">{{ row.enteredBy }}</span>
+			<template #cell-owner="{ row }">
+				<div v-if="row.owner" class="inline-flex items-center gap-2">
+					<UserAvatar :user-id="row.owner" size="xs" />
+					<span class="text-xs text-ink-700">{{ row.owner }}</span>
 				</div>
 				<span v-else class="text-[10px] text-ink-300">—</span>
 			</template>
@@ -376,6 +327,6 @@ function onRowClick(row) {
 					>
 				</div>
 			</template>
-		</DeskList>
+		</DocTypeListView>
 	</DeskPage>
 </template>

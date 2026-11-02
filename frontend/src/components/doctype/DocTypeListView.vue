@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { watchDebounced } from "@vueuse/core";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskFilterEditor from "@/components/desk/DeskFilterEditor.vue";
@@ -29,9 +31,13 @@ const props = defineProps({
 	searchPlaceholder: { type: String, default: "Search" },
 	emptyMessage: { type: String, default: "No records found" },
 	compact: { type: Boolean, default: false },
+	// Search by the NAME of a linked record. A list shows e.g. a task's ID but people type its
+	// subject; each rule — { field, doctype, titleField } — resolves the search text against that
+	// doctype's title field and ORs the matching IDs into the search on `field`.
+	linkSearch: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["row-click", "count-change"]);
+const emit = defineEmits(["row-click", "count-change", "rows-change", "total-change"]);
 
 // Reactive [["company","=",<working company>]] (or []) from the topbar switcher — used to
 // auto-scope any list whose doctype has a `company` field (see serverFilters).
@@ -319,13 +325,50 @@ const serverFilters = computed(() => {
 	return filters;
 });
 
+// Link-search: the IDs of linked records whose title matches the search text, per rule.
+const linkMatches = ref({}); // rule.field -> [ids]
+watchDebounced(
+	() => search.value.trim(),
+	async (term) => {
+		if (!props.paginated || !term || !props.linkSearch.length) {
+			linkMatches.value = {};
+			return;
+		}
+		const next = {};
+		await Promise.all(
+			props.linkSearch.map(async (rule) => {
+				try {
+					const rows = await frappeRequest({
+						url: "frappe.client.get_list",
+						params: {
+							doctype: rule.doctype,
+							fields: ["name"],
+							filters: [[rule.titleField, "like", `%${term}%`]],
+							limit_page_length: 50,
+						},
+					});
+					next[rule.field] = (rows || []).map((r) => r.name);
+				} catch {
+					next[rule.field] = [];
+				}
+			})
+		);
+		if (term === search.value.trim()) linkMatches.value = next;
+	},
+	{ debounce: 250 }
+);
+
 const serverOrFilters = computed(() => {
 	const term = search.value.trim();
 	if (!props.paginated || !term) return [];
 
-	return props.searchFields
+	const own = props.searchFields
 		.filter((fieldname) => fieldMetaMap.value.has(fieldname))
 		.map((fieldname) => [fieldname, "like", `%${term}%`]);
+	const linked = props.linkSearch
+		.filter((rule) => linkMatches.value[rule.field]?.length)
+		.map((rule) => [rule.field, "in", linkMatches.value[rule.field]]);
+	return [...own, ...linked];
 });
 
 const sortableFields = computed(() => {
@@ -665,6 +708,13 @@ watch(
 	{ immediate: true }
 );
 
+// The current page's rows, for a parent that layers derived data on them (e.g. BOQ actuals).
+watch(
+	() => resource.data,
+	(rows) => emit("rows-change", rows || []),
+	{ immediate: true }
+);
+
 const estimatedTotalRows = computed(() => {
 	if (!props.paginated) return filteredRows.value.length;
 	if (hasNextPage.value) {
@@ -678,6 +728,7 @@ const estimatedTotalRows = computed(() => {
 const effectiveTotalRows = computed(() =>
 	totalCount.value != null ? totalCount.value : estimatedTotalRows.value
 );
+watch(effectiveTotalRows, (n) => emit("total-change", n), { immediate: true });
 
 const listCountText = computed(() => {
 	if (!props.paginated) {
