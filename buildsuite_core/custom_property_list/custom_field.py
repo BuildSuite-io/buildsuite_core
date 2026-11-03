@@ -41,6 +41,15 @@ CUSTOM_FIELD = {
 			"description": "Address / GSTIN / contact line shown under the company name in the letter head.",
 			"module": "BuildSuite Core",
 		},
+		{
+			"fieldname": "custom_brand_colour",
+			"fieldtype": "Select",
+			"label": "Brand Colour",
+			"options": "\nGreen\nBlue\nViolet\nAmber\nEmerald\nRose\nCyan\nSlate",
+			"insert_after": "custom_letter_head_subtext",
+			"description": "The company's pill colour in the BuildSuite top bar and lists. Blank = derived from the company ID.",
+			"module": "BuildSuite Core",
+		},
 	],
 	# Marks a Payment Entry as a BuildSuite on-account ADVANCE (from record_advance / linked
 	# via the bill's Advance Payments). A fully-consumed advance is otherwise indistinguishable
