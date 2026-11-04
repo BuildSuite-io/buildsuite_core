@@ -53,6 +53,9 @@ def _serialize(doc):
 		"advance_adjusted": adjusted,
 		"advances": advances,
 		"work_order": doc.work_order,
+		"delivery_type": frappe.db.get_value(WORK_ORDER, doc.work_order, "delivery_type")
+		if doc.work_order
+		else None,
 		"ra_no": doc.ra_no,
 		"subcontractor": doc.subcontractor,
 		"subcontractor_name": doc.subcontractor_name,
@@ -238,7 +241,7 @@ def list_bills(project: str | None = None):
 @frappe.whitelist()
 def get_wo_bill_context(work_order: str):
 	"""Everything the New (Work Order) bill screen needs: WO header, the derived this-period
-	lines (measured − previously billed), and the next RA number."""
+	lines (measured - previously billed), and the next RA number."""
 	from buildsuite_core.api.subcontract import _wo_state, get_wo_measurements
 	from buildsuite_core.buildsuite_core.doctype.subcontractor_bill.subcontractor_bill import (
 		previously_billed_by_line,
@@ -484,7 +487,14 @@ def make_payment_entry(name: str):
 
 
 @frappe.whitelist()
-def record_payment(name: str, amount: str | float | None = None, date: str | None = None, mode_of_payment: str | None = None, paid_from: str | None = None, reference_no: str | None = None):
+def record_payment(
+	name: str,
+	amount: str | float | None = None,
+	date: str | None = None,
+	mode_of_payment: str | None = None,
+	paid_from: str | None = None,
+	reference_no: str | None = None,
+):
 	"""Create + submit a Payment Entry against the bill's Purchase Invoice (used by tests / API)."""
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
