@@ -206,8 +206,6 @@ const breadcrumbs = [
 	{ label: __("Settings"), to: "/settings" },
 	{ label: __("BuildSuite Core Settings") },
 ];
-
-const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industrial", "Renovation"];
 </script>
 
 <template>
@@ -273,20 +271,9 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
+				<!-- "Default project type" went: it said it pre-filled new projects, and nothing ever
+				     read it. -->
 				<DeskSection :title="__('Project defaults')">
-					<DeskField
-						:label="__('Default project type')"
-						:hint="__('Pre-fills the Project type field on new projects.')"
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ __(store.coreSettings.default_project_type) }}
-						</div>
-						<DeskSelect v-else v-model="form.default_project_type">
-							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">
-								{{ __(t) }}
-							</option>
-						</DeskSelect>
-					</DeskField>
 					<DeskField
 						:label="__('Project naming')"
 						:hint="

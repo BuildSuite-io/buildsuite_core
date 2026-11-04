@@ -2,8 +2,8 @@
 // Company detail / edit — Settings sub-page. Admin-only mutations (Edit / Save
 // / Delete buttons hidden for non-admin). ID is locked after create (stripped
 // from any patch in store.updateCompany, per Frappe Naming Series convention).
-// Delete is reference-guarded — store.deleteCompany returns {ok:false} with the
-// list of linked projects when blocked.
+// Delete is reference-guarded — the server refuses while any record still links to the
+// company; the action bar shows how many projects do.
 
 import { ref, computed, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
@@ -16,7 +16,7 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
-import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import {
 	getCompanyBranding,
 	updateCompanyBranding,
@@ -24,6 +24,7 @@ import {
 	getCompanyProjects,
 } from "@/data/companyApi";
 import { showToast } from "@/utils/appToast";
+import { COMPANY_COLOUR_OPTIONS, colourClass } from "@/utils/companyColours";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
@@ -43,17 +44,13 @@ const COLOR_OPTIONS = [
 ];
 
 const company = computed(() => store.companyById(props.id));
-// Real projects that belong to this company (backend, permission-respecting) — not the
-// prototype's local projects slice.
-const linkedProjects = ref([]); // a capped sample of the company's projects
-const linkedProjectsTotal = ref(0); // the real total (a company can own thousands)
+// How many projects belong to this company (backend, permission-respecting). No longer listed on
+// the page — the count in the action bar is what tells you why a delete would be refused.
+const linkedProjectsTotal = ref(0);
 async function loadLinkedProjects() {
 	try {
-		const r = (await getCompanyProjects(props.id)) || {};
-		linkedProjects.value = r.rows || [];
-		linkedProjectsTotal.value = r.total || 0;
+		linkedProjectsTotal.value = ((await getCompanyProjects(props.id)) || {}).total || 0;
 	} catch {
-		linkedProjects.value = [];
 		linkedProjectsTotal.value = 0;
 	}
 }
@@ -79,13 +76,22 @@ function cancelEdit() {
 }
 async function saveEdit() {
 	if (!store.isAdmin) return;
-	// Name (company_name) and Short name (abbr) are the real editable identity fields;
-	// colour is derived and description isn't a Company field, so neither persists.
+	// Read the choice before the first await: saving reloads the companies, and the form is reset
+	// from the reloaded company, which would make the chosen colour look unchanged.
+	const wantedColour = form.value.colourName;
+	const colourChanged = wantedColour !== company.value.colourName;
+	// Name (company_name) and Short name (abbr) are the real editable identity fields; the brand
+	// colour is saved on the Company too (only when changed, so a derived default isn't pinned).
+	// Description isn't a Company field, so it doesn't persist.
 	try {
 		await store.updateCompany(props.id, {
 			name: form.value.name,
 			shortName: form.value.shortName,
 		});
+		if (colourChanged) {
+			await updateCompanyBranding({ company: props.id, brand_colour: wantedColour });
+			await store.loadCompanies(); // the top-bar pill picks the new colour up
+		}
 		editing.value = false;
 	} catch (err) {
 		showToast(err.message || __("Could not save the company."), "error");
@@ -145,9 +151,7 @@ const titleStatus = computed(() => {
 // (single) letter head today, so the section shows on the active company; per-company
 // branding falls out when multi-company support lands (the backend is already keyed by
 // company). Wired to the real backend independent of the prototype's mock company store.
-const isActiveCompany = computed(
-	() => company.value && company.value.id === store.activeCompany
-);
+const isActiveCompany = computed(() => company.value && company.value.id === store.activeCompany);
 const brandFileInput = ref(null);
 const brand = ref({ loading: false, saving: false, uploading: false });
 const brandCompanyName = ref("");
@@ -268,15 +272,17 @@ watch(
 						<span v-if="linkedProjectsTotal" class="text-[11px] text-ink-500">
 							{{
 								linkedProjectsTotal === 1
-									? __("{0} project references this company", [linkedProjectsTotal])
+									? __("{0} project references this company", [
+											linkedProjectsTotal,
+									  ])
 									: __("{0} projects reference this company", [
 											linkedProjectsTotal,
-										])
+									  ])
 							}}
 						</span>
-						<span v-else class="text-[11px] text-ink-400"
-							>{{ __("No projects reference this company · safe to delete") }}</span
-						>
+						<span v-else class="text-[11px] text-ink-400">{{
+							__("No projects reference this company · safe to delete")
+						}}</span>
 					</template>
 					<template #menu>
 						<button
@@ -307,7 +313,10 @@ watch(
 					<DeskField :label="__('Short name')" :hint="__('Topbar pill text.')">
 						<div class="text-sm text-ink-900 py-1">{{ company.shortName }}</div>
 					</DeskField>
-					<DeskField :label="__('ID')" :hint="__('Stable identifier — locked after create.')">
+					<DeskField
+						:label="__('ID')"
+						:hint="__('Stable identifier — locked after create.')"
+					>
 						<div class="text-sm text-ink-500 py-1 font-mono">{{ company.id }}</div>
 					</DeskField>
 					<DeskField :label="__('Description')">
@@ -331,16 +340,40 @@ watch(
 					</DeskField>
 				</DeskSection>
 
-				<!-- Brand colour -->
+				<!-- Brand colour — a selector, saved on the Company -->
 				<DeskSection :title="__('Brand colour')" v-if="!editing" :cols="2">
 					<DeskField :label="__('Pill colour')">
 						<div class="flex items-center gap-2 py-1">
 							<span
 								:class="company.color"
 								class="w-4 h-4"
-								style="border-radius: 2px"
+								style="border-radius: 4px"
 							></span>
-							<span class="text-sm text-ink-700">{{ company.color }}</span>
+							<span class="text-sm text-ink-900">{{ __(company.colourName) }}</span>
+						</div>
+					</DeskField>
+				</DeskSection>
+				<DeskSection :title="__('Brand colour')" v-else :cols="2">
+					<DeskField
+						:label="__('Pill colour')"
+						:hint="__('The company\'s pill in the topbar and on lists.')"
+					>
+						<div class="flex items-center gap-2">
+							<span
+								:class="colourClass(form.colourName)"
+								class="w-6 h-6 flex-shrink-0"
+								style="border-radius: 6px"
+								aria-hidden="true"
+							></span>
+							<DeskSelect v-model="form.colourName" class="flex-1">
+								<option
+									v-for="opt in COMPANY_COLOUR_OPTIONS"
+									:key="opt.value"
+									:value="opt.value"
+								>
+									{{ __(opt.value) }}
+								</option>
+							</DeskSelect>
 						</div>
 					</DeskField>
 				</DeskSection>
@@ -349,10 +382,14 @@ watch(
 					<div class="md:col-span-2 space-y-4">
 						<p class="text-[11px] text-ink-500">
 							Logo and subtext for
-							<b>{{ brandCompanyName || company.name }}</b>, materialised into the
-							<span class="font-mono">{{ letterHeadName || __("letter head") }}</span>
-							that fronts every print of this company's documents (Work Order, Purchase
-							Order, Invoice…). No logo? The letter head shows the company's initials.
+							<b>{{ brandCompanyName || company.name }}</b
+							>, materialised into the
+							<span class="font-mono">{{
+								letterHeadName || __("letter head")
+							}}</span>
+							that fronts every print of this company's documents (Work Order,
+							Purchase Order, Invoice…). No logo? The letter head shows the company's
+							initials.
 						</p>
 
 						<!-- Logo -->
@@ -366,7 +403,9 @@ watch(
 									:alt="__('Company logo')"
 									class="max-w-full max-h-full object-contain"
 								/>
-								<span v-else class="text-[10px] text-ink-400">{{ __("No logo") }}</span>
+								<span v-else class="text-[10px] text-ink-400">{{
+									__("No logo")
+								}}</span>
 							</div>
 							<div v-if="store.isAdmin" class="flex flex-col gap-2">
 								<button
@@ -379,8 +418,8 @@ watch(
 										brand.uploading
 											? __("Uploading…")
 											: brandForm.logo
-												? __("Replace logo")
-												: __("Upload logo")
+											? __("Replace logo")
+											: __("Upload logo")
 									}}
 								</button>
 								<button
@@ -414,7 +453,9 @@ watch(
 							/>
 							<p class="text-[11px] text-ink-500 mt-1">
 								{{
-									__("Shown under the company name in the letter head; line breaks preserved.")
+									__(
+										"Shown under the company name in the letter head; line breaks preserved."
+									)
 								}}
 							</p>
 						</div>
@@ -464,62 +505,9 @@ watch(
 							>
 								{{ brand.saving ? __("Saving…") : __("Save branding") }}
 							</button>
-							<span v-if="brandDirty" class="text-[11px] text-warning-700"
-								>{{ __("Unsaved branding changes") }}</span
-							>
-						</div>
-					</div>
-				</DeskSection>
-
-				<!-- Linked projects (always visible — informs delete safety) -->
-				<DeskSection :title="__('Linked projects')">
-					<div class="md:col-span-2">
-						<div
-							v-if="linkedProjects.length"
-							class="border border-ink-200"
-							style="border-radius: 2px"
-						>
-							<div
-								class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-								style="grid-template-columns: 140px 1fr 100px"
-							>
-								<div class="px-3 py-1.5">{{ __("Code") }}</div>
-								<div class="px-3 py-1.5">{{ __("Project") }}</div>
-								<div class="px-3 py-1.5">{{ __("Status") }}</div>
-							</div>
-							<div
-								v-for="p in linkedProjects"
-								:key="p.id"
-								class="grid desk-row-stripe hover:bg-brand-50 border-b border-ink-100 last:border-b-0 items-center text-sm"
-								style="grid-template-columns: 140px 1fr 100px"
-							>
-								<div class="px-3 py-1.5 font-mono text-xs text-ink-600">
-									{{ p.code }}
-								</div>
-								<div class="px-3 py-1.5">
-									<DeskLink :to="`/projects/${p.id}`">{{ p.name }}</DeskLink>
-								</div>
-								<div class="px-3 py-1.5 text-xs text-ink-500">{{ p.status }}</div>
-							</div>
-							<div
-								v-if="linkedProjectsTotal > linkedProjects.length"
-								class="px-3 py-1.5 text-[11px] text-ink-500 bg-ink-50 border-t border-ink-200"
-							>
-								{{
-									__("Showing {0} of {1} — open the Projects list to see them all.", [
-										linkedProjects.length,
-										linkedProjectsTotal,
-									])
-								}}
-							</div>
-						</div>
-						<div v-else class="text-xs text-ink-400 italic">
-							{{ __("No projects reference this company. Safe to delete.") }}
-						</div>
-						<div class="text-[11px] text-ink-500 mt-2">
-							{{
-								__("Delete is refused while any project links to this company (Frappe-standard LinkExistsError pattern).")
-							}}
+							<span v-if="brandDirty" class="text-[11px] text-warning-700">{{
+								__("Unsaved branding changes")
+							}}</span>
 						</div>
 					</div>
 				</DeskSection>
@@ -529,6 +517,8 @@ watch(
 
 	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
 		{{ __("Company not found ·") }}
-		<RouterLink to="/settings/companies" class="desk-link">{{ __("Back to list →") }}</RouterLink>
+		<RouterLink to="/settings/companies" class="desk-link">{{
+			__("Back to list →")
+		}}</RouterLink>
 	</div>
 </template>

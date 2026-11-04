@@ -14,6 +14,7 @@ import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTempl
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
 import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
 import { setDisplayCurrency } from "@/utils/format";
+import { colourClass, colourNameForClass } from "@/utils/companyColours";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
 import {
 	setActiveCompany as setActiveCompanyScope,
@@ -798,7 +799,10 @@ export const useDataStore = defineStore("data", {
 				name: r.name,
 				shortName: r.abbr || r.name,
 				description: "",
-				color: colourForId(r.id),
+				// The saved brand colour, else one derived from the id so the pill is never blank.
+				color: colourClass(r.colour) || colourForId(r.id),
+				colourName: r.colour || colourNameForClass(colourForId(r.id)),
+				colourSaved: !!r.colour,
 				logo: r.logo,
 				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,
