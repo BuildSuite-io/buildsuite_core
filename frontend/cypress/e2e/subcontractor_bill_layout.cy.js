@@ -56,5 +56,9 @@ describe("Subcontractor Bill detail — prototype layout", () => {
 		cy.visitApp(`/subcontractor-bills/${submitted}`);
 		cy.dt("page-title").should("be.visible");
 		cy.contains("button", "Open in Accounting").should("not.exist");
+		// Read-only, the Retention panel matches the prototype: no draft-only inputs, plain-text expense account.
+		cy.contains("label", "Advance recovery").should("not.exist");
+		cy.contains("label", "Bill type").should("not.exist");
+		cy.contains("label", "Expense account").parent().find("input, select").should("not.exist");
 	});
 });

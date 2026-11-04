@@ -1167,22 +1167,24 @@ const accountFilters = computed(() =>
 					</h3>
 				</div>
 				<div class="p-4 space-y-3 text-xs">
-					<div class="grid grid-cols-2 gap-3">
-						<div>
-							<label
-								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>{{ __("Retention %") }}</label
-							>
-							<input
-								v-model.number="bill.retention_percent"
-								:readonly="!editable"
-								type="number"
-								min="0"
-								max="20"
-								step="0.5"
-								class="desk-input"
-							/>
-						</div>
+					<div>
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Retention %") }}</label
+						>
+						<input
+							v-model.number="bill.retention_percent"
+							:readonly="!editable"
+							type="number"
+							min="0"
+							max="20"
+							step="0.5"
+							class="desk-input"
+						/>
+					</div>
+					<!-- Draft-only inputs the prototype dropped: advances can't be linked until submit, and a
+					     Final bill releases retention. Once submitted they read from the waterfall instead. -->
+					<div v-if="editable" class="grid grid-cols-2 gap-3">
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
@@ -1190,14 +1192,28 @@ const accountFilters = computed(() =>
 							>
 							<input
 								v-model.number="bill.advance_recovery"
-								:readonly="!editable"
 								type="number"
 								min="0"
 								step="0.01"
 								class="desk-input"
 							/>
 						</div>
+						<div>
+							<label
+								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+								>{{ __("Bill type") }}</label
+							>
+							<select v-model="bill.bill_type" class="desk-input">
+								<option value="Normal">{{ __("Normal") }}</option>
+								<option value="Final">
+									{{ __("Final (release retention)") }}
+								</option>
+							</select>
+						</div>
 					</div>
+					<p v-else-if="bill.bill_type === 'Final'" class="text-[10px] text-ink-500">
+						{{ __("Final bill — retention released.") }}
+					</p>
 					<div>
 						<label class="flex items-center gap-2 py-0.5"
 							><input
@@ -1215,6 +1231,7 @@ const accountFilters = computed(() =>
 								>{{ __("Withholding category") }}</label
 							>
 							<DeskLinkPicker
+								v-if="editable"
 								v-model="bill.tax_withholding_category"
 								doctype="Tax Withholding Category"
 								label-field="name"
@@ -1222,6 +1239,10 @@ const accountFilters = computed(() =>
 								:placeholder="__('Pick category…')"
 								:disabled="!editable"
 							/>
+							<div v-else class="text-ink-900 py-1">
+								{{ bill.tax_withholding_category || "—" }}
+								<span class="text-ink-400">({{ bill.tds_rate || 0 }}%)</span>
+							</div>
 						</div>
 					</div>
 					<div>
@@ -1231,13 +1252,16 @@ const accountFilters = computed(() =>
 						>
 						<div class="flex items-center gap-2">
 							<select
+								v-if="editable"
 								v-model="bill.additional_discount_on"
-								:disabled="!editable"
 								class="desk-input !w-32"
 							>
 								<option value="Net Total">{{ __("Net Total") }}</option>
 								<option value="Grand Total">{{ __("Grand Total") }}</option>
 							</select>
+							<span v-else class="text-ink-600">{{
+								__("On {0}:", [bill.additional_discount_on])
+							}}</span>
 							<input
 								v-model.number="discValue"
 								:readonly="!editable"
@@ -1281,46 +1305,29 @@ const accountFilters = computed(() =>
 						</p>
 					</div>
 					<div class="pt-3 border-t border-ink-100">
-						<div class="grid grid-cols-2 gap-3">
-							<div>
-								<label
-									class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-									>{{ __("Bill type") }}</label
-								>
-								<select
-									v-model="bill.bill_type"
-									:disabled="!editable"
-									class="desk-input"
-								>
-									<option value="Normal">{{ __("Normal") }}</option>
-									<option value="Final">
-										{{ __("Final (release retention)") }}
-									</option>
-								</select>
-							</div>
-							<div>
-								<label
-									class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-									>{{ __("Expense account") }}</label
-								>
-								<DeskLinkPicker
-									v-model="bill.expense_account"
-									doctype="Account"
-									label-field="name"
-									value-field="name"
-									:filters="
-										bill.company
-											? [
-													['root_type', '=', 'Expense'],
-													['is_group', '=', 0],
-													['company', '=', bill.company],
-											  ]
-											: []
-									"
-									:placeholder="__('Default (Subcontractor Charges)')"
-									:disabled="!editable"
-								/>
-							</div>
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Expense account") }}</label
+						>
+						<DeskLinkPicker
+							v-if="editable"
+							v-model="bill.expense_account"
+							doctype="Account"
+							label-field="name"
+							value-field="name"
+							:filters="
+								bill.company
+									? [
+											['root_type', '=', 'Expense'],
+											['is_group', '=', 0],
+											['company', '=', bill.company],
+									  ]
+									: []
+							"
+							:placeholder="__('Default (Subcontractor Charges)')"
+						/>
+						<div v-else class="text-ink-900 py-1">
+							{{ bill.expense_account || __("Subcontractor Charges (default)") }}
 						</div>
 						<p class="text-[10px] text-ink-400 mt-1">
 							{{ __("Where the cost posts in the ledger.") }}
