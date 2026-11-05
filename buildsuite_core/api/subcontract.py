@@ -627,16 +627,10 @@ def _serialize_subcontractor(sup):
 @frappe.whitelist()
 def list_subcontractors():
 	"""All subcontractor Suppliers with their trade, tax id and primary-contact details.
-	Scoped to the working company only when company awareness is enabled (else all)."""
-	from buildsuite_core.utils.project import company_scope
-
-	filters = {"supplier_type": SUBCONTRACTOR_TYPE}
-	scope = company_scope()
-	if scope:
-		filters["company"] = scope
+	Suppliers are global parties (no company field), so the list is never company-scoped."""
 	rows = frappe.get_all(
 		"Supplier",
-		filters=filters,
+		filters={"supplier_type": SUBCONTRACTOR_TYPE},
 		fields=["name", "supplier_name", "custom_trade", "tax_id", "disabled"],
 		order_by="supplier_name asc",
 		limit_page_length=0,
