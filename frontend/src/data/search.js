@@ -13,29 +13,84 @@
 export const DOCTYPE_META = {
 	Project: { label: "Project", icon: "building-2", to: (n) => `/projects/${n}` },
 	Task: { label: "Task", icon: "clipboard-list", to: (n) => `/tasks/${n}` },
-	"Work Package": { label: "Work package", icon: "layout-grid", to: (n) => `/work-packages/${n}` },
-	"Stage Planning": { label: "Stage plan", icon: "calendar", to: (n) => `/stage-plannings/${n}` },
+	"Work Package": {
+		label: "Work package",
+		icon: "layout-grid",
+		to: (n) => `/work-packages/${n}`,
+	},
+	"Stage Planning": {
+		label: "Stage plan",
+		icon: "calendar",
+		to: (n) => `/stage-plannings/${n}`,
+	},
 	"Scope Change Order": { label: "Change order", icon: "file-text", to: (n) => `/sco/${n}` },
 	BOQ: { label: "BOQ", icon: "estimation", to: (n) => `/boq/${n}` },
 	Tender: { label: "Tender", icon: "file-text", to: (n) => `/tenders/${n}` },
 	Quotation: { label: "Quotation", icon: "file-text", to: (n) => `/quotations/${n}` },
-	"Construction Rate Master": { label: "Rate", icon: "chart-bar", to: (n) => `/rate-master/${n}` },
+	"Construction Rate Master": {
+		label: "Rate",
+		icon: "chart-bar",
+		to: (n) => `/rate-master/${n}`,
+	},
 	Assembly: { label: "Assembly", icon: "wrench", to: (n) => `/assembly/${n}` },
-	"Estimate Template": { label: "Estimate template", icon: "layout-grid", to: (n) => `/estimate-template/${n}` },
-	"Material Request": { label: "Material request", icon: "clipboard-list", to: (n) => `/procurement/material-requests/${n}` },
-	"Purchase Order": { label: "Purchase order", icon: "file-text", to: (n) => `/procurement/purchase-orders/${n}` },
-	"Purchase Receipt": { label: "Purchase receipt", icon: "stock", to: (n) => `/procurement/receipts/${n}` },
+	"Estimate Template": {
+		label: "Estimate template",
+		icon: "layout-grid",
+		to: (n) => `/estimate-template/${n}`,
+	},
+	"Material Request": {
+		label: "Material request",
+		icon: "clipboard-list",
+		to: (n) => `/procurement/material-requests/${n}`,
+	},
+	"Purchase Order": {
+		label: "Purchase order",
+		icon: "file-text",
+		to: (n) => `/procurement/purchase-orders/${n}`,
+	},
+	"Purchase Receipt": {
+		label: "Purchase receipt",
+		icon: "stock",
+		to: (n) => `/procurement/receipts/${n}`,
+	},
 	Machinery: { label: "Machinery", icon: "wrench", to: (n) => `/machinery/${n}` },
-	"Machinery Usage": { label: "Machinery usage", icon: "wrench", to: (n) => `/machinery-usage/${n}` },
-	"Subcontractor Work Order": { label: "Work order", icon: "subcontract", to: (n) => `/subcontractor-work-orders/${n}` },
-	"Measurement Book": { label: "Measurement book", icon: "chart-bar", to: (n) => `/measurement-books/${n}` },
-	"Subcontractor Bill": { label: "Subcontractor bill", icon: "receipt", to: (n) => `/subcontractor-bills/${n}` },
-	Supplier: { label: "Supplier", icon: "building-2", to: (n) => `/subcontractors/${n}` },
+	"Machinery Usage": {
+		label: "Machinery usage",
+		icon: "wrench",
+		to: (n) => `/machinery-usage/${n}`,
+	},
+	"Subcontractor Work Order": {
+		label: "Work order",
+		icon: "subcontract",
+		to: (n) => `/subcontractor-work-orders/${n}`,
+	},
+	"Measurement Book": {
+		label: "Measurement book",
+		icon: "chart-bar",
+		to: (n) => `/measurement-books/${n}`,
+	},
+	"Subcontractor Bill": {
+		label: "Subcontractor bill",
+		icon: "receipt",
+		to: (n) => `/subcontractor-bills/${n}`,
+	},
 	Employee: { label: "Employee", icon: "hard-hat", to: (n) => `/field-employees/${n}` },
 	Crew: { label: "Crew", icon: "users-2", to: (n) => `/crews/${n}` },
-	"Field Attendance": { label: "Attendance", icon: "users-2", to: (n) => `/field-attendance/${n}` },
-	"Sales Invoice": { label: "Invoice", icon: "file-text", to: (n) => `/project-finance/invoices/${n}` },
-	"Purchase Invoice": { label: "Supplier bill", icon: "receipt", to: (n) => `/project-finance/supplier-bills/${n}` },
+	"Field Attendance": {
+		label: "Attendance",
+		icon: "users-2",
+		to: (n) => `/field-attendance/${n}`,
+	},
+	"Sales Invoice": {
+		label: "Invoice",
+		icon: "file-text",
+		to: (n) => `/project-finance/invoices/${n}`,
+	},
+	"Purchase Invoice": {
+		label: "Supplier bill",
+		icon: "receipt",
+		to: (n) => `/project-finance/supplier-bills/${n}`,
+	},
 };
 
 // A raw {doctype, name, title} record result -> a palette row. Prefer the doctype's bespoke detail
@@ -81,60 +136,299 @@ export function decorateDoctype(d) {
 // to mean the place itself.
 const PLACES = [
 	// Execution
-	{ label: "Projects", icon: "clipboard-list", to: "/projects", cap: "project", words: ["project", "projects", "job", "jobs", "site", "sites"] },
-	{ label: "Tasks", icon: "check-circle", to: "/tasks", cap: "task", words: ["task", "tasks", "activity", "activities"] },
-	{ label: "Work packages", icon: "layout-grid", to: "/work-packages", cap: "workPackage", words: ["work package", "work packages", "package", "wp"] },
-	{ label: "Stage plans", icon: "calendar", to: "/stage-plannings", cap: "stagePlanning", words: ["stage", "stages", "stage plan", "programme", "schedule"] },
-	{ label: "Change orders", icon: "file-text", to: "/sco", cap: "sco", words: ["change order", "sco", "scope change", "variation"] },
+	{
+		label: "Projects",
+		icon: "clipboard-list",
+		to: "/projects",
+		cap: "project",
+		words: ["project", "projects", "job", "jobs", "site", "sites"],
+	},
+	{
+		label: "Tasks",
+		icon: "check-circle",
+		to: "/tasks",
+		cap: "task",
+		words: ["task", "tasks", "activity", "activities"],
+	},
+	{
+		label: "Work packages",
+		icon: "layout-grid",
+		to: "/work-packages",
+		cap: "workPackage",
+		words: ["work package", "work packages", "package", "wp"],
+	},
+	{
+		label: "Stage plans",
+		icon: "calendar",
+		to: "/stage-plannings",
+		cap: "stagePlanning",
+		words: ["stage", "stages", "stage plan", "programme", "schedule"],
+	},
+	{
+		label: "Change orders",
+		icon: "file-text",
+		to: "/sco",
+		cap: "sco",
+		words: ["change order", "sco", "scope change", "variation"],
+	},
 	// Estimation
-	{ label: "BOQ", icon: "estimation", to: "/boq", cap: "boq", words: ["boq", "bill of quantities", "estimate"] },
-	{ label: "Rate master", icon: "chart-bar", to: "/rate-master", cap: "rateMaster", words: ["rate", "rates", "rate master", "price"] },
-	{ label: "Assemblies", icon: "wrench", to: "/assembly", cap: "assembly", words: ["assembly", "assemblies"] },
-	{ label: "Estimate templates", icon: "layout-grid", to: "/estimate-templates", cap: "estimateTemplate", words: ["estimate template", "templates"] },
-	{ label: "Tenders", icon: "file-text", to: "/tenders", cap: "tender", words: ["tender", "tenders", "bid"] },
-	{ label: "Quotations", icon: "file-text", to: "/quotations", cap: "quotation", words: ["quotation", "quotations", "quote"] },
+	{
+		label: "BOQ",
+		icon: "estimation",
+		to: "/boq",
+		cap: "boq",
+		words: ["boq", "bill of quantities", "estimate"],
+	},
+	{
+		label: "Rate master",
+		icon: "chart-bar",
+		to: "/rate-master",
+		cap: "rateMaster",
+		words: ["rate", "rates", "rate master", "price"],
+	},
+	{
+		label: "Assemblies",
+		icon: "wrench",
+		to: "/assembly",
+		cap: "assembly",
+		words: ["assembly", "assemblies"],
+	},
+	{
+		label: "Estimate templates",
+		icon: "layout-grid",
+		to: "/estimate-templates",
+		cap: "estimateTemplate",
+		words: ["estimate template", "templates"],
+	},
+	{
+		label: "Tenders",
+		icon: "file-text",
+		to: "/tenders",
+		cap: "tender",
+		words: ["tender", "tenders", "bid"],
+	},
+	{
+		label: "Quotations",
+		icon: "file-text",
+		to: "/quotations",
+		cap: "quotation",
+		words: ["quotation", "quotations", "quote"],
+	},
 	// Procurement
-	{ label: "Material requests", icon: "clipboard-list", to: "/procurement/material-requests", cap: "materialRequest", words: ["material request", "mr", "requisition", "indent"] },
-	{ label: "Purchase orders", icon: "file-text", to: "/procurement/purchase-orders", cap: "purchaseOrder", words: ["purchase order", "po", "order"] },
-	{ label: "Purchase receipts", icon: "stock", to: "/procurement/receipts", cap: "purchaseReceipt", words: ["purchase receipt", "grn", "receipt", "delivery"] },
-	{ label: "Items", icon: "tag", to: "/items", cap: "item", words: ["item", "items", "material", "materials"] },
+	{
+		label: "Material requests",
+		icon: "clipboard-list",
+		to: "/procurement/material-requests",
+		cap: "materialRequest",
+		words: ["material request", "mr", "requisition", "indent"],
+	},
+	{
+		label: "Purchase orders",
+		icon: "file-text",
+		to: "/procurement/purchase-orders",
+		cap: "purchaseOrder",
+		words: ["purchase order", "po", "order"],
+	},
+	{
+		label: "Purchase receipts",
+		icon: "stock",
+		to: "/procurement/receipts",
+		cap: "purchaseReceipt",
+		words: ["purchase receipt", "grn", "receipt", "delivery"],
+	},
+	{
+		label: "Items",
+		icon: "tag",
+		to: "/items",
+		cap: "item",
+		words: ["item", "items", "material", "materials"],
+	},
 	// Subcontract
-	{ label: "Work orders", icon: "subcontract", to: "/subcontractor-work-orders", cap: "subcontractorWorkOrder", words: ["work order", "wo", "subcontract"] },
-	{ label: "Subcontractor bills", icon: "receipt", to: "/subcontractor-bills", cap: "subcontractorBill", words: ["subcontractor bill", "sub bill", "ra bill"] },
-	{ label: "Measurement books", icon: "chart-bar", to: "/measurement-books", cap: "measurementBook", words: ["measurement book", "mb", "measurement"] },
-	{ label: "Subcontractors", icon: "building-2", to: "/subcontractors", cap: "supplier", words: ["subcontractor", "supplier", "vendor"] },
+	{
+		label: "Work orders",
+		icon: "subcontract",
+		to: "/subcontractor-work-orders",
+		cap: "subcontractorWorkOrder",
+		words: ["work order", "wo", "subcontract"],
+	},
+	{
+		label: "Subcontractor bills",
+		icon: "receipt",
+		to: "/subcontractor-bills",
+		cap: "subcontractorBill",
+		words: ["subcontractor bill", "sub bill", "ra bill"],
+	},
+	{
+		label: "Measurement books",
+		icon: "chart-bar",
+		to: "/measurement-books",
+		cap: "measurementBook",
+		words: ["measurement book", "mb", "measurement"],
+	},
+	{
+		label: "Subcontractors",
+		icon: "building-2",
+		to: "/subcontractors",
+		cap: "supplier",
+		words: ["subcontractor", "subcontractors"],
+	},
 	// Finance
-	{ label: "Invoices", icon: "file-text", to: "/project-finance/invoices", cap: "salesInvoice", words: ["invoice", "invoices", "client bill", "sales invoice"] },
-	{ label: "Bills", icon: "receipt", to: "/project-finance/bills", cap: "supplierBill", words: ["bill", "bills", "supplier bill", "purchase invoice"] },
-	{ label: "Payments", icon: "refresh-ccw", to: "/project-finance/payments", cap: "advance", words: ["payment", "payments"] },
-	{ label: "Petty cash", icon: "hand-coins", to: "/project-finance/petty-cash", cap: "pettyCash", words: ["petty cash", "petty", "cash"] },
-	{ label: "Expenses", icon: "receipt", to: "/project-finance/expenses", cap: "expense", words: ["expense", "expenses"] },
+	{
+		label: "Customers",
+		icon: "users-2",
+		to: "/customers",
+		cap: "customer",
+		words: ["customer", "customers", "client", "clients"],
+	},
+	{
+		label: "Invoices",
+		icon: "file-text",
+		to: "/project-finance/invoices",
+		cap: "salesInvoice",
+		words: ["invoice", "invoices", "client bill", "sales invoice"],
+	},
+	{
+		label: "Bills",
+		icon: "receipt",
+		to: "/project-finance/bills",
+		cap: "supplierBill",
+		words: ["bill", "bills", "supplier bill", "purchase invoice"],
+	},
+	{
+		label: "Payments",
+		icon: "refresh-ccw",
+		to: "/project-finance/payments",
+		cap: "advance",
+		words: ["payment", "payments"],
+	},
+	{
+		label: "Petty cash",
+		icon: "hand-coins",
+		to: "/project-finance/petty-cash",
+		cap: "pettyCash",
+		words: ["petty cash", "petty", "cash"],
+	},
+	{
+		label: "Expenses",
+		icon: "receipt",
+		to: "/project-finance/expenses",
+		cap: "expense",
+		words: ["expense", "expenses"],
+	},
 	// Workforce / equipment
-	{ label: "Field attendance", icon: "users-2", to: "/field-attendance", cap: "fieldAttendance", words: ["attendance", "field attendance", "muster"] },
-	{ label: "Field employees", icon: "hard-hat", to: "/field-employees", cap: "employee", words: ["employee", "employees", "workforce", "labour"] },
-	{ label: "Crews", icon: "users-2", to: "/crews", cap: "crew", words: ["crew", "crews", "gang"] },
-	{ label: "Machinery", icon: "wrench", to: "/machinery", cap: "machinery", words: ["machinery", "equipment", "plant"] },
+	{
+		label: "Field attendance",
+		icon: "users-2",
+		to: "/field-attendance",
+		cap: "fieldAttendance",
+		words: ["attendance", "field attendance", "muster"],
+	},
+	{
+		label: "Field employees",
+		icon: "hard-hat",
+		to: "/field-employees",
+		cap: "employee",
+		words: ["employee", "employees", "workforce", "labour"],
+	},
+	{
+		label: "Crews",
+		icon: "users-2",
+		to: "/crews",
+		cap: "crew",
+		words: ["crew", "crews", "gang"],
+	},
+	{
+		label: "Machinery",
+		icon: "wrench",
+		to: "/machinery",
+		cap: "machinery",
+		words: ["machinery", "equipment", "plant"],
+	},
 ];
 
 // The bespoke reports as places, keyed by the route the access context gates (report_access).
 // Only those the user may open (session reportRoutes) are offered — the same gate as the tile.
 const REPORT_PLACES = {
-	"/project-finance/report/pnl": { label: "Profit & Loss", icon: "chart-bar", words: ["profit", "loss", "pnl", "p&l"] },
-	"/project-finance/report/aged": { label: "Receivables & Payables", icon: "chart-bar", words: ["receivable", "payable", "aged", "aging", "outstanding"] },
-	"/project-finance/report/position": { label: "Financial Position", icon: "wallet", words: ["financial position", "balance", "net position"] },
-	"/project-finance/report/expenses": { label: "Expense Summary", icon: "receipt", words: ["expense summary", "expenses"] },
-	"/project-finance/report/cashbank": { label: "Cash & Bank Statement", icon: "wallet", words: ["cash", "bank", "statement"] },
-	"/project-finance/report/petty": { label: "Petty Cash", icon: "hand-coins", words: ["petty cash", "petty"] },
-	"/procurement/report/requests-to-order": { label: "Requests to order", icon: "clipboard-list", words: ["requests to order", "to order", "waiting"] },
-	"/procurement/report/delivery-followup": { label: "Delivery follow-up", icon: "stock", words: ["delivery", "follow up", "followup", "overdue"] },
-	"/procurement/report/site-stock": { label: "Material at site", icon: "package", words: ["site stock", "material at site", "stock"] },
-	"/procurement/report/rate-check": { label: "Purchase rate vs estimate", icon: "chart-bar", words: ["rate check", "rate vs estimate", "purchase rate"] },
-	"/procurement/report/purchase-register": { label: "Purchase register", icon: "file-text", words: ["purchase register", "register"] },
-	"/procurement/report/consumption-by-cost-code": { label: "Consumption by cost code", icon: "package", words: ["consumption", "cost code"] },
-	"/labour-attendance": { label: "Labour Attendance Register", icon: "clipboard-list", words: ["labour attendance", "attendance register"] },
-	"/overtime-attendance": { label: "Overtime Attendance Register", icon: "clipboard-list", words: ["overtime", "overtime attendance"] },
-	"/workforce/attendance-summary": { label: "Site Attendance Summary", icon: "users-2", words: ["attendance summary", "site attendance"] },
-	"/reports/delay-analysis": { label: "Delay Analysis", icon: "calendar", words: ["delay", "delay analysis", "slippage"] },
+	"/project-finance/report/pnl": {
+		label: "Profit & Loss",
+		icon: "chart-bar",
+		words: ["profit", "loss", "pnl", "p&l"],
+	},
+	"/project-finance/report/aged": {
+		label: "Receivables & Payables",
+		icon: "chart-bar",
+		words: ["receivable", "payable", "aged", "aging", "outstanding"],
+	},
+	"/project-finance/report/position": {
+		label: "Financial Position",
+		icon: "wallet",
+		words: ["financial position", "balance", "net position"],
+	},
+	"/project-finance/report/expenses": {
+		label: "Expense Summary",
+		icon: "receipt",
+		words: ["expense summary", "expenses"],
+	},
+	"/project-finance/report/cashbank": {
+		label: "Cash & Bank Statement",
+		icon: "wallet",
+		words: ["cash", "bank", "statement"],
+	},
+	"/project-finance/report/petty": {
+		label: "Petty Cash",
+		icon: "hand-coins",
+		words: ["petty cash", "petty"],
+	},
+	"/procurement/report/requests-to-order": {
+		label: "Requests to order",
+		icon: "clipboard-list",
+		words: ["requests to order", "to order", "waiting"],
+	},
+	"/procurement/report/delivery-followup": {
+		label: "Delivery follow-up",
+		icon: "stock",
+		words: ["delivery", "follow up", "followup", "overdue"],
+	},
+	"/procurement/report/site-stock": {
+		label: "Material at site",
+		icon: "package",
+		words: ["site stock", "material at site", "stock"],
+	},
+	"/procurement/report/rate-check": {
+		label: "Purchase rate vs estimate",
+		icon: "chart-bar",
+		words: ["rate check", "rate vs estimate", "purchase rate"],
+	},
+	"/procurement/report/purchase-register": {
+		label: "Purchase register",
+		icon: "file-text",
+		words: ["purchase register", "register"],
+	},
+	"/procurement/report/consumption-by-cost-code": {
+		label: "Consumption by cost code",
+		icon: "package",
+		words: ["consumption", "cost code"],
+	},
+	"/labour-attendance": {
+		label: "Labour Attendance Register",
+		icon: "clipboard-list",
+		words: ["labour attendance", "attendance register"],
+	},
+	"/overtime-attendance": {
+		label: "Overtime Attendance Register",
+		icon: "clipboard-list",
+		words: ["overtime", "overtime attendance"],
+	},
+	"/workforce/attendance-summary": {
+		label: "Site Attendance Summary",
+		icon: "users-2",
+		words: ["attendance summary", "site attendance"],
+	},
+	"/reports/delay-analysis": {
+		label: "Delay Analysis",
+		icon: "calendar",
+		words: ["delay", "delay analysis", "slippage"],
+	},
 };
 
 const norm = (s) => (s || "").toLowerCase().trim();
@@ -163,7 +457,12 @@ export function searchPlaces(query, ctx) {
 	const reportRoutes = ctx?.reportRoutes || [];
 	const reportPlaces = reportRoutes
 		.filter((route) => REPORT_PLACES[route])
-		.map((route) => ({ ...REPORT_PLACES[route], to: route, isReport: true, words: REPORT_PLACES[route].words }));
+		.map((route) => ({
+			...REPORT_PLACES[route],
+			to: route,
+			isReport: true,
+			words: REPORT_PLACES[route].words,
+		}));
 	const gated = [...PLACES.filter((p) => canRead(p.cap)), ...reportPlaces];
 	return gated
 		.map((p) => ({ ...p, kind: "place", key: p.to, score: scorePlace(q, p) }))
