@@ -289,6 +289,22 @@ function _tupleToFilter(field, op, value) {
 	if (seeded.length) dynamicFilters.value = seeded;
 })();
 
+// Deep-link chips are seeded before the doctype meta has loaded, so they start out labelled with the
+// raw fieldname ("task_status"). Once the meta arrives, give them their proper label + fieldtype.
+watch(fieldMetaMap, (map) => {
+	if (!dynamicFilters.value.some((f) => map.has(f.fieldname) && f.label === f.fieldname)) return;
+	dynamicFilters.value = dynamicFilters.value.map((f) => {
+		const meta = map.get(f.fieldname);
+		if (!meta || f.label !== f.fieldname) return f;
+		return {
+			...f,
+			label: meta.label || f.label,
+			fieldtype: meta.fieldtype || f.fieldtype,
+			options: meta.options || f.options,
+		};
+	});
+});
+
 const serverFilters = computed(() => {
 	const filters = [...props.baseFilters];
 	// Auto company-scope: when the doctype has a `company` field, scope the list to the

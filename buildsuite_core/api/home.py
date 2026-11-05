@@ -145,6 +145,14 @@ def _filtered(route, filters):
 	return f"{route}?filters={quote(json.dumps(filters))}"
 
 
+def _open_tasks_link(overdue_before=None):
+	"""The Tasks list as the Open / Overdue tile counts it — carried as visible, removable filter chips."""
+	filters = [["task_status", "not in", list(_OPEN_TASK)]]
+	if overdue_before:
+		filters.append(["exp_end_date", "<", overdue_before])
+	return _filtered("/tasks", filters)
+
+
 def _tile(label, value, slug, tone="brand", fmt="int", to=None):
 	# `to` makes a snapshot tile clickable — it opens the matching SPA list (with a filter query),
 	# so the number and the list it drills into stay in step.
@@ -461,7 +469,7 @@ def get_home_dashboard():
 	if role in _ADMIN_ROLES:
 		snapshot = [
 			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
-			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to=_open_tasks_link()),
 			_tile("Users", users, "users", "success", to="/settings/users"),
 			_tile(
 				"Pending stage approvals",
@@ -480,7 +488,7 @@ def get_home_dashboard():
 				overdue_tasks,
 				f"{overdue_tasks} past their end date" if overdue_tasks else "Nothing overdue",
 				"refresh-ccw",
-				"/tasks?status=overdue",
+				_open_tasks_link(overdue_before=str(today)),
 				overdue_tasks > 0,
 				"danger",
 			),
@@ -511,7 +519,7 @@ def get_home_dashboard():
 		on_order, on_order_ct, overdue_del, mrs_pending, _rw = procurement()
 		snapshot = [
 			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
-			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to=_open_tasks_link()),
 			_tile(
 				"Stage approvals",
 				stage_pending,
