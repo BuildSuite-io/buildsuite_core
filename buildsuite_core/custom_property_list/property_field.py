@@ -1,3 +1,17 @@
+def _email_service_options():
+	"""Frappe's own Email Account services plus Resend. Built from the doctype's stock options (not
+	the property-setter-applied meta) so a service Frappe adds later still shows up."""
+	import frappe
+
+	stock = (
+		frappe.db.get_value("DocField", {"parent": "Email Account", "fieldname": "service"}, "options") or ""
+	)
+	options = [o for o in stock.split("\n")]
+	if "Resend" not in options:
+		options.append("Resend")
+	return "\n".join(options)
+
+
 def get_property_setters():
 	return [
 		{
@@ -440,5 +454,14 @@ def get_property_setters():
 			"property": "in_list_view",
 			"property_type": "Check",
 			"value": "1",
+		},
+		{
+			# Resend as an Email Account service (see buildsuite_core.resend).
+			"doctype_or_field": "DocField",
+			"doctype": "Email Account",
+			"fieldname": "service",
+			"property": "options",
+			"value": _email_service_options(),
+			"property_type": "Text",
 		},
 	]
