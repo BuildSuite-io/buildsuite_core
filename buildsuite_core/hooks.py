@@ -187,6 +187,9 @@ override_doctype_class = {  # nosemgrep: override-doctype-class -- intentional, 
 # Hook on document methods and events
 
 doc_events = {
+	# Resend as an Email Account service: pin the account to Resend's SMTP relay before core's
+	# validate tests the connection.
+	"Email Account": {"before_validate": "buildsuite_core.resend.account.apply_resend_defaults"},
 	# "Project": {
 	# 	"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
@@ -407,9 +410,8 @@ scheduler_events = {"daily": ["buildsuite_core.utils.task.update_delayed_tasks"]
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
+# The Resend webhook audit trail (days to keep).
+default_log_clearing_doctypes = {"Resend Event Log": 90}
 
 # Translation
 # ------------
@@ -458,6 +460,7 @@ doctype_js = {
 	"Purchase Receipt": "public/js/purchase_receipt.js",
 	"Journal Entry": "public/js/journal_entry.js",
 	"Petty Cash Request": "public/js/petty_cash_request.js",
+	"Email Account": "public/js/email_account.js",
 }
 
 doctype_list_js = {"Task": "public/js/task_list.js"}

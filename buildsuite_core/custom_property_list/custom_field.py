@@ -938,4 +938,76 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Resend as an Email Account service (see buildsuite_core.resend). The section shows only for the
+	# Resend service; the API key is the account's own Password field.
+	"Email Account": [
+		{
+			"fieldname": "resend_section",
+			"fieldtype": "Section Break",
+			"label": "Resend",
+			"insert_after": "service",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_help",
+			"fieldtype": "HTML",
+			"insert_after": "resend_section",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"options": (
+				"<p class='text-muted'>Paste your Resend <b>API key</b> in the Password field below. "
+				"The Email Address must belong to a domain verified in your "
+				"<a href='https://resend.com/domains' target='_blank'>Resend dashboard</a>. "
+				"Add one Email Account per API key / sending domain.</p>"
+			),
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_webhook_secret",
+			"fieldtype": "Password",
+			"label": "Webhook Signing Secret",
+			"insert_after": "resend_help",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"description": "From the webhook you add in Resend (starts with whsec_). Needed to track bounces and complaints.",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Filled in by the Resend webhook; read-only so delivery history isn't edited by hand.
+	"Email Queue": [
+		{
+			"fieldname": "resend_section",
+			"fieldtype": "Section Break",
+			"label": "Resend delivery",
+			"insert_after": "error",
+			"collapsible": 1,
+			"depends_on": "eval: doc.resend_email_id",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_email_id",
+			"fieldtype": "Data",
+			"label": "Resend Email ID",
+			"read_only": 1,
+			"insert_after": "resend_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_status",
+			"fieldtype": "Data",
+			"label": "Resend Status",
+			"read_only": 1,
+			"in_standard_filter": 1,
+			"in_list_view": 1,
+			"insert_after": "resend_email_id",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_detail",
+			"fieldtype": "Small Text",
+			"label": "Resend Detail",
+			"read_only": 1,
+			"insert_after": "resend_status",
+			"module": "BuildSuite Core",
+		},
+	],
 }
