@@ -87,7 +87,7 @@
    "no_copy": 1,
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "\nFull Day\nHalf Day\nAbsent",
+   "options": "\nFull Day\nHalf Day\nAbsent\nHours",
    "reqd": 1,
    "search_index": 1
   },
@@ -272,7 +272,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-08 10:00:00.000000",
+ "modified": "2026-11-10 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Labour Attendance Register",

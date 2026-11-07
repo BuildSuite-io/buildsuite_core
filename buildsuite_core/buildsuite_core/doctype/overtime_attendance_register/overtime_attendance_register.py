@@ -65,12 +65,20 @@ class OvertimeAttendanceRegister(Document):
 		working_hours: DF.Float
 
 	def before_save(self):
-		self.overtime_rate = get_employee_rates(
-			self.employee, self.overtime_date, project=self.project, company=self.company
-		)
+		# A timesheet row arrives priced: it keeps the rate it was costed with.
+		if self.source != "Timesheet":
+			self.overtime_rate = get_employee_rates(
+				self.employee, self.overtime_date, project=self.project, company=self.company
+			)
 
 	def validate(self):
-		self.validate_date_ot_and_rate()
+		if self.source == "Timesheet":
+			# Its parent is a timesheet, not a muster: no regular-attendance rules, and the wage is the
+			# timesheet row's costing amount, already set.
+			if flt(self.overtime_hours) <= 0:
+				frappe.throw(_("Overtime hours cannot be zero!"))
+		else:
+			self.validate_date_ot_and_rate()
 		self.set_full_day_hours()
 
 	def set_full_day_hours(self):

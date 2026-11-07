@@ -7,12 +7,11 @@ Every read goes through get_list / get_all with the caller's permissions, so a u
 sites (project team scope) and companies they may read."""
 
 import frappe
-from frappe.utils import flt
 
+from buildsuite_core.utils.labour_cost import labour_cost_rows, totals
 from buildsuite_core.utils.project import company_scope
 
 LABOUR_REGISTER = "Labour Attendance Register"
-OVERTIME_REGISTER = "Overtime Attendance Register"
 FIELD_ATTENDANCE = "Field Attendance"
 
 
@@ -37,27 +36,19 @@ def get_dashboard() -> dict:
 	}
 
 
+def _readable_rows() -> list[dict]:
+	"""Labour register rows (attendance and timesheets alike) on the projects this user can read, in
+	the working company: the one reader, utils.labour_cost, narrowed by the project permissions."""
+	projects = frappe.get_list("Project", filters=_scoped(), pluck="name", limit_page_length=0)
+	return labour_cost_rows({"projects": projects})
+
+
 def _labour_totals() -> dict:
-	"""Man-days and labour cost from the SUBMITTED registers (both are derived from submitted Field
-	Attendance, so a draft sheet is in neither). A half day counts as half a man-day; labour cost is
-	wages plus overtime wages."""
-	labour = frappe.get_list(
-		LABOUR_REGISTER,
-		filters=_scoped({"docstatus": 1}),
-		fields=["status", "daily_wage_calculated"],
-		limit_page_length=0,
-	)
-	overtime = frappe.get_list(
-		OVERTIME_REGISTER,
-		filters=_scoped({"docstatus": 1}),
-		fields=["overtime_wage_calculated"],
-		limit_page_length=0,
-	)
-	man_days = sum({"Full Day": 1, "Half Day": 0.5}.get(r.status, 0) for r in labour)
-	cost = sum(flt(r.daily_wage_calculated) for r in labour) + sum(
-		flt(r.overtime_wage_calculated) for r in overtime
-	)
-	return {"man_days": round(man_days, 1), "labour_cost": cost}
+	"""Man-days and labour cost from the submitted registers, both captured as attendance and as
+	timesheets. Man-days are hours over the full day each row was made with, never counted from the
+	status; labour cost is wages plus overtime wages."""
+	t = totals(_readable_rows())
+	return {"man_days": round(t["man_days"], 1), "labour_cost": t["cost"]}
 
 
 def _recent_attendance() -> list[dict]:
@@ -71,19 +62,28 @@ def _recent_attendance() -> list[dict]:
 
 
 def _recent_labour() -> list[dict]:
-	return frappe.get_list(
-		LABOUR_REGISTER,
-		filters=_scoped({"docstatus": 1}),
-		fields=[
-			"name",
-			"employee_name",
-			"daily_wage_calculated",
-			"project",
-			"project_name",
-			"cost_code_label",
-			"attendance_date",
-			"status",
-		],
-		order_by="attendance_date desc, creation desc",
-		limit=6,
-	)
+	"""The latest regular (non-overtime) register rows, whether captured as attendance or timesheet."""
+	rows = [r for r in _readable_rows() if r["doctype"] == LABOUR_REGISTER]
+	rows.sort(key=lambda r: (str(r["date"] or ""), r["name"]), reverse=True)
+	names = {
+		p.name: p.project_name
+		for p in frappe.get_all(
+			"Project",
+			filters={"name": ["in", list({r["project"] for r in rows[:6]}) or [""]]},
+			fields=["name", "project_name"],
+		)
+	}
+	return [
+		{
+			"name": r["name"],
+			"employee_name": r["employee_name"],
+			"daily_wage_calculated": r["regular_cost"],
+			"project": r["project"],
+			"project_name": names.get(r["project"]) or r["project"],
+			"cost_code_label": (r["cost_code"] or {}).get("label") or "",
+			"attendance_date": str(r["date"]) if r["date"] else None,
+			"status": r["status"],
+			"source": r["source"],
+		}
+		for r in rows[:6]
+	]
