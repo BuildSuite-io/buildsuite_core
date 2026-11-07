@@ -147,18 +147,9 @@ _SEED = {
 
 
 # Record (DocType) shortcut tiles seeded per workspace — opened in the generic /records view.
-# The prototype's Workforce landing offers Timesheets beside Field Employees / Crews / Field
-# Attendance; the SPA has no bespoke Timesheet screen, so it opens ERPNext's Timesheet generically.
-DOCTYPE_SEED = {
-	"workforce": (
-		{
-			"document_type": "Timesheet",
-			"label": "Timesheets",
-			"icon": "calendar",
-			"description": "Hours logged against a project and cost code.",
-		},
-	),
-}
+# None are seeded now: Workforce's Timesheets has its own screens (/timesheets) and a built-in
+# shortcut on the landing. Kept as a seam for a workspace that wants a generic Records tile.
+DOCTYPE_SEED = {"workforce": ()}
 
 
 def _project_finance_tiles():
