@@ -232,6 +232,7 @@ doc_events = {
 			"buildsuite_core.utils.project.enforce_company_rules",
 			"buildsuite_core.utils.date_bounds.validate_project_dates",
 			"buildsuite_core.overrides.project.reject_duplicate_project_id",
+			"buildsuite_core.utils.full_day.validate_project_full_day_hours",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
@@ -277,6 +278,7 @@ doc_events = {
 		],
 	},
 	"Company": {
+		"validate": "buildsuite_core.utils.full_day.validate_company_full_day_hours",
 		"on_update": [
 			"buildsuite_core.utils.petty_cash.create_account",
 			"buildsuite_core.utils.branding.rebuild_letter_head_on_company_change",

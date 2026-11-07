@@ -16,6 +16,7 @@ def after_install():
 	print(_("Creating Custom Fields..."))
 	create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
 	make_property_setters()
+	ensure_full_day_permissions()
 	seed_master_data()
 	# A fresh install has no DocPerms/personas/workspaces to clobber, so seed the full registry
 	# (roles + personas + workspaces + workflows + report tiles + the default DocPerm matrix) here.
@@ -33,6 +34,7 @@ def after_migrate():
 	print(_("Creating Custom Fields..."))
 	create_custom_fields(CUSTOM_FIELD, ignore_validate=True)
 	make_property_setters()
+	ensure_full_day_permissions()
 	# Backfill task_status + the native `type` on Tasks that predate the fields (idempotent).
 	backfill_task_status()
 	backfill_native_task_type()
@@ -300,6 +302,19 @@ def create_item_group():
 		merge = bool(frappe.db.exists("Item Group", dst))
 		frappe.rename_doc("Item Group", src, dst, force=1, merge=merge)
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit -- persist Item Group renames during install/migrate
+
+
+def ensure_full_day_permissions():
+	"""Company.full_day_hours sits at permlevel 1; only System Manager and BuildSuite Administrator
+	may read or edit it. Idempotent."""
+	from frappe.permissions import add_permission, update_permission_property
+
+	for role in ("System Manager", "BuildSuite Administrator"):
+		if not frappe.db.exists("Role", role):
+			continue
+		add_permission("Company", role, 1)
+		for ptype in ("read", "write"):
+			update_permission_property("Company", role, 1, ptype, 1)
 
 
 def before_migrate():

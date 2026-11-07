@@ -8,11 +8,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
+from buildsuite_core.utils.full_day import get_full_day_hours
 from buildsuite_core.utils.project import anchor_company_to_project
 
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
-HOURS_PER_DAY = 8
 MAX_OT_HOURS_PER_DAY = 16
 
 # Rows above this count are processed in a background job on submit/cancel.
@@ -142,6 +142,7 @@ class FieldAttendance(Document):
 		leave_map = self.get_leave_map()
 		la_map, ot_map = self.get_register_maps()
 		structure_cache = {}
+		full_day_hours = get_full_day_hours(self.project, self.company)
 
 		for row in self.employee_list:
 			emp = emp_map.get(row.employee)
@@ -160,7 +161,9 @@ class FieldAttendance(Document):
 				la_map.get(row.employee, []),
 				ot_map.get(row.employee, []),
 			)
-			row.labour_rate, row.overtime_rate = get_employee_rates(emp, self.date, structure_cache)
+			row.labour_rate, row.overtime_rate = get_employee_rates(
+				emp, self.date, structure_cache, full_day_hours
+			)
 
 	# ------------------------------------------------------------------
 	# submit / cancel
@@ -569,8 +572,11 @@ def create_overtime_attendance(
 # ----------------------------------------------------------------------
 
 
-def get_employee_rates(emp, date, structure_cache=None):
-	"""`emp` is a dict from get_employee_map(), not an employee id."""
+def get_employee_rates(emp, date, structure_cache=None, full_day_hours=None):
+	"""`emp` is a dict from get_employee_map(), not an employee id. `full_day_hours` (the sheet's
+	project / company full day, see utils.full_day) turns a salaried daily rate into the hourly
+	overtime rate."""
+	full_day_hours = full_day_hours or get_full_day_hours()
 	if structure_cache is None:
 		structure_cache = {}
 
@@ -596,7 +602,7 @@ def get_employee_rates(emp, date, structure_cache=None):
 			)
 		)
 
-	if salary_structure not in structure_cache:
+	if (salary_structure, full_day_hours) not in structure_cache:
 		doc = frappe.get_doc("Salary Structure", salary_structure)
 		net = sum(flt(e.amount) for e in doc.earnings) - sum(flt(d.amount) for d in doc.deductions)
 
@@ -609,9 +615,9 @@ def get_employee_rates(emp, date, structure_cache=None):
 			)
 
 		labour_rate = net / DAYS_PER_MONTH
-		structure_cache[salary_structure] = (labour_rate, labour_rate / HOURS_PER_DAY)
+		structure_cache[(salary_structure, full_day_hours)] = (labour_rate, labour_rate / full_day_hours)
 
-	return structure_cache[salary_structure]
+	return structure_cache[(salary_structure, full_day_hours)]
 
 
 # ----------------------------------------------------------------------

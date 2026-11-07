@@ -42,6 +42,28 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 		{
+			# Labour costing — the hours in a full day for this company's projects (a project can
+			# set its own). Only a System Manager / BuildSuite Administrator can edit it: permlevel 1,
+			# granted to those two roles in install.ensure_full_day_permissions.
+			"fieldname": "custom_labour_costing_section",
+			"fieldtype": "Section Break",
+			"label": "Labour costing",
+			"insert_after": "custom_brand_colour",
+			"permlevel": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"reqd": 1,
+			"default": "8",
+			"permlevel": 1,
+			"insert_after": "custom_labour_costing_section",
+			"description": "Hours in a full day of labour. Hours beyond it are overtime. A project can set its own.",
+			"module": "BuildSuite Core",
+		},
+		{
 			"fieldname": "custom_brand_colour",
 			"fieldtype": "Select",
 			"label": "Brand Colour",
@@ -69,6 +91,17 @@ CUSTOM_FIELD = {
 		},
 	],
 	"Project": [
+		{
+			# Hours in a full day for THIS project; blank = the company's value. Who may set it
+			# (System Manager, BuildSuite Administrator, the project's own PM) is checked in
+			# utils.full_day.validate_project_full_day_hours — a permlevel can't say "this project's PM".
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"insert_after": "expected_end_date",
+			"description": "Blank uses the company default.",
+			"module": "BuildSuite Core",
+		},
 		{
 			"fieldname": "custom_project_id",
 			"fieldtype": "Data",
