@@ -277,6 +277,9 @@ doc_events = {
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
 	},
+	# Timesheet rows are costed at the worker's daily rate over their project's full day; the cost is
+	# recalculated on every draft save and frozen on submit (utils.timesheet).
+	"Timesheet": {"validate": "buildsuite_core.utils.timesheet.cost_timesheet"},
 	"Company": {
 		"validate": "buildsuite_core.utils.full_day.validate_company_full_day_hours",
 		"on_update": [

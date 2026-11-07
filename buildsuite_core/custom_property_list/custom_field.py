@@ -641,6 +641,63 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Timesheet rows (S453/S454): where the hours land on the estimate, the full day the row is costed
+	# on, and whether it is overtime. Same four cost-code fields as Purchase Order Item, so
+	# CostCodePicker.vue works unchanged. Task stays on the row (hidden) for rows made before cost codes.
+	"Timesheet Detail": [
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "project",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "is_overtime",
+			"fieldtype": "Check",
+			"label": "Overtime",
+			"insert_after": "hours",
+			"description": "Costed at the worker's overtime rate instead of the daily rate over the full day.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"read_only": 1,
+			"no_copy": 1,
+			"insert_after": "costing_rate",
+			"description": "The full day of this row's project; recalculated while a draft, frozen on submit.",
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order Item": [
 		{
 			"fieldname": "custom_rate_master",

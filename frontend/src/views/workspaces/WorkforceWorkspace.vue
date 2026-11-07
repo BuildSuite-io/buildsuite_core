@@ -30,6 +30,7 @@ const shortcuts = [
 		to: "/field-attendance",
 		cap: "fieldAttendance",
 	},
+	{ label: "Timesheets", icon: "calendar", to: "/timesheets", cap: "fieldAttendance" },
 ];
 </script>
 
