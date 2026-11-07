@@ -226,6 +226,7 @@ doc_events = {
 		"after_insert": "buildsuite_core.utils.employee_permissions.drop_self_service_for_managers"
 	},
 	"Project": {
+		"autoname": "buildsuite_core.overrides.project.autoname_project",
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [
 			"buildsuite_core.utils.project.sync_project_status",

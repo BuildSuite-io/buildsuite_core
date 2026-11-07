@@ -91,9 +91,9 @@ def _ensure_service_uom():
 	is whole-number only, which rejects the measured (often fractional) quantities a subcontractor
 	bill carries, so those quantities failed to post to the Purchase Invoice."""
 	if not frappe.db.exists("UOM", SERVICE_UOM):
-		frappe.get_doc(
-			{"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}
-		).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}).insert(
+			ignore_permissions=True
+		)
 	return SERVICE_UOM
 
 
@@ -104,9 +104,15 @@ def ensure_service_item():
 	if frappe.db.exists("Item", SERVICE_ITEM):
 		# Older installs created this on ERPNext's default 'Nos' (whole-number only), so fractional
 		# measured quantities were rejected. Move it onto the fraction-allowing UOM — it's a
-		# non-stock item, so there's no stock ledger to block the change.
-		if frappe.db.get_value("Item", SERVICE_ITEM, "stock_uom") != uom:
-			frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", uom)
+		# non-stock item, so there's no stock ledger to block the change. The UOM must also be in
+		# the item's conversion table, or ERPNext refuses the PI line ("UOM ... not found in Item").
+		item = frappe.get_doc("Item", SERVICE_ITEM)
+		if item.stock_uom != uom or not any(u.uom == uom for u in item.uoms):
+			item.stock_uom = uom
+			if not any(u.uom == uom for u in item.uoms):
+				item.append("uoms", {"uom": uom, "conversion_factor": 1})
+			item.flags.ignore_permissions = True
+			item.save()
 		return SERVICE_ITEM
 	if not frappe.db.exists("Item Group", SERVICE_ITEM_GROUP):
 		parent = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"
