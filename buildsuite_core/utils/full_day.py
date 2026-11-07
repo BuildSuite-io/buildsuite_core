@@ -21,6 +21,15 @@ DEFAULT_FULL_DAY_HOURS = 8
 
 MAX_FULL_DAY_HOURS = 24
 
+# Share of the full day a Labour Attendance Register status stands for as regular hours. Wages follow
+# the status (one day / half a day), never the hours.
+REGULAR_HOURS_SHARE = {"Full Day": 1.0, "Half Day": 0.5, "Absent": 0.0}
+
+
+def regular_hours_for(status, full_day_hours) -> float:
+	"""Regular hours a register status stands for on a day of `full_day_hours`."""
+	return flt(full_day_hours) * REGULAR_HOURS_SHARE.get(status, 0.0)
+
 
 def is_valid_full_day_hours(value) -> bool:
 	"""A usable full day: more than 0 and no more than 24."""
