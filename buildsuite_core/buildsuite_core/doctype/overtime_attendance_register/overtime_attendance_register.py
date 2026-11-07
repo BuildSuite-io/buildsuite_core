@@ -3,12 +3,13 @@
 
 import frappe
 from frappe import _
-from frappe.utils import *
 from frappe.model.document import Document
-from frappe.utils import flt, getdate
 from frappe.query_builder.functions import Sum
+from frappe.utils import *
+from frappe.utils import flt, getdate
 
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import MAX_OT_HOURS_PER_DAY
+from buildsuite_core.utils.full_day import get_full_day_hours
 
 
 class OvertimeAttendanceRegister(Document):
@@ -56,15 +57,23 @@ class OvertimeAttendanceRegister(Document):
 		project_name: DF.Data | None
 		working_hours: DF.Float
 
-
 	def before_save(self):
-		self.overtime_rate = get_employee_rates(self.employee, self.overtime_date)
+		self.overtime_rate = get_employee_rates(
+			self.employee, self.overtime_date, project=self.project, company=self.company
+		)
 
 	def validate(self):
 		self.validate_date_ot_and_rate()
 
 	def validate_date_ot_and_rate(self):
-		docs = [x.get("status") for x in frappe.get_all("Labour Attendance Register",{"attendance_date":self.overtime_date,"docstatus":1,"employee":self.employee},["status"])]
+		docs = [
+			x.get("status")
+			for x in frappe.get_all(
+				"Labour Attendance Register",
+				{"attendance_date": self.overtime_date, "docstatus": 1, "employee": self.employee},
+				["status"],
+			)
+		]
 		# An "Overtime Only" row creates no Labour Attendance Register by design.
 		row_status = self.field_attendance and frappe.db.get_value(
 			"Field Attendance Employee",
@@ -75,10 +84,10 @@ class OvertimeAttendanceRegister(Document):
 			frappe.throw(
 				f"No regular attendance record found for labour {frappe.bold(self.employee_name)} for date {frappe.bold(self.overtime_date)}!"
 			)
-		if ("Half Day" in docs and docs.count("Half Day") != 2) or  "Absent" in docs:
+		if ("Half Day" in docs and docs.count("Half Day") != 2) or "Absent" in docs:
 			frappe.throw(
-					f"Cannot mark overtime as labour {frappe.bold(self.employee_name)} was not Present full day for date {frappe.bold(self.overtime_date)}"
-				)
+				f"Cannot mark overtime as labour {frappe.bold(self.employee_name)} was not Present full day for date {frappe.bold(self.overtime_date)}"
+			)
 		OTR = frappe.qb.DocType("Overtime Attendance Register")
 
 		existing_hours = (
@@ -106,18 +115,22 @@ class OvertimeAttendanceRegister(Document):
 		if self.overtime_hours == 0:
 			frappe.throw(_("Overtime hours cannot be zero!"))
 		self.overtime_wage_calculated = flt(self.overtime_rate) * flt(self.overtime_hours)
+
 	pass
+
+
 @frappe.whitelist()
 def update_wage(employee_id: str, wage: str):
-    if not (employee_id and wage):
-        return
-    # Enforce write permission on the Employee before mutating its wage (was an
-    # unguarded whitelisted write). db_set persists within the request transaction —
-    # no manual commit needed.
-    emp = frappe.get_doc("Employee", employee_id)
-    emp.check_permission("write")
-    emp.db_set("custom_wage_for_overtime", wage)
-    return wage
+	if not (employee_id and wage):
+		return
+	# Enforce write permission on the Employee before mutating its wage (was an
+	# unguarded whitelisted write). db_set persists within the request transaction —
+	# no manual commit needed.
+	emp = frappe.get_doc("Employee", employee_id)
+	emp.check_permission("write")
+	emp.db_set("custom_wage_for_overtime", wage)
+	return wage
+
 
 # @frappe.whitelist()
 # def project_list_query(doctype, txt, searchfield, start, page_len, filters):
@@ -146,10 +159,11 @@ def update_wage(employee_id: str, wage: str):
 # 			'page_len': page_len
 # 		})
 # 		return values
-def get_employee_rates(emp, date):
-	"""`emp` is a dict from get_employee_map(), not an employee id."""
-	emp = frappe.get_doc("Employee",emp)
-	wage_rates =  flt(emp.custom_wage_for_overtime)
+def get_employee_rates(emp, date, project=None, company=None):
+	"""`emp` is a dict from get_employee_map(), not an employee id. A salaried worker's hourly
+	overtime rate is the daily rate over the project / company full day (utils.full_day)."""
+	emp = frappe.get_doc("Employee", emp)
+	wage_rates = flt(emp.custom_wage_for_overtime)
 
 	if "buildsuite_hr" not in frappe.get_installed_apps():
 		return wage_rates
@@ -185,7 +199,8 @@ def get_employee_rates(emp, date):
 
 		labour_rate = net / 30
 
-	return labour_rate / 8
+	return labour_rate / get_full_day_hours(project, company)
+
 
 # def validate_employee_date(employee, date):
 #     emp = frappe.db.get_value("Employee", employee, ["employee_name", "date_of_joining"], as_dict=True)
