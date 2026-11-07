@@ -6,6 +6,7 @@ import { RouterLink } from "vue-router";
 import { usePermissions } from "@/composables/usePermissions";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
 import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
 import { __, currentLang } from "@/utils/translate";
 
@@ -88,6 +89,8 @@ const shortcuts = [
 					:cap="sc.cap"
 				/>
 			</div>
+
+			<WorkspaceRecordsSection workspace="workforce" class="mt-8" />
 
 			<WorkspaceReportsSection workspace="workforce" />
 		</div>
