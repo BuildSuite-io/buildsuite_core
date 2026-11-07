@@ -4,6 +4,7 @@
 // date range) + a Total-OT-hours / Total-amount subtitle mirror the prototype.
 
 import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -83,7 +84,11 @@ const subtitle = computed(() =>
 const columns = [
 	{ key: "overtime_date", label: __("Date") },
 	{ key: "employee_name", label: __("Worker") },
-	{ key: "task", label: __("Task") },
+	{
+		key: "source",
+		label: __("Captured as"),
+		fields: ["source", "timesheet", "field_attendance"],
+	},
 	{ key: "project", label: __("Project") },
 	{ key: "overtime_hours", label: __("OT hrs"), align: "right" },
 	{ key: "overtime_rate", label: __("OT rate"), align: "right" },
@@ -98,14 +103,19 @@ const breadcrumbs = [
 </script>
 
 <template>
-	<DeskPage :title="__('Overtime Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Overtime Attendance Register')"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+	>
 		<DocTypeListView
 			doctype="Overtime Attendance Register"
 			:field-order="[
 				'overtime_date',
 				'employee_name',
-				'task',
-				'task_subject',
+				'source',
+				'timesheet',
+				'field_attendance',
 				'project',
 				'overtime_hours',
 				'overtime_rate',
@@ -163,11 +173,27 @@ const breadcrumbs = [
 			</template>
 
 			<template #cell-employee_name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.employee_name || row.employee }}</span>
+				<span class="text-ink-900 font-medium">{{
+					row.employee_name || row.employee
+				}}</span>
 			</template>
 
-			<template #cell-task="{ row }">
-				<span class="text-ink-700">{{ row.task_subject || row.task || "—" }}</span>
+			<template #cell-source="{ row }">
+				<RouterLink
+					v-if="row.source === 'Timesheet' && row.timesheet"
+					:to="`/records/Timesheet/${encodeURIComponent(row.timesheet)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Timesheet") }}</RouterLink
+				>
+				<RouterLink
+					v-else-if="row.field_attendance"
+					:to="`/field-attendance/${encodeURIComponent(row.field_attendance)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Attendance") }}</RouterLink
+				>
+				<span v-else class="text-ink-400">—</span>
 			</template>
 
 			<template #cell-project="{ row }">

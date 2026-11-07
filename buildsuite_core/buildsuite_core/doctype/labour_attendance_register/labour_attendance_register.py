@@ -2,10 +2,13 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import *
-from frappe import _
 from frappe.utils import flt, getdate
+
+from buildsuite_core.utils.full_day import get_full_day_hours, regular_hours_for
+
 
 class LabourAttendanceRegister(Document):
 	# begin: auto-generated types
@@ -24,19 +27,38 @@ class LabourAttendanceRegister(Document):
 		employee: DF.Link
 		employee_name: DF.Data | None
 		field_attendance: DF.Link | None
+		full_day_hours: DF.Float
 		naming_series: DF.Literal["LAB-ATT-.YYYY.-"]
 		project: DF.Link
 		project_name: DF.Data | None
+		regular_hours: DF.Float
+		source: DF.Literal["Attendance", "Timesheet"]
 		status: DF.Literal["", "Full Day", "Half Day", "Absent"]
+		timesheet: DF.Link | None
+		timesheet_detail: DF.Data | None
 		wage_rate: DF.Currency
 	# end: auto-generated types
 
 	def before_save(self):
 		self.wage_rate = get_employee_rates(self.employee, self.attendance_date)
-	
+
 	def validate(self):
 		self.validate_status()
 		self.update_daily_wages()
+		self.set_hours()
+
+	def set_hours(self):
+		"""Hours a row stands for. Rows made from a Field Attendance sheet arrive with their hours
+		already set from the sheet's frozen full day; a hand-made draft row takes the helper's. Never
+		touched once submitted."""
+		if self.docstatus != 0:
+			return
+		if not self.source:
+			self.source = "Attendance"
+		if not flt(self.full_day_hours):
+			self.full_day_hours = get_full_day_hours(self.project, self.company)
+		if self.regular_hours in (None, ""):
+			self.regular_hours = regular_hours_for(self.status, self.full_day_hours)
 
 	def update_daily_wages(self):
 		rate = flt(self.wage_rate)
@@ -47,27 +69,39 @@ class LabourAttendanceRegister(Document):
 			self.daily_wage_calculated = rate / 2
 		elif self.status == "Absent":
 			self.daily_wage_calculated = 0
-	
+
 	def validate_status(self):
-		docs = [x.get("status") for x in frappe.get_all("Labour Attendance Register",{"attendance_date":self.attendance_date,"docstatus":1,"employee":self.employee},["status"])]
+		docs = [
+			x.get("status")
+			for x in frappe.get_all(
+				"Labour Attendance Register",
+				{"attendance_date": self.attendance_date, "docstatus": 1, "employee": self.employee},
+				["status"],
+			)
+		]
 		if docs:
 			if self.status == "Full Day" or self.status == "Absent":
 				if "Full Day" in docs or "Half Day" in docs or "Absent" in docs:
-					frappe.throw(f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as is Already Marked {docs[0]}.")
+					frappe.throw(
+						f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as is Already Marked {docs[0]}."
+					)
 
 			if self.status == "Half Day":
 				if "Full Day" in docs or "Absent" in docs:
-					frappe.throw(f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as is Already Marked {docs[0]}.")
-
+					frappe.throw(
+						f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as is Already Marked {docs[0]}."
+					)
 
 			if docs.count("Half Day") == 2 and self.status in ["Half Day", "Full Day", "Absent"]:
-				frappe.throw(f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as 2 Half Days are Marked Already!")
+				frappe.throw(
+					f"Cannot Mark {frappe.bold(self.status)} for Employee {frappe.bold(self.employee)} as 2 Half Days are Marked Already!"
+				)
 
 
 def get_employee_rates(emp, date):
 	"""`emp` is a dict from get_employee_map(), not an employee id."""
-	emp = frappe.get_doc("Employee",emp)
-	wage_rates = (flt(emp.custom_wage))
+	emp = frappe.get_doc("Employee", emp)
+	wage_rates = flt(emp.custom_wage)
 
 	if "buildsuite_hr" not in frappe.get_installed_apps():
 		return wage_rates
@@ -103,8 +137,8 @@ def get_employee_rates(emp, date):
 
 		labour_rate = net / 30
 
-
 	return labour_rate
+
 
 @frappe.whitelist()
 def project_list_query(doctype: str, txt: str, searchfield: str, start: str, page_len: str, filters: str):
@@ -125,10 +159,12 @@ def project_list_query(doctype: str, txt: str, searchfield: str, start: str, pag
 				pro.name
 			LIMIT %(start)s, %(page_len)s
 		"""
-		values = frappe.db.sql(query, {
-			'employee': filters['employee'],
-			'start': start,
-			'page_len': page_len,
-		})
+		values = frappe.db.sql(
+			query,
+			{
+				"employee": filters["employee"],
+				"start": start,
+				"page_len": page_len,
+			},
+		)
 		return values
-

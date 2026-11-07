@@ -2,9 +2,11 @@
 // Labour Attendance Register — read-only. Rows are generated when a Field
 // Attendance sheet is submitted, never created by hand here. Filters (project,
 // worker, status, date range) + a total-daily-wages subtitle mirror the prototype
-// (S216). Task/Day-Type columns need source data on the register doctype.
+// (S216). "Captured as" links to the sheet or timesheet the row came from; Hours is the regular
+// hours over the full day the row was made with.
 
 import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -45,9 +47,7 @@ const filterFieldMap = {
 	to: { field: "attendance_date", op: "<=" },
 };
 
-const anyFilter = computed(() =>
-	Object.values(filterValues.value).some((v) => v)
-);
+const anyFilter = computed(() => Object.values(filterValues.value).some((v) => v));
 function clearFilters() {
 	projectFilter.value = "";
 	workerFilter.value = "";
@@ -93,7 +93,17 @@ const columns = [
 	{ key: "attendance_date", label: __("Date") },
 	{ key: "employee_name", label: __("Worker") },
 	{ key: "status", label: __("Status") },
-	{ key: "task", label: __("Task") },
+	{
+		key: "source",
+		label: __("Captured as"),
+		fields: ["source", "timesheet", "field_attendance"],
+	},
+	{
+		key: "regular_hours",
+		label: __("Hours"),
+		align: "right",
+		fields: ["regular_hours", "full_day_hours"],
+	},
 	{ key: "project", label: __("Project") },
 	{ key: "wage_rate", label: __("Wage rate"), align: "right" },
 	{ key: "daily_wage_calculated", label: __("Daily wage"), align: "right" },
@@ -107,15 +117,22 @@ const breadcrumbs = [
 </script>
 
 <template>
-	<DeskPage :title="__('Labour Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Labour Attendance Register')"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+	>
 		<DocTypeListView
 			doctype="Labour Attendance Register"
 			:field-order="[
 				'attendance_date',
 				'employee_name',
 				'status',
-				'task',
-				'task_subject',
+				'source',
+				'timesheet',
+				'field_attendance',
+				'regular_hours',
+				'full_day_hours',
 				'project',
 				'wage_rate',
 				'daily_wage_calculated',
@@ -176,15 +193,40 @@ const breadcrumbs = [
 			</template>
 
 			<template #cell-employee_name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.employee_name || row.employee }}</span>
+				<span class="text-ink-900 font-medium">{{
+					row.employee_name || row.employee
+				}}</span>
 			</template>
 
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
 			</template>
 
-			<template #cell-task="{ row }">
-				<span class="text-ink-700">{{ row.task_subject || row.task || "—" }}</span>
+			<template #cell-source="{ row }">
+				<RouterLink
+					v-if="row.source === 'Timesheet' && row.timesheet"
+					:to="`/records/Timesheet/${encodeURIComponent(row.timesheet)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Timesheet") }}</RouterLink
+				>
+				<RouterLink
+					v-else-if="row.field_attendance"
+					:to="`/field-attendance/${encodeURIComponent(row.field_attendance)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Attendance") }}</RouterLink
+				>
+				<span v-else class="text-ink-400">—</span>
+			</template>
+
+			<template #cell-regular_hours="{ row }">
+				<span class="tabular-nums text-ink-900"
+					>{{ row.regular_hours || "—"
+					}}<span v-if="row.full_day_hours" class="text-ink-400 text-[10px]">
+						/ {{ row.full_day_hours }} h</span
+					></span
+				>
 			</template>
 
 			<template #cell-project="{ row }">

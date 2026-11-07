@@ -11,6 +11,9 @@ from frappe.utils import flt, getdate
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import MAX_OT_HOURS_PER_DAY
 from buildsuite_core.utils.full_day import get_full_day_hours
 
+# A day has 24 hours: regular + overtime across every register row can't exceed it.
+MAX_HOURS_IN_A_DAY = 24
+
 
 class OvertimeAttendanceRegister(Document):
 	# begin: auto-generated types
@@ -27,6 +30,7 @@ class OvertimeAttendanceRegister(Document):
 		employee: DF.Link
 		employee_name: DF.Data | None
 		field_attendance: DF.Link | None
+		full_day_hours: DF.Float
 		naming_series: DF.Literal["HR-OTATT-.YYYY.-"]
 		overtime_date: DF.Date
 		overtime_hours: DF.Float
@@ -34,6 +38,9 @@ class OvertimeAttendanceRegister(Document):
 		overtime_wage_calculated: DF.Currency
 		project: DF.Link
 		project_name: DF.Data | None
+		source: DF.Literal["Attendance", "Timesheet"]
+		timesheet: DF.Link | None
+		timesheet_detail: DF.Data | None
 	# end: auto-generated types
 
 	# begin: auto-generated types
@@ -64,6 +71,72 @@ class OvertimeAttendanceRegister(Document):
 
 	def validate(self):
 		self.validate_date_ot_and_rate()
+		self.set_full_day_hours()
+
+	def set_full_day_hours(self):
+		"""The full day this row was made with. Rows from a Field Attendance sheet arrive with the
+		sheet's frozen value; a hand-made draft takes the helper's. Never touched once submitted."""
+		if self.docstatus != 0:
+			return
+		if not self.source:
+			self.source = "Attendance"
+		if not flt(self.full_day_hours):
+			self.full_day_hours = get_full_day_hours(self.project, self.company)
+
+	def before_submit(self):
+		self.validate_hours_in_a_day()
+
+	def validate_hours_in_a_day(self):
+		"""A worker can't log more than 24 hours on one day. Counts, for the day: the sheet's own row
+		as its full day (Present) or half of it (Half Day) - the sheet's full day, not a fixed 8 and
+		4 - plus the regular hours and overtime of the worker's other submitted register rows."""
+		regular = 0.0
+		if self.field_attendance:
+			sheet_status = frappe.db.get_value(
+				"Field Attendance Employee",
+				{"parent": self.field_attendance, "employee": self.employee},
+				"status",
+			)
+			sheet_full_day = frappe.db.get_value("Field Attendance", self.field_attendance, "full_day_hours")
+			sheet_full_day = flt(sheet_full_day) or get_full_day_hours(self.project, self.company)
+			regular += sheet_full_day * {"Present": 1.0, "Half Day": 0.5}.get(sheet_status, 0.0)
+
+		for row in frappe.get_all(
+			"Labour Attendance Register",
+			filters={"employee": self.employee, "attendance_date": self.overtime_date, "docstatus": 1},
+			fields=["regular_hours", "field_attendance"],
+		):
+			# This sheet's own labour row is already counted above.
+			if not (self.field_attendance and row.field_attendance == self.field_attendance):
+				regular += flt(row.regular_hours)
+
+		other_overtime = sum(
+			flt(h)
+			for h in frappe.get_all(
+				"Overtime Attendance Register",
+				filters={
+					"employee": self.employee,
+					"overtime_date": self.overtime_date,
+					"docstatus": 1,
+					"name": ["!=", self.name],
+				},
+				pluck="overtime_hours",
+			)
+		)
+		total = regular + other_overtime + flt(self.overtime_hours)
+		if total > MAX_HOURS_IN_A_DAY:
+			frappe.throw(
+				_(
+					"{0}: {1} hours on {2} would be more than {3} hours in a day ({4} regular, {5} overtime)."
+				).format(
+					frappe.bold(self.employee_name or self.employee),
+					total,
+					frappe.bold(self.overtime_date),
+					MAX_HOURS_IN_A_DAY,
+					regular,
+					other_overtime + flt(self.overtime_hours),
+				)
+			)
 
 	def validate_date_ot_and_rate(self):
 		docs = [
