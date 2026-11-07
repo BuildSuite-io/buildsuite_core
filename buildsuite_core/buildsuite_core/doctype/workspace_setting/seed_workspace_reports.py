@@ -96,7 +96,7 @@ _SEED = {
 			"label": "Overtime Attendance Register",
 			"icon": "chart-line",
 			"route": "/overtime-attendance",
-			"description": "Per-worker overtime hours × overtime rate.",
+			"description": "Per-worker overtime hours multiplied by the overtime rate.",
 		},
 		{
 			"label": "Site Attendance Summary",
@@ -141,6 +141,21 @@ _SEED = {
 			"icon": "hard-hat",
 			"route": "/procurement/report/consumption-by-cost-code",
 			"description": "Material issued to site, against the cost code it was booked to.",
+		},
+	),
+}
+
+
+# Record (DocType) shortcut tiles seeded per workspace — opened in the generic /records view.
+# The prototype's Workforce landing offers Timesheets beside Field Employees / Crews / Field
+# Attendance; the SPA has no bespoke Timesheet screen, so it opens ERPNext's Timesheet generically.
+DOCTYPE_SEED = {
+	"workforce": (
+		{
+			"document_type": "Timesheet",
+			"label": "Timesheets",
+			"icon": "calendar",
+			"description": "Hours logged against a project and cost code.",
 		},
 	),
 }
@@ -240,6 +255,15 @@ def seed_workspace_reports():
 	if "project-finance" not in existing:
 		for row in _project_finance_tiles():
 			settings.append("reports", {"workspace": "project-finance", **row})
+		changed = True
+
+	# Record tiles — only for a workspace that has none yet (respects admin edits).
+	have_records = {r.workspace for r in settings.doctypes}
+	for slug, rows in DOCTYPE_SEED.items():
+		if slug in have_records:
+			continue
+		for row in rows:
+			settings.append("doctypes", {"workspace": slug, **row})
 		changed = True
 
 	if changed:
