@@ -17,6 +17,18 @@ describe("Workforce dashboard", () => {
 		cy.contains("Recent labour cost").should("be.visible");
 	});
 
+	it("the Workforce landing offers Timesheets and the three reports", () => {
+		cy.visitApp("/workforce");
+		cy.contains("Timesheets").should("be.visible");
+		[
+			"Labour Attendance Register",
+			"Overtime Attendance Register",
+			"Site Attendance Summary",
+		].forEach((r) => cy.contains(r).should("be.visible"));
+		cy.contains("Timesheets").click();
+		cy.location("pathname").should("contain", "/records/Timesheet");
+	});
+
 	it("Recent attendance → View all opens the Field Attendance list", () => {
 		cy.visitApp("/workforce-dashboard");
 		cy.contains("Recent attendance").should("be.visible");
