@@ -4,6 +4,28 @@
 describe("Full day hours", () => {
 	beforeEach(() => cy.login());
 
+	// The Company test edits a real company's full day; put it back even when an assertion fails
+	// halfway, or later runs (and the backend suite) see a 9-hour company.
+	after(() => {
+		cy.login();
+		cy.request({
+			url: "/api/method/frappe.client.get_list",
+			qs: { doctype: "Company", fields: JSON.stringify(["name"]), limit_page_length: 1 },
+		})
+			.its("body.message.0.name")
+			.then((company) => {
+				cy.visitApp("/settings");
+				cy.window().then((win) =>
+					cy.request({
+						method: "POST",
+						url: "/api/method/buildsuite_core.api.company.set_full_day_hours",
+						headers: { "X-Frappe-CSRF-Token": win.csrf_token },
+						body: { company, hours: 8 },
+					})
+				);
+			});
+	});
+
 	it("Company page: Labour costing shows the value; an admin edits it and the rule is enforced", () => {
 		cy.request({
 			url: "/api/method/frappe.client.get_list",

@@ -88,8 +88,10 @@ class TestHomeDashboard(BuildSuiteTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
-		# Administrator resolves to the org-wide 'admin' snapshot.
+		# Administrator resolves to the org-wide 'admin' snapshot (when no persona is chosen for it:
+		# a site where Administrator picked one resolves to that persona instead).
 		frappe.set_user("Administrator")
+		frappe.db.set_value("User", "Administrator", "persona", None)
 		admin = get_home_dashboard()
 		self.assertEqual(admin["role"], "admin")
 		self.assertIn("Users", [t["label"] for t in admin["snapshot"]])

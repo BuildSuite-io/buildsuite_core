@@ -11,6 +11,7 @@ from buildsuite_core.buildsuite_core.doctype.stage_planning.stage_planning impor
 	revise_stage_planning,
 )
 from buildsuite_core.tests.base import BuildSuiteTestCase
+from buildsuite_core.workflow import apply_workflow as bs_apply_workflow
 
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
@@ -152,8 +153,10 @@ class TestStagePlanning(BuildSuiteTestCase):
 		comment that apply_workflow and the on_update hook both used to add."""
 		p = self._make_project()
 		st = self._make_stage(p.name)
-		apply_workflow(st, "Submit for Approval")
-		apply_workflow(st, "Approve")
+		# Through the app's own transition (what the SPA calls). Frappe's native apply_workflow adds
+		# a comment of its own for every state, which the stage's richer timeline label replaces.
+		for action in ("Submit for Approval", "Approve"):
+			bs_apply_workflow(frappe.as_json(frappe.get_doc("Stage Planning", st.name).as_dict()), action)
 		types = [a["type"] for a in get_stage_activity(st.name)]
 		self.assertEqual(types.count("approved"), 1)
 		self.assertEqual(types.count("submitted"), 1)

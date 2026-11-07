@@ -318,7 +318,7 @@ PERSONA_CRUD_MATRIX = {
 		"Labour Attendance Register": "r",  # derived register — read-only
 		"Overtime Attendance Register": "r",  # derived register — read-only
 		"Machinery": "r",
-		"Machinery Usage": "crw",  # not submittable — CRW is full; the ruling's S is N/A
+		"Machinery Usage": "crw",  # raises and edits drafts; submitting is the Site Engineer / PM
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
 	"Project Manager": {
@@ -382,7 +382,7 @@ PERSONA_CRUD_MATRIX = {
 		"Labour Attendance Register": "r",  # derived register — read-only
 		"Overtime Attendance Register": "r",  # derived register — read-only
 		"Machinery": "r",  # register — read-only
-		"Machinery Usage": "crwd",  # usage log — full (not submittable, so the ruling's S/X are N/A)
+		"Machinery Usage": "crwdsx",  # usage log — submittable: the Site Engineer submits, cancels and amends
 		# if_owner scopes write/delete per-document, so a doc-less has_permission reports only create
 		# + read here; editing/deleting their OWN draft (owner = beneficiary) is covered per-record in
 		# test_petty_cash, and surfaced to the SPA as writeScope/deleteScope = "own".
