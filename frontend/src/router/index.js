@@ -105,6 +105,7 @@ const PAGE_TITLES = {
 	"labour-attendance": "Labour Attendance Register",
 	"overtime-attendance": "Overtime Attendance Register",
 	"attendance-summary": "Site Attendance Summary",
+	"workforce-dashboard": "Workforce Dashboard",
 	"scope-change": "Scope Change",
 	"project-finance": "Project Finance",
 	"petty-cash": "Petty Cash",
@@ -782,6 +783,11 @@ const routes = [
 				component: () => import("@/views/OvertimeAttendanceListView.vue"),
 			},
 			{
+				path: "workforce-dashboard",
+				name: "workforce-dashboard",
+				component: () => import("@/views/workspaces/WorkforceDashboardView.vue"),
+			},
+			{
 				path: "workforce/attendance-summary",
 				name: "attendance-summary",
 				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
@@ -1216,6 +1222,7 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
+	"workforce-dashboard": "fieldAttendance",
 	customers: "customer",
 	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
 	"finance-invoice-new": "salesInvoice",
