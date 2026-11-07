@@ -121,3 +121,80 @@ def _find_code(row, codes):
 		if not is_item and c["type"] == "Group" and c["group_code"] == row.custom_cost_code_group:
 			return c
 	return None
+
+
+# ---------------------------------------------------------------------------
+# Registers: a submitted timesheet writes its rows into the labour registers
+# ---------------------------------------------------------------------------
+
+LABOUR_REGISTER = "Labour Attendance Register"
+OVERTIME_REGISTER = "Overtime Attendance Register"
+_REGISTER_COST_CODE = (
+	("custom_cost_code_type", "cost_code_type"),
+	("custom_cost_code_group", "cost_code_group"),
+	("custom_cost_code_item", "cost_code_item"),
+	("custom_cost_code_label", "cost_code_label"),
+)
+
+
+def create_registers_from_timesheet(doc, method=None):
+	"""on_submit: each regular row becomes a Labour Attendance row (status "Hours", priced rate x full
+	day, the wage being the row's costing amount) and each overtime row an Overtime Attendance row
+	(hours, the row's overtime rate, wage = costing amount). Both keep the row's project, cost code,
+	description and the links back to the timesheet and its row."""
+	for row in doc.time_logs:
+		day = getdate(row.from_time) if row.from_time else getdate(doc.start_date)
+		common = {
+			"employee": doc.employee,
+			"company": doc.company,
+			"project": row.project,
+			"source": "Timesheet",
+			"timesheet": doc.name,
+			"timesheet_detail": row.name,
+			"full_day_hours": row.full_day_hours,
+			"comments": row.description,
+			**{dst: row.get(src) or "" for src, dst in _REGISTER_COST_CODE},
+		}
+		if row.is_overtime:
+			reg = frappe.get_doc(
+				{
+					**common,
+					"doctype": OVERTIME_REGISTER,
+					"overtime_date": day,
+					"overtime_hours": row.hours,
+					"overtime_rate": row.costing_rate,
+					"overtime_wage_calculated": row.costing_amount,
+				}
+			)
+		else:
+			reg = frappe.get_doc(
+				{
+					**common,
+					"doctype": LABOUR_REGISTER,
+					"attendance_date": day,
+					"status": "Hours",
+					"regular_hours": row.hours,
+					"wage_rate": round(flt(row.costing_rate) * flt(row.full_day_hours), 2),
+					"daily_wage_calculated": row.costing_amount,
+				}
+			)
+		reg.insert(ignore_permissions=True)
+		reg.submit()
+
+
+def cancel_registers_of_timesheet(doc, method=None):
+	"""on_cancel: cancel every register row the timesheet made, so its cost leaves every reading."""
+	for doctype in (LABOUR_REGISTER, OVERTIME_REGISTER):
+		for name in frappe.get_all(doctype, filters={"timesheet": doc.name, "docstatus": 1}, pluck="name"):
+			reg = frappe.get_doc(doctype, name)
+			reg.flags.ignore_permissions = True
+			reg.cancel()
+
+
+def delete_registers_of_timesheet(doc, method=None):
+	"""on_trash: a timesheet can only be deleted as a draft or once cancelled, but be safe - drop
+	whatever register rows still point at it (cancelling any that are live)."""
+	cancel_registers_of_timesheet(doc)
+	for doctype in (LABOUR_REGISTER, OVERTIME_REGISTER):
+		for name in frappe.get_all(doctype, filters={"timesheet": doc.name}, pluck="name"):
+			frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)

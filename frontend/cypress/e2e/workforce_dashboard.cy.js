@@ -26,7 +26,7 @@ describe("Workforce dashboard", () => {
 			"Site Attendance Summary",
 		].forEach((r) => cy.contains(r).should("be.visible"));
 		cy.contains("Timesheets").click();
-		cy.location("pathname").should("contain", "/records/Timesheet");
+		cy.location("pathname").should("match", /\/timesheets$/); // its own screens, not the generic records view
 	});
 
 	it("Recent attendance → View all opens the Field Attendance list", () => {

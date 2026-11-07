@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 """Workforce dashboard figures come from submitted attendance, not drafts."""
 
+from unittest.mock import patch
+
 import frappe
 
 from buildsuite_core.api.field_attendance import save_field_attendance
@@ -15,6 +17,12 @@ class TestWorkforceDashboard(BuildSuiteTestCase):
 		trade = f"Trade {self._n}"
 		frappe.get_doc({"doctype": "Labour Trade", "trade": trade}).insert(ignore_permissions=True)
 		self.project = self._make_project().name
+		# Scope the dashboard to the company the test project landed in: with company awareness on, the
+		# site's working company need not be the one a new project is created under.
+		self.company = frappe.db.get_value("Project", self.project, "company")
+		scope = patch("buildsuite_core.api.workforce.company_scope", return_value=self.company)
+		scope.start()
+		self.addCleanup(scope.stop)
 		self.worker_a = self._worker(trade, 900)
 		self.worker_b = self._worker(trade, 1100)
 		self.today = frappe.utils.today()

@@ -23,7 +23,7 @@ import { frappeRequest } from "frappe-ui-frappe-request";
 const { projectOptions, projectLabel } = useProjectOptions();
 const { workerOptions } = useFieldEmployeeOptions();
 
-const STATUSES = ["Full Day", "Half Day", "Absent"];
+const STATUSES = ["Full Day", "Half Day", "Absent", "Hours"];
 
 const projectFilter = ref("");
 const workerFilter = ref("");
@@ -205,7 +205,7 @@ const breadcrumbs = [
 			<template #cell-source="{ row }">
 				<RouterLink
 					v-if="row.source === 'Timesheet' && row.timesheet"
-					:to="`/records/Timesheet/${encodeURIComponent(row.timesheet)}`"
+					:to="`/timesheets/${encodeURIComponent(row.timesheet)}`"
 					class="desk-link"
 					@click.stop
 					>{{ __("Timesheet") }}</RouterLink

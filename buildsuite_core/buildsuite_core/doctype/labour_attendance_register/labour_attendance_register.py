@@ -33,17 +33,23 @@ class LabourAttendanceRegister(Document):
 		project_name: DF.Data | None
 		regular_hours: DF.Float
 		source: DF.Literal["Attendance", "Timesheet"]
-		status: DF.Literal["", "Full Day", "Half Day", "Absent"]
+		status: DF.Literal["", "Full Day", "Half Day", "Absent", "Hours"]
 		timesheet: DF.Link | None
 		timesheet_detail: DF.Data | None
 		wage_rate: DF.Currency
 	# end: auto-generated types
 
 	def before_save(self):
-		self.wage_rate = get_employee_rates(self.employee, self.attendance_date)
+		# A timesheet row arrives priced (rate x full day, and the amount): it is not re-derived from
+		# the worker's current wage.
+		if self.source != "Timesheet":
+			self.wage_rate = get_employee_rates(self.employee, self.attendance_date)
 
 	def validate(self):
-		self.validate_status()
+		# "Hours" is a timesheet row: it can sit beside attendance for the day, so it takes no part in
+		# the one-status-a-day rules.
+		if self.status != "Hours":
+			self.validate_status()
 		self.update_daily_wages()
 		self.set_hours()
 
