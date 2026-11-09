@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-"""Project Finance > Bills — the direct SUPPLIER bill, a thin front-end over ERPNext's
+"""Project Finance › Bills — the direct SUPPLIER bill, a thin front-end over ERPNext's
 Purchase Invoice (money out). Mirrors the customer-invoice (Sales Invoice) wrapper: create a
 draft, submit (posts the payable), and pay (a real Payment Entry from a Bank/Cash account).
 Subcontractor bills are a separate doctype and reuse their own screens; the Bills panel lists
@@ -541,7 +541,7 @@ def get_po_bill_lines(purchase_order: str):
 @frappe.whitelist()
 def get_item_details(item_code: str):
 	"""Item master defaults for a direct bill line — the item name, its stock UOM and a buying
-	rate (Item Price buying list, else last purchase rate) to pre-fill qty x rate."""
+	rate (Item Price buying list, else last purchase rate) to pre-fill qty × rate."""
 	it = frappe.db.get_value("Item", item_code, ["item_name", "stock_uom", "description"], as_dict=True) or {}
 	rate = frappe.db.get_value("Item Price", {"item_code": item_code, "buying": 1}, "price_list_rate") or 0
 	if not rate:
@@ -805,7 +805,7 @@ def list_payments(name: str):
 
 @frappe.whitelist()
 def record_advance(
-	supplier: str | None,
+	supplier: str,
 	amount: str | float,
 	date: str | None = None,
 	pay_from: str | None = None,

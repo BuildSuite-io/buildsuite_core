@@ -291,47 +291,72 @@ def _machinery_entries(project):
 
 
 def _labour_entries(project):
-	"""Submitted labour charged to a cost code, from the one reader of the labour registers
-	(utils.labour_cost): attendance rows (Field Attendance sheets) and timesheet rows, each counted
-	once. A row's cost code is its own, else its sheet's; rows with none, or no cost, do not post."""
-	from buildsuite_core.utils.labour_cost import cost_of, labour_cost_rows
-
+	"""Submitted Labour and Overtime Attendance registers charged to a cost code. The wage is
+	the register's own calculated amount (full day = daily wage, half day = half, absent = 0;
+	overtime = hours x overtime rate)."""
 	out = []
-	for r in labour_cost_rows({"project": project}):
-		code = r["cost_code"]
-		amount = cost_of(r)
-		if not code or amount == 0:
-			continue
-		is_overtime = r["doctype"] == "Overtime Attendance Register"
-		hours = r["ot_hours"] if is_overtime else r["regular_hours"]
-		# Attendance counts in days (a Half Day is half); a timesheet counts in hours.
-		in_days = r["source"] == "Attendance" and not is_overtime
-		out.append(
-			{
-				"cost_code_type": (code["type"] or "").title(),
-				"group_code": code["group_code"],
-				"item_code": code["item_code"] or "",
-				"cost_type": "Labour",
-				"amount": amount,
-				"source_doctype": r["doctype"],
-				"source_name": r["name"],
-				"source_line": r["name"],
-				"party": r["employee_name"],
-				"date": str(r["date"]) if r["date"] else None,
-				"label": code["label"],
-				"employee": r["employee"],
-				"employee_name": r["employee_name"],
-				"field_attendance": r["field_attendance"],
-				"timesheet": r["timesheet"],
-				"source": r["source"],
-				"kind": "Overtime" if is_overtime else r["status"],
-				"quantity": (1 if r["status"] == "Full Day" else 0.5 if r["status"] == "Half Day" else 0)
-				if in_days
-				else hours,
-				"unit": "day" if in_days else "h",
-				"rate": amount / hours if hours else 0,
-			}
+	specs = (
+		("Labour Attendance Register", "attendance_date", "daily_wage_calculated", "wage_rate", None),
+		(
+			"Overtime Attendance Register",
+			"overtime_date",
+			"overtime_wage_calculated",
+			"overtime_rate",
+			"overtime_hours",
+		),
+	)
+	for doctype, date_field, amount_field, rate_field, hours_field in specs:
+		fields = [
+			"name",
+			"employee",
+			"employee_name",
+			"field_attendance",
+			date_field,
+			amount_field,
+			rate_field,
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+		]
+		if hours_field:
+			fields.append(hours_field)
+		else:
+			fields.append("status")
+		rows = frappe.get_all(
+			doctype,
+			filters={"project": project, "docstatus": 1, "cost_code_type": ["in", ["Group", "Item"]]},
+			fields=fields,
 		)
+		is_overtime = bool(hours_field)
+		for r in rows:
+			amount = flt(r.get(amount_field))
+			if not (r.cost_code_group or r.cost_code_item) or amount == 0:
+				continue
+			out.append(
+				{
+					"cost_code_type": r.cost_code_type,
+					"group_code": r.cost_code_group or "",
+					"item_code": r.cost_code_item or "",
+					"cost_type": "Labour",
+					"amount": amount,
+					"source_doctype": doctype,
+					"source_name": r.name,
+					"source_line": r.name,
+					"party": r.employee_name or r.employee,
+					"date": str(r.get(date_field)) if r.get(date_field) else None,
+					"label": r.cost_code_label or "",
+					"employee": r.employee,
+					"employee_name": r.employee_name or r.employee,
+					"field_attendance": r.field_attendance,
+					"kind": "Overtime" if is_overtime else r.status,
+					"quantity": flt(r.get(hours_field))
+					if is_overtime
+					else (0.5 if r.status == "Half Day" else 1),
+					"unit": "h" if is_overtime else "day",
+					"rate": flt(r.get(rate_field)),
+				}
+			)
 	return out
 
 

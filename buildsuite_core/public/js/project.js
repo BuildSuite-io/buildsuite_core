@@ -6,7 +6,6 @@
 
 frappe.ui.form.on("Project", {
 	refresh(frm) {
-		set_full_day_description(frm);
 		if (frm.doc.__islocal) return;
 
 		render_subprojects(frm);
@@ -15,27 +14,6 @@ frappe.ui.form.on("Project", {
 		render_stage_plannings(frm);
 	},
 });
-
-// The Full day hours description names the REAL company value when the field is blank
-// ("Uses company default: 9 h"), read through the server helper so it matches what costing uses.
-function set_full_day_description(frm) {
-	if (!frm.doc.company) return;
-	frappe.call({
-		method: "buildsuite_core.api.company.full_day_hours",
-		args: { company: frm.doc.company },
-		callback: ({ message }) => {
-			const hours = message && message.company_hours;
-			if (hours == null) return;
-			frm.set_df_property(
-				"full_day_hours",
-				"description",
-				frm.doc.full_day_hours
-					? __("Blank uses the company default ({0} h).", [hours])
-					: __("Uses company default: {0} h", [hours])
-			);
-		},
-	});
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared helpers

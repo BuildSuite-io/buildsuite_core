@@ -226,14 +226,12 @@ doc_events = {
 		"after_insert": "buildsuite_core.utils.employee_permissions.drop_self_service_for_managers"
 	},
 	"Project": {
-		"autoname": "buildsuite_core.overrides.project.autoname_project",
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [
 			"buildsuite_core.utils.project.sync_project_status",
 			"buildsuite_core.utils.project.enforce_company_rules",
 			"buildsuite_core.utils.date_bounds.validate_project_dates",
 			"buildsuite_core.overrides.project.reject_duplicate_project_id",
-			"buildsuite_core.utils.full_day.validate_project_full_day_hours",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
@@ -278,22 +276,7 @@ doc_events = {
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
 	},
-	# Timesheet rows are costed at the worker's daily rate over their project's full day; the cost is
-	# recalculated on every draft save and frozen on submit (utils.timesheet).
-	"Timesheet": {
-		"validate": [
-			"buildsuite_core.utils.timesheet.cost_timesheet",
-			# A worker's day: regular time at most one full day, all hours at most 24.
-			"buildsuite_core.utils.daily_hours.validate_timesheet_hours",
-		],
-		# A submitted timesheet writes its rows into the labour registers; cancelling / deleting it
-		# removes them (utils.labour_cost is the one reader of those registers).
-		"on_submit": "buildsuite_core.utils.timesheet.create_registers_from_timesheet",
-		"on_cancel": "buildsuite_core.utils.timesheet.cancel_registers_of_timesheet",
-		"on_trash": "buildsuite_core.utils.timesheet.delete_registers_of_timesheet",
-	},
 	"Company": {
-		"validate": "buildsuite_core.utils.full_day.validate_company_full_day_hours",
 		"on_update": [
 			"buildsuite_core.utils.petty_cash.create_account",
 			"buildsuite_core.utils.branding.rebuild_letter_head_on_company_change",

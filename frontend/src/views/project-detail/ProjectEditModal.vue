@@ -17,10 +17,6 @@ const props = defineProps({
 	isSubproject: { type: Boolean, default: false },
 	subsCount: { type: Number, default: 0 },
 	isMultiCompany: { type: Boolean, default: false },
-	// Full day hours: who may set it, the company's value (what a blank one uses), and the rule error.
-	canEditFullDay: { type: Boolean, default: false },
-	companyFullDay: { type: Number, default: null },
-	fullDayError: { type: String, default: "" },
 });
 
 const emit = defineEmits(["close", "save", "clear-error"]);
@@ -134,9 +130,7 @@ function onCustomerCreated(name) {
 						<DeskField
 							:label="__('Company')"
 							:hint="
-								__(
-									'Locked after create — a project can\'t be moved between companies.'
-								)
+								__('Locked after create — a project can\'t be moved between companies.')
 							"
 						>
 							<DeskInput :model-value="editForm.company" disabled />
@@ -156,14 +150,14 @@ function onCustomerCreated(name) {
 										? __(
 												'Locked on - this project has {0} subproject. Delete or move them out before turning this off.',
 												[subsCount]
-										  )
+											)
 										: __(
 												'Locked on - this project has {0} subprojects. Delete or move them out before turning this off.',
 												[subsCount]
-										  )
+											)
 									: __(
 											'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
-									  )
+										)
 							"
 						>
 							<label
@@ -175,9 +169,9 @@ function onCustomerCreated(name) {
 									:disabled="subsCount > 0"
 									class="accent-brand-600 disabled:cursor-not-allowed"
 								/>
-								<span class="text-sm text-ink-700">{{
-									__("Allow subprojects under this project")
-								}}</span>
+								<span class="text-sm text-ink-700"
+									>{{ __("Allow subprojects under this project") }}</span
+								>
 							</label>
 						</DeskField>
 					</DeskSection>
@@ -191,41 +185,6 @@ function onCustomerCreated(name) {
 						</DeskField>
 						<DeskField :label="__('Budget')" :hint="__('In INR')">
 							<DeskInput v-model="editForm.budget" type="number" />
-						</DeskField>
-						<DeskField
-							:label="__('Full day hours')"
-							:error="fullDayError"
-							:hint="
-								!canEditFullDay
-									? __(
-											'Only a PM or an admin can set a full day for this project.'
-									  )
-									: editForm.fullDayHours === '' ||
-									  editForm.fullDayHours === null
-									? __('Uses company default: {0} h', [companyFullDay ?? '—'])
-									: __(
-											'Blank uses the company default ({0} h). Sheets already submitted keep the day they were made with.',
-											[companyFullDay ?? '—']
-									  )
-							"
-						>
-							<DeskInput
-								v-if="canEditFullDay"
-								v-model="editForm.fullDayHours"
-								type="number"
-								min="0.5"
-								max="24"
-								step="0.5"
-								:placeholder="companyFullDay != null ? String(companyFullDay) : ''"
-								:aria-label="__('Full day hours')"
-							/>
-							<div v-else class="text-sm text-ink-700 py-1 tabular-nums">
-								{{
-									editForm.fullDayHours
-										? editForm.fullDayHours + " h"
-										: __("Company default: {0} h", [companyFullDay ?? "—"])
-								}}
-							</div>
 						</DeskField>
 						<!-- Progress is the weighted rollup of task progress (server-derived) —
 							 not manually editable, so status and progress stay decoupled. -->

@@ -32,8 +32,7 @@
   "section_break_pdmm",
   "amended_from",
   "column_break_3cdg",
-  "naming_series",
-  "full_day_hours"
+  "naming_series"
  ],
  "fields": [
   {
@@ -184,22 +183,13 @@
    "label": "Cost Code Item",
    "read_only": 1,
    "hidden": 1
-  },
-  {
-   "fieldname": "full_day_hours",
-   "fieldtype": "Float",
-   "label": "Full day hours",
-   "hidden": 1,
-   "read_only": 1,
-   "no_copy": 1,
-   "description": "Copied from the project / company while the sheet is a draft and frozen on submit."
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-08 10:00:00.000000",
+ "modified": "2026-09-09 20:24:19.858194",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Field Attendance",
