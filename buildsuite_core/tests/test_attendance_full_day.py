@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 """Field Attendance sheets and their registers carry the full day they were made with."""
 
+from unittest.mock import patch
+
 import frappe
 
 from buildsuite_core.api.field_attendance import save_field_attendance
@@ -166,7 +168,10 @@ class TestAttendanceFullDay(BuildSuiteTestCase):
 			"UPDATE `tabLabour Attendance Register` SET regular_hours = 0 WHERE field_attendance = %s", sheet
 		)
 
-		execute()
+		# reload_doc runs schema DDL, which commits the open transaction in MariaDB and would make this
+		# test's records permanent; the doctypes are already current, so skip it here.
+		with patch("frappe.reload_doc"):
+			execute()
 
 		self.assertEqual(frappe.db.get_value("Field Attendance", sheet, "full_day_hours"), 8)
 		a, b = self._labour(sheet, self.worker_a), self._labour(sheet, self.worker_b)
