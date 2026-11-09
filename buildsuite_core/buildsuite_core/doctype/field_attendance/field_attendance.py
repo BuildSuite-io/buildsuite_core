@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
+from buildsuite_core.utils.daily_hours import validate_attendance_hours
 from buildsuite_core.utils.full_day import get_full_day_hours, regular_hours_for
 from buildsuite_core.utils.project import anchor_company_to_project
 
@@ -178,6 +179,7 @@ class FieldAttendance(Document):
 	def before_submit(self):
 		# By now docstatus is already 1, so set it directly: this is the last moment it may change.
 		self.full_day_hours = get_full_day_hours(self.project, self.company)
+		validate_attendance_hours(self)
 
 	# ------------------------------------------------------------------
 	# submit / cancel

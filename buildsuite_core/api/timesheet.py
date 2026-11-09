@@ -15,6 +15,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_to_date, flt, getdate
 
+from buildsuite_core.utils.daily_hours import check_timesheet_day
 from buildsuite_core.utils.full_day import get_full_day_hours
 from buildsuite_core.utils.timesheet import cost_code_fields, row_cost_code
 
@@ -435,7 +436,7 @@ def _parse_date(v):
 def _num(v):
 	try:
 		return float(str(v).strip().replace(",", ""))
-	except (TypeError, ValueError):
+	except TypeError, ValueError:
 		return None
 
 
@@ -569,6 +570,20 @@ def plan_import(rows: list[list]) -> dict:
 			g["problem"] = _("{0} already has a timesheet for {1}.").format(g["employee_name"], g["date"])
 		elif g["hours"] > MAX_HOURS_PER_DAY:
 			g["problem"] = _("{0} hours in one day is more than 24.").format(g["hours"])
+		else:
+			# The same check a save runs, so a day that would be refused isn't marked Ready.
+			g["problem"] = check_timesheet_day(
+				g["employee"],
+				getdate(g["date"]),
+				[
+					{
+						"hours": x["hours"],
+						"is_overtime": x["is_overtime"],
+						"full_day_hours": get_full_day_hours(x["project"]),
+					}
+					for x in g["rows"]
+				],
+			)
 		out.append(g)
 	out.sort(key=lambda g: (g["date"], g["employee_name"]))
 	return {
