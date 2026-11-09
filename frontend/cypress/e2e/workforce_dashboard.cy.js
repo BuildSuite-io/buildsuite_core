@@ -17,10 +17,11 @@ describe("Workforce dashboard", () => {
 		cy.contains("Recent labour cost").should("be.visible");
 	});
 
-	it("the Workforce landing offers Timesheets and the three reports", () => {
+	it("the Workforce landing offers Timesheets and the four reports", () => {
 		cy.visitApp("/workforce");
 		cy.contains("Timesheets").should("be.visible");
 		[
+			"Labour Cost Summary",
 			"Labour Attendance Register",
 			"Overtime Attendance Register",
 			"Site Attendance Summary",

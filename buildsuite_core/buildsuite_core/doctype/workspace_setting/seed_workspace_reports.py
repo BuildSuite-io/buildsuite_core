@@ -87,6 +87,18 @@ _SEED = {
 	),
 	"workforce": (
 		{
+			"label": "Labour Cost Summary",
+			"icon": "chart-bar",
+			"route": "/workforce/labour-cost-summary",
+			"description": "Hours, man-days and labour cost by project, cost code or worker.",
+		},
+		{
+			"label": "Site Attendance Summary",
+			"icon": "hard-hat",
+			"route": "/workforce/attendance-summary",
+			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
+		},
+		{
 			"label": "Labour Attendance Register",
 			"icon": "clipboard-list",
 			"route": "/labour-attendance",
@@ -97,12 +109,6 @@ _SEED = {
 			"icon": "chart-line",
 			"route": "/overtime-attendance",
 			"description": "Per-worker overtime hours multiplied by the overtime rate.",
-		},
-		{
-			"label": "Site Attendance Summary",
-			"icon": "hard-hat",
-			"route": "/workforce/attendance-summary",
-			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
 		},
 	),
 	"procurement": (

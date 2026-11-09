@@ -18,3 +18,8 @@ export function parseFullDayHours(v) {
 	if (!isValidFullDayHours(v)) return undefined;
 	return Math.round(Number(v) * 100) / 100;
 }
+
+/** Man-days to at most 2 decimals, trailing zeros dropped: 22.5, 0.38, 1. */
+export function fmtManDays(n) {
+	return String(Math.round((Number(n) || 0) * 100) / 100);
+}
