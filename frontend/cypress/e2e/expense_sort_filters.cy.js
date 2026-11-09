@@ -79,4 +79,31 @@ describe("Expenses — sort by status and the Holder / Account filters", () => {
 		cy.contains("button", "Clear filters").click();
 		cy.contains(new RegExp(`1-\\d+ of ${expenses.length} records`)).should("be.visible");
 	});
+
+	it("'Submitted first' orders the entries within a status by last modified, as Desk does", () => {
+		const submitted = expenses
+			.filter((e) => e.status === "Submitted")
+			.sort((a, b) => b.modified.localeCompare(a.modified) || b.name.localeCompare(a.name));
+		expect(submitted.length, "needs Submitted rows").to.be.greaterThan(1);
+		cy.contains("select", "Entered — newest first").select("Status — Submitted first");
+		cy.get("tbody tr")
+			.first()
+			.should("contain.text", submitted[0].description || submitted[0].name);
+	});
+
+	it("the search finds an entry by its amount, typed with or without separators", () => {
+		const target = expenses.find((e) => Number(e.amount) >= 1000);
+		expect(target, "needs an entry of 1,000 or more").to.exist;
+		const digits = String(Number(target.amount));
+		const expected = expenses.filter((e) =>
+			[String(Number(e.amount)), Number(e.amount).toFixed(2)].some((s) => s.includes(digits))
+		).length;
+		cy.get("input[placeholder*='amount']").type(digits);
+		cy.contains(countLine(expected)).should("be.visible");
+		cy.get("input[placeholder*='amount']")
+			.clear()
+			.type(Number(target.amount).toLocaleString("en-IN"));
+		cy.get("tbody tr").should("have.length.greaterThan", 0);
+		cy.get("tbody tr").should("contain.text", target.description || target.name);
+	});
 });

@@ -194,16 +194,28 @@ function applySort(arr) {
 			return rows.sort(
 				(a, b) => (a.amount || 0) - (b.amount || 0) || cmpText(a.name, b.name)
 			);
-		case "status-submitted": // Submitted, then Draft, then Cancelled; newest entered first within each
+		case "status-submitted": // Submitted, then Draft, then Cancelled; last modified first within each
+			// (the order Desk's list shows for the same status), so the two screens line up.
 			return rows.sort(
 				(a, b) =>
 					(STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9) ||
-					cmpText(b.created, a.created) ||
+					cmpText(b.modified || b.created, a.modified || a.created) ||
 					cmpText(b.name, a.name)
 			);
 		default: // created-desc — Entered, newest first
 			return rows.sort((a, b) => cmpText(b.created, a.created) || cmpText(b.name, a.name));
 	}
+}
+
+// Amount search: typed as 1500, 1,500, 1500.50 or with the currency symbol, it matches the amount
+// as stored and as shown in the list.
+function amountMatches(e, term) {
+	if (/[a-z]/i.test(term)) return false; // words are not amounts: "Block 2" must not match 2
+	const digits = term.replace(/[^\d.]/g, "");
+	if (!digits) return false;
+	const n = Number(e.amount) || 0;
+	const shown = fmtINR(e.amount).replace(/[^\d.]/g, "");
+	return [String(n), n.toFixed(2), shown].some((s) => s.includes(digits));
 }
 
 const allExpenses = computed(() => {
@@ -219,6 +231,7 @@ const allExpenses = computed(() => {
 				holderName(e).toLowerCase().includes(term) ||
 				projectName(e).toLowerCase().includes(term) ||
 				(e.expense_account || "").toLowerCase().includes(term) ||
+				amountMatches(e, term) ||
 				e.name.toLowerCase().includes(term))
 	);
 	return applySort(rows);
@@ -626,7 +639,7 @@ const expenseAccountFilters = computed(() => [
 					<input
 						v-model="search"
 						type="text"
-						:placeholder="__('Search description, holder, project, account…')"
+						:placeholder="__('Search description, holder, project, account, amount…')"
 						class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full"
 					/>
 					<select
