@@ -106,4 +106,18 @@ describe("Expenses — sort by status and the Holder / Account filters", () => {
 		cy.get("tbody tr").should("have.length.greaterThan", 0);
 		cy.get("tbody tr").should("contain.text", target.description || target.name);
 	});
+
+	it("'Last modified' sorts newest and oldest first, as Desk's list does", () => {
+		const byModified = [...expenses].sort(
+			(a, b) => b.modified.localeCompare(a.modified) || b.name.localeCompare(a.name)
+		);
+		const label = (e) => e.description || e.name;
+		cy.contains("select", "Entered — newest first").select("Last modified — newest first");
+		cy.get("tbody tr").first().should("contain.text", label(byModified[0]));
+		cy.contains("select", "Last modified — newest first").select(
+			"Last modified — oldest first"
+		);
+		const oldest = byModified[byModified.length - 1];
+		cy.get("tbody tr").first().should("contain.text", label(oldest));
+	});
 });

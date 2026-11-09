@@ -168,6 +168,8 @@ function inPeriod(d) {
 const SORT_OPTIONS = [
 	{ key: "created-desc", label: __("Entered — newest first") },
 	{ key: "created-asc", label: __("Entered — oldest first") },
+	{ key: "modified-desc", label: __("Last modified — newest first") },
+	{ key: "modified-asc", label: __("Last modified — oldest first") },
 	{ key: "date-desc", label: __("Expense date — newest first") },
 	{ key: "date-asc", label: __("Expense date — oldest first") },
 	{ key: "amount-desc", label: __("Amount — highest first") },
@@ -182,6 +184,18 @@ function applySort(arr) {
 	switch (sortBy.value) {
 		case "created-asc":
 			return rows.sort((a, b) => cmpText(a.created, b.created) || cmpText(a.name, b.name));
+		case "modified-desc": // the order Desk's list opens in
+			return rows.sort(
+				(a, b) =>
+					cmpText(b.modified || b.created, a.modified || a.created) ||
+					cmpText(b.name, a.name)
+			);
+		case "modified-asc":
+			return rows.sort(
+				(a, b) =>
+					cmpText(a.modified || a.created, b.modified || b.created) ||
+					cmpText(a.name, b.name)
+			);
 		case "date-desc":
 			return rows.sort((a, b) => cmpText(b.date, a.date) || cmpText(b.name, a.name));
 		case "date-asc":
