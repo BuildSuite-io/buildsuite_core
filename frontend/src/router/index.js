@@ -105,6 +105,7 @@ const PAGE_TITLES = {
 	"labour-attendance": "Labour Attendance Register",
 	"overtime-attendance": "Overtime Attendance Register",
 	"attendance-summary": "Site Attendance Summary",
+	"labour-cost-summary": "Labour Cost Summary",
 	"workforce-dashboard": "Workforce Dashboard",
 	timesheets: "Timesheets",
 	"timesheet-new": "New Timesheet",
@@ -824,6 +825,13 @@ const routes = [
 				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
 			},
 			{
+				path: "workforce/labour-cost-summary",
+				name: "labour-cost-summary",
+				component: () => import("@/views/workforce/LabourCostSummaryReport.vue"),
+			},
+			// "Labour cost from timesheets" was folded into Labour Cost Summary (Captured as Timesheet).
+			{ path: "workforce/timesheet-cost", redirect: "/workforce/labour-cost-summary" },
+			{
 				path: "scope-change",
 				name: "scope-change",
 				component: () => import("@/views/PlaceholderView.vue"),
@@ -1253,6 +1261,7 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
+	"labour-cost-summary": "fieldAttendance",
 	"workforce-dashboard": "fieldAttendance",
 	timesheets: "fieldAttendance",
 	"timesheet-new": "fieldAttendance",
@@ -1317,6 +1326,7 @@ const GATED_REPORT_ROUTES = new Set([
 	"/labour-attendance",
 	"/overtime-attendance",
 	"/workforce/attendance-summary",
+	"/workforce/labour-cost-summary",
 	"/reports/delay-analysis",
 ]);
 

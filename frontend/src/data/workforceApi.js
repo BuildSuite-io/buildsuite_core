@@ -10,3 +10,16 @@ export async function getWorkforceDashboard() {
 		throw new Error(parseFrappeError(err).summary || "Request failed.");
 	}
 }
+
+// Labour Cost Summary — buildsuite_core.api.labour_cost_summary.get_summary. `group_by` is
+// "project" | "code" | "worker"; `source` is "" | "Attendance" | "Timesheet".
+export async function getLabourCostSummary(params) {
+	try {
+		return await frappeRequest({
+			url: "buildsuite_core.api.labour_cost_summary.get_summary",
+			params,
+		});
+	} catch (err) {
+		throw new Error(parseFrappeError(err).summary || "Request failed.");
+	}
+}
