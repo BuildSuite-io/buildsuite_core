@@ -74,6 +74,7 @@ def list_expenses():
 		fields=[
 			"name",
 			"creation",
+			"modified",
 			"date",
 			"project",
 			"company",
@@ -143,6 +144,8 @@ def list_expenses():
 				# Entry timestamp — the "Entered" sort in the panel (differs from `date`, the spend
 				# date, whenever a receipt is logged days later).
 				"created": str(e.creation) if e.creation else None,
+				# Last-modified timestamp - what Desk's list sorts by, so the panel can match it.
+				"modified": str(e.modified) if e.modified else None,
 				"date": str(e.date) if e.date else None,
 				"description": fr.get("description") or e.description or e.name,
 				"project": e.project,
