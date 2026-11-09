@@ -122,21 +122,6 @@ def update_company_branding(
 
 
 @frappe.whitelist()
-def set_full_day_hours(company: str, hours: float) -> dict:
-	"""Set a company's full day hours (administrator only). The SPA's Company page uses this rather
-	than the generic record save, since a BuildSuite Administrator edits company settings through
-	the app without holding Company write at the Desk. Goes through doc.save, so the same (0, 24]
-	validation applies."""
-	_require_admin()
-	if not frappe.db.exists("Company", company):
-		frappe.throw(_("No such company."))
-	doc = frappe.get_doc("Company", company)
-	doc.full_day_hours = hours
-	doc.save(ignore_permissions=True)
-	return {"company": company, "hours": doc.full_day_hours}
-
-
-@frappe.whitelist()
 def company_projects(company: str, limit: int = 20) -> dict:
 	"""Projects that belong to a company — the total count plus a capped sample — for the Company
 	detail page's linked-projects list. A company can own thousands of projects, so the page shows
@@ -176,8 +161,6 @@ def list_companies() -> list:
 	# deploy and `bench migrate` creating it.
 	if frappe.get_meta("Company").has_field("custom_brand_colour"):
 		fields.append("custom_brand_colour")
-	if frappe.get_meta("Company").has_field("full_day_hours"):
-		fields.append("full_day_hours")
 	rows = frappe.get_all("Company", fields=fields, order_by="company_name asc")
 	default = default_company()
 	return [
@@ -187,31 +170,12 @@ def list_companies() -> list:
 			"abbr": r.abbr or "",
 			"logo": r.get("custom_company_logo") or "",
 			"colour": r.get("custom_brand_colour") or "",
-			"full_day_hours": r.get("full_day_hours") or None,
 			"currency": r.default_currency or "",
 			"is_default": r.name == default,
 			"project_count": frappe.db.count("Project", {"company": r.name}),
 		}
 		for r in rows
 	]
-
-
-@frappe.whitelist()
-def full_day_hours(project: str | None = None, company: str | None = None) -> dict:
-	"""The hours in a full day for a project (its own value, else its company's, else the default)
-	plus the company's own — what the project form shows as "Uses company default". Read through the
-	helper, so a user who can't read the permlevel-protected Company field still gets the number."""
-	from buildsuite_core.utils.full_day import get_full_day_hours
-
-	if project and not frappe.has_permission("Project", ptype="read", doc=project):
-		frappe.throw(_("You do not have access to project {0}.").format(project), frappe.PermissionError)
-	company = company or (frappe.db.get_value("Project", project, "company") if project else None)
-	if company and not frappe.has_permission("Company", ptype="read", doc=company):
-		frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
-	return {
-		"hours": get_full_day_hours(project, company),
-		"company_hours": get_full_day_hours(company=company),
-	}
 
 
 @frappe.whitelist()

@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-"""Estimation > Quotations — drafts on ERPNext's own Quotation doctype.
+"""Estimation › Quotations — drafts on ERPNext's own Quotation doctype.
 
 There is no quotation endpoint: the Vue views create, read and edit the doctype straight through
 the data adapter. So what is worth testing here is the shape the app relies on — that a line
@@ -21,9 +21,6 @@ class TestQuotation(BuildSuiteTestCase):
 		super().setUp()
 		self.customer = self._make_customer().name
 		self.item = ensure_invoice_item()
-		# ERPNext fills price_list_rate from an Item Price on save; these tests are about a quotation
-		# line that has none, so a price someone has since put on the invoice item must not leak in.
-		frappe.db.delete("Item Price", {"item_code": self.item})
 
 	def _save(self, **overrides):
 		"""A quotation in exactly the shape NewQuotationView.vue posts."""
@@ -172,9 +169,8 @@ class TestQuotation(BuildSuiteTestCase):
 		line = doc.items[0]
 		cost = flt(line.price_list_rate) or flt(line.rate)
 		doc.set("items", [])
-		doc.append(
-			"items", dict(self._line(0, cost=cost, qty=1), item_name="Old line", description="Old line")
-		)
+		doc.append("items", dict(self._line(0, cost=cost, qty=1), item_name="Old line",
+		                         description="Old line"))
 		doc.save()
 
 		self.assertEqual(flt(doc.items[0].rate), 500)

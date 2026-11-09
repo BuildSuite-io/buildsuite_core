@@ -31,11 +31,7 @@ const labourRes = useDocTypeList("Labour Attendance Register", {
 		"status",
 		"daily_wage_calculated",
 	],
-	// Site attendance only: timesheet rows are another way of capturing labour and are read elsewhere.
-	filters: [
-		["docstatus", "<", 2],
-		["source", "=", "Attendance"],
-	],
+	filters: [["docstatus", "<", 2]],
 	orderBy: "attendance_date desc",
 	pageLength: 0,
 });
@@ -49,11 +45,7 @@ const overtimeRes = useDocTypeList("Overtime Attendance Register", {
 		"overtime_hours",
 		"overtime_wage_calculated",
 	],
-	// Site attendance only: timesheet rows are another way of capturing labour and are read elsewhere.
-	filters: [
-		["docstatus", "<", 2],
-		["source", "=", "Attendance"],
-	],
+	filters: [["docstatus", "<", 2]],
 	orderBy: "overtime_date desc",
 	pageLength: 0,
 });
@@ -206,11 +198,7 @@ const breadcrumbs = [
 <template>
 	<DeskPage
 		:title="__('Site Attendance Summary')"
-		:subtitle="
-			__(
-				'Days worked, overtime and what the labour cost — rolled up from submitted attendance.'
-			)
-		"
+		:subtitle="__('Days worked, overtime and what the labour cost — rolled up from submitted attendance.')"
 		:breadcrumbs="breadcrumbs"
 		printable
 	>
@@ -221,9 +209,7 @@ const breadcrumbs = [
 			@clear="clearFilters"
 		>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
-					__("Site")
-				}}</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Site") }}</span>
 				<span class="w-52 inline-block">
 					<DeskSearchableSelect
 						v-model="f.project"
@@ -235,9 +221,7 @@ const breadcrumbs = [
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
-					__("Worker")
-				}}</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Worker") }}</span>
 				<span class="w-48 inline-block">
 					<DeskSearchableSelect
 						v-model="f.worker"
@@ -249,9 +233,7 @@ const breadcrumbs = [
 				</span>
 			</label>
 			<label class="flex items-center gap-1.5">
-				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
-					__("Period")
-				}}</span>
+				<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Period") }}</span>
 				<DeskInput v-model="f.from" type="date" class="!w-36" />
 				<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 				<DeskInput v-model="f.to" type="date" class="!w-36" />
@@ -281,34 +263,21 @@ const breadcrumbs = [
 			<!-- Headline figures -->
 			<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Workers") }}
-					</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Workers") }}</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ distinctWorkers }}</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Man-days") }}</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ totals.manDays }}</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Overtime") }}</div>
 					<div class="text-base font-semibold text-ink-900 tabular-nums">
-						{{ distinctWorkers }}
+						{{ totals.otHours }} <span class="text-[11px] font-normal text-ink-500">{{ __("hrs") }}</span>
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Man-days") }}
-					</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums">
-						{{ totals.manDays }}
-					</div>
-				</div>
-				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Overtime") }}
-					</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums">
-						{{ totals.otHours }}
-						<span class="text-[11px] font-normal text-ink-500">{{ __("hrs") }}</span>
-					</div>
-				</div>
-				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Absences") }}
-					</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Absences") }}</div>
 					<div
 						class="text-base font-semibold tabular-nums"
 						:class="totals.absent ? 'text-warning-700' : 'text-ink-900'"
@@ -317,17 +286,11 @@ const breadcrumbs = [
 					</div>
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Labour cost") }}
-					</div>
-					<div class="text-base font-semibold text-ink-900 tabular-nums">
-						{{ fmtINR(totals.total) }}
-					</div>
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Labour cost") }}</div>
+					<div class="text-base font-semibold text-ink-900 tabular-nums">{{ fmtINR(totals.total) }}</div>
 				</div>
 			</div>
-			<p v-if="period" class="text-[11px] text-ink-500 mb-3">
-				{{ __("Covering {0}.", [period]) }}
-			</p>
+			<p v-if="period" class="text-[11px] text-ink-500 mb-3">{{ __("Covering {0}.", [period]) }}</p>
 
 			<div class="bg-white border border-ink-200 overflow-x-auto" style="border-radius: 8px">
 				<table class="w-full text-xs" style="min-width: 900px">
@@ -335,12 +298,8 @@ const breadcrumbs = [
 						class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200"
 					>
 						<tr>
-							<th class="text-left px-3 py-2">
-								{{ groupBy === "project" ? __("Site") : __("Worker") }}
-							</th>
-							<th class="text-right px-3 py-2">
-								{{ groupBy === "project" ? __("Workers") : __("Sites") }}
-							</th>
+							<th class="text-left px-3 py-2">{{ groupBy === "project" ? __("Site") : __("Worker") }}</th>
+							<th class="text-right px-3 py-2">{{ groupBy === "project" ? __("Workers") : __("Sites") }}</th>
 							<th class="text-right px-3 py-2">{{ __("Days") }}</th>
 							<th class="text-right px-3 py-2">{{ __("Full") }}</th>
 							<th class="text-right px-3 py-2">{{ __("Half") }}</th>
@@ -362,48 +321,28 @@ const breadcrumbs = [
 							<td class="px-3 py-2">
 								<div class="text-ink-900 font-medium">{{ r.label }}</div>
 							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ r.workers }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ r.days }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ r.full }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ r.half || "—" }}
-							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ r.workers }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ r.days }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ r.full }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ r.half || "—" }}</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums"
 								:class="r.absent ? 'text-warning-700 font-medium' : 'text-ink-400'"
 							>
 								{{ r.absent || "—" }}
 							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
-								{{ r.manDays }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ fmtINR(r.wages) }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-								{{ r.otHours || "—" }}
-							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">{{ r.manDays }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ fmtINR(r.wages) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">{{ r.otHours || "—" }}</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
 								{{ r.otWages ? fmtINR(r.otWages) : "—" }}
 							</td>
-							<td
-								class="px-3 py-2 text-right tabular-nums text-ink-900 font-semibold"
-							>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-semibold">
 								{{ fmtINR(r.total) }}
 							</td>
 							<td
 								class="px-3 py-2 text-right tabular-nums"
-								:class="
-									r.otShare > 20
-										? 'text-warning-700 font-medium'
-										: 'text-ink-500'
-								"
+								:class="r.otShare > 20 ? 'text-warning-700 font-medium' : 'text-ink-500'"
 							>
 								{{ r.otShare ? r.otShare.toFixed(0) + "%" : "—" }}
 							</td>
@@ -417,16 +356,10 @@ const breadcrumbs = [
 							</td>
 							<td colspan="4"></td>
 							<td class="px-3 py-2 text-right tabular-nums">{{ totals.manDays }}</td>
-							<td class="px-3 py-2 text-right tabular-nums">
-								{{ fmtINR(totals.wages) }}
-							</td>
+							<td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(totals.wages) }}</td>
 							<td class="px-3 py-2 text-right tabular-nums">{{ totals.otHours }}</td>
-							<td class="px-3 py-2 text-right tabular-nums">
-								{{ fmtINR(totals.otWages) }}
-							</td>
-							<td class="px-3 py-2 text-right tabular-nums">
-								{{ fmtINR(totals.total) }}
-							</td>
+							<td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(totals.otWages) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums">{{ fmtINR(totals.total) }}</td>
 							<td></td>
 						</tr>
 					</tfoot>

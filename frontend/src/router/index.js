@@ -105,13 +105,6 @@ const PAGE_TITLES = {
 	"labour-attendance": "Labour Attendance Register",
 	"overtime-attendance": "Overtime Attendance Register",
 	"attendance-summary": "Site Attendance Summary",
-	"labour-cost-summary": "Labour Cost Summary",
-	"workforce-dashboard": "Workforce Dashboard",
-	timesheets: "Timesheets",
-	"timesheet-new": "New Timesheet",
-	"timesheet-import": "Import Timesheets",
-	"timesheet-detail": "Timesheet",
-	"timesheet-edit": "Edit Timesheet",
 	"scope-change": "Scope Change",
 	"project-finance": "Project Finance",
 	"petty-cash": "Petty Cash",
@@ -789,48 +782,10 @@ const routes = [
 				component: () => import("@/views/OvertimeAttendanceListView.vue"),
 			},
 			{
-				path: "timesheets",
-				name: "timesheets",
-				component: () => import("@/views/TimesheetsListView.vue"),
-			},
-			{
-				path: "timesheets/new",
-				name: "timesheet-new",
-				component: () => import("@/views/NewTimesheetView.vue"),
-			},
-			{
-				path: "timesheets/import",
-				name: "timesheet-import",
-				component: () => import("@/views/TimesheetImportView.vue"),
-			},
-			{
-				path: "timesheets/:id",
-				name: "timesheet-detail",
-				component: () => import("@/views/TimesheetDetailView.vue"),
-				props: true,
-			},
-			{
-				path: "timesheets/:id/edit",
-				name: "timesheet-edit",
-				component: () => import("@/views/NewTimesheetView.vue"),
-			},
-			{
-				path: "workforce-dashboard",
-				name: "workforce-dashboard",
-				component: () => import("@/views/workspaces/WorkforceDashboardView.vue"),
-			},
-			{
 				path: "workforce/attendance-summary",
 				name: "attendance-summary",
 				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
 			},
-			{
-				path: "workforce/labour-cost-summary",
-				name: "labour-cost-summary",
-				component: () => import("@/views/workforce/LabourCostSummaryReport.vue"),
-			},
-			// "Labour cost from timesheets" was folded into Labour Cost Summary (Captured as Timesheet).
-			{ path: "workforce/timesheet-cost", redirect: "/workforce/labour-cost-summary" },
 			{
 				path: "scope-change",
 				name: "scope-change",
@@ -1261,13 +1216,6 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
-	"labour-cost-summary": "fieldAttendance",
-	"workforce-dashboard": "fieldAttendance",
-	timesheets: "fieldAttendance",
-	"timesheet-new": "fieldAttendance",
-	"timesheet-import": "fieldAttendance",
-	"timesheet-detail": "fieldAttendance",
-	"timesheet-edit": "fieldAttendance",
 	customers: "customer",
 	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
 	"finance-invoice-new": "salesInvoice",
@@ -1326,7 +1274,6 @@ const GATED_REPORT_ROUTES = new Set([
 	"/labour-attendance",
 	"/overtime-attendance",
 	"/workforce/attendance-summary",
-	"/workforce/labour-cost-summary",
 	"/reports/delay-analysis",
 ]);
 

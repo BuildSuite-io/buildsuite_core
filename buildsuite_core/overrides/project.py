@@ -46,35 +46,26 @@ def default_project_series():
 	return field.default or (options[0] if options else None)
 
 
-def autoname_project(doc, method=None):
-	"""The Project's record name. A Project ID always wins: when one is entered it IS the record name,
-	in either naming mode. The ID is optional - with none entered, the name comes from the naming
-	series (the per-project pick, else the doctype default).
-
-	Wired as the `autoname` doc event (and called by the class override below) rather than relying on
-	the class override alone: hrms overrides the Project class too, and the last app's override wins,
-	which silently dropped this naming on a site with both installed."""
-	if doc.name:  # already named (the controller ran first, or an event before this one)
-		return
-	project_id = (doc.get("custom_project_id") or "").strip()
-	if project_id:
-		doc.custom_project_id = project_id
-		doc.name = project_id
-		return
-
-	# No ID entered -> generate from a series. Prefer the per-project pick, then the doctype
-	# default, then a last-resort fallback so a Project can ALWAYS be created without a manual ID.
-	doc.naming_series = doc.naming_series or default_project_series() or FALLBACK_SERIES
-	set_name_by_naming_series(doc)
-	# Surface the series-generated name AS the Project ID - otherwise the field stays NULL and the
-	# Vue views show a blank ID. The name is the primary key (unique), so this keeps the Frappe id
-	# and the display Project ID identical.
-	doc.custom_project_id = doc.name
-
-
 class BuildSuiteProject(_ERPNextProject):
 	def autoname(self):
-		autoname_project(self)
+		# A Project ID always wins: when one is entered it IS the record name, in
+		# either naming mode. The ID is optional — with none entered, the name comes
+		# from the naming series (the per-project pick, else the doctype default).
+		project_id = (self.get("custom_project_id") or "").strip()
+		if project_id:
+			self.custom_project_id = project_id
+			self.name = project_id
+			return
+
+		# No ID entered → generate from a series. Prefer the per-project pick, then the
+		# doctype default, then a last-resort fallback so a Project can ALWAYS be created
+		# without a manual ID.
+		self.naming_series = self.naming_series or default_project_series() or FALLBACK_SERIES
+		set_name_by_naming_series(self)
+		# Surface the series-generated name AS the Project ID — otherwise the field stays
+		# NULL and the Vue views show a blank ID. The name is the primary key (unique), so
+		# this keeps the Frappe id and the display Project ID identical.
+		self.custom_project_id = self.name
 
 
 def reject_duplicate_project_id(doc, method=None):

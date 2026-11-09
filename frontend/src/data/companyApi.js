@@ -62,10 +62,3 @@ export async function uploadCompanyLogo(file) {
 	const data = await res.json();
 	return data?.message?.file_url || "";
 }
-
-// Hours in a full day for a project / company: { hours, company_hours } (project -> company -> default).
-export const getFullDayHours = (args) => call("full_day_hours", args);
-
-// Admin-only: set a company's full day hours (validated server-side, 0 < hours <= 24).
-export const setCompanyFullDayHours = (company, hours) =>
-	call("set_full_day_hours", { company, hours });

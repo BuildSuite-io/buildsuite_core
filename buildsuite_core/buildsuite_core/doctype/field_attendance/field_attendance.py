@@ -8,12 +8,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
-from buildsuite_core.utils.daily_hours import validate_attendance_hours
-from buildsuite_core.utils.full_day import get_full_day_hours, regular_hours_for
 from buildsuite_core.utils.project import anchor_company_to_project
 
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
+HOURS_PER_DAY = 8
 MAX_OT_HOURS_PER_DAY = 16
 
 # Rows above this count are processed in a background job on submit/cancel.
@@ -122,7 +121,6 @@ class FieldAttendance(Document):
 		date: DF.Date
 		employee_list: DF.Table[FieldAttendanceEmployee]
 		employees_count: DF.Int
-		full_day_hours: DF.Float
 		naming_series: DF.Literal["HR-FA-.YYYY.-"]
 		overtime_hours: DF.Float
 		project: DF.Link
@@ -133,7 +131,6 @@ class FieldAttendance(Document):
 
 	def validate(self):
 		anchor_company_to_project(self)
-		self.set_full_day_hours()
 
 		self.validate_rows_present()
 		self.validate_task_project()
@@ -145,8 +142,6 @@ class FieldAttendance(Document):
 		leave_map = self.get_leave_map()
 		la_map, ot_map = self.get_register_maps()
 		structure_cache = {}
-		# The sheet's own (draft: just set; submitted: frozen) full day prices a salaried overtime hour.
-		full_day_hours = self.full_day_hours or get_full_day_hours(self.project, self.company)
 
 		for row in self.employee_list:
 			emp = emp_map.get(row.employee)
@@ -165,21 +160,7 @@ class FieldAttendance(Document):
 				la_map.get(row.employee, []),
 				ot_map.get(row.employee, []),
 			)
-			row.labour_rate, row.overtime_rate = get_employee_rates(
-				emp, self.date, structure_cache, full_day_hours
-			)
-
-	def set_full_day_hours(self):
-		"""The sheet's full day, from the helper (project -> company -> default). Set while the sheet
-		is a draft and once more just before submit; after that it is never touched, so a later change
-		to the company or project cannot rewrite what the sheet and its registers were made with."""
-		if self.docstatus == 0:
-			self.full_day_hours = get_full_day_hours(self.project, self.company)
-
-	def before_submit(self):
-		# By now docstatus is already 1, so set it directly: this is the last moment it may change.
-		self.full_day_hours = get_full_day_hours(self.project, self.company)
-		validate_attendance_hours(self)
+			row.labour_rate, row.overtime_rate = get_employee_rates(emp, self.date, structure_cache)
 
 	# ------------------------------------------------------------------
 	# submit / cancel
@@ -492,9 +473,6 @@ def create_registers(doc_name):
 		)
 	)
 
-	# The sheet's own full day (frozen at submit); a sheet from before it existed gets the helper's.
-	full_day_hours = doc.full_day_hours or get_full_day_hours(doc.project, doc.company)
-
 	for row in doc.employee_list:
 		mapped = STATUS_MAP.get(row.status)
 
@@ -509,7 +487,6 @@ def create_registers(doc_name):
 				wage_rate=row.labour_rate,
 				task=doc.task,
 				cost_code=row,
-				full_day_hours=full_day_hours,
 			)
 
 		if flt(row.overtime_hours) > 0 and row.employee not in existing_ot:
@@ -523,7 +500,6 @@ def create_registers(doc_name):
 				overtime_rate=row.overtime_rate,
 				task=doc.task,
 				cost_code=row,
-				full_day_hours=full_day_hours,
 			)
 
 
@@ -547,16 +523,7 @@ def _cost_code_values(row):
 
 
 def create_labour_attendance(
-	employee,
-	date,
-	project,
-	status,
-	reference,
-	comments,
-	wage_rate,
-	task=None,
-	cost_code=None,
-	full_day_hours=None,
+	employee, date, project, status, reference, comments, wage_rate, task=None, cost_code=None
 ):
 	doc = frappe.get_doc(
 		{
@@ -568,9 +535,6 @@ def create_labour_attendance(
 			"status": status,
 			"wage_rate": wage_rate,
 			"task": task,
-			"source": "Attendance",
-			"full_day_hours": full_day_hours,
-			"regular_hours": regular_hours_for(status, full_day_hours),
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -580,16 +544,7 @@ def create_labour_attendance(
 
 
 def create_overtime_attendance(
-	employee,
-	date,
-	project,
-	overtime_hours,
-	reference,
-	comments,
-	overtime_rate,
-	task=None,
-	cost_code=None,
-	full_day_hours=None,
+	employee, date, project, overtime_hours, reference, comments, overtime_rate, task=None, cost_code=None
 ):
 	doc = frappe.get_doc(
 		{
@@ -601,8 +556,6 @@ def create_overtime_attendance(
 			"overtime_rate": overtime_rate,
 			OT_HOURS_FIELD: overtime_hours,
 			"task": task,
-			"source": "Attendance",
-			"full_day_hours": full_day_hours,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -616,11 +569,8 @@ def create_overtime_attendance(
 # ----------------------------------------------------------------------
 
 
-def get_employee_rates(emp, date, structure_cache=None, full_day_hours=None):
-	"""`emp` is a dict from get_employee_map(), not an employee id. `full_day_hours` (the sheet's
-	project / company full day, see utils.full_day) turns a salaried daily rate into the hourly
-	overtime rate."""
-	full_day_hours = full_day_hours or get_full_day_hours()
+def get_employee_rates(emp, date, structure_cache=None):
+	"""`emp` is a dict from get_employee_map(), not an employee id."""
 	if structure_cache is None:
 		structure_cache = {}
 
@@ -646,7 +596,7 @@ def get_employee_rates(emp, date, structure_cache=None, full_day_hours=None):
 			)
 		)
 
-	if (salary_structure, full_day_hours) not in structure_cache:
+	if salary_structure not in structure_cache:
 		doc = frappe.get_doc("Salary Structure", salary_structure)
 		net = sum(flt(e.amount) for e in doc.earnings) - sum(flt(d.amount) for d in doc.deductions)
 
@@ -659,9 +609,9 @@ def get_employee_rates(emp, date, structure_cache=None, full_day_hours=None):
 			)
 
 		labour_rate = net / DAYS_PER_MONTH
-		structure_cache[(salary_structure, full_day_hours)] = (labour_rate, labour_rate / full_day_hours)
+		structure_cache[salary_structure] = (labour_rate, labour_rate / HOURS_PER_DAY)
 
-	return structure_cache[(salary_structure, full_day_hours)]
+	return structure_cache[salary_structure]
 
 
 # ----------------------------------------------------------------------

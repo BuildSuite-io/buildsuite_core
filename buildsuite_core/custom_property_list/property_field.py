@@ -464,14 +464,4 @@ def get_property_setters():
 			"value": _email_service_options(),
 			"property_type": "Text",
 		},
-		{
-			# A timesheet row is placed by its project and cost code, not a task. Task stays on the
-			# row, hidden, so rows made before cost codes keep it.
-			"doctype_or_field": "DocField",
-			"doctype": "Timesheet Detail",
-			"fieldname": "task",
-			"property": "hidden",
-			"value": "1",
-			"property_type": "Check",
-		},
 	]

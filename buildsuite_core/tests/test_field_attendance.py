@@ -5,7 +5,6 @@
 import frappe
 
 from buildsuite_core.api.field_attendance import get_roster, save_field_attendance
-from buildsuite_core.api.field_employee import ensure_labour_employment_type
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
 	MAX_OT_HOURS_PER_DAY,
 )
@@ -48,8 +47,6 @@ class TestFieldAttendance(BuildSuiteTestCase):
 				"status": "Active",
 				"company": self.company,
 				"is_labour": 1,
-				# the roster reads Labour employees when hrms is installed
-				"employment_type": ensure_labour_employment_type(),
 				"custom_trade": self.trade,
 				"custom_wage": wage,
 				"custom_wage_for_overtime": 50,
@@ -162,9 +159,6 @@ class TestFieldAttendance(BuildSuiteTestCase):
 			self._save_with_overtime(MAX_OT_HOURS_PER_DAY + 0.5)
 
 	def test_overtime_at_the_limit_survives_submit(self):
-		# A full day plus the overtime limit is the most a worker can log in a day (8 + 16 = 24),
-		# so pin the project to 8 hours: a longer day correctly leaves no room for the full limit.
-		frappe.db.set_value("Project", self.project, "full_day_hours", 8)
 		res = self._save_with_overtime(MAX_OT_HOURS_PER_DAY)
 		frappe.get_doc("Field Attendance", res["name"]).submit()
 
@@ -187,7 +181,9 @@ class TestFieldAttendance(BuildSuiteTestCase):
 				{"field_attendance": res["name"], "docstatus": 1},
 			)
 		)
-		self.assertFalse(frappe.db.exists("Labour Attendance Register", {"field_attendance": res["name"]}))
+		self.assertFalse(
+			frappe.db.exists("Labour Attendance Register", {"field_attendance": res["name"]})
+		)
 
 	def test_labour_cost_sums_daily_and_overtime(self):
 		res = self._save(
