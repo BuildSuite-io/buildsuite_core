@@ -281,7 +281,11 @@ doc_events = {
 	# Timesheet rows are costed at the worker's daily rate over their project's full day; the cost is
 	# recalculated on every draft save and frozen on submit (utils.timesheet).
 	"Timesheet": {
-		"validate": "buildsuite_core.utils.timesheet.cost_timesheet",
+		"validate": [
+			"buildsuite_core.utils.timesheet.cost_timesheet",
+			# A worker's day: regular time at most one full day, all hours at most 24.
+			"buildsuite_core.utils.daily_hours.validate_timesheet_hours",
+		],
 		# A submitted timesheet writes its rows into the labour registers; cancelling / deleting it
 		# removes them (utils.labour_cost is the one reader of those registers).
 		"on_submit": "buildsuite_core.utils.timesheet.create_registers_from_timesheet",
