@@ -11,6 +11,9 @@ import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import OfferPaymentTerms from "@/components/OfferPaymentTerms.vue";
+// Panels an installed app adds to the record page (src/extensions).
+import { extensionSections } from "@/extensions";
+const panels = extensionSections("Quotation", "detailSections", "before-lines");
 // Rich text (Text Editor) is heavy (TipTap) — load it only when a quotation is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -185,6 +188,10 @@ const breadcrumbs = computed(() => [
 				<div v-else class="text-sm text-ink-400">{{ __("Not linked yet") }}</div>
 			</div>
 		</div>
+
+		<!-- Panels an installed app adds above the lines (src/extensions). -->
+		<component :is="x.component" v-for="x in panels" :key="x.key" :doc="doc" :persist="persist"
+			:reload="() => resource?.reload?.()" />
 
 		<div class="text-xs text-ink-500 mb-2">{{ lineCount }}</div>
 

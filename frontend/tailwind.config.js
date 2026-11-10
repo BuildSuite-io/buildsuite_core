@@ -7,6 +7,8 @@ export default {
 		// it too — otherwise its utility classes (e.g. the colour-picker's grid-cols-6 + text-red-600
 		// swatches) are never generated and the menu renders unstyled (bare "A"s, no grid).
 		"./node_modules/frappe-ui/src/**/*.{vue,js,ts}",
+		// Frontend extensions of other bench apps (src/extensions) use Core's utility classes.
+		"../../*/buildsuite_extension/**/*.{vue,js,ts}",
 	],
 	darkMode: "class",
 	theme: {

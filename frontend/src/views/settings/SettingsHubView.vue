@@ -14,6 +14,7 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import { __ } from "@/utils/translate";
+import { settingsTileGroups } from "@/extensions";
 
 const store = useDataStore();
 const router = useRouter();
@@ -157,6 +158,8 @@ const groups = computed(() => [
 			},
 		],
 	},
+	// Tiles an installed app adds (src/extensions registerSettingsTile), in their own groups.
+	...settingsTileGroups(store),
 ]);
 
 // Filter groups + tiles by role. Hide whole groups if every tile inside is

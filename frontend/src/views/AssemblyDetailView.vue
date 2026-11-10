@@ -20,6 +20,9 @@ import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
+import { frappeRequest } from "frappe-ui-frappe-request";
+// Sections an installed app adds to the assembly page (src/extensions).
+import { extensionSections } from "@/extensions";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -29,7 +32,8 @@ const { errors, applyServerErrors, setErrors } = useFormErrors({
 	uom: "uom",
 });
 const adapter = createDataAdapter(useDataStore());
-const { canEdit, canDelete } = usePermissions();
+const { canEdit, canDelete, canCreate } = usePermissions();
+const extraSections = extensionSections("Assembly", "detailSections", "after-summary");
 
 const resource = adapter.read("Assembly", props.id, { fields: ["*"] });
 const doc = computed(() => resource?.doc || null);
@@ -109,6 +113,60 @@ async function saveEdit() {
 		showToast(applyServerErrors(err) ?? __("Failed to update assembly"), "error");
 	} finally {
 		saving.value = false;
+	}
+}
+
+// An extension's section saves its own fields through this, then the page reloads.
+async function persistFields(values) {
+	try {
+		await adapter.update("Assembly", props.id, values);
+		resource?.reload?.();
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to update assembly"), "error");
+	}
+}
+
+// Duplicate: the same assembly under a new code, every field (an app's Custom Fields too) and
+// every component copied, so a variant starts from the original and is then edited.
+const DUPLICATE_SKIP = new Set([
+	"name", "owner", "creation", "modified", "modified_by", "docstatus", "idx", "doctype",
+	"assembly_code", "rate_per_unit", "component_count", "components",
+	"_user_tags", "_comments", "_assign", "_liked_by", "_seen",
+]);
+async function freeCode(base) {
+	for (let n = 1; n < 100; n++) {
+		const code = n === 1 ? base : `${base}-${n}`;
+		const count = await frappeRequest({
+			url: "frappe.client.get_count",
+			params: { doctype: "Assembly", filters: JSON.stringify({ name: code }) },
+		});
+		if (!count) return code;
+	}
+	return `${base}-${Date.now()}`;
+}
+const duplicating = ref(false);
+async function onDuplicate() {
+	const d = doc.value;
+	if (!d || duplicating.value) return;
+	duplicating.value = true;
+	try {
+		const copy = Object.fromEntries(
+			Object.entries(d).filter(([k, v]) => !DUPLICATE_SKIP.has(k) && !k.startsWith("__") && v !== undefined)
+		);
+		copy.assembly_code = await freeCode(`${d.assembly_code}-COPY`);
+		copy.assembly_name = __("{0} (copy)", [d.assembly_name]);
+		copy.components = (d.components || []).map((c) => ({
+			resource: c.resource,
+			coefficient: c.coefficient,
+			remarks: c.remarks,
+		}));
+		const made = await adapter.create("Assembly", copy);
+		showToast(__("Duplicated as {0}. Rename it under Edit.", [made?.name || copy.assembly_code]), "success");
+		router.push(`/assembly/${encodeURIComponent(made?.name || copy.assembly_code)}`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to duplicate assembly"), "error");
+	} finally {
+		duplicating.value = false;
 	}
 }
 
@@ -235,6 +293,16 @@ async function removeComponent(index) {
 	>
 		<template #actions>
 			<button
+				v-if="canCreate('assembly')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				:disabled="duplicating"
+				@click="onDuplicate"
+			>
+				{{ duplicating ? __("Duplicating…") : __("Duplicate") }}
+			</button>
+			<button
 				v-if="canEdit('assembly')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
@@ -282,6 +350,10 @@ async function removeComponent(index) {
 				{{ doc.notes }}
 			</div>
 		</div>
+
+		<!-- Sections an installed app adds after the summary (src/extensions). -->
+		<component :is="x.component" v-for="x in extraSections" :key="x.key" :doc="doc" :persist="persistFields"
+			:reload="() => resource?.reload?.()" />
 
 		<!-- Components child table -->
 		<section>

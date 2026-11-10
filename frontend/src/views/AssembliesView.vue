@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRoute, useRouter, RouterLink } from "vue-router";
 import { __ } from "@/utils/translate";
 import { fmtINR } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -43,7 +43,8 @@ const columns = [
 	{ key: "rate_per_unit", label: __("Rate / unit"), align: "right" },
 ];
 
-const categoryFilter = ref("");
+// Opens on ?category=… so a link can land on one category's assemblies.
+const categoryFilter = ref(String(useRoute().query.category || ""));
 const filterValues = computed(() => ({ category: categoryFilter.value }));
 const filterFieldMap = { category: "category" };
 </script>

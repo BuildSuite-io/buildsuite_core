@@ -23,6 +23,8 @@ import { showToast } from "@/utils/appToast";
 import { getInvoiceTerms } from "@/data/invoiceApi";
 import { daysBetween, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
+// Sections, Custom Fields and save hooks an installed app adds (src/extensions).
+import { extensionFields, extensionSections, runExtensionHook } from "@/extensions";
 // Rich text (Text Editor) is heavy (TipTap) — load it only when this form is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -68,7 +70,14 @@ const form = reactive({
 	tc_name: "",
 	terms: "",
 	internal_note: "",
+	// The Custom Fields an extension owns (extensionFields), loaded and saved with the rest.
+	custom: {},
 });
+
+const customFields = extensionFields("Quotation");
+const sectionsAt = (position) => extensionSections("Quotation", "formSections", position);
+// A new quotation starts the way an extension says (its defaults hook).
+if (!props.id) runExtensionHook("Quotation", "defaults", form);
 
 // Remount the rich-text editor when the terms are set for us, so it initialises with that
 // body rather than reporting it as an edit and dropping the template link.
@@ -83,9 +92,10 @@ watch(
 	(doc) => {
 		if (!doc) return;
 		for (const k of Object.keys(form)) {
-			if (k === "items" || doc[k] == null) continue;
+			if (k === "items" || k === "custom" || doc[k] == null) continue;
 			form[k] = doc[k];
 		}
+		form.custom = Object.fromEntries(customFields.map((f) => [f, doc[f] ?? null]));
 		// `validity_days` is the form's own field, not the doctype's — read it back off the
 		// two dates. A quotation saved with no expiry keeps none.
 		form.validity_days = doc.valid_till
@@ -109,6 +119,7 @@ watch(
 		if (doc.items?.length) form.margin_percent = Number(doc.items[0].margin_rate_or_amount) || 0;
 		if (!form.items.length) form.items = [blankLine()];
 		editorKey.value += 1;
+		runExtensionHook("Quotation", "onLoad", form, doc);
 	},
 	{ immediate: true }
 );
@@ -158,6 +169,14 @@ async function onPickTerms(name) {
 
 function onTermsEdited() {
 	form.tc_name = "";
+}
+
+// An extension filling in a template's text for us (e.g. a clause's {{ placeholders }}): set it
+// the way onPickTerms does — remount, so the editor does not report it as an edit and drop the
+// template link. Passed to extension sections as `setTerms`.
+function setTermsFromExtension(text) {
+	form.terms = text || "";
+	editorKey.value += 1;
 }
 
 const pickerOpen = ref(false);
@@ -233,12 +252,17 @@ async function onSave() {
 				code: l.code || null,
 				source_ref: l.source_ref || null,
 			})),
+		// An extension's Custom Fields ride along with the document.
+		...Object.fromEntries(customFields.map((f) => [f, form.custom[f] ?? null])),
 	};
 	try {
+		await runExtensionHook("Quotation", "beforeSave", payload, form);
 		// Sending the whole `items` array replaces the child table, so an edit never appends.
-		const doc = editing.value
-			? await adapter.update("Quotation", props.id, payload)
-			: await adapter.create("Quotation", payload);
+		const isNew = !editing.value;
+		const doc = isNew
+			? await adapter.create("Quotation", payload)
+			: await adapter.update("Quotation", props.id, payload);
+		await runExtensionHook("Quotation", "afterSave", doc, { isNew });
 		router.push(`/quotations/${encodeURIComponent(doc?.name || props.id)}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Could not save the quotation."), "error");
@@ -308,6 +332,10 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
+			<!-- Sections an installed app adds after the customer (src/extensions). -->
+			<component :is="x.component" v-for="x in sectionsAt('after-who')" :key="x.key" :form="form" :set-terms="setTermsFromExtension"
+				:doc="resource?.doc || null" />
+
 			<DeskSection :title="__('Dates and pricing')" :cols="3">
 				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
 					<DeskInput v-model="form.transaction_date" type="date" />
@@ -325,6 +353,9 @@ const breadcrumbs = computed(() => [
 			</DeskSection>
 
 			<DeskSection :title="__('Items')" :cols="1">
+				<!-- Inside Items, above the grid: an extension's quick-add bar adds ordinary lines. -->
+				<component :is="x.component" v-for="x in sectionsAt('before-items')" :key="x.key" :form="form" :set-terms="setTermsFromExtension"
+					:doc="resource?.doc || null" />
 				<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm" style="min-width: 780px">
@@ -460,6 +491,10 @@ const breadcrumbs = computed(() => [
 				</div>
 				<p v-if="errors.items" class="text-xs text-danger-700 mt-2">{{ errors.items }}</p>
 			</DeskSection>
+
+			<!-- Sections an installed app adds after the items. -->
+			<component :is="x.component" v-for="x in sectionsAt('after-items')" :key="x.key" :form="form" :set-terms="setTermsFromExtension"
+				:doc="resource?.doc || null" />
 
 			<DeskSection :title="__('Terms')" :cols="1">
 				<DeskField

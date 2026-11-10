@@ -84,6 +84,10 @@ export default defineConfig(({ command }) => ({
 				replacement: path.resolve(__dirname, "./src/shims/feather-icons-default.js"),
 			},
 		],
+		// Frontend extensions (src/extensions) live in sibling bench apps, outside this folder.
+		// They must share Core's single copy of Vue, the router, Pinia and frappe-ui (one
+		// reactivity system, one store, one router); they import Core's modules through "@/".
+		dedupe: ["vue", "vue-router", "pinia", "frappe-ui"],
 	},
 	// frappe-ui uses ~icons/lucide/* virtual modules resolved by a custom Rollup
 	// plugin. Exclude it from esbuild pre-bundling so Vite's plugin pipeline
@@ -104,6 +108,8 @@ export default defineConfig(({ command }) => ({
 	server: {
 		port: 5173,
 		open: true,
+		// The dev server may read sibling apps' buildsuite_extension folders.
+		fs: { allow: [path.resolve(__dirname, "../..")] },
 		proxy: {
 			// The SPA's /api calls in dev are proxied to the Frappe backend; login,
 			// logout and desk redirects go cross-origin via getFrappeHost() instead.
