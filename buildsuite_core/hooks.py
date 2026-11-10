@@ -423,6 +423,8 @@ export_python_type_annotations = True
 
 fixtures = [
 	{"doctype": "Custom HTML Block", "filters": [["name", "in", ["Site Execution Workspace"]]]},
+	# The shipped Workflows are NOT fixtures (a fixture is re-imported over the site's copy on every
+	# migrate, discarding admin edits): see buildsuite_core.seed_workflows, create-if-missing.
 	# Custom Field and Property Setter are managed via after_migrate / before_migrate
 	# hooks in buildsuite_core.install — not as JSON fixtures.
 	{
@@ -435,16 +437,6 @@ fixtures = [
 		"doctype": "Workflow Action Master",
 		"filters": [
 			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel"]]
-		],
-	},
-	{
-		"doctype": "Workflow",
-		"filters": [
-			[
-				"workflow_name",
-				"in",
-				["Stage Planning Approval", "Scope Change Order Approval", "Material Request Approval"],
-			]
 		],
 	},
 ]

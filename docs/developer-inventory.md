@@ -88,7 +88,7 @@ Legend: **[undoc]** = no dedicated doc yet · **[has doc]** = some doc exists (s
 
 ## I. Workflows & lifecycle
 
-- **Shipped workflows:** Stage Planning Approval, Scope Change Order Approval, Material Request Approval (`fixtures/workflow.json`; states Draft → Pending Approval → Approved/Rejected + Cancel). **Gotcha:** a workflow state's `allow_edit` is a CLIENT-only Desk lock (not server-enforced), and a doc stuck in a state the active workflow doesn't define is locked for everyone. **[undoc · footgun]**
+- **Shipped workflows:** Stage Planning Approval, Scope Change Order Approval, Material Request Approval (`data/workflows.json`, seeded create-if-missing by `seed_workflows.py`, so Desk edits survive migrate; states Draft → Pending Approval → Approved/Rejected + Cancel). **Gotcha:** a workflow state's `allow_edit` is a CLIENT-only Desk lock (not server-enforced), and a doc stuck in a state the active workflow doesn't define is locked for everyone. **[undoc · footgun]**
 - **Submittable doctypes** carry submit/cancel/amend ptypes (`_SUBMIT_PTYPES`); the generic form renders the Draft → Save/Submit → Cancel/Amend lifecycle.
 
 ## J. Dev / ops / testing

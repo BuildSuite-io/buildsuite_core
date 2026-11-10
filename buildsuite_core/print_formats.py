@@ -6,8 +6,8 @@ prototype's document layouts, and seeded as each doctype's DEFAULT so the SPA's 
 print view (ServerPrintDocument → meta.default_print_format) picks them up with no code change.
 
 Jinja templates over `doc`; Frappe prepends the company Letter Head, so these author only the body.
-CSS is scoped under `.bs-print` so it never leaks into the SPA it's injected into. Seeded (upsert)
-on install/migrate so the format stays in step with this code."""
+CSS is scoped under `.bs-print` so it never leaks into the SPA it's injected into. Seeded create-if-missing
+on install/migrate, so an admin's edits to a format survive."""
 
 import frappe
 
@@ -433,16 +433,18 @@ _FORMATS = (
 
 
 def seed_print_formats():
-	"""Upsert the two custom print formats and set each as its doctype's default_print_format so the
-	SPA's print view picks them up. Idempotent; keeps the format in step with this code on migrate."""
+	"""Create each custom print format that is missing and make it its doctype's default_print_format.
+
+	Create-if-missing: a format that already exists is left exactly as it is, so an admin's edits
+	to its layout, and their choice of default print format, survive every migrate. Shipping a new
+	layout to existing sites is a patch's job, not this seed's."""
 	for pf in _FORMATS:
 		if not frappe.db.exists("DocType", pf["doc_type"]):
 			continue
 		if frappe.db.exists("Print Format", pf["name"]):
-			doc = frappe.get_doc("Print Format", pf["name"])
-		else:
-			doc = frappe.new_doc("Print Format")
-			doc.name = pf["name"]
+			continue
+		doc = frappe.new_doc("Print Format")
+		doc.name = pf["name"]
 		doc.update(
 			{
 				"doc_type": pf["doc_type"],
@@ -457,7 +459,8 @@ def seed_print_formats():
 		)
 		doc.flags.ignore_permissions = True
 		doc.save()
-		# Make it the doctype's default so ServerPrintDocument (meta.default_print_format) uses it.
+		# Default for the doctype so ServerPrintDocument (meta.default_print_format) uses it. Set
+		# only now, when the format is first created, so a later admin choice is never undone.
 		frappe.make_property_setter(
 			{
 				"doctype": pf["doc_type"],
