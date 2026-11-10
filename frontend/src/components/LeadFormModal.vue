@@ -132,14 +132,11 @@ async function save() {
 							<DeskInput
 								ref="firstInput"
 								v-model="form.first_name"
-								:placeholder="__('e.g. Shameer')"
+								:placeholder="__('e.g. Alex')"
 							/>
 						</DeskField>
 						<DeskField :label="__('Last name')">
-							<DeskInput
-								v-model="form.last_name"
-								:placeholder="__('e.g. Kunnath')"
-							/>
+							<DeskInput v-model="form.last_name" :placeholder="__('e.g. Morgan')" />
 						</DeskField>
 					</div>
 
@@ -150,7 +147,7 @@ async function save() {
 						<DeskInput
 							v-model="form.mobile_no"
 							type="tel"
-							:placeholder="__('+91 98470 12345')"
+							:placeholder="__('Number with country code')"
 						/>
 					</DeskField>
 					<LeadMobileMatches
@@ -162,7 +159,7 @@ async function save() {
 
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						<DeskField :label="__('City / place')">
-							<DeskInput v-model="form.city" :placeholder="__('e.g. Kottakkal')" />
+							<DeskInput v-model="form.city" :placeholder="__('e.g. Riverside')" />
 						</DeskField>
 						<DeskField :label="__('Source')">
 							<DeskLinkPicker
@@ -179,7 +176,7 @@ async function save() {
 					>
 						<DeskInput
 							v-model="form.company_name"
-							:placeholder="__('e.g. Siddiqui Textiles')"
+							:placeholder="__('e.g. Acme Interiors')"
 						/>
 					</DeskField>
 
