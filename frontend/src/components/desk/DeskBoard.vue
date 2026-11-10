@@ -10,6 +10,9 @@
 // A drop on any column is emitted, droppable or not, so the page can say why a column refuses a
 // card; only droppable columns light up as a target. `lockedText` labels the refusing columns
 // while a card is being dragged (e.g. "Set by the system").
+//
+// Make the card a plain element (a div with role="button"), not a <button>: a browser does not
+// start a drag from a form control, so a card that is one button cannot be picked up.
 import { ref } from "vue";
 import { __ } from "@/utils/translate";
 
@@ -82,6 +85,7 @@ function onDrop(column) {
 					v-for="item in col.items"
 					:key="item[itemKey]"
 					:draggable="canDrag(item)"
+					:class="canDrag(item) ? 'select-none cursor-grab active:cursor-grabbing' : ''"
 					@dragstart="onDragStart($event, item)"
 					@dragend="onDragEnd"
 				>

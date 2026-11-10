@@ -128,17 +128,25 @@ const hiddenOnBoard = computed(
 	() => filtered.value.filter((l) => l.status === DO_NOT_CONTACT).length,
 );
 
-function canMove(lead) {
-	return (
-		canMoveLeads.value &&
-		lead.status !== "Converted" &&
-		!lead.customer &&
-		!lead.quotation_count
-	);
-}
+// Whoever may edit leads can pick up any card; a card whose column is not theirs to set (a
+// converted lead, or one with quotations) is refused on the drop with the reason, rather than
+// silently not lifting.
+const canPickUp = () => canMoveLeads.value;
+const isConverted = (lead) => lead.status === "Converted" || !!lead.customer;
 
 async function onDrop({ item, to, column }) {
 	if (columnOf(item.status) === to) return;
+	if (isConverted(item)) {
+		showToast(
+			__("{0} is a customer now, so it stays in Converted.", [item.lead_name]),
+			"info",
+		);
+		return;
+	}
+	if (item.quotation_count) {
+		showToast(__("{0} has quotations, so its column follows them.", [item.lead_name]), "info");
+		return;
+	}
 	if (!column.droppable) {
 		const why =
 			to === "Converted"
@@ -148,10 +156,6 @@ async function onDrop({ item, to, column }) {
 					)
 				: __("{0} is set by the system: it follows the lead's quotations.", [__(to)]);
 		showToast(why, "info");
-		return;
-	}
-	if (!canMove(item)) {
-		showToast(__("{0} has quotations, so its column follows them.", [item.lead_name]), "info");
 		return;
 	}
 	const before = item.status;
@@ -258,16 +262,20 @@ const breadcrumbs = [
 				<DeskBoard
 					:columns="columns"
 					item-key="name"
-					:draggable="canMove"
+					:draggable="canPickUp"
 					:locked-text="__('Set by the system')"
 					@drop="onDrop"
 				>
+					<!-- A div, not a <button>: a drag cannot start from a form control. -->
 					<template #card="{ item }">
-						<button
-							type="button"
-							class="w-full text-left bg-white border border-ink-200 hover:border-ink-300 px-3 py-2.5 shadow-fp-sm transition-colors"
+						<div
+							role="button"
+							tabindex="0"
+							class="w-full text-left bg-white border border-ink-200 hover:border-ink-300 px-3 py-2.5 shadow-fp-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
 							style="border-radius: 8px"
 							@click="openLead(item)"
+							@keydown.enter.prevent="openLead(item)"
+							@keydown.space.prevent="openLead(item)"
 						>
 							<div class="text-sm font-medium text-ink-900 leading-snug">
 								{{ item.lead_name || item.company_name }}
@@ -319,7 +327,7 @@ const breadcrumbs = [
 									__(leadAge(item.creation))
 								}}</span>
 							</div>
-						</button>
+						</div>
 					</template>
 				</DeskBoard>
 				<p v-if="hiddenOnBoard" class="text-xs text-ink-500 mt-3">
