@@ -277,21 +277,18 @@ _PO_PRINT_HTML = """
 def seed_print_assets():
 	_seed_letter_head()
 	_seed_po_print_format()
-	# Make the seeded format the doctype default so the SPA print view (which reads
-	# meta.default_print_format) shows it out of the box. Only when nothing is set —
-	# never clobber an admin's Desk choice (Customize Form → Default Print Format).
-	_set_default_print_format("Purchase Order", PO_PRINT_FORMAT)
+
+
+def _seed_letter_head():
+	# Build a letter head per company from its branding (logo + subtext). On a fresh site with
+	# no branding yet this yields a clean monogram + name-only header; each is rebuilt whenever
+	# that company is saved (hooks.py Company.on_update → rebuild_letter_head).
+	rebuild_all_letter_heads()
 
 
 def _set_default_print_format(doctype: str, print_format: str) -> None:
-	"""Make the seeded BuildSuite format the doctype's default so the SPA print view (which reads
-	meta.default_print_format) uses it. Set it even when another default is already in place —
-	matching how buildsuite_core.print_formats seeds the .bs-print formats. The previous
-	only-if-empty guard left a site whose Purchase Order already had some other default (e.g.
-	ERPNext's "Standard") stuck on that format even though the BuildSuite one was seeded, so its
-	print view never used it."""
-	if frappe.get_meta(doctype).default_print_format == print_format:
-		return  # already the default — skip a redundant property-setter write
+	"""Make the BuildSuite format the doctype's default so the SPA print view (which reads
+	meta.default_print_format) uses it. Called only when the format is first created."""
 	frappe.make_property_setter(
 		{
 			"doctype": doctype,
@@ -305,17 +302,11 @@ def _set_default_print_format(doctype: str, print_format: str) -> None:
 	frappe.clear_cache(doctype=doctype)
 
 
-def _seed_letter_head():
-	# Build a letter head per company from its branding (logo + subtext). On a fresh site with
-	# no branding yet this yields a clean monogram + name-only header; each is rebuilt whenever
-	# that company is saved (hooks.py Company.on_update → rebuild_letter_head).
-	rebuild_all_letter_heads()
-
-
 def _seed_po_print_format():
+	"""Create the Purchase Order format and make it the doctype default, only when it is missing.
+	An existing format is left alone so an admin's edits and their Desk choice of default print
+	format (Customize Form) survive every migrate."""
 	if frappe.db.exists("Print Format", PO_PRINT_FORMAT):
-		# Keep the body in sync on migrate.
-		frappe.db.set_value("Print Format", PO_PRINT_FORMAT, "html", _PO_PRINT_HTML)
 		return
 	frappe.get_doc(
 		{
@@ -329,3 +320,4 @@ def _seed_po_print_format():
 			"disabled": 0,
 		}
 	).insert(ignore_permissions=True)
+	_set_default_print_format("Purchase Order", PO_PRINT_FORMAT)

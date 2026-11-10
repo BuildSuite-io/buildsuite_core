@@ -170,6 +170,11 @@ def seed_master_data():
 
 	seed_print_formats()
 
+	# Shipped approval workflows — created only when missing, so an admin's edits survive migrate.
+	from buildsuite_core.seed_workflows import seed_workflows
+
+	seed_workflows()
+
 
 # Sales-invoice Terms & Conditions boilerplate (plain text — kept human-friendly, no HTML).
 INVOICE_TERMS = [
