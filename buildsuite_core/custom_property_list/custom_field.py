@@ -807,6 +807,17 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Sales > Leads. What the person asked for, typed once — ERPNext's own Notes are a timeline
+	# table (CRM Note), not the one line a salesperson jots down on the first call.
+	"Lead": [
+		{
+			"fieldname": "enquiry_note",
+			"fieldtype": "Small Text",
+			"label": "Notes",
+			"insert_after": "utm_source",
+			"module": "BuildSuite Core",
+		},
+	],
 	# Quotation (native ERPNext) — the estimator's priced offer to a customer.
 	"Quotation": [
 		{

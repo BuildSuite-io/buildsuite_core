@@ -13,6 +13,7 @@ const today = computed(() =>
 );
 
 const SHORTCUTS = [
+	{ to: "/leads", icon: "users", label: "Leads", cap: "lead" },
 	{ to: "/customers", icon: "users-round", label: "Customers", cap: "customer" },
 	{ to: "/quotations", icon: "file-text", label: "Quotations" },
 	{ to: "/tenders", icon: "clipboard-list", label: "Tenders" },

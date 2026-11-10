@@ -134,6 +134,7 @@ def seed_master_data():
 	seed_employee_accounting_dimension()
 	seed_invoice_terms()
 	seed_finance_accounts()
+	seed_lead_sources()
 
 	# Report permission anchors — a Report record per bespoke (custom-UI) report so its workspace
 	# tile + route are gated by the Report's roles, like the file-based reports already are.
@@ -201,6 +202,20 @@ INVOICE_TERMS = [
 		"4. Disputes: Any discrepancy must be notified in writing within 7 days of receipt.",
 	),
 ]
+
+
+# Where a lead came from. ERPNext seeds most of these as UTM Sources (a lead's Source in v16);
+# BuildSuite adds the ones a construction enquiry also arrives by. Create-if-missing.
+LEAD_SOURCES = ("Walk In", "Reference", "Advertisement", "Website", "Cold Calling", "Exhibition", "Campaign")
+
+
+def seed_lead_sources():
+	if not frappe.db.exists("DocType", "UTM Source"):
+		return
+	for source in LEAD_SOURCES:
+		if not frappe.db.exists("UTM Source", source):
+			# UTM Source is named by prompt: the name IS the source.
+			frappe.get_doc({"doctype": "UTM Source", "name": source}).insert(ignore_permissions=True)
 
 
 def seed_invoice_terms():

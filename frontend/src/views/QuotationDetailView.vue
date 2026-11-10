@@ -28,9 +28,14 @@ watch(() => props.id, (id) => (resource.value = adapter.read("Quotation", id)), 
 
 const doc = computed(() => resource.value?.doc || null);
 
+// ERPNext fills `customer_name` for a lead too (its organisation, else the person), so it is the
+// name to show whoever the quotation went to; `party_name` is the record id.
 const subtitle = computed(() =>
-	[props.id, doc.value?.party_name, doc.value?.customer_type].filter(Boolean).join(" · "),
+	[props.id, doc.value?.customer_name || doc.value?.party_name, doc.value?.customer_type]
+		.filter(Boolean)
+		.join(" · "),
 );
+const toLead = computed(() => doc.value?.quotation_to === "Lead" && !!doc.value?.party_name);
 
 // Counted from today: what is left is the number worth acting on.
 const daysLeft = computed(() => {
@@ -133,6 +138,16 @@ const breadcrumbs = computed(() => [
 				{{ __("Delete") }}
 			</button>
 		</template>
+
+		<!-- Went to a lead: say so, and link it (converting the lead moves this to its customer). -->
+		<div v-if="toLead" class="flex items-center gap-2 flex-wrap text-xs text-ink-700 mb-3">
+			<span class="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-info-50 text-info-700"
+				style="border-radius: 4px">{{ __("Lead") }}</span>
+			<RouterLink :to="`/leads/${encodeURIComponent(doc.party_name)}`" class="desk-link">
+				{{ doc.customer_name || doc.party_name }}
+			</RouterLink>
+			<span class="text-ink-500">{{ __("· not a customer yet") }}</span>
+		</div>
 
 		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">

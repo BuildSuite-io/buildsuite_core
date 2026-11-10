@@ -27,6 +27,7 @@ export const DOCTYPE_META = {
 	BOQ: { label: "BOQ", icon: "estimation", to: (n) => `/boq/${n}` },
 	Tender: { label: "Tender", icon: "file-text", to: (n) => `/tenders/${n}` },
 	Quotation: { label: "Quotation", icon: "file-text", to: (n) => `/quotations/${n}` },
+	Lead: { label: "Lead", icon: "users", to: (n) => `/leads/${n}` },
 	"Construction Rate Master": {
 		label: "Rate",
 		icon: "chart-bar",
@@ -271,6 +272,14 @@ const PLACES = [
 		to: "/subcontractors",
 		cap: "supplier",
 		words: ["subcontractor", "subcontractors"],
+	},
+	// Sales
+	{
+		label: "Leads",
+		icon: "users",
+		to: "/leads",
+		cap: "lead",
+		words: ["lead", "leads", "enquiry", "enquiries", "inquiry", "prospect"],
 	},
 	// Finance
 	{

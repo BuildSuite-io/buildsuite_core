@@ -939,6 +939,25 @@ CUSTOMER_WRITE_ROLE_PERMS = {
 }
 
 
+# Lead — Sales > Leads, the enquiries a quotation goes to before there is a customer. The people
+# who price work (Director, Estimator, QS) and the admin tier manage them; the PM reads them (a
+# quotation's lead on a project they run). Converting a lead also needs Customer create, which
+# CUSTOMER_WRITE_ROLE_PERMS decides — so a QS manages leads but cannot convert one.
+LEAD_ROLE_PERMS = {
+	"BuildSuite Administrator": _FULL,
+	"BuildSuite Director": _FULL,
+	"BuildSuite Estimator": _FULL,
+	"BuildSuite QS": _FULL,
+	"BuildSuite PM": _READ,
+}
+
+
+def setup_lead_permissions():
+	_apply_role_perms("Lead", LEAD_ROLE_PERMS)
+	# A lead's Source is a Link to UTM Source (ERPNext v16): whoever reads leads picks from it.
+	_apply_role_perms("UTM Source", {role: _READ for role in LEAD_ROLE_PERMS})
+
+
 def setup_project_finance_permissions():
 	_apply_role_perms("Sales Invoice", SALES_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Payment Entry", PAYMENT_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
@@ -1231,6 +1250,7 @@ def restore_role_permissions():
 	setup_workforce_permissions()
 	setup_equipment_permissions()
 	setup_project_finance_permissions()
+	setup_lead_permissions()
 	setup_mobile_permissions()  # extra DocPerms for the companion mobile app (layered)
 	# Mirror read to child tables of everything the BuildSuite roles can read (must run AFTER
 	# all the parent grants above are in place).

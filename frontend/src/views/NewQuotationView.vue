@@ -1,6 +1,6 @@
 <script setup>
 import { computed, defineAsyncComponent, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -12,10 +12,13 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskSegmented from "@/components/desk/DeskSegmented.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import { useCustomerOptions } from "@/composables/useCustomerOptions";
 import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
 import { useProjectOptions } from "@/composables/useProjectOptions";
+import LeadFormModal from "@/components/LeadFormModal.vue";
 import QuotationLineModal from "@/components/QuotationLineModal.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { showToast } from "@/utils/appToast";
@@ -29,7 +32,9 @@ const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextE
 // Same form for both: with an id it edits that draft, without one it creates.
 const props = defineProps({ id: { type: String, default: "" } });
 const router = useRouter();
+const route = useRoute();
 const editing = computed(() => !!props.id);
+const { canCreate } = usePermissions();
 
 function isoDaysFromNow(days) {
 	const date = new Date();
@@ -56,10 +61,15 @@ function blankLine() {
 // Field names match the doctype bar one: the offer is made in days ("this price holds 30
 // days"), so that is what the form asks for. The doctype's `valid_till` date is worked out
 // from it on save — which also makes an expiry before the issue date impossible to enter.
+// Who it goes to: a Lead (someone who is not a customer yet) or a Customer — ERPNext's own
+// `quotation_to` + `party_name`. Each kind keeps its own pick (`lead` / `party_name`), so flipping
+// the switch back and forth loses neither; the one the switch shows is what saves.
 const form = reactive({
 	title: "",
 	transaction_date: isoDaysFromNow(0),
 	validity_days: 30,
+	quotation_to: "Lead",
+	lead: "",
 	party_name: "",
 	customer_type: "",
 	project: "",
@@ -85,6 +95,11 @@ watch(
 		for (const k of Object.keys(form)) {
 			if (k === "items" || doc[k] == null) continue;
 			form[k] = doc[k];
+		}
+		// A quotation to a lead carries the lead in `party_name`; the form keeps it apart.
+		if (doc.quotation_to === "Lead") {
+			form.lead = doc.party_name || "";
+			form.party_name = "";
 		}
 		// `validity_days` is the form's own field, not the doctype's — read it back off the
 		// two dates. A quotation saved with no expiry keeps none.
@@ -115,6 +130,52 @@ watch(
 
 const { customerOptions } = useCustomerOptions();
 const { projectOptions } = useProjectOptions();
+
+// Opened from a lead's page ("New quotation"): ?lead=<id>, or ?customer=<name> once converted.
+if (!props.id) {
+	if (route.query.customer) {
+		form.quotation_to = "Customer";
+		form.party_name = String(route.query.customer);
+	} else if (route.query.lead) {
+		form.quotation_to = "Lead";
+		form.lead = String(route.query.lead);
+	}
+}
+
+const PARTY_KINDS = [
+	{ value: "Lead", label: __("Lead") },
+	{ value: "Customer", label: __("Customer") },
+];
+const partyHint = computed(() =>
+	form.quotation_to === "Lead"
+		? __("Someone who is not a customer yet. Convert the lead when they accept.")
+		: __("An existing customer.")
+);
+// The lead picker only offers leads that are not customers yet (a converted lead's quotations go
+// to its customer). Re-keyed after "+ New lead" so it re-reads the label of the lead just added.
+const LEAD_FILTERS = [["status", "!=", "Converted"]];
+const leadPickerKey = ref(0);
+const leadModalOpen = ref(false);
+
+function onLeadSaved(lead) {
+	form.quotation_to = "Lead";
+	form.lead = lead.name;
+	leadPickerKey.value += 1;
+	leadModalOpen.value = false;
+}
+
+// "Use this lead / customer" from the New lead form's same-mobile warning.
+function onUseMatch(match) {
+	if (match.kind === "Lead") {
+		form.quotation_to = "Lead";
+		form.lead = match.id;
+		leadPickerKey.value += 1;
+	} else {
+		form.quotation_to = "Customer";
+		form.party_name = match.id;
+	}
+	leadModalOpen.value = false;
+}
 
 function addLine() {
 	form.items.push(blankLine());
@@ -177,7 +238,8 @@ const saving = ref(false);
 
 function validate() {
 	const found = {};
-	if (!form.party_name) found.party_name = __("Pick the customer this is for.");
+	if (!(form.quotation_to === "Lead" ? form.lead : form.party_name))
+		found.party_name = __("Who is it going to?");
 	if (!form.title.trim()) found.title = __("Say what the quotation is for.");
 	if (!form.transaction_date) found.transaction_date = __("An issue date is required.");
 	if (form.validity_days !== "" && Number(form.validity_days) < 0)
@@ -205,8 +267,8 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	const payload = {
-		quotation_to: "Customer",
-		party_name: form.party_name,
+		quotation_to: form.quotation_to,
+		party_name: form.quotation_to === "Lead" ? form.lead : form.party_name,
 		title: form.title.trim(),
 		customer_type: form.customer_type || null,
 		project: form.project || null,
@@ -276,14 +338,47 @@ const breadcrumbs = computed(() => [
 					</DeskField>
 				</div>
 
-				<DeskField :label="__('Customer')" required :error="errors.party_name">
-					<DeskSearchableSelect
-						v-model="form.party_name"
-						:options="customerOptions"
-						:placeholder="__('Pick a customer…')"
-						:search-placeholder="__('Search customers…')"
-					/>
-				</DeskField>
+				<div class="md:col-span-2">
+					<DeskField :label="__('Quotation to')" required :hint="partyHint" :error="errors.party_name">
+						<div class="flex flex-col sm:flex-row sm:items-center gap-2">
+							<DeskSegmented
+								v-model="form.quotation_to"
+								:options="PARTY_KINDS"
+								:aria-label="__('Quotation to')"
+							/>
+							<div class="flex-1 min-w-0">
+								<DeskLinkPicker
+									v-if="form.quotation_to === 'Lead'"
+									:key="leadPickerKey"
+									v-model="form.lead"
+									doctype="Lead"
+									label-field="title"
+									:search-fields="['lead_name', 'company_name', 'mobile_no', 'city', 'name']"
+									:filters="LEAD_FILTERS"
+									order-by="creation desc"
+									:page-length="20"
+									:placeholder="__('Pick a lead…')"
+								/>
+								<DeskSearchableSelect
+									v-else
+									v-model="form.party_name"
+									:options="customerOptions"
+									:placeholder="__('Pick a customer…')"
+									:search-placeholder="__('Search customers…')"
+								/>
+							</div>
+							<button
+								v-if="form.quotation_to === 'Lead' && canCreate('lead')"
+								type="button"
+								class="text-xs px-3 h-8 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 shrink-0"
+								style="border-radius: 6px"
+								@click="leadModalOpen = true"
+							>
+								{{ __("+ New lead") }}
+							</button>
+						</div>
+					</DeskField>
+				</div>
 
 				<DeskField :label="__('Customer type')">
 					<DeskSelect v-model="form.customer_type">
@@ -500,6 +595,13 @@ const breadcrumbs = computed(() => [
 			v-model:open="pickerOpen"
 			:margin-percent="form.margin_percent"
 			@add="addFromLibrary"
+		/>
+		<LeadFormModal
+			:open="leadModalOpen"
+			offer-use
+			@close="leadModalOpen = false"
+			@saved="onLeadSaved"
+			@use="onUseMatch"
 		/>
 	</DeskPage>
 </template>

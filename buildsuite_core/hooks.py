@@ -204,10 +204,19 @@ doc_events = {
 	"Payment Entry": {"before_validate": "buildsuite_core.utils.payment.default_bank_reference"},
 	# ERPNext stamps the global default company; BuildSuite resolves the working one (which
 	# follows the topbar switcher), and the print's letter head is picked from it.
+	# A lead's status follows its quotations — drafts included (see utils.lead).
 	"Quotation": {
 		"before_insert": "buildsuite_core.utils.quotation.set_company",
 		"validate": "buildsuite_core.utils.quotation.clear_milestone_timing",
+		"after_insert": "buildsuite_core.utils.lead.sync_quotation_leads",
+		"on_update": "buildsuite_core.utils.lead.sync_quotation_leads",
+		"on_submit": "buildsuite_core.utils.lead.sync_quotation_leads",
+		"on_cancel": "buildsuite_core.utils.lead.sync_quotation_leads",
+		"on_trash": "buildsuite_core.utils.lead.sync_quotation_leads_on_delete",
 	},
+	# ERPNext re-derives a Lead's status on save from SUBMITTED quotations only; re-apply the
+	# BuildSuite rule (draft quotations count) after it.
+	"Lead": {"validate": "buildsuite_core.utils.lead.apply_quotation_status"},
 	# Petty Cash Request + Expense Entry: the beneficiary (requested_by / holder Employee's user)
 	# becomes `owner` so native "Only If Creator" DocPerms scope to them; the real entry-maker is
 	# kept in `raised_by`. owner must be swapped after_insert (insert() force-sets owner=session.user).

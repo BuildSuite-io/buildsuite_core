@@ -47,7 +47,8 @@ const breadcrumbs = [
 const columns = [
 	{ key: "name", label: __("Quotation"), fields: ["name", "customer_type"] },
 	{ key: "title", label: __("For") },
-	{ key: "party_name", label: __("Customer") },
+	// A lead or a customer; ERPNext keeps the display name in customer_name for both.
+	{ key: "party_name", label: __("To"), fields: ["party_name", "customer_name", "quotation_to"] },
 	{ key: "transaction_date", label: __("Issued") },
 	{ key: "valid_till", label: __("Valid to") },
 	{ key: "grand_total", label: __("Value"), align: "right", fields: ["grand_total", "currency"] },
@@ -56,7 +57,7 @@ const columns = [
 
 <template>
 	<DeskPage :title="__('Quotations')"
-		:subtitle="__('Priced offers to customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.')"
+		:subtitle="__('Priced offers to leads and customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.')"
 		:breadcrumbs="breadcrumbs">
 		<template #actions>
 			<RouterLink to="/quotations/new" class="desk-save-btn !text-xs">{{ __("+ New") }}</RouterLink>
@@ -68,8 +69,8 @@ const columns = [
 				customer_type: 'customer_type',
 				from: { field: 'transaction_date', op: '>=' },
 				to: { field: 'transaction_date', op: '<=' },
-			}" :search-fields="['name', 'party_name', 'title']" cache-key="buildsuite-quotation-list" row-key="name"
-			:search-placeholder="__('Search quotation / customer / scope…')"
+			}" :search-fields="['name', 'party_name', 'customer_name', 'title']" cache-key="buildsuite-quotation-list" row-key="name"
+			:search-placeholder="__('Search quotation / lead / customer / scope…')"
 			:empty-message="__('No quotations yet. Build one when a customer asks you for a price.')"
 			@row-click="openQuotation">
 			<template #filter-chips>
@@ -104,6 +105,12 @@ const columns = [
 				</div>
 			</template>
 
+			<template #cell-party_name="{ row }">
+				<span class="text-ink-900">{{ row.customer_name || row.party_name || "—" }}</span>
+				<span v-if="row.quotation_to === 'Lead'"
+					class="ml-1.5 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-info-50 text-info-700"
+					style="border-radius: 4px">{{ __("Lead") }}</span>
+			</template>
 			<template #cell-title="{ row }">
 				<span class="text-ink-900 font-medium">{{ row.title || "—" }}</span>
 			</template>
