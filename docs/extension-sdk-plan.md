@@ -225,3 +225,41 @@ Not done: the **resource registry** for list columns and form sections (`sdk.res
 bespoke screens that are not `DeskPage` or `DocTypeForm` (they have no slots or hooks), and a
 documented policy for which route names are public API. Route names are not yet a stable contract; this
 should be settled before phase 3 publishes the SDK reference.
+
+## Phase 2b (added after review): universal coverage and dynamic settings
+
+Raised after the phase 2 demo. Three requirements, all fitting the registry model:
+
+1. **Every page is extendable, including bespoke ones.** Today slots come from `DeskPage`, which 120
+   of 165 views use. The shell renders every route through one `<router-view>` (`DeskShell.vue`), so
+   put `page.<route name>.top` and `.bottom` there instead. That covers all routes at once, with no
+   per-view edit, and the `DeskPage` slots are removed so a component never renders twice.
+   Pages that need a slot *inside* their layout (between sections) declare an explicit
+   `<ExtensionSlot>`; those are added case by case and listed in the slot catalogue.
+2. **A common contract for custom fields on bespoke forms.** The fields themselves are native Frappe
+   (Custom Field fixtures from the extension app). The SDK adds the binding: a `useExtensionFields(doctype)`
+   composable that a bespoke form calls once. It loads and saves the extension-owned fields into
+   `form.custom`, runs the DocType hooks, and exposes the slots `form.<DocType>.<position>`, so an
+   extension registers one control and it works on every bespoke form that adopts the composable. A
+   customer may instead override the whole page (`views.override`, built in phase 2).
+3. **Dynamic settings pages.** Settings stop being a hardcoded list in `SettingsHubView.vue`.
+   - A settings page is a **Single DocType**. Core renders it with the generic `DocTypeForm`, so an
+     extension that is pure Python (a Single doctype plus one hook line) gets a working settings page
+     with no JavaScript.
+   - Declaration, in the extension's `hooks.py`:
+     `buildsuite_settings_pages = [{"doctype": "Acme Settings", "group": "Acme", "label": "...", "description": "...", "icon": "...", "roles": [...]}]`.
+   - Core's backend merges its own pages with the declared ones. Each declared page is validated (the
+     doctype exists and is single) and filtered by the user's DocPerms, so permissions are Frappe's, not
+     a second system.
+   - Route `/settings/doc/:doctype`; the hub reads the merged list. An extension that wants bespoke UI
+     replaces that page's view (`views.override`) or registers its own page with `sdk.settings.addPage`.
+   - Core's own settings (Core Settings, Project Settings and similar Singles) can migrate to the same
+     mechanism gradually; nothing forces it.
+   - Fits phase 4: a no-code editor or an AI creates a Single DocType with Frappe's own tooling and it
+     appears in Settings.
+
+   **Open item to verify first:** the generic form and `doctypeRecordApi` have no Single-DocType path
+   today (read and save by doctype name). A short spike confirms it before the hub work starts.
+
+Order: shell slots, then `useExtensionFields` on the busiest bespoke forms (Quotation, Project, Task),
+then dynamic settings. Phase 3 (scaffold, docs, versioning) follows and documents all of it.
