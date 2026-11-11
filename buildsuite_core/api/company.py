@@ -122,6 +122,25 @@ def update_company_branding(
 
 
 @frappe.whitelist()
+def rename_company(company: str, new_name: str) -> dict:
+	"""Rename a company (administrator only). A Company is named after its `company_name`, so the
+	name can't be edited in place: Frappe's rename re-points every link to it, ERPNext's
+	after_rename keeps `company_name` in step, and our after_rename hook rebuilds the Letter Head
+	under the new name. Returns the new company id."""
+	_require_admin()
+	new_name = (new_name or "").strip()
+	if not new_name:
+		frappe.throw(_("The company name can't be empty."))
+	if not company or not frappe.db.exists("Company", company):
+		frappe.throw(_("No such company."))
+	if new_name == company:
+		return {"company": company}
+	if frappe.db.exists("Company", new_name):
+		frappe.throw(_("A company named {0} already exists.").format(new_name))
+	return {"company": frappe.rename_doc("Company", company, new_name, force=True)}
+
+
+@frappe.whitelist()
 def company_projects(company: str, limit: int = 20) -> dict:
 	"""Projects that belong to a company — the total count plus a capped sample — for the Company
 	detail page's linked-projects list. A company can own thousands of projects, so the page shows
