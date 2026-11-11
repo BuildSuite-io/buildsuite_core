@@ -8,5 +8,25 @@
   "label": "Region (demo extension)",
   "module": "BuildSuite Demo Extension",
   "name": "Quotation-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Project",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "project_name",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Project-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Task",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "subject",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Task-demo_region"
  }
 ]

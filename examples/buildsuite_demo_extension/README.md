@@ -21,7 +21,7 @@ buildsuite_frontend_extensions = [
 | DocType hooks and a form slot | `sdk.doctype("*").on(…)`, `sdk.slots.add("form.Account Category.top", …)` | `/records/Account Category/new`; a value containing `FORBIDDEN-DEMO` is refused on save |
 | A Home page slot (bespoke page, not `DeskPage`) | `sdk.slots.add("page.app-home.top", …)` | top of Home |
 | A Single DocType settings page, no JS | `buildsuite_settings_pages` in `hooks.py` | Settings → "Demo extension" group; opens at `/settings/doc/Demo Extension Settings` |
-| A Custom Field on a bespoke form | Custom Field fixture + `sdk.doctype("Quotation").on({ fields })` + slot `form.Quotation.top` | Region control on the New Quotation form |
+| A Custom Field on a bespoke form | Custom Field fixture + `sdk.doctype("Quotation").on({ fields })` + slot `form.Quotation.top` | Region control on the New Quotation, New Project and New Task forms |
 | A deliberately broken component | `sdk.slots.add("page.settings.bottom", …)` | only when `localStorage.buildsuite_demo_break = "1"`; the Settings page must keep working |
 
 Install: `bench get-app <path to this folder>` then `bench --site <site> install-app buildsuite_demo_extension`

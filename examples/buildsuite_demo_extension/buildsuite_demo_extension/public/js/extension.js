@@ -150,8 +150,7 @@ export default function register(sdk) {
 
 	// 8. A Custom Field on a bespoke form: the field ships as a fixture; here is its control.
 	//    The slot's component receives `custom` (read and write) and the whole `form`.
-	sdk.doctype("Quotation").on({ fields: ["demo_region"] });
-	sdk.slots.add("form.Quotation.top", {
+	const RegionControl = {
 		name: "DemoRegionControl",
 		props: { custom: { type: Object, required: true } },
 		setup(props) {
@@ -170,7 +169,12 @@ export default function register(sdk) {
 					}),
 				]);
 		},
-	});
+	};
+	// The same control on three bespoke forms: each one that adopts useExtensionFields works.
+	for (const doctype of ["Quotation", "Project", "Task"]) {
+		sdk.doctype(doctype).on({ fields: ["demo_region"] });
+		sdk.slots.add(`form.${doctype}.top`, RegionControl);
+	}
 
 	// 9. A slot on a bespoke page that does not use DeskPage (the Home page): every route has
 	//    page.<route name>.top / .bottom, provided by the app shell.

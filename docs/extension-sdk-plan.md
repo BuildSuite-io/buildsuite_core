@@ -271,8 +271,8 @@ then dynamic settings. Phase 3 (scaffold, docs, versioning) follows and document
   `DeskPage` slots were removed to avoid rendering twice. `ExtensionSlot` gained an optional wrapper.
 - **`useExtensionFields(doctype, form)`.** Loads and saves an extension's Custom Fields into `custom`,
   runs the hooks, and gives the `form.<DocType>.<position>` slot names. The extension declares its
-  fields with `sdk.doctype(name).on({ fields: [...] })`. Adopted by the Quotation form (slots `top` and
-  `bottom`). **Other bespoke forms (Project, Task, and so on) still need to adopt it**, one at a time.
+  fields with `sdk.doctype(name).on({ fields: [...] })`. Adopted by the Quotation, Project and Task create forms (slots `top` and
+  `bottom`). **The other bespoke forms (Work Order, Purchase Order, Subcontractor Bill and so on) still need to adopt it**, one at a time.
 - **Dynamic settings.** `buildsuite_core.sdk.get_settings_pages()` reads the `buildsuite_settings_pages`
   hook, keeping only Single DocTypes the user can read. The Settings hub lists them (plus tiles from
   `sdk.settings.addTile`) and `/settings/doc/:doctype` renders the Single with the generic form, with no
@@ -280,6 +280,6 @@ then dynamic settings. Phase 3 (scaffold, docs, versioning) follows and document
 - Demo extension additions: a Single DocType and its hook, a Custom Field fixture on Quotation with its
   control, a Home page slot. 14 backend tests and 10 Cypress tests pass.
 
-Known gaps: bespoke forms other than Quotation have no field binding yet; the custom-field value was
+Known gaps: bespoke forms other than Quotation, Project and Task have no field binding yet (Project and Task have create forms only here; their edit screens are separate); the custom-field value was
 tested as a visible, editable control, not through a full quotation save; route names are still not a
 documented public contract; a settings page that is a Single DocType gets the generic layout only.

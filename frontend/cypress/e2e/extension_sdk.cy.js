@@ -74,4 +74,15 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		cy.get("[data-test=demo-region] input").should("be.visible").type("East");
 		cy.get("[data-test=demo-region] input").should("have.value", "East");
 	});
+
+	for (const [label, path] of [
+		["Project", "/projects/new"],
+		["Task", "/tasks/new"],
+	]) {
+		it(`the same Custom Field control shows on the bespoke ${label} form`, () => {
+			cy.visitApp(path);
+			cy.get("[data-test=demo-region] input").should("be.visible").type("West");
+			cy.get("[data-test=demo-region] input").should("have.value", "West");
+		});
+	}
 });

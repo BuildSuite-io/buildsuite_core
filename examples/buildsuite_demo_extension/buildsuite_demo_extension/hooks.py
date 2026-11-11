@@ -28,5 +28,10 @@ buildsuite_settings_pages = [
 	},
 ]
 
-# The Custom Field the demo adds to Quotation (the control for it is in public/js/extension.js).
-fixtures = [{"dt": "Custom Field", "filters": [["name", "in", ["Quotation-demo_region"]]]}]
+# The Custom Field the demo adds to Quotation, Project and Task (the control for it is in public/js/extension.js).
+fixtures = [
+	{
+		"dt": "Custom Field",
+		"filters": [["name", "in", ["Quotation-demo_region", "Project-demo_region", "Task-demo_region"]]],
+	}
+]
