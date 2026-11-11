@@ -8,6 +8,8 @@ import { ref } from "vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CustomerCreateModal from "@/components/CustomerCreateModal.vue";
 import { __ } from "@/utils/translate";
+// Slots an installed app fills on this form (form.Project.top / .bottom), same as the create form.
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 
 const props = defineProps({
 	open: { type: Boolean, default: false },
@@ -17,6 +19,7 @@ const props = defineProps({
 	isSubproject: { type: Boolean, default: false },
 	subsCount: { type: Number, default: 0 },
 	isMultiCompany: { type: Boolean, default: false },
+	extContext: { type: Object, default: null },
 });
 
 const emit = defineEmits(["close", "save", "clear-error"]);
@@ -63,6 +66,11 @@ function onCustomerCreated(name) {
 				</header>
 
 				<div class="p-5 overflow-y-auto flex-1">
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.top"
+						:context="extContext"
+					/>
 					<DeskSection :title="__('Basic information')">
 						<DeskField :label="__('Project name')" required :error="errors.name">
 							<DeskInput
@@ -130,7 +138,9 @@ function onCustomerCreated(name) {
 						<DeskField
 							:label="__('Company')"
 							:hint="
-								__('Locked after create — a project can\'t be moved between companies.')
+								__(
+									'Locked after create — a project can\'t be moved between companies.'
+								)
 							"
 						>
 							<DeskInput :model-value="editForm.company" disabled />
@@ -150,14 +160,14 @@ function onCustomerCreated(name) {
 										? __(
 												'Locked on - this project has {0} subproject. Delete or move them out before turning this off.',
 												[subsCount]
-											)
+										  )
 										: __(
 												'Locked on - this project has {0} subprojects. Delete or move them out before turning this off.',
 												[subsCount]
-											)
+										  )
 									: __(
 											'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
-										)
+									  )
 							"
 						>
 							<label
@@ -169,9 +179,9 @@ function onCustomerCreated(name) {
 									:disabled="subsCount > 0"
 									class="accent-brand-600 disabled:cursor-not-allowed"
 								/>
-								<span class="text-sm text-ink-700"
-									>{{ __("Allow subprojects under this project") }}</span
-								>
+								<span class="text-sm text-ink-700">{{
+									__("Allow subprojects under this project")
+								}}</span>
 							</label>
 						</DeskField>
 					</DeskSection>
@@ -222,6 +232,11 @@ function onCustomerCreated(name) {
 							</DeskSelect>
 						</DeskField>
 					</DeskSection>
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.bottom"
+						:context="extContext"
+					/>
 				</div>
 
 				<footer

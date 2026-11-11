@@ -31,6 +31,10 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import TaskAttachments from "@/components/TaskAttachments.vue";
 import { createDataAdapter } from "@/data/adapters";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
+import { docFields } from "@/sdk/registry";
 import {
 	getTaskDependencies,
 	addTaskPredecessor,
@@ -111,6 +115,7 @@ function loadTaskResource() {
 			"exp_end_date",
 			"type",
 			"description",
+			...docFields("Task"), // an installed app's Custom Fields
 		],
 		cache: `buildsuite-task-detail:${props.id}`,
 		transform(rows) {
@@ -122,6 +127,7 @@ function loadTaskResource() {
 				status: row?.task_status || "Yet To Start",
 				priority: row?.priority || "Medium",
 				progress: Number(row?.progress) || 0,
+				extCustom: Object.fromEntries(docFields("Task").map((f) => [f, row?.[f] ?? null])),
 				assignee: parseAssignee(row?._assign),
 				owner: row?.owner || "",
 				startDate: row?.exp_start_date || null,
@@ -591,6 +597,7 @@ async function saveProgressEntry() {
 // that gets reset on cancel so the store record isn't touched mid-edit.
 const editing = ref(false);
 const form = ref({});
+const ext = useExtensionFields("Task", form);
 
 // Normalize task fields for the edit modal so native date inputs receive a
 // browser-compatible YYYY-MM-DD value instead of a full datetime string.
@@ -623,10 +630,11 @@ watch(
 	{ immediate: true }
 );
 
-function startEdit() {
+async function startEdit() {
 	if (!task.value) return;
 	form.value = buildEditForm(task.value);
 	resetEditErrors();
+	await ext.load(task.value.extCustom);
 	editing.value = true;
 }
 async function saveEdit() {
@@ -649,7 +657,7 @@ async function saveEdit() {
 		return;
 	}
 	try {
-		await adapter.update("Task", props.id, {
+		const payload = {
 			subject: form.value.name,
 			work_package: form.value.workPackageId || null,
 			task_status: form.value.status,
@@ -660,7 +668,11 @@ async function saveEdit() {
 				form.value.task_type === "Milestone" ? form.value.endDate : form.value.startDate,
 			exp_end_date: form.value.endDate,
 			description: form.value.description,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form.value);
+		await adapter.update("Task", props.id, payload);
+		await ext.afterSave(task.value, { isNew: false });
 		// Assignee is Frappe-native `_assign` — reassign only when it changed.
 		if ((form.value.assignee || "") !== (currentAssignee.value || "")) {
 			await setTaskAssignee(props.id, form.value.assignee);
@@ -1168,6 +1180,7 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
+						<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 						<DeskSection :title="__('Details')">
 							<DeskField :label="__('Name')" required :error="editErrors.name">
 								<DeskInput v-model="form.name" @input="clearEditError('name')" />
@@ -1268,6 +1281,7 @@ usePageTitle(() => task.value?.name);
 								</DeskSelect>
 							</DeskField>
 						</DeskSection>
+						<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 					</div>
 
 					<!-- Modal footer (pinned) -->

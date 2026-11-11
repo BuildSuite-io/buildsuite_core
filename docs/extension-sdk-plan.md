@@ -301,3 +301,9 @@ Done: `sdk/custom_fields.py` (`apply_custom_fields`, `custom_field_values`), use
 `useExtensionFields`. Both save APIs are covered by tests in `tests/test_subcontractor_bill.py`. That suite
 had been failing on bs.local: the service Item's stock UOM was moved without adding its UOM table row, so ERPNext
 rejected the Item Price. `ensure_service_item` now adds the row.
+
+### Edit screens
+
+Project and Task edit modals adopt `useExtensionFields` (read adds `docFields(...)`, modal opens with
+`ext.load`, update merges `ext.payload()`). Both save through `adapter.update` (generic resource write), so
+no fixed-field API gap. Covered by `extension_sdk.cy.js` (saved and read back on reopen).

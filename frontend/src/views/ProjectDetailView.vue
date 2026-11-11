@@ -26,6 +26,8 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { createDataAdapter } from "@/data/adapters";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
+import { docFields } from "@/sdk/registry";
 import { addProjectTeamMember, removeProjectTeamMember } from "@/data/projectTeamApi";
 import { PROJECT_TABS } from "@/data/projectTabs";
 import { getProjectTabOverrides, setProjectTabOverrides } from "@/data/projectSettingsApi";
@@ -117,6 +119,7 @@ function loadProjectResource() {
 			"creation",
 			"modified",
 			"parent_project",
+			...docFields("Project"), // an installed app's Custom Fields
 		],
 		cache: `buildsuite-project-detail:${props.id}`,
 		transform(rows) {
@@ -137,6 +140,9 @@ function loadProjectResource() {
 				pm: row?.project_manager || "",
 				location: row?.location || "",
 				description: row?.notes || row?.description || "",
+				extCustom: Object.fromEntries(
+					docFields("Project").map((f) => [f, row?.[f] ?? null])
+				),
 				isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
 				parentId: row?.parent_project || null,
 				createdAt: row?.creation || null,
@@ -647,6 +653,7 @@ const delayedDays = computed(() => {
 const tab = ref("overview");
 const editing = ref(false);
 const editForm = ref({});
+const ext = useExtensionFields("Project", editForm);
 
 watch(
 	() => props.id,
@@ -787,9 +794,10 @@ function buildProjectEditForm(source) {
 	};
 }
 
-function startEdit() {
+async function startEdit() {
 	editForm.value = buildProjectEditForm(project.value);
 	setEditErrors({});
+	await ext.load(project.value?.extCustom);
 	editing.value = true;
 }
 async function saveEdit() {
@@ -813,7 +821,7 @@ async function saveEdit() {
 		return;
 	}
 	try {
-		await adapter.update("Project", resolvedProjectId.value, {
+		const payload = {
 			project_name: editForm.value.name,
 			custom_project_id: editForm.value.code,
 			is_group: editForm.value.isGroup ? 1 : 0,
@@ -832,7 +840,11 @@ async function saveEdit() {
 			estimated_costing: Number(editForm.value.budget),
 			project_manager: editForm.value.pm || null,
 			notes: editForm.value.description,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, editForm.value);
+		await adapter.update("Project", resolvedProjectId.value, payload);
+		await ext.afterSave(project.value, { isNew: false });
 		editing.value = false;
 		projectResource.value?.reload?.();
 		showToast(__("Project updated"));
@@ -1090,7 +1102,10 @@ const tabSettingsOpen = ref(false);
 const tabChoices = ref({});
 const savingTabs = ref(false);
 const overriddenTabCount = computed(
-	() => PROJECT_TABS.filter((t) => tabOverrides.value[t.id] === true || tabOverrides.value[t.id] === false).length,
+	() =>
+		PROJECT_TABS.filter(
+			(t) => tabOverrides.value[t.id] === true || tabOverrides.value[t.id] === false
+		).length
 );
 function tabChoiceOf(id) {
 	const own = tabOverrides.value[id];
@@ -1238,7 +1253,12 @@ usePageTitle(() => project.value?.name);
 					:title="__('More actions')"
 					@click="menuOpen = !menuOpen"
 				>
-					<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<svg
+						class="w-3.5 h-3.5"
+						viewBox="0 0 24 24"
+						fill="currentColor"
+						aria-hidden="true"
+					>
 						<circle cx="5" cy="12" r="1.6" />
 						<circle cx="12" cy="12" r="1.6" />
 						<circle cx="19" cy="12" r="1.6" />
@@ -1326,7 +1346,9 @@ usePageTitle(() => project.value?.name);
 					size="xs"
 					class="flex-shrink-0"
 				/>
-				<span class="ml-auto text-brand-700 text-xs flex-shrink-0">{{ __("Open parent →") }}</span>
+				<span class="ml-auto text-brand-700 text-xs flex-shrink-0">{{
+					__("Open parent →")
+				}}</span>
 			</button>
 
 			<!-- Tabs (thin underline, brand-green for active) -->
@@ -1371,7 +1393,8 @@ usePageTitle(() => project.value?.name);
 				<div class="flex items-center gap-2 mb-2">
 					<span class="text-xs text-ink-500">
 						<span class="text-ink-900 font-medium"
-							>{{ subs.length }} {{ subs.length === 1 ? __("subproject") : __("subprojects") }}</span
+							>{{ subs.length }}
+							{{ subs.length === 1 ? __("subproject") : __("subprojects") }}</span
 						>
 					</span>
 					<button
@@ -1431,7 +1454,9 @@ usePageTitle(() => project.value?.name);
 					<template #empty>
 						<div class="text-sm text-ink-500">
 							{{ __("No subprojects yet ·") }}
-							<DeskLink @click="addSubproject">{{ __("Create the first one →") }}</DeskLink>
+							<DeskLink @click="addSubproject">{{
+								__("Create the first one →")
+							}}</DeskLink>
 						</div>
 					</template>
 				</DeskList>
@@ -1441,8 +1466,9 @@ usePageTitle(() => project.value?.name);
 			<div v-if="tab === 'work-packages'" class="pt-4">
 				<div class="flex items-center gap-2 mb-2">
 					<span class="text-xs text-ink-500">
-						{{ workPackages.length }} {{ workPackages.length === 1 ? __("package") : __("packages") }}
-						· {{ __("avg progress") }}
+						{{ workPackages.length }}
+						{{ workPackages.length === 1 ? __("package") : __("packages") }} ·
+						{{ __("avg progress") }}
 						<span class="text-ink-900 font-medium">{{ wpProgress }}%</span>
 					</span>
 					<RouterLink
@@ -1516,7 +1542,9 @@ usePageTitle(() => project.value?.name);
 			<div v-if="tab === 'tasks'" class="pt-4">
 				<div class="flex items-center gap-2 mb-2">
 					<span class="text-xs text-ink-500">
-						<span class="text-ink-900 font-medium">{{ taskStats.total }} {{ __("tasks") }}</span>
+						<span class="text-ink-900 font-medium"
+							>{{ taskStats.total }} {{ __("tasks") }}</span
+						>
 						· {{ taskStats.completed }} {{ __("completed") }} ·
 						{{ taskStats.inProgress }} {{ __("in progress") }} ·
 						{{ taskStats.yetToStart }} {{ __("yet to start") }}
@@ -1732,7 +1760,10 @@ usePageTitle(() => project.value?.name);
 						</span>
 					</template>
 					<template #cell-_open="{ row }">
-						<DeskLink :to="`/stage-plannings/${row.name}`" @click.stop class="text-xs"
+						<DeskLink
+							:to="`/stage-plannings/${row.name}`"
+							@click.stop
+							class="text-xs"
 							>{{ __("Open →") }}</DeskLink
 						>
 					</template>
@@ -1762,7 +1793,9 @@ usePageTitle(() => project.value?.name);
 									{{ __("or plan one manually →") }}
 								</RouterLink>
 								<div class="basis-full text-[11px] text-ink-500 mt-1">
-									{{ __("Will seed {0} stages —", [templateSummary.stage_count]) }}
+									{{
+										__("Will seed {0} stages —", [templateSummary.stage_count])
+									}}
 									{{ templateSummary.stage_names.join(" → ") }}.
 								</div>
 							</div>
@@ -1779,9 +1812,10 @@ usePageTitle(() => project.value?.name);
 								</RouterLink>
 								<div class="basis-full text-[11px] text-ink-500 mt-1 italic">
 									{{
-										__('No template configured for project type "{0}" — plan stages manually.', [
-											project.type,
-										])
+										__(
+											'No template configured for project type "{0}" — plan stages manually.',
+											[project.type]
+										)
 									}}
 								</div>
 							</div>
@@ -1794,7 +1828,8 @@ usePageTitle(() => project.value?.name);
 			<div v-if="tab === 'boq'" class="pt-4">
 				<div class="flex items-center gap-2 mb-2">
 					<span class="text-xs text-ink-500">
-						{{ boqs.length }} {{ boqs.length === 1 ? __("BOQ revision") : __("BOQ revisions") }}
+						{{ boqs.length }}
+						{{ boqs.length === 1 ? __("BOQ revision") : __("BOQ revisions") }}
 						<template v-if="activeBoq">
 							· {{ __("active:") }}
 							<DeskLink :to="`/boq/${activeBoq.id}`" class="font-mono">{{
@@ -1852,9 +1887,9 @@ usePageTitle(() => project.value?.name);
 					<template #empty>
 						<div class="text-sm text-ink-500">
 							{{ __("No BOQ on this project ·") }}
-							<RouterLink to="/boq" class="desk-link"
-								>{{ __("Create one in the BOQ module →") }}</RouterLink
-							>
+							<RouterLink to="/boq" class="desk-link">{{
+								__("Create one in the BOQ module →")
+							}}</RouterLink>
 						</div>
 					</template>
 				</DeskList>
@@ -1921,7 +1956,9 @@ usePageTitle(() => project.value?.name);
 						<StatusBadge :status="row.status" />
 					</template>
 					<template #empty>
-						<div class="text-sm text-ink-500">{{ __("No scope changes on this project.") }}</div>
+						<div class="text-sm text-ink-500">
+							{{ __("No scope changes on this project.") }}
+						</div>
 					</template>
 				</DocTypeListView>
 			</div>
@@ -1974,6 +2011,7 @@ usePageTitle(() => project.value?.name);
 			:is-subproject="isSubproject"
 			:subs-count="subs.length"
 			:is-multi-company="store.isMultiCompany"
+			:ext-context="ext.context"
 			@close="cancelEdit"
 			@save="saveEdit"
 			@clear-error="clearEditError"
@@ -2022,7 +2060,9 @@ usePageTitle(() => project.value?.name);
 					<header
 						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 					>
-						<h2 class="text-sm font-semibold text-ink-900">{{ __("Import project template") }}</h2>
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ __("Import project template") }}
+						</h2>
 						<button
 							type="button"
 							class="text-ink-400 hover:text-ink-900"
@@ -2053,20 +2093,21 @@ usePageTitle(() => project.value?.name);
 							<label class="flex items-center gap-2 text-sm text-ink-800">
 								<input v-model="importOpts.stages" type="checkbox" />
 								{{ __("Stages") }}
-								<span class="text-ink-400">({{ templateSummary.stage_count }})</span>
+								<span class="text-ink-400"
+									>({{ templateSummary.stage_count }})</span
+								>
 							</label>
 							<label class="flex items-center gap-2 text-sm text-ink-800">
 								<input v-model="importOpts.tasks" type="checkbox" />
 								{{ __("Tasks") }}
-								<span class="text-ink-400">({{ templateSummary.task_count }})</span>
+								<span class="text-ink-400"
+									>({{ templateSummary.task_count }})</span
+								>
 							</label>
 						</template>
 						<p v-else class="text-sm text-ink-500">
-							{{ __("No template is configured for this project's category") }}<template
-								v-if="project?.type"
-							>
-								("{{ project.type }}")</template
-							>.
+							{{ __("No template is configured for this project's category")
+							}}<template v-if="project?.type"> ("{{ project.type }}")</template>.
 						</p>
 					</div>
 
@@ -2107,7 +2148,9 @@ usePageTitle(() => project.value?.name);
 					style="border-radius: 12px"
 					@click.stop
 				>
-					<header class="px-4 py-3 border-b border-ink-200 flex items-center justify-between">
+					<header
+						class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
+					>
 						<h2 class="text-sm font-semibold text-ink-900">{{ __("Page tabs") }}</h2>
 						<button
 							type="button"
@@ -2128,7 +2171,8 @@ usePageTitle(() => project.value?.name);
 								to="/settings/project"
 								class="text-brand-600 hover:underline"
 								>{{ __("Project Settings") }}</RouterLink
-							><span v-else>{{ __("the site template") }}</span>.
+							><span v-else>{{ __("the site template") }}</span
+							>.
 						</p>
 						<div class="border border-ink-200 rounded-lg overflow-hidden">
 							<div
@@ -2146,19 +2190,28 @@ usePageTitle(() => project.value?.name);
 										{{ __("Hidden anyway until this is a parent project.") }}
 									</div>
 								</div>
-								<div class="flex-shrink-0 flex rounded-md border border-ink-200 overflow-hidden">
+								<div
+									class="flex-shrink-0 flex rounded-md border border-ink-200 overflow-hidden"
+								>
 									<button
 										v-for="opt in [
-											{ k: 'default', label: store.siteProjectTabVisible(t.id) ? __('Default (shown)') : __('Default (hidden)') },
+											{
+												k: 'default',
+												label: store.siteProjectTabVisible(t.id)
+													? __('Default (shown)')
+													: __('Default (hidden)'),
+											},
 											{ k: 'show', label: __('Show') },
 											{ k: 'hide', label: __('Hide') },
 										]"
 										:key="opt.k"
 										type="button"
 										class="text-[11px] px-2 py-1 whitespace-nowrap border-l border-ink-200 first:border-l-0"
-										:class="tabChoices[t.id] === opt.k
-											? 'bg-brand-600 text-white'
-											: 'bg-white text-ink-600 hover:bg-ink-50'"
+										:class="
+											tabChoices[t.id] === opt.k
+												? 'bg-brand-600 text-white'
+												: 'bg-white text-ink-600 hover:bg-ink-50'
+										"
 										@click="tabChoices[t.id] = opt.k"
 									>
 										{{ opt.label }}
@@ -2168,7 +2221,9 @@ usePageTitle(() => project.value?.name);
 						</div>
 					</div>
 
-					<footer class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2">
+					<footer
+						class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
 						<button
 							type="button"
 							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
@@ -2200,6 +2255,8 @@ usePageTitle(() => project.value?.name);
 
 	<div v-else class="px-6 py-20 text-center">
 		<div class="text-ink-400 mb-3">{{ __("Project not found") }}</div>
-		<RouterLink to="/projects" class="desk-link text-sm">{{ __("Back to projects") }}</RouterLink>
+		<RouterLink to="/projects" class="desk-link text-sm">{{
+			__("Back to projects")
+		}}</RouterLink>
 	</div>
 </template>

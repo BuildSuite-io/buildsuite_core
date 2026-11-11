@@ -37,7 +37,7 @@ A failing extension is isolated: its error is logged and the rest of the app kee
 
 ## Forms that accept Custom Fields
 
-Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create), Task (create), Work Package (create), Subcontractor Work Order and Subcontractor Bill (create and edit). Other
+Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create and edit), Task (create and edit), Work Package (create), Subcontractor Work Order and Subcontractor Bill (create and edit). Other
 DocTypes use the generic form, which supports all of the above. Tell us which bespoke form
 you need next.
 
@@ -53,3 +53,9 @@ be dropped unless the function opts in. Core's helpers do that safely
 - `custom_field_values(doc)` when serializing: the values the form binds back for editing.
 
 The SPA sends them as `custom_fields` (a JSON string for type-checked functions).
+
+### Edit screens
+
+An edit modal on a detail page works the same way, with two extra steps: the detail view adds
+`docFields(<DocType>)` to the fields it reads (so the values come back) and calls `ext.load(...)` when the
+modal opens. These save through the generic resource update, so no backend change is needed.

@@ -128,4 +128,30 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			);
 		});
 	});
+	for (const [doctype, route] of [
+		["Project", "projects"],
+		["Task", "tasks"],
+	]) {
+		it(`a Custom Field is shown and saved from the ${doctype} edit modal`, () => {
+			const value = `Edited-${Date.now()}`;
+			cy.request(
+				`/api/resource/${doctype}?limit_page_length=1&order_by=creation%20desc`
+			).then((list) => {
+				const id = list.body.data[0].name;
+				cy.visitApp(`/${route}/${encodeURIComponent(id)}`);
+				cy.contains("button", /^\s*Edit\s*$/).click();
+				cy.get("[data-test=demo-region] input").should("be.visible").clear().type(value);
+				cy.get("footer")
+					.contains("button", /^\s*Save\s*$/)
+					.click();
+				cy.get("[data-test=demo-region]").should("not.exist");
+				cy.request(`/api/resource/${doctype}/${encodeURIComponent(id)}`).then((res) => {
+					expect(res.body.data.demo_region).to.equal(value);
+				});
+				// Re-open: the saved value is read back into the control.
+				cy.contains("button", /^\s*Edit\s*$/).click();
+				cy.get("[data-test=demo-region] input").should("have.value", value);
+			});
+		});
+	}
 });
