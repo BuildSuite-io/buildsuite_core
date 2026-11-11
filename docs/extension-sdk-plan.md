@@ -298,5 +298,6 @@ documented public contract; a settings page that is a Single DocType gets the ge
 
 Done: `sdk/custom_fields.py` (`apply_custom_fields`, `custom_field_values`), used by `save_work_order` and
 `save_bill`; Work Package, Subcontractor Work Order and Subcontractor Bill forms adopt
-`useExtensionFields`. Known gap: `tests/test_subcontractor_bill.py` errors on bs.local (UOM
-"Subcontract Unit" missing, unrelated), so `save_bill` was checked by hand, not by that suite.
+`useExtensionFields`. Both save APIs are covered by tests in `tests/test_subcontractor_bill.py`. That suite
+had been failing on bs.local: the service Item's stock UOM was moved without adding its UOM table row, so ERPNext
+rejected the Item Price. `ensure_service_item` now adds the row.

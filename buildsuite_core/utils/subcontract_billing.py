@@ -91,9 +91,9 @@ def _ensure_service_uom():
 	is whole-number only, which rejects the measured (often fractional) quantities a subcontractor
 	bill carries, so those quantities failed to post to the Purchase Invoice."""
 	if not frappe.db.exists("UOM", SERVICE_UOM):
-		frappe.get_doc(
-			{"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}
-		).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}).insert(
+			ignore_permissions=True
+		)
 	return SERVICE_UOM
 
 
@@ -107,6 +107,21 @@ def ensure_service_item():
 		# non-stock item, so there's no stock ledger to block the change.
 		if frappe.db.get_value("Item", SERVICE_ITEM, "stock_uom") != uom:
 			frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", uom)
+		# set_value skips the Item's UOM table, and ERPNext rejects an Item Price in a UOM the item
+		# does not list ("UOM X not found in Item Y"), so make sure the stock UOM has its row.
+		if not frappe.db.exists(
+			"UOM Conversion Detail", {"parenttype": "Item", "parent": SERVICE_ITEM, "uom": uom}
+		):
+			frappe.get_doc(
+				{
+					"doctype": "UOM Conversion Detail",
+					"parenttype": "Item",
+					"parentfield": "uoms",
+					"parent": SERVICE_ITEM,
+					"uom": uom,
+					"conversion_factor": 1,
+				}
+			).insert(ignore_permissions=True)
 		return SERVICE_ITEM
 	if not frappe.db.exists("Item Group", SERVICE_ITEM_GROUP):
 		parent = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"
