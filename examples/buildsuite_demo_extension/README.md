@@ -16,6 +16,9 @@ buildsuite_frontend_extensions = [
 | A page | `sdk.routes.add` | `/demo-extension` |
 | A banner component | `sdk.slots.add("page.settings.top", …)` | top of the Settings page |
 | A workspace tile | `sdk.workspaces.addTile("sales", …)` | Sales workspace, Reports group |
+| Wrap a Core page | `sdk.views.wrap("settings-data", …)` | Settings → Data Tools gets a notice above the unchanged Core page |
+| Replace a Core page | `sdk.views.override("settings-app-icon-diagnostics", …)` | that page is the extension's |
+| DocType hooks and a form slot | `sdk.doctype("*").on(…)`, `sdk.slots.add("form.Account Category.top", …)` | `/records/Account Category/new`; a value containing `FORBIDDEN-DEMO` is refused on save |
 | A deliberately broken component | `sdk.slots.add("page.settings.bottom", …)` | only when `localStorage.buildsuite_demo_break = "1"`; the Settings page must keep working |
 
 Install: `bench get-app <path to this folder>` then `bench --site <site> install-app buildsuite_demo_extension`

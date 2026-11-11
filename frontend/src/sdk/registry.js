@@ -37,3 +37,49 @@ export function addWorkspaceTile(extension, workspace, tile) {
 export function tilesFor(workspace) {
 	return workspaceTiles[workspace] || [];
 }
+
+// ---- Views: replace or wrap a Core page, by its route name --------------------------------------
+const viewOverrides = {}; // route name -> component
+const viewWrappers = {}; // route name -> component that renders props.original
+
+function setView(table, kind, extension, name, component) {
+	if (!name || !component) throw new Error(`views.${kind} needs a route name and a component`);
+	if (table[name]) {
+		console.warn(
+			`[buildsuite] "${extension}" replaces an earlier views.${kind} for "${name}"`
+		);
+	}
+	table[name] = markRaw(component);
+}
+
+export const setViewOverride = (extension, name, component) =>
+	setView(viewOverrides, "override", extension, name, component);
+export const setViewWrapper = (extension, name, component) =>
+	setView(viewWrappers, "wrap", extension, name, component);
+export const viewOverride = (name) => viewOverrides[name] || null;
+export const viewWrapper = (name) => viewWrappers[name] || null;
+
+// ---- DocType hooks: defaults / onLoad / beforeSave / afterSave on the generic form --------------
+const docHooks = {}; // doctype ("*" for every one) -> [{ extension, ...hooks }]
+const HOOKS = ["defaults", "onLoad", "beforeSave", "afterSave"];
+
+export function addDocHooks(extension, doctype, hooks) {
+	if (!doctype || !hooks) throw new Error("doctype(...).on needs a doctype and a hooks object");
+	const unknown = Object.keys(hooks).filter((k) => !HOOKS.includes(k));
+	if (unknown.length) throw new Error(`unknown DocType hook(s): ${unknown.join(", ")}`);
+	(docHooks[doctype] ||= []).push({ extension, ...hooks });
+}
+
+/** Run one hook of every extension registered for the doctype (and for "*"), in order. A failing
+ *  beforeSave stops the save and shows its message; a failure in any other hook is logged only. */
+export async function runDocHook(doctype, hook, ...args) {
+	for (const entry of [...(docHooks["*"] || []), ...(docHooks[doctype] || [])]) {
+		if (typeof entry[hook] !== "function") continue;
+		try {
+			await entry[hook](...args);
+		} catch (error) {
+			if (hook === "beforeSave") throw error;
+			console.warn(`[buildsuite] extension "${entry.extension}" ${hook} failed`, error);
+		}
+	}
+}

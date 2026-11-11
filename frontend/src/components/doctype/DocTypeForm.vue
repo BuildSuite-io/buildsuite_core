@@ -23,6 +23,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DocTypeFieldControl from "@/components/doctype/DocTypeFieldControl.vue";
 import DocTypeChildTable from "@/components/doctype/DocTypeChildTable.vue";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { runDocHook } from "@/sdk/registry";
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -173,6 +175,7 @@ function seedNew() {
 		if (dv !== undefined) form[f.fieldname] = dv;
 		else if (f.fieldtype === "Check" && form[f.fieldname] === undefined) form[f.fieldname] = 0;
 	}
+	runDocHook(props.doctype, "defaults", form); // installed apps' starting values
 }
 
 async function load() {
@@ -184,6 +187,7 @@ async function load() {
 			const doc = await getRecord(props.doctype, props.name);
 			Object.keys(form).forEach((k) => delete form[k]);
 			Object.assign(form, doc);
+			await runDocHook(props.doctype, "onLoad", form, doc);
 		} else if (meta.value) {
 			seedNew();
 		}
@@ -254,7 +258,12 @@ async function onSave() {
 	if (!guardRequired()) return;
 	busy.value = true;
 	try {
-		const doc = isEdit.value ? await saveRecord({ ...form }) : await insertRecord({ ...form });
+		// Installed apps may add fields to, or veto (by throwing), what is saved.
+		const payload = { ...form };
+		await runDocHook(props.doctype, "beforeSave", payload, form);
+		const isNew = !isEdit.value;
+		const doc = isNew ? await insertRecord(payload) : await saveRecord(payload);
+		await runDocHook(props.doctype, "afterSave", doc, { isNew });
 		showToast(isEdit.value ? "Saved." : "Created.");
 		if (!isEdit.value && doc?.name) goEdit(doc.name);
 		else await load();
@@ -466,6 +475,8 @@ const DANGER =
 				</button>
 			</div>
 
+			<ExtensionSlot :name="`form.${doctype}.top`" :context="{ form, doctype }" />
+
 			<section v-for="(s, si) in currentTab.sections" :key="si" class="mb-6">
 				<h3
 					v-if="s.label"
@@ -506,6 +517,8 @@ const DANGER =
 					/>
 				</div>
 			</section>
+
+			<ExtensionSlot :name="`form.${doctype}.bottom`" :context="{ form, doctype }" />
 		</form>
 	</div>
 </template>

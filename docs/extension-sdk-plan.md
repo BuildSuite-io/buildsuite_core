@@ -1,6 +1,6 @@
 # BuildSuite extension SDK — plan
 
-Status: **phase 1 spike implemented (see "Phase 1 status")** · Branch: `feat/extension-sdk` · Supersedes the customer-specific work on
+Status: **phases 1 and 2 implemented (see "Phase 1 status" and "Phase 2 status")** · Branch: `feat/extension-sdk` · Supersedes the customer-specific work on
 `feat/app-extension-hooks` (see "What we keep from it").
 
 ## Goal
@@ -204,3 +204,24 @@ Decided in the spike: the demo extension is a plain ES module that uses `sdk.vue
 so no import map is needed yet. The import map for independently built bundles stays an open item
 for phase 2/3. Not done in phase 1: view overrides and wrap, DocType hooks, the scaffold command,
 the site-level data layer.
+
+## Phase 2 status (views and DocType hooks)
+
+SDK version 1.1 (Python `SDK_VERSION` and JS `SDK_VERSION` move together).
+
+- **View registry.** `sdk/views.js` walks the route table once, before the router is created, and makes
+  every named lazy route resolve through the registry. No view was edited. `sdk.views.override(name,
+  Component)` replaces a Core page; `sdk.views.wrap(name, Wrapper)` renders around it (the wrapper gets
+  the route's props plus `original`). Both can apply to one route (the wrapper wraps the override). A
+  wrapper that throws is dropped and the Core view shown. Route names are the existing router names.
+- **DocType hooks.** `sdk.doctype(name).on({ defaults, onLoad, beforeSave(payload, form), afterSave(doc,
+  { isNew }) })` on the generic `DocTypeForm`; `"*"` matches every doctype. A failing `beforeSave`
+  stops the save and shows its message; failures in the others are logged only.
+- **Form slots.** `form.<DocType>.top` and `form.<DocType>.bottom` on the generic form, with `form` and
+  `doctype` passed to the component.
+- Demo extension and Cypress (7 passing) cover wrap, override, hooks (including a veto) and the form slot.
+
+Not done: the **resource registry** for list columns and form sections (`sdk.resources(...)`), the
+bespoke screens that are not `DeskPage` or `DocTypeForm` (they have no slots or hooks), and a
+documented policy for which route names are public API. Route names are not yet a stable contract; this
+should be settled before phase 3 publishes the SDK reference.

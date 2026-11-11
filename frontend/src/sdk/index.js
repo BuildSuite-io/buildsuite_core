@@ -24,9 +24,15 @@ import { useConfirm } from "@/composables/useConfirm";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
-import { addSlot, addWorkspaceTile } from "@/sdk/registry";
+import {
+	addSlot,
+	addWorkspaceTile,
+	addDocHooks,
+	setViewOverride,
+	setViewWrapper,
+} from "@/sdk/registry";
 
-export const SDK_VERSION = "1.0";
+export const SDK_VERSION = "1.1"; // 1.1 added views.override / views.wrap, doctype().on and form slots
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
 export function createSdk(extension, router) {
@@ -57,6 +63,29 @@ export function createSdk(extension, router) {
 			add(name, component, opts) {
 				addSlot(extension, name, component, opts);
 			},
+		},
+
+		views: {
+			/** Replace a Core page. `name` is its route name (see the router). */
+			override(name, component) {
+				setViewOverride(extension, name, component);
+			},
+			/** Render around a Core page. The wrapper gets the route's props plus `original`:
+			 *  render it with h(props.original, attrs). */
+			wrap(name, wrapper) {
+				setViewWrapper(extension, name, wrapper);
+			},
+		},
+
+		/** Hooks on the generic DocType form: sdk.doctype("ToDo").on({ defaults, onLoad,
+		 *  beforeSave(payload, form), afterSave(doc, { isNew }) }). "*" matches every doctype.
+		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom. */
+		doctype(doctype) {
+			return {
+				on(hooks) {
+					addDocHooks(extension, doctype, hooks);
+				},
+			};
 		},
 
 		workspaces: {

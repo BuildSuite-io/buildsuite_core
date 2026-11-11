@@ -79,7 +79,76 @@ export default function register(sdk) {
 		icon: "🧩",
 	});
 
-	// 4. A component that throws while rendering — switched on from the browser console to show that
+	// 4. Wrap a Core page: Data Tools gets a notice above it, the Core view renders unchanged below.
+	const DataToolsFrame = {
+		name: "DemoDataToolsFrame",
+		inheritAttrs: false,
+		props: { original: { type: Object, required: true } },
+		setup(props, { attrs }) {
+			return () => [
+				h(
+					"div",
+					{
+						class: "mb-3 px-3 py-2 text-xs border border-ink-200 bg-ink-50 text-ink-700",
+						style: "border-radius: 6px",
+						"data-test": "demo-wrapped-notice",
+					},
+					__(
+						"This page is wrapped by the demo extension; the Core view is unchanged below."
+					)
+				),
+				h(props.original, attrs),
+			];
+		},
+	};
+	sdk.views.wrap("settings-data", DataToolsFrame);
+
+	// 5. Replace a Core page: the app-icon diagnostics page becomes a page from this app.
+	sdk.views.override("settings-app-icon-diagnostics", {
+		name: "DemoDiagnosticsOverride",
+		setup() {
+			return () =>
+				h(DeskPage, { title: __("Diagnostics (overridden)") }, () =>
+					h(
+						"p",
+						{ class: "text-sm text-ink-700", "data-test": "demo-overridden" },
+						__("This page replaces the Core view and comes from the demo extension.")
+					)
+				);
+		},
+	});
+
+	// 6. Hooks on the generic DocType form ("*" = every doctype) and a slot on one doctype's form.
+	sdk.doctype("*").on({
+		onLoad() {
+			window.__demoDocHooks = (window.__demoDocHooks || 0) + 1; // lets the test see it ran
+		},
+		beforeSave(payload) {
+			const bad = Object.values(payload).some(
+				(v) => typeof v === "string" && v.includes("FORBIDDEN-DEMO")
+			);
+			if (bad) throw new Error(__("The demo extension refuses this value."));
+		},
+	});
+	sdk.slots.add("form.Account Category.top", {
+		name: "DemoFormNotice",
+		setup() {
+			return () =>
+				h(
+					"div",
+					{
+						class: "mb-3 px-3 py-2 text-xs border border-ink-200 bg-ink-50 text-ink-700",
+						style: "border-radius: 6px",
+						"data-test": "demo-form-notice",
+					},
+					__(
+						"Added to this form by the demo extension (slot form.Account Category.top)."
+					)
+				);
+		},
+	});
+
+	// 7. A component that throws while rendering — switched on from the browser console to show that
 	//    a failing extension is contained: localStorage.buildsuite_demo_break = "1", then reload.
 	let breakIt = false;
 	try {

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { instrumentRoutes } from "@/sdk/views";
 import { useSessionStore } from "@/stores/session";
 import { useDataStore } from "@/stores";
 import { usePermissions } from "@/composables/usePermissions";
@@ -1250,7 +1251,8 @@ function inferCapAction(name = "") {
 
 const router = createRouter({
 	history: createWebHistory(APP_ROUTE),
-	routes,
+	// Every named lazy route resolves through the extension view registry (sdk.views).
+	routes: instrumentRoutes(routes),
 	scrollBehavior() {
 		return { top: 0 };
 	},
