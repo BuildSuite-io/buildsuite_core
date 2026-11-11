@@ -21,6 +21,7 @@ The app declares one hook and ships one ES module. Reload the browser after edit
 | Wrap or replace a Core page | `sdk.views.wrap(name, Component)` / `sdk.views.override(name, Component)` |
 | React to a DocType form | `sdk.doctype(dt).on({ defaults, onLoad, beforeSave, afterSave })` |
 | Carry Custom Fields through a bespoke form | `sdk.doctype(dt).on({ fields: [...] })` plus a control in the `form.<DocType>.top/bottom` slot |
+| Add a column to a list | `sdk.doctype(dt).on({ listColumns: [{ field, label, align?, render?(value, row) }] })` |
 | Add a settings page | hook `buildsuite_settings_pages` (a Single DocType) |
 
 A failing extension is isolated: its error is logged and the rest of the app keeps working.
@@ -59,3 +60,12 @@ The SPA sends them as `custom_fields` (a JSON string for type-checked functions)
 An edit modal on a detail page works the same way, with two extra steps: the detail view adds
 `docFields(<DocType>)` to the fields it reads (so the values come back) and calls `ext.load(...)` when the
 modal opens. These save through the generic resource update, so no backend change is needed.
+
+## List columns
+
+`listColumns` adds a column to every list of that DocType that is built on `DocTypeListView` or passes
+`filter-doctype` / `ext-doctype` to `DeskList`. The values are not on the rows the list was given, so
+`DeskList` reads them for the rows on screen in one query (by document name, up to 500 rows at a time);
+rows must therefore be keyed by the document name. A column whose `field` Core already shows is skipped.
+The column can be sorted from the list's sort control. It cannot be filtered or used for server-side
+sorting yet.

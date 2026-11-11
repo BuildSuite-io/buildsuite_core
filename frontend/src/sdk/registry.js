@@ -65,7 +65,9 @@ const HOOKS = ["defaults", "onLoad", "beforeSave", "afterSave"];
 
 export function addDocHooks(extension, doctype, hooks) {
 	if (!doctype || !hooks) throw new Error("doctype(...).on needs a doctype and a hooks object");
-	const unknown = Object.keys(hooks).filter((k) => k !== "fields" && !HOOKS.includes(k));
+	const unknown = Object.keys(hooks).filter(
+		(k) => k !== "fields" && k !== "listColumns" && !HOOKS.includes(k)
+	);
 	if (unknown.length) throw new Error(`unknown DocType hook(s): ${unknown.join(", ")}`);
 	(docHooks[doctype] ||= []).push({ extension, ...hooks });
 }
@@ -77,6 +79,15 @@ export function docFields(doctype) {
 			[...(docHooks["*"] || []), ...(docHooks[doctype] || [])].flatMap((h) => h.fields || [])
 		),
 	];
+}
+
+/** The extra list columns the extensions declare for a doctype (hooks.listColumns):
+ *  [{ field, label, align?, render?(value, row) }]. Lists show them after Core's own columns. */
+export function listColumns(doctype) {
+	const seen = new Set();
+	return [...(docHooks["*"] || []), ...(docHooks[doctype] || [])]
+		.flatMap((h) => h.listColumns || [])
+		.filter((c) => c?.field && !seen.has(c.field) && seen.add(c.field));
 }
 
 /** Run one hook of every extension registered for the doctype (and for "*"), in order. A failing

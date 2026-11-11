@@ -20,7 +20,9 @@
 //
 // Columns: [{ key, label, align?: 'left'|'right'|'center', render?: (row)=>string, class?: string }]
 
-import { computed, getCurrentInstance, ref, watch } from "vue";
+import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
+import { frappeRequest } from "frappe-ui-frappe-request";
+import { listColumns } from "@/sdk/registry";
 import DeskSortControl from "@/components/desk/DeskSortControl.vue";
 import DeskFilterPopover from "@/components/desk/DeskFilterPopover.vue";
 import DeskFilterChips from "@/components/desk/DeskFilterChips.vue";
@@ -41,6 +43,9 @@ const props = defineProps({
 	showCount: { type: Boolean, default: true },
 	// Doctype the rows are records of — turns on the built-in dynamic filter (see header).
 	filterDoctype: { type: String, default: "" },
+	// Doctype whose installed-app list columns (sdk doctype(...).on({ listColumns })) this list shows;
+	// defaults to filterDoctype. Rows must be keyed by the document name (rowKey) to be matched.
+	extDoctype: { type: String, default: "" },
 	// A useDynamicFilters instance the list owns itself (server-paged lists): DeskList renders its
 	// editor + chips but leaves applying the filters to the list's own query.
 	dynamicFilters: { type: Object, default: null },
@@ -122,7 +127,7 @@ const resolvedSortOptions = computed(() => {
 		return props.sortOptions.filter((option) => option?.value);
 	}
 
-	return props.columns
+	return allColumns.value
 		.filter((column) => column?.key)
 		.map((column) => ({
 			value: column.key,
@@ -141,6 +146,9 @@ function updateSortDirection(value) {
 }
 
 function sortValueFor(row, field) {
+	if (typeof field === "string" && field.startsWith("ext:")) {
+		return extValues[keyFor(row)]?.[field.slice(4)];
+	}
 	return row?.[field];
 }
 
@@ -175,6 +183,61 @@ const sortedRows = computed(() => {
 function keyFor(row) {
 	return typeof props.rowKey === "function" ? props.rowKey(row) : row[props.rowKey];
 }
+
+// ----- Columns an installed app adds (sdk listColumns) --------------------------------------------
+// Their values are not on the rows the list was given, so they are read in one query for the rows on
+// screen, keyed by document name, and filled in as they arrive.
+const EXT_PREFIX = "ext:";
+const extValues = reactive({}); // document name -> { field: value }
+const extDt = computed(() => props.extDoctype || props.filterDoctype);
+const extColumns = computed(() => {
+	const own = new Set(props.columns.map((c) => c.key));
+	return listColumns(extDt.value)
+		.filter((c) => !own.has(c.field))
+		.map((c) => ({
+			key: EXT_PREFIX + c.field,
+			field: c.field,
+			label: c.label || c.field,
+			align: c.align,
+			render: (row) => {
+				const value = extValues[keyFor(row)]?.[c.field];
+				if (typeof c.render === "function") return c.render(value, row);
+				return value ?? "";
+			},
+		}));
+});
+const allColumns = computed(() =>
+	extColumns.value.length ? [...props.columns, ...extColumns.value] : props.columns
+);
+
+let extSeq = 0;
+watch(
+	[() => visibleRows.value.map(keyFor).join("\u0001"), extColumns],
+	async () => {
+		if (!extColumns.value.length) return;
+		const wanted = visibleRows.value.map(keyFor).filter((k) => k && !(k in extValues));
+		if (!wanted.length) return;
+		const fields = extColumns.value.map((c) => c.field);
+		const mine = ++extSeq;
+		try {
+			const rows = await frappeRequest({
+				url: "frappe.client.get_list",
+				params: {
+					doctype: extDt.value,
+					fields: ["name", ...fields],
+					filters: [["name", "in", wanted.slice(0, 500)]],
+					limit_page_length: 500,
+				},
+			});
+			if (mine !== extSeq) return;
+			for (const k of wanted.slice(0, 500)) extValues[k] = {};
+			for (const r of rows || []) extValues[r.name] = r;
+		} catch (err) {
+			console.warn("[buildsuite] extension list columns failed", err);
+		}
+	},
+	{ immediate: true }
+);
 
 const allSelected = computed(
 	() => visibleRows.value.length > 0 && props.selected.length === visibleRows.value.length
@@ -398,7 +461,7 @@ const showPagination = computed(() => {
 								/>
 							</th>
 							<th
-								v-for="col in columns"
+								v-for="col in allColumns"
 								:key="col.key"
 								class="text-[11px] uppercase tracking-wider font-medium text-ink-500 px-3 py-2.5 whitespace-nowrap"
 								:class="alignClass(col)"
@@ -422,7 +485,7 @@ const showPagination = computed(() => {
 									:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
 								></td>
 								<td
-									v-for="col in columns"
+									v-for="col in allColumns"
 									:key="col.key"
 									:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
 								>
@@ -454,7 +517,7 @@ const showPagination = computed(() => {
 								/>
 							</td>
 							<td
-								v-for="col in columns"
+								v-for="col in allColumns"
 								:key="col.key"
 								:class="[
 									'px-3 text-ink-800',
@@ -470,7 +533,7 @@ const showPagination = computed(() => {
 						</tr>
 						<tr v-if="!visibleRows.length && !loading">
 							<td
-								:colspan="columns.length + (bulkSelect ? 1 : 0)"
+								:colspan="allColumns.length + (bulkSelect ? 1 : 0)"
 								class="px-3 py-12 text-center"
 							>
 								<slot name="empty">

@@ -179,7 +179,10 @@ export default function register(sdk) {
 		"Subcontractor Work Order",
 		"Subcontractor Bill",
 	]) {
-		sdk.doctype(doctype).on({ fields: ["demo_region"] });
+		sdk.doctype(doctype).on({
+			fields: ["demo_region"],
+			listColumns: [{ field: "demo_region", label: "Region" }],
+		});
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}
 

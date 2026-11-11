@@ -307,3 +307,11 @@ rejected the Item Price. `ensure_service_item` now adds the row.
 Project and Task edit modals adopt `useExtensionFields` (read adds `docFields(...)`, modal opens with
 `ext.load`, update merges `ext.payload()`). Both save through `adapter.update` (generic resource write), so
 no fixed-field API gap. Covered by `extension_sdk.cy.js` (saved and read back on reopen).
+
+### Resource registry: list columns (SDK 1.3)
+
+Done: `doctype(dt).on({ listColumns })`, `registry.listColumns`, `DeskList` merges the columns and reads
+their values (`extDoctype`/`filterDoctype`), `DocTypeListView` passes its doctype. Covered by
+`extension_sdk.cy.js` (project list shows the demo column). Not done: list sections/filters/server-side sort on
+an extension column, form sections beyond top/bottom slots, and lists that key rows by something other
+than the document name.

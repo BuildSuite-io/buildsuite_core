@@ -34,7 +34,7 @@ import {
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.2"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields
+export const SDK_VERSION = "1.3"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns })
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
 export function createSdk(extension, router) {
@@ -81,7 +81,9 @@ export function createSdk(extension, router) {
 
 		/** Hooks on the generic DocType form: sdk.doctype("ToDo").on({ defaults, onLoad,
 		 *  beforeSave(payload, form), afterSave(doc, { isNew }) }). "*" matches every doctype.
-		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom. */
+		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom.
+		 *  List columns: on({ listColumns: [{ field, label, align?, render?(value, row) }] }) adds a
+		 *  column to that doctype's lists (any list whose rows are keyed by the document name). */
 		doctype(doctype) {
 			return {
 				on(hooks) {

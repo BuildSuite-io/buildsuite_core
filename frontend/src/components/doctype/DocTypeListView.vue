@@ -801,6 +801,7 @@ function onPageSizeChange(value) {
 			:show-count="false"
 			:rows="filteredRows"
 			:columns="resolvedColumns"
+			:ext-doctype="doctype"
 			:row-key="rowKey"
 			:loading="resource.loading || false"
 			:paginated="paginated"

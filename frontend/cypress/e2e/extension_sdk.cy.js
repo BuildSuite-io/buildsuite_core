@@ -154,4 +154,21 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			});
 		});
 	}
+
+	it("a list shows the column an installed app adds, filled from the record", () => {
+		const stamp = Date.now();
+		const name = `Ext List ${stamp}`;
+		cy.visitApp("/projects/new");
+		cy.dt("field-name").type(name);
+		cy.dt("field-code").type(`EXL-${stamp}`);
+		cy.fillLink("pick-project-category", "Commercial");
+		cy.fillLink("pick-company", "XCorp (Demo)");
+		cy.get("[data-test=demo-region] input").type(`Listed-${stamp}`);
+		cy.dt("save-btn").click();
+		cy.location("pathname", { timeout: 30000 }).should("match", /\/projects\/(?!new)[^/]+$/);
+		cy.visitApp("/projects");
+		cy.get('[data-test="desk-list"] input[placeholder*="earch"]').first().type(name);
+		cy.get('[data-test="desk-list"] thead').contains("th", "Region");
+		cy.contains("tr", name).should("contain", `Listed-${stamp}`);
+	});
 });
