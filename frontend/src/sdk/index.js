@@ -34,7 +34,7 @@ import {
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.3"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns })
+export const SDK_VERSION = "1.4"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
 export function createSdk(extension, router) {

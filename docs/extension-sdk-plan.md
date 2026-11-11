@@ -325,3 +325,19 @@ Book) take `custom_fields` and call `apply_custom_fields`; Consumption and Measu
 values. Tested: control shown on all forms; saved value for Estimate Template (UI), Crew and Subcontractor
 (API tests). Not tested end to end: the save for Field Attendance, Field Employee, Consumption and
 Measurement Book (same helper, code path covered by the unit tests only).
+
+## Phase 4 status: site-level data layer, first slice (SDK 1.4)
+
+Done: DocType `BuildSuite Customisation` (System Manager), `sdk/customisations.py` (schema per kind, strict:
+unknown keys, off-app links, HTML, standard fields and unknown DocTypes are refused), boot key
+`buildsuite_customisations`, `frontend/src/sdk/site.js` registering the four kinds after the apps. Tested:
+`tests/test_sdk_customisations.py` (8) and `cypress/e2e/site_customisations.cy.js` (6, including a Custom
+Field with no code whose value is saved).
+
+Decided: declarations stay data only; trust problem from "Risks 2" is avoided for site records by having no
+code kind at all. View overrides and wraps, DocType hooks and slot components stay code-only (apps).
+
+Not done: the editor / onboarding page (a person edits JSON in the Desk list today), an AI authoring
+endpoint, drag-and-drop, per-user or per-role customisations, more kinds (form sections, field order,
+list filters, saved views), versioning/export of a site's customisations, and reading the data without a page
+reload.

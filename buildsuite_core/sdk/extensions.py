@@ -22,7 +22,7 @@ import frappe
 
 # Bump the major when the public surface changes incompatibly, the minor when it only grows.
 # The JS SDK carries the same number (frontend/src/sdk/index.js).
-SDK_VERSION = "1.3"
+SDK_VERSION = "1.4"
 
 
 def _is_asset_path(path) -> bool:

@@ -11,6 +11,7 @@ import { useSessionStore } from "./stores/session";
 import { useDataStore } from "./stores";
 import { DEV_BOOT_METHOD } from "./utils/appRoute";
 import { loadExtensions } from "./sdk/loader";
+import { applySiteCustomisations } from "./sdk/site";
 
 const DEV_BOOT_URL = `/api/method/${DEV_BOOT_METHOD}`;
 
@@ -82,6 +83,8 @@ async function mountApp() {
 	// Frontend extensions of the apps installed on this site (see sdk/). Before the router resolves
 	// the first route, so an extension's page can be opened by a deep link.
 	await loadExtensions(router);
+	// Site-level customisations (data) go last: they win over installed apps, which win over Core.
+	applySiteCustomisations();
 
 	app.use(router);
 	app.mount("#app");

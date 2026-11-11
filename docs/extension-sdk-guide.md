@@ -76,3 +76,27 @@ modal opens. These save through the generic resource update, so no backend chang
 rows must therefore be keyed by the document name. A column whose `field` Core already shows is skipped.
 The column can be sorted from the list's sort control. It cannot be filtered or used for server-side
 sorting yet.
+
+## Site-level customisations (no code, no app)
+
+A **BuildSuite Customisation** record (System Manager only) customises one site as data. Core validates the
+record on save and merges it into the same registries an installed app uses, after the apps, so for
+anything where order matters the site wins over an app and an app over Core.
+
+| Kind | Config | Effect |
+| --- | --- | --- |
+| List Column | `{doctype, field, label?, align?}` | a column on that DocType's lists |
+| Form Field | `{doctype, fieldname, position?}` | a control, drawn from the Custom Field's meta, on a bespoke form |
+| Workspace Tile | `{workspace, label, to, description?}` | a tile on a workspace |
+| Notice | `{slot, message, tone?}` | a plain-text notice in a slot such as `page.app-home.top` |
+
+Rules the server enforces: unknown keys are refused; `to` must be a path inside the app; a notice is text,
+never HTML; a Form Field must name a **Custom Field** (create it first with Frappe's own tooling), never a
+standard field. A record that stops validating later (a field deleted) is skipped, not fatal.
+
+A Form Field control appears on the bespoke forms that adopted `useExtensionFields`; the generic DocType form
+already shows every Custom Field itself. Do not declare the same field both in an app and on the site: it
+would get two controls.
+
+The same data can be written by a person in the Desk list, or by an AI or a drag-and-drop editor through
+the normal document API, and it takes effect on the next page load.

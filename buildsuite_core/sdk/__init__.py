@@ -7,8 +7,18 @@ Import from `buildsuite_core.sdk`, not from Core's internals. Everything exporte
 versioned with SDK_VERSION; anything else may change without notice. See
 docs/extension-sdk-plan.md."""
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+from buildsuite_core.sdk.customisations import get_customisations
 from buildsuite_core.sdk.extensions import SDK_VERSION, get_extension_entries
 from buildsuite_core.sdk.seed import seed_if_missing
 from buildsuite_core.sdk.settings_pages import get_settings_pages
 
-__all__ = ["SDK_VERSION", "get_extension_entries", "get_settings_pages", "seed_if_missing"]
+__all__ = [
+	"SDK_VERSION",
+	"apply_custom_fields",
+	"custom_field_values",
+	"get_customisations",
+	"get_extension_entries",
+	"get_settings_pages",
+	"seed_if_missing",
+]
