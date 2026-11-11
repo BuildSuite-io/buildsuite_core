@@ -28,5 +28,15 @@
   "label": "Region (demo extension)",
   "module": "BuildSuite Demo Extension",
   "name": "Task-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Work Package",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "work_package_name",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Work Package-demo_region"
  }
 ]

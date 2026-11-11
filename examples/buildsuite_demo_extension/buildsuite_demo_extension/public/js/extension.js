@@ -170,8 +170,8 @@ export default function register(sdk) {
 				]);
 		},
 	};
-	// The same control on three bespoke forms: each one that adopts useExtensionFields works.
-	for (const doctype of ["Quotation", "Project", "Task"]) {
+	// The same control on four bespoke forms: each one that adopts useExtensionFields works.
+	for (const doctype of ["Quotation", "Project", "Task", "Work Package"]) {
 		sdk.doctype(doctype).on({ fields: ["demo_region"] });
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}

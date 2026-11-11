@@ -78,6 +78,7 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 	for (const [label, path] of [
 		["Project", "/projects/new"],
 		["Task", "/tasks/new"],
+		["Work Package", "/work-packages/new"],
 	]) {
 		it(`the same Custom Field control shows on the bespoke ${label} form`, () => {
 			cy.visitApp(path);

@@ -32,6 +32,17 @@ buildsuite_settings_pages = [
 fixtures = [
 	{
 		"dt": "Custom Field",
-		"filters": [["name", "in", ["Quotation-demo_region", "Project-demo_region", "Task-demo_region"]]],
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					"Quotation-demo_region",
+					"Project-demo_region",
+					"Task-demo_region",
+					"Work Package-demo_region",
+				],
+			]
+		],
 	}
 ]

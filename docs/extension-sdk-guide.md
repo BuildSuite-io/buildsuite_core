@@ -37,6 +37,6 @@ A failing extension is isolated: its error is logged and the rest of the app kee
 
 ## Forms that accept Custom Fields
 
-Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create), Task (create). Other
+Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create), Task (create), Work Package (create). Other
 DocTypes use the generic form, which supports all of the above. Tell us which bespoke form
 you need next.
