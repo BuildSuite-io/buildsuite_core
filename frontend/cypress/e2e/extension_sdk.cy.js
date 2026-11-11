@@ -85,4 +85,21 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			cy.get("[data-test=demo-region] input").should("have.value", "West");
 		});
 	}
+	it("a Custom Field value entered in the extension control is saved on the record", () => {
+		const stamp = Date.now();
+		cy.visitApp("/projects/new");
+		cy.dt("field-name").type(`Ext Region ${stamp}`);
+		cy.dt("field-code").type(`EXT-${stamp}`);
+		cy.fillLink("pick-project-category", "Commercial");
+		cy.fillLink("pick-company");
+		cy.get("[data-test=demo-region] input").type("North-East");
+		cy.dt("save-btn").click();
+		cy.location("pathname", { timeout: 30000 }).should("match", /\/projects\/(?!new)[^/]+$/);
+		cy.location("pathname").then((path) => {
+			const id = decodeURIComponent(path.split("/").pop());
+			cy.request(`/api/resource/Project/${encodeURIComponent(id)}`).then((res) => {
+				expect(res.body.data.demo_region).to.equal("North-East");
+			});
+		});
+	});
 });
