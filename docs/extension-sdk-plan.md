@@ -1,6 +1,6 @@
 # BuildSuite extension SDK — plan
 
-Status: **draft for review** · Branch: `feat/extension-sdk` · Supersedes the customer-specific work on
+Status: **phase 1 spike implemented (see "Phase 1 status")** · Branch: `feat/extension-sdk` · Supersedes the customer-specific work on
 `feat/app-extension-hooks` (see "What we keep from it").
 
 ## Goal
@@ -180,3 +180,27 @@ their own PRs if wanted).
   the permission matrix with an extension installed.
 - Frontend: Cypress against a fixture extension: page, slot, tile, override, a failing extension.
 - A migrate on a site with the fixture extension installed leaves admin edits intact.
+
+## Phase 1 status (spike)
+
+Implemented on this branch:
+
+- `buildsuite_core/sdk` (Python): `SDK_VERSION`, `get_extension_entries()` (hook discovery with
+  validation: `/assets/` paths only, de-duplicated), `seed_if_missing`. Boot carries
+  `buildsuite_extensions` and `buildsuite_sdk_version`.
+- `frontend/src/sdk` (JS): `registry.js` (reactive slot and tile registries), `index.js` (the public
+  SDK: routes, slots, workspaces, controls, composables, Vue and vue-router), `loader.js` (runtime
+  load, compatibility check, per-extension isolation).
+- `ExtensionSlot` and `ExtensionBoundary` components. **Every page built on `DeskPage` (120 of 165
+  views) gets `page.<route name>.top` and `.bottom` slots.** Views that do not use `DeskPage` (for
+  example the Home page) have none yet and need an explicit `<ExtensionSlot>`.
+- Workspace tiles render in the shared Reports group (`WorkspaceReportsSection`), so a workspace
+  that shows that group shows extension tiles.
+- `examples/buildsuite_demo_extension`: a throwaway Frappe app that adds a page, a slot component
+  and a workspace tile, plus an opt-in broken component. Cypress `extension_sdk.cy.js` covers all
+  four (4 passing); `test_sdk_extensions.py` covers discovery and `seed_if_missing`.
+
+Decided in the spike: the demo extension is a plain ES module that uses `sdk.vue` (Core's Vue),
+so no import map is needed yet. The import map for independently built bundles stays an open item
+for phase 2/3. Not done in phase 1: view overrides and wrap, DocType hooks, the scaffold command,
+the site-level data layer.

@@ -142,6 +142,8 @@ const PAGE_TITLES = {
 const routes = [
 	{
 		path: "/",
+		// Named so an installed app's extension can add pages inside the shell (sdk.routes.add).
+		name: "shell",
 		component: () => import("@/layouts/DeskShell.vue"),
 		children: [
 			{ path: "", redirect: "/home" },

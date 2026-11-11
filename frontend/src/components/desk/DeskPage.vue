@@ -10,7 +10,8 @@
 // inside via the default slot.
 
 import { computed } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const props = defineProps({
@@ -31,6 +32,11 @@ const props = defineProps({
 function printPage() {
 	window.print();
 }
+
+// Every page is extendable: installed apps can add components above and below the page body
+// through the slots "page.<route name>.top" / ".bottom" (see sdk/).
+const route = useRoute();
+const slotBase = computed(() => `page.${String(route.name || "unnamed")}`);
 
 const statusList = computed(() => {
 	if (!props.status) return [];
@@ -98,6 +104,8 @@ const statusList = computed(() => {
 			</div>
 		</div>
 
+		<ExtensionSlot :name="`${slotBase}.top`" />
 		<slot />
+		<ExtensionSlot :name="`${slotBase}.bottom`" />
 	</div>
 </template>

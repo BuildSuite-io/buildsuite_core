@@ -10,6 +10,7 @@ import { __, installGlobalTranslate } from "./utils/translate";
 import { useSessionStore } from "./stores/session";
 import { useDataStore } from "./stores";
 import { DEV_BOOT_METHOD } from "./utils/appRoute";
+import { loadExtensions } from "./sdk/loader";
 
 const DEV_BOOT_URL = `/api/method/${DEV_BOOT_METHOD}`;
 
@@ -77,6 +78,10 @@ async function mountApp() {
 		dataStore.loadTodoCount();
 		dataStore.loadNotificationCount();
 	}
+
+	// Frontend extensions of the apps installed on this site (see sdk/). Before the router resolves
+	// the first route, so an extension's page can be opened by a deep link.
+	await loadExtensions(router);
 
 	app.use(router);
 	app.mount("#app");
