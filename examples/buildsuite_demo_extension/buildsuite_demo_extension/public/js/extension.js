@@ -170,8 +170,15 @@ export default function register(sdk) {
 				]);
 		},
 	};
-	// The same control on four bespoke forms: each one that adopts useExtensionFields works.
-	for (const doctype of ["Quotation", "Project", "Task", "Work Package"]) {
+	// The same control on several bespoke forms: each one that adopts useExtensionFields works.
+	for (const doctype of [
+		"Quotation",
+		"Project",
+		"Task",
+		"Work Package",
+		"Subcontractor Work Order",
+		"Subcontractor Bill",
+	]) {
 		sdk.doctype(doctype).on({ fields: ["demo_region"] });
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}

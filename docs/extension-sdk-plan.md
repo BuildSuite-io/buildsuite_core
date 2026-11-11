@@ -293,3 +293,10 @@ documented public contract; a settings page that is a Single DocType gets the ge
   A Vite/SFC build with externals remains optional and unbuilt.
 - Still open: a separate template repo and SDK repos (deferred until controls are extracted),
   the resource registry (list columns/sections), and phase 4.
+
+### Custom Fields through bespoke save APIs
+
+Done: `sdk/custom_fields.py` (`apply_custom_fields`, `custom_field_values`), used by `save_work_order` and
+`save_bill`; Work Package, Subcontractor Work Order and Subcontractor Bill forms adopt
+`useExtensionFields`. Known gap: `tests/test_subcontractor_bill.py` errors on bs.local (UOM
+"Subcontract Unit" missing, unrelated), so `save_bill` was checked by hand, not by that suite.

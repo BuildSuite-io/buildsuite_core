@@ -11,6 +11,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+
 WORK_ORDER = "Subcontractor Work Order"
 
 # docstatus → the label the Vue screens show. There is no "Closed" state anymore.
@@ -46,6 +48,7 @@ def _available_actions(doc):
 
 def _serialize(doc):
 	return {
+		**custom_field_values(doc),
 		"name": doc.name,
 		"subcontractor": doc.subcontractor,
 		"subcontractor_name": doc.subcontractor_name,
@@ -146,6 +149,7 @@ def save_work_order(
 	terms_template: str | None = None,
 	terms: str | None = None,
 	lines: str | None = None,
+	custom_fields: str | None = None,
 ):
 	"""Create or update a Work Order (header + SOV lines). Line amounts + the total
 	are computed by the controller."""
@@ -169,6 +173,7 @@ def save_work_order(
 	doc.set("lines", [])
 	for row in lines:
 		doc.append("lines", {k: row.get(k) for k in _LINE_FIELDS})
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 
 	doc.save()  # create/write permission enforced by Frappe
 	return _serialize(doc)

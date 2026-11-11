@@ -9,6 +9,9 @@
 import { computed, ref, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { __ } from "@/utils/translate";
 import { getBill, getWoBillContext, saveBill } from "@/data/subcontractApi";
 import { useAutosave } from "@/composables/useAutosave";
@@ -83,6 +86,9 @@ const form = ref({
 	lines: [{ scope: "", cost_code: null, amount: 0 }],
 });
 
+const ext = useExtensionFields("Subcontractor Bill", form);
+ext.defaults();
+
 const woContext = ref(null); // { subcontractor_name, project_name, retention_percent, next_ra_no, lines[] }
 
 async function loadWoContext(wo) {
@@ -127,6 +133,7 @@ watch(
 						  }))
 						: [{ scope: "", cost_code: null, amount: 0 }],
 				};
+				await ext.load(bill);
 				if (!bill.is_direct) loadWoContext(bill.work_order);
 				// Arm auto-save after the watcher has flushed the load-population.
 				await nextTick();
@@ -171,9 +178,7 @@ function validate() {
 	if (mode.value === "wo") {
 		if (!form.value.work_order) e.work_order = __("Pick a work order.");
 		if (!isEdit.value && woGross.value <= 0)
-			e.lines = __(
-				"No fresh measured quantity to bill — certify a Measurement Book first."
-			);
+			e.lines = __("No fresh measured quantity to bill — certify a Measurement Book first.");
 	} else {
 		if (!form.value.subcontractor) e.subcontractor = __("Pick a subcontractor.");
 		if (!form.value.project) e.project = __("Pick a project.");
@@ -185,6 +190,11 @@ function validate() {
 
 // Payload shared by the explicit Save and the quiet auto-save.
 function buildPayload() {
+	const base = buildCorePayload();
+	base.custom_fields = ext.payload(); // an installed app's Custom Fields (allow-listed server-side)
+	return base;
+}
+function buildCorePayload() {
 	return mode.value === "wo"
 		? {
 				name: editingId.value || undefined,
@@ -225,7 +235,10 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const bill = await saveBill(buildPayload());
+		const payload = buildPayload();
+		await ext.beforeSave(payload, form.value);
+		const bill = await saveBill(payload);
+		await ext.afterSave(bill, { isNew: !editingId.value });
 		router.push(`/subcontractor-bills/${bill.name}`);
 	} catch (err) {
 		showToast(err.message || __("Failed to save bill"), "error");
@@ -290,6 +303,7 @@ const breadcrumbs = computed(() => [
 					</template>
 				</DeskActionBar>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<!-- Mode toggle (create only) -->
 			<div v-if="!isEdit" class="flex gap-2 mb-4">
@@ -415,7 +429,9 @@ const breadcrumbs = computed(() => [
 										colspan="6"
 										class="px-3 py-4 text-center text-ink-400 italic"
 									>
-										{{ __("Pick a work order to derive this period's lines.") }}
+										{{
+											__("Pick a work order to derive this period's lines.")
+										}}
 									</td>
 								</tr>
 							</tbody>
@@ -461,11 +477,7 @@ const breadcrumbs = computed(() => [
 			<!-- DIRECT MODE -->
 			<template v-else>
 				<DeskSection :title="__('Header')" :cols="3">
-					<DeskField
-						:label="__('Subcontractor')"
-						required
-						:error="errors.subcontractor"
-					>
+					<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
 						<DeskLinkPicker
 							v-model="form.subcontractor"
 							doctype="Supplier"
@@ -630,6 +642,7 @@ const breadcrumbs = computed(() => [
 					</p>
 				</section>
 			</template>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

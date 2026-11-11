@@ -12,6 +12,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+
 BILL = "Subcontractor Bill"
 WORK_ORDER = "Subcontractor Work Order"
 
@@ -48,6 +50,7 @@ def _serialize(doc):
 	if doc.docstatus == 1:
 		pay["paid"] = max(flt(pay["paid"]) - adjusted, 0)
 	return {
+		**custom_field_values(doc),
 		"name": doc.name,
 		"is_direct": doc.is_direct,
 		"advance_adjusted": adjusted,
@@ -404,6 +407,7 @@ def save_bill(payload: str):
 			},
 		)
 
+	apply_custom_fields(doc, data.get("custom_fields"))  # an installed app's Custom Fields (allow-listed)
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return _serialize(doc)

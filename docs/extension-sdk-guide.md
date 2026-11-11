@@ -37,6 +37,19 @@ A failing extension is isolated: its error is logged and the rest of the app kee
 
 ## Forms that accept Custom Fields
 
-Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create), Task (create), Work Package (create). Other
+Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create), Task (create), Work Package (create), Subcontractor Work Order and Subcontractor Bill (create and edit). Other
 DocTypes use the generic form, which supports all of the above. Tell us which bespoke form
 you need next.
+
+## Bespoke save APIs and Custom Fields
+
+A bespoke form saves through a whitelisted function that copies named fields, so a Custom Field would
+be dropped unless the function opts in. Core's helpers do that safely
+(`buildsuite_core.sdk.custom_fields`):
+
+- `apply_custom_fields(doc, values)` before `doc.save()`: sets a value only if the key is a Custom Field of
+  that DocType, a plain value field, not read-only, and the user can write its permission level. A
+  standard field (`owner`, `docstatus`, amounts) is never set through it.
+- `custom_field_values(doc)` when serializing: the values the form binds back for editing.
+
+The SPA sends them as `custom_fields` (a JSON string for type-checked functions).

@@ -79,6 +79,8 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		["Project", "/projects/new"],
 		["Task", "/tasks/new"],
 		["Work Package", "/work-packages/new"],
+		["Subcontractor Work Order", "/subcontractor-work-orders/new"],
+		["Subcontractor Bill", "/subcontractor-bills/new"],
 	]) {
 		it(`the same Custom Field control shows on the bespoke ${label} form`, () => {
 			cy.visitApp(path);
@@ -101,6 +103,29 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			cy.request(`/api/resource/Project/${encodeURIComponent(id)}`).then((res) => {
 				expect(res.body.data.demo_region).to.equal("North-East");
 			});
+		});
+	});
+
+	it("a Custom Field on the Subcontractor Work Order form is saved by the whitelisted save API", () => {
+		cy.visitApp("/subcontractor-work-orders/new");
+		cy.fillLink("pick-subcontractor", "Arrow");
+		cy.fillLink("pick-project");
+		cy.get("[data-test=demo-region] input").type("South");
+		cy.get('input[placeholder^="Describe the work"]').type("Excavation");
+		cy.get("tbody input[type=number]").eq(0).clear().type("10");
+		cy.get("tbody input[type=number]").eq(1).clear().type("100");
+		cy.dt("save-btn").click();
+		cy.location("pathname", { timeout: 30000 }).should(
+			"match",
+			/\/subcontractor-work-orders\/(?!new)[^/]+$/
+		);
+		cy.location("pathname").then((path) => {
+			const id = decodeURIComponent(path.split("/").pop());
+			cy.request(`/api/resource/Subcontractor Work Order/${encodeURIComponent(id)}`).then(
+				(res) => {
+					expect(res.body.data.demo_region).to.equal("South");
+				}
+			);
 		});
 	});
 });

@@ -20,7 +20,12 @@ async function call(method, args) {
 export const getWorkOrder = (name) => call("get_work_order", { name });
 export const getWoPrintData = (name) => call("get_wo_print_data", { name });
 export const saveWorkOrder = (payload) =>
-	call("save_work_order", { ...payload, lines: JSON.stringify(payload.lines || []) });
+	call("save_work_order", {
+		...payload,
+		lines: JSON.stringify(payload.lines || []),
+		// The whitelisted function takes it as a JSON string (type-checked), like `lines`.
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 // Native submittable lifecycle (docstatus): Draft → Submit → Cancelled, plus Amend.
 export const submitWorkOrder = (name) => call("submit_work_order", { name });
 export const cancelWorkOrder = (name) => call("cancel_work_order", { name });

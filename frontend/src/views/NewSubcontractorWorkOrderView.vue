@@ -10,6 +10,9 @@ import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { usePermissions } from "@/composables/usePermissions";
 import { getWorkOrder, saveWorkOrder } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -58,6 +61,8 @@ const form = ref({
 	terms: "",
 	lines: [emptyLine()],
 });
+const ext = useExtensionFields("Subcontractor Work Order", form);
+ext.defaults();
 const errors = ref({});
 const saving = ref(false);
 const loading = ref(false);
@@ -97,6 +102,7 @@ watch(
 					rate: l.rate || 0,
 				})),
 			};
+			await ext.load(wo);
 			editorKey.value += 1;
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
 		} catch (err) {
@@ -189,8 +195,11 @@ async function onSave() {
 			terms_template: form.value.terms_template || null,
 			terms: form.value.terms,
 			lines: form.value.lines.map(lineForSave),
+			custom_fields: ext.payload(), // an installed app's Custom Fields (allow-listed server-side)
 		};
+		await ext.beforeSave(payload, form.value);
 		const wo = await saveWorkOrder(payload);
+		await ext.afterSave(wo, { isNew: !editingId.value });
 		router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`);
 	} catch (err) {
 		showToast(err.message || __("Failed to save work order"), "error");
@@ -244,11 +253,13 @@ const saveLabel = computed(() =>
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection :title="__('Header')" :cols="3">
 				<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
 					<DeskLinkPicker
 						v-model="form.subcontractor"
+						data-test="pick-subcontractor"
 						doctype="Supplier"
 						label-field="supplier_name"
 						value-field="name"
@@ -260,6 +271,7 @@ const saveLabel = computed(() =>
 				<DeskField :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
+						data-test="pick-project"
 						doctype="Project"
 						label-field="project_name"
 						value-field="name"
@@ -425,6 +437,7 @@ const saveLabel = computed(() =>
 					<RichTextEditor :key="editorKey" v-model="form.terms" min-height="10rem" />
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

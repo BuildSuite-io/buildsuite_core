@@ -38,5 +38,25 @@
   "label": "Region (demo extension)",
   "module": "BuildSuite Demo Extension",
   "name": "Work Package-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Subcontractor Work Order",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "subcontractor",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Subcontractor Work Order-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Subcontractor Bill",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "date",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Subcontractor Bill-demo_region"
  }
 ]
