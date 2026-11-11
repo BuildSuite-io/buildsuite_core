@@ -2,6 +2,8 @@
 
 Written for developers building an app that customises BuildSuite Core.
 
+A one-page visual walkthrough is in [extension-sdk-quickstart.html](extension-sdk-quickstart.html); open it in a browser.
+
 ## Start
 
     bench new-buildsuite-extension acme_ext --title "Acme Extension"
