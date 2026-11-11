@@ -6,13 +6,22 @@ from unittest.mock import patch
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from buildsuite_core.sdk import SDK_VERSION, get_extension_entries, seed_if_missing
+from buildsuite_core.sdk import SDK_VERSION, get_extension_entries, get_settings_pages, seed_if_missing
+
+_REAL_GET_HOOKS = frappe.get_hooks
+
+
+def _patched(hook_name, value):
+	def fake(name=None, *args, **kwargs):
+		if name == hook_name:
+			return value
+		return _REAL_GET_HOOKS(name, *args, **kwargs)
+
+	return patch("frappe.get_hooks", fake)
 
 
 def _hooks(entries):
-	return patch(
-		"frappe.get_hooks", lambda name, *a, **k: entries if name == "buildsuite_frontend_extensions" else []
-	)
+	return _patched("buildsuite_frontend_extensions", entries)
 
 
 class TestExtensionEntries(IntegrationTestCase):
@@ -72,3 +81,53 @@ class TestSeedIfMissing(IntegrationTestCase):
 		again = seed_if_missing("Role", {"role_name": "SDK Seed Probe"}, {"desk_access": 1})
 		self.assertEqual(first.name, again.name)
 		self.assertEqual(frappe.db.get_value("Role", first.name, "desk_access"), 0)
+
+
+def _page_hooks(pages):
+	return _patched("buildsuite_settings_pages", pages)
+
+
+class TestSettingsPages(IntegrationTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def test_a_single_doctype_the_user_can_read_is_listed_with_defaults(self):
+		with _page_hooks([{"doctype": "System Settings"}]):
+			page = get_settings_pages()[0]
+		self.assertEqual(page["doctype"], "System Settings")
+		self.assertEqual(page["group"], "Extensions")
+		self.assertEqual(page["label"], "System Settings")
+
+	def test_group_label_and_description_are_taken_from_the_hook(self):
+		hook = {"doctype": "System Settings", "group": "Acme", "label": "Acme", "description": "d"}
+		with _page_hooks([hook]):
+			page = get_settings_pages()[0]
+		self.assertEqual((page["group"], page["label"], page["description"]), ("Acme", "Acme", "d"))
+
+	def test_a_doctype_that_is_not_single_is_dropped(self):
+		with _page_hooks([{"doctype": "User"}]):
+			self.assertEqual(get_settings_pages(), [])
+
+	def test_missing_doctypes_malformed_and_duplicate_entries_are_dropped(self):
+		pages = [
+			{"doctype": "No Such Doctype"},
+			"nope",
+			{"label": "x"},
+			{"doctype": "System Settings"},
+			{"doctype": "System Settings"},
+		]
+		with _page_hooks(pages):
+			self.assertEqual([p["doctype"] for p in get_settings_pages()], ["System Settings"])
+
+	def test_a_user_who_cannot_read_the_doctype_does_not_see_the_page(self):
+		with _page_hooks([{"doctype": "System Settings"}]):
+			frappe.set_user("Guest")
+			try:
+				self.assertEqual(get_settings_pages(), [])
+			finally:
+				frappe.set_user("Administrator")
+
+	def test_the_demo_extension_declares_its_settings_page(self):
+		if "buildsuite_demo_extension" not in frappe.get_installed_apps():
+			self.skipTest("demo extension not installed")
+		self.assertIn("Demo Extension Settings", [p["doctype"] for p in get_settings_pages()])

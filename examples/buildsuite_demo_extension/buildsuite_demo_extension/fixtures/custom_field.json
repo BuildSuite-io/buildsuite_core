@@ -1,0 +1,12 @@
+[
+ {
+  "doctype": "Custom Field",
+  "dt": "Quotation",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "insert_after": "title",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Quotation-demo_region"
+ }
+]

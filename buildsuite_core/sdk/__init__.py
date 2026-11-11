@@ -9,5 +9,6 @@ docs/extension-sdk-plan.md."""
 
 from buildsuite_core.sdk.extensions import SDK_VERSION, get_extension_entries
 from buildsuite_core.sdk.seed import seed_if_missing
+from buildsuite_core.sdk.settings_pages import get_settings_pages
 
-__all__ = ["SDK_VERSION", "get_extension_entries", "seed_if_missing"]
+__all__ = ["SDK_VERSION", "get_extension_entries", "get_settings_pages", "seed_if_missing"]

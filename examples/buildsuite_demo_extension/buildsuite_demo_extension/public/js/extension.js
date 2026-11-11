@@ -148,6 +148,48 @@ export default function register(sdk) {
 		},
 	});
 
+	// 8. A Custom Field on a bespoke form: the field ships as a fixture; here is its control.
+	//    The slot's component receives `custom` (read and write) and the whole `form`.
+	sdk.doctype("Quotation").on({ fields: ["demo_region"] });
+	sdk.slots.add("form.Quotation.top", {
+		name: "DemoRegionControl",
+		props: { custom: { type: Object, required: true } },
+		setup(props) {
+			return () =>
+				h("div", { class: "mb-3 max-w-xs", "data-test": "demo-region" }, [
+					h(
+						"label",
+						{ class: "block text-[11px] font-medium text-ink-700 mb-1" },
+						__("Region (demo extension)")
+					),
+					h("input", {
+						class: "w-full border border-ink-200 px-2 py-1 text-sm",
+						style: "border-radius: 6px",
+						value: props.custom.demo_region || "",
+						onInput: (e) => (props.custom.demo_region = e.target.value),
+					}),
+				]);
+		},
+	});
+
+	// 9. A slot on a bespoke page that does not use DeskPage (the Home page): every route has
+	//    page.<route name>.top / .bottom, provided by the app shell.
+	sdk.slots.add("page.app-home.top", {
+		name: "DemoHomeNotice",
+		setup() {
+			return () =>
+				h(
+					"div",
+					{
+						class: "mb-3 px-3 py-2 text-xs border border-ink-200 bg-ink-50 text-ink-700",
+						style: "border-radius: 6px",
+						"data-test": "demo-home-notice",
+					},
+					__("Added to the Home page by the demo extension (slot page.app-home.top).")
+				);
+		},
+	});
+
 	// 7. A component that throws while rendering — switched on from the browser console to show that
 	//    a failing extension is contained: localStorage.buildsuite_demo_break = "1", then reload.
 	let breakIt = false;

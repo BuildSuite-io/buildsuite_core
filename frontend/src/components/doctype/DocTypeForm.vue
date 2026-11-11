@@ -51,6 +51,9 @@ const perms = ref({
 const isEdit = computed(() => !!props.name);
 const docstatus = computed(() => Number(form.docstatus || 0));
 const submittable = computed(() => !!meta.value?.is_submittable);
+// A Single DocType (a settings page): one record, named after the doctype. It can't be deleted and
+// has no list to go back to.
+const single = computed(() => !!meta.value?.issingle);
 const isDraft = computed(() => isEdit.value && docstatus.value === 0);
 const isSubmitted = computed(() => isEdit.value && docstatus.value === 1);
 const isCancelled = computed(() => isEdit.value && docstatus.value === 2);
@@ -212,7 +215,8 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 
 // --- navigation --------------------------------------------------------------
 function goList() {
-	router.push({ name: "records-list", params: { doctype: props.doctype } });
+	if (single.value) router.push("/settings");
+	else router.push({ name: "records-list", params: { doctype: props.doctype } });
 }
 function goEdit(name) {
 	router.replace({ name: "record-edit", params: { doctype: props.doctype, name } });
@@ -406,7 +410,7 @@ const DANGER =
 						Submit
 					</button>
 					<button
-						v-if="perms.delete"
+						v-if="perms.delete && !single"
 						type="button"
 						:class="DANGER"
 						:disabled="busy"

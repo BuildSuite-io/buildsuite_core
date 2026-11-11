@@ -54,4 +54,24 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		cy.contains("button", "Create").click();
 		cy.contains("The demo extension refuses this value.").should("be.visible");
 	});
+
+	it("every route has page slots, including a bespoke page that does not use DeskPage (Home)", () => {
+		cy.visitApp("/home");
+		cy.get("[data-test=demo-home-notice]").should("be.visible");
+	});
+
+	it("an installed app's settings page appears on the Settings page and opens as a form", () => {
+		cy.visitApp("/settings");
+		cy.contains("Demo extension settings").should("be.visible");
+		cy.contains("Demo extension settings").click();
+		cy.location("pathname").should("include", "/settings/doc/Demo%20Extension%20Settings");
+		cy.contains("Default region").should("be.visible");
+		cy.contains("button", "Delete").should("not.exist"); // a Single can't be deleted
+	});
+
+	it("a Custom Field control from the app shows on the bespoke Quotation form", () => {
+		cy.visitApp("/quotations/new");
+		cy.get("[data-test=demo-region] input").should("be.visible").type("East");
+		cy.get("[data-test=demo-region] input").should("have.value", "East");
+	});
 });

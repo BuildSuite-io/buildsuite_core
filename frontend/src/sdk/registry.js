@@ -65,9 +65,18 @@ const HOOKS = ["defaults", "onLoad", "beforeSave", "afterSave"];
 
 export function addDocHooks(extension, doctype, hooks) {
 	if (!doctype || !hooks) throw new Error("doctype(...).on needs a doctype and a hooks object");
-	const unknown = Object.keys(hooks).filter((k) => !HOOKS.includes(k));
+	const unknown = Object.keys(hooks).filter((k) => k !== "fields" && !HOOKS.includes(k));
 	if (unknown.length) throw new Error(`unknown DocType hook(s): ${unknown.join(", ")}`);
 	(docHooks[doctype] ||= []).push({ extension, ...hooks });
+}
+
+/** The Custom Field names the extensions declare for a doctype (hooks.fields). */
+export function docFields(doctype) {
+	return [
+		...new Set(
+			[...(docHooks["*"] || []), ...(docHooks[doctype] || [])].flatMap((h) => h.fields || [])
+		),
+	];
 }
 
 /** Run one hook of every extension registered for the doctype (and for "*"), in order. A failing
@@ -83,3 +92,16 @@ export async function runDocHook(doctype, hook, ...args) {
 		}
 	}
 }
+
+// ---- Settings tiles: a tile on the Settings page (for a page the extension registers itself) ----
+const settingsTiles = shallowReactive([]); // { id, extension, group, label, to, description?, icon? }
+
+export function addSettingsTile(extension, group, tile) {
+	if (!group || !tile?.label || !tile?.to) {
+		throw new Error("settings.addTile needs a group and a tile with label and to");
+	}
+	if (settingsTiles.some((t) => t.extension === extension && t.to === tile.to)) return;
+	settingsTiles.push({ id: `${extension}:${tile.to}`, extension, group, ...tile });
+}
+
+export const settingsTilesList = () => settingsTiles;

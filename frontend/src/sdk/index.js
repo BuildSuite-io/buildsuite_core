@@ -22,17 +22,19 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useConfirm } from "@/composables/useConfirm";
 import { useActiveCompany } from "@/composables/useActiveCompany";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
 import {
 	addSlot,
 	addWorkspaceTile,
 	addDocHooks,
+	addSettingsTile,
 	setViewOverride,
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.1"; // 1.1 added views.override / views.wrap, doctype().on and form slots
+export const SDK_VERSION = "1.2"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
 export function createSdk(extension, router) {
@@ -88,6 +90,15 @@ export function createSdk(extension, router) {
 			};
 		},
 
+		settings: {
+			/** A tile on the Settings page: addTile("Acme", { label, to, description?, icon? }).
+			 *  A page that is just a Single DocType needs no JavaScript: declare it in hooks.py
+			 *  (buildsuite_settings_pages) instead. */
+			addTile(group, tile) {
+				addSettingsTile(extension, group, tile);
+			},
+		},
+
 		workspaces: {
 			/** A tile on a workspace landing: { label, to, description?, icon? }. */
 			addTile(workspace, tile) {
@@ -117,6 +128,7 @@ export function createSdk(extension, router) {
 			useFormErrors,
 			useConfirm,
 			useActiveCompany,
+			useExtensionFields,
 		},
 
 		utils: { __, showToast },

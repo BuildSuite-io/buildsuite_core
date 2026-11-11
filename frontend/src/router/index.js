@@ -124,6 +124,7 @@ const PAGE_TITLES = {
 	"settings-company-detail": "Company",
 	"settings-users": "Users",
 	"settings-user-new": "New User",
+	"settings-doc": "Settings",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
 	"settings-app-icon-diagnostics": "App Icon Diagnostics",
@@ -997,6 +998,14 @@ const routes = [
 				path: "settings/users/new",
 				name: "settings-user-new",
 				component: () => import("@/views/settings/NewUserView.vue"),
+			},
+			{
+				// A settings page that is a Single DocType (an installed app's, declared in hooks.py).
+				path: "settings/doc/:doctype",
+				name: "settings-doc",
+				component: () => import("@/views/settings/SettingsDocView.vue"),
+				props: true,
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/data",

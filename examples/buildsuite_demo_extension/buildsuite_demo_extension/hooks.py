@@ -16,3 +16,17 @@ buildsuite_frontend_extensions = [
 		"min_sdk": "1.0",
 	},
 ]
+
+# A settings page with no JavaScript: a Single DocType. Core lists it on the Settings page and
+# renders it with the generic form (see buildsuite_core.sdk.settings_pages).
+buildsuite_settings_pages = [
+	{
+		"doctype": "Demo Extension Settings",
+		"group": "Demo extension",
+		"label": "Demo extension settings",
+		"description": "A settings page added by an installed app, as a Single DocType",
+	},
+]
+
+# The Custom Field the demo adds to Quotation (the control for it is in public/js/extension.js).
+fixtures = [{"dt": "Custom Field", "filters": [["name", "in", ["Quotation-demo_region"]]]}]
