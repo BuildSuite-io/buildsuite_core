@@ -283,3 +283,13 @@ then dynamic settings. Phase 3 (scaffold, docs, versioning) follows and document
 Known gaps: bespoke forms other than Quotation, Project and Task have no field binding yet (Project and Task have create forms only here; their edit screens are separate); the custom-field value was
 tested as a visible, editable control, not through a full quotation save; route names are still not a
 documented public contract; a settings page that is a Single DocType gets the generic layout only.
+
+## Phase 3 status (scaffold, guide, versioning)
+
+- Done: `bench new-buildsuite-extension <app>` (sdk/scaffold.py, commands/__init__.py, tested in
+  tests/test_sdk_scaffold.py); author guide `docs/extension-sdk-guide.md` including the `min_sdk`
+  rule and the route-name stability policy.
+- Build config: not needed. The SDK passes Vue as `sdk.vue`, so extensions are plain ES modules.
+  A Vite/SFC build with externals remains optional and unbuilt.
+- Still open: a separate template repo and SDK repos (deferred until controls are extracted),
+  the resource registry (list columns/sections), and phase 4.
