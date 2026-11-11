@@ -10,6 +10,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
 from buildsuite_core.utils.project import default_company
 
 EMPLOYEE = "Employee"
@@ -66,6 +67,7 @@ def save_field_employee(
 	custom_wage: float | None = None,
 	custom_wage_for_overtime: float | None = None,
 	allocated_projects: str | None = None,
+	custom_fields: str | None = None,
 ) -> dict:
 	"""Create or update a field employee. `employee_name` is server-computed."""
 	rows = _parse_rows(allocated_projects)
@@ -126,5 +128,6 @@ def save_field_employee(
 	if allocated_projects is not None:
 		_apply_allocations(doc, rows)
 
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 	doc.save(ignore_permissions=True)
 	return {"name": doc.name}

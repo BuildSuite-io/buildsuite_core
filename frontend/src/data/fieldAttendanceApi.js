@@ -24,6 +24,7 @@ export const saveFieldAttendance = ({ cost_code, ...payload }) =>
 	call("save_field_attendance", {
 		...payload,
 		...costCodeToFields(cost_code),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
 		employee_list: JSON.stringify(
 			(payload.employee_list || []).map(({ cost_code: rowCode, ...row }) => ({
 				...row,

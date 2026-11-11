@@ -37,7 +37,11 @@ export const getProjectCostCodes = (project) => call("get_project_cost_codes", {
 export const listSubcontractors = () => call("list_subcontractors");
 export const getMeasurementBookEntryCounts = () => call("measurement_book_entry_counts");
 export const getSubcontractor = (name) => call("get_subcontractor", { name });
-export const createSubcontractor = (payload) => call("create_subcontractor", payload);
+export const createSubcontractor = (payload) =>
+	call("create_subcontractor", {
+		...payload,
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 export const updateSubcontractor = (name, payload) =>
 	call("update_subcontractor", { name, ...payload });
 export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
@@ -56,7 +60,11 @@ export const getWorkOrderLines = (workOrder) =>
 	call("get_work_order_lines", { work_order: workOrder });
 export const getMeasurementBook = (name) => call("get_measurement_book", { name });
 export const saveMeasurementBook = (payload) =>
-	call("save_measurement_book", { ...payload, entries: JSON.stringify(payload.entries || []) });
+	call("save_measurement_book", {
+		...payload,
+		entries: JSON.stringify(payload.entries || []),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 export const certifyMeasurementBook = (name) => call("certify_measurement_book", { name });
 export const revertMeasurementBook = (name) => call("revert_measurement_book", { name });
 export const getWoMeasurements = (workOrder) =>

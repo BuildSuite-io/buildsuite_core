@@ -81,6 +81,20 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		["Work Package", "/work-packages/new"],
 		["Subcontractor Work Order", "/subcontractor-work-orders/new"],
 		["Subcontractor Bill", "/subcontractor-bills/new"],
+		["Machinery", "/machinery/new"],
+		["Machinery Usage", "/machinery-usage/new"],
+		["Scope Change Order", "/sco/new"],
+		["Stage Planning", "/stage-plannings/new"],
+		["Task Progress Entry", "/progress-entries/new"],
+		["Tender", "/tenders/new"],
+		["Crew", "/crews/new"],
+		["Field Attendance", "/field-attendance/new"],
+		["Field Employee", "/field-employees/new"],
+		["Subcontractor", "/subcontractors/new"],
+		["Material Consumption", "/material-consumption/new"],
+		["Measurement Book", "/measurement-books/new"],
+		["Assembly", "/assembly/new"],
+		["Estimate Template", "/estimate-template/new"],
 	]) {
 		it(`the same Custom Field control shows on the bespoke ${label} form`, () => {
 			cy.visitApp(path);
@@ -170,5 +184,27 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		cy.get('[data-test="desk-list"] input[placeholder*="earch"]').first().type(name);
 		cy.get('[data-test="desk-list"] thead').contains("th", "Region");
 		cy.contains("tr", name).should("contain", `Listed-${stamp}`);
+	});
+
+	it("a Custom Field on the Estimate Template form is saved by the generic create", () => {
+		const stamp = Date.now();
+		cy.visitApp("/estimate-template/new");
+		cy.get('input[placeholder="ET-..."]').type(`ET-EXT-${stamp}`);
+		cy.contains("label", /^\s*Name/)
+			.parent()
+			.find("input")
+			.type(`Ext Template ${stamp}`);
+		cy.get("[data-test=demo-region] input").type("Template-Region");
+		cy.dt("save-btn").click();
+		cy.location("pathname", { timeout: 30000 }).should(
+			"match",
+			/\/estimate-template\/(?!new)[^/]+$/
+		);
+		cy.location("pathname").then((path) => {
+			const id = decodeURIComponent(path.split("/").pop());
+			cy.request(`/api/resource/Estimate Template/${encodeURIComponent(id)}`).then((res) => {
+				expect(res.body.data.demo_region).to.equal("Template-Region");
+			});
+		});
 	});
 });

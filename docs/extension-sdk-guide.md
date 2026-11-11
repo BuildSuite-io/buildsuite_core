@@ -38,9 +38,16 @@ A failing extension is isolated: its error is logged and the rest of the app kee
 
 ## Forms that accept Custom Fields
 
-Bespoke forms that adopt `useExtensionFields`: Quotation, Project (create and edit), Task (create and edit), Work Package (create), Subcontractor Work Order and Subcontractor Bill (create and edit). Other
-DocTypes use the generic form, which supports all of the above. Tell us which bespoke form
-you need next.
+Every bespoke create form now adopts `useExtensionFields`: Quotation, Project, Task, Work Package,
+Subcontractor Work Order, Subcontractor Bill, Machinery, Machinery Usage, Scope Change Order, Stage Planning,
+Task Progress Entry, Tender, Crew, Field Attendance, Field Employee, Subcontractor, Material Consumption,
+Measurement Book, Assembly and Estimate Template. The edit screens of Project and Task do too, and the
+forms that also edit (Quotation, Tender, Work Order, Bill, Consumption, Measurement Book) load saved values.
+
+The registry key is the DocType that stores the record, which is not always the screen's name: Field Employee
+saves an `Employee`, Subcontractor a `Supplier`, Material Consumption a `Stock Entry`. Register against that.
+A Custom Field on `Employee`, `Supplier` or `Stock Entry` is a field of that DocType everywhere, not only on the
+BuildSuite screen.
 
 ## Bespoke save APIs and Custom Fields
 

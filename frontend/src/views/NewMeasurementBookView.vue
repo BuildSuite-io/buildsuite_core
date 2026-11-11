@@ -8,6 +8,9 @@
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { usePermissions } from "@/composables/usePermissions";
 import { getWorkOrder, getMeasurementBook, saveMeasurementBook } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -62,6 +65,8 @@ const form = ref({
 	remarks: "",
 	entries: [emptyEntry()],
 });
+const ext = useExtensionFields("Measurement Book", form);
+if (!editingId.value) ext.defaults();
 const woLines = ref([]); // [{ name, scope, cost_code_*, uom }]
 // Project + Subcontractor surface read-only on the header, derived from the WO.
 const woProjectName = ref("");
@@ -125,6 +130,7 @@ watch(
 					router.replace(`/measurement-books/${id}`);
 					return;
 				}
+				await ext.load(mb); // an installed app's Custom Fields
 				form.value = {
 					work_order: mb.work_order || "",
 					project: mb.project || "",
@@ -267,7 +273,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const mb = await saveMeasurementBook({
+		const payload = {
 			name: editingId.value || undefined,
 			work_order: form.value.work_order,
 			project: form.value.project,
@@ -275,7 +281,11 @@ async function onSave() {
 			measured_by: form.value.measured_by || null,
 			remarks: form.value.remarks,
 			entries: form.value.entries.map(entryForSave),
-		});
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form.value);
+		const mb = await saveMeasurementBook(payload);
+		await ext.afterSave(mb, { isNew: !editingId.value });
 		router.push(`/measurement-books/${mb.name}`);
 	} catch (err) {
 		showToast(err.message || __("Failed to save measurement book"), "error");
@@ -328,6 +338,7 @@ const breadcrumbs = computed(() => [
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection :title="__('Header')" :cols="3">
 				<DeskField :label="__('Work order')" required :error="errors.work_order">
@@ -400,7 +411,9 @@ const breadcrumbs = computed(() => [
 								<th class="text-left px-2 py-2 min-w-[130px]">
 									{{ __("WO line") }} <span class="text-danger-600">*</span>
 								</th>
-								<th class="text-left px-2 py-2 min-w-[130px]">{{ __("Cost code") }}</th>
+								<th class="text-left px-2 py-2 min-w-[130px]">
+									{{ __("Cost code") }}
+								</th>
 								<th class="text-right px-2 py-2 w-14">{{ __("Nos") }}</th>
 								<th class="text-right px-2 py-2 w-16">{{ __("L") }}</th>
 								<th class="text-right px-2 py-2 w-16">{{ __("B") }}</th>
@@ -499,7 +512,9 @@ const breadcrumbs = computed(() => [
 										class="w-full text-xs text-right tabular-nums py-1.5 focus:outline-none bg-transparent"
 										:title="
 											e._autoQty
-												? __('Derived from Nos × L × B × D — type to override.')
+												? __(
+														'Derived from Nos × L × B × D — type to override.'
+												  )
 												: __('Override active (clear to re-derive).')
 										"
 										@input="onQtyOverride(e)"
@@ -527,7 +542,11 @@ const breadcrumbs = computed(() => [
 										v-model="e.is_deduction"
 										type="checkbox"
 										class="accent-danger-600"
-										:title="__('Mark as a deduction (subtracts from measured total)')"
+										:title="
+											__(
+												'Mark as a deduction (subtracts from measured total)'
+											)
+										"
 									/>
 								</td>
 								<td class="px-2 py-1 text-center">
@@ -564,6 +583,7 @@ const breadcrumbs = computed(() => [
 					{{ errors.entries }}
 				</p>
 			</section>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

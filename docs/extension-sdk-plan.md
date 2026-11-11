@@ -315,3 +315,13 @@ their values (`extDoctype`/`filterDoctype`), `DocTypeListView` passes its doctyp
 `extension_sdk.cy.js` (project list shows the demo column). Not done: list sections/filters/server-side sort on
 an extension column, form sections beyond top/bottom slots, and lists that key rows by something other
 than the document name.
+
+### Remaining bespoke forms adopted
+
+All 20 bespoke create forms adopt `useExtensionFields`. The generic-create forms (Machinery, Machinery Usage,
+Scope Change Order, Stage Planning, Task Progress Entry, Tender, Assembly, Estimate Template) need no backend
+change. The named-API forms (Crew, Field Attendance, Field Employee, Subcontractor, Consumption, Measurement
+Book) take `custom_fields` and call `apply_custom_fields`; Consumption and Measurement Book also return the
+values. Tested: control shown on all forms; saved value for Estimate Template (UI), Crew and Subcontractor
+(API tests). Not tested end to end: the save for Field Attendance, Field Employee, Consumption and
+Measurement Book (same helper, code path covered by the unit tests only).

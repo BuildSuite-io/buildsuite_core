@@ -8,6 +8,9 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
@@ -48,6 +51,8 @@ const form = reactive({
 	recoverable: "1",
 	reason: "",
 });
+const ext = useExtensionFields("Scope Change Order", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	project: "project",
 	title: "title",
@@ -70,14 +75,18 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Scope Change Order", {
+		const payload = {
 			project: form.project,
 			type: form.type,
 			title: form.title.trim(),
 			impact: Number(form.impact) || 0,
 			recoverable: form.recoverable === "1" ? 1 : 0,
 			reason: form.reason,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Scope Change Order", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/sco/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to raise scope change order"), "error");
@@ -116,6 +125,7 @@ const breadcrumbs = [
 				/>
 			</template>
 
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 			<DeskSection :title="__('Change order')" :cols="2">
 				<DeskField :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
@@ -133,7 +143,12 @@ const breadcrumbs = [
 						<option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2">
+				<DeskField
+					:label="__('Title')"
+					required
+					:error="errors.title"
+					class="md:col-span-2"
+				>
 					<DeskInput
 						v-model="form.title"
 						:placeholder="__('e.g. Foundation depth revision — soil report')"
@@ -159,6 +174,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

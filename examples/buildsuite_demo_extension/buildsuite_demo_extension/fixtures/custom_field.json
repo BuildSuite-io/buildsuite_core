@@ -58,5 +58,131 @@
   "label": "Region (demo extension)",
   "module": "BuildSuite Demo Extension",
   "name": "Subcontractor Bill-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Machinery",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Machinery-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Machinery Usage",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Machinery Usage-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Scope Change Order",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Scope Change Order-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Stage Planning",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Stage Planning-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Task Progress Entry",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Task Progress Entry-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "BuildSuite Tenders",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "BuildSuite Tenders-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Crew",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Crew-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Field Attendance",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Field Attendance-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Employee",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Employee-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Supplier",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Supplier-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Stock Entry",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Stock Entry-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Measurement Book",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Measurement Book-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Assembly",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Assembly-demo_region"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Estimate Template",
+  "fieldname": "demo_region",
+  "fieldtype": "Data",
+  "label": "Region (demo extension)",
+  "module": "BuildSuite Demo Extension",
+  "name": "Estimate Template-demo_region"
  }
 ]

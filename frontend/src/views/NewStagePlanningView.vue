@@ -10,6 +10,9 @@ import { reactive, ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
@@ -40,6 +43,8 @@ const form = reactive({
 	description: "",
 	dependencies: [],
 });
+const ext = useExtensionFields("Stage Planning", form);
+ext.defaults();
 
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	stage_name: "stageName",
@@ -156,7 +161,7 @@ async function save() {
 			qty_unit: r.qtyUnit || "%",
 		}));
 
-		const res = await adapter.create("Stage Planning", {
+		const payload = {
 			stage_name: form.stageName.trim(),
 			project: form.project,
 			planned_start: form.plannedStart || null,
@@ -166,7 +171,11 @@ async function save() {
 			description: form.description,
 			dependencies: form.dependencies.map((dep) => ({ stage: dep })),
 			stage_planning_tasks: childRows,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Stage Planning", payload);
+		await ext.afterSave(res, { isNew: true });
 
 		const createdStageId =
 			res?.name ||
@@ -255,6 +264,7 @@ const breadcrumbs = [
 
 				<!-- Full-width Layout -->
 				<div class="pb-12">
+					<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 					<DeskSection :title="__('Stage details')" :cols="1">
 						<DeskField :label="__('Stage name')" required :error="errors.stageName">
 							<DeskInput
@@ -342,6 +352,7 @@ const breadcrumbs = [
 						</div>
 					</DeskSection>
 				</div>
+				<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 			</DeskForm>
 
 			<!-- ============ STEP 2 — Add tasks ================================== -->

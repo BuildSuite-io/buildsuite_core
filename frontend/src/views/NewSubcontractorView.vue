@@ -6,6 +6,9 @@
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createSubcontractor } from "@/data/subcontractApi";
@@ -31,6 +34,8 @@ const form = reactive({
 	phone: "",
 	email: "",
 });
+const ext = useExtensionFields("Supplier", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	supplier_name: "subcontractor_name",
 	custom_trade: "trade",
@@ -53,7 +58,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await createSubcontractor({
+		const payload = {
 			subcontractor_name: form.subcontractor_name.trim(),
 			trade: form.trade,
 			tax_id: form.tax_id,
@@ -61,7 +66,11 @@ async function onSave() {
 			contact_person: form.contact_person,
 			phone: form.phone,
 			email: form.email,
-		});
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await createSubcontractor(payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/subcontractors/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to create subcontractor"), "error");
@@ -96,6 +105,7 @@ const breadcrumbs = [
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection :title="__('Details')" :cols="3">
 				<DeskField :label="__('Name')" required :error="errors.subcontractor_name">
@@ -126,6 +136,7 @@ const breadcrumbs = [
 					<DeskInput v-model="form.email" type="email" />
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

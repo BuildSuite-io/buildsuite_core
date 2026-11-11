@@ -28,7 +28,7 @@ buildsuite_settings_pages = [
 	},
 ]
 
-# The Custom Field the demo adds to Quotation, Project and Task (the control for it is in public/js/extension.js).
+# The Custom Field the demo adds to every form that adopts useExtensionFields (the control for it is in public/js/extension.js).
 fixtures = [
 	{
 		"dt": "Custom Field",
@@ -41,6 +41,22 @@ fixtures = [
 					"Project-demo_region",
 					"Task-demo_region",
 					"Work Package-demo_region",
+					"Subcontractor Work Order-demo_region",
+					"Subcontractor Bill-demo_region",
+					"Machinery-demo_region",
+					"Machinery Usage-demo_region",
+					"Scope Change Order-demo_region",
+					"Stage Planning-demo_region",
+					"Task Progress Entry-demo_region",
+					"BuildSuite Tenders-demo_region",
+					"Crew-demo_region",
+					"Field Attendance-demo_region",
+					"Employee-demo_region",
+					"Supplier-demo_region",
+					"Stock Entry-demo_region",
+					"Measurement Book-demo_region",
+					"Assembly-demo_region",
+					"Estimate Template-demo_region",
 				],
 			]
 		],

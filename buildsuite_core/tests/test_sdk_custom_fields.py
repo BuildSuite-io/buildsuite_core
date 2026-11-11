@@ -1,11 +1,14 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.tests import IntegrationTestCase
 
 from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+from buildsuite_core.tests.base import BuildSuiteTestCase
 
 DT = "Subcontractor Work Order"
 FIELDS = ("sdk_t_region", "sdk_t_locked", "sdk_t_secret", "sdk_t_note")
@@ -83,3 +86,42 @@ class TestApplyCustomFields(IntegrationTestCase):
 		self.assertEqual(out["sdk_t_region"], "North")
 		self.assertNotIn("owner", out)
 		self.assertNotIn("total_value", out)
+
+
+class TestBespokeSaveApisCarryCustomFields(BuildSuiteTestCase):
+	"""The named save APIs opt in: a declared Custom Field is saved, a standard field never is."""
+
+	def _custom_field(self, doctype, fieldname="sdk_t_region"):
+		create_custom_fields({doctype: [{"fieldname": fieldname, "fieldtype": "Data", "label": fieldname}]})
+
+		def drop():
+			frappe.delete_doc("Custom Field", f"{doctype}-{fieldname}", force=True)
+			frappe.db.commit()  # the schema change must not leak into other tests
+			frappe.clear_cache(doctype=doctype)
+
+		self.addCleanup(drop)
+
+	def test_save_crew(self):
+		from buildsuite_core.api.crew import save_crew
+
+		self._custom_field("Crew")
+		res = save_crew(
+			crew_name="SDK Gang",
+			company=self.company,
+			custom_fields=json.dumps({"sdk_t_region": "West", "owner": "attacker@example.com"}),
+		)
+		stored = frappe.db.get_value("Crew", res["name"], ["sdk_t_region", "owner"], as_dict=True)
+		self.assertEqual(stored.sdk_t_region, "West")
+		self.assertNotEqual(stored.owner, "attacker@example.com")
+
+	def test_create_subcontractor(self):
+		from buildsuite_core.api.subcontract import create_subcontractor
+
+		self._custom_field("Supplier")
+		res = create_subcontractor(
+			subcontractor_name=f"SDK Sub {frappe.generate_hash(length=5)}",
+			custom_fields=json.dumps({"sdk_t_region": "East", "disabled": 1}),
+		)
+		stored = frappe.db.get_value("Supplier", res["name"], ["sdk_t_region", "disabled"], as_dict=True)
+		self.assertEqual(stored.sdk_t_region, "East")
+		self.assertEqual(stored.disabled, 0)  # a standard field is not settable through custom_fields

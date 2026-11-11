@@ -1,103 +1,133 @@
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useDataStore } from '@/stores'
-import { showToast } from '@/utils/appToast'
-import { useFormErrors } from '@/composables/useFormErrors'
-import { usePermissions } from '@/composables/usePermissions'
-import { createDataAdapter } from '@/data/adapters'
-import { __ } from '@/utils/translate'
-import DeskPage from '@/components/desk/DeskPage.vue'
-import DeskForm from '@/components/desk/DeskForm.vue'
-import DeskActionBar from '@/components/desk/DeskActionBar.vue'
-import DeskSection from '@/components/desk/DeskSection.vue'
-import DeskField from '@/components/desk/DeskField.vue'
-import DeskInput from '@/components/desk/DeskInput.vue'
-import DeskTextarea from '@/components/desk/DeskTextarea.vue'
-import DeskLinkPicker from '@/components/desk/DeskLinkPicker.vue'
+import { reactive, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
+import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
+import { createDataAdapter } from "@/data/adapters";
+import { __ } from "@/utils/translate";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 
-const router = useRouter()
-const store = useDataStore()
-const adapter = createDataAdapter(store)
-const { canCreate } = usePermissions()
+const router = useRouter();
+const store = useDataStore();
+const adapter = createDataAdapter(store);
+const { canCreate } = usePermissions();
 
-const form = reactive({ templateCode: '', templateName: '', projectType: '', description: '' })
+const form = reactive({ templateCode: "", templateName: "", projectType: "", description: "" });
+const ext = useExtensionFields("Estimate Template", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
-  template_code: 'templateCode',
-  template_name: 'templateName',
-})
-const saving = ref(false)
+	template_code: "templateCode",
+	template_name: "templateName",
+});
+const saving = ref(false);
 
 function validate() {
-  const e = {}
-  if (!form.templateCode.trim()) e.templateCode = __('Code is required')
-  if (!form.templateName.trim()) e.templateName = __('Name is required')
-  setErrors(e)
-  return Object.keys(e).length === 0
+	const e = {};
+	if (!form.templateCode.trim()) e.templateCode = __("Code is required");
+	if (!form.templateName.trim()) e.templateName = __("Name is required");
+	setErrors(e);
+	return Object.keys(e).length === 0;
 }
 
 function onCancel() {
-  router.back()
+	router.back();
 }
 
 async function onSave() {
-  if (!validate()) return
-  saving.value = true
-  try {
-    const res = await adapter.create('Estimate Template', {
-      template_code: form.templateCode.trim(),
-      template_name: form.templateName.trim(),
-      project_category: form.projectType || null,
-      description: form.description,
-    })
-    router.push(`/estimate-template/${res.name}`)
-  } catch (err) {
-    showToast(applyServerErrors(err) ?? __('Failed to create estimate template'), 'error')
-  } finally {
-    saving.value = false
-  }
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		const payload = {
+			template_code: form.templateCode.trim(),
+			template_name: form.templateName.trim(),
+			project_category: form.projectType || null,
+			description: form.description,
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Estimate Template", payload);
+		await ext.afterSave(res, { isNew: true });
+		router.push(`/estimate-template/${res.name}`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to create estimate template"), "error");
+	} finally {
+		saving.value = false;
+	}
 }
 
 const breadcrumbs = [
-  { label: 'BuildSuite Core', to: '/' },
-  { label: __('Estimation'), to: '/estimation' },
-  { label: __('Estimate Template'), to: '/estimate-template' },
-  { label: __('New') },
-]
+	{ label: "BuildSuite Core", to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Estimate Template"), to: "/estimate-template" },
+	{ label: __("New") },
+];
 </script>
 
 <template>
-  <DeskPage :title="__('New Estimate Template')" :subtitle="__('A reusable BOQ skeleton — add rows after creating')"
-    :breadcrumbs="breadcrumbs">
-    <div
-      v-if="!canCreate('estimateTemplate')"
-      class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
-      style="border-radius: 6px"
-    >
-      {{ __("You don't have permission to create an estimate template.") }}
-    </div>
-    <DeskForm v-else>
-      <template #action-bar>
-        <DeskActionBar :save-label="saving ? __('Creating…') : __('Create template')" :saving="saving" @save="onSave"
-          @cancel="onCancel" />
-      </template>
+	<DeskPage
+		:title="__('New Estimate Template')"
+		:subtitle="__('A reusable BOQ skeleton — add rows after creating')"
+		:breadcrumbs="breadcrumbs"
+	>
+		<div
+			v-if="!canCreate('estimateTemplate')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("You don't have permission to create an estimate template.") }}
+		</div>
+		<DeskForm v-else>
+			<template #action-bar>
+				<DeskActionBar
+					:save-label="saving ? __('Creating…') : __('Create template')"
+					:saving="saving"
+					@save="onSave"
+					@cancel="onCancel"
+				/>
+			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-      <DeskSection :title="__('Template details')">
-        <DeskField :label="__('Code')" required :hint="__('Short stable identifier (e.g. ET-RES-TOWER).')"
-          :error="errors.templateCode">
-          <DeskInput v-model="form.templateCode" placeholder="ET-..." />
-        </DeskField>
-        <DeskField :label="__('Name')" required :error="errors.templateName">
-          <DeskInput v-model="form.templateName" />
-        </DeskField>
-        <DeskField :label="__('Project Category')" :hint="__('Used to suggest this template for matching project types.')">
-          <DeskLinkPicker v-model="form.projectType" doctype="Project Category" label-field="name" value-field="name"
-            :placeholder="__('— Any project type —')" />
-        </DeskField>
-        <DeskField :label="__('Description')">
-          <DeskTextarea v-model="form.description" :rows="3" />
-        </DeskField>
-      </DeskSection>
-    </DeskForm>
-  </DeskPage>
+			<DeskSection :title="__('Template details')">
+				<DeskField
+					:label="__('Code')"
+					required
+					:hint="__('Short stable identifier (e.g. ET-RES-TOWER).')"
+					:error="errors.templateCode"
+				>
+					<DeskInput v-model="form.templateCode" placeholder="ET-..." />
+				</DeskField>
+				<DeskField :label="__('Name')" required :error="errors.templateName">
+					<DeskInput v-model="form.templateName" />
+				</DeskField>
+				<DeskField
+					:label="__('Project Category')"
+					:hint="__('Used to suggest this template for matching project types.')"
+				>
+					<DeskLinkPicker
+						v-model="form.projectType"
+						doctype="Project Category"
+						label-field="name"
+						value-field="name"
+						:placeholder="__('— Any project type —')"
+					/>
+				</DeskField>
+				<DeskField :label="__('Description')">
+					<DeskTextarea v-model="form.description" :rows="3" />
+				</DeskField>
+			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
+		</DeskForm>
+	</DeskPage>
 </template>

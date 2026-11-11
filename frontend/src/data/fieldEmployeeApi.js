@@ -21,4 +21,5 @@ export const saveFieldEmployee = (payload) =>
 	call("save_field_employee", {
 		...payload,
 		allocated_projects: JSON.stringify(payload.allocated_projects || []),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
 	});

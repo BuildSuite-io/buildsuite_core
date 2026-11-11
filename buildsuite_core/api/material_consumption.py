@@ -16,6 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
 from buildsuite_core.utils.list_filters import parse_list_filters
 from buildsuite_core.utils.project import default_company
 from buildsuite_core.utils.stock_entry import get_warehouse_from_project
@@ -115,6 +116,7 @@ def save_material_consumption(
 	items: str | None = None,
 	cost_code: str | None = None,
 	name: str | None = None,
+	custom_fields: str | None = None,
 ) -> dict:
 	"""Create or update a draft Material Issue.
 
@@ -152,6 +154,7 @@ def save_material_consumption(
 	for row in rows:
 		doc.append("items", {**{k: row.get(k) for k in _ITEM_FIELDS}, "s_warehouse": warehouse})
 
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 	doc.save()
 	return _serialize(doc)
 
@@ -210,6 +213,7 @@ def _material_issue(name: str):
 
 def _serialize(doc) -> dict:
 	return {
+		**custom_field_values(doc),
 		"name": doc.name,
 		"project": doc.project,
 		"project_name": frappe.db.get_value("Project", doc.project, "project_name"),

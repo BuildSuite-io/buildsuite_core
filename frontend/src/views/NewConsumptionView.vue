@@ -11,6 +11,9 @@ import {
 	saveMaterialConsumption,
 } from "@/data/materialConsumptionApi";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -31,6 +34,8 @@ const canSaveForm = computed(() =>
 	editing.value ? canEdit("materialConsumption") : canCreate("materialConsumption")
 );
 const form = reactive({ project: "", cost_code: null, lines: [] });
+const ext = useExtensionFields("Stock Entry", form);
+if (!editing.value) ext.defaults();
 const saving = ref(false);
 const warehouse = ref("");
 const stock = ref([]);
@@ -80,6 +85,7 @@ onMounted(async () => {
 			router.replace(`/material-consumption/${props.id}`);
 			return;
 		}
+		await ext.load(doc); // an installed app's Custom Fields
 		form.project = doc.project || "";
 		form.cost_code = doc.cost_code_label
 			? {
@@ -143,7 +149,7 @@ const canSave = computed(() => !!form.project && filledLines.value.length > 0);
 async function onSave() {
 	saving.value = true;
 	try {
-		const res = await saveMaterialConsumption({
+		const payload = {
 			name: props.id || undefined,
 			project: form.project,
 			cost_code: form.cost_code,
@@ -152,7 +158,11 @@ async function onSave() {
 				qty: Number(l.qty),
 				uom: l.uom,
 			})),
-		});
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await saveMaterialConsumption(payload);
+		await ext.afterSave(res, { isNew: !editing.value });
 		showToast(editing.value ? "Consumption updated" : "Consumption recorded");
 		router.push(`/material-consumption/${res.name}`);
 	} catch (err) {
@@ -195,6 +205,7 @@ const breadcrumbs = computed(() => [
 					@cancel="router.back()"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection title="Booking" :cols="2">
 				<DeskField
@@ -318,6 +329,7 @@ const breadcrumbs = computed(() => [
 					material shows up here.
 				</p>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>
