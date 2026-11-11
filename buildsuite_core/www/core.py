@@ -74,6 +74,9 @@ def get_boot():
 				"user": frappe.db.get_value("User", frappe.session.user, "time_zone")
 				or get_system_timezone(),
 			},
+			# Apps installed on this site. The SPA activates a bench app's frontend extension
+			# (<app>/buildsuite_extension, see frontend/src/extensions) only when its app is here.
+			"installed_apps": frappe.get_installed_apps(),
 		}
 	)
 

@@ -31,6 +31,25 @@ class ConstructionRateMaster(Document):
 	def validate(self):
 		self.sync_rate_history()
 
+	def on_update(self):
+		# A new rate reaches every assembly built from this resource, so an assembly's live
+		# rate_per_unit never lags the Rate Master. Estimates and quotations keep the snapshot
+		# they took (their lines store the rate), so nothing already priced changes.
+		if not self.is_new() and self.has_value_changed("current_rate"):
+			self.reprice_assemblies()
+
+	def reprice_assemblies(self):
+		parents = frappe.get_all(
+			"Assembly Component",
+			filters={"resource": self.name, "parenttype": "Assembly"},
+			pluck="parent",
+			distinct=True,
+		)
+		for name in parents:
+			assembly = frappe.get_doc("Assembly", name)
+			assembly.flags.ignore_permissions = True
+			assembly.save()
+
 	def sync_rate_history(self):
 		today = nowdate()
 		if self.is_new():

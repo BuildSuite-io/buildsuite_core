@@ -144,9 +144,12 @@ const PAGE_TITLES = {
 const routes = [
 	{
 		path: "/",
+		// Named so an installed app's frontend extension can add pages inside the shell
+		// (src/extensions → router.addRoute("shell", …)).
+		name: "shell",
 		component: () => import("@/layouts/DeskShell.vue"),
 		children: [
-			{ path: "", redirect: "/home" },
+			{ path: "", name: "shell-index", redirect: "/home" },
 			{ path: "home", name: "app-home", component: () => import("@/views/AppHomeView.vue") },
 			{
 				path: "dashboard",
