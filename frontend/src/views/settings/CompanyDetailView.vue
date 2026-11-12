@@ -1,9 +1,8 @@
 <script setup>
 // Company detail / edit — Settings sub-page. Admin-only mutations (Edit / Save
-// / Delete buttons hidden for non-admin). ID is locked after create (stripped
-// from any patch in store.updateCompany, per Frappe Naming Series convention).
-// Delete is reference-guarded — the server refuses while any record still links to the
-// company; the action bar shows how many projects do.
+// / Delete buttons hidden for non-admin).
+// Delete is reference-guarded — the server refuses while any record still links to the company.
+// Renaming changes the company's id (it is named after its name), so the page follows it.
 
 import { ref, computed, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
@@ -17,12 +16,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import {
-	getCompanyBranding,
-	updateCompanyBranding,
-	uploadCompanyLogo,
-	getCompanyProjects,
-} from "@/data/companyApi";
+import { getCompanyBranding, updateCompanyBranding, uploadCompanyLogo } from "@/data/companyApi";
 import { showToast } from "@/utils/appToast";
 import { COMPANY_COLOUR_OPTIONS, colourClass } from "@/utils/companyColours";
 import { __ } from "@/utils/translate";
@@ -44,16 +38,6 @@ const COLOR_OPTIONS = [
 ];
 
 const company = computed(() => store.companyById(props.id));
-// How many projects belong to this company (backend, permission-respecting). No longer listed on
-// the page — the count in the action bar is what tells you why a delete would be refused.
-const linkedProjectsTotal = ref(0);
-async function loadLinkedProjects() {
-	try {
-		linkedProjectsTotal.value = ((await getCompanyProjects(props.id)) || {}).total || 0;
-	} catch {
-		linkedProjectsTotal.value = 0;
-	}
-}
 const editing = ref(false);
 const form = ref({});
 
@@ -84,15 +68,18 @@ async function saveEdit() {
 	// colour is saved on the Company too (only when changed, so a derived default isn't pinned).
 	// Description isn't a Company field, so it doesn't persist.
 	try {
-		await store.updateCompany(props.id, {
+		const saved = await store.updateCompany(props.id, {
 			name: form.value.name,
 			shortName: form.value.shortName,
 		});
+		// A rename changes the id: carry on from the renamed company.
+		const id = saved?.id || props.id;
 		if (colourChanged) {
-			await updateCompanyBranding({ company: props.id, brand_colour: wantedColour });
+			await updateCompanyBranding({ company: id, brand_colour: wantedColour });
 			await store.loadCompanies(); // the top-bar pill picks the new colour up
 		}
 		editing.value = false;
+		if (id !== props.id) router.replace(`/settings/companies/${encodeURIComponent(id)}`);
 	} catch (err) {
 		showToast(err.message || __("Could not save the company."), "error");
 	}
@@ -238,13 +225,12 @@ async function saveBrand() {
 	}
 }
 
-// Branding + linked projects are per-company — (re)load for whichever company is being viewed.
+// Branding is per-company — (re)load for whichever company is being viewed.
 watch(
 	() => props.id,
 	(id) => {
 		if (!id) return;
 		loadBrand();
-		loadLinkedProjects();
 	},
 	{ immediate: true }
 );
@@ -268,22 +254,6 @@ watch(
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				>
-					<template #left>
-						<span v-if="linkedProjectsTotal" class="text-[11px] text-ink-500">
-							{{
-								linkedProjectsTotal === 1
-									? __("{0} project references this company", [
-											linkedProjectsTotal,
-									  ])
-									: __("{0} projects reference this company", [
-											linkedProjectsTotal,
-									  ])
-							}}
-						</span>
-						<span v-else class="text-[11px] text-ink-400">{{
-							__("No projects reference this company · safe to delete")
-						}}</span>
-					</template>
 					<template #menu>
 						<button
 							type="button"

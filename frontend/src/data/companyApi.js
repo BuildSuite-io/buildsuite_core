@@ -30,9 +30,10 @@ export const getExchangeRate = (from, to, date) =>
 // shared Letter Head that every print format renders, so editing them here re-brands all
 // prints (server rebuilds the letter head on save).
 export const getCompanyContext = () => call("company_context");
-export const getCompanyProjects = (company) => call("company_projects", { company });
 export const getCompanyBranding = (company) =>
 	call("company_branding", company ? { company } : {});
+// Rename a company (admin). The id follows the name, so this returns the new id.
+export const renameCompany = (company, new_name) => call("rename_company", { company, new_name });
 export const updateCompanyBranding = (payload) => call("update_company_branding", payload);
 
 // Upload the logo via Frappe's multipart upload_file endpoint. Public (is_private=0) so the
