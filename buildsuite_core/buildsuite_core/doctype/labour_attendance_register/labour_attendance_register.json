@@ -15,6 +15,7 @@
   "status",
   "column_break0",
   "attendance_date",
+  "day_type",
   "company",
   "project",
   "project_name",
@@ -266,13 +267,22 @@
    "label": "Regular hours",
    "read_only": 1,
    "description": "Hours worked up to the full day. Wages are by status, not hours."
+  },
+  {
+   "default": "Regular",
+   "fieldname": "day_type",
+   "fieldtype": "Select",
+   "label": "Day type",
+   "options": "Regular\nOff Day",
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-10 10:00:00.000000",
+ "modified": "2026-11-12 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Labour Attendance Register",

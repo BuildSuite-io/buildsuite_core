@@ -17,7 +17,12 @@ from frappe.utils import add_to_date, flt, getdate
 
 from buildsuite_core.utils.daily_hours import check_timesheet_day
 from buildsuite_core.utils.full_day import get_full_day_hours
-from buildsuite_core.utils.timesheet import cost_code_fields, row_cost_code
+from buildsuite_core.utils.timesheet import (
+	cost_code_fields,
+	existing_timesheet_for_day,
+	field_employee_wages,
+	row_cost_code,
+)
 
 TIMESHEET = "Timesheet"
 ACTIVITY_TYPE = "Labour"
@@ -79,14 +84,10 @@ def get_timesheet(name: str) -> dict:
 def costing_info(employee: str, project: str | None = None, date: str | None = None) -> dict:
 	"""What the form shows under the header: the worker's daily rate, the full day on the project and
 	the hourly rate that makes ("an hour (daily rate ÷ h, the full day on Block A)"), plus overtime."""
-	from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
-		get_employee_rates,
-	)
-
 	emp = frappe.get_doc("Employee", employee)
 	emp.check_permission("read")
 	full_day = get_full_day_hours(project, emp.company)
-	daily, overtime = get_employee_rates(emp, getdate(date), {}, full_day)
+	daily, overtime = field_employee_wages(emp)
 	return {
 		"employee": emp.name,
 		"employee_name": emp.employee_name,
@@ -101,10 +102,7 @@ def costing_info(employee: str, project: str | None = None, date: str | None = N
 
 
 def _existing_for_day(employee, date, exclude=None):
-	filters = {"employee": employee, "start_date": date, "docstatus": ["<", 2]}
-	if exclude:
-		filters["name"] = ["!=", exclude]
-	return frappe.db.get_value(TIMESHEET, filters, "name")
+	return existing_timesheet_for_day(employee, date, exclude)
 
 
 def _build_rows(date, rows):

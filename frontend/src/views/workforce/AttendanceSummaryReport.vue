@@ -11,6 +11,7 @@
 import { computed, reactive, ref } from "vue";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
@@ -19,8 +20,9 @@ import { fmtINR, fmtDate } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const { projectName } = useProjectNames();
+const { workerDefaults } = useFieldEmployeeOptions();
 
-// Both registers, full set — submitted (and draft) rows, aggregated client-side.
+// Both registers, full set — submitted rows only, aggregated client-side.
 const labourRes = useDocTypeList("Labour Attendance Register", {
 	fields: [
 		"name",
@@ -33,7 +35,7 @@ const labourRes = useDocTypeList("Labour Attendance Register", {
 	],
 	// Site attendance only: timesheet rows are another way of capturing labour and are read elsewhere.
 	filters: [
-		["docstatus", "<", 2],
+		["docstatus", "=", 1],
 		["source", "=", "Attendance"],
 	],
 	orderBy: "attendance_date desc",
@@ -51,7 +53,7 @@ const overtimeRes = useDocTypeList("Overtime Attendance Register", {
 	],
 	// Site attendance only: timesheet rows are another way of capturing labour and are read elsewhere.
 	filters: [
-		["docstatus", "<", 2],
+		["docstatus", "=", 1],
 		["source", "=", "Attendance"],
 	],
 	orderBy: "overtime_date desc",
@@ -107,10 +109,11 @@ const overtime = computed(() => overtimeRows.value.filter((r) => keep(r, "overti
 // ----------------------------------------------------------------- rollup ---
 // Man-days rather than a row count: a half day is half a day of work, and
 // counting it as one would overstate what the site actually got.
-function blank(key, label) {
+function blank(key, label, sub = "") {
 	return {
 		key,
 		label,
+		sub,
 		people: new Set(),
 		dates: new Set(),
 		full: 0,
@@ -126,7 +129,12 @@ const rows = computed(() => {
 	const bucket = (r) => {
 		const k = groupBy.value === "project" ? r.project : r.employee;
 		if (!by.has(k)) {
-			by.set(k, blank(k, groupBy.value === "project" ? projectName(k) : feName(k)));
+			by.set(
+				k,
+				groupBy.value === "project"
+					? blank(k, projectName(k))
+					: blank(k, feName(k), workerDefaults(k).trade)
+			);
 		}
 		return by.get(k);
 	};
@@ -361,6 +369,9 @@ const breadcrumbs = [
 						>
 							<td class="px-3 py-2">
 								<div class="text-ink-900 font-medium">{{ r.label }}</div>
+								<div v-if="r.sub" class="text-[10px] text-ink-500">
+									{{ r.sub }}
+								</div>
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
 								{{ r.workers }}
@@ -443,7 +454,7 @@ const breadcrumbs = [
 		</template>
 
 		<div
-			v-else
+			v-else-if="!(labourRes.loading || overtimeRes.loading)"
 			class="border border-ink-200 px-5 py-10 text-center text-sm text-ink-400 italic"
 			style="border-radius: 8px"
 		>

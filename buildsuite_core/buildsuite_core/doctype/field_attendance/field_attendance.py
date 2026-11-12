@@ -510,6 +510,7 @@ def create_registers(doc_name):
 				task=doc.task,
 				cost_code=row,
 				full_day_hours=full_day_hours,
+				day_type=doc.get("day_type") or "Regular",
 			)
 
 		if flt(row.overtime_hours) > 0 and row.employee not in existing_ot:
@@ -557,11 +558,13 @@ def create_labour_attendance(
 	task=None,
 	cost_code=None,
 	full_day_hours=None,
+	day_type="Regular",
 ):
 	doc = frappe.get_doc(
 		{
 			**_cost_code_values(cost_code),
 			"doctype": "Labour Attendance Register",
+			"day_type": "Off Day" if day_type in ("Off Day", "Holiday") else "Regular",
 			"employee": employee,
 			"attendance_date": date,
 			"project": project,

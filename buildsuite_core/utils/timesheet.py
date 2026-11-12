@@ -3,15 +3,16 @@
 
 """Timesheet costing.
 
-A timesheet row is costed at the worker's hourly rate: the daily rate over the full day of the row's
-project (utils.full_day), or the worker's own hourly overtime rate for an overtime row. The row keeps
+A timesheet row is costed at the worker's hourly rate: the Field Employee's daily wage over the full
+day of the row's project (utils.full_day), or the Field Employee's own hourly overtime wage for an
+overtime row. Both come from the Employee's Wage and Wage For Overtime, whatever the wage type. The row keeps
 the full day, rate and amount it was costed with; they are recalculated on every save while the
 timesheet is a draft and frozen on submit, so a later wage or setting change cannot reprice it.
 """
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import add_days, flt, getdate
 
 from buildsuite_core.utils.full_day import get_full_day_hours
 
@@ -23,17 +24,62 @@ COST_CODE_FIELDS = (
 )
 
 
-def hourly_rates(employee, date, full_day_hours: float, cache: dict | None = None):
-	"""(regular, overtime) cost per hour for a worker on a day with this full day. Regular is the daily
-	rate over the full day, rounded to 2 places like the amount; overtime is the worker's own hourly
-	overtime rate. A salaried worker's rates come from their salary structure."""
-	from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
-		get_employee_rates,
-	)
-
+def field_employee_wages(employee) -> tuple[float, float]:
+	"""(daily wage, hourly overtime wage) as set on the Field Employee: the Wage and Wage For Overtime
+	of the Employee record. Timesheets cost from these two numbers and nothing else; a salary
+	structure (buildsuite_hr, "Salaried" workers) belongs to payroll, not to site costing."""
 	emp = employee if hasattr(employee, "get") else frappe.get_doc("Employee", employee)
-	daily, overtime = get_employee_rates(emp, date, cache if cache is not None else {}, full_day_hours)
-	return round(flt(daily) / flt(full_day_hours), 2), flt(overtime)
+	return flt(emp.get("custom_wage")), flt(emp.get("custom_wage_for_overtime"))
+
+
+def hourly_rates(employee, full_day_hours: float):
+	"""(regular, overtime) cost per hour for a worker with this full day. Regular is the Field
+	Employee's daily wage over the full day (from utils.full_day: project, then company, then the
+	default), rounded to 2 places like the amount; overtime is the Field Employee's own hourly
+	overtime wage."""
+	daily, overtime = field_employee_wages(employee)
+	return round(daily / flt(full_day_hours), 2), overtime
+
+
+def existing_timesheet_for_day(employee, day, exclude=None) -> str | None:
+	"""The name of another live (draft or submitted) timesheet of this worker that has rows on `day`,
+	or None. A row belongs to the day it starts on, the same day the registers file it under."""
+	row, sheet = frappe.qb.DocType("Timesheet Detail"), frappe.qb.DocType("Timesheet")
+	start = getdate(day)
+	query = (
+		frappe.qb.from_(row)
+		.join(sheet)
+		.on(sheet.name == row.parent)
+		.select(sheet.name)
+		.where(row.parenttype == "Timesheet")
+		.where(sheet.employee == employee)
+		.where(sheet.docstatus < 2)
+		.where(row.from_time >= f"{start} 00:00:00")
+		.where(row.from_time < f"{add_days(start, 1)} 00:00:00")
+		.limit(1)
+	)
+	if exclude:
+		query = query.where(sheet.name != exclude)
+	found = query.run()
+	return found[0][0] if found else None
+
+
+def validate_one_timesheet_per_day(doc, method=None):
+	"""Timesheet validate: a worker has one timesheet a day, however it is created (the SPA, the
+	Desk, an import or the REST API). Put all of the day's hours on that one timesheet."""
+	if doc.docstatus == 2 or not doc.employee:
+		return
+	days = sorted({getdate(r.from_time) for r in doc.time_logs if r.from_time})
+	for day in days:
+		clash = existing_timesheet_for_day(doc.employee, day, exclude=doc.name)
+		if clash:
+			name = frappe.db.get_value("Employee", doc.employee, "employee_name") or doc.employee
+			frappe.throw(
+				_("{0} already has a timesheet for {1}: {2}. Add the hours to that timesheet.").format(
+					name, day, clash
+				),
+				title=_("One timesheet a day"),
+			)
 
 
 def row_cost_code(row) -> dict | None:
@@ -68,17 +114,11 @@ def cost_timesheet(doc, method=None):
 	if not doc.employee:
 		return
 
-	day = None
-	for row in doc.time_logs:
-		if row.from_time:
-			day = getdate(row.from_time)
-			break
 	employee = frappe.get_doc("Employee", doc.employee)
-	cache: dict = {}
 	total = 0.0
 	for row in doc.time_logs:
 		row.full_day_hours = get_full_day_hours(row.project, doc.company)
-		regular, overtime = hourly_rates(employee, day or getdate(), row.full_day_hours, cache)
+		regular, overtime = hourly_rates(employee, row.full_day_hours)
 		row.costing_rate = overtime if row.is_overtime else regular
 		row.costing_amount = round(flt(row.hours) * flt(row.costing_rate), 2)
 		total += row.costing_amount

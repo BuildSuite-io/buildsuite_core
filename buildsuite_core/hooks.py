@@ -281,6 +281,9 @@ doc_events = {
 	# Timesheet rows are costed at the worker's daily rate over their project's full day; the cost is
 	# recalculated on every draft save and frozen on submit (utils.timesheet).
 	"Timesheet": {
+		# One timesheet per worker per day, whoever creates it. Before ERPNext's own validate, so
+		# the clear message is the one shown (its overlap check would otherwise answer first).
+		"before_validate": "buildsuite_core.utils.timesheet.validate_one_timesheet_per_day",
 		"validate": [
 			"buildsuite_core.utils.timesheet.cost_timesheet",
 			# A worker's day: regular time at most one full day, all hours at most 24.

@@ -98,6 +98,26 @@ class TestTimesheetCosting(BuildSuiteTestCase):
 		self.assertEqual((info["daily_rate"], info["full_day_hours"], info["hourly_rate"]), (750, 9, 83.33))
 		self.assertEqual(info["overtime_rate"], 50)
 
+	def test_salaried_worker_is_still_costed_from_the_field_employee_wages(self):
+		"""buildsuite_hr marks some workers "Salaried" and prices their attendance from a salary
+		structure. A timesheet is costed from the Field Employee's Wage and Wage For Overtime only."""
+		frappe.db.set_value("Employee", self.worker, "custom_labour_wage_type", "Salaried")
+		with patch(
+			"buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance.get_employee_rates",
+			side_effect=AssertionError("a timesheet must not read a salary structure"),
+		):
+			ts = self._save(
+				[
+					{"project": self.project, "hours": 6},
+					{"project": self.project, "hours": 2, "is_overtime": 1},
+				]
+			)
+			info = api.costing_info(self.worker, self.project)
+		# 750 a day / 9 h = 83.33; overtime is the worker's own hourly 50
+		self.assertEqual([r["costing_rate"] for r in ts["rows"]], [83.33, 50])
+		self.assertEqual(ts["total_costing_amount"], 599.98)
+		self.assertEqual((info["daily_rate"], info["hourly_rate"], info["overtime_rate"]), (750, 83.33, 50))
+
 	# --- cost code ---------------------------------------------------------
 	def test_cost_code_is_kept_and_a_moved_row_loses_it(self):
 		other = (
