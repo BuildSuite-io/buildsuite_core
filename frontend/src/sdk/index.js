@@ -119,6 +119,8 @@ export function createSdk(extension, router) {
 
 		/** Hooks on the generic DocType form: sdk.doctype("ToDo").on({ defaults, onLoad,
 		 *  beforeSave(payload, form), afterSave(doc, { isNew }) }). "*" matches every doctype.
+		 *  defaults(form, context) and onLoad(form, doc, context) also get the form's context, whose
+		 *  `custom` holds the extension's Custom Field values (write them to set defaults).
 		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom, and beside every section
 		 *  that has an id: form.<DocType>.before.<id> / .after.<id> (e.g. form.Quotation.after.items).
 		 *  Detail pages: detail.Quotation.before.lines / .after.lines, detail.Assembly.after.summary

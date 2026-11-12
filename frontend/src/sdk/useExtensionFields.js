@@ -41,11 +41,11 @@ export function useExtensionFields(doctype, form = {}) {
 			state.doc = doc || null;
 			context.doc = state.doc;
 			for (const field of docFields(doctype)) custom[field] = doc?.[field] ?? null;
-			await runDocHook(doctype, "onLoad", form, doc);
+			await runDocHook(doctype, "onLoad", form, doc, context);
 		},
 		/** A new document starts the way extensions say. */
 		async defaults() {
-			await runDocHook(doctype, "defaults", form);
+			await runDocHook(doctype, "defaults", form, context);
 		},
 		/** The extension fields to merge into what is saved: Object.assign(payload, ext.payload()). */
 		payload() {

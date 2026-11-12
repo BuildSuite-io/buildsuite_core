@@ -102,3 +102,32 @@ would get two controls.
 
 The same data can be written by a person in the Desk list, or by an AI or a drag-and-drop editor through
 the normal document API, and it takes effect on the next page load.
+
+
+## Placing a component between Core's sections (SDK 1.5)
+
+Every section on a Core form has a stable id, and offers a slot before and after it:
+
+    sdk.slots.add("form.Quotation.after.items", MyOfferSection);     // below the Items section
+    sdk.slots.add("form.Quotation.before.items", MyQuickAddBar);     // above it
+
+The id is the `id` on the section (`<DeskSection id="items">`); a test keeps ids unique and slot safe.
+The component receives `form`, `custom` (your Custom Field values, read and write), `doc` and, on the
+Quotation form, `setTerms(text)`. Detail pages offer a few named anchors too, and their components
+receive `doc`, `persist(values)` and `reload()`:
+
+    detail.Quotation.before.lines / detail.Quotation.after.lines
+    detail.Assembly.after.summary
+
+If a position you need is not addressable, use the page's `top` / `bottom` slot, or `views.wrap` /
+`views.override` for a page you are replacing on purpose.
+
+## Writing components as .vue files (the build kit)
+
+`frontend/sdk-kit/vite.mjs` builds an extension written with single-file components into one
+`extension.js` (and `extension.css`). It does not bundle Vue, the router or Core: `vue`, `vue-router`,
+the Desk controls, `usePermissions`/`useDoctypeMeta`/…, `__`, `showToast`, `fmtCurrency`, `fmtDate`,
+`parseFrappeError` and `frappeRequest` all resolve to Core's own copies at runtime. Any other `@/…`
+import fails the build, so an extension cannot depend on Core internals. See ep_custom's `frontend/` for
+a complete example (`vite.config.mjs`, `src/style.css` with `@tailwind utilities;`). Declare the built
+file in hooks.py with `buildsuite_frontend_extensions` (`"min_sdk": "1.5"`).

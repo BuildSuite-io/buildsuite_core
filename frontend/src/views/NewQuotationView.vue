@@ -78,6 +78,12 @@ const form = reactive({
 const editorKey = ref(0);
 
 const ext = useExtensionFields("Quotation", form);
+// An installed app that picks terms for the quotation sets them through this, so the editor
+// below is remounted with the new body.
+ext.context.setTerms = (text) => {
+	form.terms = text;
+	editorKey.value += 1;
+};
 if (!props.id) ext.defaults();
 
 // Read straight off the doctype — no endpoint. Only the line text needs translating: the form
