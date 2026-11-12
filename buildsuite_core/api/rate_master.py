@@ -80,7 +80,7 @@ def get_rate_update_threshold():
 
 
 @frappe.whitelist()
-def update_rates_from_po(purchase_order: str, updates: str, supplier: str | None = None):
+def update_rates_from_po(purchase_order: str, updates: str | list, supplier: str | None = None):
 	if isinstance(updates, str):
 		updates = json.loads(updates)
 

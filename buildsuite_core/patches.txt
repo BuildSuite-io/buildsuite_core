@@ -71,3 +71,10 @@ buildsuite_core.patches.seed_sales_workspace # 2026-10-25 register Sales in the 
 buildsuite_core.patches.grant_foreman_item_select_read # 2026-10-25 Foreman Item select+read in the seeded matrix
 buildsuite_core.patches.retire_subcontractor_work_order_print_format # 2026-10-28 delete the orphaned Subcontractor Work Order print format (BuildSuite Work Order is the default)
 buildsuite_core.patches.drop_item_company_field # 2026-10-30 Item is a global master, not company-scoped: drop its BuildSuite company field
+buildsuite_core.patches.set_company_full_day_hours # 2026-11-07 every Company gets a full day of 8 hours (Company.full_day_hours is required)
+buildsuite_core.patches.set_attendance_full_day_hours # 2026-11-08 existing attendance sheets and registers were made on an 8-hour day (full_day_hours, regular_hours, source)
+buildsuite_core.patches.seed_workforce_timesheet_tile # 2026-11-07 Timesheets record tile on the Workforce landing
+buildsuite_core.patches.grant_timesheet_workforce_perms # 2026-11-09 the Field Attendance roles may enter timesheets (native Timesheet matrix)
+buildsuite_core.patches.set_timesheet_costing_defaults # 2026-11-09 existing timesheet rows: 8-hour day; cost code from the task's BOQ line
+buildsuite_core.patches.retire_workforce_timesheet_record_tile # 2026-11-09 Timesheets has its own screens: drop the generic Records tile
+buildsuite_core.patches.add_labour_cost_summary_report # 2026-11-09 Labour Cost Summary joins the Workforce reports (first); drop "Labour cost from timesheets" if present

@@ -464,14 +464,21 @@ function groupCoverage(group) {
 // source documents. A group rolls up every line carrying its code (item-coded + group-coded);
 // an item shows only its own lines. Each entry links to the source document it was derived from.
 const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
-const drillTab = ref("all"); // "all" | "machinery" | "labour"
+const drillTab = ref("all"); // "all" | "machinery" | "labour" | "timesheets"
 const machineryEntries = computed(() =>
 	(actualsDrill.value?.entries || []).filter((e) => e.source_doctype === "Machinery Usage")
 );
 const machineryTotal = computed(() => machineryEntries.value.reduce((t, e) => t + e.amount, 0));
 const LABOUR_SOURCES = ["Labour Attendance Register", "Overtime Attendance Register"];
-const labourEntries = computed(() =>
+// Labour is one reading of the registers, split by how it was captured: attendance sheets under
+// "Labour attendance", timesheets under "Timesheets".
+const allLabourEntries = computed(() =>
 	(actualsDrill.value?.entries || []).filter((e) => LABOUR_SOURCES.includes(e.source_doctype))
+);
+const labourEntries = computed(() =>
+	allLabourEntries.value.filter((e) =>
+		drillTab.value === "timesheets" ? e.source === "Timesheet" : e.source !== "Timesheet"
+	)
 );
 const labourTotal = computed(() => labourEntries.value.reduce((t, e) => t + e.amount, 0));
 async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
@@ -520,7 +527,11 @@ function openActualSource(e) {
 	} else if (e.source_doctype === "Machinery Usage") {
 		router.push(`/machinery-usage/${e.source_name}`);
 	} else if (LABOUR_SOURCES.includes(e.source_doctype)) {
-		router.push(`/field-attendance/${e.field_attendance}`);
+		router.push(
+			e.source === "Timesheet"
+				? `/timesheets/${e.timesheet}`
+				: `/field-attendance/${e.field_attendance}`
+		);
 	} else if (e.source_doctype === "Stock Entry") {
 		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
 	} else if (e.source_doctype === "Expense Entry") {
@@ -3707,6 +3718,7 @@ const breadcrumbs = computed(() => {
 								{ key: 'all', label: __('All') },
 								{ key: 'machinery', label: __('Machinery usage') },
 								{ key: 'labour', label: __('Labour attendance') },
+								{ key: 'timesheets', label: __('Timesheets') },
 							]"
 							:key="t.key"
 							type="button"
@@ -3721,12 +3733,21 @@ const breadcrumbs = computed(() => {
 							{{ t.label }}
 						</button>
 					</div>
-					<template v-if="drillTab === 'labour' && actualsDrill.entries.length">
+					<template
+						v-if="
+							(drillTab === 'labour' || drillTab === 'timesheets') &&
+							actualsDrill.entries.length
+						"
+					>
 						<div
 							v-if="!labourEntries.length"
 							class="py-8 text-center text-xs text-ink-400"
 						>
-							{{ __("No labour attendance is coded to this cost code.") }}
+							{{
+								drillTab === "timesheets"
+									? __("No timesheet is coded to this cost code.")
+									: __("No labour attendance is coded to this cost code.")
+							}}
 						</div>
 						<table v-else class="w-full text-xs">
 							<thead
@@ -3754,7 +3775,9 @@ const breadcrumbs = computed(() => {
 											{{ e.employee_name }}
 										</button>
 										<div class="text-[10px] text-ink-400">
-											<span class="font-mono">{{ e.field_attendance }}</span>
+											<span class="font-mono">{{
+												e.field_attendance || e.timesheet
+											}}</span>
 											<span v-if="e.date"> · {{ fmtDate(e.date) }}</span>
 										</div>
 									</td>
@@ -3778,7 +3801,11 @@ const breadcrumbs = computed(() => {
 										colspan="3"
 										class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
 									>
-										{{ __("Labour total") }}
+										{{
+											drillTab === "timesheets"
+												? __("Timesheets total")
+												: __("Labour total")
+										}}
 									</td>
 									<td
 										class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"

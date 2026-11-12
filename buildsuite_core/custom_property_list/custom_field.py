@@ -42,6 +42,28 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 		{
+			# Labour costing — the hours in a full day for this company's projects (a project can
+			# set its own). Only a System Manager / BuildSuite Administrator can edit it: permlevel 1,
+			# granted to those two roles in install.ensure_full_day_permissions.
+			"fieldname": "custom_labour_costing_section",
+			"fieldtype": "Section Break",
+			"label": "Labour costing",
+			"insert_after": "custom_brand_colour",
+			"permlevel": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"reqd": 1,
+			"default": "8",
+			"permlevel": 1,
+			"insert_after": "custom_labour_costing_section",
+			"description": "Hours in a full day of labour. Hours beyond it are overtime. A project can set its own.",
+			"module": "BuildSuite Core",
+		},
+		{
 			"fieldname": "custom_brand_colour",
 			"fieldtype": "Select",
 			"label": "Brand Colour",
@@ -69,6 +91,17 @@ CUSTOM_FIELD = {
 		},
 	],
 	"Project": [
+		{
+			# Hours in a full day for THIS project; blank = the company's value. Who may set it
+			# (System Manager, BuildSuite Administrator, the project's own PM) is checked in
+			# utils.full_day.validate_project_full_day_hours — a permlevel can't say "this project's PM".
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"insert_after": "expected_end_date",
+			"description": "Blank uses the company default.",
+			"module": "BuildSuite Core",
+		},
 		{
 			"fieldname": "custom_project_id",
 			"fieldtype": "Data",
@@ -605,6 +638,63 @@ CUSTOM_FIELD = {
 			"depends_on": "eval:doc.custom_cost_code_type",
 			"read_only": 1,
 			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Timesheet rows (S453/S454): where the hours land on the estimate, the full day the row is costed
+	# on, and whether it is overtime. Same four cost-code fields as Purchase Order Item, so
+	# CostCodePicker.vue works unchanged. Task stays on the row (hidden) for rows made before cost codes.
+	"Timesheet Detail": [
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "project",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "is_overtime",
+			"fieldtype": "Check",
+			"label": "Overtime",
+			"insert_after": "hours",
+			"description": "Costed at the worker's overtime rate instead of the daily rate over the full day.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"read_only": 1,
+			"no_copy": 1,
+			"insert_after": "costing_rate",
+			"description": "The full day of this row's project; recalculated while a draft, frozen on submit.",
 			"module": "BuildSuite Core",
 		},
 	],

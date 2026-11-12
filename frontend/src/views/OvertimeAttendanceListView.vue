@@ -1,9 +1,11 @@
 <script setup>
 // Overtime Attendance Register — read-only. Rows are generated when a Field
 // Attendance sheet carrying overtime hours is submitted. Filters (project, worker,
-// date range) + a Total-OT-hours / Total-amount subtitle mirror the prototype.
+// date range) + a Total-OT-hours / Total-amount subtitle mirror the prototype. Cost code is what
+// posts the overtime wage to the BOQ Actual.
 
 import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -83,8 +85,17 @@ const subtitle = computed(() =>
 const columns = [
 	{ key: "overtime_date", label: __("Date") },
 	{ key: "employee_name", label: __("Worker") },
-	{ key: "task", label: __("Task") },
+	{
+		key: "source",
+		label: __("Captured as"),
+		fields: ["source", "timesheet", "field_attendance"],
+	},
 	{ key: "project", label: __("Project") },
+	{
+		key: "cost_code_label",
+		label: __("Cost code"),
+		fields: ["cost_code_label", "cost_code_item", "cost_code_group"],
+	},
 	{ key: "overtime_hours", label: __("OT hrs"), align: "right" },
 	{ key: "overtime_rate", label: __("OT rate"), align: "right" },
 	{ key: "overtime_wage_calculated", label: __("OT wage"), align: "right" },
@@ -98,55 +109,75 @@ const breadcrumbs = [
 </script>
 
 <template>
-	<DeskPage :title="__('Overtime Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Overtime Attendance Register')"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+	>
 		<DocTypeListView
 			doctype="Overtime Attendance Register"
 			:field-order="[
 				'overtime_date',
 				'employee_name',
-				'task',
-				'task_subject',
+				'source',
+				'timesheet',
+				'field_attendance',
 				'project',
 				'overtime_hours',
 				'overtime_rate',
 				'overtime_wage_calculated',
 			]"
 			:columns="columns"
-			:search-fields="['employee_name', 'name', 'project']"
+			:search-fields="['employee_name', 'name', 'project', 'cost_code_label']"
 			:filter-values="filterValues"
 			:filter-field-map="filterFieldMap"
 			:base-filters="[['docstatus', '<', 2]]"
 			cache-key="buildsuite-overtime-attendance"
 			row-key="name"
 			initial-order-by="overtime_date desc"
-			:search-placeholder="__('Search worker / project…')"
+			:search-placeholder="__('Search worker / project / cost code…')"
 			:empty-message="__('No overtime yet — submit a Field Attendance with overtime hours.')"
 		>
 			<template #filter-chips>
 				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-					<div class="w-48">
-						<DeskSearchableSelect
-							v-model="projectFilter"
-							:options="projectOptions"
-							:placeholder="__('All projects')"
-							:search-placeholder="__('Search projects…')"
-							allow-clear
-						/>
-					</div>
-					<div class="w-48">
-						<DeskSearchableSelect
-							v-model="workerFilter"
-							:options="workerOptions"
-							:placeholder="__('Everyone')"
-							:search-placeholder="__('Search workers…')"
-							allow-clear
-						/>
-					</div>
-					<div class="flex items-center gap-1.5">
-						<DeskInput v-model="fromFilter" type="date" class="!w-36" />
-						<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
-						<DeskInput v-model="toFilter" type="date" class="!w-36" />
-					</div>
+					<label class="flex items-center gap-1.5"
+						><span
+							class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+							>{{ __("Project") }}</span
+						>
+						<div class="w-48">
+							<DeskSearchableSelect
+								v-model="projectFilter"
+								:options="projectOptions"
+								:placeholder="__('All projects')"
+								:search-placeholder="__('Search projects…')"
+								allow-clear
+							/></div
+					></label>
+					<label class="flex items-center gap-1.5"
+						><span
+							class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+							>{{ __("Worker") }}</span
+						>
+						<div class="w-48">
+							<DeskSearchableSelect
+								v-model="workerFilter"
+								:options="workerOptions"
+								:placeholder="__('Everyone')"
+								:search-placeholder="__('Search workers…')"
+								allow-clear
+							/></div
+					></label>
+					<label class="flex items-center gap-1.5"
+						><span
+							class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+							>{{ __("Date") }}</span
+						>
+						<div class="flex items-center gap-1.5">
+							<DeskInput v-model="fromFilter" type="date" class="!w-36" />
+							<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
+							<DeskInput v-model="toFilter" type="date" class="!w-36" /></div
+					></label>
 					<button
 						v-if="anyFilter"
 						type="button"
@@ -163,11 +194,28 @@ const breadcrumbs = [
 			</template>
 
 			<template #cell-employee_name="{ row }">
-				<span class="text-ink-900 font-medium">{{ row.employee_name || row.employee }}</span>
+				<span class="text-ink-900 font-medium">{{
+					row.employee_name || row.employee
+				}}</span>
+				<span class="text-ink-400 text-[11px]"> {{ row.employee }}</span>
 			</template>
 
-			<template #cell-task="{ row }">
-				<span class="text-ink-700">{{ row.task_subject || row.task || "—" }}</span>
+			<template #cell-source="{ row }">
+				<RouterLink
+					v-if="row.source === 'Timesheet' && row.timesheet"
+					:to="`/timesheets/${encodeURIComponent(row.timesheet)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Timesheet") }}</RouterLink
+				>
+				<RouterLink
+					v-else-if="row.field_attendance"
+					:to="`/field-attendance/${encodeURIComponent(row.field_attendance)}`"
+					class="desk-link"
+					@click.stop
+					>{{ __("Attendance") }}</RouterLink
+				>
+				<span v-else class="text-ink-400">—</span>
 			</template>
 
 			<template #cell-project="{ row }">
@@ -175,6 +223,15 @@ const breadcrumbs = [
 					{{ projectLabel(row.project) }}
 				</DeskLink>
 				<span v-else class="text-ink-400">—</span>
+			</template>
+
+			<template #cell-cost_code_label="{ row }">
+				<span
+					v-if="row.cost_code_label || row.cost_code_item || row.cost_code_group"
+					class="text-ink-700"
+					>{{ row.cost_code_label || row.cost_code_item || row.cost_code_group }}</span
+				>
+				<span v-else class="text-ink-400 italic">{{ __("Not coded") }}</span>
 			</template>
 
 			<template #cell-overtime_hours="{ row }">
