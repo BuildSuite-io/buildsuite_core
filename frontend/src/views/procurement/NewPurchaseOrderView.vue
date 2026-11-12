@@ -3,8 +3,9 @@
 // an editable item grid (item, qty, uom, rate → amount). Honors ?mr=<id> to convert
 // an approved Material Request: project + still-to-order lines pre-fill and the PO's
 // lines are linked back to the request. Saved via save_purchase_order.
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
 import { getPurchaseOrder, getMrForPo, savePurchaseOrder } from "@/data/procurementApi";
 import { getSupplierBillItemDetails } from "@/data/supplierBillApi";
@@ -20,6 +21,8 @@ import ItemFormModal from "@/components/ItemFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
+
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -75,8 +78,33 @@ const form = ref({
 	project: route.query.project || "",
 	schedule_date: inDays(10),
 	material_request: null,
+	tc_name: "",
+	terms: "",
 	lines: [emptyLine()],
 });
+// Remount the rich-text editor when the terms are set for us (template pull or record load), so it
+// initialises with that body rather than reporting it as an edit and dropping the template link.
+const editorKey = ref(0);
+
+// A template copies its text in; editing afterwards makes the terms this order's own, so the link drops.
+async function onPickTerms(name) {
+	form.value.tc_name = name || "";
+	if (!name) return;
+	try {
+		const res = await frappeRequest({
+			url: "frappe.client.get_value",
+			params: { doctype: "Terms and Conditions", filters: name, fieldname: "terms" },
+		});
+		form.value.terms = res?.terms || "";
+		editorKey.value += 1;
+	} catch {
+		form.value.tc_name = "";
+		showToast(__("Could not read that terms template."), "error");
+	}
+}
+function onTermsEdited() {
+	form.value.tc_name = "";
+}
 const errors = ref({});
 const saving = ref(false);
 
@@ -97,6 +125,8 @@ watch(
 				project: po.project || "",
 				schedule_date: po.schedule_date || inDays(10),
 				material_request: null,
+				tc_name: po.tc_name || "",
+				terms: po.terms || "",
 				lines: (po.items || []).map((it) => ({
 					item_code: it.item_code || "",
 					description: it.description || "",
@@ -109,6 +139,7 @@ watch(
 				})),
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
+			editorKey.value += 1;
 		} catch (err) {
 			showToast(err.message || __("Failed to load order"), "error");
 		}
@@ -181,6 +212,8 @@ async function onSave() {
 			project: form.value.project,
 			schedule_date: form.value.schedule_date,
 			material_request: form.value.material_request || undefined,
+			terms: form.value.terms || "",
+			tc_name: form.value.tc_name || "",
 			items: validLines.value.map((l) => ({
 				item_code: l.item_code,
 				description: l.description,
@@ -415,6 +448,46 @@ const saveLabel = computed(() =>
 				</div>
 				<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">{{ errors.lines }}</p>
 			</section>
+
+			<DeskSection :title="__('Terms & conditions')" :cols="1" class="mt-6">
+				<DeskField
+					:label="__('Import from template')"
+					:hint="
+						__(
+							'Pick a standard template to fill the box below. You can edit the text after importing.'
+						)
+					"
+				>
+					<DeskLinkPicker
+						:model-value="form.tc_name"
+						doctype="Terms and Conditions"
+						label-field="name"
+						value-field="name"
+						:filters="{ custom_applicable_for: 'Purchase Order' }"
+						:placeholder="__('— Choose a terms template —')"
+						@update:model-value="onPickTerms"
+					/>
+				</DeskField>
+				<DeskField
+					:label="__('Terms & conditions')"
+					:hint="
+						form.tc_name
+							? __(
+									'Pulled from a template. Editing it here does not change the library.'
+							  )
+							: __(
+									'Prints on the purchase order. Leave empty to print the standard delivery terms.'
+							  )
+					"
+				>
+					<RichTextEditor
+						:key="editorKey"
+						v-model="form.terms"
+						min-height="10rem"
+						@update:model-value="onTermsEdited"
+					/>
+				</DeskField>
+			</DeskSection>
 		</DeskForm>
 
 		<ItemFormModal
