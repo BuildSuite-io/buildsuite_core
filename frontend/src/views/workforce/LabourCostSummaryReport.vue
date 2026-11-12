@@ -231,13 +231,14 @@ const breadcrumbs = [
 				</div>
 				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-						{{ __("Overtime (hrs)") }}
+						{{ __("Overtime") }}
 					</div>
 					<div
 						class="text-base font-semibold text-ink-900 tabular-nums"
 						data-tile="overtime"
 					>
 						{{ hrs(totals.ot_hours) }}
+						<span class="text-[11px] font-normal text-ink-500">{{ __("hrs") }}</span>
 					</div>
 				</div>
 				<div

@@ -78,3 +78,4 @@ buildsuite_core.patches.grant_timesheet_workforce_perms # 2026-11-09 the Field A
 buildsuite_core.patches.set_timesheet_costing_defaults # 2026-11-09 existing timesheet rows: 8-hour day; cost code from the task's BOQ line
 buildsuite_core.patches.retire_workforce_timesheet_record_tile # 2026-11-09 Timesheets has its own screens: drop the generic Records tile
 buildsuite_core.patches.add_labour_cost_summary_report # 2026-11-09 Labour Cost Summary joins the Workforce reports (first); drop "Labour cost from timesheets" if present
+buildsuite_core.patches.set_register_day_type_regular # 2026-11-12 Labour Attendance Register / Field Attendance: existing rows are Regular days

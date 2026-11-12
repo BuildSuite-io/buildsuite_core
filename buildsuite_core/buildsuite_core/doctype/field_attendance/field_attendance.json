@@ -16,6 +16,7 @@
   "date",
   "column_break_vbqw",
   "status",
+  "day_type",
   "section_break_dkns",
   "project_name",
   "column_break_rg0g",
@@ -193,13 +194,21 @@
    "read_only": 1,
    "no_copy": 1,
    "description": "Copied from the project / company while the sheet is a draft and frozen on submit."
+  },
+  {
+   "default": "Regular",
+   "fieldname": "day_type",
+   "fieldtype": "Select",
+   "label": "Day type",
+   "options": "Regular\nOff Day",
+   "description": "Off Day: work on a weekly off or a holiday. It is copied onto the worker's Labour Attendance Register row."
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-08 10:00:00.000000",
+ "modified": "2026-11-12 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Field Attendance",
