@@ -305,7 +305,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 				{{ __("Loading…") }}
 			</div>
 			<template v-else>
-				<DeskSection :title="__('Invoice details')" :cols="4">
+				<DeskSection id="invoice-details" :title="__('Invoice details')" :cols="4">
 					<DeskField :label="__('Customer')" required :error="errors.customer">
 						<DeskLinkPicker
 							v-model="form.customer"
@@ -336,7 +336,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					/></DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Items')" :cols="1">
+				<DeskSection id="items" :title="__('Items')" :cols="1">
 					<div>
 						<div
 							class="hidden md:grid grid-cols-[1fr_110px_140px_140px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"

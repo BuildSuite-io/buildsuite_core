@@ -291,7 +291,7 @@ const breadcrumbs = computed(() => [
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Who and what')" :cols="2">
+			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
 				<div class="md:col-span-2">
 					<DeskField :label="__('For')" required :error="errors.title">
 						<DeskInput
@@ -337,7 +337,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Dates and pricing')" :cols="3">
+			<DeskSection id="dates-and-pricing" :title="__('Dates and pricing')" :cols="3">
 				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
 					<DeskInput v-model="form.transaction_date" type="date" />
 				</DeskField>
@@ -359,7 +359,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Items')" :cols="1">
+			<DeskSection id="items" :title="__('Items')" :cols="1">
 				<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm" style="min-width: 780px">
@@ -516,7 +516,7 @@ const breadcrumbs = computed(() => [
 				<p v-if="errors.items" class="text-xs text-danger-700 mt-2">{{ errors.items }}</p>
 			</DeskSection>
 
-			<DeskSection :title="__('Terms')" :cols="1">
+			<DeskSection id="terms" :title="__('Terms')" :cols="1">
 				<DeskField
 					:label="__('Start from a template')"
 					:hint="
@@ -554,7 +554,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Internal notes')" :cols="1">
+			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
 				<DeskField
 					:label="__('Notes')"
 					:hint="__('Not printed — for whoever picks this up next.')"

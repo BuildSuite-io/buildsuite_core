@@ -126,7 +126,7 @@ const breadcrumbs = [
 			</template>
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-			<DeskSection :title="__('Change order')" :cols="2">
+			<DeskSection id="change-order" :title="__('Change order')" :cols="2">
 				<DeskField :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"

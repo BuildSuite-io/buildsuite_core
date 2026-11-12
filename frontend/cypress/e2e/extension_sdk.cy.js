@@ -47,6 +47,29 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		cy.get("[data-test=demo-overridden]").should("be.visible");
 	});
 
+	it("section anchors place a component between Core's own sections on a bespoke form", () => {
+		cy.visitApp("/quotations/new");
+		cy.get("[data-test=demo-anchor-after-items]").should("be.visible");
+		cy.get("[data-test=demo-anchor-before-terms]").should("be.visible");
+		// Document order: Items heading < after-items < before-terms < Terms heading.
+		cy.get("body").then(($b) => {
+			const order = [
+				$b.find("h3:contains('Items')")[0],
+				$b.find("[data-test=demo-anchor-after-items]")[0],
+				$b.find("[data-test=demo-anchor-before-terms]")[0],
+				$b.find("h3:contains('Terms')")[0],
+			];
+			order.forEach((el, i) => {
+				if (
+					i &&
+					!(order[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)
+				) {
+					throw new Error(`anchor ${i} is out of order`);
+				}
+			});
+		});
+	});
+
 	it("DocType hooks run on the generic form: its slot shows and beforeSave can veto", () => {
 		cy.visitApp("/records/Account%20Category/new");
 		cy.get("[data-test=demo-form-notice]").should("be.visible");

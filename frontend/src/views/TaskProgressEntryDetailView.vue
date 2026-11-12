@@ -447,8 +447,12 @@ const WEATHER_ICON = { Clear: "☀️", Rainy: "🌧️", Hot: "🌡️", Cold: 
 
 const deleteMessage = computed(() =>
 	isLatestOnTask.value
-		? __("Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one).")
-		: __("Delete this entry? It's a historical entry; the task's current progress will not change.")
+		? __(
+				"Delete this entry? It's the latest on the task — the task's progress will revert to the previous entry (or 0% if this is the only one)."
+		  )
+		: __(
+				"Delete this entry? It's a historical entry; the task's current progress will not change."
+		  )
 );
 
 const breadcrumbs = computed(() => {
@@ -525,7 +529,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 				<div class="lg:col-span-2">
 					<!-- Progress section — view mode -->
-					<DeskSection v-if="!editing" :title="__('Progress')">
+					<DeskSection id="progress" v-if="!editing" :title="__('Progress')">
 						<DeskField :label="__('Entry date')">
 							<div class="text-sm text-ink-900 py-1">
 								{{ fmtDate(entry.entryDate) }}
@@ -563,14 +567,16 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Progress section — edit mode -->
-					<DeskSection v-else :title="__('Progress')">
+					<DeskSection id="progress-2" v-else :title="__('Progress')">
 						<DeskField :label="__('Entry date')">
 							<DeskInput v-model="form.entryDate" type="date" />
 						</DeskField>
 						<DeskField
 							:label="__('Cumulative progress (%)')"
 							required
-							:hint="__('The NEW cumulative % after this entry — not a delta. 0–100.')"
+							:hint="
+								__('The NEW cumulative % after this entry — not a delta. 0–100.')
+							"
 						>
 							<DeskInput
 								v-model="form.progressPct"
@@ -584,13 +590,20 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 							<DeskTextarea
 								v-model="form.narrative"
 								:rows="3"
-								:placeholder="__('What was completed today? Any context worth recording?')"
+								:placeholder="
+									__('What was completed today? Any context worth recording?')
+								"
 							/>
 						</DeskField>
 					</DeskSection>
 
 					<!-- Labour section — view mode -->
-					<DeskSection v-if="!editing" :title="__('Labour deployed today')" :cols="2">
+					<DeskSection
+						id="labour-deployed-today"
+						v-if="!editing"
+						:title="__('Labour deployed today')"
+						:cols="2"
+					>
 						<DeskField :label="__('Skilled labour')">
 							<div class="text-sm text-ink-900 py-1 tabular-nums">
 								{{ entry.skilledLabour || 0 }}
@@ -604,7 +617,12 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Labour section — edit mode -->
-					<DeskSection v-else :title="__('Labour deployed today')" :cols="2">
+					<DeskSection
+						id="labour-deployed-today-2"
+						v-else
+						:title="__('Labour deployed today')"
+						:cols="2"
+					>
 						<DeskField
 							:label="__('Skilled labour')"
 							:hint="__('Count of skilled workers on site today')"
@@ -620,7 +638,12 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Site conditions — view mode -->
-					<DeskSection v-if="!editing" :title="__('Site conditions')" :cols="2">
+					<DeskSection
+						id="site-conditions"
+						v-if="!editing"
+						:title="__('Site conditions')"
+						:cols="2"
+					>
 						<DeskField :label="__('Weather')">
 							<div class="text-sm text-ink-900 py-1">
 								<span v-if="entry.weather">
@@ -640,7 +663,9 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 									style="border-radius: 2px"
 									>{{ __("🚩 Blocker flagged") }}</span
 								>
-								<span v-else class="text-ink-500 text-xs">{{ __("No blocker") }}</span>
+								<span v-else class="text-ink-500 text-xs">{{
+									__("No blocker")
+								}}</span>
 							</div>
 						</DeskField>
 						<div v-if="entry.blockerFlag && entry.blockerNote" class="md:col-span-2">
@@ -653,7 +678,12 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 					</DeskSection>
 
 					<!-- Site conditions — edit mode -->
-					<DeskSection v-else :title="__('Site conditions')" :cols="2">
+					<DeskSection
+						id="site-conditions-2"
+						v-else
+						:title="__('Site conditions')"
+						:cols="2"
+					>
 						<DeskField :label="__('Weather')">
 							<DeskSelect v-model="form.weather">
 								<option value="">{{ __("— No record —") }}</option>
@@ -675,14 +705,17 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 							</label>
 						</DeskField>
 						<div v-if="form.blockerFlag" class="md:col-span-2">
-							<DeskField :label="__('Blocker detail')" :hint="__('What blocked progress today?')">
+							<DeskField
+								:label="__('Blocker detail')"
+								:hint="__('What blocked progress today?')"
+							>
 								<DeskTextarea v-model="form.blockerNote" :rows="2" />
 							</DeskField>
 						</div>
 					</DeskSection>
 
 					<!-- Attachments -->
-					<DeskSection :title="__('Attachments')">
+					<DeskSection id="attachments" :title="__('Attachments')">
 						<div class="md:col-span-2">
 							<div
 								v-if="attachedFiles.length"
@@ -910,5 +943,7 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 		:back-label="__('Back to Progress Entries')"
 	/>
 
-	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">{{ __("Progress entry not found.") }}</div>
+	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
+		{{ __("Progress entry not found.") }}
+	</div>
 </template>

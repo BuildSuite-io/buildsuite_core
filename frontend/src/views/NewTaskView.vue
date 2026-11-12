@@ -177,7 +177,7 @@ const breadcrumbs = [
            above stays full-width (matches Frappe Desk's form layout). -->
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-				<DeskSection :title="__('Task details')" :cols="1">
+				<DeskSection id="task-details" :title="__('Task details')" :cols="1">
 					<DeskField :label="__('Task name')" required :error="errors.name">
 						<DeskInput
 							v-model="form.name"
@@ -204,7 +204,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Hierarchy')">
+				<DeskSection id="hierarchy" :title="__('Hierarchy')">
 					<DeskField
 						:label="__('Project')"
 						required
@@ -256,7 +256,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule')" :cols="3">
+				<DeskSection id="schedule" :title="__('Schedule')" :cols="3">
 					<!-- A Milestone is a point in time: only a Due date, no start (the due
 					     date is the end date behind the scenes, used for delay). -->
 					<DeskField
@@ -274,7 +274,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Assignment')" :cols="3">
+				<DeskSection id="assignment" :title="__('Assignment')" :cols="3">
 					<DeskField :label="__('Assignee')">
 						<DeskLinkPicker
 							v-model="form.assignee"

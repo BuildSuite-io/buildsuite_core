@@ -122,7 +122,7 @@ const breadcrumbs = [
 			</template>
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-			<DeskSection :title="__('Machinery')" :cols="3">
+			<DeskSection id="machinery" :title="__('Machinery')" :cols="3">
 				<DeskField :label="__('Name')" required :error="errors.machinery_name">
 					<DeskInput v-model="form.machinery_name" />
 				</DeskField>

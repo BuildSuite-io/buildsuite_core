@@ -24,6 +24,9 @@ import { useConfirm } from "@/composables/useConfirm";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
+import { fmtCurrency, fmtDate } from "@/utils/format";
+import { parseFrappeError } from "@/utils/frappeError";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import { __ } from "@/utils/translate";
 import {
 	addSlot,
@@ -34,7 +37,45 @@ import {
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.4"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations
+export const SDK_VERSION = "1.5"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions
+
+/** The parts every extension shares, the same for all of them. Also published as
+ *  globalThis.__buildsuite before extensions load, so an extension built with its own bundler
+ *  (frontend kit: vite plugin) resolves `vue`, `vue-router` and `@/…` imports to Core's copies. */
+export const runtime = {
+	// Core's own copies of Vue and the router, so an extension shares one reactivity system and
+	// one router with the app instead of bundling a second.
+	vue,
+	vueRouter,
+
+	// Reusable controls, the same ones Core's own pages are built from.
+	controls: {
+		DeskPage,
+		DeskForm,
+		DeskSection,
+		DeskField,
+		DeskInput,
+		DeskSelect,
+		DeskTextarea,
+		DeskLinkPicker,
+		DeskActionBar,
+		DeskList,
+		ExtensionSlot,
+	},
+
+	composables: {
+		usePermissions,
+		useDoctypeMeta,
+		useDocTypeList,
+		useFormErrors,
+		useConfirm,
+		useActiveCompany,
+		useExtensionFields,
+	},
+
+	// `request` calls a whitelisted method: request({ url: "app.module.fn", params }).
+	utils: { __, showToast, fmtCurrency, fmtDate, parseFrappeError, request: frappeRequest },
+};
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
 export function createSdk(extension, router) {
@@ -42,10 +83,7 @@ export function createSdk(extension, router) {
 		version: SDK_VERSION,
 		extension,
 
-		// Core's own copies of Vue and the router, so an extension shares one reactivity system and
-		// one router with the app instead of bundling a second.
-		vue,
-		vueRouter,
+		...runtime,
 
 		routes: {
 			/** A page inside the app shell: a vue-router record. `meta` guards apply as for Core
@@ -81,7 +119,10 @@ export function createSdk(extension, router) {
 
 		/** Hooks on the generic DocType form: sdk.doctype("ToDo").on({ defaults, onLoad,
 		 *  beforeSave(payload, form), afterSave(doc, { isNew }) }). "*" matches every doctype.
-		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom.
+		 *  Slots on that form: form.<DocType>.top and form.<DocType>.bottom, and beside every section
+		 *  that has an id: form.<DocType>.before.<id> / .after.<id> (e.g. form.Quotation.after.items).
+		 *  Detail pages: detail.Quotation.before.lines / .after.lines, detail.Assembly.after.summary
+		 *  (the component gets `doc`, `persist(values)` and `reload()`).
 		 *  List columns: on({ listColumns: [{ field, label, align?, render?(value, row) }] }) adds a
 		 *  column to that doctype's lists (any list whose rows are keyed by the document name). */
 		doctype(doctype) {
@@ -107,32 +148,5 @@ export function createSdk(extension, router) {
 				addWorkspaceTile(extension, workspace, tile);
 			},
 		},
-
-		// Reusable controls, the same ones Core's own pages are built from.
-		controls: {
-			DeskPage,
-			DeskForm,
-			DeskSection,
-			DeskField,
-			DeskInput,
-			DeskSelect,
-			DeskTextarea,
-			DeskLinkPicker,
-			DeskActionBar,
-			DeskList,
-			ExtensionSlot,
-		},
-
-		composables: {
-			usePermissions,
-			useDoctypeMeta,
-			useDocTypeList,
-			useFormErrors,
-			useConfirm,
-			useActiveCompany,
-			useExtensionFields,
-		},
-
-		utils: { __, showToast },
 	};
 }

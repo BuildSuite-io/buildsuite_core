@@ -151,7 +151,7 @@ const subtitle = computed(() =>
 
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-				<DeskSection :title="__('Basic information')">
+				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField
 						:label="__('Project')"
 						required
@@ -197,7 +197,7 @@ const subtitle = computed(() =>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 					<DeskField :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>

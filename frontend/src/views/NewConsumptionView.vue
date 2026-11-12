@@ -207,7 +207,7 @@ const breadcrumbs = computed(() => [
 			</template>
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection title="Booking" :cols="2">
+			<DeskSection id="booking" title="Booking" :cols="2">
 				<DeskField
 					label="Project"
 					required
@@ -236,7 +236,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection v-if="form.project" title="Items consumed" :cols="1">
+			<DeskSection id="items-consumed" v-if="form.project" title="Items consumed" :cols="1">
 				<!-- No store: an empty picker would look like an empty store. -->
 				<p v-if="!warehouse && !loadingStock" class="text-sm text-danger-700">
 					This project has no store, so nothing can be issued from it.

@@ -265,7 +265,7 @@ const breadcrumbs = [
 				<!-- Full-width Layout -->
 				<div class="pb-12">
 					<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-					<DeskSection :title="__('Stage details')" :cols="1">
+					<DeskSection id="stage-details" :title="__('Stage details')" :cols="1">
 						<DeskField :label="__('Stage name')" required :error="errors.stageName">
 							<DeskInput
 								v-model="form.stageName"
@@ -295,7 +295,7 @@ const breadcrumbs = [
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Schedule')" :cols="2">
+					<DeskSection id="schedule" :title="__('Schedule')" :cols="2">
 						<DeskField :label="__('Planned start')">
 							<DeskInput v-model="form.plannedStart" type="date" />
 						</DeskField>
@@ -304,7 +304,7 @@ const breadcrumbs = [
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Description')" :cols="1">
+					<DeskSection id="description" :title="__('Description')" :cols="1">
 						<DeskField :label="__('Description')">
 							<DeskTextarea
 								v-model="form.description"
@@ -314,7 +314,12 @@ const breadcrumbs = [
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Dependencies')" v-if="form.project" :cols="1">
+					<DeskSection
+						id="dependencies"
+						:title="__('Dependencies')"
+						v-if="form.project"
+						:cols="1"
+					>
 						<div class="md:col-span-1">
 							<div v-if="siblingStages.length" class="flex flex-wrap gap-2">
 								<label

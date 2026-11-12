@@ -208,7 +208,7 @@ async function onSave() {
 			</template>
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-			<DeskSection :title="__('Who and what')" :cols="2">
+			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
 				<DeskField :label="__('For')" required :error="errors.title" class="md:col-span-2">
 					<DeskInput
 						v-model="form.title"
@@ -242,7 +242,7 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Submission')" :cols="2">
+			<DeskSection id="submission" :title="__('Submission')" :cols="2">
 				<DeskField
 					:label="__('Tender reference')"
 					required
@@ -291,7 +291,11 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Earnest money and guarantee')" :cols="2">
+			<DeskSection
+				id="earnest-money-and-guarantee"
+				:title="__('Earnest money and guarantee')"
+				:cols="2"
+			>
 				<DeskField
 					:label="`${__('EMD amount')} (${currencySymbol()})`"
 					:error="errors.emd_amount"
@@ -336,7 +340,7 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Pricing')" :cols="2">
+			<DeskSection id="pricing" :title="__('Pricing')" :cols="2">
 				<DeskField :label="__('Margin %')" :hint="__('Applied to the subtotal.')">
 					<DeskInput v-model="form.margin_percent" type="number" min="0" step="any" />
 				</DeskField>
@@ -345,7 +349,7 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Items')" :cols="1">
+			<DeskSection id="items" :title="__('Items')" :cols="1">
 				<DocTypeChildTable
 					v-model="form.buildsuite_tenders_items"
 					doctype="BuildSuite Tenders Items"
@@ -374,7 +378,7 @@ async function onSave() {
 				</p>
 			</DeskSection>
 
-			<DeskSection :title="__('Internal notes')" :cols="1">
+			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
 				<DeskField
 					:label="__('Notes')"
 					:hint="__('Not printed — for whoever picks this up next.')"

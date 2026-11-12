@@ -255,7 +255,7 @@ const saveLabel = computed(() =>
 			</template>
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Header')" :cols="3">
+			<DeskSection id="header" :title="__('Header')" :cols="3">
 				<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
 					<DeskLinkPicker
 						v-model="form.subcontractor"
@@ -415,7 +415,12 @@ const saveLabel = computed(() =>
 
 			<!-- Terms & conditions — extra top margin so the header isn't cramped against
 					 the schedule-of-values table above. -->
-			<DeskSection :title="__('Terms & conditions')" :cols="1" class="mt-8">
+			<DeskSection
+				id="terms-conditions"
+				:title="__('Terms & conditions')"
+				:cols="1"
+				class="mt-8"
+			>
 				<DeskField
 					:label="__('Import from template')"
 					:hint="

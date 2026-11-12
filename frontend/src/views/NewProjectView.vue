@@ -335,7 +335,7 @@ const breadcrumbs = computed(() => {
            pattern as NewTaskView and NewTaskProgressEntryView. -->
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-				<DeskSection :title="__('Basic information')">
+				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField :label="__('Project name')" required :error="errors.name">
 						<DeskInput
 							v-model="form.name"
@@ -593,7 +593,7 @@ const breadcrumbs = computed(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 					<DeskField :label="__('Start date')" :error="errors.startDate">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
@@ -612,7 +612,7 @@ const breadcrumbs = computed(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Team & status')">
+				<DeskSection id="team-status" :title="__('Team & status')">
 					<DeskField :label="__('Project Manager')" :error="errors.pm">
 						<DeskLinkPicker
 							v-model="form.pm"

@@ -162,7 +162,7 @@ const breadcrumbs = [
 			</template>
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-			<DeskSection :title="__('Usage')" :cols="3">
+			<DeskSection id="usage" :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"

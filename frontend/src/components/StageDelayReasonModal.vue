@@ -172,7 +172,7 @@ async function save() {
 				</header>
 
 				<div class="p-5 overflow-y-auto flex-1">
-					<DeskSection title="Why is this stage delayed?">
+					<DeskSection id="why-is-this-stage-delayed" title="Why is this stage delayed?">
 						<DeskField
 							label="Reason"
 							required

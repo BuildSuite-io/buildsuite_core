@@ -884,7 +884,7 @@ usePageTitle(() => task.value?.name);
 					</div>
 				</section>
 
-				<DeskSection :title="__('Details')">
+				<DeskSection id="details" :title="__('Details')">
 					<DeskField :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ task.name }}</div>
 					</DeskField>
@@ -1181,7 +1181,7 @@ usePageTitle(() => task.value?.name);
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
 						<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-						<DeskSection :title="__('Details')">
+						<DeskSection id="details-2" :title="__('Details')">
 							<DeskField :label="__('Name')" required :error="editErrors.name">
 								<DeskInput v-model="form.name" @input="clearEditError('name')" />
 							</DeskField>
@@ -1243,7 +1243,7 @@ usePageTitle(() => task.value?.name);
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Assignment & status')">
+						<DeskSection id="assignment-status" :title="__('Assignment & status')">
 							<DeskField :label="__('Assignee')" :error="editErrors.assignee">
 								<DeskLinkPicker
 									v-model="form.assignee"
@@ -1347,7 +1347,7 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Progress')" :cols="2">
+						<DeskSection id="progress" :title="__('Progress')" :cols="2">
 							<DeskField
 								:label="__('Cumulative progress (%)')"
 								required
@@ -1410,7 +1410,11 @@ usePageTitle(() => task.value?.name);
 							</div>
 						</DeskSection>
 
-						<DeskSection :title="__('Labour deployed today')" :cols="2">
+						<DeskSection
+							id="labour-deployed-today"
+							:title="__('Labour deployed today')"
+							:cols="2"
+						>
 							<DeskField
 								:label="__('Skilled labour')"
 								:hint="__('Count of skilled workers on site today')"
@@ -1425,7 +1429,7 @@ usePageTitle(() => task.value?.name);
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Site conditions')" :cols="2">
+						<DeskSection id="site-conditions" :title="__('Site conditions')" :cols="2">
 							<DeskField
 								:label="__('Weather')"
 								:hint="__('Optional — only if it\'s worth recording.')"
@@ -1470,7 +1474,7 @@ usePageTitle(() => task.value?.name);
 							</div>
 						</DeskSection>
 
-						<DeskSection :title="__('Attachments')" :cols="1">
+						<DeskSection id="attachments" :title="__('Attachments')" :cols="1">
 							<input
 								ref="progressFileInput"
 								type="file"

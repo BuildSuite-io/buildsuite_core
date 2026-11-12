@@ -8,6 +8,8 @@
 //   ...before saving:              Object.assign(payload, ext.payload())
 //   ...around the save:            await ext.beforeSave(payload, form); ...; await ext.afterSave(doc, { isNew })
 //   ...in the template:            <ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+//   ...sections: a <DeskSection id="items"> below this form also offers the slots
+//   form.<DocType>.before.items and form.<DocType>.after.items, with no markup in the view.
 //
 // An extension registers one control for the slot "form.<DocType>.<position>" and it works on every
 // form that adopts this. The control receives `form` (the whole form), `custom` (reactive: its
@@ -16,13 +18,16 @@
 // Fields an extension owns are declared with sdk.doctype(name).on({ fields: ["custom_region"] }), the
 // same call that registers its hooks. Defaults run when the form is new (hook `defaults`).
 
-import { reactive } from "vue";
+import { getCurrentInstance, provide, reactive } from "vue";
+import { FORM_KEY } from "@/sdk/anchors";
 import { docFields, runDocHook } from "@/sdk/registry";
 
 export function useExtensionFields(doctype, form = {}) {
 	const custom = reactive({});
 	const state = reactive({ doc: null });
 	const context = reactive({ doctype, form, custom, doc: null });
+	// Every DeskSection below this form (with an `id`) now offers before/after anchors for it.
+	if (getCurrentInstance()) provide(FORM_KEY, { doctype, context });
 
 	return {
 		custom,

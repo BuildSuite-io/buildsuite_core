@@ -443,7 +443,12 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 				</div>
 
 				<!-- PO mode header -->
-				<DeskSection v-if="mode === 'po'" :title="__('Against purchase order')" :cols="2">
+				<DeskSection
+					id="against-purchase-order"
+					v-if="mode === 'po'"
+					:title="__('Against purchase order')"
+					:cols="2"
+				>
 					<DeskField :label="__('Purchase order')" required :error="errors.po">
 						<DeskLinkPicker
 							v-if="!isEdit"
@@ -470,7 +475,12 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 				</DeskSection>
 
 				<!-- Direct mode header -->
-				<DeskSection v-if="mode === 'direct'" :title="__('Supplier')" :cols="2">
+				<DeskSection
+					id="supplier"
+					v-if="mode === 'direct'"
+					:title="__('Supplier')"
+					:cols="2"
+				>
 					<DeskField :label="__('Supplier')" required :error="errors.supplier">
 						<DeskLinkPicker
 							v-model="form.supplier"
@@ -495,7 +505,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Bill details')" :cols="4">
+				<DeskSection id="bill-details" :title="__('Bill details')" :cols="4">
 					<DeskField :label="__('Supplier invoice no.')"
 						><DeskInput v-model="form.bill_no" :placeholder="__('Their reference')"
 					/></DeskField>
@@ -534,7 +544,7 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Items')" :cols="1">
+				<DeskSection id="items" :title="__('Items')" :cols="1">
 					<div>
 						<div
 							class="hidden md:grid grid-cols-[1fr_100px_120px_120px_120px_36px] gap-2 text-[10px] uppercase tracking-wider text-ink-500 font-medium px-1 mb-1"

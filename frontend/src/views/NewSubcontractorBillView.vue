@@ -335,7 +335,7 @@ const breadcrumbs = computed(() => [
 
 			<!-- WORK ORDER MODE -->
 			<template v-if="mode === 'wo'">
-				<DeskSection :title="__('Header')" :cols="3">
+				<DeskSection id="header" :title="__('Header')" :cols="3">
 					<DeskField :label="__('Work order')" required :error="errors.work_order">
 						<DeskLinkPicker
 							:model-value="form.work_order"
@@ -476,7 +476,7 @@ const breadcrumbs = computed(() => [
 
 			<!-- DIRECT MODE -->
 			<template v-else>
-				<DeskSection :title="__('Header')" :cols="3">
+				<DeskSection id="header-2" :title="__('Header')" :cols="3">
 					<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
 						<DeskLinkPicker
 							v-model="form.subcontractor"

@@ -171,7 +171,7 @@ onMounted(() => {
 
 			<template v-else>
 				<!-- Site-wide sidebar toggle: show/hide the ERPNext nav section. -->
-				<DeskSection :title="__('Sidebar')">
+				<DeskSection id="sidebar" :title="__('Sidebar')">
 					<label
 						class="flex items-start gap-3 py-1 text-sm cursor-pointer"
 						:class="{ 'opacity-60 pointer-events-none': savingNav }"

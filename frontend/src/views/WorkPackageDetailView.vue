@@ -195,7 +195,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -224,11 +224,11 @@ async function saveEdit() {
 		form.value.endDate,
 		b.start,
 		b.end,
-		"project",
+		"project"
 	);
 	if (boundsErr) {
 		setErrors(
-			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+			boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
 		);
 		showToast(boundsErr, "error");
 		return;
@@ -259,13 +259,13 @@ async function onDelete() {
 	const msg = !n
 		? __('Delete "{0}"?', [wp.value.name])
 		: n === 1
-			? __('Delete "{0}"? This will also delete 1 task and any progress entries on them.', [
-					wp.value.name,
-				])
-			: __('Delete "{0}"? This will also delete {1} tasks and any progress entries on them.', [
-					wp.value.name,
-					n,
-				]);
+		? __('Delete "{0}"? This will also delete 1 task and any progress entries on them.', [
+				wp.value.name,
+		  ])
+		: __('Delete "{0}"? This will also delete {1} tasks and any progress entries on them.', [
+				wp.value.name,
+				n,
+		  ]);
 	if (
 		!(await confirmDialog({
 			title: __("Delete work package"),
@@ -442,11 +442,13 @@ usePageTitle(() => wp.value?.name);
 
 			<!-- Edit-mode form -->
 			<div v-if="editing" class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic information')">
+				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField
 						:label="__('Project')"
 						:hint="
-							__('Locked after create — moving a work package across projects isn\'t supported.')
+							__(
+								'Locked after create — moving a work package across projects isn\'t supported.'
+							)
 						"
 					>
 						<div class="text-sm text-ink-900 py-1">{{ project?.name || "—" }}</div>
@@ -462,7 +464,7 @@ usePageTitle(() => wp.value?.name);
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 					<DeskField :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
@@ -550,7 +552,9 @@ usePageTitle(() => wp.value?.name);
 					</template>
 
 					<template #empty>
-						<div class="text-sm text-ink-500">{{ __("No tasks in this work package yet.") }}</div>
+						<div class="text-sm text-ink-500">
+							{{ __("No tasks in this work package yet.") }}
+						</div>
 					</template>
 				</DeskList>
 			</template>
@@ -573,5 +577,7 @@ usePageTitle(() => wp.value?.name);
 		:back-label="__('Back to Work Packages')"
 	/>
 
-	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">{{ __("Work package not found") }}</div>
+	<div v-else class="px-6 py-20 text-center text-sm text-ink-400">
+		{{ __("Work package not found") }}
+	</div>
 </template>

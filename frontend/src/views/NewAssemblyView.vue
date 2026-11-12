@@ -102,7 +102,7 @@ const breadcrumbs = [
 			</template>
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Assembly details')">
+			<DeskSection id="assembly-details" :title="__('Assembly details')">
 				<DeskField
 					:label="__('Code')"
 					required

@@ -18,9 +18,12 @@ const { workerOptions } = useFieldEmployeeOptions();
 </script>
 
 <template>
-	<DeskSection :title="__('Crew')" :cols="2">
+	<DeskSection id="crew" :title="__('Crew')" :cols="2">
 		<DeskField :label="__('Crew name')" required :error="errors.crew_name">
-			<DeskInput v-model="form.crew_name" :placeholder="__('e.g. Block A Structural Gang')" />
+			<DeskInput
+				v-model="form.crew_name"
+				:placeholder="__('e.g. Block A Structural Gang')"
+			/>
 		</DeskField>
 		<DeskField :label="__('Crew leader')">
 			<DeskSearchableSelect

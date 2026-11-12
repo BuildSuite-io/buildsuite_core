@@ -153,8 +153,12 @@ async function onDelete() {
 		title: __("Delete {0}?", [sub.value?.subcontractor_name]),
 		message: n
 			? n === 1
-				? __("{0} work order reference this subcontractor and would be left dangling.", [n])
-				: __("{0} work orders reference this subcontractor and would be left dangling.", [n])
+				? __("{0} work order reference this subcontractor and would be left dangling.", [
+						n,
+				  ])
+				: __("{0} work orders reference this subcontractor and would be left dangling.", [
+						n,
+				  ])
 			: __("This subcontractor master record will be removed permanently."),
 		confirmLabel: __("Delete"),
 		destructive: true,
@@ -225,7 +229,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Details')" :cols="3">
+			<DeskSection id="details" :title="__('Details')" :cols="3">
 				<DeskField :label="__('Name')"
 					><div class="text-sm text-ink-900">
 						{{ sub.subcontractor_name }}
@@ -244,7 +248,7 @@ const breadcrumbs = computed(() => [
 				>
 			</DeskSection>
 
-			<DeskSection :title="__('Contact')" :cols="3">
+			<DeskSection id="contact" :title="__('Contact')" :cols="3">
 				<DeskField :label="__('Contact person')"
 					><div class="text-sm text-ink-900">
 						{{ sub.contact_person || "—" }}
@@ -295,11 +299,17 @@ const breadcrumbs = computed(() => [
 								v-for="wo in linkedWOs"
 								:key="wo.name"
 								class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
-								@click="router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`)"
+								@click="
+									router.push(
+										`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`
+									)
+								"
 							>
 								<td class="px-3 py-2">
 									<DeskLink
-										:to="`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`"
+										:to="`/subcontractor-work-orders/${encodeURIComponent(
+											wo.name
+										)}`"
 										@click.stop
 										>{{ wo.name }}</DeskLink
 									>
@@ -338,7 +348,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection :title="__('Details')" :cols="3">
+			<DeskSection id="details-2" :title="__('Details')" :cols="3">
 				<DeskField :label="__('Name')" required :error="errors.subcontractor_name"
 					><DeskInput v-model="form.subcontractor_name"
 				/></DeskField>
@@ -356,7 +366,7 @@ const breadcrumbs = computed(() => [
 				/></DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Contact')" :cols="3">
+			<DeskSection id="contact-2" :title="__('Contact')" :cols="3">
 				<DeskField :label="__('Contact person')">
 					<DeskInput v-model="form.contact_person" />
 				</DeskField>

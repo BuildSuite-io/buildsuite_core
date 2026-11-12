@@ -101,7 +101,9 @@ async function saveEdit() {
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: __("Delete {0}?", [doc.value?.crew_name]),
-		message: __("The crew is removed. Field attendance that referenced it keeps its stored rows."),
+		message: __(
+			"The crew is removed. Field attendance that referenced it keeps its stored rows."
+		),
 		confirmLabel: __("Delete"),
 		destructive: true,
 	});
@@ -178,7 +180,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Crew')" :cols="2">
+			<DeskSection id="crew" :title="__('Crew')" :cols="2">
 				<DeskField :label="__('Crew leader')">
 					<div class="text-sm text-ink-900">
 						{{ doc.crew_leader ? workerName(doc.crew_leader) : "—" }}

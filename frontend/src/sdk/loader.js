@@ -3,7 +3,7 @@
 // is an ES module whose default export is `register(sdk)`. An extension that is incompatible or
 // throws is skipped and logged — it never stops the app from starting.
 
-import { createSdk, SDK_VERSION } from "@/sdk";
+import { createSdk, runtime, SDK_VERSION } from "@/sdk";
 
 /** Same major, and the extension's minimum minor no newer than ours. */
 export function sdkCompatible(minSdk, current = SDK_VERSION) {
@@ -25,6 +25,8 @@ function addStylesheet(href) {
 
 export async function loadExtensions(router) {
 	const loaded = [];
+	// Extensions built with their own bundler read Core's shared copies from here.
+	globalThis.__buildsuite = runtime;
 	for (const entry of window.buildsuite_extensions || []) {
 		try {
 			if (!sdkCompatible(entry.min_sdk)) {

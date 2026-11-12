@@ -71,7 +71,7 @@ function onCustomerCreated(name) {
 						name="form.Project.top"
 						:context="extContext"
 					/>
-					<DeskSection :title="__('Basic information')">
+					<DeskSection id="basic-information" :title="__('Basic information')">
 						<DeskField :label="__('Project name')" required :error="errors.name">
 							<DeskInput
 								v-model="editForm.name"
@@ -186,7 +186,7 @@ function onCustomerCreated(name) {
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Schedule & cost')">
+					<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 						<DeskField :label="__('Start date')">
 							<DeskInput v-model="editForm.startDate" type="date" />
 						</DeskField>
@@ -200,7 +200,7 @@ function onCustomerCreated(name) {
 							 not manually editable, so status and progress stay decoupled. -->
 					</DeskSection>
 
-					<DeskSection :title="__('Team & status')">
+					<DeskSection id="team-status" :title="__('Team & status')">
 						<DeskField :label="__('Project Manager')" :error="errors.pm">
 							<DeskLinkPicker
 								v-model="editForm.pm"

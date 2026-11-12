@@ -200,6 +200,15 @@ export default function register(sdk) {
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}
 
+	// 8b. Section anchors: any DeskSection with an id offers form.<DocType>.before.<id> and
+	//     .after.<id>, so a component can sit between Core's sections with no change to the view.
+	const marker = (id) => ({
+		name: `DemoAnchor_${id.replace(/\W/g, "_")}`,
+		setup: () => () => h("div", { "data-test": `demo-anchor-${id}`, class: "text-xs" }, id),
+	});
+	sdk.slots.add("form.Quotation.before.terms", marker("before-terms"));
+	sdk.slots.add("form.Quotation.after.items", marker("after-items"));
+
 	// 9. A slot on a bespoke page that does not use DeskPage (the Home page): every route has
 	//    page.<route name>.top / .bottom, provided by the app shell.
 	sdk.slots.add("page.app-home.top", {

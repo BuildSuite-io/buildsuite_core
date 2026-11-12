@@ -371,7 +371,7 @@ const breadcrumbs = [
 
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
-				<DeskSection :title="__('Project, task & date')" :cols="2">
+				<DeskSection id="project-task-date" :title="__('Project, task & date')" :cols="2">
 					<DeskField :label="__('Project')" required :error="errors.projectId">
 						<DeskLinkPicker
 							v-model="form.projectId"
@@ -419,7 +419,7 @@ const breadcrumbs = [
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Progress')" :cols="2">
+				<DeskSection id="progress" :title="__('Progress')" :cols="2">
 					<DeskField
 						:label="__('Cumulative progress (%)')"
 						required
@@ -459,7 +459,11 @@ const breadcrumbs = [
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Labour deployed today')" :cols="2">
+				<DeskSection
+					id="labour-deployed-today"
+					:title="__('Labour deployed today')"
+					:cols="2"
+				>
 					<DeskField
 						:label="__('Skilled labour')"
 						:hint="__('Count of skilled workers on site today')"
@@ -474,7 +478,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Site conditions')" :cols="2">
+				<DeskSection id="site-conditions" :title="__('Site conditions')" :cols="2">
 					<DeskField
 						:label="__('Weather')"
 						:hint="__('Optional · only if it\'s worth recording')"
@@ -516,7 +520,7 @@ const breadcrumbs = [
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Attachments')" :cols="1">
+				<DeskSection id="attachments" :title="__('Attachments')" :cols="1">
 					<input
 						ref="progressFileInput"
 						type="file"

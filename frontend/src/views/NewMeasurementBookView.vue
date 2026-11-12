@@ -340,7 +340,7 @@ const breadcrumbs = computed(() => [
 			</template>
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Header')" :cols="3">
+			<DeskSection id="header" :title="__('Header')" :cols="3">
 				<DeskField :label="__('Work order')" required :error="errors.work_order">
 					<DeskLinkPicker
 						:model-value="form.work_order"

@@ -269,7 +269,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Usage')" :cols="3">
+			<DeskSection id="usage" :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')">
 					<DeskLink :to="`/machinery/${doc.machine}`">{{
 						machineName(doc.machine)
@@ -329,7 +329,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection :title="__('Usage')" :cols="3">
+			<DeskSection id="usage-2" :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
