@@ -11,7 +11,7 @@ timesheet is a draft and frozen on submit, so a later wage or setting change can
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import add_days, flt, getdate
 
 from buildsuite_core.utils.full_day import get_full_day_hours
 
@@ -34,6 +34,47 @@ def hourly_rates(employee, date, full_day_hours: float, cache: dict | None = Non
 	emp = employee if hasattr(employee, "get") else frappe.get_doc("Employee", employee)
 	daily, overtime = get_employee_rates(emp, date, cache if cache is not None else {}, full_day_hours)
 	return round(flt(daily) / flt(full_day_hours), 2), flt(overtime)
+
+
+def existing_timesheet_for_day(employee, day, exclude=None) -> str | None:
+	"""The name of another live (draft or submitted) timesheet of this worker that has rows on `day`,
+	or None. A row belongs to the day it starts on, the same day the registers file it under."""
+	row, sheet = frappe.qb.DocType("Timesheet Detail"), frappe.qb.DocType("Timesheet")
+	start = getdate(day)
+	query = (
+		frappe.qb.from_(row)
+		.join(sheet)
+		.on(sheet.name == row.parent)
+		.select(sheet.name)
+		.where(row.parenttype == "Timesheet")
+		.where(sheet.employee == employee)
+		.where(sheet.docstatus < 2)
+		.where(row.from_time >= f"{start} 00:00:00")
+		.where(row.from_time < f"{add_days(start, 1)} 00:00:00")
+		.limit(1)
+	)
+	if exclude:
+		query = query.where(sheet.name != exclude)
+	found = query.run()
+	return found[0][0] if found else None
+
+
+def validate_one_timesheet_per_day(doc, method=None):
+	"""Timesheet validate: a worker has one timesheet a day, however it is created (the SPA, the
+	Desk, an import or the REST API). Put all of the day's hours on that one timesheet."""
+	if doc.docstatus == 2 or not doc.employee:
+		return
+	days = sorted({getdate(r.from_time) for r in doc.time_logs if r.from_time})
+	for day in days:
+		clash = existing_timesheet_for_day(doc.employee, day, exclude=doc.name)
+		if clash:
+			name = frappe.db.get_value("Employee", doc.employee, "employee_name") or doc.employee
+			frappe.throw(
+				_("{0} already has a timesheet for {1}: {2}. Add the hours to that timesheet.").format(
+					name, day, clash
+				),
+				title=_("One timesheet a day"),
+			)
 
 
 def row_cost_code(row) -> dict | None:
