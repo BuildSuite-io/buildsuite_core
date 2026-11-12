@@ -166,8 +166,16 @@ _PO_PRINT_HTML = """
 	table.items thead th { background:#f8fafc; text-transform:uppercase; font-size:9px;
 		letter-spacing:0.06em; color:#64748b; text-align:left; }
 	h3.sec { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#334155; margin:16px 0 6px; }
-	.terms { font-size:11px; color:#475569; margin-bottom:20px; }
+	.terms { font-size:11px; color:#475569; margin-bottom:20px; line-height:1.5; }
+	/* Terms typed before the rich editor are plain text and keep their line breaks; rich text brings its own blocks. */
+	.terms.plain { white-space:pre-line; }
+	.terms > :first-child { margin-top:0; }
+	.terms > :last-child { margin-bottom:0; }
+	.terms table { border-collapse:collapse; }
+	.terms td, .terms th { border:1px solid #e2e8f0; padding:3px 6px; }
 	.terms ul { margin:0; padding-left:16px; }
+	.co-lines { font-size:11px; color:#475569; line-height:1.5; margin-top:4px; }
+	.co-lines .pre { white-space:pre-line; }
 	.terms li { margin-bottom:4px; }
 	.sign { display:flex; gap:32px; margin-top:24px; }
 	.sign > div { flex:1; }
@@ -178,6 +186,8 @@ _PO_PRINT_HTML = """
 {% set sup = frappe.db.get_value("Supplier", doc.supplier, ["supplier_primary_contact", "mobile_no", "email_id", "tax_id"], as_dict=True) if doc.supplier else None %}
 {% set proj = frappe.db.get_value("Project", doc.project, ["project_name", "custom_project_id", "location"], as_dict=True) if doc.project else None %}
 {% set currency = frappe.db.get_value("Company", doc.company, "default_currency") if doc.company else None %}
+{% set co = (frappe.db.get_value("Company", doc.company, ["custom_letter_head_subtext", "tax_id", "registration_details", "phone_no", "email"], as_dict=True) if doc.company else None) or {} %}
+{% set co_text = co.custom_letter_head_subtext or "" %}
 
 <div class="po-print">
 	<div class="po-title-row">
@@ -193,6 +203,14 @@ _PO_PRINT_HTML = """
 		<div class="party">
 			<div class="label">Ordered by</div>
 			<div style="font-weight:600; margin-top:4px;">{{ doc.company or "&mdash;" }}</div>
+			<div class="co-lines">
+				{# The address / GSTIN / contact text set in Settings > Companies, then whatever of Tax ID, CIN, phone and email the Company record holds that the text does not already say. #}
+				{% if co_text %}<div class="pre">{{ co_text }}</div>{% endif %}
+				{% if co.tax_id and co.tax_id not in co_text %}<div>GSTIN / Tax ID: {{ co.tax_id }}</div>{% endif %}
+				{% if co.registration_details and co.registration_details not in co_text %}<div>CIN: {{ co.registration_details }}</div>{% endif %}
+				{% if co.phone_no and co.phone_no not in co_text %}<div>Phone: {{ co.phone_no }}</div>{% endif %}
+				{% if co.email and co.email not in co_text %}<div>Email: {{ co.email }}</div>{% endif %}
+			</div>
 		</div>
 		<div class="party">
 			<div class="label">To &mdash; Supplier</div>
@@ -251,7 +269,7 @@ _PO_PRINT_HTML = """
 	</table>
 
 	<h3 class="sec">Terms &amp; conditions</h3>
-	<div class="terms">
+	<div class="terms{{ '' if '<' in (doc.terms or '') else ' plain' }}">
 		{% if doc.terms %}
 			{{ doc.terms }}
 		{% else %}
