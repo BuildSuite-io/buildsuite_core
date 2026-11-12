@@ -808,6 +808,7 @@ export const useDataStore = defineStore("data", {
 				color: colourClass(r.colour) || colourForId(r.id),
 				colourName: r.colour || colourNameForClass(colourForId(r.id)),
 				colourSaved: !!r.colour,
+				fullDayHours: r.full_day_hours ?? null,
 				logo: r.logo,
 				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,

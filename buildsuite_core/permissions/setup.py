@@ -842,6 +842,8 @@ CREW_ROLE_PERMS = {
 
 def setup_workforce_permissions():
 	_apply_role_perms("Field Attendance", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
+	# Timesheets (native ERPNext doctype) are entered by whoever keeps the muster, with the same rights.
+	_apply_role_perms("Timesheet", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
 	# Worker master + Crew (the M3 matrix missed both — Crew had no BuildSuite grant at all,
 	# and Employee was read-only via the picker mirror, so HR/PM/admin couldn't maintain it).
 	_upgrade_role_perms("Employee", EMPLOYEE_WRITE_ROLE_PERMS)

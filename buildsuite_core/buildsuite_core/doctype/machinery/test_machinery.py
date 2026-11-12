@@ -14,7 +14,6 @@ EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
-
 class IntegrationTestMachinery(IntegrationTestCase):
 	"""
 	Integration tests for Machinery.
@@ -135,7 +134,7 @@ class TestMachinery(BuildSuiteTestCase):
 	def test_dashboard_equipment_cost_and_recent_usage(self):
 		m = self._machinery(rate=500)
 		before = api.get_dashboard()
-		frappe.get_doc(
+		usage = frappe.get_doc(
 			{
 				"doctype": "Machinery Usage",
 				"machine": m.name,
@@ -145,11 +144,10 @@ class TestMachinery(BuildSuiteTestCase):
 				"fuel_cost": 200,
 			}
 		).insert(ignore_permissions=True)  # rate fetched from machine = 500
+		usage.submit()  # usage is submittable: only a submitted log counts towards equipment cost
 
 		after = api.get_dashboard()
-		self.assertAlmostEqual(
-			after["equipment_cost"], before["equipment_cost"] + (3 * 500 + 200), places=2
-		)
+		self.assertAlmostEqual(after["equipment_cost"], before["equipment_cost"] + (3 * 500 + 200), places=2)
 		recent = after["recent_usage"]
 		row = next((r for r in recent if r["machine"] == m.name), None)
 		self.assertIsNotNone(row)

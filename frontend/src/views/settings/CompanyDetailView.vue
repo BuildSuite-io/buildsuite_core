@@ -16,9 +16,15 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
-import { getCompanyBranding, updateCompanyBranding, uploadCompanyLogo } from "@/data/companyApi";
+import {
+	getCompanyBranding,
+	updateCompanyBranding,
+	uploadCompanyLogo,
+	setCompanyFullDayHours,
+} from "@/data/companyApi";
 import { showToast } from "@/utils/appToast";
 import { COMPANY_COLOUR_OPTIONS, colourClass } from "@/utils/companyColours";
+import { isValidFullDayHours, FULL_DAY_HOURS_RULE } from "@/utils/fullDay";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
@@ -49,6 +55,12 @@ watch(
 	{ immediate: true }
 );
 
+// Labour costing: the hours in a full day for this company's projects. Shown to everyone who can
+// open the page, editable by an admin in the same view / edit pattern as the identity fields.
+const fullDayError = computed(() =>
+	editing.value && !isValidFullDayHours(form.value.fullDayHours) ? __(FULL_DAY_HOURS_RULE) : ""
+);
+
 function startEdit() {
 	if (!store.isAdmin) return;
 	form.value = JSON.parse(JSON.stringify(company.value));
@@ -60,10 +72,13 @@ function cancelEdit() {
 }
 async function saveEdit() {
 	if (!store.isAdmin) return;
+	if (fullDayError.value) return;
 	// Read the choice before the first await: saving reloads the companies, and the form is reset
 	// from the reloaded company, which would make the chosen colour look unchanged.
 	const wantedColour = form.value.colourName;
 	const colourChanged = wantedColour !== company.value.colourName;
+	const wantedFullDay = Number(form.value.fullDayHours);
+	const fullDayChanged = wantedFullDay !== company.value.fullDayHours;
 	// Name (company_name) and Short name (abbr) are the real editable identity fields; the brand
 	// colour is saved on the Company too (only when changed, so a derived default isn't pinned).
 	// Description isn't a Company field, so it doesn't persist.
@@ -74,6 +89,10 @@ async function saveEdit() {
 		});
 		// A rename changes the id: carry on from the renamed company.
 		const id = saved?.id || props.id;
+		if (fullDayChanged) {
+			await setCompanyFullDayHours(id, wantedFullDay);
+			await store.loadCompanies();
+		}
 		if (colourChanged) {
 			await updateCompanyBranding({ company: id, brand_colour: wantedColour });
 			await store.loadCompanies(); // the top-bar pill picks the new colour up
@@ -480,6 +499,38 @@ watch(
 							}}</span>
 						</div>
 					</div>
+				</DeskSection>
+
+				<!-- Labour costing — below the letter head; same view / edit pattern. -->
+				<DeskSection :title="__('Labour costing')" :cols="1">
+					<DeskField
+						:label="__('Full day hours')"
+						:required="editing"
+						:error="fullDayError"
+						:hint="
+							__(
+								'A Present worker is this many hours and one man-day; hours beyond it are overtime. A project can set its own.'
+							)
+						"
+					>
+						<DeskInput
+							v-if="editing && store.isAdmin"
+							v-model.number="form.fullDayHours"
+							type="number"
+							min="0.5"
+							max="24"
+							step="0.5"
+							class="!w-32"
+							:aria-label="__('Full day hours')"
+						/>
+						<div
+							v-else
+							class="text-sm text-ink-900 py-1 tabular-nums"
+							data-company-full-day
+						>
+							{{ company.fullDayHours ? company.fullDayHours + " h" : "—" }}
+						</div>
+					</DeskField>
 				</DeskSection>
 			</div>
 		</DeskForm>
