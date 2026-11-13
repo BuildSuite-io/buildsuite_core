@@ -20,4 +20,5 @@ export const saveCrew = (payload) =>
 	call("save_crew", {
 		...payload,
 		members: JSON.stringify(payload.members || []),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
 	});

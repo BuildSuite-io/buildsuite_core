@@ -7,9 +7,15 @@
 // the supported column counts rather than interpolating `grid-cols-${cols}`.
 
 import { computed } from "vue";
+import ExtensionAnchor from "@/components/ExtensionAnchor.vue";
+
+defineOptions({ inheritAttrs: false }); // attrs go to the <section>; the anchors sit beside it
 
 const props = defineProps({
 	title: { type: String, default: "" },
+	// A stable, untranslated name (e.g. "items"). With it, installed apps can add components
+	// before or after this section: slots form.<DocType>.before.<id> / .after.<id>.
+	id: { type: String, default: "" },
 	cols: { type: Number, default: 2 }, // 1, 2, 3, or 4
 });
 
@@ -25,7 +31,8 @@ const gridClass = computed(
 </script>
 
 <template>
-	<section class="mb-6">
+	<ExtensionAnchor v-if="id" :id="id" position="before" />
+	<section class="mb-6" v-bind="$attrs">
 		<div v-if="title" class="mb-1">
 			<h3 class="desk-section-title">{{ title }}</h3>
 			<hr class="desk-divider" />
@@ -34,4 +41,5 @@ const gridClass = computed(
 			<slot />
 		</div>
 	</section>
+	<ExtensionAnchor v-if="id" :id="id" position="after" />
 </template>

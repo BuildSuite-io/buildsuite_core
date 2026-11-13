@@ -65,7 +65,7 @@ const items = computed(() => {
 	const term = search.value.trim().toLowerCase();
 	if (!term) return users.value;
 	return users.value.filter((u) =>
-		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term),
+		`${u.full_name} ${u.email} ${u.persona}`.toLowerCase().includes(term)
 	);
 });
 
@@ -187,9 +187,9 @@ async function deleteUser() {
 <template>
 	<DeskPage :title="__('Users')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="store.isAdmin" to="/settings/users/new" class="desk-save-btn"
-				>{{ __("+ New User") }}</RouterLink
-			>
+			<RouterLink v-if="store.isAdmin" to="/settings/users/new" class="desk-save-btn">{{
+				__("+ New User")
+			}}</RouterLink>
 		</template>
 
 		<div
@@ -306,8 +306,12 @@ async function deleteUser() {
 						>
 							{{ editError }}
 						</div>
-						<DeskSection :title="__('Account')">
-							<DeskField :label="__('Full name')" required :error="editErrors.fullName">
+						<DeskSection id="account" :title="__('Account')">
+							<DeskField
+								:label="__('Full name')"
+								required
+								:error="editErrors.fullName"
+							>
 								<DeskInput
 									v-model="editForm.fullName"
 									@input="
@@ -318,12 +322,21 @@ async function deleteUser() {
 							</DeskField>
 							<DeskField
 								:label="__('Email')"
-								:hint="__('Login id — cannot be changed after the user is created.')"
+								:hint="
+									__('Login id — cannot be changed after the user is created.')
+								"
 							>
 								<DeskInput :model-value="editForm.email" disabled />
 							</DeskField>
-							<DeskField :label="__('Mobile')" :hint="__('Optional — contact number for this user.')">
-								<DeskInput v-model="editForm.mobile" type="tel" :placeholder="__('+91 98xxx xxxxx')" />
+							<DeskField
+								:label="__('Mobile')"
+								:hint="__('Optional — contact number for this user.')"
+							>
+								<DeskInput
+									v-model="editForm.mobile"
+									type="tel"
+									:placeholder="__('+91 98xxx xxxxx')"
+								/>
 							</DeskField>
 							<DeskField
 								:label="__('Account status')"
@@ -342,12 +355,16 @@ async function deleteUser() {
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Persona')">
+						<DeskSection id="persona" :title="__('Persona')">
 							<DeskField
 								:label="__('Persona')"
 								required
 								:error="editErrors.persona"
-								:hint="__('Frappe Roles are auto-assigned from the persona on the production side.')"
+								:hint="
+									__(
+										'Frappe Roles are auto-assigned from the persona on the production side.'
+									)
+								"
 							>
 								<DeskLinkPicker
 									v-model="editForm.persona"
@@ -367,7 +384,7 @@ async function deleteUser() {
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Email actions')">
+						<DeskSection id="email-actions" :title="__('Email actions')">
 							<div class="md:col-span-2 space-y-2">
 								<div
 									v-if="mailConfigured === false"
@@ -376,7 +393,7 @@ async function deleteUser() {
 								>
 									{{
 										__(
-											"Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.",
+											"Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up."
 										)
 									}}
 								</div>
@@ -395,7 +412,9 @@ async function deleteUser() {
 										@click="resendWelcome"
 									>
 										{{
-											emailActing === "welcome" ? __("Sending…") : __("Send welcome")
+											emailActing === "welcome"
+												? __("Sending…")
+												: __("Send welcome")
 										}}
 									</button>
 								</div>

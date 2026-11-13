@@ -20,7 +20,7 @@ const { contractorOptions } = useContractorOptions();
 </script>
 
 <template>
-	<DeskSection title="Worker" :cols="3">
+	<DeskSection id="worker" title="Worker" :cols="3">
 		<DeskField label="Employee code" hint="Auto (HR-EMP-#####) if blank.">
 			<DeskInput v-model="form.employee" placeholder="HR-EMP-00015" :disabled="isExisting" />
 		</DeskField>
@@ -90,7 +90,7 @@ const { contractorOptions } = useContractorOptions();
 		</DeskField>
 	</DeskSection>
 
-	<DeskSection title="Wages" :cols="2">
+	<DeskSection id="wages" title="Wages" :cols="2">
 		<DeskField
 			label="Daily wage"
 			required

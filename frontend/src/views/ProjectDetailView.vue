@@ -28,6 +28,8 @@ import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { createDataAdapter } from "@/data/adapters";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
+import { docFields } from "@/sdk/registry";
 import { addProjectTeamMember, removeProjectTeamMember } from "@/data/projectTeamApi";
 import { PROJECT_TABS } from "@/data/projectTabs";
 import { getProjectTabOverrides, setProjectTabOverrides } from "@/data/projectSettingsApi";
@@ -119,6 +121,7 @@ function loadProjectResource() {
 			"creation",
 			"modified",
 			"parent_project",
+			...docFields("Project"), // an installed app's Custom Fields
 			"full_day_hours",
 		],
 		cache: `buildsuite-project-detail:${props.id}`,
@@ -142,6 +145,9 @@ function loadProjectResource() {
 				fullDayHours: row?.full_day_hours || "",
 				location: row?.location || "",
 				description: row?.notes || row?.description || "",
+				extCustom: Object.fromEntries(
+					docFields("Project").map((f) => [f, row?.[f] ?? null])
+				),
 				isGroup: Number(row?.is_group ?? (row?.parent_project ? 0 : 1)) === 1,
 				parentId: row?.parent_project || null,
 				createdAt: row?.creation || null,
@@ -652,6 +658,7 @@ const delayedDays = computed(() => {
 const tab = ref("overview");
 const editing = ref(false);
 const editForm = ref({});
+const ext = useExtensionFields("Project", editForm);
 
 watch(
 	() => props.id,
@@ -812,10 +819,11 @@ async function loadCompanyFullDay() {
 	}
 }
 
-function startEdit() {
+async function startEdit() {
 	editForm.value = buildProjectEditForm(project.value);
 	setEditErrors({});
 	loadCompanyFullDay();
+	await ext.load(project.value?.extCustom);
 	editing.value = true;
 }
 async function saveEdit() {
@@ -843,7 +851,7 @@ async function saveEdit() {
 		return;
 	}
 	try {
-		await adapter.update("Project", resolvedProjectId.value, {
+		const payload = {
 			project_name: editForm.value.name,
 			custom_project_id: editForm.value.code,
 			is_group: editForm.value.isGroup ? 1 : 0,
@@ -865,7 +873,11 @@ async function saveEdit() {
 				? { full_day_hours: parseFullDayHours(editForm.value.fullDayHours) }
 				: {}),
 			notes: editForm.value.description,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, editForm.value);
+		await adapter.update("Project", resolvedProjectId.value, payload);
+		await ext.afterSave(project.value, { isNew: false });
 		editing.value = false;
 		projectResource.value?.reload?.();
 		showToast(__("Project updated"));
@@ -2032,6 +2044,7 @@ usePageTitle(() => project.value?.name);
 			:is-subproject="isSubproject"
 			:subs-count="subs.length"
 			:is-multi-company="store.isMultiCompany"
+			:ext-context="ext.context"
 			:can-edit-full-day="canEditFullDay"
 			:company-full-day="companyFullDay"
 			:full-day-error="fullDayError"

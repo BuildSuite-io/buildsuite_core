@@ -5,6 +5,9 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
@@ -40,6 +43,8 @@ const form = reactive({
 	blockerFlag: false,
 	blockerNote: "",
 });
+const ext = useExtensionFields("Task Progress Entry", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	task: "taskId",
 	entry_date: "entryDate",
@@ -227,7 +232,9 @@ watch(
 		} else if (pct <= 0) {
 			errors.value = {
 				...errors.value,
-				progressPct: __("A progress entry can't be 0% — record the progress actually made."),
+				progressPct: __(
+					"A progress entry can't be 0% — record the progress actually made."
+				),
 			};
 		} else if (pct <= progressFloor.value) {
 			errors.value = {
@@ -256,7 +263,9 @@ function validate() {
 	if (!form.projectId) e.projectId = __("Project is required");
 	if (!form.taskId) e.taskId = __("Task is required");
 	else if (selectedTask.value && Number(selectedTask.value.progress) >= 100)
-		e.taskId = __("This task is already Completed — no further progress entries can be added.");
+		e.taskId = __(
+			"This task is already Completed — no further progress entries can be added."
+		);
 	const pct = Number(form.progressPct);
 	if (Number.isNaN(pct) || pct > 100) {
 		e.progressPct = __("Progress must be between 0 and 100");
@@ -279,7 +288,7 @@ async function save() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const created = await adapter.create("Task Progress Entry", {
+		const payload = {
 			task: form.taskId,
 			entry_date: form.entryDate,
 			cumulative_progress: Number(form.progressPct),
@@ -289,7 +298,11 @@ async function save() {
 			weather: form.weather,
 			blocker: form.blockerFlag ? 1 : 0,
 			blocker_detail: form.blockerNote,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const created = await adapter.create("Task Progress Entry", payload);
+		await ext.afterSave(created, { isNew: true });
 
 		// Upload any pending attachments against the new entry via Frappe's native
 		// File pipeline. A failed upload is reported per-file but doesn't unwind the
@@ -357,7 +370,8 @@ const breadcrumbs = [
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Project, task & date')" :cols="2">
+				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+				<DeskSection id="project-task-date" :title="__('Project, task & date')" :cols="2">
 					<DeskField :label="__('Project')" required :error="errors.projectId">
 						<DeskLinkPicker
 							v-model="form.projectId"
@@ -381,7 +395,9 @@ const breadcrumbs = [
 							:disabled="!form.projectId"
 							:page-length="20"
 							:placeholder="
-								form.projectId ? __('— Select task —') : __('— Select a project first —')
+								form.projectId
+									? __('— Select task —')
+									: __('— Select a project first —')
 							"
 						/>
 					</DeskField>
@@ -403,11 +419,16 @@ const breadcrumbs = [
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Progress')" :cols="2">
+				<DeskSection id="progress" :title="__('Progress')" :cols="2">
 					<DeskField
 						:label="__('Cumulative progress (%)')"
 						required
-						:hint="__('The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.', [progressFloor])"
+						:hint="
+							__(
+								'The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.',
+								[progressFloor]
+							)
+						"
 						:error="errors.progressPct"
 					>
 						<DeskInput
@@ -428,13 +449,21 @@ const breadcrumbs = [
 							<DeskTextarea
 								v-model="form.narrative"
 								:rows="3"
-								:placeholder="__('e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.')"
+								:placeholder="
+									__(
+										'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.'
+									)
+								"
 							/>
 						</DeskField>
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Labour deployed today')" :cols="2">
+				<DeskSection
+					id="labour-deployed-today"
+					:title="__('Labour deployed today')"
+					:cols="2"
+				>
 					<DeskField
 						:label="__('Skilled labour')"
 						:hint="__('Count of skilled workers on site today')"
@@ -449,8 +478,11 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Site conditions')" :cols="2">
-					<DeskField :label="__('Weather')" :hint="__('Optional · only if it\'s worth recording')">
+				<DeskSection id="site-conditions" :title="__('Site conditions')" :cols="2">
+					<DeskField
+						:label="__('Weather')"
+						:hint="__('Optional · only if it\'s worth recording')"
+					>
 						<DeskSelect v-model="form.weather">
 							<option value="">{{ __("— No record —") }}</option>
 							<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
@@ -480,13 +512,15 @@ const breadcrumbs = [
 							<DeskTextarea
 								v-model="form.blockerNote"
 								:rows="2"
-								:placeholder="__('e.g. Afternoon shower delayed final bay by 2 hours')"
+								:placeholder="
+									__('e.g. Afternoon shower delayed final bay by 2 hours')
+								"
 							/>
 						</DeskField>
 					</div>
 				</DeskSection>
 
-				<DeskSection :title="__('Attachments')" :cols="1">
+				<DeskSection id="attachments" :title="__('Attachments')" :cols="1">
 					<input
 						ref="progressFileInput"
 						type="file"
@@ -504,7 +538,11 @@ const breadcrumbs = [
 					/>
 					<DeskField
 						:label="__('Files')"
-						:hint="__('Site photos, QC reports, drawings — picked here and saved with the entry.')"
+						:hint="
+							__(
+								'Site photos, QC reports, drawings — picked here and saved with the entry.'
+							)
+						"
 					>
 						<div class="space-y-2 py-1">
 							<ul v-if="pendingAttachments.length" class="space-y-1.5">
@@ -558,7 +596,9 @@ const breadcrumbs = [
 								>
 									<span class="text-sm leading-none">+</span>
 									<span>{{
-										pendingAttachments.length ? __("Attach files") : __("Attach file")
+										pendingAttachments.length
+											? __("Attach files")
+											: __("Attach file")
 									}}</span>
 								</button>
 								<button
@@ -585,6 +625,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 			</div>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

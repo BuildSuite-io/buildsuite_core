@@ -8,6 +8,8 @@ import { ref } from "vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CustomerCreateModal from "@/components/CustomerCreateModal.vue";
 import { __ } from "@/utils/translate";
+// Slots an installed app fills on this form (form.Project.top / .bottom), same as the create form.
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 
 const props = defineProps({
 	open: { type: Boolean, default: false },
@@ -17,6 +19,7 @@ const props = defineProps({
 	isSubproject: { type: Boolean, default: false },
 	subsCount: { type: Number, default: 0 },
 	isMultiCompany: { type: Boolean, default: false },
+	extContext: { type: Object, default: null },
 	// Full day hours: who may set it, the company's value (what a blank one uses), and the rule error.
 	canEditFullDay: { type: Boolean, default: false },
 	companyFullDay: { type: Number, default: null },
@@ -67,7 +70,12 @@ function onCustomerCreated(name) {
 				</header>
 
 				<div class="p-5 overflow-y-auto flex-1">
-					<DeskSection :title="__('Basic information')">
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.top"
+						:context="extContext"
+					/>
+					<DeskSection id="basic-information" :title="__('Basic information')">
 						<DeskField :label="__('Project name')" required :error="errors.name">
 							<DeskInput
 								v-model="editForm.name"
@@ -182,7 +190,7 @@ function onCustomerCreated(name) {
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Schedule & cost')">
+					<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 						<DeskField :label="__('Start date')">
 							<DeskInput v-model="editForm.startDate" type="date" />
 						</DeskField>
@@ -231,7 +239,7 @@ function onCustomerCreated(name) {
 							 not manually editable, so status and progress stay decoupled. -->
 					</DeskSection>
 
-					<DeskSection :title="__('Team & status')">
+					<DeskSection id="team-status" :title="__('Team & status')">
 						<DeskField :label="__('Project Manager')" :error="errors.pm">
 							<DeskLinkPicker
 								v-model="editForm.pm"
@@ -263,6 +271,11 @@ function onCustomerCreated(name) {
 							</DeskSelect>
 						</DeskField>
 					</DeskSection>
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.bottom"
+						:context="extContext"
+					/>
 				</div>
 
 				<footer

@@ -30,7 +30,7 @@ const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "
 </script>
 
 <template>
-	<DeskSection :title="__('Header')" :cols="3">
+	<DeskSection id="header" :title="__('Header')" :cols="3">
 		<DeskField :label="__('Project')" required :error="errors.project">
 			<DeskLinkPicker
 				:model-value="form.project"

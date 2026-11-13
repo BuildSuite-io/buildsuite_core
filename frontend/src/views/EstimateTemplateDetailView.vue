@@ -56,10 +56,10 @@ const rateMastersRes = useDocTypeList("Construction Rate Master", {
 	cache: "buildsuite-rate-master-options",
 });
 const assemblyMap = computed(() =>
-	Object.fromEntries((assembliesRes.data || []).map((a) => [a.name, a])),
+	Object.fromEntries((assembliesRes.data || []).map((a) => [a.name, a]))
 );
 const rateMap = computed(() =>
-	Object.fromEntries((rateMastersRes.data || []).map((r) => [r.name, r])),
+	Object.fromEntries((rateMastersRes.data || []).map((r) => [r.name, r]))
 );
 
 const { selectOptions } = useDoctypeMeta("Estimate Template Row");
@@ -244,7 +244,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -324,7 +324,8 @@ function cancelAddGroup() {
 async function saveAddGroup() {
 	const name = newGroupName.value.trim();
 	if (!name) return;
-	if (groupNameTaken(name)) return showToast(__("A group with that name already exists."), "error");
+	if (groupNameTaken(name))
+		return showToast(__("A group with that name already exists."), "error");
 	await persistTemplate({ groups: [...currentGroups(), { group_name: name }] });
 	cancelAddGroup();
 }
@@ -344,10 +345,10 @@ async function saveRenameGroup(group) {
 		return showToast(__("A group with that name already exists."), "error");
 	// Rename the group AND re-point every row joined to its old name, in one save.
 	const groups = currentGroups().map((g) =>
-		(g.group_name || "").trim() === group.name ? { ...g, group_name: name } : g,
+		(g.group_name || "").trim() === group.name ? { ...g, group_name: name } : g
 	);
 	const rows = currentRows().map((r) =>
-		(r.group_name || "").trim() === group.name ? { ...r, group_name: name } : r,
+		(r.group_name || "").trim() === group.name ? { ...r, group_name: name } : r
 	);
 	await persistTemplate({ groups, rows });
 	cancelRenameGroup();
@@ -361,11 +362,11 @@ async function removeGroup(group) {
 				? __('Delete "{0}" and its {1} row? This cannot be undone.', [
 						group.name,
 						group.count,
-					])
+				  ])
 				: __('Delete "{0}" and its {1} rows? This cannot be undone.', [
 						group.name,
 						group.count,
-					])
+				  ])
 			: __('Delete the empty group "{0}"?', [group.name]),
 		confirmLabel: __("Delete"),
 		destructive: true,
@@ -397,7 +398,7 @@ const newRowSource = computed(() => {
 	return r ? { unit: r.uom, rate: r.current_rate } : null;
 });
 const newRowAmount = computed(
-	() => (Number(newRow.placeholder_qty) || 0) * (newRowSource.value?.rate || 0),
+	() => (Number(newRow.placeholder_qty) || 0) * (newRowSource.value?.rate || 0)
 );
 
 function startAddRow(group) {
@@ -502,12 +503,12 @@ async function removeRow(name) {
 			</div>
 		</div>
 
-		<DeskSection :title="__('Template rows')" :cols="1">
+		<DeskSection id="template-rows" :title="__('Template rows')" :cols="1">
 			<div class="flex items-start justify-between gap-3 mb-2 px-1">
 				<div class="text-[11px] text-ink-500">
 					{{
 						__(
-							"Groups are created first; items are mapped under them — same structure as a BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported.",
+							"Groups are created first; items are mapped under them — same structure as a BOQ. Assembly-driven rows auto-explode into snapshot sub-items when imported."
 						)
 					}}
 				</div>
@@ -732,7 +733,7 @@ async function removeRow(name) {
 											patchRowByName(
 												row.name,
 												'placeholder_qty',
-												$event.target.value,
+												$event.target.value
 											)
 										"
 									/>
@@ -792,7 +793,9 @@ async function removeRow(name) {
 											v-model="newRow.source"
 											:options="sourceOptions"
 											:placeholder="__('Pick a source…')"
-											:search-placeholder="__('Search assemblies / rate master…')"
+											:search-placeholder="
+												__('Search assemblies / rate master…')
+											"
 										/>
 									</div>
 									<div class="px-2 py-2 text-[11px] text-ink-500">
@@ -929,7 +932,9 @@ async function removeRow(name) {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit template") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Edit template") }}
+							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ doc.template_name }}
 							</p>
@@ -945,7 +950,7 @@ async function removeRow(name) {
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Basic')">
+						<DeskSection id="basic" :title="__('Basic')">
 							<DeskField
 								:label="__('Code')"
 								:hint="__('The template\'s identifier — not editable.')"
@@ -957,7 +962,10 @@ async function removeRow(name) {
 							<DeskField :label="__('Name')" required :error="errors.templateName">
 								<DeskInput v-model="form.templateName" />
 							</DeskField>
-							<DeskField :label="__('Project Category tag')" :hint="__('Empty = universal.')">
+							<DeskField
+								:label="__('Project Category tag')"
+								:hint="__('Empty = universal.')"
+							>
 								<DeskLinkPicker
 									v-model="form.projectType"
 									doctype="Project Category"

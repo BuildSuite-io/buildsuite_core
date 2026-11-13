@@ -96,7 +96,7 @@ onMounted(async () => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic')">
+				<DeskSection id="basic" :title="__('Basic')">
 					<DeskField
 						:label="__('Persona name')"
 						required
@@ -111,8 +111,15 @@ onMounted(async () => {
 					>
 						<DeskInput v-model="form.slug" :placeholder="__('e.g. planner')" />
 					</DeskField>
-					<DeskField :label="__('Sort order')" :hint="__('Position in the persona dropdown.')">
-						<DeskInput v-model="form.sortOrder" type="number" :placeholder="__('auto')" />
+					<DeskField
+						:label="__('Sort order')"
+						:hint="__('Position in the persona dropdown.')"
+					>
+						<DeskInput
+							v-model="form.sortOrder"
+							type="number"
+							:placeholder="__('auto')"
+						/>
 					</DeskField>
 					<DeskField :label="__('Enabled')">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
@@ -126,7 +133,7 @@ onMounted(async () => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Roles')" :cols="1">
+				<DeskSection id="roles" :title="__('Roles')" :cols="1">
 					<DeskField
 						:label="__('Granted roles')"
 						required
@@ -137,7 +144,7 @@ onMounted(async () => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Description')" :cols="1">
+				<DeskSection id="description" :title="__('Description')" :cols="1">
 					<DeskField :label="__('Notes')">
 						<DeskInput
 							v-model="form.description"

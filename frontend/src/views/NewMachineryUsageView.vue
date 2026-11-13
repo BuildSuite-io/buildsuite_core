@@ -5,6 +5,9 @@ import { reactive, ref, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -57,6 +60,8 @@ const form = reactive({
 	rate: 0,
 	fuel_cost: 0,
 });
+const ext = useExtensionFields("Machinery Usage", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	machine: "machine",
 	project: "project",
@@ -107,7 +112,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Machinery Usage", {
+		const payload = {
 			machine: form.machine,
 			project: form.project,
 			...costCodeToFields(form.cost_code),
@@ -116,7 +121,11 @@ async function onSave() {
 			unit: form.unit,
 			rate: form.rate,
 			fuel_cost: form.fuel_cost,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Machinery Usage", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/machinery-usage/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to log usage"), "error");
@@ -152,7 +161,8 @@ const breadcrumbs = [
 				/>
 			</template>
 
-			<DeskSection :title="__('Usage')" :cols="3">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+			<DeskSection id="usage" :title="__('Usage')" :cols="3">
 				<DeskField :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
@@ -214,6 +224,7 @@ const breadcrumbs = [
 					</div>
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

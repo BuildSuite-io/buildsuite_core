@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { instrumentRoutes } from "@/sdk/views";
 import { useSessionStore } from "@/stores/session";
 import { useDataStore } from "@/stores";
 import { usePermissions } from "@/composables/usePermissions";
@@ -130,6 +131,7 @@ const PAGE_TITLES = {
 	"settings-company-detail": "Company",
 	"settings-users": "Users",
 	"settings-user-new": "New User",
+	"settings-doc": "Settings",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
 	"settings-app-icon-diagnostics": "App Icon Diagnostics",
@@ -149,6 +151,8 @@ const PAGE_TITLES = {
 const routes = [
 	{
 		path: "/",
+		// Named so an installed app's extension can add pages inside the shell (sdk.routes.add).
+		name: "shell",
 		component: () => import("@/layouts/DeskShell.vue"),
 		children: [
 			{ path: "", redirect: "/home" },
@@ -1041,6 +1045,14 @@ const routes = [
 				component: () => import("@/views/settings/NewUserView.vue"),
 			},
 			{
+				// A settings page that is a Single DocType (an installed app's, declared in hooks.py).
+				path: "settings/doc/:doctype",
+				name: "settings-doc",
+				component: () => import("@/views/settings/SettingsDocView.vue"),
+				props: true,
+				meta: { requiresAdmin: true },
+			},
+			{
 				path: "settings/data",
 				name: "settings-data",
 				component: () => import("@/views/settings/DataToolsView.vue"),
@@ -1300,7 +1312,8 @@ function inferCapAction(name = "") {
 
 const router = createRouter({
 	history: createWebHistory(APP_ROUTE),
-	routes,
+	// Every named lazy route resolves through the extension view registry (sdk.views).
+	routes: instrumentRoutes(routes),
 	scrollBehavior() {
 		return { top: 0 };
 	},

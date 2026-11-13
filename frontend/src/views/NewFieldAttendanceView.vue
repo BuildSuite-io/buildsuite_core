@@ -6,6 +6,9 @@
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useProjectOptions } from "@/composables/useProjectOptions";
 import { useAttendanceSheet } from "@/composables/useAttendanceSheet";
@@ -34,6 +37,8 @@ const form = reactive({
 	cost_code: null,
 	employee_list: [],
 });
+const ext = useExtensionFields("Field Attendance", form);
+ext.defaults();
 
 const {
 	inTable,
@@ -71,7 +76,13 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await saveFieldAttendance({ ...form });
+		const payload = {
+			...form,
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await saveFieldAttendance(payload);
+		await ext.afterSave(res, { isNew: true });
 		showToast(__("Attendance created"));
 		router.push(`/field-attendance/${res.name}`);
 	} catch (err) {
@@ -107,6 +118,7 @@ const breadcrumbs = [
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<AttendanceFormFields
 				:form="form"
@@ -137,6 +149,7 @@ const breadcrumbs = [
 					/>
 				</template>
 			</AttendanceEmployeeTable>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 
 		<AttendanceBulkSelectModal

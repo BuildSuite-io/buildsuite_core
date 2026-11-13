@@ -143,7 +143,7 @@ onMounted(() => {
 			</div>
 
 			<div v-else class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic')">
+				<DeskSection id="basic" :title="__('Basic')">
 					<DeskField
 						:label="__('Persona name')"
 						:hint="__('The name is the key and can\'t be changed.')"
@@ -168,7 +168,7 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Roles')" :cols="1">
+				<DeskSection id="roles" :title="__('Roles')" :cols="1">
 					<DeskField
 						:label="__('Granted roles')"
 						required
@@ -179,7 +179,7 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Description')" :cols="1">
+				<DeskSection id="description" :title="__('Description')" :cols="1">
 					<DeskField :label="__('Notes')">
 						<DeskInput
 							v-model="form.description"
@@ -188,13 +188,14 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Danger zone')" :cols="1">
+				<DeskSection id="danger-zone" :title="__('Danger zone')" :cols="1">
 					<div class="flex items-center justify-between gap-3 flex-wrap">
 						<p class="text-xs text-ink-500">
-							<span v-if="isDefault">{{ __("This is a BuildSuite default persona.") }} </span
+							<span v-if="isDefault"
+								>{{ __("This is a BuildSuite default persona.") }} </span
 							>{{
 								__(
-									"Deleting a persona is permanent and only allowed when no user is assigned it.",
+									"Deleting a persona is permanent and only allowed when no user is assigned it."
 								)
 							}}
 						</p>

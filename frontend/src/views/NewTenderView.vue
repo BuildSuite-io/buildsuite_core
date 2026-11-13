@@ -7,6 +7,9 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
@@ -61,6 +64,8 @@ const form = reactive({
 	buildsuite_tenders_items: [],
 	notes: "",
 });
+const ext = useExtensionFields("BuildSuite Tenders", form);
+if (!props.id) ext.defaults();
 
 // Meta arrives async, so ||= — anything already typed wins. Skipped when editing: a saved
 // tax of 0 is falsy and would be overwritten by the doctype's 18.
@@ -81,6 +86,7 @@ watch(
 	() => resource?.doc,
 	(doc) => {
 		if (!doc) return;
+		ext.load(doc); // an installed app's Custom Fields
 		// Child tables are COPIED, not aliased. `doc` lives in the shared document cache, and
 		// DocTypeChildTable writes cells in place — assigning the array itself would let the
 		// form edit the record the detail page is reading.
@@ -120,7 +126,9 @@ function validate() {
 	if (!form.title.trim()) e.title = __("Say what the tender is for.");
 	if (!form.issuing_body.trim()) e.issuing_body = __("Who issued it?");
 	if (!form.tender_reference.trim())
-		e.tender_reference = __("The issuing body's reference — a bid can be rejected on this alone.");
+		e.tender_reference = __(
+			"The issuing body's reference — a bid can be rejected on this alone."
+		);
 	if (!form.submission_deadline)
 		e.submission_deadline = __("Needs a deadline. Miss it and the bid cannot be entered.");
 	else if (form.date_issued && form.submission_deadline < form.date_issued)
@@ -156,14 +164,18 @@ async function onSave() {
 		tax_percent: Number(form.tax_percent) || 0,
 		buildsuite_tenders_items: items.value,
 		notes: form.notes,
+		...ext.payload(), // an installed app's Custom Fields
 	};
 	try {
+		await ext.beforeSave(payload, form);
 		if (editing.value) {
 			await adapter.update("BuildSuite Tenders", props.id, payload);
+			await ext.afterSave(resource?.doc, { isNew: false });
 			showToast(__("Tender saved"), "success");
 			router.push(`/tenders/${props.id}`);
 		} else {
 			const res = await adapter.create("BuildSuite Tenders", payload);
+			await ext.afterSave(res, { isNew: true });
 			showToast(__("Tender created"), "success");
 			router.push(`/tenders/${res.name}`);
 		}
@@ -176,73 +188,159 @@ async function onSave() {
 </script>
 
 <template>
-	<DeskPage :title="editing ? __('Edit {0}', [props.id]) : __('New Tender')"
-		:subtitle="__('Type the items straight in, or pull them from an assembly or an estimate. Terms sections are added on the tender itself.')"
-		:breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="editing ? __('Edit {0}', [props.id]) : __('New Tender')"
+		:subtitle="
+			__(
+				'Type the items straight in, or pull them from an assembly or an estimate. Terms sections are added on the tender itself.'
+			)
+		"
+		:breadcrumbs="breadcrumbs"
+	>
 		<DeskForm>
 			<template #action-bar>
-				<DeskActionBar :save-label="editing ? __('Save changes') : __('Create tender')" :saving="saving" @save="onSave" @cancel="router.back()" />
+				<DeskActionBar
+					:save-label="editing ? __('Save changes') : __('Create tender')"
+					:saving="saving"
+					@save="onSave"
+					@cancel="router.back()"
+				/>
 			</template>
 
-			<DeskSection :title="__('Who and what')" :cols="2">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
 				<DeskField :label="__('For')" required :error="errors.title" class="md:col-span-2">
-					<DeskInput v-model="form.title" :placeholder="__('e.g. Station finishes package — Kochi Metro Phase 2')" />
+					<DeskInput
+						v-model="form.title"
+						:placeholder="__('e.g. Station finishes package — Kochi Metro Phase 2')"
+					/>
 				</DeskField>
 				<DeskField :label="__('Issuing body')" required :error="errors.issuing_body">
 					<DeskInput v-model="form.issuing_body" :placeholder="__('e.g. KMRL')" />
 				</DeskField>
 				<DeskField :label="__('Issued by')">
 					<DeskSelect v-model="form.issued_by">
-						<option v-for="o in issuedByOptions" :key="o" :value="o">{{ __(o) }}</option>
+						<option v-for="o in issuedByOptions" :key="o" :value="o">
+							{{ __(o) }}
+						</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Project')" :hint="__('Optional — a tender is bid long before there is a project.')">
-					<DeskSearchableSelect v-model="form.project" :options="projectOptions" allow-clear
-						:placeholder="__('Not linked to a project')" :search-placeholder="__('Search projects…')" />
+				<DeskField
+					:label="__('Project')"
+					:hint="__('Optional — a tender is bid long before there is a project.')"
+				>
+					<DeskSearchableSelect
+						v-model="form.project"
+						:options="projectOptions"
+						allow-clear
+						:placeholder="__('Not linked to a project')"
+						:search-placeholder="__('Search projects…')"
+					/>
 				</DeskField>
 				<DeskField :label="__('Date issued')">
 					<DeskInput v-model="form.date_issued" type="date" />
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Submission')" :cols="2">
-				<DeskField :label="__('Tender reference')" required :error="errors.tender_reference">
-					<DeskInput v-model="form.tender_reference" :placeholder="__('e.g. KMRL/P2/CIV/2026/17')" />
+			<DeskSection id="submission" :title="__('Submission')" :cols="2">
+				<DeskField
+					:label="__('Tender reference')"
+					required
+					:error="errors.tender_reference"
+				>
+					<DeskInput
+						v-model="form.tender_reference"
+						:placeholder="__('e.g. KMRL/P2/CIV/2026/17')"
+					/>
 				</DeskField>
-				<DeskField :label="__('Submission deadline')" required :error="errors.submission_deadline"
-					:hint="__('A quote past validity can be chased. A tender past its deadline cannot be entered at all.')">
-					<DeskInput v-model="form.submission_deadline" type="date" :min="form.date_issued" />
+				<DeskField
+					:label="__('Submission deadline')"
+					required
+					:error="errors.submission_deadline"
+					:hint="
+						__(
+							'A quote past validity can be chased. A tender past its deadline cannot be entered at all.'
+						)
+					"
+				>
+					<DeskInput
+						v-model="form.submission_deadline"
+						type="date"
+						:min="form.date_issued"
+					/>
 				</DeskField>
 				<DeskField :label="__('Portal')" :hint="__('Where the bid is uploaded.')">
-					<DeskInput v-model="form.portal" :placeholder="__('e.g. GePNIC / state e-procurement')" />
+					<DeskInput
+						v-model="form.portal"
+						:placeholder="__('e.g. GePNIC / state e-procurement')"
+					/>
 				</DeskField>
-				<DeskField :label="__('Envelope structure')"
-					:hint="__('How the bid is packaged: technical and financial together, or opened in stages.')">
+				<DeskField
+					:label="__('Envelope structure')"
+					:hint="
+						__(
+							'How the bid is packaged: technical and financial together, or opened in stages.'
+						)
+					"
+				>
 					<DeskSelect v-model="form.envelope_structure">
-						<option v-for="o in envelopeOptions" :key="o" :value="o">{{ __(o) }}</option>
+						<option v-for="o in envelopeOptions" :key="o" :value="o">
+							{{ __(o) }}
+						</option>
 					</DeskSelect>
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Earnest money and guarantee')" :cols="2">
-				<DeskField :label="`${__('EMD amount')} (${currencySymbol()})`" :error="errors.emd_amount"
-					:hint="__('Money genuinely lodged — it shows as at stake until the bid is decided.')">
-					<DeskInput v-model="form.emd_amount" type="number" min="0" step="any" :placeholder="__('blank if none')" />
+			<DeskSection
+				id="earnest-money-and-guarantee"
+				:title="__('Earnest money and guarantee')"
+				:cols="2"
+			>
+				<DeskField
+					:label="`${__('EMD amount')} (${currencySymbol()})`"
+					:error="errors.emd_amount"
+					:hint="
+						__(
+							'Money genuinely lodged — it shows as at stake until the bid is decided.'
+						)
+					"
+				>
+					<DeskInput
+						v-model="form.emd_amount"
+						type="number"
+						min="0"
+						step="any"
+						:placeholder="__('blank if none')"
+					/>
 				</DeskField>
-				<DeskField :label="__('EMD instrument')" :hint="__('Bank guarantee, DD, online transfer.')">
-					<DeskInput v-model="form.emd_instrument" :placeholder="__('e.g. Bank guarantee — Federal Bank')" />
+				<DeskField
+					:label="__('EMD instrument')"
+					:hint="__('Bank guarantee, DD, online transfer.')"
+				>
+					<DeskInput
+						v-model="form.emd_instrument"
+						:placeholder="__('e.g. Bank guarantee — Federal Bank')"
+					/>
 				</DeskField>
 				<DeskField :label="__('EMD valid until')">
 					<DeskInput v-model="form.emd_valid_until" type="date" />
 				</DeskField>
-				<DeskField :label="__('Performance guarantee %')" :error="errors.performance_guarantee_percent"
-					:hint="__('What we would have to furnish on award.')">
-					<DeskInput v-model="form.performance_guarantee_percent" type="number" min="0" step="any"
-						:placeholder="__('blank if none')" />
+				<DeskField
+					:label="__('Performance guarantee %')"
+					:error="errors.performance_guarantee_percent"
+					:hint="__('What we would have to furnish on award.')"
+				>
+					<DeskInput
+						v-model="form.performance_guarantee_percent"
+						type="number"
+						min="0"
+						step="any"
+						:placeholder="__('blank if none')"
+					/>
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Pricing')" :cols="2">
+			<DeskSection id="pricing" :title="__('Pricing')" :cols="2">
 				<DeskField :label="__('Margin %')" :hint="__('Applied to the subtotal.')">
 					<DeskInput v-model="form.margin_percent" type="number" min="0" step="any" />
 				</DeskField>
@@ -251,29 +349,44 @@ async function onSave() {
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Items')" :cols="1">
-				<DocTypeChildTable v-model="form.buildsuite_tenders_items" doctype="BuildSuite Tenders Items" />
+			<DeskSection id="items" :title="__('Items')" :cols="1">
+				<DocTypeChildTable
+					v-model="form.buildsuite_tenders_items"
+					doctype="BuildSuite Tenders Items"
+				/>
 				<div class="mt-2">
-					<button type="button"
+					<button
+						type="button"
 						class="text-xs text-brand-700 hover:underline font-medium"
-						@click="pickerOpen = true">
+						@click="pickerOpen = true"
+					>
 						{{ __("+ Add from library") }}
 					</button>
-					<span class="text-[11px] text-ink-400 ml-2">{{ __("an assembly from the catalogue") }}</span>
+					<span class="text-[11px] text-ink-400 ml-2">{{
+						__("an assembly from the catalogue")
+					}}</span>
 				</div>
 				<p v-if="errors.buildsuite_tenders_items" class="text-xs text-danger-700 mt-2">
 					{{ errors.buildsuite_tenders_items }}
 				</p>
 				<p class="text-[11px] text-ink-500 mt-2">
-					{{ __("Margin and tax are applied to the subtotal — sell rate and amount are worked out on save.") }}
+					{{
+						__(
+							"Margin and tax are applied to the subtotal — sell rate and amount are worked out on save."
+						)
+					}}
 				</p>
 			</DeskSection>
 
-			<DeskSection :title="__('Internal notes')" :cols="1">
-				<DeskField :label="__('Notes')" :hint="__('Not printed — for whoever picks this up next.')">
+			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
+				<DeskField
+					:label="__('Notes')"
+					:hint="__('Not printed — for whoever picks this up next.')"
+				>
 					<DeskTextarea v-model="form.notes" :rows="3" />
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 
 		<TenderLinePicker :open="pickerOpen" @close="pickerOpen = false" @add="addLibraryLine" />

@@ -7,6 +7,9 @@
 import { reactive, ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -41,6 +44,8 @@ const form = reactive({
 	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 });
+const ext = useExtensionFields("Work Package", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	project: "projectId",
 	work_package_name: "name",
@@ -81,7 +86,7 @@ async function save() {
 	}
 	saving.value = true;
 	try {
-		const res = await adapter.create("Work Package", {
+		const payload = {
 			project: form.projectId,
 			code: form.code.trim(),
 			work_package_name: form.name.trim(),
@@ -90,7 +95,11 @@ async function save() {
 			budget: Number(form.budget) || 0,
 			start_date: form.startDate,
 			end_date: form.endDate,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Work Package", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/work-packages/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to create work package"), "error");
@@ -141,13 +150,16 @@ const subtitle = computed(() =>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic information')">
+				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField
 						:label="__('Project')"
 						required
 						:error="errors.projectId"
 						:hint="
-							lockedProject ? __('Pre-selected from where you came in — locked.') : ''
+							lockedProject
+								? __('Pre-selected from where you came in — locked.')
+								: ''
 						"
 					>
 						<DeskLinkPicker
@@ -165,7 +177,10 @@ const subtitle = computed(() =>
 						/>
 					</DeskField>
 					<DeskField :label="__('Work Package name')" required :error="errors.name">
-						<DeskInput v-model="form.name" :placeholder="__('e.g. Foundation Works')" />
+						<DeskInput
+							v-model="form.name"
+							:placeholder="__('e.g. Foundation Works')"
+						/>
 					</DeskField>
 					<DeskField
 						:label="__('Code')"
@@ -182,7 +197,7 @@ const subtitle = computed(() =>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
 					<DeskField :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
@@ -201,6 +216,7 @@ const subtitle = computed(() =>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
+				<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 			</div>
 		</DeskForm>
 	</DeskPage>

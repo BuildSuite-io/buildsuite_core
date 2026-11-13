@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BuildSuite Extension Quickstart</title>
+<!-- A standalone copy of the quickstart walkthrough; open it in a browser. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column of four real steps (scaffold, code, build, result), each with the command or tree
+   on the left and the code on the right; a status table closes the page. */
+:root {
+  --bg: #f2f5f3;
+  --surface: #ffffff;
+  --ink: #12211a;
+  --muted: #55655d;
+  --line: #d6dfda;
+  --accent: #0e6b4d;
+  --accent-ink: #ffffff;
+  --code-bg: #101c17;
+  --code-fg: #d9e8df;
+  --code-dim: #7f9a8b;
+  --code-key: #8fd3b0;
+  --code-str: #f0c987;
+  --built-bg: #dcefe5;
+  --built-fg: #0b5a3f;
+  --planned-bg: #f7e8c8;
+  --planned-fg: #7a5410;
+  --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1511; --surface: #141f19; --ink: #e4efe8; --muted: #93a79b; --line: #26372e;
+    --accent: #4cc79a; --accent-ink: #06150e; --code-bg: #0a120e; --code-fg: #d3e4da; --code-dim: #71897a;
+    --code-key: #7fd1a8; --code-str: #e9c07f; --built-bg: #173a2b; --built-fg: #8fe0b9;
+    --planned-bg: #3b2f14; --planned-fg: #f0c978;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1511; --surface: #141f19; --ink: #e4efe8; --muted: #93a79b; --line: #26372e;
+  --accent: #4cc79a; --accent-ink: #06150e; --code-bg: #0a120e; --code-fg: #d3e4da; --code-dim: #71897a;
+  --code-key: #7fd1a8; --code-str: #e9c07f; --built-bg: #173a2b; --built-fg: #8fe0b9;
+  --planned-bg: #3b2f14; --planned-fg: #f0c978;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+h3 { font-size: 17px; font-weight: 650; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: 18px; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); }
+
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
+.chip.built { background: var(--built-bg); color: var(--built-fg); }
+.chip.planned { background: var(--planned-bg); color: var(--planned-fg); }
+
+.step { display: grid; grid-template-columns: 1fr; gap: 16px; padding-top: 28px; border-top: 1px solid var(--line); }
+.step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.step-head .n { font-family: var(--font-mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+.step-head .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; }
+@media (max-width: 800px) { .step-cols { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 14px; color: var(--muted); }
+
+pre {
+  margin: 0; background: var(--code-bg); color: var(--code-fg); font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+  padding: 16px 18px; border-radius: 6px; overflow-x: auto; min-width: 0;
+}
+.cap { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.k { color: var(--code-key); } .s { color: var(--code-str); } .d { color: var(--code-dim); }
+.col { min-width: 0; display: flex; flex-direction: column; }
+
+.ui { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 800px) { .ui { grid-template-columns: minmax(0, 1fr); } }
+.mock { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.mock-bar { padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); }
+.mock-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.tile { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+.tile.new { border-color: var(--accent); }
+.tile small { display: block; color: var(--muted); font-size: 12px; }
+.row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.row.head { color: var(--muted); font-weight: 600; font-size: 12px; }
+.row .new { color: var(--accent); font-weight: 600; }
+.new-tag { font-size: 11px; font-weight: 600; color: var(--accent); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+.repos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 800px) { .repos { grid-template-columns: minmax(0, 1fr); } }
+.repo { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.repo code { font-family: var(--font-mono); font-size: 13px; color: var(--accent); overflow-wrap: anywhere; }
+.repo p { font-size: 14px; color: var(--muted); }
+a:focus-visible, pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">BuildSuite extension SDK</span>
+    <h1>From zero to a customised BuildSuite in four steps</h1>
+    <p class="lede">An extension is an ordinary Frappe app with one extra line and a small JavaScript file. It adds pages, tiles and sections to BuildSuite Core without rebuilding Core, and uninstalling it removes them again.</p>
+    <div class="legend">
+      <span class="chip built">Built</span> works on the <code>feat/extension-sdk</code> branch today
+      <span class="chip planned">Planned</span> designed, not built yet
+    </div>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <div class="step-head">
+      <span class="n">Step 1</span>
+      <h2 id="s1">Scaffold the app</h2>
+      <span class="chips"><span class="chip built">Built: scaffold command</span></span>
+    </div>
+    <div class="step-cols">
+      <div class="col">
+        <div class="cap">Terminal</div>
+<pre><span class="d"># from your bench</span>
+bench new-buildsuite-extension acme_ext --title "Acme Extension"
+bench get-app ./acme_ext
+bench --site mysite install-app acme_ext</pre>
+        <p class="note" style="margin-top:10px">About 30 seconds. A complete working demo lives in <code>examples/buildsuite_demo_extension</code>.</p>
+      </div>
+      <div class="col">
+        <div class="cap">What you get</div>
+<pre>acme_ext/
+├── pyproject.toml
+└── acme_ext/
+    ├── hooks.py              <span class="d"># declares your extension</span>
+    ├── modules.txt
+    └── public/js/
+        └── extension.js      <span class="d"># export default register(sdk)</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <div class="step-head">
+      <span class="n">Step 2</span>
+      <h2 id="s2">Declare it and customise</h2>
+      <span class="chips"><span class="chip built">Built: hook, page, slot, tile, view override, form hooks, settings page</span><span class="chip planned">Planned: resource registry</span></span>
+    </div>
+    <div class="step-cols">
+      <div class="col">
+        <div class="cap">hooks.py (the only BuildSuite line)</div>
+<pre>buildsuite_frontend_extensions = [{
+  <span class="k">"name"</span>: <span class="s">"acme_ext"</span>,
+  <span class="k">"js"</span>:   <span class="s">"/assets/acme_ext/js/extension.js"</span>,
+  <span class="k">"min_sdk"</span>: <span class="s">"1.0"</span>,
+}]
+
+<span class="d"># a settings page with no JavaScript: a Single DocType</span>
+buildsuite_settings_pages = [{
+  <span class="k">"doctype"</span>: <span class="s">"Acme Settings"</span>,
+  <span class="k">"group"</span>: <span class="s">"Acme"</span>, <span class="k">"label"</span>: <span class="s">"Acme settings"</span>,
+}]</pre>
+        <p class="note" style="margin-top:10px">Frappe lists the hooks of installed apps only, so the extension is active exactly where the app is installed. The Custom Fields it adds are ordinary Frappe fixtures.</p>
+      </div>
+      <div class="col">
+        <div class="cap">public/js/extension.js</div>
+<pre><span class="k">export default function</span> register(sdk) {
+  <span class="d">// a new page inside the app shell</span>
+  sdk.routes.add({ path: <span class="s">"site-diary"</span>, component: SiteDiary });
+
+  <span class="d">// a tile on the Sales workspace</span>
+  sdk.workspaces.addTile(<span class="s">"sales"</span>, {
+    label: <span class="s">"Site diary"</span>, to: <span class="s">"/site-diary"</span>,
+  });
+
+  <span class="d">// a component above or below ANY page, bespoke or not</span>
+  sdk.slots.add(<span class="s">"page.app-home.top"</span>, Banner);
+
+  <span class="d">// a control for a Custom Field on a bespoke form (Quotation today)</span>
+  sdk.doctype(<span class="s">"Quotation"</span>).on({ fields: [<span class="s">"region"</span>] });
+  sdk.slots.add(<span class="s">"form.Quotation.top"</span>, RegionControl);
+
+  <span class="d">// replace a Core page, or render around it</span>
+  sdk.views.override(<span class="s">"settings-app-icon-diagnostics"</span>, MyDiagnostics);
+  sdk.views.wrap(<span class="s">"settings-data"</span>, MyFrame);
+
+  <span class="d">// hooks on the generic DocType form ("*" = every doctype)</span>
+  sdk.doctype(<span class="s">"*"</span>).on({ beforeSave(payload) { <span class="d">/* throw to refuse */</span> } });
+
+  <span class="d">// planned: columns and sections on an existing resource</span>
+  sdk.resources(<span class="s">"Project"</span>).list.addColumn({ field: <span class="s">"custom_region"</span> });
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <div class="step-head">
+      <span class="n">Step 3</span>
+      <h2 id="s3">Load it</h2>
+      <span class="chips"><span class="chip built">Built: loading at runtime, no build step</span></span>
+    </div>
+    <div class="step-cols">
+      <div class="col">
+        <div class="cap">Terminal</div>
+<pre><span class="d"># extension.js is plain JavaScript: Vue arrives as sdk.vue</span>
+bench --site mysite migrate   <span class="d"># only if you ship fixtures or doctypes</span></pre>
+      </div>
+      <div class="col">
+        <p>Reload the app. Core loads <code>extension.js</code> at runtime from the installed app, checks the SDK version, and calls <code>register(sdk)</code>. An extension that fails to load or throws while rendering is logged and skipped, and the page around it keeps working.</p>
+        <p class="note" style="margin-top:10px">Core's own bundle is never rebuilt, and Core's build never depends on which apps are on the bench.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s4">
+    <div class="step-head">
+      <span class="n">Step 4</span>
+      <h2 id="s4">What your users see</h2>
+      <span class="chips"><span class="chip built">Built: tile, page, slot, settings page, form control</span><span class="chip planned">Planned: list column</span></span>
+    </div>
+    <div class="ui" role="group" aria-label="Illustration of the three changes">
+      <div class="mock">
+        <div class="mock-bar">Sales workspace</div>
+        <div class="mock-body">
+          <div class="tile"><div>Quotations<small>Customer offers</small></div></div>
+          <div class="tile new"><div>Site diary <span class="new-tag">from acme_ext</span><small>A page added by an installed app</small></div></div>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-bar">Projects list</div>
+        <div class="mock-body">
+          <div class="row head"><span>Project</span><span>Status</span><span class="new">Region</span></div>
+          <div class="row"><span>Riverside Block</span><span>Open</span><span class="new">North</span></div>
+          <div class="row"><span>Depot Fit-out</span><span>Open</span><span class="new">East</span></div>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-bar">Settings</div>
+        <div class="mock-body">
+          <div class="tile"><div>Companies<small>Letter heads and brand colour</small></div></div>
+          <div class="tile new"><div>Acme settings <span class="new-tag">from acme_ext</span><small>A Single DocType, no JavaScript</small></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Uninstall <code>acme_ext</code> and all three changes are gone. Nothing in Core was edited.</p>
+  </section>
+
+  <section class="step" aria-labelledby="s5">
+    <div class="step-head">
+      <span class="n">Later</span>
+      <h2 id="s5">No code at all</h2>
+      <span class="chips"><span class="chip planned">Planned: phase 4</span></span>
+    </div>
+    <p>An onboarding page asks "What do you want to change?", or lets someone drag a section into a form. It stores the same declarations as data on the site, and Core applies them exactly as it applies an extension's. Precedence is Core, then installed apps, then the site's own customisations.</p>
+  </section>
+
+  <section class="step" aria-labelledby="s6">
+    <div class="step-head"><h2 id="s6">Where the SDK lives</h2></div>
+    <div class="repos">
+      <div class="repo"><code>buildsuite-sdk-py</code><p>Frappe helpers: seed if missing, permissions, reports, workflows, test helpers. Depends on Frappe only.</p></div>
+      <div class="repo"><code>@buildsuite/sdk</code><p>Controls, composables, registries and types. Core consumes it the same way an extension does.</p></div>
+      <div class="repo"><code>buildsuite-extension-template</code><p>The starter app that <code>new-buildsuite-extension</code> writes today from a template inside Core; a separate repo comes later.</p></div>
+    </div>
+    <p class="note">The two SDKs version independently with a published compatibility matrix. The split happens once the controls are extracted from Core and the public surface has settled.</p>
+  </section>
+
+  <section class="step" aria-labelledby="s7">
+    <div class="step-head"><h2 id="s7">Where it stands</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Capability</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Discovery through a Frappe hook, runtime loading, version check, failure isolation</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Add pages and workspace tiles; slots above and below every page, bespoke ones included</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Override or wrap any named Core page; hooks and slots on the generic DocType form</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Settings pages as Single DocTypes declared in hooks.py, with no JavaScript</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Custom Field controls on every bespoke create form, and the Project and Task edit screens</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Demo extension app, with backend and Cypress tests</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>List columns added to any list</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Form sections beyond top and bottom slots</td><td><span class="chip planned">Planned</span></td></tr>
+          <tr><td>Scaffold command, author guide, versioning policy (build config not needed)</td><td><span class="chip built">Built: phase 3</span></td></tr>
+          <tr><td>Site-level customisations as data: list column, form field, workspace tile, notice</td><td><span class="chip built">Built: phase 4, first slice</span></td></tr>
+          <tr><td>Editor page, AI authoring and drag-and-drop</td><td><span class="chip planned">Planned</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+</body>
+</html>

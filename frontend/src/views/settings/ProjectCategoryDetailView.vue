@@ -61,7 +61,7 @@ watch(
 		form.sortOrder = r.sort_order || 0;
 		loaded.value = true;
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 async function save() {
@@ -111,7 +111,7 @@ onMounted(() => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic')">
+				<DeskSection id="basic" :title="__('Basic')">
 					<DeskField
 						:label="__('Category name')"
 						:hint="__('The name is the key and can\'t be changed.')"
@@ -133,9 +133,12 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Work Package label')">
+				<DeskSection id="work-package-label" :title="__('Work Package label')">
 					<DeskField :label="__('Singular')">
-						<DeskInput v-model="form.workPackageLabel" :placeholder="__('Work Package')" />
+						<DeskInput
+							v-model="form.workPackageLabel"
+							:placeholder="__('Work Package')"
+						/>
 					</DeskField>
 					<DeskField :label="__('Plural')">
 						<DeskInput
@@ -145,9 +148,13 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Default template')" :cols="1">
+				<DeskSection id="default-template" :title="__('Default template')" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
-						{{ __("The Work Packages, Stages and Tasks a project inherits when it's created under this category. Tasks are assigned to their Stage, so imported stage plans arrive with their tasks.") }}
+						{{
+							__(
+								"The Work Packages, Stages and Tasks a project inherits when it's created under this category. Tasks are assigned to their Stage, so imported stage plans arrive with their tasks."
+							)
+						}}
 					</p>
 					<div>
 						<button

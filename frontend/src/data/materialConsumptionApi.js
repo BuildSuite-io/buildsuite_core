@@ -30,5 +30,6 @@ export const saveMaterialConsumption = (payload) =>
 	call("save_material_consumption", {
 		...payload,
 		items: JSON.stringify(payload.items || []),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
 		cost_code: payload.cost_code ? JSON.stringify(payload.cost_code) : null,
 	});
