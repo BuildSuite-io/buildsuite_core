@@ -1,0 +1,240 @@
+# Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
+# For license information, please see license.txt
+
+"""Timesheet costing.
+
+A timesheet row is costed at the worker's hourly rate: the Field Employee's daily wage over the full
+day of the row's project (utils.full_day), or the Field Employee's own hourly overtime wage for an
+overtime row. Both come from the Employee's Wage and Wage For Overtime, whatever the wage type. The row keeps
+the full day, rate and amount it was costed with; they are recalculated on every save while the
+timesheet is a draft and frozen on submit, so a later wage or setting change cannot reprice it.
+"""
+
+import frappe
+from frappe import _
+from frappe.utils import add_days, flt, getdate
+
+from buildsuite_core.utils.full_day import get_full_day_hours
+
+COST_CODE_FIELDS = (
+	"custom_cost_code_type",
+	"custom_cost_code_group",
+	"custom_cost_code_item",
+	"custom_cost_code_label",
+)
+
+
+def field_employee_wages(employee) -> tuple[float, float]:
+	"""(daily wage, hourly overtime wage) as set on the Field Employee: the Wage and Wage For Overtime
+	of the Employee record. Timesheets cost from these two numbers and nothing else; a salary
+	structure (buildsuite_hr, "Salaried" workers) belongs to payroll, not to site costing."""
+	emp = employee if hasattr(employee, "get") else frappe.get_doc("Employee", employee)
+	return flt(emp.get("custom_wage")), flt(emp.get("custom_wage_for_overtime"))
+
+
+def hourly_rates(employee, full_day_hours: float):
+	"""(regular, overtime) cost per hour for a worker with this full day. Regular is the Field
+	Employee's daily wage over the full day (from utils.full_day: project, then company, then the
+	default), rounded to 2 places like the amount; overtime is the Field Employee's own hourly
+	overtime wage."""
+	daily, overtime = field_employee_wages(employee)
+	return round(daily / flt(full_day_hours), 2), overtime
+
+
+def existing_timesheet_for_day(employee, day, exclude=None) -> str | None:
+	"""The name of another live (draft or submitted) timesheet of this worker that has rows on `day`,
+	or None. A row belongs to the day it starts on, the same day the registers file it under."""
+	row, sheet = frappe.qb.DocType("Timesheet Detail"), frappe.qb.DocType("Timesheet")
+	start = getdate(day)
+	query = (
+		frappe.qb.from_(row)
+		.join(sheet)
+		.on(sheet.name == row.parent)
+		.select(sheet.name)
+		.where(row.parenttype == "Timesheet")
+		.where(sheet.employee == employee)
+		.where(sheet.docstatus < 2)
+		.where(row.from_time >= f"{start} 00:00:00")
+		.where(row.from_time < f"{add_days(start, 1)} 00:00:00")
+		.limit(1)
+	)
+	if exclude:
+		query = query.where(sheet.name != exclude)
+	found = query.run()
+	return found[0][0] if found else None
+
+
+def validate_one_timesheet_per_day(doc, method=None):
+	"""Timesheet validate: a worker has one timesheet a day, however it is created (the SPA, the
+	Desk, an import or the REST API). Put all of the day's hours on that one timesheet."""
+	if doc.docstatus == 2 or not doc.employee:
+		return
+	days = sorted({getdate(r.from_time) for r in doc.time_logs if r.from_time})
+	for day in days:
+		clash = existing_timesheet_for_day(doc.employee, day, exclude=doc.name)
+		if clash:
+			name = frappe.db.get_value("Employee", doc.employee, "employee_name") or doc.employee
+			frappe.throw(
+				_("{0} already has a timesheet for {1}: {2}. Add the hours to that timesheet.").format(
+					name, day, clash
+				),
+				title=_("One timesheet a day"),
+			)
+
+
+def row_cost_code(row) -> dict | None:
+	"""The picker-shaped cost code stored on a timesheet row, or None."""
+	if not row.get("custom_cost_code_label"):
+		return None
+	return {
+		"type": (row.get("custom_cost_code_type") or "").lower(),
+		"group_code": row.get("custom_cost_code_group") or "",
+		"item_code": row.get("custom_cost_code_item") or None,
+		"label": row.get("custom_cost_code_label") or "",
+	}
+
+
+def cost_code_fields(cost_code) -> dict:
+	"""Flatten a picker cost code into the four stored fields (or blanks)."""
+	if not cost_code or not isinstance(cost_code, dict):
+		return dict.fromkeys(COST_CODE_FIELDS, "")
+	return {
+		"custom_cost_code_type": "Item" if cost_code.get("type") == "item" else "Group",
+		"custom_cost_code_group": cost_code.get("group_code") or "",
+		"custom_cost_code_item": cost_code.get("item_code") or "",
+		"custom_cost_code_label": cost_code.get("label") or "",
+	}
+
+
+def cost_timesheet(doc, method=None):
+	"""Timesheet validate: check row cost codes, then cost every row while the timesheet is a draft."""
+	if doc.docstatus != 0:
+		return
+	_check_cost_codes(doc)
+	if not doc.employee:
+		return
+
+	employee = frappe.get_doc("Employee", doc.employee)
+	total = 0.0
+	for row in doc.time_logs:
+		row.full_day_hours = get_full_day_hours(row.project, doc.company)
+		regular, overtime = hourly_rates(employee, row.full_day_hours)
+		row.costing_rate = overtime if row.is_overtime else regular
+		row.costing_amount = round(flt(row.hours) * flt(row.costing_rate), 2)
+		total += row.costing_amount
+	doc.total_costing_amount = total
+
+
+def _check_cost_codes(doc):
+	"""A row's code must be a group or line of its project's approved estimate. A row moved to
+	another project loses its code: a code belongs to one project's estimate."""
+	before = doc.get_doc_before_save()
+	before_project = {r.name: r.project for r in (before.time_logs if before else [])}
+	codes_cache: dict = {}
+	for row in doc.time_logs:
+		if not (row.custom_cost_code_group or row.custom_cost_code_item):
+			continue
+		if row.name in before_project and before_project[row.name] != row.project:
+			row.update(cost_code_fields(None))
+			continue
+		if not row.project:
+			frappe.throw(_("Row {0}: pick the project before a cost code.").format(row.idx))
+		if row.project not in codes_cache:
+			from buildsuite_core.api.subcontract import get_project_cost_codes
+
+			codes_cache[row.project] = get_project_cost_codes(row.project)
+		match = _find_code(row, codes_cache[row.project])
+		if not match:
+			frappe.throw(
+				_("Row {0}: cost code {1} is not on the estimate of {2}.").format(
+					row.idx, row.custom_cost_code_item or row.custom_cost_code_group, row.project
+				)
+			)
+		row.update(cost_code_fields({**match, "type": match["type"].lower()}))
+
+
+def _find_code(row, codes):
+	is_item = bool(row.custom_cost_code_item)
+	for c in codes:
+		if is_item and c["type"] == "Item" and c["item_code"] == row.custom_cost_code_item:
+			return c
+		if not is_item and c["type"] == "Group" and c["group_code"] == row.custom_cost_code_group:
+			return c
+	return None
+
+
+# ---------------------------------------------------------------------------
+# Registers: a submitted timesheet writes its rows into the labour registers
+# ---------------------------------------------------------------------------
+
+LABOUR_REGISTER = "Labour Attendance Register"
+OVERTIME_REGISTER = "Overtime Attendance Register"
+_REGISTER_COST_CODE = (
+	("custom_cost_code_type", "cost_code_type"),
+	("custom_cost_code_group", "cost_code_group"),
+	("custom_cost_code_item", "cost_code_item"),
+	("custom_cost_code_label", "cost_code_label"),
+)
+
+
+def create_registers_from_timesheet(doc, method=None):
+	"""on_submit: each regular row becomes a Labour Attendance row (status "Hours", priced rate x full
+	day, the wage being the row's costing amount) and each overtime row an Overtime Attendance row
+	(hours, the row's overtime rate, wage = costing amount). Both keep the row's project, cost code,
+	description and the links back to the timesheet and its row."""
+	for row in doc.time_logs:
+		day = getdate(row.from_time) if row.from_time else getdate(doc.start_date)
+		common = {
+			"employee": doc.employee,
+			"company": doc.company,
+			"project": row.project,
+			"source": "Timesheet",
+			"timesheet": doc.name,
+			"timesheet_detail": row.name,
+			"full_day_hours": row.full_day_hours,
+			"comments": row.description,
+			**{dst: row.get(src) or "" for src, dst in _REGISTER_COST_CODE},
+		}
+		if row.is_overtime:
+			reg = frappe.get_doc(
+				{
+					**common,
+					"doctype": OVERTIME_REGISTER,
+					"overtime_date": day,
+					"overtime_hours": row.hours,
+					"overtime_rate": row.costing_rate,
+					"overtime_wage_calculated": row.costing_amount,
+				}
+			)
+		else:
+			reg = frappe.get_doc(
+				{
+					**common,
+					"doctype": LABOUR_REGISTER,
+					"attendance_date": day,
+					"status": "Hours",
+					"regular_hours": row.hours,
+					"wage_rate": round(flt(row.costing_rate) * flt(row.full_day_hours), 2),
+					"daily_wage_calculated": row.costing_amount,
+				}
+			)
+		reg.insert(ignore_permissions=True)
+		reg.submit()
+
+
+def cancel_registers_of_timesheet(doc, method=None):
+	"""on_cancel: cancel every register row the timesheet made, so its cost leaves every reading."""
+	for doctype in (LABOUR_REGISTER, OVERTIME_REGISTER):
+		for name in frappe.get_all(doctype, filters={"timesheet": doc.name, "docstatus": 1}, pluck="name"):
+			reg = frappe.get_doc(doctype, name)
+			reg.flags.ignore_permissions = True
+			reg.cancel()
+
+
+def delete_registers_of_timesheet(doc, method=None):
+	"""on_trash: a timesheet can only be deleted as a draft or once cancelled, but be safe - drop
+	whatever register rows still point at it (cancelling any that are live)."""
+	cancel_registers_of_timesheet(doc)
+	for doctype in (LABOUR_REGISTER, OVERTIME_REGISTER):
+		for name in frappe.get_all(doctype, filters={"timesheet": doc.name}, pluck="name"):
+			frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)

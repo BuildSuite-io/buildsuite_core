@@ -6,6 +6,8 @@ import { usePageTitle } from "@/composables/usePageTitle";
 
 import { ref, computed, watch, nextTick } from "vue";
 import { __ } from "@/utils/translate";
+import { getFullDayHours } from "@/data/companyApi";
+import { parseFullDayHours, FULL_DAY_HOURS_RULE } from "@/utils/fullDay";
 import AccessDenied from "@/components/AccessDenied.vue";
 import { isPermissionDenied, parseFrappeError } from "@/utils/frappeError";
 import { useRouter, useRoute, RouterLink } from "vue-router";
@@ -120,6 +122,7 @@ function loadProjectResource() {
 			"modified",
 			"parent_project",
 			...docFields("Project"), // an installed app's Custom Fields
+			"full_day_hours",
 		],
 		cache: `buildsuite-project-detail:${props.id}`,
 		transform(rows) {
@@ -138,6 +141,8 @@ function loadProjectResource() {
 				budget: Number(row?.estimated_costing) || 0,
 				progress: Number(row?.percent_complete) || 0,
 				pm: row?.project_manager || "",
+				// A blank project value is stored as 0 (a Float can't be NULL): 0 means "use the company's".
+				fullDayHours: row?.full_day_hours || "",
 				location: row?.location || "",
 				description: row?.notes || row?.description || "",
 				extCustom: Object.fromEntries(
@@ -794,13 +799,38 @@ function buildProjectEditForm(source) {
 	};
 }
 
+// Full day hours: blank means the company's value, which the server resolves (the Company field is
+// permlevel-protected, so the SPA can't read it directly). Only an admin or this project's own
+// Project Manager may set it — the server enforces the same rule.
+const companyFullDay = ref(null);
+const canEditFullDay = computed(
+	() => store.isAdmin || (!!project.value?.pm && project.value.pm === store.user?.id)
+);
+const fullDayError = computed(() =>
+	parseFullDayHours(editForm.value.fullDayHours) === undefined ? __(FULL_DAY_HOURS_RULE) : ""
+);
+async function loadCompanyFullDay() {
+	try {
+		companyFullDay.value = (
+			await getFullDayHours({ project: resolvedProjectId.value })
+		)?.company_hours;
+	} catch {
+		companyFullDay.value = null;
+	}
+}
+
 async function startEdit() {
 	editForm.value = buildProjectEditForm(project.value);
 	setEditErrors({});
+	loadCompanyFullDay();
 	await ext.load(project.value?.extCustom);
 	editing.value = true;
 }
 async function saveEdit() {
+	if (fullDayError.value) {
+		showToast(fullDayError.value, "error");
+		return;
+	}
 	const endErr = endBeforeStartError(editForm.value.startDate, editForm.value.endDate);
 	let boundsErr = endErr;
 	if (!boundsErr && project.value?.parentId) {
@@ -839,6 +869,9 @@ async function saveEdit() {
 			// company is locked/inferred server-side (§14) — not editable from the form.
 			estimated_costing: Number(editForm.value.budget),
 			project_manager: editForm.value.pm || null,
+			...(canEditFullDay.value
+				? { full_day_hours: parseFullDayHours(editForm.value.fullDayHours) }
+				: {}),
 			notes: editForm.value.description,
 			...ext.payload(), // an installed app's Custom Fields
 		};
@@ -2012,6 +2045,9 @@ usePageTitle(() => project.value?.name);
 			:subs-count="subs.length"
 			:is-multi-company="store.isMultiCompany"
 			:ext-context="ext.context"
+			:can-edit-full-day="canEditFullDay"
+			:company-full-day="companyFullDay"
+			:full-day-error="fullDayError"
 			@close="cancelEdit"
 			@save="saveEdit"
 			@clear-error="clearEditError"

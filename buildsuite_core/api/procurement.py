@@ -1,9 +1,6 @@
 import frappe
-from frappe.query_builder.functions import Count, Sum
+from frappe.query_builder.functions import Sum
 from frappe.utils import add_days, date_diff, flt, nowdate
-
-from buildsuite_core.api.rate_master import get_rate_update_threshold
-
 
 
 def _cf() -> dict:
@@ -73,25 +70,12 @@ def _received_this_week() -> dict:
 
 
 def _above_estimated_rate() -> dict:
-	"""Count PO lines priced > RM_THRESHOLD_PCT above their Rate Master rate."""
-	po_names = frappe.get_list("Purchase Order", filters={**_cf(), "docstatus": 1}, pluck="name")
-	return {"count": _over_rate_line_count(po_names)}
+	"""Items whose latest order line is priced above the Rate Master's current rate: the same rows,
+	measured the same way, as the Purchase rate vs estimate report (api.procurement_report)."""
+	from buildsuite_core.api.procurement_report import count_above_estimate, rate_check_rows
 
-
-def _over_rate_line_count(po_names: list[str]) -> int:
-	"""Count lines (within the given POs) priced above the Rate Master rate."""
-	if not po_names:
-		return 0
-	poi = frappe.qb.DocType("Purchase Order Item")
-	limit = 1 + get_rate_update_threshold() / 100
-	return (
-		frappe.qb.from_(poi)
-		.select(Count(poi.name))
-		.where(poi.parent.isin(po_names))
-		.where(poi.custom_rate_master != "")
-		.where(poi.custom_rate_master_rate > 0)
-		.where(poi.rate > poi.custom_rate_master_rate * limit)
-	).run()[0][0]
+	rows, _unlinked = rate_check_rows(company=_cf().get("company"))
+	return {"count": count_above_estimate(rows)}
 
 
 def _needs_action() -> dict:

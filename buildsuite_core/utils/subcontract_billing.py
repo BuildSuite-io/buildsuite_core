@@ -104,24 +104,15 @@ def ensure_service_item():
 	if frappe.db.exists("Item", SERVICE_ITEM):
 		# Older installs created this on ERPNext's default 'Nos' (whole-number only), so fractional
 		# measured quantities were rejected. Move it onto the fraction-allowing UOM — it's a
-		# non-stock item, so there's no stock ledger to block the change.
-		if frappe.db.get_value("Item", SERVICE_ITEM, "stock_uom") != uom:
-			frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", uom)
-		# set_value skips the Item's UOM table, and ERPNext rejects an Item Price in a UOM the item
-		# does not list ("UOM X not found in Item Y"), so make sure the stock UOM has its row.
-		if not frappe.db.exists(
-			"UOM Conversion Detail", {"parenttype": "Item", "parent": SERVICE_ITEM, "uom": uom}
-		):
-			frappe.get_doc(
-				{
-					"doctype": "UOM Conversion Detail",
-					"parenttype": "Item",
-					"parentfield": "uoms",
-					"parent": SERVICE_ITEM,
-					"uom": uom,
-					"conversion_factor": 1,
-				}
-			).insert(ignore_permissions=True)
+		# non-stock item, so there's no stock ledger to block the change. The UOM must also be in
+		# the item's conversion table, or ERPNext refuses the PI line ("UOM ... not found in Item").
+		item = frappe.get_doc("Item", SERVICE_ITEM)
+		if item.stock_uom != uom or not any(u.uom == uom for u in item.uoms):
+			item.stock_uom = uom
+			if not any(u.uom == uom for u in item.uoms):
+				item.append("uoms", {"uom": uom, "conversion_factor": 1})
+			item.flags.ignore_permissions = True
+			item.save()
 		return SERVICE_ITEM
 	if not frappe.db.exists("Item Group", SERVICE_ITEM_GROUP):
 		parent = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"

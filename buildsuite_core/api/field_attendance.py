@@ -233,9 +233,10 @@ _REGISTER_SUM_FIELDS = {
 
 
 @frappe.whitelist()
-def register_total(doctype: str, field: str, filters: str | None = None):
+def register_total(doctype: str, field: str, filters: str | None = None, or_filters: str | None = None):
 	"""SUM of `field` over `doctype` rows matching `filters` (a JSON list of Frappe filter
-	tuples), respecting the caller's read permissions. UI subtitle helper only."""
+	tuples) and, when given, any of `or_filters` (the list's search box), respecting the caller's
+	read permissions. UI subtitle helper only."""
 	from frappe.utils import flt
 
 	allowed = _REGISTER_SUM_FIELDS.get(doctype)
@@ -245,5 +246,10 @@ def register_total(doctype: str, field: str, filters: str | None = None):
 	parsed = frappe.parse_json(filters) if filters else []
 	if not isinstance(parsed, list):
 		parsed = []
-	rows = frappe.get_list(doctype, filters=parsed, fields=[field], limit_page_length=0)
+	parsed_or = frappe.parse_json(or_filters) if or_filters else []
+	if not isinstance(parsed_or, list):
+		parsed_or = []
+	rows = frappe.get_list(
+		doctype, filters=parsed, or_filters=parsed_or or None, fields=[field], limit_page_length=0
+	)
 	return flt(sum(flt(r.get(field)) for r in rows))

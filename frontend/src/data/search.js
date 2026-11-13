@@ -419,6 +419,11 @@ const REPORT_PLACES = {
 		icon: "clipboard-list",
 		words: ["overtime", "overtime attendance"],
 	},
+	"/workforce/labour-cost-summary": {
+		label: "Labour Cost Summary",
+		icon: "chart-bar",
+		words: ["labour cost", "man-days", "labour summary"],
+	},
 	"/workforce/attendance-summary": {
 		label: "Site Attendance Summary",
 		icon: "users-2",

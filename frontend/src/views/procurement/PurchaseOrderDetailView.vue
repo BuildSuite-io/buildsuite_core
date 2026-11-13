@@ -2,7 +2,7 @@
 // Purchase Order detail — summary strip, read-only item lines (ordered vs received),
 // and the native submittable lifecycle: Draft → Edit / Submit / Delete; Submitted →
 // Create Receipt / Cancel; Cancelled → Amend / Delete.
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -20,6 +20,8 @@ import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
+
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -402,6 +404,41 @@ const breadcrumbs = computed(() => [
 					</tr>
 				</tfoot>
 			</table>
+		</section>
+
+		<section
+			class="bg-white border border-ink-200 rounded-lg overflow-hidden mt-4"
+			data-po-terms
+		>
+			<header
+				class="flex items-center justify-between px-4 py-2 bg-ink-50 border-b border-ink-200"
+			>
+				<div class="text-[11px] uppercase tracking-wider text-ink-600 font-medium">
+					{{ __("Terms & conditions") }}
+				</div>
+				<span
+					v-if="po.terms"
+					class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600"
+					style="border-radius: 9999px"
+				>
+					{{ po.tc_name ? __("Template") : __("Manual") }}
+				</span>
+			</header>
+			<div class="p-4">
+				<RichTextEditor
+					v-if="po.terms"
+					:model-value="po.terms"
+					:editable="false"
+					min-height="auto"
+				/>
+				<p v-else class="text-sm text-ink-400">
+					{{
+						__(
+							"No terms recorded. Edit the draft to add them; until then the standard delivery terms print."
+						)
+					}}
+				</p>
+			</div>
 		</section>
 	</DeskPage>
 

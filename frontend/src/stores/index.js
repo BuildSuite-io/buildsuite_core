@@ -12,7 +12,12 @@ import { myUnseenNotificationCount } from "@/data/notificationApi";
 import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
-import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
+import {
+	listCompanies,
+	setActiveCompanyRemote,
+	getCompanyContext,
+	renameCompany,
+} from "@/data/companyApi";
 import { setDisplayCurrency } from "@/utils/format";
 import { colourClass, colourNameForClass } from "@/utils/companyColours";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
@@ -803,6 +808,7 @@ export const useDataStore = defineStore("data", {
 				color: colourClass(r.colour) || colourForId(r.id),
 				colourName: r.colour || colourNameForClass(colourForId(r.id)),
 				colourSaved: !!r.colour,
+				fullDayHours: r.full_day_hours ?? null,
 				logo: r.logo,
 				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,
@@ -904,14 +910,21 @@ export const useDataStore = defineStore("data", {
 			// Round-trip the FULL doc: frappe.client.save instantiates the doc from exactly
 			// what we send, so a partial { name, company_name } would blank Company's mandatory
 			// fields (abbr / currency / country) and fail its modified-timestamp check. Fetch
-			// the current doc, apply the editable identity fields, save. id (docname) is immutable;
+			// the current doc, apply the short name, save; a changed name is a rename (below).
 			// colour + description are store-derived and not persisted.
 			const doc = await getRecord("Company", id);
-			if (patch.name !== undefined) doc.company_name = patch.name;
 			if (patch.shortName !== undefined && patch.shortName) doc.abbr = patch.shortName;
 			await saveRecord(doc);
+			// The company is named after its name, so a new name is a rename (the server keeps
+			// every link, the Letter Head and company_name in step) and the id changes with it.
+			let newId = id;
+			const wanted = (patch.name || "").trim();
+			if (wanted && wanted !== doc.company_name) {
+				newId = (await renameCompany(id, wanted)).company;
+				if (this.activeCompany === id) this.activeCompany = newId;
+			}
 			await this.loadCompanies();
-			return this.companies.find((c) => c.id === id) || null;
+			return this.companies.find((c) => c.id === newId) || null;
 		},
 		async deleteCompany(id) {
 			try {

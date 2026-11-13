@@ -37,7 +37,13 @@ const props = defineProps({
 	linkSearch: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["row-click", "count-change", "rows-change", "total-change"]);
+const emit = defineEmits([
+	"row-click",
+	"count-change",
+	"rows-change",
+	"total-change",
+	"search-change",
+]);
 
 // Reactive [["company","=",<working company>]] (or []) from the topbar switcher — used to
 // auto-scope any list whose doctype has a `company` field (see serverFilters).
@@ -745,6 +751,8 @@ const effectiveTotalRows = computed(() =>
 	totalCount.value != null ? totalCount.value : estimatedTotalRows.value
 );
 watch(effectiveTotalRows, (n) => emit("total-change", n), { immediate: true });
+// The search box, for a parent whose summary figures should follow it (register subtitles).
+watch(search, (value) => emit("search-change", value));
 
 const listCountText = computed(() => {
 	if (!props.paginated) {

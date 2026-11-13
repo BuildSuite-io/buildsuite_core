@@ -15,6 +15,7 @@
   "status",
   "column_break0",
   "attendance_date",
+  "day_type",
   "company",
   "project",
   "project_name",
@@ -30,6 +31,13 @@
   "field_attendance",
   "column_break_ftsth",
   "daily_wage_calculated",
+  "capture_section",
+  "source",
+  "timesheet",
+  "timesheet_detail",
+  "column_break_hours",
+  "full_day_hours",
+  "regular_hours",
   "amended_from"
  ],
  "fields": [
@@ -80,7 +88,7 @@
    "no_copy": 1,
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "\nFull Day\nHalf Day\nAbsent",
+   "options": "\nFull Day\nHalf Day\nAbsent\nHours",
    "reqd": 1,
    "search_index": 1
   },
@@ -130,14 +138,16 @@
    "fieldname": "task",
    "fieldtype": "Link",
    "label": "Task",
-   "options": "Task"
+   "options": "Task",
+   "hidden": 1
   },
   {
    "fieldname": "task_subject",
    "fieldtype": "Data",
    "label": "Task Subject",
    "fetch_from": "task.subject",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "details_section",
@@ -211,13 +221,68 @@
    "label": "Cost Code Item",
    "read_only": 1,
    "hidden": 1
+  },
+  {
+   "fieldname": "capture_section",
+   "fieldtype": "Section Break",
+   "label": "Captured as"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Captured as",
+   "options": "Attendance\nTimesheet",
+   "default": "Attendance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timesheet",
+   "fieldtype": "Link",
+   "label": "Timesheet",
+   "options": "Timesheet",
+   "read_only": 1,
+   "depends_on": "eval: doc.source == 'Timesheet'"
+  },
+  {
+   "fieldname": "timesheet_detail",
+   "fieldtype": "Data",
+   "label": "Timesheet Detail",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "column_break_hours",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "full_day_hours",
+   "fieldtype": "Float",
+   "label": "Full day hours",
+   "read_only": 1,
+   "description": "The full day this row was made with; frozen at submit."
+  },
+  {
+   "fieldname": "regular_hours",
+   "fieldtype": "Float",
+   "label": "Regular hours",
+   "read_only": 1,
+   "description": "Hours worked up to the full day. Wages are by status, not hours."
+  },
+  {
+   "default": "Regular",
+   "fieldname": "day_type",
+   "fieldtype": "Select",
+   "label": "Day type",
+   "options": "Regular\nOff Day",
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-22 18:15:41.772849",
+ "modified": "2026-11-12 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Labour Attendance Register",
