@@ -230,4 +230,61 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			});
 		});
 	});
+
+	describe("field rules, field anchors and field errors (SDK 1.6) on the Estimate Template form", () => {
+		beforeEach(() => cy.visitApp("/estimate-template/new"));
+
+		it("relabels a field, hides one Core does not require, and keeps a required one", () => {
+			cy.get('[data-field="description"] label').should(
+				"contain",
+				"What this template is for"
+			);
+			cy.get('[data-field="description"]').should("contain", "Demo extension rule");
+			cy.get('[data-field="project_type"]').should("not.exist"); // hidden by the rule
+			cy.get('[data-field="template_name"]').should("exist"); // Core-required: never hideable
+		});
+
+		it("places a component right after one field", () => {
+			cy.get(
+				'[data-field="template_name"] [data-test="demo-anchor-after-template-name"]'
+			).should("exist");
+		});
+
+		it("a rule that depends on the form makes a field required, and the save is refused under it", () => {
+			cy.get('input[placeholder="ET-..."]').type("REQ-1");
+			cy.get('[data-field="template_name"] input').type("Needs a description");
+			cy.get('[data-field="description"] label').should("contain", "*");
+			cy.dt("save-btn").click();
+			cy.get('[data-field="description"] [data-field-error]').should(
+				"contain",
+				"is required"
+			);
+			cy.location("pathname").should("match", /\/estimate-template\/new$/);
+			// typing clears the message and the form then saves
+			cy.get('[data-field="description"] textarea').type("For towers");
+			cy.get('[data-field="description"] [data-field-error]').should("not.exist");
+			cy.dt("save-btn").click();
+			cy.location("pathname", { timeout: 30000 }).should(
+				"match",
+				/\/estimate-template\/(?!new)[^/]+$/
+			);
+		});
+
+		it("a FieldErrors thrown from beforeSave shows under its field and stops the save", () => {
+			cy.get('input[placeholder="ET-..."]').type(`ET-ERR-${Date.now()}`);
+			cy.get('[data-field="template_name"] input').type("DEMO-BAD-NAME");
+			cy.dt("save-btn").click();
+			cy.get('[data-field="template_name"] [data-field-error]').should(
+				"contain",
+				"The demo extension refuses this name."
+			);
+			cy.location("pathname").should("match", /\/estimate-template\/new$/);
+		});
+
+		it("a field can be made read-only by a rule", () => {
+			cy.get('[data-field="template_code"] [inert]').should("not.exist");
+			cy.get('[data-field="template_name"] input').type("LOCK-CODE");
+			cy.get('[data-field="template_code"] [inert]').should("exist");
+		});
+	});
 });

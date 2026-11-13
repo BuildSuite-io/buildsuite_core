@@ -209,6 +209,7 @@ const breadcrumbs = computed(() => [
 
 			<DeskSection id="booking" title="Booking" :cols="2">
 				<DeskField
+					name="project"
 					label="Project"
 					required
 					:hint="
@@ -225,6 +226,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="cost_code"
 					label="Cost code"
 					hint="Optional. Set it to book this material against a BOQ group or line; leave it blank to record the issue without cost-coding it."
 				>

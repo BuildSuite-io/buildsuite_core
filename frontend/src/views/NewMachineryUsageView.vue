@@ -163,7 +163,7 @@ const breadcrumbs = [
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 			<DeskSection id="usage" :title="__('Usage')" :cols="3">
-				<DeskField :label="__('Machine')" required :error="errors.machine">
+				<DeskField name="machine" :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
 						:options="machineryOptions"
@@ -171,7 +171,7 @@ const breadcrumbs = [
 						:search-placeholder="__('Search machine…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Project')" required :error="errors.project">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
@@ -183,6 +183,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 				<DeskField
+					name="cost_code"
 					:label="__('Cost code')"
 					:hint="
 						__(
@@ -199,23 +200,23 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Date')"
+				<DeskField name="date" :label="__('Date')"
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Quantity')">
+				<DeskField name="quantity" :label="__('Quantity')">
 					<DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5" />
 				</DeskField>
-				<DeskField :label="__('Unit')">
+				<DeskField name="unit" :label="__('Unit')">
 					<DeskSelect v-model="form.unit">
 						<option value="Days">{{ __("Days") }}</option>
 						<option value="Hours">{{ __("Hours") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+				<DeskField name="rate" :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="`${__('Fuel cost')} (${currencySymbol()})`">
+				<DeskField name="fuel_cost" :label="`${__('Fuel cost')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
 				</DeskField>
 				<DeskField :label="__('Total')">

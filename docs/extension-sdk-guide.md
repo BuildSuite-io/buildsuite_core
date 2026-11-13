@@ -24,6 +24,9 @@ The app declares one hook and ships one ES module. Reload the browser after edit
 | React to a DocType form | `sdk.doctype(dt).on({ defaults, onLoad, beforeSave, afterSave })` |
 | Carry Custom Fields through a bespoke form | `sdk.doctype(dt).on({ fields: [...] })` plus a control in the `form.<DocType>.top/bottom` slot |
 | Add a column to a list | `sdk.doctype(dt).on({ listColumns: [{ field, label, align?, render?(value, row) }] })` |
+| Hide, relabel, require or lock a Core field | `sdk.doctype(dt).on({ fieldRules: { <name>: { hidden, readOnly, label, hint, required } } })` |
+| Put a component beside one field | `sdk.slots.add("form.<DocType>.before.field.<name>" \| ".after.field.<name>", Component)` |
+| Put a message under a field when saving | `throw new sdk.FieldErrors({ <name>: "message" })` in `beforeSave` |
 | Add a settings page | hook `buildsuite_settings_pages` (a Single DocType) |
 
 A failing extension is isolated: its error is logged and the rest of the app keeps working.
@@ -69,6 +72,53 @@ The SPA sends them as `custom_fields` (a JSON string for type-checked functions)
 An edit modal on a detail page works the same way, with two extra steps: the detail view adds
 `docFields(<DocType>)` to the fields it reads (so the values come back) and calls `ext.load(...)` when the
 modal opens. These save through the generic resource update, so no backend change is needed.
+
+## Core fields: rules, placement and messages (SDK 1.6)
+
+Every field of a bespoke form has a **name**, so an extension can address it. The names are listed per
+form in [extension-sdk-form-fields.md](extension-sdk-form-fields.md), generated from the forms
+(`python frontend/sdk-kit/form_fields.py`), and a test fails when a new field is left without one.
+
+```js
+sdk.doctype("Quotation").on({
+  fieldRules: {
+    // plain objects
+    internal_note: { label: "Site notes", hint: "Visible to the site team" },
+    margin_percent: { hidden: true },
+    // a function of the form: the rule follows the other fields as they change
+    region: (ctx) => ({ required: ctx.form.project_type === "Commercial" }),
+    customer_type: (ctx) => ({ readOnly: !!ctx.doc }),   // locked once saved
+  },
+  beforeSave(payload) {
+    if (payload.margin_percent > 40) {
+      throw new sdk.FieldErrors({ margin_percent: "Above the 40% ceiling" });
+    }
+  },
+});
+```
+
+| Rule | Effect |
+| --- | --- |
+| `hidden` | the field is not drawn. **Refused for a field Core requires**: hiding it would make the form unsaveable, so it logs a warning and the field stays. The value is kept, only the control goes. |
+| `readOnly` | the control is drawn dimmed and cannot be used |
+| `label`, `hint` | replace the text Core shows |
+| `required` | the asterisk shows and the save is refused, with a message under the field, while it is empty. Only fields on screen count, so a rule for a field the form does not show never blocks a save. A hidden field is not required. |
+
+Rules from several extensions merge in registration order (later wins), and the site's own customisations
+come after the apps. A rule function receives the form context (`form`, `custom`, `doc`) and is reactive.
+Unknown rule keys are refused when the extension registers.
+
+**Placement beside one field.** A named field offers `form.<DocType>.before.field.<name>` and
+`form.<DocType>.after.field.<name>` (inside the field's own cell, above its label or below its hint), next to the
+section anchors that place a component between sections.
+
+**Messages under a field.** `beforeSave` may throw `sdk.FieldErrors({ name: message })`. The form stops
+saving, shows each message under its field, scrolls to the first, shows the first as the toast, and clears a
+field's message as soon as its value changes. A plain `Error` still shows only the toast.
+
+Limits: forms that do not draw their inputs with `DeskField` (Crew, Field Attendance, Field Employee) have no field
+names yet, and a field that has no input bound to the form's own model (file pickers, read-only displays) is
+not addressable.
 
 ## List columns
 

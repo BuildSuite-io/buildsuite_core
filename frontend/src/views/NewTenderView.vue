@@ -209,16 +209,27 @@ async function onSave() {
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
-				<DeskField :label="__('For')" required :error="errors.title" class="md:col-span-2">
+				<DeskField
+					name="title"
+					:label="__('For')"
+					required
+					:error="errors.title"
+					class="md:col-span-2"
+				>
 					<DeskInput
 						v-model="form.title"
 						:placeholder="__('e.g. Station finishes package — Kochi Metro Phase 2')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Issuing body')" required :error="errors.issuing_body">
+				<DeskField
+					name="issuing_body"
+					:label="__('Issuing body')"
+					required
+					:error="errors.issuing_body"
+				>
 					<DeskInput v-model="form.issuing_body" :placeholder="__('e.g. KMRL')" />
 				</DeskField>
-				<DeskField :label="__('Issued by')">
+				<DeskField name="issued_by" :label="__('Issued by')">
 					<DeskSelect v-model="form.issued_by">
 						<option v-for="o in issuedByOptions" :key="o" :value="o">
 							{{ __(o) }}
@@ -226,6 +237,7 @@ async function onSave() {
 					</DeskSelect>
 				</DeskField>
 				<DeskField
+					name="project"
 					:label="__('Project')"
 					:hint="__('Optional — a tender is bid long before there is a project.')"
 				>
@@ -237,13 +249,14 @@ async function onSave() {
 						:search-placeholder="__('Search projects…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Date issued')">
+				<DeskField name="date_issued" :label="__('Date issued')">
 					<DeskInput v-model="form.date_issued" type="date" />
 				</DeskField>
 			</DeskSection>
 
 			<DeskSection id="submission" :title="__('Submission')" :cols="2">
 				<DeskField
+					name="tender_reference"
 					:label="__('Tender reference')"
 					required
 					:error="errors.tender_reference"
@@ -254,6 +267,7 @@ async function onSave() {
 					/>
 				</DeskField>
 				<DeskField
+					name="submission_deadline"
 					:label="__('Submission deadline')"
 					required
 					:error="errors.submission_deadline"
@@ -269,13 +283,18 @@ async function onSave() {
 						:min="form.date_issued"
 					/>
 				</DeskField>
-				<DeskField :label="__('Portal')" :hint="__('Where the bid is uploaded.')">
+				<DeskField
+					name="portal"
+					:label="__('Portal')"
+					:hint="__('Where the bid is uploaded.')"
+				>
 					<DeskInput
 						v-model="form.portal"
 						:placeholder="__('e.g. GePNIC / state e-procurement')"
 					/>
 				</DeskField>
 				<DeskField
+					name="envelope_structure"
 					:label="__('Envelope structure')"
 					:hint="
 						__(
@@ -297,6 +316,7 @@ async function onSave() {
 				:cols="2"
 			>
 				<DeskField
+					name="emd_amount"
 					:label="`${__('EMD amount')} (${currencySymbol()})`"
 					:error="errors.emd_amount"
 					:hint="
@@ -314,6 +334,7 @@ async function onSave() {
 					/>
 				</DeskField>
 				<DeskField
+					name="emd_instrument"
 					:label="__('EMD instrument')"
 					:hint="__('Bank guarantee, DD, online transfer.')"
 				>
@@ -322,10 +343,11 @@ async function onSave() {
 						:placeholder="__('e.g. Bank guarantee — Federal Bank')"
 					/>
 				</DeskField>
-				<DeskField :label="__('EMD valid until')">
+				<DeskField name="emd_valid_until" :label="__('EMD valid until')">
 					<DeskInput v-model="form.emd_valid_until" type="date" />
 				</DeskField>
 				<DeskField
+					name="performance_guarantee_percent"
 					:label="__('Performance guarantee %')"
 					:error="errors.performance_guarantee_percent"
 					:hint="__('What we would have to furnish on award.')"
@@ -341,10 +363,18 @@ async function onSave() {
 			</DeskSection>
 
 			<DeskSection id="pricing" :title="__('Pricing')" :cols="2">
-				<DeskField :label="__('Margin %')" :hint="__('Applied to the subtotal.')">
+				<DeskField
+					name="margin_percent"
+					:label="__('Margin %')"
+					:hint="__('Applied to the subtotal.')"
+				>
 					<DeskInput v-model="form.margin_percent" type="number" min="0" step="any" />
 				</DeskField>
-				<DeskField :label="__('Tax %')" :hint="__('Charged on subtotal plus margin.')">
+				<DeskField
+					name="tax_percent"
+					:label="__('Tax %')"
+					:hint="__('Charged on subtotal plus margin.')"
+				>
 					<DeskInput v-model="form.tax_percent" type="number" min="0" step="any" />
 				</DeskField>
 			</DeskSection>
@@ -380,6 +410,7 @@ async function onSave() {
 
 			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
 				<DeskField
+					name="notes"
 					:label="__('Notes')"
 					:hint="__('Not printed — for whoever picks this up next.')"
 				>

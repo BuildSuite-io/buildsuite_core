@@ -336,7 +336,12 @@ const breadcrumbs = computed(() => [
 			<!-- WORK ORDER MODE -->
 			<template v-if="mode === 'wo'">
 				<DeskSection id="header" :title="__('Header')" :cols="3">
-					<DeskField :label="__('Work order')" required :error="errors.work_order">
+					<DeskField
+						name="work_order"
+						:label="__('Work order')"
+						required
+						:error="errors.work_order"
+					>
 						<DeskLinkPicker
 							:model-value="form.work_order"
 							doctype="Subcontractor Work Order"
@@ -348,18 +353,20 @@ const breadcrumbs = computed(() => [
 							@update:model-value="onWorkOrderChange"
 						/>
 					</DeskField>
-					<DeskField :label="__('Date')" required
+					<DeskField name="date" :label="__('Date')" required
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField :label="__('Subcontractor Invoice No')"
+					<DeskField name="supplier_invoice_no" :label="__('Subcontractor Invoice No')"
 						><DeskInput
 							v-model="form.supplier_invoice_no"
 							:placeholder="__('e.g. SI-2026-0042')"
 					/></DeskField>
-					<DeskField :label="__('Subcontractor Invoice Date')"
+					<DeskField
+						name="supplier_invoice_date"
+						:label="__('Subcontractor Invoice Date')"
 						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
-					<DeskField :label="__('Retention (%)')">
+					<DeskField name="retention_percent" :label="__('Retention (%)')">
 						<DeskInput
 							v-model.number="form.retention_percent"
 							type="number"
@@ -477,7 +484,12 @@ const breadcrumbs = computed(() => [
 			<!-- DIRECT MODE -->
 			<template v-else>
 				<DeskSection id="header-2" :title="__('Header')" :cols="3">
-					<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
+					<DeskField
+						name="subcontractor"
+						:label="__('Subcontractor')"
+						required
+						:error="errors.subcontractor"
+					>
 						<DeskLinkPicker
 							v-model="form.subcontractor"
 							doctype="Supplier"
@@ -488,6 +500,7 @@ const breadcrumbs = computed(() => [
 						/>
 					</DeskField>
 					<DeskField
+						name="project"
 						:label="__('Project')"
 						required
 						:hint="__('Sets the accounting company.')"
@@ -502,18 +515,20 @@ const breadcrumbs = computed(() => [
 							:placeholder="__('Pick a project…')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Date')" required
+					<DeskField name="date" :label="__('Date')" required
 						><DeskInput v-model="form.date" type="date"
 					/></DeskField>
-					<DeskField :label="__('Subcontractor Invoice No')"
+					<DeskField name="supplier_invoice_no" :label="__('Subcontractor Invoice No')"
 						><DeskInput
 							v-model="form.supplier_invoice_no"
 							:placeholder="__('e.g. SI-2026-0042')"
 					/></DeskField>
-					<DeskField :label="__('Subcontractor Invoice Date')"
+					<DeskField
+						name="supplier_invoice_date"
+						:label="__('Subcontractor Invoice Date')"
 						><DeskInput v-model="form.supplier_invoice_date" type="date"
 					/></DeskField>
-					<DeskField :label="__('Retention (%)')">
+					<DeskField name="retention_percent" :label="__('Retention (%)')">
 						<DeskInput
 							v-model.number="form.retention_percent"
 							type="number"

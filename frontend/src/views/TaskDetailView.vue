@@ -1182,10 +1182,16 @@ usePageTitle(() => task.value?.name);
 					<div class="p-5 overflow-y-auto flex-1">
 						<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 						<DeskSection id="details-2" :title="__('Details')">
-							<DeskField :label="__('Name')" required :error="editErrors.name">
+							<DeskField
+								name="name"
+								:label="__('Name')"
+								required
+								:error="editErrors.name"
+							>
 								<DeskInput v-model="form.name" @input="clearEditError('name')" />
 							</DeskField>
 							<DeskField
+								name="task_type"
 								:label="__('Task Type')"
 								required
 								:hint="
@@ -1204,6 +1210,7 @@ usePageTitle(() => task.value?.name);
 								</DeskSelect>
 							</DeskField>
 							<DeskField
+								name="work_package_id"
 								:label="__('Work Package')"
 								:hint="__('Optional — leave blank for a direct project task.')"
 							>
@@ -1220,10 +1227,11 @@ usePageTitle(() => task.value?.name);
 									:placeholder="__('— None · Direct project task —')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Description')">
+							<DeskField name="description" :label="__('Description')">
 								<DeskTextarea v-model="form.description" :rows="4" />
 							</DeskField>
 							<DeskField
+								name="start_date"
 								v-if="form.task_type !== 'Milestone'"
 								:label="__('Start')"
 								:error="editErrors.startDate"
@@ -1234,7 +1242,11 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('startDate')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Due')" :error="editErrors.endDate">
+							<DeskField
+								name="end_date"
+								:label="__('Due')"
+								:error="editErrors.endDate"
+							>
 								<DeskInput
 									v-model="form.endDate"
 									type="date"
@@ -1244,7 +1256,11 @@ usePageTitle(() => task.value?.name);
 						</DeskSection>
 
 						<DeskSection id="assignment-status" :title="__('Assignment & status')">
-							<DeskField :label="__('Assignee')" :error="editErrors.assignee">
+							<DeskField
+								name="assignee"
+								:label="__('Assignee')"
+								:error="editErrors.assignee"
+							>
 								<DeskLinkPicker
 									v-model="form.assignee"
 									doctype="User"
@@ -1258,7 +1274,11 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('assignee')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Status')" :error="editErrors.status">
+							<DeskField
+								name="status"
+								:label="__('Status')"
+								:error="editErrors.status"
+							>
 								<DeskSelect
 									v-model="form.status"
 									@change="clearEditError('status')"
@@ -1270,7 +1290,11 @@ usePageTitle(() => task.value?.name);
 									<option value="Blocked">{{ __("Blocked") }}</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField :label="__('Priority')" :error="editErrors.priority">
+							<DeskField
+								name="priority"
+								:label="__('Priority')"
+								:error="editErrors.priority"
+							>
 								<DeskSelect
 									v-model="form.priority"
 									@change="clearEditError('priority')"

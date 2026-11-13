@@ -101,6 +101,7 @@ const breadcrumbs = [
 
 			<DeskSection id="template-details" :title="__('Template details')">
 				<DeskField
+					name="template_code"
 					:label="__('Code')"
 					required
 					:hint="__('Short stable identifier (e.g. ET-RES-TOWER).')"
@@ -108,10 +109,16 @@ const breadcrumbs = [
 				>
 					<DeskInput v-model="form.templateCode" placeholder="ET-..." />
 				</DeskField>
-				<DeskField :label="__('Name')" required :error="errors.templateName">
+				<DeskField
+					name="template_name"
+					:label="__('Name')"
+					required
+					:error="errors.templateName"
+				>
 					<DeskInput v-model="form.templateName" />
 				</DeskField>
 				<DeskField
+					name="project_type"
 					:label="__('Project Category')"
 					:hint="__('Used to suggest this template for matching project types.')"
 				>
@@ -123,7 +130,7 @@ const breadcrumbs = [
 						:placeholder="__('— Any project type —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Description')">
+				<DeskField name="description" :label="__('Description')">
 					<DeskTextarea v-model="form.description" :rows="3" />
 				</DeskField>
 			</DeskSection>

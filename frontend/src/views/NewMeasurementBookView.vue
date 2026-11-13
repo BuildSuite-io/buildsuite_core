@@ -341,7 +341,12 @@ const breadcrumbs = computed(() => [
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection id="header" :title="__('Header')" :cols="3">
-				<DeskField :label="__('Work order')" required :error="errors.work_order">
+				<DeskField
+					name="work_order"
+					:label="__('Work order')"
+					required
+					:error="errors.work_order"
+				>
 					<DeskLinkPicker
 						:model-value="form.work_order"
 						doctype="Subcontractor Work Order"
@@ -369,10 +374,10 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woSubName || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField :label="__('Date')" required
+				<DeskField name="date" :label="__('Date')" required
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Measured by')">
+				<DeskField name="measured_by" :label="__('Measured by')">
 					<DeskLinkPicker
 						v-model="form.measured_by"
 						doctype="User"
@@ -381,7 +386,7 @@ const breadcrumbs = computed(() => [
 						:placeholder="__('— Optional —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Remarks')" class="md:col-span-2"
+				<DeskField name="remarks" :label="__('Remarks')" class="md:col-span-2"
 					><DeskInput v-model="form.remarks"
 				/></DeskField>
 			</DeskSection>

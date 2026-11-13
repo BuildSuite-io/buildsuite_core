@@ -127,7 +127,7 @@ const breadcrumbs = [
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 			<DeskSection id="change-order" :title="__('Change order')" :cols="2">
-				<DeskField :label="__('Project')" required :error="errors.project">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
@@ -138,12 +138,13 @@ const breadcrumbs = [
 						:placeholder="__('Pick a project…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Type')">
+				<DeskField name="type" :label="__('Type')">
 					<DeskSelect v-model="form.type">
 						<option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option>
 					</DeskSelect>
 				</DeskField>
 				<DeskField
+					name="title"
 					:label="__('Title')"
 					required
 					:error="errors.title"
@@ -155,18 +156,23 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 				<DeskField
+					name="impact"
 					:label="`${__('Cost impact')} (${currencySymbol()})`"
 					:hint="__('Positive = added cost to the project; negative = a saving.')"
 				>
 					<DeskInput v-model.number="form.impact" type="number" step="1000" />
 				</DeskField>
-				<DeskField :label="__('Cost recovery')">
+				<DeskField name="recoverable" :label="__('Cost recovery')">
 					<DeskSelect v-model="form.recoverable">
 						<option value="1">{{ __("Recoverable from client") }}</option>
 						<option value="0">{{ __("Internal — absorbed by us") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Reason / justification')" class="md:col-span-2">
+				<DeskField
+					name="reason"
+					:label="__('Reason / justification')"
+					class="md:col-span-2"
+				>
 					<DeskTextarea
 						v-model="form.reason"
 						:rows="4"

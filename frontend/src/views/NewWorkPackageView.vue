@@ -153,6 +153,7 @@ const subtitle = computed(() =>
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField
+						name="project_id"
 						:label="__('Project')"
 						required
 						:error="errors.projectId"
@@ -176,19 +177,25 @@ const subtitle = computed(() =>
 							@change="clearError('projectId')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Work Package name')" required :error="errors.name">
+					<DeskField
+						name="name"
+						:label="__('Work Package name')"
+						required
+						:error="errors.name"
+					>
 						<DeskInput
 							v-model="form.name"
 							:placeholder="__('e.g. Foundation Works')"
 						/>
 					</DeskField>
 					<DeskField
+						name="code"
 						:label="__('Code')"
 						:hint="__('Short identifier — auto-generated if left blank.')"
 					>
 						<DeskInput v-model="form.code" :placeholder="__('e.g. WP-FND')" />
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -198,16 +205,20 @@ const subtitle = computed(() =>
 				</DeskSection>
 
 				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
-					<DeskField :label="__('Start date')">
+					<DeskField name="start_date" :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Expected end date')" :error="errors.endDate">
+					<DeskField
+						name="end_date"
+						:label="__('Expected end date')"
+						:error="errors.endDate"
+					>
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="`${__('Budget')} (${currencySymbol()})`">
+					<DeskField name="budget" :label="`${__('Budget')} (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
-					<DeskField :label="__('Status')">
+					<DeskField name="status" :label="__('Status')">
 						<DeskSelect v-model="form.status">
 							<option value="Planned">{{ __("Planned") }}</option>
 							<option value="In Progress">{{ __("In Progress") }}</option>

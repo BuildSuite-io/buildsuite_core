@@ -123,10 +123,20 @@ const breadcrumbs = [
 
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 			<DeskSection id="machinery" :title="__('Machinery')" :cols="3">
-				<DeskField :label="__('Name')" required :error="errors.machinery_name">
+				<DeskField
+					name="machinery_name"
+					:label="__('Name')"
+					required
+					:error="errors.machinery_name"
+				>
 					<DeskInput v-model="form.machinery_name" />
 				</DeskField>
-				<DeskField :label="__('Type')" required :error="errors.machinery_type">
+				<DeskField
+					name="machinery_type"
+					:label="__('Type')"
+					required
+					:error="errors.machinery_type"
+				>
 					<DeskLinkPicker
 						v-model="form.machinery_type"
 						doctype="Machinery Type"
@@ -135,34 +145,35 @@ const breadcrumbs = [
 						:placeholder="__('Pick a type…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Ownership')">
+				<DeskField name="ownership" :label="__('Ownership')">
 					<DeskSelect v-model="form.ownership">
 						<option value="Owned">{{ __("Owned") }}</option>
 						<option value="Hired">{{ __("Hired") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+				<DeskField name="rate" :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="__('Rate unit')">
+				<DeskField name="rate_unit" :label="__('Rate unit')">
 					<DeskSelect v-model="form.rate_unit">
 						<option value="Hour">{{ __("Hour") }}</option>
 						<option value="Day">{{ __("Day") }}</option>
 						<option value="Month">{{ __("Month") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Status')">
+				<DeskField name="status" :label="__('Status')">
 					<DeskSelect v-model="form.status">
 						<option value="Active">{{ __("Active") }}</option>
 						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="__('Owner / Vendor')">
+				<DeskField name="owner_vendor" :label="__('Owner / Vendor')">
 					<DeskInput v-model="form.owner_vendor" />
 				</DeskField>
 				<DeskField
+					name="asset"
 					v-if="form.ownership === 'Owned'"
 					:label="__('Linked asset (ERPNext)')"
 					:hint="
@@ -179,7 +190,7 @@ const breadcrumbs = [
 						:placeholder="__('— No linked asset —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Company')" required :error="errors.company">
+				<DeskField name="company" :label="__('Company')" required :error="errors.company">
 					<DeskLinkPicker
 						v-model="form.company"
 						doctype="Company"

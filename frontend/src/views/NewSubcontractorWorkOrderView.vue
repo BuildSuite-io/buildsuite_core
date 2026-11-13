@@ -256,7 +256,12 @@ const saveLabel = computed(() =>
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection id="header" :title="__('Header')" :cols="3">
-				<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
+				<DeskField
+					name="subcontractor"
+					:label="__('Subcontractor')"
+					required
+					:error="errors.subcontractor"
+				>
 					<DeskLinkPicker
 						v-model="form.subcontractor"
 						data-test="pick-subcontractor"
@@ -268,7 +273,7 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a subcontractor…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Project')" required :error="errors.project">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						data-test="pick-project"
@@ -280,10 +285,10 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a project…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Date')" required
+				<DeskField name="date" :label="__('Date')" required
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Delivery type')">
+				<DeskField name="delivery_type" :label="__('Delivery type')">
 					<DeskLinkPicker
 						v-model="form.delivery_type"
 						doctype="Subcontract Delivery Type"
@@ -292,7 +297,7 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a delivery type…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Retention %')"
+				<DeskField name="retention_percent" :label="__('Retention %')"
 					><DeskInput
 						v-model.number="form.retention_percent"
 						type="number"
@@ -422,6 +427,7 @@ const saveLabel = computed(() =>
 				class="mt-8"
 			>
 				<DeskField
+					name="terms_template"
 					:label="__('Import from template')"
 					:hint="
 						__(
@@ -438,7 +444,7 @@ const saveLabel = computed(() =>
 						@update:model-value="onPickTermsTemplate"
 					/>
 				</DeskField>
-				<DeskField :label="__('Terms')">
+				<DeskField name="terms" :label="__('Terms')">
 					<RichTextEditor :key="editorKey" v-model="form.terms" min-height="10rem" />
 				</DeskField>
 			</DeskSection>

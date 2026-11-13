@@ -104,6 +104,7 @@ const breadcrumbs = [
 
 			<DeskSection id="assembly-details" :title="__('Assembly details')">
 				<DeskField
+					name="assembly_code"
 					:label="__('Code')"
 					required
 					:hint="__('Short stable identifier (e.g. ASM-RCC-M25).')"
@@ -111,10 +112,16 @@ const breadcrumbs = [
 				>
 					<DeskInput v-model="form.assemblyCode" :placeholder="__('ASM-...')" />
 				</DeskField>
-				<DeskField :label="__('Name')" required :error="errors.assemblyName">
+				<DeskField
+					name="assembly_name"
+					:label="__('Name')"
+					required
+					:error="errors.assemblyName"
+				>
 					<DeskInput v-model="form.assemblyName" />
 				</DeskField>
 				<DeskField
+					name="uom"
 					:label="__('Unit (per)')"
 					required
 					:hint="
@@ -132,7 +139,7 @@ const breadcrumbs = [
 						:placeholder="__('— Select unit —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Category')">
+				<DeskField name="category" :label="__('Category')">
 					<DeskLinkPicker
 						v-model="form.category"
 						doctype="Assembly Category"
@@ -141,7 +148,7 @@ const breadcrumbs = [
 						:placeholder="__('— Select category —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Notes')">
+				<DeskField name="notes" :label="__('Notes')">
 					<DeskTextarea v-model="form.notes" :rows="3" />
 				</DeskField>
 			</DeskSection>

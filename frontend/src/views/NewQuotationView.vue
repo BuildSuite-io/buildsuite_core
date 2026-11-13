@@ -299,7 +299,7 @@ const breadcrumbs = computed(() => [
 
 			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
 				<div class="md:col-span-2">
-					<DeskField :label="__('For')" required :error="errors.title">
+					<DeskField name="title" :label="__('For')" required :error="errors.title">
 						<DeskInput
 							v-model="form.title"
 							:placeholder="
@@ -309,7 +309,12 @@ const breadcrumbs = computed(() => [
 					</DeskField>
 				</div>
 
-				<DeskField :label="__('Customer')" required :error="errors.party_name">
+				<DeskField
+					name="party_name"
+					:label="__('Customer')"
+					required
+					:error="errors.party_name"
+				>
 					<DeskSearchableSelect
 						v-model="form.party_name"
 						:options="customerOptions"
@@ -318,7 +323,7 @@ const breadcrumbs = computed(() => [
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Customer type')">
+				<DeskField name="customer_type" :label="__('Customer type')">
 					<DeskSelect v-model="form.customer_type">
 						<option value="">{{ __("— Select —") }}</option>
 						<option value="Homebuyer">{{ __("Homebuyer") }}</option>
@@ -328,6 +333,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="project"
 					:label="__('Project')"
 					:hint="
 						__('Optional — a quotation usually goes out before there is a project.')
@@ -344,11 +350,17 @@ const breadcrumbs = computed(() => [
 			</DeskSection>
 
 			<DeskSection id="dates-and-pricing" :title="__('Dates and pricing')" :cols="3">
-				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
+				<DeskField
+					name="transaction_date"
+					:label="__('Date issued')"
+					required
+					:error="errors.transaction_date"
+				>
 					<DeskInput v-model="form.transaction_date" type="date" />
 				</DeskField>
 
 				<DeskField
+					name="validity_days"
 					:label="__('Valid for (days)')"
 					:error="errors.validity_days"
 					:hint="__('Counted from the issue date. Leave blank for no expiry.')"
@@ -357,6 +369,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="margin_percent"
 					:label="__('Margin %')"
 					:error="errors.margin_percent"
 					:hint="__('Added to every line, so the rate quoted is the rate charged.')"
@@ -524,6 +537,7 @@ const breadcrumbs = computed(() => [
 
 			<DeskSection id="terms" :title="__('Terms')" :cols="1">
 				<DeskField
+					name="tc_name"
 					:label="__('Start from a template')"
 					:hint="
 						__(
@@ -543,6 +557,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="terms"
 					:label="__('Terms & conditions')"
 					:hint="
 						form.tc_name
@@ -562,6 +577,7 @@ const breadcrumbs = computed(() => [
 
 			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
 				<DeskField
+					name="internal_note"
 					:label="__('Notes')"
 					:hint="__('Not printed — for whoever picks this up next.')"
 				>

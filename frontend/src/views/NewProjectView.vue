@@ -336,7 +336,12 @@ const breadcrumbs = computed(() => {
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 				<DeskSection id="basic-information" :title="__('Basic information')">
-					<DeskField :label="__('Project name')" required :error="errors.name">
+					<DeskField
+						name="name"
+						:label="__('Project name')"
+						required
+						:error="errors.name"
+					>
 						<DeskInput
 							v-model="form.name"
 							data-test="field-name"
@@ -344,6 +349,7 @@ const breadcrumbs = computed(() => {
 						/>
 					</DeskField>
 					<DeskField
+						name="code"
 						:label="__('Project ID')"
 						:error="errors.code"
 						:hint="
@@ -361,6 +367,7 @@ const breadcrumbs = computed(() => {
 					<!-- Shown only when the org's project naming mode is "Name Series":
 					     the record ID is generated from the chosen series. -->
 					<DeskField
+						name="naming_series"
 						v-if="namingMode === 'Name Series'"
 						:label="__('Name series')"
 						:hint="__('The naming series used to generate this project\'s record ID.')"
@@ -374,6 +381,7 @@ const breadcrumbs = computed(() => {
              customer's `name` so existing project records (whose client was
              plain text) still resolve. -->
 					<DeskField
+						name="client"
 						:label="__('Client')"
 						:error="errors.client"
 						:hint="errors.client ? '' : __('Pick a customer, or create one inline.')"
@@ -406,6 +414,7 @@ const breadcrumbs = computed(() => {
 						</div>
 					</DeskField>
 					<DeskField
+						name="project_type"
 						:label="__('Project type')"
 						:hint="__('Internal or External (ERPNext).')"
 					>
@@ -420,7 +429,7 @@ const breadcrumbs = computed(() => {
 							:page-length="20"
 						/>
 					</DeskField>
-					<DeskField :label="__('Project category')" :error="errors.type">
+					<DeskField name="type" :label="__('Project category')" :error="errors.type">
 						<DeskLinkPicker
 							v-model="form.type"
 							data-test="pick-project-category"
@@ -534,6 +543,7 @@ const breadcrumbs = computed(() => {
              default company (Global Defaults) and stays editable. Subproject:
              inherits the parent's company, shown read-only. Locked after create. -->
 					<DeskField
+						name="company"
 						:label="__('Company')"
 						:error="errors.company"
 						:hint="
@@ -561,10 +571,10 @@ const breadcrumbs = computed(() => {
 							@change="clearError('company')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Location')">
+					<DeskField name="location" :label="__('Location')">
 						<DeskInput v-model="form.location" :placeholder="__('Site address')" />
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -572,6 +582,7 @@ const breadcrumbs = computed(() => {
 						/>
 					</DeskField>
 					<DeskField
+						name="allow_subprojects"
 						v-if="!route.query.parentId"
 						:label="__('Subprojects')"
 						:hint="
@@ -594,16 +605,27 @@ const breadcrumbs = computed(() => {
 				</DeskSection>
 
 				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
-					<DeskField :label="__('Start date')" :error="errors.startDate">
+					<DeskField
+						name="start_date"
+						:label="__('Start date')"
+						:error="errors.startDate"
+					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Expected end date')" :error="errors.endDate">
+					<DeskField
+						name="end_date"
+						:label="__('Expected end date')"
+						:error="errors.endDate"
+					>
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="`${__('Project budget')} (${currencySymbol()})`">
+					<DeskField
+						name="budget"
+						:label="`${__('Project budget')} (${currencySymbol()})`"
+					>
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
-					<DeskField :label="__('Priority')">
+					<DeskField name="priority" :label="__('Priority')">
 						<DeskSelect v-model="form.priority">
 							<option value="Low">{{ __("Low") }}</option>
 							<option value="Medium">{{ __("Medium") }}</option>
@@ -613,7 +635,7 @@ const breadcrumbs = computed(() => {
 				</DeskSection>
 
 				<DeskSection id="team-status" :title="__('Team & status')">
-					<DeskField :label="__('Project Manager')" :error="errors.pm">
+					<DeskField name="pm" :label="__('Project Manager')" :error="errors.pm">
 						<DeskLinkPicker
 							v-model="form.pm"
 							doctype="User"
@@ -628,7 +650,7 @@ const breadcrumbs = computed(() => {
 							@change="clearError('pm')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Initial status')">
+					<DeskField name="status" :label="__('Initial status')">
 						<DeskSelect v-model="form.status">
 							<option value="New">{{ __("New") }}</option>
 							<option value="Ongoing">{{ __("Ongoing") }}</option>

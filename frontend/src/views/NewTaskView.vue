@@ -178,7 +178,7 @@ const breadcrumbs = [
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 				<DeskSection id="task-details" :title="__('Task details')" :cols="1">
-					<DeskField :label="__('Task name')" required :error="errors.name">
+					<DeskField name="name" :label="__('Task name')" required :error="errors.name">
 						<DeskInput
 							v-model="form.name"
 							data-test="field-task-name"
@@ -186,6 +186,7 @@ const breadcrumbs = [
 						/>
 					</DeskField>
 					<DeskField
+						name="task_type"
 						:label="__('Task Type')"
 						:hint="__('Drives workflow + Gantt rendering. Milestone = zero-duration.')"
 					>
@@ -195,7 +196,7 @@ const breadcrumbs = [
 							</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -206,6 +207,7 @@ const breadcrumbs = [
 
 				<DeskSection id="hierarchy" :title="__('Hierarchy')">
 					<DeskField
+						name="project_id"
 						:label="__('Project')"
 						required
 						:error="errors.projectId"
@@ -226,6 +228,7 @@ const breadcrumbs = [
 						/>
 					</DeskField>
 					<DeskField
+						name="work_package_id"
 						:label="__('Work Package')"
 						:hint="
 							lockedWP
@@ -260,22 +263,23 @@ const breadcrumbs = [
 					<!-- A Milestone is a point in time: only a Due date, no start (the due
 					     date is the end date behind the scenes, used for delay). -->
 					<DeskField
+						name="start_date"
 						v-if="form.taskType !== 'Milestone'"
 						:label="__('Start date')"
 						:error="errors.startDate"
 					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Due date')" :error="errors.endDate">
+					<DeskField name="end_date" :label="__('Due date')" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Estimated hours')">
+					<DeskField name="estimated_hours" :label="__('Estimated hours')">
 						<DeskInput v-model="form.estimatedHours" type="number" />
 					</DeskField>
 				</DeskSection>
 
 				<DeskSection id="assignment" :title="__('Assignment')" :cols="3">
-					<DeskField :label="__('Assignee')">
+					<DeskField name="assignee" :label="__('Assignee')">
 						<DeskLinkPicker
 							v-model="form.assignee"
 							doctype="User"
@@ -286,7 +290,7 @@ const breadcrumbs = [
 							:placeholder="__('— Select assignee —')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Status')">
+					<DeskField name="status" :label="__('Status')">
 						<DeskSelect v-model="form.status">
 							<option value="Yet To Start">{{ __("Yet To Start") }}</option>
 							<option value="In Progress">{{ __("In Progress") }}</option>
@@ -295,7 +299,7 @@ const breadcrumbs = [
 							<option value="Blocked">{{ __("Blocked") }}</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField :label="__('Priority')">
+					<DeskField name="priority" :label="__('Priority')">
 						<DeskSelect v-model="form.priority">
 							<option value="Low">{{ __("Low") }}</option>
 							<option value="Medium">{{ __("Medium") }}</option>

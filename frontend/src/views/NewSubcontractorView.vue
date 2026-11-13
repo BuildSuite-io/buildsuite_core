@@ -108,31 +108,39 @@ const breadcrumbs = [
 			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<DeskSection id="details" :title="__('Details')" :cols="3">
-				<DeskField :label="__('Name')" required :error="errors.subcontractor_name">
+				<DeskField
+					name="subcontractor_name"
+					:label="__('Name')"
+					required
+					:error="errors.subcontractor_name"
+				>
 					<DeskInput v-model="form.subcontractor_name" />
 				</DeskField>
-				<DeskField :label="__('Trade')" required :error="errors.trade">
+				<DeskField name="trade" :label="__('Trade')" required :error="errors.trade">
 					<TradePicker v-model="form.trade" :error="errors.trade" />
 				</DeskField>
-				<DeskField :label="__('Status')">
+				<DeskField name="status" :label="__('Status')">
 					<DeskSelect v-model="form.status">
 						<option value="Active">{{ __("Active") }}</option>
 						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Tax ID')" :hint="__('e.g. GSTIN (India), VAT No, TIN')"
+				<DeskField
+					name="tax_id"
+					:label="__('Tax ID')"
+					:hint="__('e.g. GSTIN (India), VAT No, TIN')"
 					><DeskInput v-model="form.tax_id"
 				/></DeskField>
 			</DeskSection>
 
 			<DeskSection id="contact" :title="__('Contact')" :cols="3">
-				<DeskField :label="__('Contact person')">
+				<DeskField name="contact_person" :label="__('Contact person')">
 					<DeskInput v-model="form.contact_person" />
 				</DeskField>
-				<DeskField :label="__('Phone number')">
+				<DeskField name="phone" :label="__('Phone number')">
 					<DeskInput v-model="form.phone" />
 				</DeskField>
-				<DeskField :label="__('Email id')">
+				<DeskField name="email" :label="__('Email id')">
 					<DeskInput v-model="form.email" type="email" />
 				</DeskField>
 			</DeskSection>

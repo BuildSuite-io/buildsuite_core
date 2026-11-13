@@ -76,13 +76,18 @@ function onCustomerCreated(name) {
 						:context="extContext"
 					/>
 					<DeskSection id="basic-information" :title="__('Basic information')">
-						<DeskField :label="__('Project name')" required :error="errors.name">
+						<DeskField
+							name="name"
+							:label="__('Project name')"
+							required
+							:error="errors.name"
+						>
 							<DeskInput
 								v-model="editForm.name"
 								@input="emit('clear-error', 'name')"
 							/>
 						</DeskField>
-						<DeskField :label="__('Client')" :error="errors.client">
+						<DeskField name="client" :label="__('Client')" :error="errors.client">
 							<div class="flex items-center gap-2">
 								<div class="flex-1 min-w-0">
 									<DeskLinkPicker
@@ -110,6 +115,7 @@ function onCustomerCreated(name) {
 							</div>
 						</DeskField>
 						<DeskField
+							name="project_type"
 							:label="__('Project type')"
 							:hint="__('Internal or External (ERPNext).')"
 						>
@@ -123,7 +129,7 @@ function onCustomerCreated(name) {
 								:page-length="20"
 							/>
 						</DeskField>
-						<DeskField :label="__('Category')" :error="errors.type">
+						<DeskField name="type" :label="__('Category')" :error="errors.type">
 							<DeskLinkPicker
 								v-model="editForm.type"
 								doctype="Project Category"
@@ -140,6 +146,7 @@ function onCustomerCreated(name) {
 						<!-- Company is locked after create (§14). Shown read-only so the user
                  can see which company the project belongs to, but not change it. -->
 						<DeskField
+							name="company"
 							:label="__('Company')"
 							:hint="
 								__(
@@ -149,13 +156,14 @@ function onCustomerCreated(name) {
 						>
 							<DeskInput :model-value="editForm.company" disabled />
 						</DeskField>
-						<DeskField :label="__('Location')">
+						<DeskField name="location" :label="__('Location')">
 							<DeskInput v-model="editForm.location" />
 						</DeskField>
-						<DeskField :label="__('Note')">
+						<DeskField name="description" :label="__('Note')">
 							<DeskTextarea v-model="editForm.description" :rows="3" />
 						</DeskField>
 						<DeskField
+							name="is_group"
 							v-if="!isSubproject"
 							:label="__('Subprojects')"
 							:hint="
@@ -191,16 +199,17 @@ function onCustomerCreated(name) {
 					</DeskSection>
 
 					<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
-						<DeskField :label="__('Start date')">
+						<DeskField name="start_date" :label="__('Start date')">
 							<DeskInput v-model="editForm.startDate" type="date" />
 						</DeskField>
-						<DeskField :label="__('End date')">
+						<DeskField name="end_date" :label="__('End date')">
 							<DeskInput v-model="editForm.endDate" type="date" />
 						</DeskField>
-						<DeskField :label="__('Budget')" :hint="__('In INR')">
+						<DeskField name="budget" :label="__('Budget')" :hint="__('In INR')">
 							<DeskInput v-model="editForm.budget" type="number" />
 						</DeskField>
 						<DeskField
+							name="full_day_hours"
 							:label="__('Full day hours')"
 							:error="fullDayError"
 							:hint="
@@ -240,7 +249,7 @@ function onCustomerCreated(name) {
 					</DeskSection>
 
 					<DeskSection id="team-status" :title="__('Team & status')">
-						<DeskField :label="__('Project Manager')" :error="errors.pm">
+						<DeskField name="pm" :label="__('Project Manager')" :error="errors.pm">
 							<DeskLinkPicker
 								v-model="editForm.pm"
 								doctype="User"
@@ -255,7 +264,7 @@ function onCustomerCreated(name) {
 								@change="emit('clear-error', 'pm')"
 							/>
 						</DeskField>
-						<DeskField :label="__('Status')">
+						<DeskField name="status" :label="__('Status')">
 							<DeskSelect v-model="editForm.status">
 								<option value="New">{{ __("New") }}</option>
 								<option value="Ongoing">{{ __("Ongoing") }}</option>
@@ -263,7 +272,7 @@ function onCustomerCreated(name) {
 								<option value="Completed">{{ __("Completed") }}</option>
 							</DeskSelect>
 						</DeskField>
-						<DeskField :label="__('Priority')">
+						<DeskField name="priority" :label="__('Priority')">
 							<DeskSelect v-model="editForm.priority">
 								<option value="Low">{{ __("Low") }}</option>
 								<option value="Medium">{{ __("Medium") }}</option>

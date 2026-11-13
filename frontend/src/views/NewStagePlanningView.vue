@@ -266,7 +266,12 @@ const breadcrumbs = [
 				<div class="pb-12">
 					<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 					<DeskSection id="stage-details" :title="__('Stage details')" :cols="1">
-						<DeskField :label="__('Stage name')" required :error="errors.stageName">
+						<DeskField
+							name="stage_name"
+							:label="__('Stage name')"
+							required
+							:error="errors.stageName"
+						>
 							<DeskInput
 								v-model="form.stageName"
 								data-test="field-stage-name"
@@ -274,6 +279,7 @@ const breadcrumbs = [
 							/>
 						</DeskField>
 						<DeskField
+							name="project"
 							:label="__('Project')"
 							required
 							:error="errors.project"
@@ -296,16 +302,20 @@ const breadcrumbs = [
 					</DeskSection>
 
 					<DeskSection id="schedule" :title="__('Schedule')" :cols="2">
-						<DeskField :label="__('Planned start')">
+						<DeskField name="planned_start" :label="__('Planned start')">
 							<DeskInput v-model="form.plannedStart" type="date" />
 						</DeskField>
-						<DeskField :label="__('Planned end')" :error="errors.plannedEnd">
+						<DeskField
+							name="planned_end"
+							:label="__('Planned end')"
+							:error="errors.plannedEnd"
+						>
 							<DeskInput v-model="form.plannedEnd" type="date" />
 						</DeskField>
 					</DeskSection>
 
 					<DeskSection id="description" :title="__('Description')" :cols="1">
-						<DeskField :label="__('Description')">
+						<DeskField name="description" :label="__('Description')">
 							<DeskTextarea
 								v-model="form.description"
 								:rows="3"

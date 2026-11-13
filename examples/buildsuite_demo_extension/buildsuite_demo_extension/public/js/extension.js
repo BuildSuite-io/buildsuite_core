@@ -209,6 +209,35 @@ export default function register(sdk) {
 	sdk.slots.add("form.Quotation.before.terms", marker("before-terms"));
 	sdk.slots.add("form.Quotation.after.items", marker("after-items"));
 
+	// 8c. Field rules (SDK 1.6) on the Estimate Template form: change how Core's own fields behave,
+	//     put a component beside one field, and put a message under a field from beforeSave.
+	sdk.doctype("Estimate Template").on({
+		fieldRules: {
+			// label and hint, and required only for codes starting REQ- (a rule may depend on the
+			// form: ctx.form is the form's own model)
+			description: (ctx) => ({
+				label: "What this template is for",
+				hint: "Demo extension rule",
+				required: String(ctx.form.templateCode || "").startsWith("REQ-"),
+			}),
+			// hide: refused for a field Core requires (template_code, template_name)
+			project_type: { hidden: true },
+			// read-only while the name says so
+			template_code: (ctx) => ({ readOnly: ctx.form.templateName === "LOCK-CODE" }),
+		},
+		beforeSave(payload) {
+			if ((payload.template_name || "").includes("DEMO-BAD-NAME")) {
+				throw new sdk.FieldErrors({
+					template_name: "The demo extension refuses this name.",
+				});
+			}
+		},
+	});
+	sdk.slots.add(
+		"form.Estimate Template.after.field.template_name",
+		marker("after-template-name")
+	);
+
 	// 9. A slot on a bespoke page that does not use DeskPage (the Home page): every route has
 	//    page.<route name>.top / .bottom, provided by the app shell.
 	sdk.slots.add("page.app-home.top", {

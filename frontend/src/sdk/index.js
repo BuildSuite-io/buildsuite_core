@@ -33,11 +33,12 @@ import {
 	addWorkspaceTile,
 	addDocHooks,
 	addSettingsTile,
+	FieldErrors,
 	setViewOverride,
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.5"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions
+export const SDK_VERSION = "1.6"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions; 1.6: field rules, field anchors, field-level errors
 
 /** The parts every extension shares, the same for all of them. Also published as
  *  globalThis.__buildsuite before extensions load, so an extension built with its own bundler
@@ -74,7 +75,15 @@ export const runtime = {
 	},
 
 	// `request` calls a whitelisted method: request({ url: "app.module.fn", params }).
-	utils: { __, showToast, fmtCurrency, fmtDate, parseFrappeError, request: frappeRequest },
+	utils: {
+		__,
+		showToast,
+		fmtCurrency,
+		fmtDate,
+		parseFrappeError,
+		request: frappeRequest,
+		FieldErrors,
+	},
 };
 
 /** The SDK object handed to one extension. `router` is the app router (routes are added to it). */
@@ -82,6 +91,7 @@ export function createSdk(extension, router) {
 	return {
 		version: SDK_VERSION,
 		extension,
+		FieldErrors,
 
 		...runtime,
 
@@ -126,7 +136,14 @@ export function createSdk(extension, router) {
 		 *  Detail pages: detail.Quotation.before.lines / .after.lines, detail.Assembly.after.summary
 		 *  (the component gets `doc`, `persist(values)` and `reload()`).
 		 *  List columns: on({ listColumns: [{ field, label, align?, render?(value, row) }] }) adds a
-		 *  column to that doctype's lists (any list whose rows are keyed by the document name). */
+		 *  column to that doctype's lists (any list whose rows are keyed by the document name).
+		 *  Fields (1.6): every field of a bespoke form has a name (docs/extension-sdk-form-fields.md).
+		 *  on({ fieldRules: { <name>: { hidden, readOnly, label, hint, required } } }) changes how a
+		 *  Core field behaves; a rule may be a function of the form context, e.g.
+		 *  { region: (ctx) => ({ required: ctx.form.project_type === "Commercial" }) }. A field Core
+		 *  requires cannot be hidden. Slots beside one field: form.<DocType>.before.field.<name> /
+		 *  .after.field.<name>. To put a message under a field from beforeSave:
+		 *  throw new sdk.FieldErrors({ region: "Pick a region" }). */
 		doctype(doctype) {
 			return {
 				on(hooks) {

@@ -18,16 +18,56 @@
 // Fields an extension owns are declared with sdk.doctype(name).on({ fields: ["custom_region"] }), the
 // same call that registers its hooks. Defaults run when the form is new (hook `defaults`).
 
-import { getCurrentInstance, provide, reactive } from "vue";
+import { getCurrentInstance, nextTick, provide, reactive } from "vue";
 import { FORM_KEY } from "@/sdk/anchors";
-import { docFields, runDocHook } from "@/sdk/registry";
+import { __ } from "@/utils/translate";
+import {
+	FieldErrors,
+	docFields,
+	fieldRule,
+	fieldRuleNames,
+	fieldValue,
+	runDocHook,
+} from "@/sdk/registry";
+
+const isEmpty = (v) =>
+	v == null || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && !v.length);
 
 export function useExtensionFields(doctype, form = {}) {
 	const custom = reactive({});
 	const state = reactive({ doc: null });
-	const context = reactive({ doctype, form, custom, doc: null });
-	// Every DeskSection below this form (with an `id`) now offers before/after anchors for it.
-	if (getCurrentInstance()) provide(FORM_KEY, { doctype, context });
+	// fieldErrors: a message per field name, shown under that field (DeskField `name`).
+	const fieldErrors = reactive({});
+	const context = reactive({ doctype, form, custom, doc: null, fieldErrors });
+	// The fields on screen (DeskField with a `name` registers itself), so a rule for a field this form
+	// does not show can never block a save with an error nobody can see.
+	const mounted = new Map(); // name -> { label: ComputedRef, hidden: ComputedRef }
+	// Every DeskSection and every named DeskField below this form offers anchors and rules for it.
+	if (getCurrentInstance()) provide(FORM_KEY, { doctype, context, mounted });
+
+	function setErrors(errors) {
+		for (const key of Object.keys(fieldErrors)) delete fieldErrors[key];
+		Object.assign(fieldErrors, errors);
+		// bring the first message into view
+		if (typeof document === "undefined") return;
+		nextTick(() =>
+			document.querySelector("[data-field-error]")?.scrollIntoView?.({ block: "center" })
+		);
+	}
+
+	/** Fields an extension made required (fieldRules.required) that are on screen and empty. */
+	function missingRequired() {
+		const missing = {};
+		for (const name of fieldRuleNames(doctype)) {
+			const field = mounted.get(name);
+			if (!field || field.hidden.value) continue;
+			const rule = fieldRule(doctype, name, context);
+			if (rule.required && isEmpty(fieldValue(context, name))) {
+				missing[name] = __("{0} is required", [field.label.value || name]);
+			}
+		}
+		return missing;
+	}
 
 	return {
 		custom,
@@ -51,7 +91,24 @@ export function useExtensionFields(doctype, form = {}) {
 		payload() {
 			return Object.fromEntries(docFields(doctype).map((f) => [f, custom[f] ?? null]));
 		},
-		beforeSave: (payload, f) => runDocHook(doctype, "beforeSave", payload, f ?? form),
+		/** Required-by-extension fields first, then every extension's beforeSave. A FieldErrors thrown
+		 *  by either puts its messages under the fields and stops the save. */
+		async beforeSave(payload, f) {
+			setErrors({});
+			const missing = missingRequired();
+			if (Object.keys(missing).length) {
+				setErrors(missing);
+				throw new FieldErrors(missing);
+			}
+			try {
+				await runDocHook(doctype, "beforeSave", payload, f ?? form);
+			} catch (error) {
+				if (error instanceof FieldErrors) setErrors(error.errors);
+				throw error;
+			}
+		},
+		/** Messages currently shown under fields (also on `context.fieldErrors`). */
+		fieldErrors,
 		afterSave: (doc, info) => runDocHook(doctype, "afterSave", doc, info),
 	};
 }

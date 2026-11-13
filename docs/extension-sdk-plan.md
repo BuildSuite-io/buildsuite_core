@@ -326,6 +326,19 @@ values. Tested: control shown on all forms; saved value for Estimate Template (U
 (API tests). Not tested end to end: the save for Field Attendance, Field Employee, Consumption and
 Measurement Book (same helper, code path covered by the unit tests only).
 
+### Form field control (SDK 1.6)
+
+Done: `DeskField` takes a `name` and, inside a form that adopted `useExtensionFields`, applies the
+extension's `fieldRules` (hidden, readOnly, label, hint, required, as objects or functions of the form
+context), offers `form.<DocType>.before|after.field.<name>` slots, and shows a field-level message from
+`FieldErrors`. 163 fields across the adopted forms are named (`docs/extension-sdk-form-fields.md`, generated
+and checked by `tests/test_field_names.py`). `ext.beforeSave` enforces extension-required fields that are on
+screen. A field Core requires cannot be hidden. Verified by rendering `DeskField` for real (rules, anchors,
+required, read-only, errors) and by `extension_sdk.cy.js` (5 specs on the Estimate Template form).
+Not done: names for Crew, Field Attendance and Field Employee (they do not use `DeskField`); fields with no
+bound model (file pickers, read-only displays, the Task detail's progress and dependency forms); reordering
+fields; rules in site-level customisations.
+
 ## Phase 4 status: site-level data layer, first slice (SDK 1.4)
 
 Done: DocType `BuildSuite Customisation` (System Manager), `sdk/customisations.py` (schema per kind, strict:

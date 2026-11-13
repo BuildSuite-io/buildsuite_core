@@ -372,7 +372,12 @@ const breadcrumbs = [
 			<div class="max-w-3xl mx-auto">
 				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 				<DeskSection id="project-task-date" :title="__('Project, task & date')" :cols="2">
-					<DeskField :label="__('Project')" required :error="errors.projectId">
+					<DeskField
+						name="project_id"
+						:label="__('Project')"
+						required
+						:error="errors.projectId"
+					>
 						<DeskLinkPicker
 							v-model="form.projectId"
 							doctype="Project"
@@ -384,7 +389,7 @@ const breadcrumbs = [
 							@change="onProjectChange"
 						/>
 					</DeskField>
-					<DeskField :label="__('Task')" required :error="errors.taskId">
+					<DeskField name="task_id" :label="__('Task')" required :error="errors.taskId">
 						<DeskLinkPicker
 							v-model="form.taskId"
 							doctype="Task"
@@ -401,7 +406,7 @@ const breadcrumbs = [
 							"
 						/>
 					</DeskField>
-					<DeskField :label="__('Entry date')">
+					<DeskField name="entry_date" :label="__('Entry date')">
 						<DeskInput v-model="form.entryDate" type="date" />
 					</DeskField>
 					<div
@@ -421,6 +426,7 @@ const breadcrumbs = [
 
 				<DeskSection id="progress" :title="__('Progress')" :cols="2">
 					<DeskField
+						name="progress_pct"
 						:label="__('Cumulative progress (%)')"
 						required
 						:hint="
@@ -443,6 +449,7 @@ const breadcrumbs = [
 					</DeskField>
 					<div class="md:col-span-2">
 						<DeskField
+							name="narrative"
 							:label="__('Narrative')"
 							:hint="__('What was completed today? Any context worth recording?')"
 						>
@@ -465,12 +472,14 @@ const breadcrumbs = [
 					:cols="2"
 				>
 					<DeskField
+						name="skilled_labour"
 						:label="__('Skilled labour')"
 						:hint="__('Count of skilled workers on site today')"
 					>
 						<DeskInput v-model="form.skilledLabour" type="number" />
 					</DeskField>
 					<DeskField
+						name="unskilled_labour"
 						:label="__('Unskilled labour')"
 						:hint="__('Count of unskilled workers / helpers')"
 					>
@@ -480,6 +489,7 @@ const breadcrumbs = [
 
 				<DeskSection id="site-conditions" :title="__('Site conditions')" :cols="2">
 					<DeskField
+						name="weather"
 						:label="__('Weather')"
 						:hint="__('Optional · only if it\'s worth recording')"
 					>
@@ -490,7 +500,7 @@ const breadcrumbs = [
 							</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField :label="__('Blocker')">
+					<DeskField name="blocker_flag" :label="__('Blocker')">
 						<label
 							class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
 						>
@@ -504,6 +514,7 @@ const breadcrumbs = [
 					</DeskField>
 					<div v-if="form.blockerFlag" class="md:col-span-2">
 						<DeskField
+							name="blocker_note"
 							:label="__('Blocker detail')"
 							required
 							:hint="__('What blocked progress today?')"

@@ -66,10 +66,86 @@ const HOOKS = ["defaults", "onLoad", "beforeSave", "afterSave"];
 export function addDocHooks(extension, doctype, hooks) {
 	if (!doctype || !hooks) throw new Error("doctype(...).on needs a doctype and a hooks object");
 	const unknown = Object.keys(hooks).filter(
-		(k) => k !== "fields" && k !== "listColumns" && !HOOKS.includes(k)
+		(k) => k !== "fields" && k !== "listColumns" && k !== "fieldRules" && !HOOKS.includes(k)
 	);
 	if (unknown.length) throw new Error(`unknown DocType hook(s): ${unknown.join(", ")}`);
+	for (const [field, rule] of Object.entries(hooks.fieldRules || {})) {
+		if (typeof rule === "function") continue; // checked when it runs
+		const bad = Object.keys(rule || {}).filter((k) => !FIELD_RULE_KEYS.includes(k));
+		if (bad.length) {
+			throw new Error(
+				`fieldRules.${field}: unknown rule(s) ${bad.join(
+					", "
+				)} (allowed: ${FIELD_RULE_KEYS.join(", ")})`
+			);
+		}
+	}
 	(docHooks[doctype] ||= []).push({ extension, ...hooks });
+}
+
+// ---- Field rules: change how a Core field behaves on a form (SDK 1.6) ---------------------------
+export const FIELD_RULE_KEYS = ["hidden", "readOnly", "label", "hint", "required"];
+
+/** The error an extension throws from beforeSave to put a message on specific fields:
+ *  throw new FieldErrors({ region: "Pick a region" }). The form shows each message under its field
+ *  and stops the save; `message` (default: the first one) is the toast. */
+export class FieldErrors extends Error {
+	constructor(errors, message) {
+		const list = Object.values(errors || {}).filter(Boolean);
+		super(
+			message ||
+				(list.length > 1
+					? `${list[0]} (+${list.length - 1} more)`
+					: list[0] || "Check the form")
+		);
+		this.name = "FieldErrors";
+		this.errors = { ...errors };
+	}
+}
+
+/** The rule the extensions set for one field of a doctype's form, merged in registration order
+ *  (later wins). A rule may be a function of the form context, so it can depend on other fields:
+ *  fieldRules: { region: (ctx) => ({ required: ctx.form.project_type === "Commercial" }) }. */
+export function fieldRule(doctype, name, context) {
+	const out = {};
+	for (const entry of [...(docHooks["*"] || []), ...(docHooks[doctype] || [])]) {
+		let rule = entry.fieldRules?.[name];
+		if (typeof rule === "function") {
+			try {
+				rule = rule(context);
+			} catch (error) {
+				console.warn(
+					`[buildsuite] extension "${entry.extension}" rule for ${name} failed`,
+					error
+				);
+				rule = null;
+			}
+		}
+		if (!rule || typeof rule !== "object") continue;
+		for (const key of FIELD_RULE_KEYS) if (key in rule) out[key] = rule[key];
+	}
+	return out;
+}
+
+/** The field names any extension has a rule for on a doctype. */
+export function fieldRuleNames(doctype) {
+	return [
+		...new Set(
+			[...(docHooks["*"] || []), ...(docHooks[doctype] || [])].flatMap((h) =>
+				Object.keys(h.fieldRules || {})
+			)
+		),
+	];
+}
+
+/** A field's current value on a form: an extension's Custom Field first, else the form's own model
+ *  (under the field name, or its camelCase twin: forms name some keys fullDayHours, the field is
+ *  full_day_hours). */
+export function fieldValue(context, name) {
+	if (context.custom && name in context.custom) return context.custom[name];
+	const form = context.form || {};
+	if (name in form) return form[name];
+	return form[name.replace(/_(\w)/g, (_, c) => c.toUpperCase())];
 }
 
 /** The Custom Field names the extensions declare for a doctype (hooks.fields). */
