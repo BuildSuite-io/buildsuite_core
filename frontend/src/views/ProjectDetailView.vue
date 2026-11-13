@@ -1444,6 +1444,7 @@ usePageTitle(() => project.value?.name);
 					:rows="subsFiltered"
 					:columns="subCols"
 					row-key="id"
+					ext-doctype="Project"
 					:search-placeholder="__('Search subprojects…')"
 					@row-click="onSubRowClick"
 				>
@@ -1516,6 +1517,7 @@ usePageTitle(() => project.value?.name);
 					:rows="wpFiltered"
 					:columns="wpCols"
 					row-key="id"
+					ext-doctype="Work Package"
 					:search-placeholder="__('Search work packages…')"
 					@row-click="onWpRowClick"
 				>
@@ -1594,6 +1596,7 @@ usePageTitle(() => project.value?.name);
 					:rows="tasksFiltered"
 					:columns="taskCols"
 					row-key="id"
+					ext-doctype="Task"
 					:search-placeholder="__('Search tasks…')"
 					@row-click="onTaskRowClick"
 				>
@@ -1884,6 +1887,7 @@ usePageTitle(() => project.value?.name);
 					:rows="boqsFiltered"
 					:columns="boqCols"
 					row-key="id"
+					ext-doctype="BOQ"
 					:search-placeholder="__('Search BOQ revisions…')"
 					@row-click="onBoqRowClick"
 				>

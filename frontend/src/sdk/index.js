@@ -38,7 +38,7 @@ import {
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.6"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions; 1.6: field rules, field anchors, field-level errors
+export const SDK_VERSION = "1.6"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions; 1.6: field rules, field anchors, field-level errors, list sorting / preset filters / more lists
 
 /** The parts every extension shares, the same for all of them. Also published as
  *  globalThis.__buildsuite before extensions load, so an extension built with its own bundler
@@ -136,7 +136,9 @@ export function createSdk(extension, router) {
 		 *  Detail pages: detail.Quotation.before.lines / .after.lines, detail.Assembly.after.summary
 		 *  (the component gets `doc`, `persist(values)` and `reload()`).
 		 *  List columns: on({ listColumns: [{ field, label, align?, render?(value, row) }] }) adds a
-		 *  column to that doctype's lists (any list whose rows are keyed by the document name).
+		 *  column to that doctype's lists (any list whose rows are keyed by the document name); it is
+		 *  also a sort option on server-paged lists. on({ listFilters: [{ label, filters }] }) offers a
+		 *  one-click preset filter chip above that doctype's list (filters: a Frappe filter list or a function).
 		 *  Fields (1.6): every field of a bespoke form has a name (docs/extension-sdk-form-fields.md).
 		 *  on({ fieldRules: { <name>: { hidden, readOnly, label, hint, required } } }) changes how a
 		 *  Core field behaves; a rule may be a function of the form context, e.g.

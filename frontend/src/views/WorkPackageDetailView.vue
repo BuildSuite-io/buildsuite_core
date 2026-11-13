@@ -499,6 +499,7 @@ usePageTitle(() => wp.value?.name);
 					:rows="tasksFiltered"
 					:columns="taskCols"
 					row-key="id"
+					ext-doctype="Task"
 					:search-placeholder="__('Search tasks…')"
 					@row-click="onTaskRowClick"
 				>

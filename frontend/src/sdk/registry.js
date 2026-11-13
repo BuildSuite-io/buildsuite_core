@@ -66,7 +66,12 @@ const HOOKS = ["defaults", "onLoad", "beforeSave", "afterSave"];
 export function addDocHooks(extension, doctype, hooks) {
 	if (!doctype || !hooks) throw new Error("doctype(...).on needs a doctype and a hooks object");
 	const unknown = Object.keys(hooks).filter(
-		(k) => k !== "fields" && k !== "listColumns" && k !== "fieldRules" && !HOOKS.includes(k)
+		(k) =>
+			k !== "fields" &&
+			k !== "listColumns" &&
+			k !== "listFilters" &&
+			k !== "fieldRules" &&
+			!HOOKS.includes(k)
 	);
 	if (unknown.length) throw new Error(`unknown DocType hook(s): ${unknown.join(", ")}`);
 	for (const [field, rule] of Object.entries(hooks.fieldRules || {})) {
@@ -77,6 +82,16 @@ export function addDocHooks(extension, doctype, hooks) {
 				`fieldRules.${field}: unknown rule(s) ${bad.join(
 					", "
 				)} (allowed: ${FIELD_RULE_KEYS.join(", ")})`
+			);
+		}
+	}
+	for (const preset of hooks.listFilters || []) {
+		if (
+			!preset?.label ||
+			!(Array.isArray(preset.filters) || typeof preset.filters === "function")
+		) {
+			throw new Error(
+				"listFilters needs { label, filters } (filters: a Frappe filter array or a function)"
 			);
 		}
 	}
@@ -164,6 +179,17 @@ export function listColumns(doctype) {
 	return [...(docHooks["*"] || []), ...(docHooks[doctype] || [])]
 		.flatMap((h) => h.listColumns || [])
 		.filter((c) => c?.field && !seen.has(c.field) && seen.add(c.field));
+}
+
+/** Preset filters the extensions offer on a doctype's lists (hooks.listFilters): chips above the list
+ *  that narrow it with one click. [{ key, label, filters }] where filters is a Frappe filter list
+ *  ([["field", "=", "value"], ...]) or a function returning one (called each time the list queries). */
+export function listFilterPresets(doctype) {
+	const seen = new Set();
+	return [...(docHooks["*"] || []), ...(docHooks[doctype] || [])]
+		.flatMap((h) => h.listFilters || [])
+		.filter((p) => p?.label && !seen.has(p.label) && seen.add(p.label))
+		.map((p) => ({ key: p.label, label: p.label, filters: p.filters }));
 }
 
 /** Run one hook of every extension registered for the doctype (and for "*"), in order. A failing

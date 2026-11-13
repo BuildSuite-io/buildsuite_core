@@ -200,6 +200,12 @@ export default function register(sdk) {
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}
 
+	// 8a. List extras (SDK 1.6): the Region column above is also a sort option on lists that page on
+	//     the server, and an extension can offer a one-click preset filter above a doctype's list.
+	sdk.doctype("Project").on({
+		listFilters: [{ label: "Has region", filters: [["demo_region", "is", "set"]] }],
+	});
+
 	// 8b. Section anchors: any DeskSection with an id offers form.<DocType>.before.<id> and
 	//     .after.<id>, so a component can sit between Core's sections with no change to the view.
 	const marker = (id) => ({

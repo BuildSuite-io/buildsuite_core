@@ -44,8 +44,12 @@ const props = defineProps({
 	// Doctype the rows are records of — turns on the built-in dynamic filter (see header).
 	filterDoctype: { type: String, default: "" },
 	// Doctype whose installed-app list columns (sdk doctype(...).on({ listColumns })) this list shows;
-	// defaults to filterDoctype. Rows must be keyed by the document name (rowKey) to be matched.
+	// defaults to filterDoctype. Rows are matched to records by their document name: the rowKey, or
+	// extRowName(row) when the list keys its rows by something else.
 	extDoctype: { type: String, default: "" },
+	// For a list whose rows are not keyed by the document name: (row) => the document's name (or
+	// null for a row that is not a record). Without it the rowKey is taken to be the name.
+	extRowName: { type: Function, default: null },
 	// A useDynamicFilters instance the list owns itself (server-paged lists): DeskList renders its
 	// editor + chips but leaves applying the filters to the list's own query.
 	dynamicFilters: { type: Object, default: null },
@@ -147,7 +151,7 @@ function updateSortDirection(value) {
 
 function sortValueFor(row, field) {
 	if (typeof field === "string" && field.startsWith("ext:")) {
-		return extValues[keyFor(row)]?.[field.slice(4)];
+		return extValues[extNameOf(row)]?.[field.slice(4)];
 	}
 	return row?.[field];
 }
@@ -190,6 +194,7 @@ function keyFor(row) {
 const EXT_PREFIX = "ext:";
 const extValues = reactive({}); // document name -> { field: value }
 const extDt = computed(() => props.extDoctype || props.filterDoctype);
+const extNameOf = (row) => (props.extRowName ? props.extRowName(row) : keyFor(row));
 const extColumns = computed(() => {
 	const own = new Set(props.columns.map((c) => c.key));
 	return listColumns(extDt.value)
@@ -200,7 +205,7 @@ const extColumns = computed(() => {
 			label: c.label || c.field,
 			align: c.align,
 			render: (row) => {
-				const value = extValues[keyFor(row)]?.[c.field];
+				const value = extValues[extNameOf(row)]?.[c.field];
 				if (typeof c.render === "function") return c.render(value, row);
 				return value ?? "";
 			},
@@ -212,10 +217,10 @@ const allColumns = computed(() =>
 
 let extSeq = 0;
 watch(
-	[() => visibleRows.value.map(keyFor).join("\u0001"), extColumns],
+	[() => visibleRows.value.map(extNameOf).join("\u0001"), extColumns],
 	async () => {
 		if (!extColumns.value.length) return;
-		const wanted = visibleRows.value.map(keyFor).filter((k) => k && !(k in extValues));
+		const wanted = visibleRows.value.map(extNameOf).filter((k) => k && !(k in extValues));
 		if (!wanted.length) return;
 		const fields = extColumns.value.map((c) => c.field);
 		const mine = ++extSeq;

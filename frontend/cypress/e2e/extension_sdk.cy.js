@@ -287,4 +287,41 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 			cy.get('[data-field="template_code"] [inert]').should("exist");
 		});
 	});
+
+	describe("list extras (SDK 1.6) on the Projects list", () => {
+		// the list pages on the server through frappe.client.get_list: tag the call that carries `needle`
+		const watchList = (needle, alias) =>
+			cy.intercept(
+				{ method: "POST", url: "**/api/method/frappe.client.get_list*" },
+				(req) => {
+					if (JSON.stringify(req.body).includes(needle)) req.alias = alias;
+				}
+			);
+
+		it("an extension column is a server-side sort option", () => {
+			watchList("demo_region desc", "sorted");
+			cy.visitApp("/projects");
+			cy.get('select[title="Sort field"]').select("Region");
+			cy.wait("@sorted");
+			cy.get('select[title="Sort field"]').should("have.value", "demo_region");
+		});
+
+		it("a preset filter chip from an installed app narrows the list on the server and toggles off", () => {
+			watchList('"demo_region","is","set"', "narrowed");
+			cy.visitApp("/projects");
+			cy.get('[data-test="ext-list-filter"][data-preset="Has region"]')
+				.should("have.attr", "aria-pressed", "false")
+				.click()
+				.should("have.attr", "aria-pressed", "true");
+			cy.wait("@narrowed");
+			cy.get('[data-test="ext-list-filter"][data-preset="Has region"]')
+				.click()
+				.should("have.attr", "aria-pressed", "false");
+		});
+
+		it("a hand-built list (Material Consumption) shows the extension column too", () => {
+			cy.visitApp("/material-consumption");
+			cy.get('[data-test="desk-list"] thead').contains("th", "Region");
+		});
+	});
 });

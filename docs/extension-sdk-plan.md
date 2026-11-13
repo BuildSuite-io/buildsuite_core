@@ -339,6 +339,17 @@ Not done: names for Crew, Field Attendance and Field Employee (they do not use `
 bound model (file pickers, read-only displays, the Task detail's progress and dependency forms); reordering
 fields; rules in site-level customisations.
 
+### List extras (SDK 1.6)
+
+Done: an extension column is a **server-side sort option** on `DocTypeListView` lists (it is a real field; before, the
+sort control only offered the fields the list fetched, so it was not sortable there); `listFilters` presets (chips
+above a `DocTypeListView` list, combined with the other filters and evaluated by the server); `DeskList`'s
+`ext-row-name` for rows not keyed by the document name; extension columns on six more lists (Material Consumption,
+Rate Master, and the Subprojects / Work Packages / Tasks / BOQ tabs of a project, plus a work package's tasks).
+Correction to the earlier notes: filtering on an extension field was already possible, because the Add filter editor
+lists every field of the DocType's meta, Custom Fields included. Not done: presets on hand-built lists, an
+extension-defined filter field that is not a DocType field, per-user saved views.
+
 ## Phase 4 status: site-level data layer, first slice (SDK 1.4)
 
 Done: DocType `BuildSuite Customisation` (System Manager), `sdk/customisations.py` (schema per kind, strict:

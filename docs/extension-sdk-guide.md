@@ -23,7 +23,8 @@ The app declares one hook and ships one ES module. Reload the browser after edit
 | Wrap or replace a Core page | `sdk.views.wrap(name, Component)` / `sdk.views.override(name, Component)` |
 | React to a DocType form | `sdk.doctype(dt).on({ defaults, onLoad, beforeSave, afterSave })` |
 | Carry Custom Fields through a bespoke form | `sdk.doctype(dt).on({ fields: [...] })` plus a control in the `form.<DocType>.top/bottom` slot |
-| Add a column to a list | `sdk.doctype(dt).on({ listColumns: [{ field, label, align?, render?(value, row) }] })` |
+| Add a column to a list (also sortable) | `sdk.doctype(dt).on({ listColumns: [{ field, label, align?, render?(value, row) }] })` |
+| Offer a one-click filter above a list | `sdk.doctype(dt).on({ listFilters: [{ label, filters }] })` |
 | Hide, relabel, require or lock a Core field | `sdk.doctype(dt).on({ fieldRules: { <name>: { hidden, readOnly, label, hint, required } } })` |
 | Put a component beside one field | `sdk.slots.add("form.<DocType>.before.field.<name>" \| ".after.field.<name>", Component)` |
 | Put a message under a field when saving | `throw new sdk.FieldErrors({ <name>: "message" })` in `beforeSave` |
@@ -120,14 +121,34 @@ Limits: forms that do not draw their inputs with `DeskField` (Crew, Field Attend
 names yet, and a field that has no input bound to the form's own model (file pickers, read-only displays) is
 not addressable.
 
-## List columns
+## Lists: columns, sorting, filters and presets
 
 `listColumns` adds a column to every list of that DocType that is built on `DocTypeListView` or passes
-`filter-doctype` / `ext-doctype` to `DeskList`. The values are not on the rows the list was given, so
-`DeskList` reads them for the rows on screen in one query (by document name, up to 500 rows at a time);
-rows must therefore be keyed by the document name. A column whose `field` Core already shows is skipped.
-The column can be sorted from the list's sort control. It cannot be filtered or used for server-side
-sorting yet.
+`filter-doctype` / `ext-doctype` to `DeskList`: all the generic DocType lists, plus Subcontractors, Subcontractor
+Bills, Machinery, Machinery Usage, Material Consumption, Rate Master, and the Subprojects, Work Packages, Tasks and BOQ
+tabs of a project (and a work package's tasks). The values are not on the rows the list was given, so `DeskList`
+reads them for the rows on screen in one query (by document name, up to 500 rows at a time).
+
+```js
+sdk.doctype("Project").on({
+  listColumns: [{ field: "custom_region", label: "Region" }],
+  // a one-click preset above the list; filters is a Frappe filter list, or a function returning one
+  listFilters: [{ label: "North only", filters: [["custom_region", "=", "North"]] }],
+});
+```
+
+- **Sorting.** On the lists that page on the server (every `DocTypeListView`), an extension column is a real field of the
+  DocType, so it appears in the sort control under the label you gave it and the server sorts by it across all pages. On
+  the hand-built lists the visible rows are sorted.
+- **Filtering.** The list's *Add filter* already offers every field of the DocType, Custom Fields included, so an extension
+  field can be filtered on with no extension code. `listFilters` adds named presets: chips above the list that narrow it
+  with one click, combine with each other and with the other filters, and are evaluated by the server. They are offered on
+  `DocTypeListView` lists.
+- **Rows keyed by something other than the document name.** `DeskList` matches rows to records by their `rowKey`. A list
+  whose rows are keyed differently passes `:ext-row-name="(row) => row.documentName"` (return `null` for a row that is not a
+  record).
+
+A column whose `field` Core already shows is skipped.
 
 ## Site-level customisations (no code, no app)
 

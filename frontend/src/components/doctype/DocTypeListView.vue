@@ -12,6 +12,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { filterableFieldsFromMeta, toServerFilter, chipLabel } from "@/utils/listFilters";
+import { listColumns, listFilterPresets } from "@/sdk/registry";
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -208,6 +209,28 @@ const resolvedColumns = computed(() => {
 const filterableFields = computed(() => filterableFieldsFromMeta(meta.value));
 
 const dynamicFilters = ref([]); // [{ fieldname, label, fieldtype, options, condition, value }]
+
+// Preset filters an installed app offers on this doctype (sdk listFilters): chips that narrow the
+// list with one click. Several can be on at once; they combine with everything else (AND).
+const extPresets = computed(() => listFilterPresets(props.doctype));
+const activePresets = ref([]); // preset keys that are on
+function togglePreset(key) {
+	activePresets.value = activePresets.value.includes(key)
+		? activePresets.value.filter((k) => k !== key)
+		: [...activePresets.value, key];
+}
+function presetFilters() {
+	return extPresets.value
+		.filter((p) => activePresets.value.includes(p.key))
+		.flatMap((p) => {
+			try {
+				return typeof p.filters === "function" ? p.filters() || [] : p.filters;
+			} catch (err) {
+				console.warn(`[buildsuite] list filter "${p.label}" failed`, err);
+				return [];
+			}
+		});
+}
 const filterEditorOpen = ref(false);
 const editingFilterIndex = ref(-1);
 
@@ -344,6 +367,7 @@ const serverFilters = computed(() => {
 		const sf = toServerFilter(f);
 		if (sf) filters.push(sf);
 	}
+	filters.push(...presetFilters());
 	return filters;
 });
 
@@ -423,13 +447,21 @@ const sortableFields = computed(() => {
 	base.add("modified");
 	base.add("creation");
 
-	return Array.from(base).map((fieldname) => {
+	const options = Array.from(base).map((fieldname) => {
 		const field = fieldMetaMap.value.get(fieldname);
 		return {
 			value: fieldname,
 			label: field?.label || fieldname,
 		};
 	});
+	// The columns an installed app adds are real fields of this doctype, so the server can sort by
+	// them: offer them in the sort control under the label the extension gave the column.
+	for (const column of listColumns(props.doctype)) {
+		const field = fieldMetaMap.value.get(column.field);
+		if (!field || !sortableTypes.has(field.fieldtype) || base.has(column.field)) continue;
+		options.push({ value: column.field, label: column.label || field.label || column.field });
+	}
+	return options;
 });
 
 const resource = useDocTypeList(props.doctype, {
@@ -838,6 +870,23 @@ function onPageSizeChange(value) {
 					:meta-loading="metaLoading"
 					:fields="resolvedFields"
 				/>
+				<button
+					v-for="preset in extPresets"
+					:key="preset.key"
+					type="button"
+					data-test="ext-list-filter"
+					:data-preset="preset.key"
+					:aria-pressed="activePresets.includes(preset.key)"
+					class="text-[11px] px-2 py-0.5 border rounded-full"
+					:class="
+						activePresets.includes(preset.key)
+							? 'bg-brand-50 border-brand-300 text-brand-800'
+							: 'border-ink-200 text-ink-600 hover:bg-ink-50'
+					"
+					@click="togglePreset(preset.key)"
+				>
+					{{ preset.label }}
+				</button>
 				<span
 					v-for="(f, i) in dynamicFilters"
 					:key="i"
