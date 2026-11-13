@@ -154,7 +154,7 @@ bench --site mysite install-app acme_ext</pre>
     <div class="step-head">
       <span class="n">Step 2</span>
       <h2 id="s2">Declare it and customise</h2>
-      <span class="chips"><span class="chip built">Built: hook, page, slot, tile, view override, form hooks, settings page</span><span class="chip planned">Planned: resource registry</span></span>
+      <span class="chips"><span class="chip built">Built: hook, page, slot, tile, view override, form hooks, settings page, field rules, list columns and presets</span></span>
     </div>
     <div class="step-cols">
       <div class="col">
@@ -162,7 +162,7 @@ bench --site mysite install-app acme_ext</pre>
 <pre>buildsuite_frontend_extensions = [{
   <span class="k">"name"</span>: <span class="s">"acme_ext"</span>,
   <span class="k">"js"</span>:   <span class="s">"/assets/acme_ext/js/extension.js"</span>,
-  <span class="k">"min_sdk"</span>: <span class="s">"1.0"</span>,
+  <span class="k">"min_sdk"</span>: <span class="s">"1.6"</span>,
 }]
 
 <span class="d"># a settings page with no JavaScript: a Single DocType</span>
@@ -186,9 +186,22 @@ buildsuite_settings_pages = [{
   <span class="d">// a component above or below ANY page, bespoke or not</span>
   sdk.slots.add(<span class="s">"page.app-home.top"</span>, Banner);
 
-  <span class="d">// a control for a Custom Field on a bespoke form (Quotation today)</span>
+  <span class="d">// a control for a Custom Field on a bespoke form (all 20 create forms)</span>
   sdk.doctype(<span class="s">"Quotation"</span>).on({ fields: [<span class="s">"region"</span>] });
   sdk.slots.add(<span class="s">"form.Quotation.top"</span>, RegionControl);
+  sdk.slots.add(<span class="s">"form.Quotation.after.field.title"</span>, Hint);  <span class="d">// beside one field</span>
+
+  <span class="d">// change how a Core field behaves; a rule can follow the other fields</span>
+  sdk.doctype(<span class="s">"Quotation"</span>).on({
+    fieldRules: {
+      margin_percent: { hidden: <span class="k">true</span> },
+      region: (ctx) =&gt; ({ required: ctx.form.project_type === <span class="s">"Commercial"</span> }),
+    },
+    beforeSave(payload) {
+      <span class="d">// a message under one field, and the save stops</span>
+      <span class="k">throw new</span> sdk.FieldErrors({ region: <span class="s">"Pick a region"</span> });
+    },
+  });
 
   <span class="d">// replace a Core page, or render around it</span>
   sdk.views.override(<span class="s">"settings-app-icon-diagnostics"</span>, MyDiagnostics);
@@ -197,8 +210,11 @@ buildsuite_settings_pages = [{
   <span class="d">// hooks on the generic DocType form ("*" = every doctype)</span>
   sdk.doctype(<span class="s">"*"</span>).on({ beforeSave(payload) { <span class="d">/* throw to refuse */</span> } });
 
-  <span class="d">// planned: columns and sections on an existing resource</span>
-  sdk.resources(<span class="s">"Project"</span>).list.addColumn({ field: <span class="s">"custom_region"</span> });
+  <span class="d">// a column (also a sort option) and a one-click preset on a Core list</span>
+  sdk.doctype(<span class="s">"Project"</span>).on({
+    listColumns: [{ field: <span class="s">"custom_region"</span>, label: <span class="s">"Region"</span> }],
+    listFilters: [{ label: <span class="s">"North only"</span>, filters: [[<span class="s">"custom_region"</span>, <span class="s">"="</span>, <span class="s">"North"</span>]] }],
+  });
 }</pre>
       </div>
     </div>
@@ -208,7 +224,7 @@ buildsuite_settings_pages = [{
     <div class="step-head">
       <span class="n">Step 3</span>
       <h2 id="s3">Load it</h2>
-      <span class="chips"><span class="chip built">Built: loading at runtime, no build step</span></span>
+      <span class="chips"><span class="chip built">Built: loading at runtime; optional build kit for .vue files</span></span>
     </div>
     <div class="step-cols">
       <div class="col">
@@ -218,7 +234,7 @@ bench --site mysite migrate   <span class="d"># only if you ship fixtures or doc
       </div>
       <div class="col">
         <p>Reload the app. Core loads <code>extension.js</code> at runtime from the installed app, checks the SDK version, and calls <code>register(sdk)</code>. An extension that fails to load or throws while rendering is logged and skipped, and the page around it keeps working.</p>
-        <p class="note" style="margin-top:10px">Core's own bundle is never rebuilt, and Core's build never depends on which apps are on the bench.</p>
+        <p class="note" style="margin-top:10px">Core's own bundle is never rebuilt, and Core's build never depends on which apps are on the bench. Writing components as <code>.vue</code> files? The build kit (<code>frontend/sdk-kit/vite.mjs</code>) bundles them against Core's own copies of Vue and the controls.</p>
       </div>
     </div>
   </section>
@@ -227,7 +243,7 @@ bench --site mysite migrate   <span class="d"># only if you ship fixtures or doc
     <div class="step-head">
       <span class="n">Step 4</span>
       <h2 id="s4">What your users see</h2>
-      <span class="chips"><span class="chip built">Built: tile, page, slot, settings page, form control</span><span class="chip planned">Planned: list column</span></span>
+      <span class="chips"><span class="chip built">Built: tile, page, slot, settings page, form control, list column</span></span>
     </div>
     <div class="ui" role="group" aria-label="Illustration of the three changes">
       <div class="mock">
@@ -260,19 +276,19 @@ bench --site mysite migrate   <span class="d"># only if you ship fixtures or doc
     <div class="step-head">
       <span class="n">Later</span>
       <h2 id="s5">No code at all</h2>
-      <span class="chips"><span class="chip planned">Planned: phase 4</span></span>
+      <span class="chips"><span class="chip built">Built: first slice</span> <span class="chip planned">Planned: editor and AI</span></span>
     </div>
-    <p>An onboarding page asks "What do you want to change?", or lets someone drag a section into a form. It stores the same declarations as data on the site, and Core applies them exactly as it applies an extension's. Precedence is Core, then installed apps, then the site's own customisations.</p>
+    <p>A site administrator can already customise a site as data, with no app: a <em>BuildSuite Customisation</em> record adds a list column, a form field (a Custom Field's control), a workspace tile or a notice, and takes effect on the next page load. Core validates every record strictly and applies it after the installed apps, so the site's own choice wins. The editor or onboarding page that writes these records, an AI that authors them, and drag-and-drop are parked for the AI-authoring work.</p>
   </section>
 
   <section class="step" aria-labelledby="s6">
-    <div class="step-head"><h2 id="s6">Where the SDK lives</h2></div>
+    <div class="step-head"><h2 id="s6">Where the SDK lives: inside Core</h2></div>
     <div class="repos">
-      <div class="repo"><code>buildsuite-sdk-py</code><p>Frappe helpers: seed if missing, permissions, reports, workflows, test helpers. Depends on Frappe only.</p></div>
-      <div class="repo"><code>@buildsuite/sdk</code><p>Controls, composables, registries and types. Core consumes it the same way an extension does.</p></div>
-      <div class="repo"><code>buildsuite-extension-template</code><p>The starter app that <code>new-buildsuite-extension</code> writes today from a template inside Core; a separate repo comes later.</p></div>
+      <div class="repo"><code>buildsuite_core.sdk</code><p>The Python half: extension discovery, settings pages, <code>seed_if_missing</code>, Custom Field helpers for bespoke save APIs, the customisation validators and the scaffold.</p></div>
+      <div class="repo"><code>register(sdk)</code><p>The JavaScript half is the object an extension receives: routes, slots, views, doctype hooks, field rules, list extras, plus Core's own Vue and controls.</p></div>
+      <div class="repo"><code>bench new-buildsuite-extension</code><p>Writes the starter app. There is no template repo and there are no separate SDK packages: an extension runs on a site that has BuildSuite Core installed.</p></div>
     </div>
-    <p class="note">The two SDKs version independently with a published compatibility matrix. The split happens once the controls are extracted from Core and the public surface has settled.</p>
+    <p class="note">One version covers both halves (<code>SDK_VERSION</code>, now 1.6); an extension states the minimum it needs with <code>min_sdk</code>.</p>
   </section>
 
   <section class="step" aria-labelledby="s7">
@@ -285,13 +301,15 @@ bench --site mysite migrate   <span class="d"># only if you ship fixtures or doc
           <tr><td>Add pages and workspace tiles; slots above and below every page, bespoke ones included</td><td><span class="chip built">Built</span></td></tr>
           <tr><td>Override or wrap any named Core page; hooks and slots on the generic DocType form</td><td><span class="chip built">Built</span></td></tr>
           <tr><td>Settings pages as Single DocTypes declared in hooks.py, with no JavaScript</td><td><span class="chip built">Built</span></td></tr>
-          <tr><td>Custom Field controls on every bespoke create form, and the Project and Task edit screens</td><td><span class="chip built">Built</span></td></tr>
-          <tr><td>Demo extension app, with backend and Cypress tests</td><td><span class="chip built">Built</span></td></tr>
-          <tr><td>List columns added to any list</td><td><span class="chip built">Built</span></td></tr>
-          <tr><td>Form sections beyond top and bottom slots</td><td><span class="chip planned">Planned</span></td></tr>
-          <tr><td>Scaffold command, author guide, versioning policy (build config not needed)</td><td><span class="chip built">Built: phase 3</span></td></tr>
-          <tr><td>Site-level customisations as data: list column, form field, workspace tile, notice</td><td><span class="chip built">Built: phase 4, first slice</span></td></tr>
-          <tr><td>Editor page, AI authoring and drag-and-drop</td><td><span class="chip planned">Planned</span></td></tr>
+          <tr><td>Custom Field controls on all 20 bespoke create forms and the Project and Task edit screens; the named save APIs carry them (each tested end to end)</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Anchors: before or after any section of any form (138 sections), the Quotation and Assembly detail pages, and before or after any named field</td><td><span class="chip built">Built (1.5, 1.6)</span></td></tr>
+          <tr><td>Core field rules: hide (never a Core-required field), read-only, label, hint, required, as objects or functions of the form; messages under a field from beforeSave</td><td><span class="chip built">Built (1.6)</span></td></tr>
+          <tr><td>List columns on more than 40 lists, server-side sortable on server-paged lists; one-click preset filters; rows keyed by something other than the name</td><td><span class="chip built">Built (1.3, 1.6)</span></td></tr>
+          <tr><td>Components as .vue files through the build kit, sharing Core's Vue and controls at runtime</td><td><span class="chip built">Built (1.5)</span></td></tr>
+          <tr><td>Scaffold command, author guide, generated field reference, versioning policy, demo app, 39 backend tests and 31 Cypress specs (some Cypress specs repeat across forms)</td><td><span class="chip built">Built</span></td></tr>
+          <tr><td>Site-level customisations: List Column, Form Field, Workspace Tile and Notice records, validated strictly</td><td><span class="chip built">Built (1.4, first slice)</span></td></tr>
+          <tr><td>Editor or onboarding page, AI authoring and drag-and-drop for site customisations</td><td><span class="chip planned">Parked for AI authoring</span></td></tr>
+          <tr><td>Field names for Crew, Field Attendance and Field Employee; reordering fields; presets on hand-built lists; per-user saved views</td><td><span class="chip planned">Planned</span></td></tr>
         </tbody>
       </table>
     </div>

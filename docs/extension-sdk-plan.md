@@ -1,7 +1,11 @@
 # BuildSuite extension SDK — plan
 
-Status: **phases 1, 2 and 2b implemented (see the status sections)** · Branch: `feat/extension-sdk` · Supersedes the customer-specific work on
-`feat/app-extension-hooks` (see "What we keep from it").
+Status: **SDK 1.6 built and running (phases 1 to 3, the form and list capabilities, and a first slice of phase 4; see the status sections)** ·
+Branch: `feat/extension-sdk` (PR #485, not merged: waits for the remaining features, cleanup and documentation) · Supersedes the
+customer-specific work on `feat/app-extension-hooks` (see "What we keep from it").
+
+The sections from "Goal" to "Verification" are the original design. Where building changed it, the section says so; the
+status sections that follow are the record of what exists. **Decisions that override the design (2026-11-13)** are listed just below the Goal.
 
 ## Goal
 
@@ -16,6 +20,21 @@ template we provide, install it on a site, and it can
 The same extension points must later be drivable **from data on the site**, so an onboarding page
 where a user prompts an AI, or drags and drops, can produce customisations without anyone writing
 code (phase 4, designed for now, built last).
+
+## Decisions that override the design (2026-11-13)
+
+- **The SDK ships inside Core.** There are no separate Python or JS SDK packages and no starter-template repo.
+  Anyone writing an extension has BuildSuite Core installed, so the SDK is whatever Core exposes: the `sdk` object an
+  extension receives in `register(sdk)`, and the `buildsuite_core.sdk` Python module. `bench new-buildsuite-extension`
+  creates the app.
+- **Shared runtime instead of an import map.** An extension is a plain ES module that uses `sdk.vue`, or a bundle built
+  with the build kit (`frontend/sdk-kit/vite.mjs`) that resolves `vue`, `vue-router` and Core's own components to Core's
+  copies through `globalThis.__buildsuite`.
+- **Site-level customisations stay at their first slice (SDK 1.4)**: List Column, Form Field, Workspace Tile and Notice
+  records. The editor or onboarding page, the AI authoring endpoint and drag-and-drop are parked for the AI-authoring work.
+- **Focus: lists and forms.** Field rules, field anchors and field-level errors (1.6), then list sorting, preset
+  filters and wider coverage (1.6); see the status sections.
+- **No merge to `develop` yet.** `feat/extension-sdk` merges after the remaining features, a cleanup pass and the docs.
 
 ## Non-goals
 
@@ -71,10 +90,11 @@ export, `register(sdk)`. Each extension is isolated in try/catch: a failing exte
 skipped and never stops Core. `min_sdk` is checked against `sdk.version`; an incompatible extension is
 skipped with a visible, admin-only warning.
 
-The extension app builds its own bundle (the template ships the Vite config) with `vue`,
-`vue-router`, `pinia` and `frappe-ui` as **externals**. Core supplies them (one reactivity system, one
-router, one store) through an import map plus small shim modules, so extension code uses normal
-`import { ref } from "vue"`.
+*As built:* an extension is a plain ES module that takes Vue from `sdk.vue` (no build step), or a bundle built with the
+build kit, which maps `vue`, `vue-router`, `@/components/desk/*` and selected `@/composables` / `@/utils` imports to Core's
+own copies at runtime (`globalThis.__buildsuite`, published by the loader) and fails the build on any other `@/` import. No
+import map was needed. *The original design:* a bundle with `vue`, `vue-router`, `pinia` and `frappe-ui` as externals
+supplied through an import map plus shim modules.
 
 ### 3. Registries (the extension points)
 
@@ -102,13 +122,16 @@ A single entry that re-exports the **public** surface and nothing else:
 - data: the data adapter, `__()` translate, formatters, toast and confirm helpers,
 - `version`, and the registration functions above.
 
-Extensions import from the SDK (`import { DeskField } from "@buildsuite/sdk"`, mapped by the same import
-map), never from `@/…`. That is the upgrade contract: the SDK surface is versioned and semver'd;
-Core-internal modules are free to change.
+*As built:* extensions use the controls through the `sdk` object they receive (`sdk.controls.DeskField`) or, in a built
+bundle, through the kit's resolved imports; there is no `@buildsuite/sdk` package. That is the upgrade contract: the SDK
+surface is versioned (`SDK_VERSION`, `min_sdk`) and Core-internal modules are free to change.
 
 ### 5. The Python SDK (`buildsuite_core/sdk`)
 
-Thin, documented wrappers with an explicit `__all__`, over helpers that already exist:
+*As built:* `SDK_VERSION`, `get_extension_entries`, `get_settings_pages`, `seed_if_missing`, `apply_custom_fields` /
+`custom_field_values`, the customisation validators and the scaffold. The rest of this list was designed and not built
+(`seed_workflow`, `grant_permissions`, `register_report`, `register_workspace_tile`, the test helpers); build one when an
+extension needs it. The original design: thin, documented wrappers with an explicit `__all__`, over helpers that already exist:
 
 - `seed_if_missing(doctype, filters, values)`: the create-if-missing pattern, so an extension's
   seeds never overwrite admin edits on migrate.
@@ -123,17 +146,18 @@ Thin, documented wrappers with an explicit `__all__`, over helpers that already 
 
 ### 6. Template and scaffold
 
-- A template repo (and `bench buildsuite new-extension <name>`) producing: Python package with
-  `hooks.py` and the hook above, a Vite config with the externals and import map, a sample
-  `extension.js` using each registry once, a `tests/` folder using the Python SDK test helpers, and a
-  README.
-- Docs live in `docs/extensions/`: guide, SDK reference, slot catalogue, versioning policy.
+- *As built:* `bench new-buildsuite-extension <app>` writes the app from a template inside Core (no template repo):
+  `hooks.py` with the hook above, `modules.txt`, `pyproject.toml` and a sample `extension.js`. The demo app lives in
+  `examples/buildsuite_demo_extension`.
+- Docs: `docs/extension-sdk-guide.md` (author guide), `docs/extension-sdk-form-fields.md` (generated list of the fields you
+  can address), this plan, and `docs/extension-sdk-quickstart.html`. The original design called for `docs/extensions/*`
+  with a slot catalogue and an SDK reference.
 
 ### 7. Site-level data layer (phase 4)
 
-A doctype (working name "BuildSuite Customisation") stores the same declarations as JSON (tile,
-slot, view override). Boot merges them into the registries with precedence **core, then app, then
-site**. An AI or drag-and-drop editor only has to write that JSON. Phases 1 to 3 keep declarations
+*First slice built (SDK 1.4, see its status section):* the doctype is `BuildSuite Customisation`, with four data-only kinds.
+The original design: a doctype stores the same declarations as JSON (tile, slot, view override). Boot merges them into the
+registries with precedence **core, then app, then site**. An AI or drag-and-drop editor only has to write that JSON. Phases 1 to 3 keep declarations
 JSON-friendly (names and props, not closures) so this needs no redesign.
 
 ## Phases
@@ -148,8 +172,8 @@ Each phase is its own PR off `develop`; nothing ships half-wired.
 2. **View registry and overrides.** Move Core routes onto named views; `views.override` and `wrap`;
    DocType hooks on the generic form; first public SDK cut (`frontend/src/sdk`) and Python SDK module.
    *Done when:* an extension replaces and wraps a Core view and hooks a doctype save, with tests.
-3. **Scaffold, docs, versioning.** Template, `new-extension` command, `docs/extensions/*`, semver
-   check, SDK changelog, CI that fails when the public surface changes without a version bump.
+3. **Scaffold, docs, versioning.** *Built:* the `new-buildsuite-extension` command, the guide, the `min_sdk` rule.
+   *Not built:* a changelog and a CI check that fails when the public surface changes without a version bump.
 4. **Site-level customisation data layer** and the editor/AI onboarding page.
 
 ## Risks and open decisions
@@ -160,7 +184,7 @@ Each phase is its own PR off `develop`; nothing ships half-wired.
 2. **Trust.** Extension code shares Vue, router and store with full access. Fine for apps our team or
    partners write. If customers or an AI author them, the SDK needs a restricted store facade and
    per-extension permissions. Decide before phase 4.
-3. **Import-map vs globals** for sharing Vue and friends (phase 1 spike decides).
+3. ~~Import-map vs globals~~ **Decided:** the shared runtime (`sdk.vue`, and `globalThis.__buildsuite` for built bundles).
 4. **Public surface size.** Start small; adding to the SDK is cheap, removing is not.
 5. **Existing per-page code.** Pages must expose slots and named views gradually. Do the high-traffic
    ones first (Quotation, Project detail, workspaces landing) and make adding the rest mechanical.
@@ -280,9 +304,9 @@ then dynamic settings. Phase 3 (scaffold, docs, versioning) follows and document
 - Demo extension additions: a Single DocType and its hook, a Custom Field fixture on Quotation with its
   control, a Home page slot. 14 backend tests and 10 Cypress tests pass.
 
-Known gaps: bespoke forms other than Quotation, Project and Task have no field binding yet (Project and Task have create forms only here; their edit screens are separate); the custom-field value was
-tested as a visible, editable control, not through a full quotation save; route names are still not a
-documented public contract; a settings page that is a Single DocType gets the generic layout only.
+Known gaps at the time, since closed: the other bespoke forms (all 20 now adopt it) and the edit screens (Project and
+Task now do); route names are a documented policy (see the guide). Still true: a settings page that is a Single DocType
+gets the generic layout only.
 
 ## Phase 3 status (scaffold, guide, versioning)
 
@@ -291,8 +315,8 @@ documented public contract; a settings page that is a Single DocType gets the ge
   rule and the route-name stability policy.
 - Build config: not needed. The SDK passes Vue as `sdk.vue`, so extensions are plain ES modules.
   A Vite/SFC build with externals remains optional and unbuilt.
-- Still open: a separate template repo and SDK repos (deferred until controls are extracted),
-  the resource registry (list columns/sections), and phase 4.
+- Dropped: separate SDK repos and a template repo (2026-11-13). Done since: list columns (1.3), the site-level layer's first
+  slice (1.4), anchors and the build kit (1.5), field and list capabilities (1.6).
 
 ### Custom Fields through bespoke save APIs
 
@@ -312,9 +336,9 @@ no fixed-field API gap. Covered by `extension_sdk.cy.js` (saved and read back on
 
 Done: `doctype(dt).on({ listColumns })`, `registry.listColumns`, `DeskList` merges the columns and reads
 their values (`extDoctype`/`filterDoctype`), `DocTypeListView` passes its doctype. Covered by
-`extension_sdk.cy.js` (project list shows the demo column). Not done: list sections/filters/server-side sort on
-an extension column, form sections beyond top/bottom slots, and lists that key rows by something other
-than the document name.
+`extension_sdk.cy.js` (project list shows the demo column). Since then (SDK 1.6, below): server-side sort, preset
+filters and an `ext-row-name` for other row keys. The `sdk.resources(...)` registry named in the early design was not built as such:
+columns, filters and rules hang off `sdk.doctype(name).on({...})`.
 
 ### Remaining bespoke forms adopted
 
@@ -323,8 +347,8 @@ Scope Change Order, Stage Planning, Task Progress Entry, Tender, Assembly, Estim
 change. The named-API forms (Crew, Field Attendance, Field Employee, Subcontractor, Consumption, Measurement
 Book) take `custom_fields` and call `apply_custom_fields`; Consumption and Measurement Book also return the
 values. Tested: control shown on all forms; saved value for Estimate Template (UI), Crew and Subcontractor
-(API tests). Not tested end to end: the save for Field Attendance, Field Employee, Consumption and
-Measurement Book (same helper, code path covered by the unit tests only).
+(API tests). Each named save is now tested end to end (`tests/test_sdk_named_saves.py`: Field Attendance, Field Employee, Material
+Consumption, Measurement Book; the value is stored on the document and, where the API returns it, read back).
 
 ### Form field control (SDK 1.6)
 
