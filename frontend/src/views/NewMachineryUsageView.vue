@@ -219,7 +219,7 @@ const breadcrumbs = [
 				<DeskField name="fuel_cost" :label="`${__('Fuel cost')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="__('Total')">
+				<DeskField name="total" :label="__('Total')">
 					<div class="text-sm text-ink-900 font-medium tabular-nums pt-1.5">
 						{{ fmtINR(total) }}
 					</div>

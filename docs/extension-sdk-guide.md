@@ -117,9 +117,14 @@ section anchors that place a component between sections.
 saving, shows each message under its field, scrolls to the first, shows the first as the toast, and clears a
 field's message as soon as its value changes. A plain `Error` still shows only the toast.
 
-Limits: forms that do not draw their inputs with `DeskField` (Crew, Field Attendance, Field Employee) have no field
-names yet, and a field that has no input bound to the form's own model (file pickers, read-only displays) is
-not addressable.
+Limits:
+
+- The Task detail's progress-entry and dependency forms are other DocTypes shown on the Task screen and have no field
+  names yet.
+- `required` is enforced only for a field whose value is on the form's own model. For a file picker or a value that is
+  shown but not edited, the rule is skipped with one console warning (check those in your own `beforeSave`).
+- A value shown read-only on a detail page (the Task's Name, Description, Start and Due) has the same name as the input
+  in its edit form, so one rule applies to both.
 
 ## Lists: columns, sorting, filters and presets
 

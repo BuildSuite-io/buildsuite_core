@@ -358,7 +358,11 @@ const breadcrumbs = computed(() => [
 					/>
 				</DeskField>
 				<!-- Read-only, derived from the work order. -->
-				<DeskField :label="__('Project')" :hint="__('Derived from the work order.')">
+				<DeskField
+					name="project"
+					:label="__('Project')"
+					:hint="__('Derived from the work order.')"
+				>
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
@@ -366,7 +370,11 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woProjectName || form.project || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField :label="__('Subcontractor')" :hint="__('Derived from the work order.')">
+				<DeskField
+					name="subcontractor"
+					:label="__('Subcontractor')"
+					:hint="__('Derived from the work order.')"
+				>
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"

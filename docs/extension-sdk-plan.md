@@ -355,13 +355,14 @@ Consumption, Measurement Book; the value is stored on the document and, where th
 Done: `DeskField` takes a `name` and, inside a form that adopted `useExtensionFields`, applies the
 extension's `fieldRules` (hidden, readOnly, label, hint, required, as objects or functions of the form
 context), offers `form.<DocType>.before|after.field.<name>` slots, and shows a field-level message from
-`FieldErrors`. 163 fields across the adopted forms are named (`docs/extension-sdk-form-fields.md`, generated
+`FieldErrors`. 195 fields across the adopted forms are named, including Crew, Field Attendance and Field Employee (their fields
+live in `CrewFormFields`, `AttendanceFormFields` and `FieldEmployeeFormFields`) and the read-only values on a detail page (`docs/extension-sdk-form-fields.md`, generated
 and checked by `tests/test_field_names.py`). `ext.beforeSave` enforces extension-required fields that are on
 screen. A field Core requires cannot be hidden. Verified by rendering `DeskField` for real (rules, anchors,
 required, read-only, errors) and by `extension_sdk.cy.js` (5 specs on the Estimate Template form).
-Not done: names for Crew, Field Attendance and Field Employee (they do not use `DeskField`); fields with no
-bound model (file pickers, read-only displays, the Task detail's progress and dependency forms); reordering
-fields; rules in site-level customisations.
+`required` is only enforced where the value is on the form's own model (a file picker is skipped with a warning).
+Not done: names for the Task detail's progress-entry and dependency forms (other DocTypes on that screen; they need a
+form scope of their own); reordering fields; rules in site-level customisations.
 
 ### List extras (SDK 1.6)
 

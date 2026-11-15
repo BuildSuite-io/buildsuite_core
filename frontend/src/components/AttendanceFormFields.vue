@@ -31,7 +31,7 @@ const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "
 
 <template>
 	<DeskSection id="header" :title="__('Header')" :cols="3">
-		<DeskField :label="__('Project')" required :error="errors.project">
+		<DeskField name="project" :label="__('Project')" required :error="errors.project">
 			<DeskLinkPicker
 				:model-value="form.project"
 				doctype="Project"
@@ -43,15 +43,19 @@ const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "
 				@update:model-value="(v) => emit('project', v)"
 			/>
 		</DeskField>
-		<DeskField :label="__('Date')" required :error="errors.date">
+		<DeskField name="date" :label="__('Date')" required :error="errors.date">
 			<DeskInput v-model="form.date" type="date" />
 		</DeskField>
-		<DeskField :label="__('Status')" :hint="__('Applies to all rows.')">
+		<DeskField name="status" :label="__('Status')" :hint="__('Applies to all rows.')">
 			<DeskSelect :model-value="form.status" @update:model-value="(v) => emit('status', v)">
 				<option v-for="s in ATTENDANCE_STATUSES" :key="s" :value="s">{{ __(s) }}</option>
 			</DeskSelect>
 		</DeskField>
-		<DeskField :label="__('Overtime hours')" :hint="__('Applies to all rows.')">
+		<DeskField
+			name="overtime_hours"
+			:label="__('Overtime hours')"
+			:hint="__('Applies to all rows.')"
+		>
 			<DeskInput
 				:model-value="form.overtime_hours"
 				type="number"
@@ -61,6 +65,7 @@ const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "
 			/>
 		</DeskField>
 		<DeskField
+			name="cost_code"
 			:label="__('Cost code')"
 			:hint="__('Applies to all rows. Uncoded rows do not post to the BOQ.')"
 		>
@@ -71,7 +76,7 @@ const projectFilter = computed(() => [...companyFilter.value, ["status", "!=", "
 				@update:model-value="(v) => emit('costCode', v)"
 			/>
 		</DeskField>
-		<DeskField :label="__('Comments')" :hint="__('Applies to all rows.')">
+		<DeskField name="comments" :label="__('Comments')" :hint="__('Applies to all rows.')">
 			<DeskInput
 				:model-value="form.comments"
 				@update:model-value="(v) => emit('comments', v)"

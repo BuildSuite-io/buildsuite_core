@@ -548,6 +548,7 @@ const breadcrumbs = [
 						@change="onProgressFilesPicked"
 					/>
 					<DeskField
+						name="files"
 						:label="__('Files')"
 						:hint="
 							__(

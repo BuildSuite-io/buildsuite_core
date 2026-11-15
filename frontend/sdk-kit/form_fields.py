@@ -2,8 +2,8 @@
 
     python frontend/sdk-kit/form_fields.py > docs/extension-sdk-form-fields.md
 
-Reads the views that call useExtensionFields("<DocType>") (plus the edit modals that belong to one of
-them). tests/test_field_names.py fails when the committed docs/extension-sdk-form-fields.md is out of
+Reads the views that call useExtensionFields("<DocType>") (plus the components listed in COMPONENTS that
+draw their fields). tests/test_field_names.py fails when the committed docs/extension-sdk-form-fields.md is out of
 date, so the reference never drifts from the forms.
 """
 
@@ -12,8 +12,14 @@ import sys
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src"
-# edit modals render inside a view that adopted useExtensionFields; they belong to its DocType
-MODALS = {"views/project-detail/ProjectEditModal.vue": "Project"}
+# Components that draw a form's fields for a view that adopted useExtensionFields (an edit modal, or the
+# fields block a screen shares between its create and edit forms): they belong to that view's DocType.
+COMPONENTS = {
+	"views/project-detail/ProjectEditModal.vue": "Project",
+	"components/CrewFormFields.vue": "Crew",
+	"components/AttendanceFormFields.vue": "Field Attendance",
+	"components/FieldEmployeeFormFields.vue": "Employee",
+}
 
 FIELD = re.compile(r"<DeskField\b(.*?)>(.*?)</DeskField>", re.S)
 NAMED = re.compile(r'(?<![:\w-])name="([a-z0-9_]+)"')
@@ -32,7 +38,7 @@ def scan():
 	files = {p.relative_to(SRC).as_posix(): p for p in SRC.rglob("*.vue")}
 	for rel, path in sorted(files.items()):
 		text = path.read_text()
-		doctype = MODALS.get(rel) or (ADOPT.search(text).group(1) if ADOPT.search(text) else None)
+		doctype = COMPONENTS.get(rel) or (ADOPT.search(text).group(1) if ADOPT.search(text) else None)
 		if not doctype:
 			continue
 		for attrs, _body in FIELD.findall(text):

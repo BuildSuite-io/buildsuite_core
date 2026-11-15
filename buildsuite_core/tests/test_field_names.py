@@ -13,17 +13,16 @@ spec = importlib.util.spec_from_file_location("form_fields", ROOT / "frontend" /
 form_fields = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(form_fields)
 
-# Fields that stay unnamed on purpose, per file: other forms inside the same screen (Task detail's
-# progress entry and dependency forms are other DocTypes), file uploads and read-only displays. A new
-# field in any other file must be named; lower these numbers when one is named.
+# Fields that stay unnamed, per file: the Task detail's progress-entry and dependency forms sit on the Task
+# screen but are other DocTypes, and naming them under Task would be wrong (they need a scope of their own).
+# A new field in any other file must be named; lower the number when one is.
 UNNAMED = {
-	"views/NewMachineryUsageView.vue": 1,
-	"views/NewMeasurementBookView.vue": 2,
-	"views/NewTaskProgressEntryView.vue": 1,
-	"views/TaskDetailView.vue": 18,
+	"views/TaskDetailView.vue": 13,
 }
-# The same field on both sides of a v-if / v-else (the direct-bill and measured-bill layouts)
-REPEATED_ALLOWED = {"views/NewSubcontractorBillView.vue"}
+# The same field named twice in one file: on both sides of a v-if / v-else (the direct-bill and measured-bill
+# layouts), or as the read-only value on a detail page and the input in its edit modal (the Task's Name,
+# Description, Start and Due). One name, so a rule applies to both.
+REPEATED_ALLOWED = {"views/NewSubcontractorBillView.vue", "views/TaskDetailView.vue"}
 
 
 class TestFieldNames(unittest.TestCase):

@@ -288,6 +288,19 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		});
 	});
 
+	describe("field names on the forms whose fields live in a shared component (SDK 1.6)", () => {
+		for (const [route, names] of [
+			["/field-employees/new", ["first_name", "custom_wage", "custom_trade"]],
+			["/crews/new", ["crew_name", "crew_leader", "trade"]],
+			["/field-attendance/new", ["project", "date", "overtime_hours"]],
+		]) {
+			it(`${route} offers its fields to extensions by name`, () => {
+				cy.visitApp(route);
+				for (const name of names) cy.get(`[data-field="${name}"]`).should("exist");
+			});
+		}
+	});
+
 	describe("list extras (SDK 1.6) on the Projects list", () => {
 		// the list pages on the server through frappe.client.get_list: tag the call that carries `needle`
 		const watchList = (needle, alias) =>

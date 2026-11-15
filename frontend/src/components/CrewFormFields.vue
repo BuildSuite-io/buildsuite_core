@@ -19,13 +19,13 @@ const { workerOptions } = useFieldEmployeeOptions();
 
 <template>
 	<DeskSection id="crew" :title="__('Crew')" :cols="2">
-		<DeskField :label="__('Crew name')" required :error="errors.crew_name">
+		<DeskField name="crew_name" :label="__('Crew name')" required :error="errors.crew_name">
 			<DeskInput
 				v-model="form.crew_name"
 				:placeholder="__('e.g. Block A Structural Gang')"
 			/>
 		</DeskField>
-		<DeskField :label="__('Crew leader')">
+		<DeskField name="crew_leader" :label="__('Crew leader')">
 			<DeskSearchableSelect
 				v-model="form.crew_leader"
 				:options="workerOptions"
@@ -35,7 +35,7 @@ const { workerOptions } = useFieldEmployeeOptions();
 			/>
 		</DeskField>
 
-		<DeskField :label="__('Trade')">
+		<DeskField name="trade" :label="__('Trade')">
 			<DeskLinkPicker
 				v-model="form.trade"
 				doctype="Labour Trade"
@@ -44,7 +44,7 @@ const { workerOptions } = useFieldEmployeeOptions();
 				:placeholder="__('Select trade')"
 			/>
 		</DeskField>
-		<DeskField :label="__('Company')" required :error="errors.company">
+		<DeskField name="company" :label="__('Company')" required :error="errors.company">
 			<DeskLinkPicker
 				v-model="form.company"
 				doctype="Company"

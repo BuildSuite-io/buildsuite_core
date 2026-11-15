@@ -885,23 +885,27 @@ usePageTitle(() => task.value?.name);
 				</section>
 
 				<DeskSection id="details" :title="__('Details')">
-					<DeskField :label="__('Name')">
+					<DeskField name="name" :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ task.name }}</div>
 					</DeskField>
-					<DeskField :label="__('Task Type')" :hint="__('Drives workflow.')">
+					<DeskField
+						name="task_type"
+						:label="__('Task Type')"
+						:hint="__('Drives workflow.')"
+					>
 						<div class="py-1">
 							<StatusBadge :status="task.task_type || 'Activity'" />
 						</div>
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<div class="text-sm text-ink-700 py-1 whitespace-pre-line">
 							{{ task.description || "—" }}
 						</div>
 					</DeskField>
-					<DeskField :label="__('Start')">
+					<DeskField name="start_date" :label="__('Start')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.startDate) }}</div>
 					</DeskField>
-					<DeskField :label="__('Due')">
+					<DeskField name="end_date" :label="__('Due')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.endDate) }}</div>
 					</DeskField>
 				</DeskSection>

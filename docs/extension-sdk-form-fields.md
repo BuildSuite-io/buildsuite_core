@@ -40,6 +40,33 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `tax_percent` | Tax % |  | NewTenderView |
 | `notes` | Notes |  | NewTenderView |
 
+## Crew
+
+| Name | Label | Core requires it | Screen |
+| --- | --- | --- | --- |
+| `crew_name` | Crew name | yes | CrewFormFields |
+| `crew_leader` | Crew leader |  | CrewFormFields |
+| `trade` | Trade |  | CrewFormFields |
+| `company` | Company | yes | CrewFormFields |
+
+## Employee
+
+| Name | Label | Core requires it | Screen |
+| --- | --- | --- | --- |
+| `employee` | Employee code |  | FieldEmployeeFormFields |
+| `first_name` | First name | yes | FieldEmployeeFormFields |
+| `last_name` | Last name |  | FieldEmployeeFormFields |
+| `gender` | Gender | yes | FieldEmployeeFormFields |
+| `date_of_birth` | Date of birth | yes | FieldEmployeeFormFields |
+| `date_of_joining` | Date of joining | yes | FieldEmployeeFormFields |
+| `status` | Status |  | FieldEmployeeFormFields |
+| `custom_trade` | Trade |  | FieldEmployeeFormFields |
+| `custom_contractor` | Contractor |  | FieldEmployeeFormFields |
+| `cell_number` | Phone |  | FieldEmployeeFormFields |
+| `company` | Company | yes | FieldEmployeeFormFields |
+| `custom_wage` | Daily wage | yes | FieldEmployeeFormFields |
+| `custom_wage_for_overtime` | Overtime wage |  | FieldEmployeeFormFields |
+
 ## Estimate Template
 
 | Name | Label | Core requires it | Screen |
@@ -48,6 +75,17 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `template_name` | Name | yes | NewEstimateTemplateView |
 | `project_type` | Project Category |  | NewEstimateTemplateView |
 | `description` | Description |  | NewEstimateTemplateView |
+
+## Field Attendance
+
+| Name | Label | Core requires it | Screen |
+| --- | --- | --- | --- |
+| `project` | Project | yes | AttendanceFormFields |
+| `date` | Date | yes | AttendanceFormFields |
+| `status` | Status |  | AttendanceFormFields |
+| `overtime_hours` | Overtime hours |  | AttendanceFormFields |
+| `cost_code` | Cost code |  | AttendanceFormFields |
+| `comments` | Comments |  | AttendanceFormFields |
 
 ## Machinery
 
@@ -75,12 +113,15 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `unit` | Unit |  | NewMachineryUsageView |
 | `rate` | Rate |  | NewMachineryUsageView |
 | `fuel_cost` | Fuel cost |  | NewMachineryUsageView |
+| `total` | Total |  | NewMachineryUsageView |
 
 ## Measurement Book
 
 | Name | Label | Core requires it | Screen |
 | --- | --- | --- | --- |
 | `work_order` | Work order | yes | NewMeasurementBookView |
+| `project` | Project |  | NewMeasurementBookView |
+| `subcontractor` | Subcontractor |  | NewMeasurementBookView |
 | `date` | Date | yes | NewMeasurementBookView |
 | `measured_by` | Measured by |  | NewMeasurementBookView |
 | `remarks` | Remarks |  | NewMeasurementBookView |
@@ -215,12 +256,12 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `assignee` | Assignee |  | NewTaskView |
 | `status` | Status |  | NewTaskView |
 | `priority` | Priority |  | NewTaskView |
-| `name` | Name | yes | TaskDetailView |
-| `task_type` | Task Type | yes | TaskDetailView |
-| `work_package_id` | Work Package |  | TaskDetailView |
+| `name` | Name |  | TaskDetailView |
+| `task_type` | Task Type |  | TaskDetailView |
 | `description` | Description |  | TaskDetailView |
 | `start_date` | Start |  | TaskDetailView |
 | `end_date` | Due |  | TaskDetailView |
+| `work_package_id` | Work Package |  | TaskDetailView |
 | `assignee` | Assignee |  | TaskDetailView |
 | `status` | Status |  | TaskDetailView |
 | `priority` | Priority |  | TaskDetailView |
@@ -239,6 +280,7 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `weather` | Weather |  | NewTaskProgressEntryView |
 | `blocker_flag` | Blocker |  | NewTaskProgressEntryView |
 | `blocker_note` | Blocker detail | yes | NewTaskProgressEntryView |
+| `files` | Files |  | NewTaskProgressEntryView |
 
 ## Work Package
 

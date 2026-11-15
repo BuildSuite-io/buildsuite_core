@@ -55,14 +55,29 @@ export function useExtensionFields(doctype, form = {}) {
 		);
 	}
 
-	/** Fields an extension made required (fieldRules.required) that are on screen and empty. */
+	const warnedUnreadable = new Set();
+
+	/** Fields an extension made required (fieldRules.required) that are on screen and empty. A field
+	 *  whose value is not on the form's own model (a file picker, a value shown but not edited) cannot
+	 *  be checked, so it is skipped with one warning rather than refused for ever. */
 	function missingRequired() {
 		const missing = {};
 		for (const name of fieldRuleNames(doctype)) {
 			const field = mounted.get(name);
 			if (!field || field.hidden.value) continue;
 			const rule = fieldRule(doctype, name, context);
-			if (rule.required && isEmpty(fieldValue(context, name))) {
+			if (!rule.required) continue;
+			const value = fieldValue(context, name);
+			if (value === undefined) {
+				if (!warnedUnreadable.has(name)) {
+					warnedUnreadable.add(name);
+					console.warn(
+						`[buildsuite] ${doctype}.${name} is not on the form's model, so "required" cannot be enforced on it`
+					);
+				}
+				continue;
+			}
+			if (isEmpty(value)) {
 				missing[name] = __("{0} is required", [field.label.value || name]);
 			}
 		}
