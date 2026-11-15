@@ -288,6 +288,17 @@ describe("Extension SDK — buildsuite_demo_extension", () => {
 		});
 	});
 
+	describe("a sub-form with its own scope: the Task page's dependency dialog (SDK 1.6)", () => {
+		it("takes the field rules registered for its own DocType", function () {
+			cy.request('/api/resource/Task?fields=["name"]&limit_page_length=1').then((res) => {
+				if (!res.body.data.length) return this.skip();
+				cy.visitApp(`/tasks/${encodeURIComponent(res.body.data[0].name)}`);
+				cy.contains("button", "+ Add").first().click();
+				cy.get('[data-field="lag"] label').should("contain", "Lag in days (demo)");
+			});
+		});
+	});
+
 	describe("field names on the forms whose fields live in a shared component (SDK 1.6)", () => {
 		for (const [route, names] of [
 			["/field-employees/new", ["first_name", "custom_wage", "custom_trade"]],

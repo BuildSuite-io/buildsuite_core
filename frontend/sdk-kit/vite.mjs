@@ -78,7 +78,11 @@ function buildsuiteRuntime() {
         const base = key.split("/").pop();
         if (key.startsWith("@/components/desk/") && CONTROLS.has(base))
           return ID(id);
-        if (key === "@/components/ExtensionSlot") return ID(id);
+        if (
+          key === "@/components/ExtensionSlot" ||
+          key === "@/components/ExtensionFormScope"
+        )
+          return ID(id);
         if (key.startsWith("@/composables/")) return ID(id);
         if (UTILS[key]) return ID(id);
         this.error(
@@ -97,10 +101,16 @@ function buildsuiteRuntime() {
         return {
           code: `const f = ${rt}.utils.request; export const frappeRequest = f; export default f;`,
         };
-      if (id === "@/components/ExtensionSlot.vue")
-        return {
-          code: `const C = ${rt}.controls.ExtensionSlot; export default C;`,
-        };
+      if (
+        id === "@/components/ExtensionSlot.vue" ||
+        id === "@/components/ExtensionFormScope.vue"
+      ) {
+        const name = id
+          .split("/")
+          .pop()
+          .replace(/\.vue$/, "");
+        return { code: `const C = ${rt}.controls.${name}; export default C;` };
+      }
       if (id.startsWith("@/components/desk/")) {
         const name = id
           .split("/")

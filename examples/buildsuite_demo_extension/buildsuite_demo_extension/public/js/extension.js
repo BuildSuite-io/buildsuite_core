@@ -200,6 +200,17 @@ export default function register(sdk) {
 		sdk.slots.add(`form.${doctype}.top`, RegionControl);
 	}
 
+	// 8d. A form of another DocType shown on a screen (the Task page's dependency dialog) has its own scope:
+	//     rules, field errors and hooks registered for "Task Depends On" apply inside it.
+	sdk.doctype("Task Depends On").on({
+		fieldRules: { lag: { label: "Lag in days (demo)" } },
+		beforeSave(payload) {
+			if (Number(payload.lag) > 100) {
+				throw new sdk.FieldErrors({ lag: "The demo extension caps a lag at 100 days." });
+			}
+		},
+	});
+
 	// 8a. List extras (SDK 1.6): the Region column above is also a sort option on lists that page on
 	//     the server, and an extension can offer a one-click preset filter above a doctype's list.
 	sdk.doctype("Project").on({

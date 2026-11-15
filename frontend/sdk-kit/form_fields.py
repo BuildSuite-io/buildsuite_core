@@ -2,8 +2,8 @@
 
     python frontend/sdk-kit/form_fields.py > docs/extension-sdk-form-fields.md
 
-Reads the views that call useExtensionFields("<DocType>") (plus the components listed in COMPONENTS that
-draw their fields). tests/test_field_names.py fails when the committed docs/extension-sdk-form-fields.md is out of
+Reads the views that call useExtensionFields("<DocType>"), the components listed in COMPONENTS that draw
+their fields, and any <ExtensionFormScope> block (a form of another DocType shown on a screen). tests/test_field_names.py fails when the committed docs/extension-sdk-form-fields.md is out of
 date, so the reference never drifts from the forms.
 """
 
@@ -31,23 +31,42 @@ def label_of(attrs: str) -> str:
 	return (m.group(1) or m.group(2)) if m else ""
 
 
+SCOPE = re.compile(r'<ExtensionFormScope\b[^>]*?doctype="([^"]+)"[^>]*>(.*?)</ExtensionFormScope>', re.S)
+
+
+def template_of(text: str) -> str:
+	"""A component's markup only: its <script> (and the examples in its comments) never count as fields."""
+	return re.sub(r"<script\b.*?</script>", "", text, flags=re.S)
+
+
 def scan():
-	"""{doctype: [(name, label, required, screen)]} and the count of fields still unnamed per file."""
+	"""{doctype: [(name, label, required, screen)]} and the count of fields still unnamed per file.
+
+	A view's fields belong to the DocType it passes to useExtensionFields, except those inside an
+	<ExtensionFormScope doctype="..."> block (a form of another DocType shown on that screen), which belong
+	to the block's DocType."""
 	forms: dict[str, list] = {}
 	unnamed: dict[str, int] = {}
 	files = {p.relative_to(SRC).as_posix(): p for p in SRC.rglob("*.vue")}
-	for rel, path in sorted(files.items()):
-		text = path.read_text()
-		doctype = COMPONENTS.get(rel) or (ADOPT.search(text).group(1) if ADOPT.search(text) else None)
-		if not doctype:
-			continue
-		for attrs, _body in FIELD.findall(text):
+
+	def collect(fields_text, doctype, rel):
+		for attrs, _body in FIELD.findall(fields_text):
 			named = NAMED.search(attrs)
 			if not named:
 				unnamed[rel] = unnamed.get(rel, 0) + 1
 				continue
 			required = bool(re.search(r"(?<![:\w-])required(?![\w-])", attrs))
 			forms.setdefault(doctype, []).append((named.group(1), label_of(attrs), required, Path(rel).stem))
+
+	for rel, path in sorted(files.items()):
+		text = path.read_text()
+		markup = template_of(text)
+		for scoped_doctype, inner in SCOPE.findall(markup):
+			collect(inner, scoped_doctype, rel)
+		own = SCOPE.sub("", markup)
+		doctype = COMPONENTS.get(rel) or (ADOPT.search(text).group(1) if ADOPT.search(text) else None)
+		if doctype:
+			collect(own, doctype, rel)
 	return forms, unnamed
 
 

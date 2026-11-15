@@ -16,6 +16,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskList from "@/components/desk/DeskList.vue";
 import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import ExtensionFormScope from "@/components/ExtensionFormScope.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -38,7 +39,7 @@ import {
 	setViewWrapper,
 } from "@/sdk/registry";
 
-export const SDK_VERSION = "1.6"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions; 1.6: field rules, field anchors, field-level errors, list sorting / preset filters / more lists
+export const SDK_VERSION = "1.6"; // 1.1: views.override/wrap, doctype().on, form slots; 1.2: settings.addTile, useExtensionFields; 1.3: doctype().on({ listColumns }); 1.4: site-level customisations; 1.5: section anchors, detail anchors, shared runtime for built extensions; 1.6: field rules, field anchors, field-level errors, form scopes, list sorting / preset filters / more lists
 
 /** The parts every extension shares, the same for all of them. Also published as
  *  globalThis.__buildsuite before extensions load, so an extension built with its own bundler
@@ -62,6 +63,7 @@ export const runtime = {
 		DeskActionBar,
 		DeskList,
 		ExtensionSlot,
+		ExtensionFormScope,
 	},
 
 	composables: {

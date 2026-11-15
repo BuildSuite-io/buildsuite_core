@@ -119,12 +119,25 @@ field's message as soon as its value changes. A plain `Error` still shows only t
 
 Limits:
 
-- The Task detail's progress-entry and dependency forms are other DocTypes shown on the Task screen and have no field
-  names yet.
 - `required` is enforced only for a field whose value is on the form's own model. For a file picker or a value that is
   shown but not edited, the rule is skipped with one console warning (check those in your own `beforeSave`).
 - A value shown read-only on a detail page (the Task's Name, Description, Start and Due) has the same name as the input
   in its edit form, so one rule applies to both.
+
+### A form of another DocType on a screen
+
+The Task page also files progress entries and adds dependencies in dialogs. Those are other DocTypes, so each has its own
+scope (`ExtensionFormScope`) and its own rules: register against **Task Progress Entry** and **Task Depends On**, not Task.
+Inside a scope, `hidden`, `readOnly`, `label`, `hint`, `required`, the field slots and `FieldErrors` all work, and
+`beforeSave` / `afterSave` hooks registered for that DocType run when the dialog saves. The same fields on the standalone
+New Progress Entry screen share the names, so one rule applies to both. A screen of your own can do the same:
+
+```vue
+<ExtensionFormScope ref="scope" doctype="Task Depends On" :form="depForm">
+  <DeskField name="lag" :label="__('Lag (days)')">...</DeskField>
+</ExtensionFormScope>
+<!-- before saving: await scope.value.ext.beforeSave(payload, depForm) -->
+```
 
 ## Lists: columns, sorting, filters and presets
 

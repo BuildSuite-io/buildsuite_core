@@ -266,6 +266,14 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `status` | Status |  | TaskDetailView |
 | `priority` | Priority |  | TaskDetailView |
 
+## Task Depends On
+
+| Name | Label | Core requires it | Screen |
+| --- | --- | --- | --- |
+| `other_task_id` | Predecessor task |  | TaskDetailView |
+| `dependency_type` | Type |  | TaskDetailView |
+| `lag` | Lag (days) |  | TaskDetailView |
+
 ## Task Progress Entry
 
 | Name | Label | Core requires it | Screen |
@@ -281,6 +289,16 @@ camelCase key in their model (`templateCode`); the name here is its snake_case f
 | `blocker_flag` | Blocker |  | NewTaskProgressEntryView |
 | `blocker_note` | Blocker detail | yes | NewTaskProgressEntryView |
 | `files` | Files |  | NewTaskProgressEntryView |
+| `progress_pct` | Cumulative progress (%) | yes | TaskDetailView |
+| `entry_date` | Entry date |  | TaskDetailView |
+| `entered_by` | Entered by |  | TaskDetailView |
+| `narrative` | Narrative |  | TaskDetailView |
+| `skilled_labour` | Skilled labour |  | TaskDetailView |
+| `unskilled_labour` | Unskilled labour |  | TaskDetailView |
+| `weather` | Weather |  | TaskDetailView |
+| `blocker_flag` | Blocker |  | TaskDetailView |
+| `blocker_note` | Blocker detail | yes | TaskDetailView |
+| `files` | Files |  | TaskDetailView |
 
 ## Work Package
 

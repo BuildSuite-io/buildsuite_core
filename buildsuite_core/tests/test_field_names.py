@@ -13,12 +13,9 @@ spec = importlib.util.spec_from_file_location("form_fields", ROOT / "frontend" /
 form_fields = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(form_fields)
 
-# Fields that stay unnamed, per file: the Task detail's progress-entry and dependency forms sit on the Task
-# screen but are other DocTypes, and naming them under Task would be wrong (they need a scope of their own).
-# A new field in any other file must be named; lower the number when one is.
-UNNAMED = {
-	"views/TaskDetailView.vue": 13,
-}
+# Fields that may stay unnamed, per file (none today: every field of the adopted forms and of the forms in an
+# ExtensionFormScope is named). A new field in any file must be named.
+UNNAMED: dict[str, int] = {}
 # The same field named twice in one file: on both sides of a v-if / v-else (the direct-bill and measured-bill
 # layouts), or as the read-only value on a detail page and the input in its edit modal (the Task's Name,
 # Description, Start and Due). One name, so a rule applies to both.
@@ -32,7 +29,7 @@ class TestFieldNames(unittest.TestCase):
 			rel = path.relative_to(SRC).as_posix()
 			names = [
 				m.group(1)
-				for a, _ in form_fields.FIELD.findall(path.read_text())
+				for a, _ in form_fields.FIELD.findall(form_fields.template_of(path.read_text()))
 				if (m := form_fields.NAMED.search(a))
 			]
 			seen += len(names)
