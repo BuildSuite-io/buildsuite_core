@@ -80,3 +80,4 @@ buildsuite_core.patches.retire_workforce_timesheet_record_tile # 2026-11-09 Time
 buildsuite_core.patches.add_labour_cost_summary_report # 2026-11-09 Labour Cost Summary joins the Workforce reports (first); drop "Labour cost from timesheets" if present
 buildsuite_core.patches.set_register_day_type_regular # 2026-11-12 Labour Attendance Register / Field Attendance: existing rows are Regular days
 buildsuite_core.patches.refresh_purchase_order_print_format # 2026-11-12 Purchase Order print: company address/GSTIN/CIN/phone/email in Ordered by, PO terms printed (only if the format was never edited)
+buildsuite_core.patches.move_subcontractor_charges_to_direct_expenses # 2026-11-12 Subcontractor Charges moves from the root Expenses group to Direct Expenses (only when still on the root)

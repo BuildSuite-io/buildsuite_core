@@ -35,6 +35,15 @@ def ensure_supplier(subcontractor):
 # --------------------------------------------------------------------------- #
 # Account + service-item resolution (per company)
 # --------------------------------------------------------------------------- #
+def direct_expenses_hint(company) -> str:
+	"""The parent for subcontractor charges: a subcontractor's work is a direct cost of the job, so
+	it sits under "Direct Expenses". A chart of accounts without that group falls back to the
+	root "Expenses"."""
+	if frappe.db.exists("Account", {"account_name": "Direct Expenses", "company": company, "is_group": 1}):
+		return "Direct Expenses"
+	return "Expenses"
+
+
 def resolve_accounts(company):
 	"""Return {expense, retention, advance, cost_center} for a company, creating the BuildSuite
 	accounts if a prior seed pass has not. Idempotent.
@@ -43,7 +52,9 @@ def resolve_accounts(company):
 	type forces a party subledger (a supplier) on every GL line, but retention is withheld
 	against the company, not a party — so a plain Current Liability / Current Asset ledger."""
 	return {
-		"expense": _ensure_account(company, EXPENSE_ACCOUNT_NAME, "Expense", "Expense Account", "Expenses"),
+		"expense": _ensure_account(
+			company, EXPENSE_ACCOUNT_NAME, "Expense", "Expense Account", direct_expenses_hint(company)
+		),
 		"retention": _ensure_account(company, RETENTION_ACCOUNT_NAME, "Liability", "", "Current Liabilities"),
 		"advance": _ensure_account(company, ADVANCE_ACCOUNT_NAME, "Asset", "", "Current Assets"),
 		"cost_center": frappe.db.get_value("Company", company, "cost_center"),
