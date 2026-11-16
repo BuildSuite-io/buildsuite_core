@@ -17,4 +17,8 @@ class BuildSuiteCoreSettings(Document):
 		rate_master_update_threshold: DF.Percent
 	# end: auto-generated types
 
-	pass
+	def validate(self):
+		if self.default_petty_cash_account and self.has_value_changed("default_petty_cash_account"):
+			from buildsuite_core.utils.petty_cash import validate_petty_cash_account
+
+			validate_petty_cash_account(self.default_petty_cash_account)

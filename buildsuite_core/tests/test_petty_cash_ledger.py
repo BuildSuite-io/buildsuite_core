@@ -310,3 +310,39 @@ class TestPettyCashGroupAccount(BuildSuiteTestCase):
 
 		frappe.db.set_single_value("BuildSuite Core Settings", "default_petty_cash_account", group)
 		self.assertEqual(pc.get_petty_cash_account(self.company), leaf)
+
+	def _default_company_group(self):
+		return frappe.db.get_value(
+			"Account", {"company": self.company, "is_group": 1, "root_type": "Asset"}, "name"
+		)
+
+	def test_validate_rejects_group_and_non_cash(self):
+		with self.assertRaises(frappe.ValidationError):
+			pc.validate_petty_cash_account(self._default_company_group(), self.company)
+		expense = frappe.db.get_value(
+			"Account", {"company": self.company, "is_group": 0, "root_type": "Expense"}, "name"
+		)
+		with self.assertRaises(frappe.ValidationError):
+			pc.validate_petty_cash_account(expense, self.company)
+		pc.validate_petty_cash_account(pc.resolve_petty_cash_account(self.company), self.company)
+
+	def test_settings_form_rejects_a_group_default(self):
+		settings = frappe.get_single("BuildSuite Core Settings")
+		settings.default_petty_cash_account = self._default_company_group()
+		with self.assertRaises(frappe.ValidationError):
+			settings.save()
+
+	def test_seed_replaces_a_stored_group_with_the_ledger(self):
+		from buildsuite_core.utils.project import default_company
+
+		if self.company != default_company():
+			self.skipTest("setting is scoped to the default company")
+		frappe.db.set_single_value(
+			"BuildSuite Core Settings", "default_petty_cash_account", self._default_company_group()
+		)
+		seeded = pc.seed_default_petty_cash_account(self.company)
+		self.assertTrue(seeded)
+		self.assertFalse(frappe.db.get_value("Account", seeded, "is_group"))
+		self.assertEqual(
+			frappe.db.get_single_value("BuildSuite Core Settings", "default_petty_cash_account"), seeded
+		)

@@ -103,6 +103,81 @@ def resolve_petty_cash_account(company):
 	return _ensure_account(company, PETTY_CASH_ACCOUNT_NAME, "Asset", "Cash", "Current Assets")
 
 
+def validate_petty_cash_account(account, company=None):
+	"""Raise unless `account` can be the petty-cash float: a ledger (not a group) Cash/Bank
+	account of `company` (default: the default company). One rule for the settings form, the
+	settings API and the seeders, so a group can never be stored as the default."""
+	from buildsuite_core.utils.project import default_company
+
+	acc = frappe.db.get_value("Account", account, ["is_group", "company", "account_type"], as_dict=True)
+	if not acc or acc.is_group:
+		frappe.throw(_("Choose a ledger (non-group) account."))
+	company = company or default_company()
+	if company and acc.company != company:
+		frappe.throw(_("The petty cash account must belong to {0}.").format(company))
+	if acc.account_type not in ("Cash", "Bank"):
+		frappe.throw(_("The petty cash account must be a Cash or Bank account."))
+
+
+def seed_default_petty_cash_account(company=None):
+	"""Make the Petty Cash Account setting hold a valid ledger for the default company.
+
+	Keeps a valid choice an admin already made. Clears a stored value that is no longer valid
+	(for example a group). Otherwise fills it when there is exactly one candidate — the company's
+	'Petty Cash' ledger, or the single ledger under a 'Petty Cash' group — creating the ledger
+	when none exists. With several candidates (e.g. the UAE chart's Administration / Others) it
+	stays unset so the admin chooses; picking one for them would be a guess about their money.
+	Returns the account now set, or None."""
+	from buildsuite_core.utils.project import default_company
+
+	company = company or default_company()
+	if not company or company != default_company():
+		return None  # the setting is single-company (default company) for now
+
+	settings = frappe.get_single("BuildSuite Core Settings")
+	current = settings.default_petty_cash_account
+	if current:
+		try:
+			validate_petty_cash_account(current, company)
+			return current
+		except frappe.ValidationError:
+			frappe.clear_last_message()
+			current = None
+
+	named = frappe.db.get_value(
+		"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": company}, ["name", "is_group"], as_dict=True
+	)
+	if not named:
+		chosen = resolve_petty_cash_account(company)
+	elif not named.is_group:
+		chosen = named.name
+	else:
+		row = frappe.db.get_value("Account", named.name, ["lft", "rgt"], as_dict=True)
+		leaves = frappe.get_all(
+			"Account",
+			filters={
+				"company": company,
+				"is_group": 0,
+				"lft": [">", row.lft],
+				"rgt": ["<", row.rgt],
+				"account_type": ["in", ["Cash", "Bank"]],
+			},
+			pluck="name",
+			order_by="lft",
+		)
+		if not leaves:
+			chosen = resolve_petty_cash_account(company)  # creates a ledger float under the group
+		elif len(leaves) == 1:
+			chosen = leaves[0]
+		else:
+			chosen = None
+
+	settings.default_petty_cash_account = chosen
+	settings.flags.ignore_permissions = True
+	settings.save()
+	return chosen
+
+
 # ---------------------------------------------------------------------------
 # Journal Entry posting
 # ---------------------------------------------------------------------------
@@ -617,6 +692,7 @@ def create_account(doc, method=None):
 	trigger account creation.
 	"""
 	if frappe.db.exists("Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": doc.name}):
+		seed_default_petty_cash_account(doc.name)
 		return
 
 	parent = frappe.db.get_value(
@@ -641,3 +717,4 @@ def create_account(doc, method=None):
 		}
 	)
 	account.insert(ignore_permissions=True)
+	seed_default_petty_cash_account(doc.name)
