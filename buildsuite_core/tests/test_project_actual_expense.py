@@ -9,6 +9,7 @@ import frappe
 from frappe.utils import flt
 
 from buildsuite_core.api.finance_report import profit_and_loss, project_actual_expense
+from buildsuite_core.api.project_dashboard import get_project_dashboard
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
 
@@ -60,3 +61,11 @@ class TestProjectActualExpense(BuildSuiteTestCase):
 		self._n = frappe.generate_hash(length=6)  # the builder derives the project id from _n
 		other = self._make_project(company=self.company).name
 		self.assertEqual(project_actual_expense(other)["actual"], 0)
+
+	def test_dashboard_total_actual_is_the_ledger_total(self):
+		self._submitted_subcontractor_bill(100000)
+		cost = get_project_dashboard(self.project)["cost"]
+		self.assertAlmostEqual(
+			flt(cost["total_actual"]), flt(project_actual_expense(self.project)["actual"]), places=2
+		)
+		self.assertGreater(cost["total_actual"], 0)

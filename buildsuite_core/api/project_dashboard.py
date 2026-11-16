@@ -7,9 +7,9 @@ Vue dashboard, scoped to the whole portfolio or a single project (+ its sub-proj
   · KPIs        — active projects + at-risk, contract value (BOQ planned/budget), work done
                   (BOQ earned value), and schedule (avg progress vs expected).
   · health      — per project: progress vs expected, earned/contract, open tasks, risk reasons.
-  · cost_heads  — actual spend by head where a live source exists (Subcontractor bills,
-                  Machinery usage, labour from the attendance + timesheet registers);
-                  Material/Overhead are pending (no cost-type source).
+  · cost        — total actual = the project ledger's posted expense; split by head where a
+                  live source exists (Subcontractor bills, Machinery usage, labour registers),
+                  the rest shown as Material & overhead.
   · decision    — approvals waiting on the owner (stage plans, SCOs, material requests, petty).
   · commitments — subcontract committed/billed/remaining, POs on order, retention held.
   · activity    — last 7 days of site reporting (progress entries, blockers, deliveries).
@@ -22,6 +22,7 @@ import math
 import frappe
 from frappe.utils import add_days, date_diff, flt, getdate, nowdate
 
+from buildsuite_core.api.finance_report import ledger_project_expense
 from buildsuite_core.utils.labour_cost import cost_of, labour_cost_rows, totals
 from buildsuite_core.utils.project import default_company
 
@@ -223,17 +224,20 @@ def get_project_dashboard(project: str | None = None):
 	# Labour from the one reader of the labour registers (attendance + timesheets, each row once).
 	labour_rows = labour_cost_rows({"projects": scope_ids})
 	labour = sum(cost_of(r) for r in labour_rows)
-	cost_total = subcontractor + machinery + labour
+	# Total booked is the ledger's Expense postings for the scope, so it covers every rail (material,
+	# overhead, petty cash...) and matches the finance reports; the heads break down what has a live
+	# source, and the remainder is shown as "Material & overhead".
+	cost_total = ledger_project_expense(scope_ids, company)
+	other = max(cost_total - (subcontractor + machinery + labour), 0)
 	cost_heads = [
 		{"key": "subcontractor", "label": "Subcontractor", "value": subcontractor, "bar": "bg-info-500"},
 		{"key": "machinery", "label": "Machinery", "value": machinery, "bar": "bg-warning-500"},
 		{"key": "labour", "label": "Labour", "value": labour, "bar": "bg-brand-500"},
-		{"key": "material", "label": "Material", "value": 0, "bar": "bg-ink-300", "pending": True},
-		{"key": "overhead", "label": "Overhead", "value": 0, "bar": "bg-ink-400", "pending": True},
+		{"key": "other", "label": "Material & overhead", "value": other, "bar": "bg-ink-400"},
 	]
-	_mx = max([subcontractor, machinery, labour, 1])
+	_mx = max([subcontractor, machinery, labour, other, 1])
 	for h in cost_heads:
-		h["pct"] = 0 if h.get("pending") else h["value"] / _mx * 100
+		h["pct"] = h["value"] / _mx * 100
 
 	# --- decision queue ---
 	stage_ct = frappe.db.count("Stage Planning", {**proj_in, "workflow_state": "Pending Approval"})

@@ -7,6 +7,7 @@ views render the prototype layout against live data. Finance is single-company f
 default to the site's default company."""
 
 import frappe
+from frappe.query_builder.functions import Sum
 from frappe.utils import flt
 
 from buildsuite_core.utils.project import default_company
@@ -287,23 +288,34 @@ def profit_and_loss(
 	}
 
 
+def ledger_project_expense(projects, company=None):
+	"""Expense booked on the given project(s) in the posted ledger: Expense-account GL entries
+	tagged to them, cancelled entries excluded. The one reader behind every project-level
+	"actual" (project page tile, project dashboard) so they reconcile with the P&L."""
+	projects = [p for p in (projects or []) if p]
+	if not projects:
+		return 0.0
+	company = company or default_company()
+	gle, acc = frappe.qb.DocType("GL Entry"), frappe.qb.DocType("Account")
+	total = (
+		frappe.qb.from_(gle)
+		.join(acc)
+		.on(acc.name == gle.account)
+		.select(Sum(gle.debit - gle.credit))
+		.where((gle.is_cancelled == 0) & (gle.company == company))
+		.where((acc.root_type == "Expense") & (gle.project.isin(projects)))
+	).run()[0][0]
+	return flt(total)
+
+
 @frappe.whitelist()
 def project_actual_expense(project: str, company: str | None = None):
-	"""Actual expense booked on one project, read from the posted ledger (GL Entry, Expense
-	accounts, project-tagged) so it reconciles with the Project Finance P&L and expense reports.
-	Backs the Actual vs Planned tile on the project page. Returns only the aggregate; gated on
-	read access to the Project so site personas without ledger rights still see the figure.
-	Single-company (finance seam)."""
+	"""Actual expense booked on one project, read from the posted ledger so it reconciles with
+	the Project Finance P&L and expense reports. Backs the Actual vs Planned tile on the project
+	page. Returns only the aggregate; gated on read access to the Project so site personas
+	without ledger rights still see the figure. Single-company (finance seam)."""
 	frappe.has_permission("Project", "read", project, throw=True)
-	company = company or default_company()
-	actual = frappe.db.sql(
-		"""SELECT IFNULL(SUM(gle.debit - gle.credit), 0)
-		FROM `tabGL Entry` gle JOIN `tabAccount` acc ON acc.name = gle.account
-		WHERE gle.is_cancelled = 0 AND gle.company = %s AND gle.project = %s
-			AND acc.root_type = 'Expense'""",
-		(company, project),
-	)[0][0]
-	return {"actual": flt(actual)}
+	return {"actual": ledger_project_expense([project], company)}
 
 
 def _cash_bank_accounts(company):
