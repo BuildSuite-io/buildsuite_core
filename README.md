@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"> 
 
 ![BuildSuite Core](docs/images/bs-core-readme-banner.png)
 
