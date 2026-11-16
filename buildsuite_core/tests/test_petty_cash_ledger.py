@@ -276,3 +276,37 @@ class TestPettyCashLedger(BuildSuiteTestCase):
 		# Both rows share self.project in this fixture, so filtering by it keeps both.
 		by_project = pc.get_transaction_list(self.employee, project=self.project)
 		self.assertEqual(len(by_project), 2)
+
+
+class TestPettyCashGroupAccount(BuildSuiteTestCase):
+	"""A Petty Cash set up as a group (holders beneath it) must resolve to a postable ledger:
+	Journal Entries reject group accounts ("Please select a single account")."""
+
+	def _account(self, name, parent, is_group):
+		acc = frappe.new_doc("Account")
+		acc.update(
+			{
+				"account_name": name,
+				"company": self.company,
+				"parent_account": parent,
+				"is_group": is_group,
+				"root_type": "Asset",
+				"account_type": "" if is_group else "Cash",
+			}
+		)
+		acc.insert(ignore_permissions=True)
+		return acc.name
+
+	def test_group_resolves_to_its_ledger_child(self):
+		parent = frappe.db.get_value(
+			"Account", {"account_name": "Cash In Hand", "company": self.company, "is_group": 1}, "name"
+		) or frappe.db.get_value(
+			"Account", {"company": self.company, "is_group": 1, "root_type": "Asset"}, "name"
+		)
+		group = self._account(f"Test Petty {self._n}", parent, 1)
+		leaf = self._account(f"Test Petty Float {self._n}", group, 0)
+		self.assertEqual(pc._ledger_under(group), leaf)
+		self.assertEqual(pc._ledger_under(leaf), leaf)
+
+		frappe.db.set_single_value("BuildSuite Core Settings", "default_petty_cash_account", group)
+		self.assertEqual(pc.get_petty_cash_account(self.company), leaf)
