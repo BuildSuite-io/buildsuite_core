@@ -15,6 +15,9 @@ EXEMPT_ROLES = {
 	"BuildSuite Director",
 	"System Manager",
 	"BuildSuite Administrator",
+	# buildsuite_hr's attendance desk: marks Field Attendance against any site, so it picks
+	# from every project (read-only — its Project DocPerm comes from buildsuite_hr).
+	"Workforce Attendance User",
 }
 
 # Unrestricted until the user joins any team; scoped to their teamed projects thereafter. These
