@@ -346,3 +346,25 @@ class TestPettyCashGroupAccount(BuildSuiteTestCase):
 		self.assertEqual(
 			frappe.db.get_single_value("BuildSuite Core Settings", "default_petty_cash_account"), seeded
 		)
+
+	def test_ensure_account_never_returns_a_group(self):
+		from buildsuite_core.utils.subcontract_billing import _ensure_account
+
+		parent = frappe.db.get_value(
+			"Account", {"account_name": "Cash In Hand", "company": self.company, "is_group": 1}, "name"
+		) or frappe.db.get_value("Account", {"company": self.company, "is_group": 1, "root_type": "Asset"}, "name")
+		name = f"Test Pool {self._n}"
+		group = self._account(name, parent, 1)  # a chart that ships this name as a group
+		got = _ensure_account(self.company, name, "Asset", "Cash", "Current Assets")
+		self.assertNotEqual(got, group)
+		self.assertFalse(frappe.db.get_value("Account", got, "is_group"))
+		self.assertEqual(frappe.db.get_value("Account", got, "parent_account"), group)
+		# idempotent
+		self.assertEqual(_ensure_account(self.company, name, "Asset", "Cash", "Current Assets"), got)
+
+	def test_disburse_rejects_a_group_pay_from(self):
+		doc = frappe.new_doc("Petty Cash Request")
+		doc.status = "Requested"
+		doc.company = self.company
+		with self.assertRaises(frappe.ValidationError):
+			doc.disburse(self._default_company_group())

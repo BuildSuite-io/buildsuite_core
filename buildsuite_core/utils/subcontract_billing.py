@@ -62,23 +62,32 @@ def resolve_accounts(company):
 
 
 def _ensure_account(company, account_name, root_type, account_type, parent_hint):
-	"""Find (by name, per company) or create a ledger Account. Parent is the `parent_hint`
-	group for this company, else any group of `root_type`."""
-	abbr = frappe.db.get_value("Company", company, "abbr")
-	full_name = f"{account_name} - {abbr}"
-	if frappe.db.exists("Account", full_name):
-		return full_name
-	existing = frappe.db.get_value("Account", {"account_name": account_name, "company": company}, "name")
-	if existing:
-		return existing
+	"""Find (by name, per company) or create a postable ledger Account. Parent is the
+	`parent_hint` group for this company, else any group of `root_type`.
 
-	parent = frappe.db.get_value(
-		"Account", {"account_name": parent_hint, "company": company, "is_group": 1}, "name"
+	Always returns a ledger: Journal Entries and invoices reject group accounts, and some charts
+	ship a group under the same name (e.g. the UAE chart's "Petty Cash"). When the name only
+	exists as a group, a "<name> Ledger" account is created beneath it instead."""
+	abbr = frappe.db.get_value("Company", company, "abbr")
+	existing = frappe.db.get_value(
+		"Account", {"account_name": account_name, "company": company}, ["name", "is_group"], as_dict=True
 	)
-	if not parent:
+	if existing and not existing.is_group:
+		return existing.name
+	if existing:  # a group of that name: use (or create) a ledger beneath it
+		account_name = f"{account_name} Ledger"
+		full_name = f"{account_name} - {abbr}"
+		if frappe.db.exists("Account", full_name):
+			return full_name
+		parent = existing.name
+	else:
 		parent = frappe.db.get_value(
-			"Account", {"company": company, "is_group": 1, "root_type": root_type}, "name"
+			"Account", {"account_name": parent_hint, "company": company, "is_group": 1}, "name"
 		)
+		if not parent:
+			parent = frappe.db.get_value(
+				"Account", {"company": company, "is_group": 1, "root_type": root_type}, "name"
+			)
 	if not parent:
 		frappe.throw(_("Could not resolve a parent account for {0} in {1}.").format(account_name, company))
 

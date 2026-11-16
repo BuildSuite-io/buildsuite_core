@@ -75,30 +75,12 @@ def get_petty_cash_account(company):
 
 def resolve_petty_cash_account(company):
 	"""As above, but creates a per-company 'Petty Cash' asset account when missing — a ledger
-	'Petty Cash Float' under it when 'Petty Cash' exists only as a group."""
+	'Petty Cash Ledger' beneath it when 'Petty Cash' exists only as a group."""
 	account = get_petty_cash_account(company)
 	if account:
 		return account
 
 	from buildsuite_core.utils.subcontract_billing import _ensure_account
-
-	group = frappe.db.get_value(
-		"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": company, "is_group": 1}, "name"
-	)
-	if group:
-		acc = frappe.new_doc("Account")
-		acc.update(
-			{
-				"account_name": f"{PETTY_CASH_ACCOUNT_NAME} Float",
-				"company": company,
-				"parent_account": group,
-				"root_type": "Asset",
-				"account_type": "Cash",
-			}
-		)
-		acc.flags.ignore_permissions = True
-		acc.insert()
-		return acc.name
 
 	return _ensure_account(company, PETTY_CASH_ACCOUNT_NAME, "Asset", "Cash", "Current Assets")
 
