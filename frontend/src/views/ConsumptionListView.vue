@@ -132,6 +132,7 @@ const breadcrumbs = [
 			:rows="rows"
 			:columns="columns"
 			row-key="name"
+			ext-doctype="Stock Entry"
 			:dynamic-filters="dynFilters"
 			search-placeholder="Search consumption…"
 			@row-click="(row) => router.push(`/material-consumption/${row.name}`)"

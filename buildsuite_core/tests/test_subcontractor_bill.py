@@ -8,6 +8,7 @@ The bill is the front-end instrument; the PI it generates on submit does the acc
 here is GST-specific."""
 
 import frappe
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import flt
 
 from buildsuite_core.tests.base import BuildSuiteTestCase
@@ -238,7 +239,7 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo.name, "date": "2026-07-20"})
 		bill.fetch_lines()
 		bill.insert(ignore_permissions=True)
-		# 40 measured × 85 = 3400 gross; retention 5% = 170.
+		# 40 measured x 85 = 3400 gross; retention 5% = 170.
 		self.assertEqual(flt(bill.gross), 3400)
 		self.assertEqual(flt(bill.retention_amount), 170)
 		bill.submit()
@@ -397,3 +398,57 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		)["name"]  # a DRAFT work order
 		bill = frappe.get_doc({"doctype": "Subcontractor Bill", "work_order": wo, "date": "2026-07-21"})
 		self.assertRaises(frappe.ValidationError, bill.insert, ignore_permissions=True)
+
+	# --- Custom Fields through the bespoke save APIs ---------------------
+	def _custom_field(self, doctype, fieldname):
+		create_custom_fields({doctype: [{"fieldname": fieldname, "fieldtype": "Data", "label": fieldname}]})
+
+		def drop():
+			frappe.delete_doc("Custom Field", f"{doctype}-{fieldname}", force=True)
+			frappe.db.commit()  # the schema change must not leak into other tests
+			frappe.clear_cache(doctype=doctype)
+
+		self.addCleanup(drop)
+
+	def test_save_bill_carries_an_installed_apps_custom_field(self):
+		import json
+
+		from buildsuite_core.api.subcontractor_bill import get_bill, save_bill
+
+		self._custom_field("Subcontractor Bill", "sdk_t_region")
+		sub = self._subcontractor()
+		out = save_bill(
+			json.dumps(
+				{
+					"is_direct": 1,
+					"subcontractor": sub.name,
+					"project": self.project,
+					"date": "2026-07-20",
+					"retention_percent": 5,
+					"lines": [{"scope": "Clearing", "amount": 1000}],
+					"custom_fields": {"sdk_t_region": "North", "owner": "attacker@example.com", "gross": 1},
+				}
+			)
+		)
+		self.assertEqual(out["sdk_t_region"], "North")
+		self.assertEqual(get_bill(out["name"])["sdk_t_region"], "North")
+		stored = frappe.db.get_value("Subcontractor Bill", out["name"], ["owner", "gross"], as_dict=True)
+		self.assertNotEqual(stored.owner, "attacker@example.com")
+		self.assertNotEqual(flt(stored.gross), 1)
+
+	def test_save_work_order_carries_an_installed_apps_custom_field(self):
+		import json
+
+		from buildsuite_core.api.subcontract import get_work_order, save_work_order
+
+		self._custom_field("Subcontractor Work Order", "sdk_t_region")
+		out = save_work_order(
+			subcontractor=self._subcontractor().name,
+			project=self.project,
+			date="2026-07-20",
+			lines=json.dumps([{"scope": "Earthwork", "qty": 10, "rate": 100}]),
+			custom_fields=json.dumps({"sdk_t_region": "South", "docstatus": 1}),
+		)
+		self.assertEqual(out["sdk_t_region"], "South")
+		self.assertEqual(get_work_order(out["name"])["sdk_t_region"], "South")
+		self.assertEqual(frappe.db.get_value("Subcontractor Work Order", out["name"], "docstatus"), 0)

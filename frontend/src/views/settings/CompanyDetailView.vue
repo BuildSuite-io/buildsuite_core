@@ -295,7 +295,7 @@ watch(
 
 			<div class="max-w-3xl mx-auto">
 				<!-- Identity -->
-				<DeskSection :title="__('Identity')" v-if="!editing">
+				<DeskSection id="identity" :title="__('Identity')" v-if="!editing">
 					<DeskField :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ company.name }}</div>
 					</DeskField>
@@ -314,7 +314,7 @@ watch(
 						</div>
 					</DeskField>
 				</DeskSection>
-				<DeskSection :title="__('Identity')" v-else>
+				<DeskSection id="identity-2" :title="__('Identity')" v-else>
 					<DeskField :label="__('Name')" required>
 						<DeskInput v-model="form.name" />
 					</DeskField>
@@ -330,7 +330,12 @@ watch(
 				</DeskSection>
 
 				<!-- Brand colour — a selector, saved on the Company -->
-				<DeskSection :title="__('Brand colour')" v-if="!editing" :cols="2">
+				<DeskSection
+					id="brand-colour"
+					:title="__('Brand colour')"
+					v-if="!editing"
+					:cols="2"
+				>
 					<DeskField :label="__('Pill colour')">
 						<div class="flex items-center gap-2 py-1">
 							<span
@@ -342,7 +347,7 @@ watch(
 						</div>
 					</DeskField>
 				</DeskSection>
-				<DeskSection :title="__('Brand colour')" v-else :cols="2">
+				<DeskSection id="brand-colour-2" :title="__('Brand colour')" v-else :cols="2">
 					<DeskField
 						:label="__('Pill colour')"
 						:hint="__('The company\'s pill in the topbar and on lists.')"
@@ -367,7 +372,7 @@ watch(
 					</DeskField>
 				</DeskSection>
 				<!-- Branding & Letter Head — real Company fields; drives print letter heads -->
-				<DeskSection :title="__('Branding & Letter Head')">
+				<DeskSection id="branding-letter-head" :title="__('Branding & Letter Head')">
 					<div class="md:col-span-2 space-y-4">
 						<p class="text-[11px] text-ink-500">
 							Logo and subtext for

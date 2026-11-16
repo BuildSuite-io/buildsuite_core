@@ -18,6 +18,7 @@ from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance i
 	sheet_labour_cost,
 	uncoded_wage,
 )
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
 
 FIELD_ATTENDANCE = "Field Attendance"
 
@@ -36,6 +37,7 @@ def _parse_rows(payload) -> list:
 
 def _serialize(doc) -> dict:
 	return {
+		**custom_field_values(doc),
 		"name": doc.name,
 		"project": doc.project,
 		"project_name": doc.project_name,
@@ -92,6 +94,7 @@ def save_field_attendance(
 	cost_code_group: str | None = None,
 	cost_code_item: str | None = None,
 	cost_code_label: str | None = None,
+	custom_fields: str | None = None,
 ) -> dict:
 	"""Create or update a draft attendance sheet (header + employee rows)."""
 	rows = _parse_rows(employee_list)
@@ -147,6 +150,7 @@ def save_field_attendance(
 			continue
 		doc.append("employee_list", {k: row.get(k) for k in _ROW_FIELDS})
 
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 	doc.save()
 	return _serialize(doc)
 

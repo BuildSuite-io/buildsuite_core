@@ -287,7 +287,7 @@ const saveLabel = computed(() =>
 				{{ __("lines pre-filled; set the supplier and rates.") }}
 			</div>
 
-			<DeskSection :title="__('Order')" :cols="3">
+			<DeskSection id="order" :title="__('Order')" :cols="3">
 				<DeskField :label="__('Supplier')" required :error="errors.supplier">
 					<DeskLinkPicker
 						v-model="form.supplier"

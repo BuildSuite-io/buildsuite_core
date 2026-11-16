@@ -202,7 +202,7 @@ const saveLabel = computed(() =>
 				/>
 			</template>
 
-			<DeskSection :title="__('Request')" :cols="2">
+			<DeskSection id="request" :title="__('Request')" :cols="2">
 				<DeskField
 					:label="__('Project')"
 					required

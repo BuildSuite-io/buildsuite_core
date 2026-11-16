@@ -8,6 +8,9 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
@@ -48,6 +51,8 @@ const form = reactive({
 	recoverable: "1",
 	reason: "",
 });
+const ext = useExtensionFields("Scope Change Order", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	project: "project",
 	title: "title",
@@ -70,14 +75,18 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Scope Change Order", {
+		const payload = {
 			project: form.project,
 			type: form.type,
 			title: form.title.trim(),
 			impact: Number(form.impact) || 0,
 			recoverable: form.recoverable === "1" ? 1 : 0,
 			reason: form.reason,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Scope Change Order", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/sco/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to raise scope change order"), "error");
@@ -116,8 +125,9 @@ const breadcrumbs = [
 				/>
 			</template>
 
-			<DeskSection :title="__('Change order')" :cols="2">
-				<DeskField :label="__('Project')" required :error="errors.project">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+			<DeskSection id="change-order" :title="__('Change order')" :cols="2">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
@@ -128,30 +138,41 @@ const breadcrumbs = [
 						:placeholder="__('Pick a project…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Type')">
+				<DeskField name="type" :label="__('Type')">
 					<DeskSelect v-model="form.type">
 						<option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2">
+				<DeskField
+					name="title"
+					:label="__('Title')"
+					required
+					:error="errors.title"
+					class="md:col-span-2"
+				>
 					<DeskInput
 						v-model="form.title"
 						:placeholder="__('e.g. Foundation depth revision — soil report')"
 					/>
 				</DeskField>
 				<DeskField
+					name="impact"
 					:label="`${__('Cost impact')} (${currencySymbol()})`"
 					:hint="__('Positive = added cost to the project; negative = a saving.')"
 				>
 					<DeskInput v-model.number="form.impact" type="number" step="1000" />
 				</DeskField>
-				<DeskField :label="__('Cost recovery')">
+				<DeskField name="recoverable" :label="__('Cost recovery')">
 					<DeskSelect v-model="form.recoverable">
 						<option value="1">{{ __("Recoverable from client") }}</option>
 						<option value="0">{{ __("Internal — absorbed by us") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Reason / justification')" class="md:col-span-2">
+				<DeskField
+					name="reason"
+					:label="__('Reason / justification')"
+					class="md:col-span-2"
+				>
 					<DeskTextarea
 						v-model="form.reason"
 						:rows="4"
@@ -159,6 +180,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

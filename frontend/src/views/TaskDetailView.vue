@@ -31,6 +31,11 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import TaskAttachments from "@/components/TaskAttachments.vue";
 import { createDataAdapter } from "@/data/adapters";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
+import ExtensionFormScope from "@/components/ExtensionFormScope.vue";
+import { docFields } from "@/sdk/registry";
 import {
 	getTaskDependencies,
 	addTaskPredecessor,
@@ -111,6 +116,7 @@ function loadTaskResource() {
 			"exp_end_date",
 			"type",
 			"description",
+			...docFields("Task"), // an installed app's Custom Fields
 		],
 		cache: `buildsuite-task-detail:${props.id}`,
 		transform(rows) {
@@ -122,6 +128,7 @@ function loadTaskResource() {
 				status: row?.task_status || "Yet To Start",
 				priority: row?.priority || "Medium",
 				progress: Number(row?.progress) || 0,
+				extCustom: Object.fromEntries(docFields("Task").map((f) => [f, row?.[f] ?? null])),
 				assignee: parseAssignee(row?._assign),
 				owner: row?.owner || "",
 				startDate: row?.exp_start_date || null,
@@ -193,6 +200,20 @@ function depTypeTitle(t) {
 // Add/edit modal. role: 'pred' (other task is the predecessor of this one) or
 // 'succ' (other task is the successor — i.e. this task is ITS predecessor).
 const depModalOpen = ref(false);
+// The extension scopes of the two sub-forms on this page (see ExtensionFormScope): they carry the field
+// rules, field errors and save hooks registered for "Task Depends On" and "Task Progress Entry".
+const depScope = ref(null);
+const progressScope = ref(null);
+/** Run an extension scope's beforeSave (required rules, FieldErrors, hooks). Returns the error that refuses
+ *  the save, or null. */
+async function refusedByExtension(scope, payload, form) {
+	try {
+		await scope?.ext.beforeSave(payload, form);
+		return null;
+	} catch (err) {
+		return err;
+	}
+}
 const depSaving = ref(false);
 const depForm = reactive({
 	mode: "add-pred",
@@ -246,6 +267,18 @@ async function saveDep() {
 		depForm.error = __("Pick a task.");
 		return;
 	}
+	const depPayload = {
+		task: props.id,
+		other_task_id: depForm.otherTaskId,
+		role: depForm.role,
+		dependency_type: depForm.dependency_type,
+		lag: Number(depForm.lag) || 0,
+	};
+	const refused = await refusedByExtension(depScope.value, depPayload, depForm);
+	if (refused) {
+		depForm.error = refused.message || __("An extension refused this dependency.");
+		return;
+	}
 	depSaving.value = true;
 	try {
 		// pred: this depends on other -> edge other -> this  => add_task_predecessor(this, other)
@@ -266,6 +299,7 @@ async function saveDep() {
 			);
 		}
 		await loadDeps();
+		await depScope.value?.ext.afterSave(depPayload, { isNew: depForm.mode !== "edit" });
 		depModalOpen.value = false;
 		showToast(__("Dependency saved"));
 	} catch (err) {
@@ -541,19 +575,26 @@ function validateProgressEntry() {
 }
 async function saveProgressEntry() {
 	if (!validateProgressEntry()) return;
+	const payload = {
+		task: props.id,
+		entry_date: progressForm.entryDate,
+		cumulative_progress: progressForm.progressPct,
+		narrative: progressForm.narrative,
+		skilled: progressForm.skilledLabour,
+		unskilled: progressForm.unskilledLabour,
+		weather: progressForm.weather,
+		blocker: progressForm.blockerFlag ? 1 : 0,
+		blocker_detail: progressForm.blockerNote,
+	};
+	const refused = await refusedByExtension(progressScope.value, payload, progressForm);
+	if (refused) {
+		showToast(refused.message || __("An extension refused this entry."), "error");
+		return;
+	}
 	savingProgress.value = true;
 	try {
-		const entry = await adapter.create("Task Progress Entry", {
-			task: props.id,
-			entry_date: progressForm.entryDate,
-			cumulative_progress: progressForm.progressPct,
-			narrative: progressForm.narrative,
-			skilled: progressForm.skilledLabour,
-			unskilled: progressForm.unskilledLabour,
-			weather: progressForm.weather,
-			blocker: progressForm.blockerFlag ? 1 : 0,
-			blocker_detail: progressForm.blockerNote,
-		});
+		const entry = await adapter.create("Task Progress Entry", payload);
+		await progressScope.value?.ext.afterSave(entry, { isNew: true });
 
 		// Upload any pending attachments against the new entry via Frappe's
 		// native File pipeline (creates File docs attached_to the TPE). A failed
@@ -591,6 +632,7 @@ async function saveProgressEntry() {
 // that gets reset on cancel so the store record isn't touched mid-edit.
 const editing = ref(false);
 const form = ref({});
+const ext = useExtensionFields("Task", form);
 
 // Normalize task fields for the edit modal so native date inputs receive a
 // browser-compatible YYYY-MM-DD value instead of a full datetime string.
@@ -623,10 +665,11 @@ watch(
 	{ immediate: true }
 );
 
-function startEdit() {
+async function startEdit() {
 	if (!task.value) return;
 	form.value = buildEditForm(task.value);
 	resetEditErrors();
+	await ext.load(task.value.extCustom);
 	editing.value = true;
 }
 async function saveEdit() {
@@ -649,7 +692,7 @@ async function saveEdit() {
 		return;
 	}
 	try {
-		await adapter.update("Task", props.id, {
+		const payload = {
 			subject: form.value.name,
 			work_package: form.value.workPackageId || null,
 			task_status: form.value.status,
@@ -660,7 +703,11 @@ async function saveEdit() {
 				form.value.task_type === "Milestone" ? form.value.endDate : form.value.startDate,
 			exp_end_date: form.value.endDate,
 			description: form.value.description,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form.value);
+		await adapter.update("Task", props.id, payload);
+		await ext.afterSave(task.value, { isNew: false });
 		// Assignee is Frappe-native `_assign` — reassign only when it changed.
 		if ((form.value.assignee || "") !== (currentAssignee.value || "")) {
 			await setTaskAssignee(props.id, form.value.assignee);
@@ -872,24 +919,28 @@ usePageTitle(() => task.value?.name);
 					</div>
 				</section>
 
-				<DeskSection :title="__('Details')">
-					<DeskField :label="__('Name')">
+				<DeskSection id="details" :title="__('Details')">
+					<DeskField name="name" :label="__('Name')">
 						<div class="text-sm text-ink-900 py-1">{{ task.name }}</div>
 					</DeskField>
-					<DeskField :label="__('Task Type')" :hint="__('Drives workflow.')">
+					<DeskField
+						name="task_type"
+						:label="__('Task Type')"
+						:hint="__('Drives workflow.')"
+					>
 						<div class="py-1">
 							<StatusBadge :status="task.task_type || 'Activity'" />
 						</div>
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<div class="text-sm text-ink-700 py-1 whitespace-pre-line">
 							{{ task.description || "—" }}
 						</div>
 					</DeskField>
-					<DeskField :label="__('Start')">
+					<DeskField name="start_date" :label="__('Start')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.startDate) }}</div>
 					</DeskField>
-					<DeskField :label="__('Due')">
+					<DeskField name="end_date" :label="__('Due')">
 						<div class="text-sm text-ink-900 py-1">{{ fmtDate(task.endDate) }}</div>
 					</DeskField>
 				</DeskSection>
@@ -1168,11 +1219,18 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Details')">
-							<DeskField :label="__('Name')" required :error="editErrors.name">
+						<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+						<DeskSection id="details-2" :title="__('Details')">
+							<DeskField
+								name="name"
+								:label="__('Name')"
+								required
+								:error="editErrors.name"
+							>
 								<DeskInput v-model="form.name" @input="clearEditError('name')" />
 							</DeskField>
 							<DeskField
+								name="task_type"
 								:label="__('Task Type')"
 								required
 								:hint="
@@ -1191,6 +1249,7 @@ usePageTitle(() => task.value?.name);
 								</DeskSelect>
 							</DeskField>
 							<DeskField
+								name="work_package_id"
 								:label="__('Work Package')"
 								:hint="__('Optional — leave blank for a direct project task.')"
 							>
@@ -1207,10 +1266,11 @@ usePageTitle(() => task.value?.name);
 									:placeholder="__('— None · Direct project task —')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Description')">
+							<DeskField name="description" :label="__('Description')">
 								<DeskTextarea v-model="form.description" :rows="4" />
 							</DeskField>
 							<DeskField
+								name="start_date"
 								v-if="form.task_type !== 'Milestone'"
 								:label="__('Start')"
 								:error="editErrors.startDate"
@@ -1221,7 +1281,11 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('startDate')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Due')" :error="editErrors.endDate">
+							<DeskField
+								name="end_date"
+								:label="__('Due')"
+								:error="editErrors.endDate"
+							>
 								<DeskInput
 									v-model="form.endDate"
 									type="date"
@@ -1230,8 +1294,12 @@ usePageTitle(() => task.value?.name);
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Assignment & status')">
-							<DeskField :label="__('Assignee')" :error="editErrors.assignee">
+						<DeskSection id="assignment-status" :title="__('Assignment & status')">
+							<DeskField
+								name="assignee"
+								:label="__('Assignee')"
+								:error="editErrors.assignee"
+							>
 								<DeskLinkPicker
 									v-model="form.assignee"
 									doctype="User"
@@ -1245,7 +1313,11 @@ usePageTitle(() => task.value?.name);
 									@change="clearEditError('assignee')"
 								/>
 							</DeskField>
-							<DeskField :label="__('Status')" :error="editErrors.status">
+							<DeskField
+								name="status"
+								:label="__('Status')"
+								:error="editErrors.status"
+							>
 								<DeskSelect
 									v-model="form.status"
 									@change="clearEditError('status')"
@@ -1257,7 +1329,11 @@ usePageTitle(() => task.value?.name);
 									<option value="Blocked">{{ __("Blocked") }}</option>
 								</DeskSelect>
 							</DeskField>
-							<DeskField :label="__('Priority')" :error="editErrors.priority">
+							<DeskField
+								name="priority"
+								:label="__('Priority')"
+								:error="editErrors.priority"
+							>
 								<DeskSelect
 									v-model="form.priority"
 									@change="clearEditError('priority')"
@@ -1268,6 +1344,7 @@ usePageTitle(() => task.value?.name);
 								</DeskSelect>
 							</DeskField>
 						</DeskSection>
+						<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 					</div>
 
 					<!-- Modal footer (pinned) -->
@@ -1333,233 +1410,271 @@ usePageTitle(() => task.value?.name);
 
 					<!-- Modal body — the only scrolling region -->
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Progress')" :cols="2">
-							<DeskField
-								:label="__('Cumulative progress (%)')"
-								required
-								:hint="
-									__(
-										'The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.',
-										[task.progress || 0]
-									)
-								"
-								:error="progressErrors.progressPct"
-							>
-								<DeskInput
-									v-model="progressForm.progressPct"
-									data-test="field-progress"
-									type="number"
-									:min="task.progress || 0"
-									max="100"
-									step="1"
-									@input="clearProgressError('progressPct')"
-								/>
-							</DeskField>
-							<DeskField :label="__('Entry date')" :error="progressErrors.entryDate">
-								<DeskInput
-									v-model="progressForm.entryDate"
-									type="date"
-									@change="clearProgressError('entryDate')"
-								/>
-							</DeskField>
-							<DeskField
-								:label="__('Entered by')"
-								:hint="__('Stamped automatically from the signed-in user.')"
-							>
-								<div class="flex items-center gap-2 py-1">
-									<UserAvatar :user-id="progressForm.enteredBy" size="xs" />
-									<span class="text-sm text-ink-800">{{ enteredByName }}</span>
-									<span v-if="enteredByRole" class="text-[11px] text-ink-500"
-										>· {{ enteredByRole }}</span
-									>
-								</div>
-							</DeskField>
-							<div class="md:col-span-2">
+						<ExtensionFormScope
+							ref="progressScope"
+							doctype="Task Progress Entry"
+							:form="progressForm"
+						>
+							<DeskSection id="progress" :title="__('Progress')" :cols="2">
 								<DeskField
-									:label="__('Narrative')"
+									name="progress_pct"
+									:label="__('Cumulative progress (%)')"
+									required
 									:hint="
 										__(
-											'What was completed today? Any context worth recording?'
+											'The NEW cumulative % after this entry — not a delta. Can\'t go below the current {0}%.',
+											[task.progress || 0]
+										)
+									"
+									:error="progressErrors.progressPct"
+								>
+									<DeskInput
+										v-model="progressForm.progressPct"
+										data-test="field-progress"
+										type="number"
+										:min="task.progress || 0"
+										max="100"
+										step="1"
+										@input="clearProgressError('progressPct')"
+									/>
+								</DeskField>
+								<DeskField
+									name="entry_date"
+									:label="__('Entry date')"
+									:error="progressErrors.entryDate"
+								>
+									<DeskInput
+										v-model="progressForm.entryDate"
+										type="date"
+										@change="clearProgressError('entryDate')"
+									/>
+								</DeskField>
+								<DeskField
+									name="entered_by"
+									:label="__('Entered by')"
+									:hint="__('Stamped automatically from the signed-in user.')"
+								>
+									<div class="flex items-center gap-2 py-1">
+										<UserAvatar :user-id="progressForm.enteredBy" size="xs" />
+										<span class="text-sm text-ink-800">{{
+											enteredByName
+										}}</span>
+										<span v-if="enteredByRole" class="text-[11px] text-ink-500"
+											>· {{ enteredByRole }}</span
+										>
+									</div>
+								</DeskField>
+								<div class="md:col-span-2">
+									<DeskField
+										name="narrative"
+										:label="__('Narrative')"
+										:hint="
+											__(
+												'What was completed today? Any context worth recording?'
+											)
+										"
+									>
+										<DeskTextarea
+											v-model="progressForm.narrative"
+											:rows="3"
+											:placeholder="
+												__(
+													'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.'
+												)
+											"
+										/>
+									</DeskField>
+								</div>
+							</DeskSection>
+
+							<DeskSection
+								id="labour-deployed-today"
+								:title="__('Labour deployed today')"
+								:cols="2"
+							>
+								<DeskField
+									name="skilled_labour"
+									:label="__('Skilled labour')"
+									:hint="__('Count of skilled workers on site today')"
+								>
+									<DeskInput
+										v-model="progressForm.skilledLabour"
+										type="number"
+									/>
+								</DeskField>
+								<DeskField
+									name="unskilled_labour"
+									:label="__('Unskilled labour')"
+									:hint="__('Count of unskilled workers / helpers')"
+								>
+									<DeskInput
+										v-model="progressForm.unskilledLabour"
+										type="number"
+									/>
+								</DeskField>
+							</DeskSection>
+
+							<DeskSection
+								id="site-conditions"
+								:title="__('Site conditions')"
+								:cols="2"
+							>
+								<DeskField
+									name="weather"
+									:label="__('Weather')"
+									:hint="__('Optional — only if it\'s worth recording.')"
+								>
+									<DeskSelect v-model="progressForm.weather">
+										<option value="">{{ __("— No record —") }}</option>
+										<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
+											{{ __(w) }}
+										</option>
+									</DeskSelect>
+								</DeskField>
+								<DeskField name="blocker_flag" :label="__('Blocker')">
+									<label
+										class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
+									>
+										<input
+											v-model="progressForm.blockerFlag"
+											type="checkbox"
+											class="h-3.5 w-3.5"
+										/>
+										{{ __("Flag a blocker on this entry") }}
+									</label>
+								</DeskField>
+								<div v-if="progressForm.blockerFlag" class="md:col-span-2">
+									<DeskField
+										name="blocker_note"
+										:label="__('Blocker detail')"
+										required
+										:hint="__('What blocked progress today?')"
+										:error="progressErrors.blockerNote"
+									>
+										<DeskTextarea
+											v-model="progressForm.blockerNote"
+											:rows="2"
+											:placeholder="
+												__(
+													'e.g. Afternoon shower delayed final bay by 2 hours'
+												)
+											"
+											@input="clearProgressError('blockerNote')"
+										/>
+									</DeskField>
+								</div>
+							</DeskSection>
+
+							<DeskSection id="attachments" :title="__('Attachments')" :cols="1">
+								<input
+									ref="progressFileInput"
+									type="file"
+									multiple
+									class="hidden"
+									@change="onProgressFilesPicked"
+								/>
+								<input
+									ref="progressCameraInput"
+									type="file"
+									accept="image/*"
+									capture="environment"
+									class="hidden"
+									@change="onProgressFilesPicked"
+								/>
+								<DeskField
+									name="files"
+									:label="__('Files')"
+									:hint="
+										__(
+											'Site photos, QC reports, drawings — picked here and saved with the entry.'
 										)
 									"
 								>
-									<DeskTextarea
-										v-model="progressForm.narrative"
-										:rows="3"
-										:placeholder="
-											__(
-												'e.g. Bays 3-4 complete; 285 of 380 m² done. Cube test taken.'
-											)
-										"
-									/>
-								</DeskField>
-							</div>
-						</DeskSection>
-
-						<DeskSection :title="__('Labour deployed today')" :cols="2">
-							<DeskField
-								:label="__('Skilled labour')"
-								:hint="__('Count of skilled workers on site today')"
-							>
-								<DeskInput v-model="progressForm.skilledLabour" type="number" />
-							</DeskField>
-							<DeskField
-								:label="__('Unskilled labour')"
-								:hint="__('Count of unskilled workers / helpers')"
-							>
-								<DeskInput v-model="progressForm.unskilledLabour" type="number" />
-							</DeskField>
-						</DeskSection>
-
-						<DeskSection :title="__('Site conditions')" :cols="2">
-							<DeskField
-								:label="__('Weather')"
-								:hint="__('Optional — only if it\'s worth recording.')"
-							>
-								<DeskSelect v-model="progressForm.weather">
-									<option value="">{{ __("— No record —") }}</option>
-									<option v-for="w in WEATHER_OPTIONS" :key="w" :value="w">
-										{{ __(w) }}
-									</option>
-								</DeskSelect>
-							</DeskField>
-							<DeskField :label="__('Blocker')">
-								<label
-									class="flex items-center gap-2 py-1 text-sm text-ink-700 cursor-pointer"
-								>
-									<input
-										v-model="progressForm.blockerFlag"
-										type="checkbox"
-										class="h-3.5 w-3.5"
-									/>
-									{{ __("Flag a blocker on this entry") }}
-								</label>
-							</DeskField>
-							<div v-if="progressForm.blockerFlag" class="md:col-span-2">
-								<DeskField
-									:label="__('Blocker detail')"
-									required
-									:hint="__('What blocked progress today?')"
-									:error="progressErrors.blockerNote"
-								>
-									<DeskTextarea
-										v-model="progressForm.blockerNote"
-										:rows="2"
-										:placeholder="
-											__(
-												'e.g. Afternoon shower delayed final bay by 2 hours'
-											)
-										"
-										@input="clearProgressError('blockerNote')"
-									/>
-								</DeskField>
-							</div>
-						</DeskSection>
-
-						<DeskSection :title="__('Attachments')" :cols="1">
-							<input
-								ref="progressFileInput"
-								type="file"
-								multiple
-								class="hidden"
-								@change="onProgressFilesPicked"
-							/>
-							<input
-								ref="progressCameraInput"
-								type="file"
-								accept="image/*"
-								capture="environment"
-								class="hidden"
-								@change="onProgressFilesPicked"
-							/>
-							<DeskField
-								:label="__('Files')"
-								:hint="
-									__(
-										'Site photos, QC reports, drawings — picked here and saved with the entry.'
-									)
-								"
-							>
-								<div class="space-y-2 py-1">
-									<ul v-if="pendingAttachments.length" class="space-y-1.5">
-										<li
-											v-for="(att, idx) in pendingAttachments"
-											:key="idx"
-											class="flex items-center gap-2 px-2.5 py-1.5 bg-ink-50 border border-ink-200 text-xs"
-											style="border-radius: 6px"
-										>
-											<img
-												v-if="att.mime?.startsWith('image/') && att.url"
-												:src="att.url"
-												class="w-8 h-8 object-cover flex-shrink-0"
-												style="border-radius: 4px"
-												alt=""
-											/>
-											<svg
-												v-else
-												class="w-4 h-4 text-ink-500"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="1.8"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												aria-hidden="true"
-												v-html="getWorkspaceIconPath('paperclip')"
-											/>
-											<span class="flex-1 min-w-0 truncate text-ink-800">{{
-												att.fileName
-											}}</span>
-											<span class="text-[11px] text-ink-500 tabular-nums">{{
-												fmtBytes(att.size)
-											}}</span>
+									<div class="space-y-2 py-1">
+										<ul v-if="pendingAttachments.length" class="space-y-1.5">
+											<li
+												v-for="(att, idx) in pendingAttachments"
+												:key="idx"
+												class="flex items-center gap-2 px-2.5 py-1.5 bg-ink-50 border border-ink-200 text-xs"
+												style="border-radius: 6px"
+											>
+												<img
+													v-if="
+														att.mime?.startsWith('image/') && att.url
+													"
+													:src="att.url"
+													class="w-8 h-8 object-cover flex-shrink-0"
+													style="border-radius: 4px"
+													alt=""
+												/>
+												<svg
+													v-else
+													class="w-4 h-4 text-ink-500"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.8"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													aria-hidden="true"
+													v-html="getWorkspaceIconPath('paperclip')"
+												/>
+												<span
+													class="flex-1 min-w-0 truncate text-ink-800"
+													>{{ att.fileName }}</span
+												>
+												<span
+													class="text-[11px] text-ink-500 tabular-nums"
+													>{{ fmtBytes(att.size) }}</span
+												>
+												<button
+													type="button"
+													class="text-ink-400 hover:text-danger-700 text-base leading-none"
+													:aria-label="__('Remove')"
+													@click="removePendingAttachment(idx)"
+												>
+													×
+												</button>
+											</li>
+										</ul>
+										<div class="flex items-center gap-2 flex-wrap">
 											<button
 												type="button"
-												class="text-ink-400 hover:text-danger-700 text-base leading-none"
-												:aria-label="__('Remove')"
-												@click="removePendingAttachment(idx)"
+												class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1"
+												style="border-radius: 6px"
+												@click="openProgressFilePicker"
 											>
-												×
+												<span class="text-sm leading-none">+</span>
+												<span>{{
+													pendingAttachments.length
+														? __("Attach files")
+														: __("Attach file")
+												}}</span>
 											</button>
-										</li>
-									</ul>
-									<div class="flex items-center gap-2 flex-wrap">
-										<button
-											type="button"
-											class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1"
-											style="border-radius: 6px"
-											@click="openProgressFilePicker"
-										>
-											<span class="text-sm leading-none">+</span>
-											<span>{{
-												pendingAttachments.length
-													? __("Attach files")
-													: __("Attach file")
-											}}</span>
-										</button>
-										<button
-											type="button"
-											class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1.5"
-											style="border-radius: 6px"
-											@click="openProgressCamera"
-										>
-											<svg
-												class="w-3.5 h-3.5"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="1.8"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												aria-hidden="true"
-												v-html="getWorkspaceIconPath('camera')"
-											/>
-											<span>{{ __("Capture photo") }}</span>
-										</button>
+											<button
+												type="button"
+												class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center gap-1.5"
+												style="border-radius: 6px"
+												@click="openProgressCamera"
+											>
+												<svg
+													class="w-3.5 h-3.5"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.8"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													aria-hidden="true"
+													v-html="getWorkspaceIconPath('camera')"
+												/>
+												<span>{{ __("Capture photo") }}</span>
+											</button>
+										</div>
 									</div>
-								</div>
-							</DeskField>
-						</DeskSection>
+								</DeskField>
+							</DeskSection>
+						</ExtensionFormScope>
 					</div>
 
 					<!-- Modal footer (pinned) -->
@@ -1633,47 +1748,65 @@ usePageTitle(() => task.value?.name);
 						</button>
 					</header>
 					<div class="p-5 space-y-3">
-						<DeskField
-							:label="
-								depForm.role === 'pred'
-									? __('Predecessor task')
-									: __('Successor task')
-							"
-							:hint="
-								depForm.role === 'pred'
-									? __('Must finish/start before this task.')
-									: __('Waits on this task.')
-							"
+						<ExtensionFormScope
+							ref="depScope"
+							doctype="Task Depends On"
+							:form="depForm"
 						>
-							<div v-if="depForm.mode === 'edit'" class="text-sm text-ink-900 py-1">
-								{{ depForm.otherSubject }}
+							<DeskField
+								name="other_task_id"
+								:label="
+									depForm.role === 'pred'
+										? __('Predecessor task')
+										: __('Successor task')
+								"
+								:hint="
+									depForm.role === 'pred'
+										? __('Must finish/start before this task.')
+										: __('Waits on this task.')
+								"
+							>
+								<div
+									v-if="depForm.mode === 'edit'"
+									class="text-sm text-ink-900 py-1"
+								>
+									{{ depForm.otherSubject }}
+								</div>
+								<DeskLinkPicker
+									v-else
+									v-model="depForm.otherTaskId"
+									doctype="Task"
+									label-field="subject"
+									value-field="name"
+									:search-fields="['subject', 'name']"
+									:filters="depPickerFilters"
+									:placeholder="__('Pick a task')"
+								/>
+							</DeskField>
+							<div class="grid grid-cols-2 gap-3">
+								<DeskField
+									name="dependency_type"
+									:label="__('Type')"
+									hint="FS / SS / FF"
+								>
+									<DeskSelect v-model="depForm.dependency_type">
+										<option>FS</option>
+										<option>SS</option>
+										<option>FF</option>
+									</DeskSelect>
+								</DeskField>
+								<DeskField
+									name="lag"
+									:label="__('Lag (days)')"
+									:hint="__('− = lead / overlap')"
+								>
+									<DeskInput v-model="depForm.lag" type="number" />
+								</DeskField>
 							</div>
-							<DeskLinkPicker
-								v-else
-								v-model="depForm.otherTaskId"
-								doctype="Task"
-								label-field="subject"
-								value-field="name"
-								:search-fields="['subject', 'name']"
-								:filters="depPickerFilters"
-								:placeholder="__('Pick a task')"
-							/>
-						</DeskField>
-						<div class="grid grid-cols-2 gap-3">
-							<DeskField :label="__('Type')" hint="FS / SS / FF">
-								<DeskSelect v-model="depForm.dependency_type">
-									<option>FS</option>
-									<option>SS</option>
-									<option>FF</option>
-								</DeskSelect>
-							</DeskField>
-							<DeskField :label="__('Lag (days)')" :hint="__('− = lead / overlap')">
-								<DeskInput v-model="depForm.lag" type="number" />
-							</DeskField>
-						</div>
-						<p v-if="depForm.error" class="text-xs text-danger-700">
-							{{ depForm.error }}
-						</p>
+							<p v-if="depForm.error" class="text-xs text-danger-700">
+								{{ depForm.error }}
+							</p>
+						</ExtensionFormScope>
 					</div>
 					<footer
 						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"

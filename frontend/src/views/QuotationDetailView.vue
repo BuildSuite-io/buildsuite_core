@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { useConfirm } from "@/composables/useConfirm";
@@ -22,14 +23,18 @@ const confirmDialog = useConfirm();
 // The id can change without the component being torn down (one quotation linking to another),
 // so the read follows the id rather than being taken once in setup().
 const resource = ref(null);
-watch(() => props.id, (id) => (resource.value = adapter.read("Quotation", id)), {
-	immediate: true,
-});
+watch(
+	() => props.id,
+	(id) => (resource.value = adapter.read("Quotation", id)),
+	{
+		immediate: true,
+	}
+);
 
 const doc = computed(() => resource.value?.doc || null);
 
 const subtitle = computed(() =>
-	[props.id, doc.value?.party_name, doc.value?.customer_type].filter(Boolean).join(" · "),
+	[props.id, doc.value?.party_name, doc.value?.customer_type].filter(Boolean).join(" · ")
 );
 
 // Counted from today: what is left is the number worth acting on.
@@ -85,6 +90,24 @@ async function persist(values) {
 	}
 }
 
+// What an installed app's components get on this page (slots detail.Quotation.*): the saved
+// document, and a way to save fields on it and reload.
+async function extPersist(values) {
+	try {
+		await adapter.update("Quotation", props.id, values);
+		await resource.value?.reload?.();
+	} catch (err) {
+		showToast(err.message || __("Could not update the quotation"), "error");
+		throw err;
+	}
+}
+const extContext = computed(() => ({
+	doctype: "Quotation",
+	doc: doc.value,
+	persist: extPersist,
+	reload: () => resource.value?.reload?.(),
+}));
+
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: __("Delete {0}?", [props.id]),
@@ -117,19 +140,27 @@ const breadcrumbs = computed(() => [
 <template>
 	<DeskPage v-if="doc" :title="doc.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink :to="`/quotations/${encodeURIComponent(id)}/print`"
+			<RouterLink
+				:to="`/quotations/${encodeURIComponent(id)}/print`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-				style="border-radius: 6px">
+				style="border-radius: 6px"
+			>
 				{{ __("Print / PDF") }}
 			</RouterLink>
-			<RouterLink :to="`/quotations/${encodeURIComponent(id)}/edit`"
+			<RouterLink
+				:to="`/quotations/${encodeURIComponent(id)}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
-				style="border-radius: 6px">
+				style="border-radius: 6px"
+			>
 				{{ __("Edit") }}
 			</RouterLink>
-			<button type="button"
+			<button
+				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
-				style="border-radius: 6px" :disabled="busy" @click="onDelete">
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onDelete"
+			>
 				{{ __("Delete") }}
 			</button>
 		</template>
@@ -151,8 +182,11 @@ const breadcrumbs = computed(() => [
 				<div class="text-sm font-medium text-ink-900">
 					{{ doc.valid_till ? fmtDate(doc.valid_till) : "—" }}
 				</div>
-				<div v-if="validityNote" class="text-[10px]"
-					:class="daysLeft < 0 ? 'text-warning-700' : 'text-ink-500'">
+				<div
+					v-if="validityNote"
+					class="text-[10px]"
+					:class="daysLeft < 0 ? 'text-warning-700' : 'text-ink-500'"
+				>
 					{{ validityNote }}
 				</div>
 			</div>
@@ -178,44 +212,65 @@ const breadcrumbs = computed(() => [
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					{{ __("Project") }}
 				</div>
-				<RouterLink v-if="doc.project" :to="`/projects/${encodeURIComponent(doc.project)}`"
-					class="text-sm text-brand-700 hover:underline">
+				<RouterLink
+					v-if="doc.project"
+					:to="`/projects/${encodeURIComponent(doc.project)}`"
+					class="text-sm text-brand-700 hover:underline"
+				>
 					{{ doc.project }}
 				</RouterLink>
 				<div v-else class="text-sm text-ink-400">{{ __("Not linked yet") }}</div>
 			</div>
 		</div>
 
+		<ExtensionSlot name="detail.Quotation.before.lines" :context="extContext" />
 		<div class="text-xs text-ink-500 mb-2">{{ lineCount }}</div>
 
 		<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm" style="min-width: 760px">
 					<thead>
-						<tr class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500">
-							<th class="text-left font-medium px-3 py-2 w-24">{{ __("Source") }}</th>
-							<th class="text-left font-medium px-3 py-2">{{ __("Description") }}</th>
+						<tr
+							class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
+						>
+							<th class="text-left font-medium px-3 py-2 w-24">
+								{{ __("Source") }}
+							</th>
+							<th class="text-left font-medium px-3 py-2">
+								{{ __("Description") }}
+							</th>
 							<th class="text-left font-medium px-3 py-2 w-28">{{ __("Unit") }}</th>
 							<th class="text-right font-medium px-3 py-2 w-28">{{ __("Qty") }}</th>
 							<th class="text-right font-medium px-3 py-2 w-32">{{ __("Rate") }}</th>
 							<th v-if="hasMargin" class="text-right font-medium px-3 py-2 w-32">
 								{{ __("Sell rate") }}
-								<span class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal">
+								<span
+									class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal"
+								>
 									+{{ marginPct }}% {{ __("margin") }}
 								</span>
 							</th>
-							<th class="text-right font-medium px-3 py-2 w-36">{{ __("Amount") }}</th>
+							<th class="text-right font-medium px-3 py-2 w-36">
+								{{ __("Amount") }}
+							</th>
 						</tr>
 					</thead>
 
 					<tbody>
-						<tr v-for="(l, i) in lines" :key="l.name || i" class="border-b border-ink-100">
+						<tr
+							v-for="(l, i) in lines"
+							:key="l.name || i"
+							class="border-b border-ink-100"
+						>
 							<td class="px-3 py-2">
 								<StatusBadge :status="l.source" size="xs" />
 							</td>
 							<td class="px-3 py-2">
 								<div class="text-ink-900">{{ l.item_name }}</div>
-								<div v-if="l.code || l.source_ref" class="text-[10px] font-mono text-ink-500">
+								<div
+									v-if="l.code || l.source_ref"
+									class="text-[10px] font-mono text-ink-500"
+								>
 									{{ [l.code, l.source_ref].filter(Boolean).join(" · ") }}
 								</div>
 							</td>
@@ -226,7 +281,10 @@ const breadcrumbs = computed(() => [
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
 								{{ fmtCurrency(lineCost(l), doc.currency) }}
 							</td>
-							<td v-if="hasMargin" class="px-3 py-2 text-right tabular-nums text-ink-600">
+							<td
+								v-if="hasMargin"
+								class="px-3 py-2 text-right tabular-nums text-ink-600"
+							>
 								{{ fmtCurrency(l.rate, doc.currency) }}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
@@ -243,17 +301,23 @@ const breadcrumbs = computed(() => [
 
 					<tfoot>
 						<tr v-if="lines.length" class="border-t-2 border-ink-200 bg-ink-50">
-							<td :colspan="cols - 1"
-								class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider">
+							<td
+								:colspan="cols - 1"
+								class="px-3 py-2 text-right text-[11px] font-semibold text-ink-600 uppercase tracking-wider"
+							>
 								{{ __("Price before tax") }}
 							</td>
-							<td class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900">
+							<td
+								class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+							>
 								{{ fmtCurrency(doc.net_total, doc.currency) }}
 							</td>
 						</tr>
 						<tr v-if="lines.length && hasMargin">
-							<td :colspan="cols"
-								class="px-3 pb-3 pt-1 text-right text-[10px] uppercase tracking-wider text-ink-500">
+							<td
+								:colspan="cols"
+								class="px-3 pb-3 pt-1 text-right text-[10px] uppercase tracking-wider text-ink-500"
+							>
 								{{ __("of which cost") }} {{ fmtCurrency(cost, doc.currency) }} ·
 								{{ __("margin") }} {{ fmtCurrency(margin, doc.currency) }}
 							</td>
@@ -262,6 +326,8 @@ const breadcrumbs = computed(() => [
 				</table>
 			</div>
 		</div>
+
+		<ExtensionSlot name="detail.Quotation.after.lines" :context="extContext" />
 
 		<OfferPaymentTerms
 			v-if="doc"
@@ -274,25 +340,41 @@ const breadcrumbs = computed(() => [
 		/>
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-			<div class="lg:col-span-2 border border-ink-200 overflow-hidden" style="border-radius: 8px">
+			<div
+				class="lg:col-span-2 border border-ink-200 overflow-hidden"
+				style="border-radius: 8px"
+			>
 				<header
-					class="px-4 py-2.5 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between">
+					class="px-4 py-2.5 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between"
+				>
 					<div class="text-[11px] uppercase tracking-wider text-ink-600 font-medium">
 						{{ __("Terms & conditions") }}
 					</div>
-					<span class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600" style="border-radius: 9999px">
+					<span
+						class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600"
+						style="border-radius: 9999px"
+					>
 						{{ doc.tc_name ? __("Template") : __("Manual") }}
 					</span>
 				</header>
 				<div class="p-4">
-					<RichTextEditor v-if="doc.terms" :model-value="doc.terms" :editable="false"
-						min-height="auto" />
+					<RichTextEditor
+						v-if="doc.terms"
+						:model-value="doc.terms"
+						:editable="false"
+						min-height="auto"
+					/>
 					<p v-else class="text-sm text-ink-400">{{ __("No terms recorded.") }}</p>
 				</div>
 			</div>
 
-			<div class="border border-ink-200 overflow-hidden self-start" style="border-radius: 8px">
-				<header class="px-4 py-2.5 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100">
+			<div
+				class="border border-ink-200 overflow-hidden self-start"
+				style="border-radius: 8px"
+			>
+				<header
+					class="px-4 py-2.5 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100"
+				>
 					<div class="text-[11px] uppercase tracking-wider text-ink-600 font-medium">
 						{{ __("Pricing") }}
 					</div>
@@ -301,11 +383,15 @@ const breadcrumbs = computed(() => [
 					<!-- Each row says how the one under it was reached, so a zero margin still shows. -->
 					<div class="flex justify-between">
 						<span class="text-ink-600">{{ __("Subtotal") }}</span>
-						<span class="tabular-nums text-ink-900">{{ fmtCurrency(cost, doc.currency) }}</span>
+						<span class="tabular-nums text-ink-900">{{
+							fmtCurrency(cost, doc.currency)
+						}}</span>
 					</div>
 					<div class="flex justify-between">
 						<span class="text-ink-600">{{ __("Margin {0}%", [marginPct]) }}</span>
-						<span class="tabular-nums text-ink-900">{{ fmtCurrency(margin, doc.currency) }}</span>
+						<span class="tabular-nums text-ink-900">{{
+							fmtCurrency(margin, doc.currency)
+						}}</span>
 					</div>
 					<div class="flex justify-between border-t border-ink-100 pt-2">
 						<span class="text-ink-600">{{ __("Price before tax") }}</span>
@@ -328,8 +414,11 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 		</div>
-		<div v-if="doc.internal_note" class="mt-4 bg-ink-50 border border-ink-200 px-4 py-3"
-			style="border-radius: 8px">
+		<div
+			v-if="doc.internal_note"
+			class="mt-4 bg-ink-50 border border-ink-200 px-4 py-3"
+			style="border-radius: 8px"
+		>
 			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
 				{{ __("Internal note — not printed") }}
 			</div>
@@ -337,11 +426,16 @@ const breadcrumbs = computed(() => [
 		</div>
 	</DeskPage>
 
-	<DeskPage v-else-if="resource?.doc === null" :title="__('Quotation not found')"
-		:breadcrumbs="breadcrumbs">
+	<DeskPage
+		v-else-if="resource?.doc === null"
+		:title="__('Quotation not found')"
+		:breadcrumbs="breadcrumbs"
+	>
 		<p class="text-sm text-ink-600">
 			{{ __("No quotation with that id.") }}
-			<RouterLink to="/quotations" class="desk-link">{{ __("Back to the register →") }}</RouterLink>
+			<RouterLink to="/quotations" class="desk-link">{{
+				__("Back to the register →")
+			}}</RouterLink>
 		</p>
 	</DeskPage>
 

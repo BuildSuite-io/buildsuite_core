@@ -7,6 +7,9 @@
 import { reactive, ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -41,6 +44,8 @@ const form = reactive({
 	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
 });
+const ext = useExtensionFields("Work Package", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	project: "projectId",
 	work_package_name: "name",
@@ -81,7 +86,7 @@ async function save() {
 	}
 	saving.value = true;
 	try {
-		const res = await adapter.create("Work Package", {
+		const payload = {
 			project: form.projectId,
 			code: form.code.trim(),
 			work_package_name: form.name.trim(),
@@ -90,7 +95,11 @@ async function save() {
 			budget: Number(form.budget) || 0,
 			start_date: form.startDate,
 			end_date: form.endDate,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Work Package", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/work-packages/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to create work package"), "error");
@@ -141,13 +150,17 @@ const subtitle = computed(() =>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic information')">
+				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+				<DeskSection id="basic-information" :title="__('Basic information')">
 					<DeskField
+						name="project_id"
 						:label="__('Project')"
 						required
 						:error="errors.projectId"
 						:hint="
-							lockedProject ? __('Pre-selected from where you came in — locked.') : ''
+							lockedProject
+								? __('Pre-selected from where you came in — locked.')
+								: ''
 						"
 					>
 						<DeskLinkPicker
@@ -164,16 +177,25 @@ const subtitle = computed(() =>
 							@change="clearError('projectId')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Work Package name')" required :error="errors.name">
-						<DeskInput v-model="form.name" :placeholder="__('e.g. Foundation Works')" />
+					<DeskField
+						name="name"
+						:label="__('Work Package name')"
+						required
+						:error="errors.name"
+					>
+						<DeskInput
+							v-model="form.name"
+							:placeholder="__('e.g. Foundation Works')"
+						/>
 					</DeskField>
 					<DeskField
+						name="code"
 						:label="__('Code')"
 						:hint="__('Short identifier — auto-generated if left blank.')"
 					>
 						<DeskInput v-model="form.code" :placeholder="__('e.g. WP-FND')" />
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -182,17 +204,21 @@ const subtitle = computed(() =>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
-					<DeskField :label="__('Start date')">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
+					<DeskField name="start_date" :label="__('Start date')">
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Expected end date')" :error="errors.endDate">
+					<DeskField
+						name="end_date"
+						:label="__('Expected end date')"
+						:error="errors.endDate"
+					>
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="`${__('Budget')} (${currencySymbol()})`">
+					<DeskField name="budget" :label="`${__('Budget')} (${currencySymbol()})`">
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
-					<DeskField :label="__('Status')">
+					<DeskField name="status" :label="__('Status')">
 						<DeskSelect v-model="form.status">
 							<option value="Planned">{{ __("Planned") }}</option>
 							<option value="In Progress">{{ __("In Progress") }}</option>
@@ -201,6 +227,7 @@ const subtitle = computed(() =>
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
+				<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 			</div>
 		</DeskForm>
 	</DeskPage>

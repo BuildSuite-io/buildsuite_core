@@ -13,6 +13,7 @@ import UserAvatar from "@/components/UserAvatar.vue";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { getDeskUrl, logout, getSessionUser } from "@/utils/session";
 import { __ } from "@/utils/translate";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 import { searchPlaces, decorateRecord, decorateDoctype } from "@/data/search";
 import { commandPalette } from "@/data/searchApi";
 
@@ -706,11 +707,23 @@ const navGroups = computed(() => {
 			</header>
 
 			<main class="flex-1 min-h-0">
+				<!-- Every page, bespoke or not, is extendable here: installed apps add components
+				     above and below it through page.<route name>.top / .bottom (see sdk/). -->
+				<ExtensionSlot
+					:name="`page.${String(route.name || 'unnamed')}.top`"
+					wrapper-class="desk-page pb-0"
+					wrapper-style="min-height: 0"
+				/>
 				<router-view v-slot="{ Component }">
 					<transition name="fade" mode="out-in">
 						<component :is="Component" />
 					</transition>
 				</router-view>
+				<ExtensionSlot
+					:name="`page.${String(route.name || 'unnamed')}.bottom`"
+					wrapper-class="desk-page pt-0"
+					wrapper-style="min-height: 0"
+				/>
 			</main>
 		</div>
 

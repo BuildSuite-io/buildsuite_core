@@ -20,7 +20,12 @@ async function call(method, args) {
 export const getWorkOrder = (name) => call("get_work_order", { name });
 export const getWoPrintData = (name) => call("get_wo_print_data", { name });
 export const saveWorkOrder = (payload) =>
-	call("save_work_order", { ...payload, lines: JSON.stringify(payload.lines || []) });
+	call("save_work_order", {
+		...payload,
+		lines: JSON.stringify(payload.lines || []),
+		// The whitelisted function takes it as a JSON string (type-checked), like `lines`.
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 // Native submittable lifecycle (docstatus): Draft → Submit → Cancelled, plus Amend.
 export const submitWorkOrder = (name) => call("submit_work_order", { name });
 export const cancelWorkOrder = (name) => call("cancel_work_order", { name });
@@ -32,7 +37,11 @@ export const getProjectCostCodes = (project) => call("get_project_cost_codes", {
 export const listSubcontractors = () => call("list_subcontractors");
 export const getMeasurementBookEntryCounts = () => call("measurement_book_entry_counts");
 export const getSubcontractor = (name) => call("get_subcontractor", { name });
-export const createSubcontractor = (payload) => call("create_subcontractor", payload);
+export const createSubcontractor = (payload) =>
+	call("create_subcontractor", {
+		...payload,
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 export const updateSubcontractor = (name, payload) =>
 	call("update_subcontractor", { name, ...payload });
 export const getCommittedByCostCode = (project) => call("committed_by_cost_code", { project });
@@ -51,7 +60,11 @@ export const getWorkOrderLines = (workOrder) =>
 	call("get_work_order_lines", { work_order: workOrder });
 export const getMeasurementBook = (name) => call("get_measurement_book", { name });
 export const saveMeasurementBook = (payload) =>
-	call("save_measurement_book", { ...payload, entries: JSON.stringify(payload.entries || []) });
+	call("save_measurement_book", {
+		...payload,
+		entries: JSON.stringify(payload.entries || []),
+		custom_fields: JSON.stringify(payload.custom_fields || {}),
+	});
 export const certifyMeasurementBook = (name) => call("certify_measurement_book", { name });
 export const revertMeasurementBook = (name) => call("revert_measurement_book", { name });
 export const getWoMeasurements = (workOrder) =>
