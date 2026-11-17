@@ -15,6 +15,10 @@ const PILL = {
 	Draft: "bg-ink-100 text-ink-700",
 	Cancelled: "bg-ink-100 text-ink-500",
 	Closed: "bg-ink-100 text-ink-500",
+	// Request for Quotation / Supplier Quotation — Submitted is their live state (a supplier's
+	// quote on a request reads Pending / Received, below); a quotation past its validity is Expired.
+	Submitted: "bg-info-50 text-info-700",
+	Expired: "bg-warning-50 text-warning-700",
 	// Material Request — approval axis (workflow_state), matching the prototype's StatusBadge map
 	"Pending Approval": "bg-warning-50 text-warning-700",
 	Approved: "bg-success-50 text-success-700",

@@ -154,6 +154,17 @@ PURCHASE_ORDER_ROLE_PERMS = {
 	"BuildSuite Store Keeper": _READ,
 	"BuildSuite Accountant": _READ,
 }
+# Request for Quotation + Supplier Quotation (and so their comparison): the admin, the Director
+# and the Procurement Officer ONLY, to read as well as to write. What competing suppliers quoted
+# is narrower than a purchase order: a PM, store keeper or accountant works from the order that
+# results, not from what the others quoted. One matrix for both doctypes, so they cannot drift.
+_RFQ_FULL = {**_FULL_SUB, "email": 1}  # CRWDSX + send it to the suppliers
+RFQ_ROLE_PERMS = {
+	"BuildSuite Administrator": _RFQ_FULL,
+	"BuildSuite Director": _RFQ_FULL,
+	"BuildSuite Procurement Officer": _RFQ_FULL,
+}
+RFQ_DOCTYPES = ("Request for Quotation", "Supplier Quotation")
 PURCHASE_RECEIPT_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _READ,
@@ -345,6 +356,9 @@ _SUBMIT_PTYPES = (*_PTYPES, "submit", "cancel", "amend")
 # Picker-only reference masters carry `select` too — include it so a _SELECT grant sets select=1
 # AND clears read/report/export/print (which are in _PTYPES).
 _SELECT_PTYPES = (*_PTYPES, "select")
+# A Request for Quotation is emailed to its suppliers from its own page, which Frappe gates on
+# the `email` ptype; RFQ_ROLE_PERMS is _FULL_SUB plus that.
+_RFQ_PTYPES = (*_SUBMIT_PTYPES, "email")
 
 
 def _ensure_role(role_name):
@@ -488,6 +502,8 @@ def setup_purchase_stock_permissions():
 	"""BuildSuite-role DocPerms on the native ERPNext buying / stock doctypes."""
 	_apply_role_perms("Material Request", MATERIAL_REQUEST_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Purchase Order", PURCHASE_ORDER_ROLE_PERMS, _SUBMIT_PTYPES)
+	for doctype in RFQ_DOCTYPES:
+		_apply_role_perms(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
 	_apply_role_perms("Purchase Receipt", PURCHASE_RECEIPT_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Purchase Invoice", PURCHASE_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Stock Entry", STOCK_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
@@ -498,6 +514,37 @@ def setup_purchase_stock_permissions():
 	# ERPNext roles (Purchase User / Stock Manager / …) read Item Group, so a BuildSuite persona had
 	# no grant and the picker 403'd on a clean site.
 	_apply_role_perms("Item Group", {role: _SELECT for role in ITEM_ROLE_PERMS}, _SELECT_PTYPES)
+
+
+def grant_missing_rfq_permissions():
+	"""Existing sites: give the Request for Quotation / Supplier Quotation roles their default rule
+	where they have none (see _grant_missing_role_perms), and the read on those two doctypes' child
+	tables and the pick on their link targets that the screens need. Additive only: a rule a site
+	already has, shipped or edited, is left as it is; nothing is reset, lowered or deleted."""
+	child_targets, link_targets = {}, {}
+	for doctype in RFQ_DOCTYPES:
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		had_custom = frappe.db.exists("Custom DocPerm", {"parent": doctype})
+		_grant_missing_role_perms(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
+		if not had_custom:
+			# The first Custom DocPerm on a doctype overrides its standard perms, System Manager's
+			# included (see _grant_system_manager).
+			_grant_system_manager(doctype)
+		roles = {
+			role
+			for role in RFQ_ROLE_PERMS
+			if frappe.db.exists("Custom DocPerm", {"parent": doctype, "role": role, "read": 1})
+		}
+		meta = frappe.get_meta(doctype)
+		for df in meta.get_table_fields():
+			if df.options:
+				child_targets.setdefault(df.options, set()).update(roles)
+		for df in meta.get_link_fields():
+			if df.options and df.options not in _READ_MIRROR_DENYLIST:
+				link_targets.setdefault(df.options, set()).update(roles)
+	_grant_mirror_read(child_targets)
+	_grant_link_select(link_targets)
 
 
 def _readonly_mirror(role_perms):

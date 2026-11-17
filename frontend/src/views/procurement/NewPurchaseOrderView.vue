@@ -8,6 +8,7 @@ import { useRoute, useRouter } from "vue-router";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
 import { getPurchaseOrder, getMrForPo, savePurchaseOrder } from "@/data/procurementApi";
+import { getSqForPo, todayISO } from "@/data/rfqApi";
 import { getSupplierBillItemDetails } from "@/data/supplierBillApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -76,8 +77,13 @@ async function onItemCreated(code) {
 const form = ref({
 	supplier: "",
 	project: route.query.project || "",
+	// The order's own date: today unless changed, so an order placed on an earlier day can be
+	// entered with that day. Never a day still to come.
+	transaction_date: todayISO(),
 	schedule_date: inDays(10),
 	material_request: null,
+	// The supplier quotation the order is raised from (/new?sq=<id>).
+	supplier_quotation: null,
 	tc_name: "",
 	terms: "",
 	lines: [emptyLine()],
@@ -123,8 +129,10 @@ watch(
 			form.value = {
 				supplier: po.supplier || "",
 				project: po.project || "",
+				transaction_date: po.transaction_date || todayISO(),
 				schedule_date: po.schedule_date || inDays(10),
 				material_request: null,
+				supplier_quotation: po.supplier_quotation || null,
 				tc_name: po.tc_name || "",
 				terms: po.terms || "",
 				lines: (po.items || []).map((it) => ({
@@ -136,6 +144,8 @@ watch(
 					cost_code: it.cost_code || null,
 					material_request: it.material_request || null,
 					material_request_item: it.material_request_item || null,
+					supplier_quotation: it.supplier_quotation || null,
+					supplier_quotation_item: it.supplier_quotation_item || null,
 				})),
 			};
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
@@ -175,6 +185,52 @@ watch(
 	{ immediate: true }
 );
 
+// From a submitted Supplier Quotation: the supplier, the project, the lines the supplier priced
+// at the quoted rates (each linked to its quotation line) when opened as /new?sq=<id>. The taxes
+// quoted are copied onto the order when it is saved.
+const sqTax = ref(0);
+watch(
+	() => route.query.sq,
+	async (sqId) => {
+		if (!sqId || isEdit.value) return;
+		try {
+			const pre = await getSqForPo(sqId);
+			form.value.supplier = pre.supplier || form.value.supplier;
+			form.value.project = pre.project || form.value.project;
+			form.value.supplier_quotation = pre.supplier_quotation;
+			if (pre.schedule_date && pre.schedule_date >= todayISO())
+				form.value.schedule_date = pre.schedule_date;
+			sqTax.value = pre.total_taxes_and_charges || 0;
+			if (pre.lines?.length) {
+				form.value.lines = pre.lines.map((l) => ({
+					item_code: l.item_code || "",
+					description: l.description || "",
+					qty: l.qty,
+					uom: l.uom || "",
+					rate: l.rate ?? null,
+					cost_code: l.cost_code || null,
+					material_request: l.material_request || null,
+					material_request_item: l.material_request_item || null,
+					supplier_quotation: l.supplier_quotation || null,
+					supplier_quotation_item: l.supplier_quotation_item || null,
+				}));
+			} else {
+				showToast(__("Everything on this quotation is already on an order."), "error");
+			}
+			if (pre.status === "Expired")
+				showToast(
+					__(
+						"This quotation's validity has ended. Confirm the rates with the supplier."
+					),
+					"error"
+				);
+		} catch (err) {
+			showToast(err.message || __("Failed to load supplier quotation"), "error");
+		}
+	},
+	{ immediate: true }
+);
+
 const validLines = computed(() =>
 	form.value.lines.filter((l) => l.item_code && Number(l.qty) > 0)
 );
@@ -198,6 +254,9 @@ function validate() {
 	if (!form.value.supplier) e.supplier = __("Pick a supplier.");
 	if (!form.value.project) e.project = __("Pick a project.");
 	if (!validLines.value.length) e.lines = __("Add at least one item with a quantity.");
+	if (!form.value.transaction_date) e.transaction_date = __("Order date is required.");
+	else if (form.value.transaction_date > todayISO())
+		e.transaction_date = __("The order date cannot be in the future.");
 	errors.value = e;
 	return Object.keys(e).length === 0;
 }
@@ -210,8 +269,10 @@ async function onSave() {
 			name: editingId.value || undefined,
 			supplier: form.value.supplier,
 			project: form.value.project,
+			transaction_date: form.value.transaction_date,
 			schedule_date: form.value.schedule_date,
 			material_request: form.value.material_request || undefined,
+			supplier_quotation: form.value.supplier_quotation || undefined,
 			terms: form.value.terms || "",
 			tc_name: form.value.tc_name || "",
 			items: validLines.value.map((l) => ({
@@ -224,6 +285,9 @@ async function onSave() {
 				// Keeps the line tied to its Material Request line, so the request shows as ordered.
 				material_request: l.material_request || null,
 				material_request_item: l.material_request_item || null,
+				// And to its Supplier Quotation line, so the quotation shows as ordered.
+				supplier_quotation: l.supplier_quotation || null,
+				supplier_quotation_item: l.supplier_quotation_item || null,
 			})),
 		});
 		showToast(isEdit.value ? __("Order saved.") : __("Order created."));
@@ -286,8 +350,24 @@ const saveLabel = computed(() =>
 				<span class="font-mono">{{ form.material_request }}</span> —
 				{{ __("lines pre-filled; set the supplier and rates.") }}
 			</div>
+			<div
+				v-if="form.supplier_quotation && !isEdit"
+				class="mb-4 px-4 py-2 bg-info-50 border border-info-200 rounded-md text-xs text-info-700"
+				data-test="po-from-sq"
+			>
+				{{ __("From Supplier Quotation") }}
+				<span class="font-mono">{{ form.supplier_quotation }}</span> —
+				{{ __("supplier, lines and quoted rates pre-filled.") }}
+				<template v-if="sqTax">
+					{{
+						__("The taxes quoted ({0}) are added when the order is saved.", [
+							fmtINR(sqTax),
+						])
+					}}
+				</template>
+			</div>
 
-			<DeskSection id="order" :title="__('Order')" :cols="3">
+			<DeskSection id="order" :title="__('Order')" :cols="4">
 				<DeskField :label="__('Supplier')" required :error="errors.supplier">
 					<DeskLinkPicker
 						v-model="form.supplier"
@@ -312,6 +392,19 @@ const saveLabel = computed(() =>
 						:search-fields="['project_name', 'name']"
 						:disabled="isEdit"
 						:placeholder="__('— Select project —')"
+					/>
+				</DeskField>
+				<DeskField
+					:label="__('Order date')"
+					required
+					:error="errors.transaction_date"
+					:hint="__('Today unless the order was placed earlier.')"
+				>
+					<DeskInput
+						v-model="form.transaction_date"
+						type="date"
+						:max="todayISO()"
+						name="transaction_date"
 					/>
 				</DeskField>
 				<DeskField :label="__('Required by')">

@@ -72,7 +72,7 @@ camelCase keys, defined once in **`buildsuite_core/permissions/resource_map.py`*
 
 ```
 project · workPackage · task · taskProgressEntry · stagePlanning · sco
-materialRequest · purchaseOrder · purchaseReceipt · materialConsumption · item
+materialRequest · rfq · supplierQuotation · purchaseOrder · purchaseReceipt · materialConsumption · item
 boq · assembly · estimateTemplate · rateMaster
 subcontractor · subcontractorWorkOrder · measurementBook · subcontractorBill
 fieldEmployee · crew · fieldAttendance · machinery · machineryUsage

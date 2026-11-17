@@ -23,6 +23,19 @@ const shortcuts = [
 		to: "/procurement/material-requests",
 		cap: "materialRequest",
 	},
+	// Ask suppliers to quote, record what they answer; both hide for a role that can't read them.
+	{
+		label: "Requests for Quotation",
+		icon: "clipboard-list",
+		to: "/procurement/rfqs",
+		cap: "rfq",
+	},
+	{
+		label: "Supplier Quotations",
+		icon: "tag",
+		to: "/procurement/supplier-quotations",
+		cap: "supplierQuotation",
+	},
 	{
 		label: "Purchase Orders",
 		icon: "file-text",

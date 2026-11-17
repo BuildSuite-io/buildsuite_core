@@ -14,7 +14,7 @@ its lines for display."""
 
 import frappe
 from frappe import _
-from frappe.utils import flt, nowdate
+from frappe.utils import flt, getdate, nowdate
 
 from buildsuite_core.utils.project import default_company
 
@@ -111,6 +111,10 @@ def get_material_request(name: str):
 	doc.check_permission("read")
 	out = _serialize_mr(doc)
 	out["actions"] = _mr_actions(doc)
+	# Requests for quotation raised from this request (empty for a role that may not read them).
+	from buildsuite_core.api.rfq import rfqs_for_material_request
+
+	out["rfqs"] = rfqs_for_material_request(doc.name)
 	return out
 
 
@@ -264,6 +268,11 @@ def _serialize_po(doc):
 		"currency": doc.currency,
 		"grand_total": flt(doc.grand_total),
 		"total": flt(doc.total),
+		"total_taxes_and_charges": flt(doc.total_taxes_and_charges),
+		# The supplier quotation the order was raised from, when it was (the line link is ERPNext's).
+		"supplier_quotation": next(
+			(it.supplier_quotation for it in doc.items if it.supplier_quotation), None
+		),
 		"per_received": flt(doc.per_received),
 		"per_billed": flt(doc.per_billed),
 		"docstatus": doc.docstatus,
@@ -289,6 +298,8 @@ def _serialize_po(doc):
 				"cost_code": _po_cost_code_obj(it),
 				"material_request": it.material_request,
 				"material_request_item": it.material_request_item,
+				"supplier_quotation": it.supplier_quotation,
+				"supplier_quotation_item": it.supplier_quotation_item,
 			}
 			for it in doc.items
 		],
@@ -408,9 +419,15 @@ def save_purchase_order(
 	terms: str | None = None,
 	tc_name: str | None = None,
 	material_request: str | None = None,
+	supplier_quotation: str | None = None,
 ):
 	"""Create / update a draft Purchase Order. Rate is entered by hand (single
 	company currency, conversion 1); line amounts are computed by the controller.
+
+	`transaction_date` is the order's own date: today unless the order was placed earlier, never
+	a day still to come. `supplier_quotation` names the quotation a NEW order is raised from: its
+	lines carry the quotation line links (so ERPNext marks the quotation ordered) and the order
+	starts with the taxes the supplier quoted.
 
 	`terms` is the PO's own Terms & conditions (rich text, copied from a Terms and Conditions
 	template or typed) and `tc_name` the template it came from. Left out (None), the PO keeps the
@@ -420,8 +437,11 @@ def save_purchase_order(
 		frappe.throw(_("Pick a supplier."))
 	if not project:
 		frappe.throw(_("Pick a project."))
+	if transaction_date and getdate(transaction_date) > getdate(nowdate()):
+		frappe.throw(_("The order date cannot be in the future."))
 
-	if name and frappe.db.exists(PURCHASE_ORDER, name):
+	is_new = not (name and frappe.db.exists(PURCHASE_ORDER, name))
+	if not is_new:
 		doc = frappe.get_doc(PURCHASE_ORDER, name)
 		doc.check_permission("write")
 	else:
@@ -462,11 +482,20 @@ def save_purchase_order(
 				# Material Request through the line link, not the request name alone.
 				"material_request": row.get("material_request") or material_request or None,
 				"material_request_item": row.get("material_request_item") or None,
+				# Likewise the Supplier Quotation line: ERPNext reads the ordered qty (and the
+				# quotation's Ordered / Partially Ordered status) through this link.
+				"supplier_quotation": row.get("supplier_quotation") or None,
+				"supplier_quotation_item": row.get("supplier_quotation_item") or None,
 				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)
 	if not doc.get("items"):
 		frappe.throw(_("Add at least one item with a quantity."))
+
+	if is_new and supplier_quotation:
+		from buildsuite_core.api.rfq import copy_sq_taxes_to_po
+
+		copy_sq_taxes_to_po(doc, supplier_quotation)
 
 	doc.save()
 	return _serialize_po(doc)

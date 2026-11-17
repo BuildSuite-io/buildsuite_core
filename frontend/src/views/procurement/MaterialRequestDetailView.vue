@@ -66,6 +66,11 @@ function onEdit() {
 function onCreatePo() {
 	router.push(`/procurement/purchase-orders/new?mr=${mr.value.name}`);
 }
+// Ask suppliers to quote for a submitted request (ERPNext: Material Request → Request for
+// Quotation), before or instead of ordering.
+function onCreateRfq() {
+	router.push(`/procurement/rfqs/new?mr=${mr.value.name}`);
+}
 
 async function onSubmit() {
 	const ok = await confirmDialog({
@@ -198,6 +203,17 @@ const breadcrumbs = computed(() => [
 				{{ __("Submit") }}
 			</button>
 			<button
+				v-if="isSubmitted && canCreate('rfq')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				:title="__('Ask suppliers to quote for this request')"
+				data-test="mr-create-rfq"
+				@click="onCreateRfq"
+			>
+				{{ __("+ Create Request for Quotation") }}
+			</button>
+			<button
 				v-if="canOrder && canCreate('purchaseOrder')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
@@ -251,6 +267,22 @@ const breadcrumbs = computed(() => [
 			</button>
 		</template>
 
+		<!-- Requests for quotation raised from this request (the backend sends none to a role that
+		     may not read them). -->
+		<div
+			v-if="mr.rfqs && mr.rfqs.length"
+			class="mb-4 px-4 py-2.5 bg-info-50 border border-info-200 rounded-md text-xs text-ink-700"
+			data-test="mr-rfqs"
+		>
+			{{ __("Quotations asked for in") }}
+			<template v-for="(r, i) in mr.rfqs" :key="r.name"
+				><span v-if="i">, </span
+				><DeskLink :to="`/procurement/rfqs/${r.name}`" class="font-mono">{{
+					r.name
+				}}</DeskLink>
+				({{ __(r.status) }})</template
+			>.
+		</div>
 		<div
 			v-if="isDraft"
 			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"

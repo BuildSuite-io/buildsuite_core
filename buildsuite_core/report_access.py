@@ -136,6 +136,14 @@ _REPORT_ANCHORS = (
 			"BuildSuite Accountant",
 		),
 	),
+	# As the documents it reads (permissions.setup.RFQ_ROLE_PERMS): the Director and the
+	# Procurement Officer, plus the admins every anchor gets.
+	(
+		"Supplier Quotation Comparison",
+		"Supplier Quotation",
+		"/procurement/supplier-quotation-comparison",
+		("BuildSuite Director", "BuildSuite Procurement Officer"),
+	),
 	(
 		"Purchase Register",
 		"Purchase Order",

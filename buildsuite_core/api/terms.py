@@ -22,13 +22,20 @@ DOCTYPE = "Terms and Conditions"
 APPLICABLE_FOR = [
 	"Quotation",
 	"Tender",
+	"Request for Quotation",
 	"Purchase Order",
 	"Subcontractor Work Order",
 	"Subcontractor Bill",
 	"Sales Invoice",
 	"Purchase Invoice",
 ]
-_BUYING = {"Purchase Order", "Purchase Invoice", "Subcontractor Work Order", "Subcontractor Bill"}
+_BUYING = {
+	"Request for Quotation",
+	"Purchase Order",
+	"Purchase Invoice",
+	"Subcontractor Work Order",
+	"Subcontractor Bill",
+}
 _SELLING = {"Quotation", "Tender", "Sales Invoice"}
 
 

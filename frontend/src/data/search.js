@@ -44,6 +44,16 @@ export const DOCTYPE_META = {
 		icon: "clipboard-list",
 		to: (n) => `/procurement/material-requests/${n}`,
 	},
+	"Request for Quotation": {
+		label: "Request for quotation",
+		icon: "clipboard-list",
+		to: (n) => `/procurement/rfqs/${n}`,
+	},
+	"Supplier Quotation": {
+		label: "Supplier quotation",
+		icon: "tag",
+		to: (n) => `/procurement/supplier-quotations/${n}`,
+	},
 	"Purchase Order": {
 		label: "Purchase order",
 		icon: "file-text",
@@ -222,6 +232,20 @@ const PLACES = [
 		to: "/procurement/material-requests",
 		cap: "materialRequest",
 		words: ["material request", "mr", "requisition", "indent"],
+	},
+	{
+		label: "Requests for quotation",
+		icon: "clipboard-list",
+		to: "/procurement/rfqs",
+		cap: "rfq",
+		words: ["rfq", "rfqs", "request for quotation", "requests for quotation", "enquiry"],
+	},
+	{
+		label: "Supplier quotations",
+		icon: "tag",
+		to: "/procurement/supplier-quotations",
+		cap: "supplierQuotation",
+		words: ["supplier quotation", "supplier quotations", "supplier quote", "sqtn"],
 	},
 	{
 		label: "Purchase orders",
@@ -407,6 +431,11 @@ const REPORT_PLACES = {
 		label: "Purchase rate vs estimate",
 		icon: "chart-bar",
 		words: ["rate check", "rate vs estimate", "purchase rate"],
+	},
+	"/procurement/supplier-quotation-comparison": {
+		label: "Supplier quotation comparison",
+		icon: "tag",
+		words: ["supplier quotation", "comparison", "compare", "quotation", "rfq", "lowest rate"],
 	},
 	"/procurement/report/purchase-register": {
 		label: "Purchase register",
