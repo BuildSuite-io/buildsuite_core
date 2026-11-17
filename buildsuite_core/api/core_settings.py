@@ -85,18 +85,11 @@ def set_petty_cash_account(account: str | None = None):
 	"""Set the configurable Petty Cash Account — the Cash/Bank float petty cash and expenses
 	post to/from. Must be a ledger Cash/Bank account of the default company."""
 	_require_admin()
-	from buildsuite_core.utils.project import default_company
+	from buildsuite_core.utils.petty_cash import validate_petty_cash_account
 
 	account = (account or "").strip() or None
 	if account:
-		acc = frappe.db.get_value("Account", account, ["is_group", "company", "account_type"], as_dict=True)
-		if not acc or acc.is_group:
-			frappe.throw(_("Choose a ledger (non-group) account."))
-		company = default_company()
-		if company and acc.company != company:
-			frappe.throw(_("The petty cash account must belong to {0}.").format(company))
-		if acc.account_type not in ("Cash", "Bank"):
-			frappe.throw(_("The petty cash account must be a Cash or Bank account."))
+		validate_petty_cash_account(account)
 	doc = frappe.get_single(SETTINGS)
 	doc.default_petty_cash_account = account
 	doc.flags.ignore_permissions = True

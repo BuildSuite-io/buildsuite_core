@@ -261,21 +261,12 @@ def seed_finance_accounts():
 
 def _seed_default_petty_cash_account():
 	"""Default the configurable Petty Cash Account (BuildSuite Core Settings) to the default
-	company's seeded 'Petty Cash' ledger — so petty cash and expenses have a float to post
-	to/from out of the box. Respects an account an admin has already chosen."""
-	from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
-	from buildsuite_core.utils.project import default_company
+	company's Petty Cash ledger — so petty cash and expenses have a float to post to/from out of
+	the box. Respects a valid account an admin has chosen, and leaves it unset (for the admin to
+	pick) when the chart offers several candidates."""
+	from buildsuite_core.utils.petty_cash import seed_default_petty_cash_account
 
-	company = default_company()
-	if not company:
-		return
-	settings = frappe.get_single("BuildSuite Core Settings")
-	current = settings.default_petty_cash_account
-	if current and frappe.db.exists("Account", current):
-		return
-	settings.default_petty_cash_account = resolve_petty_cash_account(company)
-	settings.flags.ignore_permissions = True
-	settings.save()
+	seed_default_petty_cash_account()
 
 
 def seed_employee_accounting_dimension():
