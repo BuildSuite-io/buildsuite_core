@@ -18,8 +18,9 @@ export const pettyCashCanDisburse = () => call("can_disburse", {});
 export const getPettyCash = (name) => call("get_request", { name });
 export const savePettyCash = (payload) =>
 	call("save_request", { payload: JSON.stringify(payload) });
-export const disbursePettyCash = (name, paidFrom) =>
-	call("disburse", { name, paid_from: paidFrom });
+// `disbursementDate` (YYYY-MM-DD): the day the cash was paid, which the Journal Entry posts on.
+export const disbursePettyCash = (name, paidFrom, disbursementDate) =>
+	call("disburse", { name, paid_from: paidFrom, disbursement_date: disbursementDate });
 export const issueDirectPettyCash = (payload) =>
 	call("issue_direct", { payload: JSON.stringify(payload) });
 export const undisbursePettyCash = (name) => call("undisburse", { name });

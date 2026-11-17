@@ -49,6 +49,8 @@ def _serialize(doc):
 		"paid_from": doc.paid_from,
 		"disbursed_by": doc.disbursed_by,
 		"disbursed_on": str(doc.disbursed_on) if doc.disbursed_on else None,
+		# The day the cash was paid — the disbursement Journal Entry's posting date.
+		"disbursement_date": str(doc.disbursement_date) if doc.get("disbursement_date") else None,
 		"journal_entry": doc.journal_entry,
 		"can_disburse": _can_disburse(),
 		"is_mine": doc.requested_by == frappe.session.user,
@@ -106,11 +108,13 @@ def save_request(payload: str):
 
 
 @frappe.whitelist()
-def disburse(name: str, paid_from: str):
+def disburse(name: str, paid_from: str, disbursement_date: str | None = None):
+	"""Pay out a request from a cash/bank account, posted on the day the cash was paid
+	(`disbursement_date`, today when not given)."""
 	doc = frappe.get_doc(DOCTYPE, name)
 	if not _can_disburse():
 		frappe.throw(_("You are not authorised to disburse petty cash."), frappe.PermissionError)
-	doc.disburse(paid_from)
+	doc.disburse(paid_from, disbursement_date)
 	return _serialize(doc)
 
 
@@ -131,14 +135,21 @@ def issue_direct(payload: str):
 	if not paid_from:
 		frappe.throw(_("Select the cash/bank account the float comes from."))
 
+	# The day the cash was paid (today unless given). A direct issue has no request before it,
+	# so its request date is that day too.
+	from buildsuite_core.utils.petty_cash import disbursement_date_for
+
+	paid_on = disbursement_date_for(data.get("disbursement_date"))
+
 	doc = frappe.new_doc(DOCTYPE)
 	doc.requested_by = holder  # the holder; company is derived from their Employee in validate
 	doc.amount = flt(data.get("amount"))
 	doc.purpose = data.get("purpose")
 	doc.is_direct = 1
+	doc.request_date = paid_on
 	doc.flags.ignore_permissions = True
 	doc.insert()  # lands as a Requested record for this holder …
-	doc.disburse(paid_from)  # … then disburse immediately (posts the JE)
+	doc.disburse(paid_from, paid_on)  # … then disburse immediately (posts the JE on that day)
 	return _serialize(doc)
 
 
@@ -281,10 +292,21 @@ def statement(employee: str):
 		for d in frappe.get_all(
 			DOCTYPE,
 			filters={"requested_by": user_id, "status": "Disbursed"},
-			fields=["name", "project", "request_date", "disbursed_on", "amount", "purpose"],
+			fields=[
+				"name",
+				"project",
+				"request_date",
+				"disbursement_date",
+				"disbursed_on",
+				"amount",
+				"purpose",
+			],
 		):
-			date = (str(d.disbursed_on)[:10] if d.disbursed_on else None) or (
-				str(d.request_date) if d.request_date else None
+			# The day it was paid; older records fall back to when it was recorded, then requested.
+			date = (
+				(str(d.disbursement_date) if d.disbursement_date else None)
+				or (str(d.disbursed_on)[:10] if d.disbursed_on else None)
+				or (str(d.request_date) if d.request_date else None)
 			)
 			rows.append(
 				{

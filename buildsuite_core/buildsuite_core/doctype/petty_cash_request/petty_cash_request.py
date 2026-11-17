@@ -31,12 +31,15 @@ class PettyCashRequest(Document):
 			frappe.throw(_("A disbursed request can't be deleted — cancel the disbursement first."))
 
 	# --- actions ----------------------------------------------------------
-	def disburse(self, paid_from):
-		"""Record the cash going out to the holder and post the Journal Entry."""
-		from buildsuite_core.utils.petty_cash import post_disbursement_journal_entry
+	def disburse(self, paid_from, disbursement_date=None):
+		"""Record the cash going out to the holder and post the Journal Entry, on the day it was
+		paid (`disbursement_date`, today unless given — utils.petty_cash.disbursement_date_for)."""
+		from buildsuite_core.utils.petty_cash import disbursement_date_for, post_disbursement_journal_entry
 
 		if self.status != "Requested":
-			frappe.throw(_("Only a Requested petty cash request can be disbursed (this is {0}).").format(self.status))
+			frappe.throw(
+				_("Only a Requested petty cash request can be disbursed (this is {0}).").format(self.status)
+			)
 		if not paid_from:
 			frappe.throw(_("Select the cash/bank account to pay from."))
 		acc = frappe.db.get_value("Account", paid_from, ["company", "account_type", "is_group"], as_dict=True)
@@ -54,12 +57,18 @@ class PettyCashRequest(Document):
 			frappe.throw(_("Pay from a bank/cash source, not the Petty Cash account itself."))
 
 		self.paid_from = paid_from
+		self.disbursement_date = disbursement_date_for(disbursement_date, self.request_date)
 		self.disbursed_by = frappe.session.user
-		self.disbursed_on = now_datetime()
+		self.disbursed_on = now_datetime()  # when it was recorded; the money moved on disbursement_date
 		self.journal_entry = post_disbursement_journal_entry(self)
 		self.status = "Disbursed"
 		self.save(ignore_permissions=True)
-		self.add_comment("Comment", _("Disbursed {0} from {1}").format(frappe.format(flt(self.amount), {"fieldtype": "Currency"}), paid_from))
+		self.add_comment(
+			"Comment",
+			_("Disbursed {0} from {1}").format(
+				frappe.format(flt(self.amount), {"fieldtype": "Currency"}), paid_from
+			),
+		)
 
 	def cancel_disbursement(self):
 		"""Reverse a disbursement — cancel the Journal Entry and revert to Requested."""
@@ -72,6 +81,7 @@ class PettyCashRequest(Document):
 		self.paid_from = None
 		self.disbursed_by = None
 		self.disbursed_on = None
+		self.disbursement_date = None
 		self.journal_entry = None
 		self.save(ignore_permissions=True)
 		self.add_comment("Comment", _("Disbursement reversed"))

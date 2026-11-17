@@ -34,6 +34,7 @@ import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
 import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { disbursementDateIssue, localToday, paidOnOf } from "@/utils/pettyCash";
 import { __ } from "@/utils/translate";
 
 const session = useSessionStore();
@@ -104,6 +105,9 @@ const baseFilters = computed(() => {
 });
 const filterValues = computed(() => (tab.value === "all" ? { status: statusFilter.value } : {}));
 
+// "Paid on" — the day the cash was paid (the Journal Entry's posting date), shown once disbursed.
+const PAID_ON_FIELDS = ["status", "disbursement_date", "disbursed_on", "request_date"];
+
 // Columns are tailored per tab (mirrors the prototype): the All Requests register
 // carries ID + From account; the queue and My Requests are leaner.
 const columns = computed(() => {
@@ -112,7 +116,8 @@ const columns = computed(() => {
 			{ key: "name", label: __("ID") },
 			{ key: "requested_by", label: __("Holder"), fields: ["requested_by", "owner"] },
 			{ key: "purpose", label: __("Purpose") },
-			{ key: "request_date", label: __("Date") },
+			{ key: "request_date", label: __("Requested") },
+			{ key: "paid_on", label: __("Paid on"), fields: PAID_ON_FIELDS },
 			{ key: "from_account", label: __("From account"), fields: ["status", "paid_from"] },
 			{ key: "amount", label: __("Amount"), align: "right" },
 			{ key: "status", label: __("Status"), fields: ["status", "is_direct"] },
@@ -120,10 +125,11 @@ const columns = computed(() => {
 		];
 	if (tab.value === "mine")
 		return [
-			{ key: "request_date", label: __("Date") },
+			{ key: "request_date", label: __("Requested") },
 			{ key: "purpose", label: __("Purpose") },
 			{ key: "amount", label: __("Amount"), align: "right" },
 			{ key: "status", label: __("Status"), fields: ["status", "is_direct"] },
+			{ key: "paid_on", label: __("Paid on"), fields: PAID_ON_FIELDS },
 			{ key: "actions", label: "", fields: ["status", "requested_by"] },
 		];
 	// disburse queue
@@ -177,9 +183,11 @@ const direct = reactive({
 	amount: 0,
 	paidFrom: "",
 	purpose: "",
+	paidOn: localToday(), // the day the cash was paid; the Journal Entry posts on it
 	accounts: [],
 	saving: false,
 });
+const today = computed(() => localToday());
 async function openDirect() {
 	Object.assign(direct, {
 		open: true,
@@ -187,6 +195,7 @@ async function openDirect() {
 		amount: 0,
 		paidFrom: "",
 		purpose: "",
+		paidOn: localToday(),
 		accounts: [],
 		saving: false,
 	});
@@ -204,6 +213,8 @@ async function submitDirect() {
 	if (!(Number(direct.amount) > 0)) return showToast(__("Enter an amount."), "error");
 	if (!direct.paidFrom) return showToast(__("Pick the account to pay from."), "error");
 	if (!direct.purpose.trim()) return showToast(__("A short reason is required."), "error");
+	const dateIssue = disbursementDateIssue(direct.paidOn);
+	if (dateIssue) return showToast(dateIssue, "error");
 	direct.saving = true;
 	try {
 		await issueDirectPettyCash({
@@ -211,6 +222,7 @@ async function submitDirect() {
 			amount: direct.amount,
 			paid_from: direct.paidFrom,
 			purpose: direct.purpose,
+			disbursement_date: direct.paidOn,
 		});
 		direct.open = false;
 		refreshList();
@@ -224,9 +236,24 @@ async function submitDirect() {
 }
 
 // --- disburse modal ---
-const disb = reactive({ open: false, row: null, paidFrom: "", accounts: [], saving: false });
+// `paidOn`: the day the cash was paid — today unless the accountant says otherwise.
+const disb = reactive({
+	open: false,
+	row: null,
+	paidFrom: "",
+	paidOn: localToday(),
+	accounts: [],
+	saving: false,
+});
 async function openDisburse(row) {
-	Object.assign(disb, { open: true, row, paidFrom: "", accounts: [], saving: false });
+	Object.assign(disb, {
+		open: true,
+		row,
+		paidFrom: "",
+		paidOn: localToday(),
+		accounts: [],
+		saving: false,
+	});
 	try {
 		// The funding source — Bank/Cash accounts for the active (default) company, EXCLUDING
 		// Petty Cash (Cr must be a real source, never Petty Cash itself, a no-op JE).
@@ -237,9 +264,11 @@ async function openDisburse(row) {
 }
 async function confirmDisburse() {
 	if (!disb.paidFrom) return showToast(__("Pick the account to pay from."), "error");
+	const dateIssue = disbursementDateIssue(disb.paidOn, { requestDate: disb.row?.request_date });
+	if (dateIssue) return showToast(dateIssue, "error");
 	disb.saving = true;
 	try {
-		await disbursePettyCash(disb.row.name, disb.paidFrom);
+		await disbursePettyCash(disb.row.name, disb.paidFrom, disb.paidOn);
 		disb.open = false;
 		refreshList();
 		loadBalances();
@@ -480,6 +509,14 @@ const breadcrumbs = [
 			<template #cell-purpose="{ row }">
 				<span class="text-xs text-ink-700">{{ (row.purpose || "").slice(0, 60) }}</span>
 			</template>
+			<template #cell-paid_on="{ row }">
+				<span
+					class="text-xs whitespace-nowrap"
+					:class="paidOnOf(row) ? 'text-ink-900' : 'text-ink-500'"
+					data-test="pc-paid-on"
+					>{{ paidOnOf(row) ? fmtDate(paidOnOf(row)) : "—" }}</span
+				>
+			</template>
 			<template #cell-request_date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.request_date) }}</span>
 			</template>
@@ -652,6 +689,24 @@ const breadcrumbs = [
 							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
 						/>
 					</div>
+					<div>
+						<label
+							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Paid on") }} <span class="text-danger-600">*</span></label
+						>
+						<input
+							v-model="direct.paidOn"
+							type="date"
+							:max="today"
+							class="w-full text-sm px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+							data-test="pc-direct-paid-on"
+						/>
+						<p class="text-[11px] text-ink-500 mt-1">
+							{{
+								__("The day the cash left the account. It is posted on this date.")
+							}}
+						</p>
+					</div>
 				</div>
 				<footer
 					class="px-4 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
@@ -700,6 +755,25 @@ const breadcrumbs = [
 							{{ a.name }}
 						</option>
 					</DeskSelect>
+				</DeskField>
+				<DeskField
+					:label="__('Paid on')"
+					required
+					class="mt-3"
+					:hint="
+						__(
+							'The day the cash left the account. It is posted on this date. Requested {0}.',
+							[fmtDate(disb.row?.request_date)]
+						)
+					"
+				>
+					<DeskInput
+						v-model="disb.paidOn"
+						type="date"
+						:min="disb.row?.request_date || undefined"
+						:max="today"
+						data-test="pc-disburse-paid-on"
+					/>
 				</DeskField>
 				<div class="flex justify-end gap-2 mt-5">
 					<button class="desk-btn" @click="disb.open = false">{{ __("Cancel") }}</button>
