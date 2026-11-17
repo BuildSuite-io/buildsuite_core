@@ -7,7 +7,7 @@ import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
-import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useListCounts } from "@/composables/useListCounts";
 import {
 	pettyCashCanDisburse,
 	savePettyCash,
@@ -19,7 +19,7 @@ import {
 	listCashBankAccounts,
 } from "@/data/pettyCashApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
-import DeskList from "@/components/desk/DeskList.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -31,6 +31,7 @@ import { useUserNames } from "@/composables/useUserNames";
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
@@ -56,66 +57,52 @@ pettyCashCanDisburse()
 	.then((r) => (canDisburse.value = !!r.can_disburse))
 	.catch(() => {});
 
-const res = useDocTypeList("Petty Cash Request", {
-	fields: [
-		"name",
-		"requested_by",
-		"request_date",
-		"amount",
-		"purpose",
-		"status",
-		"is_direct",
-		"company",
-		"paid_from",
-		"disbursed_by",
-		"owner",
-	],
-	orderBy: "request_date desc",
-	pageLength: 0,
-	cache: "buildsuite-petty-cash-list",
-});
-const all = computed(() => res.data || []);
+// The request lists are the generic DocTypeListView (server paging, sort, Add filter); each tab is
+// a base filter over Petty Cash Request, and the tab badges are server counts.
+const listRef = ref(null);
+const { counts, reload: reloadCounts } = useListCounts("Petty Cash Request", () => ({
+	disburse: [["status", "=", "Requested"]],
+	all: [],
+	mine: [["requested_by", "=", session.user]],
+}));
+// After a request / disburse / withdraw: refresh the visible list and the tab badges.
+function refreshList() {
+	listRef.value?.reload?.();
+	reloadCounts();
+}
 
 // Default to "My Requests" — always available to every role; disbursers / see-all roles pick the
 // disburse queue / All / Balances from the tabs when they have them.
 const tab = ref("mine");
-const search = ref("");
 const statusFilter = ref(""); // All Requests tab status dropdown
-// Org-wide tabs (All / Balances) only for roles NOT limited by ownership; the disburse queue only
-// for disbursers; My Requests for everyone. An own-scoped role therefore sees just "My Requests".
+// "All Requests" is org-wide, so only for roles NOT limited by ownership; the disburse queue only
+// for disbursers; My Requests for everyone. Balances is for everyone too — a self-service (own-scoped)
+// holder sees only their own balance (the backend scopes holder_balances to the caller), so they get
+// the Balances tab alongside My Requests.
 const canSeeAll = computed(() => canReadAll("pettyCash"));
 const tabs = computed(() => [
 	...(canDisburse.value
-		? [{ id: "disburse", label: __("To Disburse"), count: requested.value.length }]
+		? [{ id: "disburse", label: __("To Disburse"), count: counts.value.disburse ?? 0 }]
 		: []),
 	...(canSeeAll.value
-		? [
-				{ id: "all", label: __("All Requests"), count: all.value.length },
-				{ id: "balances", label: __("Balances"), count: null },
-		  ]
+		? [{ id: "all", label: __("All Requests"), count: counts.value.all ?? 0 }]
 		: []),
-	{ id: "mine", label: __("My Requests"), count: mine.value.length },
+	{ id: "balances", label: __("Balances"), count: null },
+	{ id: "mine", label: __("My Requests"), count: counts.value.mine ?? 0 },
 ]);
 
-const requested = computed(() => all.value.filter((r) => r.status === "Requested"));
-const mine = computed(() => all.value.filter((r) => r.requested_by === session.user));
 // Raised FOR me by someone else: I'm the holder (owner), but another user created it.
 // Raised FOR me: I'm the holder (requested_by) but someone else created it (owner != me).
 const raisedForMe = (row) =>
 	row.requested_by === session.user && row.owner && row.owner !== session.user;
-const filteredAll = computed(() => {
-	const q = search.value.trim().toLowerCase();
-	return all.value.filter((r) => {
-		if (statusFilter.value && r.status !== statusFilter.value) return false;
-		if (!q) return true;
-		return (
-			(r.name || "").toLowerCase().includes(q) ||
-			(r.purpose || "").toLowerCase().includes(q) ||
-			(r.requested_by || "").toLowerCase().includes(q) ||
-			userName(r.requested_by).toLowerCase().includes(q)
-		);
-	});
+// Per-tab server filters: My Requests = mine, the queue = still Requested, All = everything the
+// user may read (narrowed by the status chip).
+const baseFilters = computed(() => {
+	if (tab.value === "mine") return [["requested_by", "=", session.user]];
+	if (tab.value === "disburse") return [["status", "=", "Requested"]];
+	return [];
 });
+const filterValues = computed(() => (tab.value === "all" ? { status: statusFilter.value } : {}));
 
 // Columns are tailored per tab (mirrors the prototype): the All Requests register
 // carries ID + From account; the queue and My Requests are leaner.
@@ -123,35 +110,35 @@ const columns = computed(() => {
 	if (tab.value === "all")
 		return [
 			{ key: "name", label: __("ID") },
-			{ key: "requested_by", label: __("Holder") },
+			{ key: "requested_by", label: __("Holder"), fields: ["requested_by", "owner"] },
 			{ key: "purpose", label: __("Purpose") },
 			{ key: "request_date", label: __("Date") },
-			{ key: "from_account", label: __("From account") },
+			{ key: "from_account", label: __("From account"), fields: ["status", "paid_from"] },
 			{ key: "amount", label: __("Amount"), align: "right" },
-			{ key: "status", label: __("Status") },
-			{ key: "actions", label: "" },
+			{ key: "status", label: __("Status"), fields: ["status", "is_direct"] },
+			{ key: "actions", label: "", fields: ["status", "requested_by"] },
 		];
 	if (tab.value === "mine")
 		return [
 			{ key: "request_date", label: __("Date") },
 			{ key: "purpose", label: __("Purpose") },
 			{ key: "amount", label: __("Amount"), align: "right" },
-			{ key: "status", label: __("Status") },
-			{ key: "actions", label: "" },
+			{ key: "status", label: __("Status"), fields: ["status", "is_direct"] },
+			{ key: "actions", label: "", fields: ["status", "requested_by"] },
 		];
 	// disburse queue
 	return [
-		{ key: "requested_by", label: __("Holder") },
+		{ key: "requested_by", label: __("Holder"), fields: ["requested_by", "owner"] },
 		{ key: "purpose", label: __("Purpose") },
 		{ key: "request_date", label: __("Date") },
 		{ key: "amount", label: __("Amount"), align: "right" },
-		{ key: "actions", label: "" },
+		{ key: "actions", label: "", fields: ["status", "requested_by"] },
 	];
 });
 
 // --- balances ---
 const balances = ref([]);
-// Balances is a bespoke table (the requests list uses DeskList) — give it a client-side pager too.
+// Balances is a bespoke table (the request tabs are a DocTypeListView) — give it a client-side pager too.
 const balancesPager = usePagination(balances);
 async function loadBalances() {
 	try {
@@ -174,7 +161,7 @@ async function submitRequest() {
 	try {
 		await savePettyCash({ amount: reqForm.amount, purpose: reqForm.purpose });
 		reqForm.open = false;
-		res.reload?.();
+		refreshList();
 		showToast(__("Petty cash requested."));
 	} catch (err) {
 		showToast(err.message || __("Failed to save"), "error");
@@ -226,7 +213,7 @@ async function submitDirect() {
 			purpose: direct.purpose,
 		});
 		direct.open = false;
-		res.reload?.();
+		refreshList();
 		loadBalances();
 		showToast(__("Petty cash issued — Journal Entry posted."));
 	} catch (err) {
@@ -254,7 +241,7 @@ async function confirmDisburse() {
 	try {
 		await disbursePettyCash(disb.row.name, disb.paidFrom);
 		disb.open = false;
-		res.reload?.();
+		refreshList();
 		loadBalances();
 		showToast(__("Disbursed — Journal Entry posted."));
 	} catch (err) {
@@ -277,7 +264,7 @@ async function onWithdraw(row) {
 	if (!ok) return;
 	try {
 		await cancelPettyCash(row.name);
-		res.reload?.();
+		refreshList();
 		showToast(mine ? __("Request withdrawn.") : __("Request cancelled."));
 	} catch (err) {
 		showToast(err.message || (mine ? __("Withdraw failed") : __("Cancel failed")), "error");
@@ -306,7 +293,7 @@ async function onUndisburse(row) {
 	if (!ok) return;
 	try {
 		await undisbursePettyCash(row.name);
-		res.reload?.();
+		refreshList();
 		loadBalances();
 		showToast(__("Disbursement reversed."));
 	} catch (err) {
@@ -319,11 +306,6 @@ const breadcrumbs = [
 	{ label: __("Project Finance"), to: "/project-finance" },
 	{ label: __("Petty Cash") },
 ];
-const rowsForTab = computed(() => {
-	if (tab.value === "disburse") return requested.value;
-	if (tab.value === "mine") return mine.value;
-	return filteredAll.value;
-});
 </script>
 
 <template>
@@ -378,79 +360,89 @@ const rowsForTab = computed(() => {
 		</div>
 
 		<!-- balances — reconciled: disbursed float in − verified spend out = in hand -->
-		<div
-			v-if="tab === 'balances'"
-			class="bg-white border border-ink-200 rounded-lg overflow-hidden"
-		>
-			<table class="w-full text-xs">
-				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
-					<tr>
-						<th class="text-left px-3 py-2">{{ __("Holder") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Disbursed") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Submitted spend") }}</th>
-						<th class="text-right px-3 py-2">{{ __("Balance") }}</th>
-						<th class="px-3 py-2"></th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr
-						v-for="b in balancesPager.pagedRows"
-						:key="b.employee || b.holder"
-						class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
-						:title="__('Open {0}\'s petty-cash report', [b.holder])"
-						@click="openHolderReport(b.employee)"
-					>
-						<td class="px-3 py-2 text-ink-900">
-							<div class="flex items-center gap-1.5">
-								<UserAvatar :name="b.holder" size="xs" /><span>{{
-									b.holder
-								}}</span>
-							</div>
-						</td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-							{{ fmtINR(b.disbursed) }}
-						</td>
-						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
-							{{ fmtINR(b.spent) }}
-						</td>
-						<td
-							class="px-3 py-2 text-right tabular-nums font-semibold"
-							:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
+		<div v-if="tab === 'balances'">
+			<div class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+				<table class="w-full text-xs">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">{{ __("Holder") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Disbursed") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Submitted spend") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Balance") }}</th>
+							<th class="px-3 py-2"></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="b in balancesPager.pagedRows"
+							:key="b.employee || b.holder"
+							class="border-t border-ink-100 hover:bg-brand-50/40 cursor-pointer"
+							:title="__('Open {0}\'s petty-cash report', [b.holder])"
+							@click="openHolderReport(b.employee)"
 						>
-							<template v-if="b.balance < 0">{{
-								__("{0} owed to holder", [fmtINR(-b.balance)])
-							}}</template>
-							<template v-else>{{ fmtINR(b.balance) }}</template>
-						</td>
-						<td class="px-3 py-2 text-right whitespace-nowrap">
-							<span class="text-[11px] text-brand-700">{{ __("Report") }} →</span>
-						</td>
-					</tr>
-					<tr v-if="!balances.length">
-						<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
-							{{ __("No petty-cash activity yet.") }}
-						</td>
-					</tr>
-				</tbody>
-			</table>
-			<DeskPaginationFooter :pager="balancesPager" />
-			<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
-				{{
-					__(
-						"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
-					)
-				}}
-			</p>
+							<td class="px-3 py-2 text-ink-900">
+								<div class="flex items-center gap-1.5">
+									<UserAvatar :name="b.holder" size="xs" /><span>{{
+										b.holder
+									}}</span>
+								</div>
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.disbursed) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.spent) }}
+							</td>
+							<td
+								class="px-3 py-2 text-right tabular-nums font-semibold"
+								:class="b.balance < 0 ? 'text-danger-700' : 'text-ink-900'"
+							>
+								<template v-if="b.balance < 0">{{
+									__("{0} owed to holder", [fmtINR(-b.balance)])
+								}}</template>
+								<template v-else>{{ fmtINR(b.balance) }}</template>
+							</td>
+							<td class="px-3 py-2 text-right whitespace-nowrap">
+								<span class="text-[11px] text-brand-700"
+									>{{ __("Report") }} →</span
+								>
+							</td>
+						</tr>
+						<tr v-if="!balances.length">
+							<td colspan="5" class="px-3 py-4 text-center text-ink-400 italic">
+								{{ __("No petty-cash activity yet.") }}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<DeskPaginationFooter :pager="balancesPager" />
+				<p class="px-3 py-2 text-[11px] text-ink-400 border-t border-ink-100">
+					{{
+						__(
+							"Balance in hand = disbursed float − approved expenses (from the Expenses tab). A negative balance means the holder fronted their own money — it's owed back to them and cleared on the next disbursement."
+						)
+					}}
+				</p>
+			</div>
+			<DeskListCount :pager="balancesPager" />
 		</div>
 
 		<!-- request lists -->
-		<DeskList
+		<DocTypeListView
 			v-else
-			v-model="search"
-			:rows="rowsForTab"
+			:key="tab"
+			ref="listRef"
+			doctype="Petty Cash Request"
+			:field-order="['name', 'requested_by', 'request_date', 'amount', 'purpose', 'status']"
 			:columns="columns"
+			:base-filters="baseFilters"
+			:filter-values="filterValues"
+			:filter-field-map="{ status: 'status' }"
+			:search-fields="['name', 'purpose', 'requested_by']"
+			:link-search="[{ field: 'requested_by', doctype: 'User', titleField: 'full_name' }]"
+			initial-order-by="request_date desc"
 			row-key="name"
-			:search-placeholder="tab === 'all' ? __('Search requests…') : ''"
+			:search-placeholder="__('Search requests…')"
 		>
 			<template v-if="tab === 'all'" #filter-chips>
 				<select
@@ -538,10 +530,10 @@ const rowsForTab = computed(() => {
 			</template>
 			<template #empty>
 				<div class="text-sm text-ink-500">
-					{{ res.loading ? __("Loading…") : __("Nothing here.") }}
+					{{ __("Nothing here.") }}
 				</div>
 			</template>
-		</DeskList>
+		</DocTypeListView>
 
 		<!-- request modal -->
 		<div

@@ -1,0 +1,35 @@
+{
+ "actions": [],
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["default_region", "show_banner"],
+ "fields": [
+  {
+   "default": "North",
+   "description": "Pre-filled in the Region field the demo extension adds to quotations.",
+   "fieldname": "default_region",
+   "fieldtype": "Data",
+   "label": "Default region"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_banner",
+   "fieldtype": "Check",
+   "label": "Show the demo banner"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Demo Extension",
+ "name": "Demo Extension Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "System Manager", "share": 1, "write": 1}
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

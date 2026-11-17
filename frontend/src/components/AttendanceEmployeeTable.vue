@@ -5,6 +5,7 @@
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
 import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
 import { __ } from "@/utils/translate";
 
@@ -13,6 +14,7 @@ defineProps({
 	editable: { type: Boolean, default: false },
 	statuses: { type: Array, default: () => [] },
 	error: { type: String, default: "" },
+	projectId: { type: String, default: "" },
 });
 const emit = defineEmits(["remove"]);
 
@@ -57,10 +59,15 @@ function rowKey(row, i) {
 				<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
 					<tr>
 						<th class="text-left px-2 py-2 w-8">#</th>
-						<th class="text-left px-2 py-2" style="min-width: 200px">{{ __("Employee") }}</th>
+						<th class="text-left px-2 py-2" style="min-width: 200px">
+							{{ __("Employee") }}
+						</th>
 						<th class="text-left px-2 py-2">{{ __("Emp ID") }}</th>
 						<th class="text-left px-2 py-2 w-36">{{ __("Status") }}</th>
 						<th class="text-right px-2 py-2 w-16">{{ __("OT hrs") }}</th>
+						<th class="text-left px-2 py-2" style="min-width: 180px">
+							{{ __("Cost code") }}
+						</th>
 						<th class="text-left px-2 py-2">{{ __("Comments") }}</th>
 						<th class="w-8"></th>
 					</tr>
@@ -89,7 +96,9 @@ function rowKey(row, i) {
 								:model-value="r.status"
 								@update:model-value="(v) => setRowStatus(r, v)"
 							>
-								<option v-for="s in statuses" :key="s" :value="s">{{ __(s) }}</option>
+								<option v-for="s in statuses" :key="s" :value="s">
+									{{ __(s) }}
+								</option>
 							</DeskSelect>
 						</td>
 						<td class="px-2 py-1.5">
@@ -99,6 +108,15 @@ function rowKey(row, i) {
 								min="0"
 								:disabled="r.status === 'Absent'"
 								class="w-full bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none disabled:text-ink-300 disabled:cursor-not-allowed"
+							/>
+						</td>
+						<td class="px-2 py-1.5">
+							<CostCodePicker
+								v-model="r.cost_code"
+								:project-id="projectId"
+								:placeholder="
+									projectId ? __('Uncoded') : __('Pick a project first')
+								"
 							/>
 						</td>
 						<td class="px-2 py-1.5">
@@ -120,7 +138,7 @@ function rowKey(row, i) {
 						</td>
 					</tr>
 					<tr v-if="!rows.length">
-						<td colspan="7" class="px-3 py-6 text-center text-ink-400 italic">
+						<td colspan="8" class="px-3 py-6 text-center text-ink-400 italic">
 							{{ __("No employees. Use") }}
 							<span class="font-medium">{{ __("Bulk Select") }}</span>
 							{{ __("to load a crew or the whole roster.") }}
@@ -145,6 +163,7 @@ function rowKey(row, i) {
 					<th class="text-left px-3 py-2">{{ __("Emp ID") }}</th>
 					<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 					<th class="text-right px-3 py-2">{{ __("OT hrs") }}</th>
+					<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
 					<th class="text-left px-3 py-2">{{ __("Comments") }}</th>
 				</tr>
 			</thead>
@@ -158,10 +177,11 @@ function rowKey(row, i) {
 					<td class="px-3 py-2 text-right tabular-nums text-ink-700">
 						{{ r.overtime_hours || 0 }}
 					</td>
+					<td class="px-3 py-2 text-ink-700">{{ r.cost_code_label || "—" }}</td>
 					<td class="px-3 py-2 text-ink-500">{{ r.comments || "—" }}</td>
 				</tr>
 				<tr v-if="!rows.length">
-					<td colspan="5" class="px-3 py-6 text-center text-ink-400 italic">
+					<td colspan="6" class="px-3 py-6 text-center text-ink-400 italic">
 						{{ __("No employees.") }}
 					</td>
 				</tr>

@@ -8,7 +8,12 @@ import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import { getWorkspaceDoctypes } from "@/data/workspaceSettingApi";
 import { __ } from "@/utils/translate";
 
-const props = defineProps({ workspace: { type: String, required: true } });
+// `tiles` are built-in record shortcuts (icon, label, route) rendered ahead of the
+// admin-curated DocTypes so both share one "Records" group.
+const props = defineProps({
+	workspace: { type: String, required: true },
+	tiles: { type: Array, default: () => [] },
+});
 
 // Quiet reveal (no loading skeleton): the Records group is configured on only a couple of
 // workspaces, so a skeleton would flash a phantom "Records" header that then collapses on the
@@ -24,12 +29,19 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div v-if="records.length" class="mb-8">
+	<div v-if="tiles.length || records.length" class="mb-8">
 		<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
 			{{ __("Records") }}
 		</h2>
 		<div class="border-t border-ink-200 mb-3"></div>
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+			<WorkspaceShortcut
+				v-for="t in tiles"
+				:key="`t-${t.route}`"
+				:icon="t.icon"
+				:label="t.label"
+				:to="t.route"
+			/>
 			<WorkspaceShortcut
 				v-for="(d, i) in records"
 				:key="i"

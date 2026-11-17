@@ -83,15 +83,15 @@ watch(
 		form.startDate = new Date().toISOString().slice(0, 10);
 		form.endDate = "";
 		setErrors({});
-	},
+	}
 );
 
 const selectedProject = computed(() =>
-	projectsResource.data.find((p) => p.name === form.projectId),
+	projectsResource.data.find((p) => p.name === form.projectId)
 );
 const selectedWP = computed(() => wpsResource.data.find((wp) => wp.name === form.workPackageId));
 const availableWPs = computed(() =>
-	wpsResource.data.filter((wp) => wp.project === form.projectId),
+	wpsResource.data.filter((wp) => wp.project === form.projectId)
 );
 // Project is locked when the parent supplied it. WP is locked when both
 // project + WP are supplied (work-package-scoped entry). When the parent
@@ -110,7 +110,7 @@ watch(
 		) {
 			form.workPackageId = null;
 		}
-	},
+	}
 );
 
 function close() {
@@ -128,7 +128,7 @@ function validate() {
 		form.endDate,
 		selectedProject.value?.expected_start_date,
 		selectedProject.value?.expected_end_date,
-		"project",
+		"project"
 	);
 	if (boundsErr) {
 		if (boundsErr.startsWith("Start")) e.startDate = boundsErr;
@@ -211,7 +211,7 @@ async function save() {
 				</header>
 
 				<div class="p-5 overflow-y-auto flex-1">
-					<DeskSection title="Task details">
+					<DeskSection id="task-details" title="Task details">
 						<DeskField label="Task name" required :error="errors.name">
 							<DeskInput
 								v-model="form.name"
@@ -239,7 +239,7 @@ async function save() {
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Hierarchy">
+					<DeskSection id="hierarchy" title="Hierarchy">
 						<DeskField
 							label="Project"
 							required
@@ -282,7 +282,7 @@ async function save() {
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Schedule">
+					<DeskSection id="schedule" title="Schedule">
 						<!-- Milestone = a point in time: only a Due date, no start. -->
 						<DeskField
 							v-if="form.task_type !== 'Milestone'"
@@ -307,7 +307,7 @@ async function save() {
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection title="Assignment & status">
+					<DeskSection id="assignment-status" title="Assignment & status">
 						<DeskField label="Assignee">
 							<DeskLinkPicker
 								v-model="form.assignee"

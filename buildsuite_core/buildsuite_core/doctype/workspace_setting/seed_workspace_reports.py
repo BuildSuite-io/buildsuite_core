@@ -87,6 +87,18 @@ _SEED = {
 	),
 	"workforce": (
 		{
+			"label": "Labour Cost Summary",
+			"icon": "chart-bar",
+			"route": "/workforce/labour-cost-summary",
+			"description": "Hours, man-days and labour cost by project, cost code or worker.",
+		},
+		{
+			"label": "Site Attendance Summary",
+			"icon": "hard-hat",
+			"route": "/workforce/attendance-summary",
+			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
+		},
+		{
 			"label": "Labour Attendance Register",
 			"icon": "clipboard-list",
 			"route": "/labour-attendance",
@@ -96,13 +108,7 @@ _SEED = {
 			"label": "Overtime Attendance Register",
 			"icon": "chart-line",
 			"route": "/overtime-attendance",
-			"description": "Per-worker overtime hours × overtime rate.",
-		},
-		{
-			"label": "Site Attendance Summary",
-			"icon": "hard-hat",
-			"route": "/workforce/attendance-summary",
-			"description": "Days worked, overtime and labour cost per site — the HR roll-up.",
+			"description": "Per-worker overtime hours multiplied by the overtime rate.",
 		},
 	),
 	"procurement": (
@@ -144,6 +150,12 @@ _SEED = {
 		},
 	),
 }
+
+
+# Record (DocType) shortcut tiles seeded per workspace — opened in the generic /records view.
+# None are seeded now: Workforce's Timesheets has its own screens (/timesheets) and a built-in
+# shortcut on the landing. Kept as a seam for a workspace that wants a generic Records tile.
+DOCTYPE_SEED = {"workforce": ()}
 
 
 def _project_finance_tiles():
@@ -240,6 +252,15 @@ def seed_workspace_reports():
 	if "project-finance" not in existing:
 		for row in _project_finance_tiles():
 			settings.append("reports", {"workspace": "project-finance", **row})
+		changed = True
+
+	# Record tiles — only for a workspace that has none yet (respects admin edits).
+	have_records = {r.workspace for r in settings.doctypes}
+	for slug, rows in DOCTYPE_SEED.items():
+		if slug in have_records:
+			continue
+		for row in rows:
+			settings.append("doctypes", {"workspace": slug, **row})
 		changed = True
 
 	if changed:

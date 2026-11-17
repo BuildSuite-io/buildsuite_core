@@ -6,10 +6,13 @@
 // SOV child table can't go through the generic adapter). Status is
 // workflow-driven, so it is never set from this form.
 
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { usePermissions } from "@/composables/usePermissions";
 import { getWorkOrder, saveWorkOrder } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -19,11 +22,13 @@ import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
-import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
+
+// Heavy (TipTap) — loaded lazily with the form.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -56,6 +61,8 @@ const form = ref({
 	terms: "",
 	lines: [emptyLine()],
 });
+const ext = useExtensionFields("Subcontractor Work Order", form);
+ext.defaults();
 const errors = ref({});
 const saving = ref(false);
 const loading = ref(false);
@@ -95,6 +102,8 @@ watch(
 					rate: l.rate || 0,
 				})),
 			};
+			await ext.load(wo);
+			editorKey.value += 1;
 			if (!form.value.lines.length) form.value.lines = [emptyLine()];
 		} catch (err) {
 			showToast(err.message || __("Failed to load work order"), "error");
@@ -119,6 +128,10 @@ function removeLine(idx) {
 	form.value.lines.splice(idx, 1);
 }
 
+// Remount the rich-text editor when terms are set for us (template pull or record load), so it
+// initialises with that body.
+const editorKey = ref(0);
+
 // Importing a Terms and Conditions template fills the editable terms box.
 async function onPickTermsTemplate(id) {
 	form.value.terms_template = id;
@@ -128,7 +141,10 @@ async function onPickTermsTemplate(id) {
 			url: "frappe.client.get_value",
 			params: { doctype: "Terms and Conditions", filters: id, fieldname: "terms" },
 		});
-		if (res?.terms) form.value.terms = res.terms;
+		if (res?.terms) {
+			form.value.terms = res.terms;
+			editorKey.value += 1;
+		}
 	} catch {
 		/* leave terms as-is if the template can't be read */
 	}
@@ -179,8 +195,11 @@ async function onSave() {
 			terms_template: form.value.terms_template || null,
 			terms: form.value.terms,
 			lines: form.value.lines.map(lineForSave),
+			custom_fields: ext.payload(), // an installed app's Custom Fields (allow-listed server-side)
 		};
+		await ext.beforeSave(payload, form.value);
 		const wo = await saveWorkOrder(payload);
+		await ext.afterSave(wo, { isNew: !editingId.value });
 		router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.name)}`);
 	} catch (err) {
 		showToast(err.message || __("Failed to save work order"), "error");
@@ -197,7 +216,10 @@ const breadcrumbs = computed(() => [
 	{ label: __("Subcontract"), to: "/subcontract" },
 	{ label: __("Work Orders"), to: "/subcontractor-work-orders" },
 	isEdit.value
-		? { label: editingId.value, to: `/subcontractor-work-orders/${encodeURIComponent(editingId.value)}` }
+		? {
+				label: editingId.value,
+				to: `/subcontractor-work-orders/${encodeURIComponent(editingId.value)}`,
+		  }
 		: { label: __("New") },
 	...(isEdit.value ? [{ label: __("Edit") }] : []),
 ]);
@@ -231,11 +253,18 @@ const saveLabel = computed(() =>
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Header')" :cols="3">
-				<DeskField :label="__('Subcontractor')" required :error="errors.subcontractor">
+			<DeskSection id="header" :title="__('Header')" :cols="3">
+				<DeskField
+					name="subcontractor"
+					:label="__('Subcontractor')"
+					required
+					:error="errors.subcontractor"
+				>
 					<DeskLinkPicker
 						v-model="form.subcontractor"
+						data-test="pick-subcontractor"
 						doctype="Supplier"
 						label-field="supplier_name"
 						value-field="name"
@@ -244,9 +273,10 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a subcontractor…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Project')" required :error="errors.project">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
+						data-test="pick-project"
 						doctype="Project"
 						label-field="project_name"
 						value-field="name"
@@ -255,10 +285,10 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a project…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Date')" required
+				<DeskField name="date" :label="__('Date')" required
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Delivery type')">
+				<DeskField name="delivery_type" :label="__('Delivery type')">
 					<DeskLinkPicker
 						v-model="form.delivery_type"
 						doctype="Subcontract Delivery Type"
@@ -267,7 +297,7 @@ const saveLabel = computed(() =>
 						:placeholder="__('Pick a delivery type…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Retention %')"
+				<DeskField name="retention_percent" :label="__('Retention %')"
 					><DeskInput
 						v-model.number="form.retention_percent"
 						type="number"
@@ -390,10 +420,20 @@ const saveLabel = computed(() =>
 
 			<!-- Terms & conditions — extra top margin so the header isn't cramped against
 					 the schedule-of-values table above. -->
-			<DeskSection :title="__('Terms & conditions')" :cols="1" class="mt-8">
+			<DeskSection
+				id="terms-conditions"
+				:title="__('Terms & conditions')"
+				:cols="1"
+				class="mt-8"
+			>
 				<DeskField
+					name="terms_template"
 					:label="__('Import from template')"
-					:hint="__('Pick a standard template to fill the box below. You can edit the text after importing.')"
+					:hint="
+						__(
+							'Pick a standard template to fill the box below. You can edit the text after importing.'
+						)
+					"
 				>
 					<DeskLinkPicker
 						:model-value="form.terms_template"
@@ -404,14 +444,11 @@ const saveLabel = computed(() =>
 						@update:model-value="onPickTermsTemplate"
 					/>
 				</DeskField>
-				<DeskField :label="__('Terms')">
-					<DeskTextarea
-						v-model="form.terms"
-						:rows="8"
-						:placeholder="__('Terms & conditions printed on the work order…')"
-					/>
+				<DeskField name="terms" :label="__('Terms')">
+					<RichTextEditor :key="editorKey" v-model="form.terms" min-height="10rem" />
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

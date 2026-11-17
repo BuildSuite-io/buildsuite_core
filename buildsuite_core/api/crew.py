@@ -9,6 +9,7 @@
 import frappe
 from frappe import _
 
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
 from buildsuite_core.utils.project import default_company
 
 CREW = "Crew"
@@ -43,6 +44,7 @@ def save_crew(
 	trade: str | None = None,
 	company: str | None = None,
 	members: str | None = None,
+	custom_fields: str | None = None,
 ) -> dict:
 	"""Create or update a crew (gang details + member rows)."""
 
@@ -67,5 +69,6 @@ def save_crew(
 	if members is not None:
 		_apply_members(doc, _parse_rows(members))
 
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 	doc.save()
 	return {"name": doc.name}

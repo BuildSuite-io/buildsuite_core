@@ -87,6 +87,7 @@ def _serialize_mr(doc):
 				"amount": flt(it.qty) * flt(it.rate),
 				"project": it.project,
 				"ordered_qty": flt(it.ordered_qty),
+				"cost_code": _po_cost_code_obj(it),
 			}
 			for it in doc.items
 		],
@@ -156,6 +157,7 @@ def save_material_request(
 				"schedule_date": row.get("schedule_date") or schedule_date or nowdate(),
 				"warehouse": default_wh,
 				"project": project,
+				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)
 	if not doc.get("items"):
@@ -285,6 +287,8 @@ def _serialize_po(doc):
 				"warehouse": it.warehouse,
 				"project": it.project,
 				"cost_code": _po_cost_code_obj(it),
+				"material_request": it.material_request,
+				"material_request_item": it.material_request_item,
 			}
 			for it in doc.items
 		],
@@ -376,6 +380,8 @@ def get_mr_for_po(material_request: str):
 				"qty": remaining,
 				"uom": it.uom,
 				"rate": flt(it.rate),
+				"cost_code": _po_cost_code_obj(it),
+				"material_request_item": it.name,
 			}
 		)
 	return {
@@ -395,10 +401,15 @@ def save_purchase_order(
 	schedule_date: str | None = None,
 	items: str | None = None,
 	terms: str | None = None,
+	tc_name: str | None = None,
 	material_request: str | None = None,
 ):
 	"""Create / update a draft Purchase Order. Rate is entered by hand (single
-	company currency, conversion 1); line amounts are computed by the controller."""
+	company currency, conversion 1); line amounts are computed by the controller.
+
+	`terms` is the PO's own Terms & conditions (rich text, copied from a Terms and Conditions
+	template or typed) and `tc_name` the template it came from. Left out (None), the PO keeps the
+	terms it has; an empty string clears them."""
 	items = frappe.parse_json(items) or []
 	if not supplier:
 		frappe.throw(_("Pick a supplier."))
@@ -420,7 +431,9 @@ def save_purchase_order(
 	doc.project = project
 	doc.transaction_date = transaction_date or doc.transaction_date or nowdate()
 	doc.schedule_date = schedule_date or doc.schedule_date
-	doc.terms = terms
+	if terms is not None:
+		doc.terms = terms
+		doc.tc_name = tc_name or None
 
 	# Stock lines need a delivery warehouse (see save_material_request); default it to the
 	# project's site store (or the company default).
@@ -440,7 +453,10 @@ def save_purchase_order(
 				"schedule_date": row.get("schedule_date") or schedule_date or nowdate(),
 				"warehouse": default_wh,
 				"project": project,
-				"material_request": material_request or None,
+				# ERPNext rolls the ordered qty (and so the request's status) up to the
+				# Material Request through the line link, not the request name alone.
+				"material_request": row.get("material_request") or material_request or None,
+				"material_request_item": row.get("material_request_item") or None,
 				**_po_cost_code_fields(row.get("cost_code")),
 			},
 		)

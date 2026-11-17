@@ -74,6 +74,7 @@ def list_expenses():
 		fields=[
 			"name",
 			"creation",
+			"modified",
 			"date",
 			"project",
 			"company",
@@ -143,6 +144,8 @@ def list_expenses():
 				# Entry timestamp — the "Entered" sort in the panel (differs from `date`, the spend
 				# date, whenever a receipt is logged days later).
 				"created": str(e.creation) if e.creation else None,
+				# Last-modified timestamp - what Desk's list sorts by, so the panel can match it.
+				"modified": str(e.modified) if e.modified else None,
 				"date": str(e.date) if e.date else None,
 				"description": fr.get("description") or e.description or e.name,
 				"project": e.project,
@@ -311,6 +314,13 @@ def save_expense(payload: str):
 	paid_from = "Company" if data.get("paid_from") == "company" else "Petty Cash"
 
 	if paid_from == "Company":
+		# Paying straight from a company Bank/Cash account is a finance action — everyone else is
+		# restricted to the petty-cash float (the UI only offers them Petty Cash; enforce it here too).
+		if not _can_submit():
+			frappe.throw(
+				_("Only finance can pay an expense from a company account — use petty cash."),
+				frappe.PermissionError,
+			)
 		employee = None
 		account = data.get("company_account")
 		if not account:

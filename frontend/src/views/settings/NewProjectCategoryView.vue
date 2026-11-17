@@ -84,7 +84,7 @@ onMounted(() => {
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic')">
+				<DeskSection id="basic" :title="__('Basic')">
 					<DeskField
 						:label="__('Category name')"
 						required
@@ -93,12 +93,23 @@ onMounted(() => {
 					>
 						<DeskInput v-model="form.name" :placeholder="__('e.g. Industrial')" />
 					</DeskField>
-					<DeskField :label="__('Sort order')" :hint="__('Position in the new-project dropdown.')">
-						<DeskInput v-model="form.sortOrder" type="number" :placeholder="__('auto')" />
+					<DeskField
+						:label="__('Sort order')"
+						:hint="__('Position in the new-project dropdown.')"
+					>
+						<DeskInput
+							v-model="form.sortOrder"
+							type="number"
+							:placeholder="__('auto')"
+						/>
 					</DeskField>
 					<DeskField :label="__('Enabled')">
 						<label class="flex items-center gap-2 py-1 text-sm cursor-pointer">
-							<input type="checkbox" v-model="form.enabled" class="accent-brand-600" />
+							<input
+								type="checkbox"
+								v-model="form.enabled"
+								class="accent-brand-600"
+							/>
 							<span>{{
 								form.enabled
 									? __("Enabled — appears in the new-project dropdown")
@@ -108,12 +119,19 @@ onMounted(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Work Package label')">
+				<DeskSection id="work-package-label" :title="__('Work Package label')">
 					<DeskField
 						:label="__('Singular')"
-						:hint="__('e.g. &quot;Block&quot;, &quot;Tower&quot;, &quot;Package&quot;. Defaults to &quot;Work Package&quot;.')"
+						:hint="
+							__(
+								'e.g. &quot;Block&quot;, &quot;Tower&quot;, &quot;Package&quot;. Defaults to &quot;Work Package&quot;.'
+							)
+						"
 					>
-						<DeskInput v-model="form.workPackageLabel" :placeholder="__('Work Package')" />
+						<DeskInput
+							v-model="form.workPackageLabel"
+							:placeholder="__('Work Package')"
+						/>
 					</DeskField>
 					<DeskField :label="__('Plural')">
 						<DeskInput

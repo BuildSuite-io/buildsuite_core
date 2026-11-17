@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "TN-.YYYY.-.######",
  "creation": "2026-09-15 21:37:49.665425",
@@ -11,6 +12,8 @@
   "title",
   "issuing_body",
   "project",
+  "source_boq",
+  "source_boq_revision",
   "company",
   "column_break_vvzt",
   "issued_by",
@@ -44,6 +47,10 @@
   "bid_before_tax",
   "tax_amount",
   "bid_value",
+  "payment_schedule_section",
+  "project_category",
+  "payment_term_template",
+  "payment_milestones",
   "terms_sections_section",
   "terms_sections",
   "internal_notes_section",
@@ -298,12 +305,48 @@
   {
    "fieldname": "column_break_mbdv",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Payment schedule"
+  },
+  {
+   "fieldname": "project_category",
+   "fieldtype": "Link",
+   "label": "Project Category",
+   "options": "Project Category"
+  },
+  {
+   "fieldname": "payment_term_template",
+   "fieldtype": "Link",
+   "label": "Payment Term Template",
+   "options": "BuildSuite Payment Term Template"
+  },
+  {
+   "fieldname": "payment_milestones",
+   "fieldtype": "Table",
+   "label": "Payment Milestones",
+   "options": "BuildSuite Payment Milestone"
+  },
+  {
+   "fieldname": "source_boq",
+   "fieldtype": "Link",
+   "label": "Source BOQ",
+   "options": "BOQ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_boq_revision",
+   "fieldtype": "Int",
+   "label": "Source BOQ Revision",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-20 08:15:23.369519",
+ "modified": "2026-10-22 20:11:26.376240",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",

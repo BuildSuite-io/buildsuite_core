@@ -11,6 +11,8 @@ from buildsuite_core.utils.project import default_company, is_multi_company_enab
 
 # Org-wide branding is an administrator concern (mirrors api.core_settings.ADMIN_ROLES).
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
+# The brand-colour choices (the Company.custom_brand_colour Select); the SPA maps each to a pill colour.
+BRAND_COLOURS = {"Green", "Blue", "Violet", "Amber", "Emerald", "Rose", "Cyan", "Slate"}
 
 
 def _require_admin():
@@ -71,9 +73,7 @@ def company_branding(company: str | None = None) -> dict:
 	if not company or not frappe.db.exists("Company", company):
 		return {}
 	if not frappe.has_permission("Company", ptype="read", doc=company):
-		frappe.throw(
-			_("You do not have access to company {0}.").format(company), frappe.PermissionError
-		)
+		frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
 	meta = frappe.get_meta("Company")
 	return {
 		"company": company,
@@ -84,18 +84,25 @@ def company_branding(company: str | None = None) -> dict:
 		"letter_head_subtext": frappe.db.get_value("Company", company, "custom_letter_head_subtext")
 		if meta.has_field("custom_letter_head_subtext")
 		else None,
+		"brand_colour": frappe.db.get_value("Company", company, "custom_brand_colour")
+		if meta.has_field("custom_brand_colour")
+		else None,
 		"letter_head": letter_head_name(company),
 	}
 
 
 @frappe.whitelist()
 def update_company_branding(
-	logo: str | None = None, letter_head_subtext: str | None = None, company: str | None = None
+	logo: str | None = None,
+	letter_head_subtext: str | None = None,
+	company: str | None = None,
+	brand_colour: str | None = None,
 ) -> dict:
-	"""Set a company's logo / letter-head subtext (administrator only); defaults to the working
-	(default) company. Saving the Company fires Company.on_update → rebuild_letter_head, so that
-	company's letter head (and any print of its documents) immediately reflects the new branding.
-	Pass a field to change it; omit it to leave it unchanged (an empty string clears it)."""
+	"""Set a company's logo / letter-head subtext / brand colour (administrator only); defaults to
+	the working (default) company. Saving the Company fires Company.on_update → rebuild_letter_head,
+	so that company's letter head (and any print of its documents) immediately reflects the new
+	branding. Pass a field to change it; omit it to leave it unchanged (an empty string clears it;
+	for the colour that means "derive it from the company ID again")."""
 	_require_admin()
 	company = company or default_company()
 	if not company or not frappe.db.exists("Company", company):
@@ -106,8 +113,46 @@ def update_company_branding(
 		doc.custom_company_logo = logo or None
 	if letter_head_subtext is not None:
 		doc.custom_letter_head_subtext = letter_head_subtext or None
+	if brand_colour is not None:
+		if brand_colour and brand_colour not in BRAND_COLOURS:
+			frappe.throw(_("Unknown brand colour {0}.").format(brand_colour))
+		doc.custom_brand_colour = brand_colour or None
 	doc.save(ignore_permissions=True)
 	return company_branding(company)
+
+
+@frappe.whitelist()
+def rename_company(company: str, new_name: str) -> dict:
+	"""Rename a company (administrator only). A Company is named after its `company_name`, so the
+	name can't be edited in place: Frappe's rename re-points every link to it, ERPNext's
+	after_rename keeps `company_name` in step, and our after_rename hook rebuilds the Letter Head
+	under the new name. Returns the new company id."""
+	_require_admin()
+	new_name = (new_name or "").strip()
+	if not new_name:
+		frappe.throw(_("The company name can't be empty."))
+	if not company or not frappe.db.exists("Company", company):
+		frappe.throw(_("No such company."))
+	if new_name == company:
+		return {"company": company}
+	if frappe.db.exists("Company", new_name):
+		frappe.throw(_("A company named {0} already exists.").format(new_name))
+	return {"company": frappe.rename_doc("Company", company, new_name, force=True)}
+
+
+@frappe.whitelist()
+def set_full_day_hours(company: str, hours: float) -> dict:
+	"""Set a company's full day hours (administrator only). The SPA's Company page uses this rather
+	than the generic record save, since a BuildSuite Administrator edits company settings through
+	the app without holding Company write at the Desk. Goes through doc.save, so the same (0, 24]
+	validation applies."""
+	_require_admin()
+	if not frappe.db.exists("Company", company):
+		frappe.throw(_("No such company."))
+	doc = frappe.get_doc("Company", company)
+	doc.full_day_hours = hours
+	doc.save(ignore_permissions=True)
+	return {"company": company, "hours": doc.full_day_hours}
 
 
 @frappe.whitelist()
@@ -145,11 +190,14 @@ def company_projects(company: str, limit: int = 20) -> dict:
 def list_companies() -> list:
 	"""All companies for the SPA list + topbar switcher, mapped to the store's shape. The SPA
 	derives shortName/colour from these; `is_default` marks the resolved working company."""
-	rows = frappe.get_all(
-		"Company",
-		fields=["name", "company_name", "abbr", "custom_company_logo", "default_currency"],
-		order_by="company_name asc",
-	)
+	fields = ["name", "company_name", "abbr", "custom_company_logo", "default_currency"]
+	# Requested only once the field exists, so this boot-critical call can't fail between a code
+	# deploy and `bench migrate` creating it.
+	if frappe.get_meta("Company").has_field("custom_brand_colour"):
+		fields.append("custom_brand_colour")
+	if frappe.get_meta("Company").has_field("full_day_hours"):
+		fields.append("full_day_hours")
+	rows = frappe.get_all("Company", fields=fields, order_by="company_name asc")
 	default = default_company()
 	return [
 		{
@@ -157,12 +205,32 @@ def list_companies() -> list:
 			"name": r.company_name or r.name,
 			"abbr": r.abbr or "",
 			"logo": r.get("custom_company_logo") or "",
+			"colour": r.get("custom_brand_colour") or "",
+			"full_day_hours": r.get("full_day_hours") or None,
 			"currency": r.default_currency or "",
 			"is_default": r.name == default,
 			"project_count": frappe.db.count("Project", {"company": r.name}),
 		}
 		for r in rows
 	]
+
+
+@frappe.whitelist()
+def full_day_hours(project: str | None = None, company: str | None = None) -> dict:
+	"""The hours in a full day for a project (its own value, else its company's, else the default)
+	plus the company's own — what the project form shows as "Uses company default". Read through the
+	helper, so a user who can't read the permlevel-protected Company field still gets the number."""
+	from buildsuite_core.utils.full_day import get_full_day_hours
+
+	if project and not frappe.has_permission("Project", ptype="read", doc=project):
+		frappe.throw(_("You do not have access to project {0}.").format(project), frappe.PermissionError)
+	company = company or (frappe.db.get_value("Project", project, "company") if project else None)
+	if company and not frappe.has_permission("Company", ptype="read", doc=company):
+		frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
+	return {
+		"hours": get_full_day_hours(project, company),
+		"company_hours": get_full_day_hours(company=company),
+	}
 
 
 @frappe.whitelist()
@@ -173,8 +241,6 @@ def set_active_company(company: str) -> str:
 	if not frappe.db.exists("Company", company):
 		frappe.throw(_("Company {0} does not exist.").format(company))
 	if not frappe.has_permission("Company", ptype="read", doc=company):
-		frappe.throw(
-			_("You do not have access to company {0}.").format(company), frappe.PermissionError
-		)
+		frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
 	frappe.defaults.set_user_default("Company", company)
 	return company

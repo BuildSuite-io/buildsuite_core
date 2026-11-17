@@ -66,6 +66,8 @@ function isStatusCol(col) {
 // are clickable. Project/party columns are returned as plain names (Data), so they don't link.
 function recordRoute(col, row) {
 	if (col.fieldtype !== "Link" || !col.options) return null;
+	// A total/summary row's cells hold labels ("Total"), not record ids — never link them.
+	if (row && typeof row === "object" && row.is_total) return null;
 	const v = cellRaw(row, col);
 	if (v === null || v === undefined || v === "") return null;
 	return decorateRecord({ doctype: col.options, name: v }).to;
@@ -140,6 +142,9 @@ async function runWith() {
 				label: c.label || c.fieldname || `Column ${i + 1}`,
 				fieldname: c.fieldname || c.label || String(i),
 				fieldtype: c.fieldtype || "Data",
+				// The link target doctype — without it recordRoute() can't build a route, so a
+				// Link column renders as plain text instead of a clickable link.
+				options: c.options || "",
 				index: i,
 				align: NUMERIC.has(c.fieldtype) ? "right" : "left",
 			}));

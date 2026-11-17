@@ -1,24 +1,9 @@
 CUSTOM_FIELD = {
-	# Company-scope the org-wide ERPNext masters so multi-company can isolate them: the field
-	# is `company` (matching every BuildSuite doctype) so it auto-integrates with the SPA's
-	# company-scoped lists/pickers and the cross-company guards. Stamped on insert
-	# (stamp_company_on_insert, hooks.py) and backfilled to the default company.
-	#
-	# NOTE: Supplier and Customer are intentionally NOT here. ERPNext parties are global masters
-	# (a single Supplier/Customer transacts with any company; the per-company payable/receivable
-	# account lives in the native Party Account child table). Gating them by a BuildSuite `company`
-	# field blocked reusing a supplier/customer across companies in procurement + finance, so the
-	# field was removed (see patches.drop_party_company_field). Item keeps its company field.
+	# The org-wide ERPNext masters — Supplier, Customer and Item — are global, NOT company-scoped.
+	# An Item (like a party) is reused across companies; gating it with a BuildSuite `company` field
+	# blocked that and bought nothing, so none of the three carry one. Supplier/Customer were
+	# removed in patches.drop_party_company_field; Item in patches.drop_item_company_field.
 	"Item": [
-		{
-			"fieldname": "company",
-			"fieldtype": "Link",
-			"label": "Company",
-			"options": "Company",
-			"insert_after": "item_group",
-			"in_standard_filter": 1,
-			"module": "BuildSuite Core",
-		},
 		{
 			"fieldname": "custom_rate_master",
 			"fieldtype": "Link",
@@ -56,6 +41,37 @@ CUSTOM_FIELD = {
 			"description": "Address / GSTIN / contact line shown under the company name in the letter head.",
 			"module": "BuildSuite Core",
 		},
+		{
+			# Labour costing — the hours in a full day for this company's projects (a project can
+			# set its own). Only a System Manager / BuildSuite Administrator can edit it: permlevel 1,
+			# granted to those two roles in install.ensure_full_day_permissions.
+			"fieldname": "custom_labour_costing_section",
+			"fieldtype": "Section Break",
+			"label": "Labour costing",
+			"insert_after": "custom_brand_colour",
+			"permlevel": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"reqd": 1,
+			"default": "8",
+			"permlevel": 1,
+			"insert_after": "custom_labour_costing_section",
+			"description": "Hours in a full day of labour. Hours beyond it are overtime. A project can set its own.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_brand_colour",
+			"fieldtype": "Select",
+			"label": "Brand Colour",
+			"options": "\nGreen\nBlue\nViolet\nAmber\nEmerald\nRose\nCyan\nSlate",
+			"insert_after": "custom_letter_head_subtext",
+			"description": "The company's pill colour in the BuildSuite top bar and lists. Blank = derived from the company ID.",
+			"module": "BuildSuite Core",
+		},
 	],
 	# Marks a Payment Entry as a BuildSuite on-account ADVANCE (from record_advance / linked
 	# via the bill's Advance Payments). A fully-consumed advance is otherwise indistinguishable
@@ -76,6 +92,17 @@ CUSTOM_FIELD = {
 	],
 	"Project": [
 		{
+			# Hours in a full day for THIS project; blank = the company's value. Who may set it
+			# (System Manager, BuildSuite Administrator, the project's own PM) is checked in
+			# utils.full_day.validate_project_full_day_hours — a permlevel can't say "this project's PM".
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"insert_after": "expected_end_date",
+			"description": "Blank uses the company default.",
+			"module": "BuildSuite Core",
+		},
+		{
 			"fieldname": "custom_project_id",
 			"fieldtype": "Data",
 			"label": "Project ID",
@@ -83,6 +110,42 @@ CUSTOM_FIELD = {
 			"unique": 1,
 			"in_list_view": 1,
 			"insert_after": "project_name",
+			"module": "BuildSuite Core",
+		},
+		{
+			# The agreed revenue for the job, pre-tax. Set from the won bid's priced total when a
+			# project is created from an estimate, else the estimate's own priced total. Distinct
+			# from estimated_costing (what the work costs us).
+			"fieldname": "contract_value",
+			"fieldtype": "Currency",
+			"label": "Contract Value",
+			"insert_after": "estimated_costing",
+			"module": "BuildSuite Core",
+		},
+		# The agreed payment schedule — carried from the won bid when a project is created from an
+		# estimate. Same field names + child doctype as BuildSuite Tenders / Quotation, so the
+		# schedule copies across verbatim.
+		{
+			"fieldname": "payment_milestones_section",
+			"fieldtype": "Section Break",
+			"label": "Payment Milestones",
+			"insert_after": "contract_value",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_term_template",
+			"fieldtype": "Link",
+			"options": "BuildSuite Payment Term Template",
+			"label": "Payment Term Template",
+			"insert_after": "payment_milestones_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_milestones",
+			"fieldtype": "Table",
+			"options": "BuildSuite Payment Milestone",
+			"label": "Payment Milestones",
+			"insert_after": "payment_term_template",
 			"module": "BuildSuite Core",
 		},
 		{
@@ -441,6 +504,45 @@ CUSTOM_FIELD = {
 			"read_only": 0,
 		}
 	],
+	"Material Request Item": [
+		# The BOQ cost code this request line is for (S384). Same four fields as Purchase Order Item
+		# / Stock Entry, so CostCodePicker.vue works unchanged. The code is carried into the PO
+		# raised from the request (get_mr_for_po), and the submitted PO feeds the BOQ "Committed"
+		# column — the Material Request itself does not touch Committed/Actuals.
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "uom",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order": [
 		{
 			"fieldname": "custom_rate_master_banner",
@@ -536,6 +638,63 @@ CUSTOM_FIELD = {
 			"depends_on": "eval:doc.custom_cost_code_type",
 			"read_only": 1,
 			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Timesheet rows (S453/S454): where the hours land on the estimate, the full day the row is costed
+	# on, and whether it is overtime. Same four cost-code fields as Purchase Order Item, so
+	# CostCodePicker.vue works unchanged. Task stays on the row (hidden) for rows made before cost codes.
+	"Timesheet Detail": [
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "project",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "is_overtime",
+			"fieldtype": "Check",
+			"label": "Overtime",
+			"insert_after": "hours",
+			"description": "Costed at the worker's overtime rate instead of the daily rate over the full day.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "full_day_hours",
+			"fieldtype": "Float",
+			"label": "Full day hours",
+			"read_only": 1,
+			"no_copy": 1,
+			"insert_after": "costing_rate",
+			"description": "The full day of this row's project; recalculated while a draft, frozen on submit.",
 			"module": "BuildSuite Core",
 		},
 	],
@@ -757,6 +916,25 @@ CUSTOM_FIELD = {
 			"insert_after": "order_type",
 			"module": "BuildSuite Core",
 		},
+		# The estimate this bid was raised from (and its revision at the time). Lets a project
+		# created from the estimate find the won bid and carry its value + payment schedule.
+		{
+			"fieldname": "source_boq",
+			"fieldtype": "Link",
+			"options": "BOQ",
+			"label": "Source BOQ",
+			"insert_after": "project",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "source_boq_revision",
+			"fieldtype": "Int",
+			"label": "Source BOQ Revision",
+			"insert_after": "source_boq",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
 		# For whoever picks the quotation up next. print_hide keeps it off the customer's copy.
 		{
 			"fieldname": "internal_note",
@@ -764,6 +942,41 @@ CUSTOM_FIELD = {
 			"label": "Internal Note",
 			"insert_after": "terms",
 			"print_hide": 1,
+			"module": "BuildSuite Core",
+		},
+		# Payment schedule, copied from a BuildSuite Payment Term Template. Same field names as
+		# BuildSuite Tenders. ERPNext's own payment_schedule_section / payment_terms_template /
+		# payment_schedule already exist on Quotation (different doctypes), so none of these
+		# fieldnames may reuse them.
+		{
+			"fieldname": "payment_milestones_section",
+			"fieldtype": "Section Break",
+			"label": "Payment Milestones",
+			"insert_after": "internal_note",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"options": "Project Category",
+			"label": "Project Category",
+			"insert_after": "payment_milestones_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_term_template",
+			"fieldtype": "Link",
+			"options": "BuildSuite Payment Term Template",
+			"label": "Payment Term Template",
+			"insert_after": "project_category",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "payment_milestones",
+			"fieldtype": "Table",
+			"options": "BuildSuite Payment Milestone",
+			"label": "Payment Milestones",
+			"insert_after": "payment_term_template",
 			"module": "BuildSuite Core",
 		},
 	],
@@ -774,7 +987,7 @@ CUSTOM_FIELD = {
 			"fieldname": "source",
 			"fieldtype": "Select",
 			"label": "Source",
-			"options": "Manual\nAssembly",
+			"options": "Manual\nAssembly\nBOQ",
 			"default": "Manual",
 			"insert_after": "item_code",
 			"in_list_view": 1,
@@ -795,7 +1008,7 @@ CUSTOM_FIELD = {
 			"fieldname": "source_ref",
 			"fieldtype": "Data",
 			"label": "Source Ref",
-			"description": "The assembly this line was priced from.",
+			"description": "The assembly or BOQ line this line was priced from.",
 			"insert_after": "code",
 			"read_only": 1,
 			"module": "BuildSuite Core",
@@ -812,6 +1025,78 @@ CUSTOM_FIELD = {
 			"options": "\nQuotation\nTender\nPurchase Order\nSubcontractor Work Order\nSubcontractor Bill\nSales Invoice\nPurchase Invoice",
 			"insert_after": "title",
 			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Resend as an Email Account service (see buildsuite_core.resend). The section shows only for the
+	# Resend service; the API key is the account's own Password field.
+	"Email Account": [
+		{
+			"fieldname": "resend_section",
+			"fieldtype": "Section Break",
+			"label": "Resend",
+			"insert_after": "service",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_help",
+			"fieldtype": "HTML",
+			"insert_after": "resend_section",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"options": (
+				"<p class='text-muted'>Paste your Resend <b>API key</b> in the Password field below. "
+				"The Email Address must belong to a domain verified in your "
+				"<a href='https://resend.com/domains' target='_blank'>Resend dashboard</a>. "
+				"Add one Email Account per API key / sending domain.</p>"
+			),
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_webhook_secret",
+			"fieldtype": "Password",
+			"label": "Webhook Signing Secret",
+			"insert_after": "resend_help",
+			"depends_on": 'eval: doc.service == "Resend"',
+			"description": "From the webhook you add in Resend (starts with whsec_). Needed to track bounces and complaints.",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Filled in by the Resend webhook; read-only so delivery history isn't edited by hand.
+	"Email Queue": [
+		{
+			"fieldname": "resend_section",
+			"fieldtype": "Section Break",
+			"label": "Resend delivery",
+			"insert_after": "error",
+			"collapsible": 1,
+			"depends_on": "eval: doc.resend_email_id",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_email_id",
+			"fieldtype": "Data",
+			"label": "Resend Email ID",
+			"read_only": 1,
+			"insert_after": "resend_section",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_status",
+			"fieldtype": "Data",
+			"label": "Resend Status",
+			"read_only": 1,
+			"in_standard_filter": 1,
+			"in_list_view": 1,
+			"insert_after": "resend_email_id",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "resend_detail",
+			"fieldtype": "Small Text",
+			"label": "Resend Detail",
+			"read_only": 1,
+			"insert_after": "resend_status",
 			"module": "BuildSuite Core",
 		},
 	],

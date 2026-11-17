@@ -145,6 +145,7 @@ const breadcrumbs = [
 			</div>
 
 			<DeskList
+				filter-doctype="Customer"
 				v-model="search"
 				:rows="rows"
 				:columns="columns"

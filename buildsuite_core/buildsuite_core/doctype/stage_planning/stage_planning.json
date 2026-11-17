@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "STG-.YYYY.-.###",
  "creation": "2026-06-11 18:33:19.588377",

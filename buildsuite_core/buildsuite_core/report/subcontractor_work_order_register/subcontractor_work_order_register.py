@@ -35,8 +35,6 @@ def execute(filters=None):
 		conditions += " AND wo.subcontractor = %(subcontractor)s"
 	if filters.get("project"):
 		conditions += " AND wo.project = %(project)s"
-	if filters.get("status"):
-		conditions += " AND wo.status = %(status)s"
 	if filters.get("from_date"):
 		conditions += " AND wo.date >= %(from_date)s"
 	if filters.get("to_date"):
@@ -45,7 +43,10 @@ def execute(filters=None):
 	data = frappe.db.sql(
 		"""
 		SELECT wo.name AS work_order, sup.supplier_name AS subcontractor,
-			prj.project_name AS project, wo.date, wo.delivery_type, wo.total_value, wo.status,
+			prj.project_name AS project, wo.date, wo.delivery_type, wo.total_value,
+			-- Status is derived from docstatus. The legacy `status` column is stale (it reads
+			-- 'Draft' even for submitted WOs), so filtering/showing it dropped most of the register.
+			CASE wo.docstatus WHEN 1 THEN 'Submitted' WHEN 2 THEN 'Cancelled' ELSE 'Draft' END AS status,
 			LEAST(100, ROUND(IFNULL(
 				(SELECT SUM(sb.gross) FROM `tabSubcontractor Bill` sb
 					WHERE sb.work_order = wo.name AND sb.docstatus = 1), 0)
@@ -53,10 +54,10 @@ def execute(filters=None):
 		FROM `tabSubcontractor Work Order` wo
 		LEFT JOIN `tabSupplier` sup ON sup.name = wo.subcontractor
 		LEFT JOIN `tabProject` prj ON prj.name = wo.project
-		-- Exclude drafts. The WO is submittable, but its `status` can still read Draft at
-		-- docstatus 1 (the workflow state lags docstatus) — the register should list only
-		-- progressed work orders, not draft ones.
-		WHERE wo.docstatus = 1 AND wo.status != 'Draft' """ + conditions + """
+		-- docstatus = 1 is every submitted (non-draft) work order; that is the register's scope.
+		WHERE wo.docstatus = 1 """
+		+ conditions
+		+ """
 		ORDER BY wo.date DESC, wo.name DESC
 		""",
 		filters,

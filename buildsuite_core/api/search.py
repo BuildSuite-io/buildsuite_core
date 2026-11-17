@@ -43,14 +43,38 @@ _NOISE_DOCTYPES = {
 
 # App doctypes that already appear as their own (nicely-routed) palette "place" client-side — so
 # the generic doctype-name search skips them and only offers the OTHER doctypes (Journal Entry,
-# GL Entry, …). Mirrors permissions/resource_map.RESOURCE_DOCTYPES + the bespoke estimation ones.
+# GL Entry, …). List ONLY doctypes with a real place in frontend/src/data/search.js PLACES; one
+# without (Supplier, Stock Entry) must stay out so a name search can reach its generic list.
 _COVERED_DOCTYPES = {
-	"Project", "Work Package", "Task", "Task Progress Entry", "Stage Planning", "Scope Change Order",
-	"BOQ", "Assembly", "Estimate Template", "Construction Rate Master", "Tender", "Quotation",
-	"Material Request", "Purchase Order", "Purchase Receipt", "Stock Entry", "Item",
-	"Subcontractor Work Order", "Measurement Book", "Subcontractor Bill", "Supplier",
-	"Employee", "Crew", "Field Attendance", "Machinery", "Machinery Usage",
-	"Customer", "Sales Invoice", "Purchase Invoice", "Payment Entry", "Petty Cash Request",
+	"Project",
+	"Work Package",
+	"Task",
+	"Task Progress Entry",
+	"Stage Planning",
+	"Scope Change Order",
+	"BOQ",
+	"Assembly",
+	"Estimate Template",
+	"Construction Rate Master",
+	"Tender",
+	"Quotation",
+	"Material Request",
+	"Purchase Order",
+	"Purchase Receipt",
+	"Item",
+	"Subcontractor Work Order",
+	"Measurement Book",
+	"Subcontractor Bill",
+	"Employee",
+	"Crew",
+	"Field Attendance",
+	"Machinery",
+	"Machinery Usage",
+	"Customer",
+	"Sales Invoice",
+	"Purchase Invoice",
+	"Payment Entry",
+	"Petty Cash Request",
 	"Expense Entry",
 }
 

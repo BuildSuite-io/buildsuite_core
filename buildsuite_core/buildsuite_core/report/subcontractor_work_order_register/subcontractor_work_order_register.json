@@ -25,14 +25,6 @@
    "wildcard_filter": 0
   },
   {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "mandatory": 0,
-   "options": "\nDraft\nIn Progress",
-   "wildcard_filter": 0
-  },
-  {
    "fieldname": "from_date",
    "fieldtype": "Date",
    "label": "From",
@@ -50,7 +42,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": null,
- "modified": "2026-09-23 21:39:45.377838",
+ "modified": "2026-10-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Subcontractor Work Order Register",

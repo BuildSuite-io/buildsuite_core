@@ -1,5 +1,8 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { watchDebounced } from "@vueuse/core";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import DeskList from "@/components/desk/DeskList.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskFilterEditor from "@/components/desk/DeskFilterEditor.vue";
@@ -8,6 +11,8 @@ import { fmtDate } from "@/utils/format";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { activeCompanyFilter } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { filterableFieldsFromMeta, toServerFilter, chipLabel } from "@/utils/listFilters";
+import { listColumns, listFilterPresets } from "@/sdk/registry";
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -27,9 +32,19 @@ const props = defineProps({
 	searchPlaceholder: { type: String, default: "Search" },
 	emptyMessage: { type: String, default: "No records found" },
 	compact: { type: Boolean, default: false },
+	// Search by the NAME of a linked record. A list shows e.g. a task's ID but people type its
+	// subject; each rule — { field, doctype, titleField } — resolves the search text against that
+	// doctype's title field and ORs the matching IDs into the search on `field`.
+	linkSearch: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["row-click", "count-change"]);
+const emit = defineEmits([
+	"row-click",
+	"count-change",
+	"rows-change",
+	"total-change",
+	"search-change",
+]);
 
 // Reactive [["company","=",<working company>]] (or []) from the topbar switcher — used to
 // auto-scope any list whose doctype has a `company` field (see serverFilters).
@@ -133,7 +148,9 @@ const resolvedFields = computed(() => {
 		: props.fieldOrder;
 
 	const valid = meta.value
-		? candidates.filter((fieldname) => fieldMetaMap.value.has(fieldname) || STANDARD_FIELDS.has(fieldname))
+		? candidates.filter(
+				(fieldname) => fieldMetaMap.value.has(fieldname) || STANDARD_FIELDS.has(fieldname)
+		  )
 		: candidates;
 	const withName = valid.includes("name") ? valid : ["name", ...valid];
 	return Array.from(new Set(withName));
@@ -187,70 +204,35 @@ const resolvedColumns = computed(() => {
 });
 
 // --- Dynamic (ad-hoc) filters — Frappe-style field/condition/value builder ---------
-// Layout / no-value fieldtypes can't be filtered on, so they're excluded from the picker.
-const NO_VALUE_FIELDTYPES = new Set([
-	"Section Break", "Column Break", "Tab Break", "HTML", "Table", "Table MultiSelect",
-	"Button", "Image", "Fold", "Heading", "Signature", "Geolocation",
-]);
-const STANDARD_FILTER_FIELDS = [
-	{ fieldname: "name", label: "ID", fieldtype: "Data" },
-	{ fieldname: "owner", label: "Created By", fieldtype: "Link", options: "User" },
-	{ fieldname: "creation", label: "Created On", fieldtype: "Datetime" },
-	{ fieldname: "modified", label: "Last Updated On", fieldtype: "Datetime" },
-	{ fieldname: "modified_by", label: "Last Updated By", fieldtype: "Link", options: "User" },
-	{ fieldname: "_assign", label: "Assigned To", fieldtype: "Data" },
-	{ fieldname: "idx", label: "Index", fieldtype: "Int" },
-];
-// Fields offered in the filter editor: standard metadata + the doctype's own
-// value-bearing fields, mirroring Frappe's list filter field list.
-const filterableFields = computed(() => {
-	const out = [...STANDARD_FILTER_FIELDS];
-	const seen = new Set(out.map((f) => f.fieldname));
-	for (const f of meta.value?.fields || []) {
-		if (!f?.fieldname || NO_VALUE_FIELDTYPES.has(f.fieldtype) || seen.has(f.fieldname)) continue;
-		out.push({
-			fieldname: f.fieldname,
-			label: f.label || f.fieldname,
-			fieldtype: f.fieldtype,
-			options: f.options,
-		});
-		seen.add(f.fieldname);
-	}
-	return out;
-});
+// Fields offered in the filter editor: standard metadata + the doctype's own value-bearing
+// fields, mirroring Frappe's list filter field list.
+const filterableFields = computed(() => filterableFieldsFromMeta(meta.value));
 
 const dynamicFilters = ref([]); // [{ fieldname, label, fieldtype, options, condition, value }]
+
+// Preset filters an installed app offers on this doctype (sdk listFilters): chips that narrow the
+// list with one click. Several can be on at once; they combine with everything else (AND).
+const extPresets = computed(() => listFilterPresets(props.doctype));
+const activePresets = ref([]); // preset keys that are on
+function togglePreset(key) {
+	activePresets.value = activePresets.value.includes(key)
+		? activePresets.value.filter((k) => k !== key)
+		: [...activePresets.value, key];
+}
+function presetFilters() {
+	return extPresets.value
+		.filter((p) => activePresets.value.includes(p.key))
+		.flatMap((p) => {
+			try {
+				return typeof p.filters === "function" ? p.filters() || [] : p.filters;
+			} catch (err) {
+				console.warn(`[buildsuite] list filter "${p.label}" failed`, err);
+				return [];
+			}
+		});
+}
 const filterEditorOpen = ref(false);
 const editingFilterIndex = ref(-1);
-
-// One dynamic filter -> a [field, operator, value] tuple the backend understands
-// (frappe.client.get_list / reportview). Returns null when the value is empty.
-function toServerFilter(f) {
-	const field = f.fieldname;
-	const v = f.value;
-	switch (f.condition) {
-		case "like":
-		case "not like":
-			return v === "" || v == null ? null : [field, f.condition, `%${v}%`];
-		case "in":
-		case "not in": {
-			const list = Array.isArray(v)
-				? v.filter(Boolean)
-				: String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-			return list.length ? [field, f.condition, list] : null;
-		}
-		case "is":
-			return [field, "is", v || "set"];
-		case "Between": {
-			const [a, b] = Array.isArray(v) ? v : [];
-			return a && b ? [field, "between", [a, b]] : null;
-		}
-		case "Timespan":
-			return v ? [field, "timespan", v] : null;
-		default:
-			return v === "" || v == null ? null : [field, f.condition, v];
-	}
-}
 
 function openFilterEditor() {
 	editingFilterIndex.value = -1;
@@ -276,20 +258,81 @@ function clearFilters() {
 	dynamicFilters.value = [];
 }
 
-// Chip text: "Label operator value".
-const CONDITION_SYMBOL = {
-	"=": "=", "!=": "≠", like: "like", "not like": "not like", in: "in", "not in": "not in",
-	is: "is", ">": ">", "<": "<", ">=": "≥", "<=": "≤", Between: "between", Timespan: "in",
-};
-function chipLabel(f) {
-	let text;
-	if (f.condition === "is") text = f.value === "not set" ? "Not Set" : "Set";
-	else if (f.condition === "Between" && Array.isArray(f.value)) text = `${f.value[0]} – ${f.value[1]}`;
-	else if (Array.isArray(f.value)) text = f.value.join(", ");
-	else if (f.fieldtype === "Check") text = f.value === "0" || f.value === 0 ? "No" : "Yes";
-	else text = String(f.value ?? "");
-	return `${f.label} ${CONDITION_SYMBOL[f.condition] || f.condition} ${text}`.trim();
+// Deep-link filters: a dashboard tile can open this list with a filter already applied — the same
+// chip-based filters a user can add by hand — seeded once from the initial route query. Two forms:
+//   • `?filter.<field>=<value>`  — simple equality (a comma value becomes an "in" filter).
+//   • `?filters=<JSON>`          — a Frappe filter array `[[field, op, value], …]` for operators,
+//                                   ranges and dates (what a Desk list link carries).
+const route = useRoute();
+// Frappe operator -> the dynamicFilter `condition` the editor + toServerFilter use.
+const _COND = { between: "Between", timespan: "Timespan" };
+function _tupleToFilter(field, op, value) {
+	const meta = fieldMetaMap.value.get(field) || {};
+	return {
+		fieldname: field,
+		label: meta.label || field,
+		fieldtype: meta.fieldtype || "Data",
+		options: meta.options || "",
+		condition: _COND[op] || op || "=",
+		value,
+	};
 }
+(function seedFiltersFromQuery() {
+	const seeded = [];
+	for (const [key, raw] of Object.entries(route.query || {})) {
+		if (!key.startsWith("filter.")) continue;
+		const field = key.slice("filter.".length);
+		const val = Array.isArray(raw) ? raw[0] : raw;
+		if (!field || val == null || val === "") continue;
+		const meta = fieldMetaMap.value.get(field) || {};
+		const isList = String(val).includes(",");
+		seeded.push({
+			fieldname: field,
+			label: meta.label || field,
+			fieldtype: meta.fieldtype || "Data",
+			options: meta.options || "",
+			condition: isList ? "in" : "=",
+			value: isList
+				? String(val)
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean)
+				: val,
+		});
+	}
+	// Rich filter array (operators / ranges / dates).
+	try {
+		const rawFilters = route.query.filters;
+		if (rawFilters) {
+			const arr = JSON.parse(Array.isArray(rawFilters) ? rawFilters[0] : rawFilters);
+			if (Array.isArray(arr)) {
+				for (const t of arr) {
+					if (Array.isArray(t) && t.length >= 3)
+						seeded.push(_tupleToFilter(t[0], t[1], t[2]));
+				}
+			}
+		}
+	} catch {
+		/* malformed filters query — ignore */
+	}
+	if (seeded.length) dynamicFilters.value = seeded;
+})();
+
+// Deep-link chips are seeded before the doctype meta has loaded, so they start out labelled with the
+// raw fieldname ("task_status"). Once the meta arrives, give them their proper label + fieldtype.
+watch(fieldMetaMap, (map) => {
+	if (!dynamicFilters.value.some((f) => map.has(f.fieldname) && f.label === f.fieldname)) return;
+	dynamicFilters.value = dynamicFilters.value.map((f) => {
+		const meta = map.get(f.fieldname);
+		if (!meta || f.label !== f.fieldname) return f;
+		return {
+			...f,
+			label: meta.label || f.label,
+			fieldtype: meta.fieldtype || f.fieldtype,
+			options: meta.options || f.options,
+		};
+	});
+});
 
 const serverFilters = computed(() => {
 	const filters = [...props.baseFilters];
@@ -324,16 +367,54 @@ const serverFilters = computed(() => {
 		const sf = toServerFilter(f);
 		if (sf) filters.push(sf);
 	}
+	filters.push(...presetFilters());
 	return filters;
 });
+
+// Link-search: the IDs of linked records whose title matches the search text, per rule.
+const linkMatches = ref({}); // rule.field -> [ids]
+watchDebounced(
+	() => search.value.trim(),
+	async (term) => {
+		if (!props.paginated || !term || !props.linkSearch.length) {
+			linkMatches.value = {};
+			return;
+		}
+		const next = {};
+		await Promise.all(
+			props.linkSearch.map(async (rule) => {
+				try {
+					const rows = await frappeRequest({
+						url: "frappe.client.get_list",
+						params: {
+							doctype: rule.doctype,
+							fields: ["name"],
+							filters: [[rule.titleField, "like", `%${term}%`]],
+							limit_page_length: 50,
+						},
+					});
+					next[rule.field] = (rows || []).map((r) => r.name);
+				} catch {
+					next[rule.field] = [];
+				}
+			})
+		);
+		if (term === search.value.trim()) linkMatches.value = next;
+	},
+	{ debounce: 250 }
+);
 
 const serverOrFilters = computed(() => {
 	const term = search.value.trim();
 	if (!props.paginated || !term) return [];
 
-	return props.searchFields
+	const own = props.searchFields
 		.filter((fieldname) => fieldMetaMap.value.has(fieldname))
 		.map((fieldname) => [fieldname, "like", `%${term}%`]);
+	const linked = props.linkSearch
+		.filter((rule) => linkMatches.value[rule.field]?.length)
+		.map((rule) => [rule.field, "in", linkMatches.value[rule.field]]);
+	return [...own, ...linked];
 });
 
 const sortableFields = computed(() => {
@@ -366,13 +447,21 @@ const sortableFields = computed(() => {
 	base.add("modified");
 	base.add("creation");
 
-	return Array.from(base).map((fieldname) => {
+	const options = Array.from(base).map((fieldname) => {
 		const field = fieldMetaMap.value.get(fieldname);
 		return {
 			value: fieldname,
 			label: field?.label || fieldname,
 		};
 	});
+	// The columns an installed app adds are real fields of this doctype, so the server can sort by
+	// them: offer them in the sort control under the label the extension gave the column.
+	for (const column of listColumns(props.doctype)) {
+		const field = fieldMetaMap.value.get(column.field);
+		if (!field || !sortableTypes.has(field.fieldtype) || base.has(column.field)) continue;
+		options.push({ value: column.field, label: column.label || field.label || column.field });
+	}
+	return options;
 });
 
 const resource = useDocTypeList(props.doctype, {
@@ -673,6 +762,13 @@ watch(
 	{ immediate: true }
 );
 
+// The current page's rows, for a parent that layers derived data on them (e.g. BOQ actuals).
+watch(
+	() => resource.data,
+	(rows) => emit("rows-change", rows || []),
+	{ immediate: true }
+);
+
 const estimatedTotalRows = computed(() => {
 	if (!props.paginated) return filteredRows.value.length;
 	if (hasNextPage.value) {
@@ -686,6 +782,9 @@ const estimatedTotalRows = computed(() => {
 const effectiveTotalRows = computed(() =>
 	totalCount.value != null ? totalCount.value : estimatedTotalRows.value
 );
+watch(effectiveTotalRows, (n) => emit("total-change", n), { immediate: true });
+// The search box, for a parent whose summary figures should follow it (register subtitles).
+watch(search, (value) => emit("search-change", value));
 
 const listCountText = computed(() => {
 	if (!props.paginated) {
@@ -739,8 +838,10 @@ function onPageSizeChange(value) {
 
 		<DeskList
 			v-model="search"
+			:show-count="false"
 			:rows="filteredRows"
 			:columns="resolvedColumns"
+			:ext-doctype="doctype"
 			:row-key="rowKey"
 			:loading="resource.loading || false"
 			:paginated="paginated"
@@ -769,6 +870,23 @@ function onPageSizeChange(value) {
 					:meta-loading="metaLoading"
 					:fields="resolvedFields"
 				/>
+				<button
+					v-for="preset in extPresets"
+					:key="preset.key"
+					type="button"
+					data-test="ext-list-filter"
+					:data-preset="preset.key"
+					:aria-pressed="activePresets.includes(preset.key)"
+					class="text-[11px] px-2 py-0.5 border rounded-full"
+					:class="
+						activePresets.includes(preset.key)
+							? 'bg-brand-50 border-brand-300 text-brand-800'
+							: 'border-ink-200 text-ink-600 hover:bg-ink-50'
+					"
+					@click="togglePreset(preset.key)"
+				>
+					{{ preset.label }}
+				</button>
 				<span
 					v-for="(f, i) in dynamicFilters"
 					:key="i"

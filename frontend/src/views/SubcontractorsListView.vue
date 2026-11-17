@@ -109,6 +109,7 @@ function onRowClick(row) {
 		</template>
 
 		<DeskList
+			filter-doctype="Supplier"
 			v-model="search"
 			:rows="rows"
 			:columns="columns"

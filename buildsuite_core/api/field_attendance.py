@@ -16,12 +16,15 @@ from frappe import _
 from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance import (
 	get_assigned_employees,
 	sheet_labour_cost,
+	uncoded_wage,
 )
+from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
 
 FIELD_ATTENDANCE = "Field Attendance"
 
 # The only columns read off each employee row — the client can't inject rates.
-_ROW_FIELDS = ("employee", "status", "overtime_hours", "comments")
+_COST_CODE_FIELDS = ("cost_code_type", "cost_code_group", "cost_code_item", "cost_code_label")
+_ROW_FIELDS = ("employee", "status", "overtime_hours", "comments", *_COST_CODE_FIELDS)
 
 
 def _parse_rows(payload) -> list:
@@ -34,6 +37,7 @@ def _parse_rows(payload) -> list:
 
 def _serialize(doc) -> dict:
 	return {
+		**custom_field_values(doc),
 		"name": doc.name,
 		"project": doc.project,
 		"project_name": doc.project_name,
@@ -44,6 +48,9 @@ def _serialize(doc) -> dict:
 		"crew": doc.crew,
 		"crew_name": frappe.db.get_value("Crew", doc.crew, "crew_name") if doc.crew else None,
 		"labour_cost": sheet_labour_cost(doc),
+		# Wages on uncoded rows: their registers exist but they do not post to the BOQ Actual.
+		"unposted_cost": uncoded_wage(doc),
+		**{f: doc.get(f) or "" for f in _COST_CODE_FIELDS},
 		"overtime_hours": doc.overtime_hours,
 		"comments": doc.comments,
 		"docstatus": doc.docstatus,
@@ -58,6 +65,7 @@ def _serialize(doc) -> dict:
 				"comments": row.comments,
 				"labour_rate": row.labour_rate,
 				"overtime_rate": row.overtime_rate,
+				**{f: row.get(f) or "" for f in _COST_CODE_FIELDS},
 			}
 			for row in doc.employee_list
 		],
@@ -82,6 +90,11 @@ def save_field_attendance(
 	overtime_hours: float | None = None,
 	comments: str | None = None,
 	employee_list: str | None = None,
+	cost_code_type: str | None = None,
+	cost_code_group: str | None = None,
+	cost_code_item: str | None = None,
+	cost_code_label: str | None = None,
+	custom_fields: str | None = None,
 ) -> dict:
 	"""Create or update a draft attendance sheet (header + employee rows)."""
 	rows = _parse_rows(employee_list)
@@ -120,6 +133,15 @@ def save_field_attendance(
 		doc.overtime_hours = overtime_hours
 	if comments is not None:
 		doc.comments = comments
+	header_code = {
+		"cost_code_type": cost_code_type,
+		"cost_code_group": cost_code_group,
+		"cost_code_item": cost_code_item,
+		"cost_code_label": cost_code_label,
+	}
+	if any(v is not None for v in header_code.values()):
+		for f, v in header_code.items():
+			doc.set(f, v or "")
 
 	doc.set("employee_list", [])
 	for row in rows:
@@ -128,6 +150,7 @@ def save_field_attendance(
 			continue
 		doc.append("employee_list", {k: row.get(k) for k in _ROW_FIELDS})
 
+	apply_custom_fields(doc, custom_fields)  # an installed app's Custom Fields (allow-listed)
 	doc.save()
 	return _serialize(doc)
 
@@ -210,9 +233,10 @@ _REGISTER_SUM_FIELDS = {
 
 
 @frappe.whitelist()
-def register_total(doctype: str, field: str, filters: str | None = None):
+def register_total(doctype: str, field: str, filters: str | None = None, or_filters: str | None = None):
 	"""SUM of `field` over `doctype` rows matching `filters` (a JSON list of Frappe filter
-	tuples), respecting the caller's read permissions. UI subtitle helper only."""
+	tuples) and, when given, any of `or_filters` (the list's search box), respecting the caller's
+	read permissions. UI subtitle helper only."""
 	from frappe.utils import flt
 
 	allowed = _REGISTER_SUM_FIELDS.get(doctype)
@@ -222,5 +246,10 @@ def register_total(doctype: str, field: str, filters: str | None = None):
 	parsed = frappe.parse_json(filters) if filters else []
 	if not isinstance(parsed, list):
 		parsed = []
-	rows = frappe.get_list(doctype, filters=parsed, fields=[field], limit_page_length=0)
+	parsed_or = frappe.parse_json(or_filters) if or_filters else []
+	if not isinstance(parsed_or, list):
+		parsed_or = []
+	rows = frappe.get_list(
+		doctype, filters=parsed, or_filters=parsed_or or None, fields=[field], limit_page_length=0
+	)
 	return flt(sum(flt(r.get(field)) for r in rows))

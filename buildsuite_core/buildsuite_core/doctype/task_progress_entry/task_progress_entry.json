@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "TPE-.{YYYY}.#####",
  "creation": "2026-06-04 18:18:21.036362",
@@ -52,7 +53,7 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Cumulative progress",
-   "precision": "0",
+   "precision": "2",
    "reqd": 1
   },
   {

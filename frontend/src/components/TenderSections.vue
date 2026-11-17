@@ -3,12 +3,13 @@
 // The detail page passes `editable` and saves each change as it is made; `editable: false`
 // renders the same blocks as plain text, for a caller that only needs to show them.
 
-import { ref } from "vue";
+import { computed, defineAsyncComponent, ref } from "vue";
 import { frappeRequest } from "frappe-ui-frappe-request";
 import { useConfirm } from "@/composables/useConfirm";
 import DeskInput from "@/components/desk/DeskInput.vue";
-import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+// Rich text (Text Editor) is heavy (TipTap) — load it only where a section is rendered.
+const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const props = defineProps({
 	sections: { type: Array, default: () => [] },
@@ -17,6 +18,9 @@ const props = defineProps({
 	addLabel: { type: String, default: "+ Add section" },
 	emptyHint: { type: String, default: "No sections yet." },
 	purposeHint: { type: String, default: "" },
+	// Which document these sections belong to. One clause library serves every document that
+	// prints terms, so the pickers offer only the clauses tagged for this one.
+	applicableFor: { type: String, default: "" },
 });
 const emit = defineEmits(["update:sections"]);
 
@@ -24,12 +28,15 @@ const confirmDialog = useConfirm();
 const newOpen = ref(false);
 const draft = ref({ heading: "", template: "" });
 
-// The template body is HTML; this box is plain text. DOMParser, not innerHTML — the parsed
-// document is inert, so nothing in the markup runs or fetches.
-function toPlainText(html) {
-	if (!html || !html.includes("<")) return html || "";
-	return new DOMParser().parseFromString(html, "text/html").body.textContent || "";
-}
+// An empty array is DeskLinkPicker's own default — a caller naming no document is unfiltered.
+const clauseFilters = computed(() =>
+	props.applicableFor ? { custom_applicable_for: props.applicableFor } : []
+);
+
+// The editor reports every keystroke and the page saves whatever it is handed, so the typed
+// html waits here until focus leaves the block — the commit-on-blur contract the heading input
+// has. `focusout`, not `blur`: only that one bubbles out of the editor.
+const typed = ref(null);
 
 async function templateBody(id) {
 	try {
@@ -37,7 +44,7 @@ async function templateBody(id) {
 			url: "frappe.client.get_value",
 			params: { doctype: "Terms and Conditions", filters: id, fieldname: "terms" },
 		});
-		return toPlainText(res?.terms);
+		return res?.terms || "";
 	} catch {
 		return ""; // an unreadable template leaves the section blank rather than failing
 	}
@@ -64,6 +71,14 @@ function patch(i, p) {
 	);
 }
 
+function commitText(i, e) {
+	// Focus went to the editor's own toolbar or the clause picker, not away from the block.
+	if (e.currentTarget.contains(e.relatedTarget)) return;
+	const html = typed.value;
+	typed.value = null;
+	if (html !== null && html !== props.sections[i]?.text) patch(i, { text: html });
+}
+
 function remove(i) {
 	emit(
 		"update:sections",
@@ -73,6 +88,7 @@ function remove(i) {
 
 // Pulling in a clause replaces the body, so it asks before overwriting typed text.
 async function swapTemplate(i, id) {
+	typed.value = null; // the clause replaces the body, so anything typed is superseded
 	const body = await templateBody(id);
 	const current = props.sections[i];
 	if (current?.text && current.text !== body) {
@@ -111,7 +127,7 @@ async function swapTemplate(i, id) {
 						Start from a template
 					</span>
 					<DeskLinkPicker v-model="draft.template" doctype="Terms and Conditions"
-						placeholder="Blank section" />
+						:filters="clauseFilters" placeholder="Blank section" />
 				</label>
 				<label class="block">
 					<span class="text-[10px] uppercase tracking-wider text-ink-600 font-medium">
@@ -148,14 +164,14 @@ async function swapTemplate(i, id) {
 					</button>
 				</div>
 			</header>
-			<div class="p-4 space-y-2">
+			<div class="p-4 space-y-2" @focusout="(e) => commitText(i, e)">
 				<div v-if="editable" class="max-w-md">
 					<DeskLinkPicker :model-value="s.template" doctype="Terms and Conditions"
-						placeholder="Pull in a different clause…"
+						:filters="clauseFilters" placeholder="Pull in a different clause…"
 						@update:model-value="(v) => (v ? swapTemplate(i, v) : patch(i, { template: null }))" />
 				</div>
-				<DeskTextarea v-if="editable" :model-value="s.text" :rows="6"
-					@change="(e) => patch(i, { text: e.target.value })" />
+				<RichTextEditor v-if="editable" :model-value="s.text"
+					@update:model-value="(v) => (typed = v)" />
 				<p v-else class="text-sm text-ink-700 whitespace-pre-line leading-relaxed">
 					{{ s.text || "—" }}
 				</p>

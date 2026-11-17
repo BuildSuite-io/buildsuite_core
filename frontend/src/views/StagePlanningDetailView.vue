@@ -1093,7 +1093,7 @@ usePageTitle(() => stage.value?.stageName);
 		</section>
 
 		<!-- Dependencies -->
-		<DeskSection :title="__('Dependencies')">
+		<DeskSection id="dependencies" :title="__('Dependencies')">
 			<div class="md:col-span-2">
 				<div v-if="(stage.dependencies || []).length" class="flex flex-wrap gap-1.5">
 					<DeskLink
@@ -1126,9 +1126,9 @@ usePageTitle(() => stage.value?.stageName);
 								: __("tasks")
 						}}
 					</span>
-					<span v-if="tasksLocked" class="text-[11px] text-ink-400 italic"
-						>{{ __("Locked — stage is approved") }}</span
-					>
+					<span v-if="tasksLocked" class="text-[11px] text-ink-400 italic">{{
+						__("Locked — stage is approved")
+					}}</span>
 					<button
 						v-else-if="canEditPerm('stagePlanning')"
 						type="button"
@@ -1170,7 +1170,9 @@ usePageTitle(() => stage.value?.stageName);
 								class="text-ink-900 font-medium hover:underline dark:text-[#F5F5F5]"
 								>{{ taskName(row.task) }}</RouterLink
 							>
-							<span v-else class="text-ink-400 italic">{{ __("No task linked") }}</span>
+							<span v-else class="text-ink-400 italic">{{
+								__("No task linked")
+							}}</span>
 						</div>
 						<div class="px-3 py-1.5 text-xs text-ink-700 dark:text-ink-300">
 							{{ fmtDate(row.plannedStart) || "—" }}
@@ -1204,7 +1206,11 @@ usePageTitle(() => stage.value?.stageName);
 					</div>
 				</div>
 				<div v-else class="text-xs text-ink-400 italic">
-					{{ __('No task rows yet · click "Add/Remove Tasks" above to pick tasks for this stage.') }}
+					{{
+						__(
+							'No task rows yet · click "Add/Remove Tasks" above to pick tasks for this stage.'
+						)
+					}}
 				</div>
 			</div>
 		</section>
@@ -1245,7 +1251,9 @@ usePageTitle(() => stage.value?.stageName);
 					</div>
 				</div>
 			</div>
-			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">{{ __("No activity yet.") }}</div>
+			<div v-else class="px-4 py-3 text-xs text-ink-400 italic">
+				{{ __("No activity yet.") }}
+			</div>
 		</section>
 
 		<!-- Edit modal -->
@@ -1284,8 +1292,12 @@ usePageTitle(() => stage.value?.stageName);
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Stage details')">
-							<DeskField :label="__('Stage name')" required :error="errors.stageName">
+						<DeskSection id="stage-details" :title="__('Stage details')">
+							<DeskField
+								:label="__('Stage name')"
+								required
+								:error="errors.stageName"
+							>
 								<DeskInput
 									v-model="editForm.stageName"
 									@input="clearError('stageName')"
@@ -1293,7 +1305,11 @@ usePageTitle(() => stage.value?.stageName);
 							</DeskField>
 							<DeskField
 								:label="__('Project')"
-								:hint="__('Locked after create — move tasks instead of reparenting a stage.')"
+								:hint="
+									__(
+										'Locked after create — move tasks instead of reparenting a stage.'
+									)
+								"
 							>
 								<DeskInput
 									:model-value="project ? project.name : editForm.project"
@@ -1315,7 +1331,7 @@ usePageTitle(() => stage.value?.stageName);
 							</DeskField>
 						</DeskSection>
 
-						<DeskSection :title="__('Dependencies')">
+						<DeskSection id="dependencies-2" :title="__('Dependencies')">
 							<div class="md:col-span-2">
 								<div v-if="siblingStages.length" class="flex flex-wrap gap-2">
 									<label
@@ -1355,7 +1371,7 @@ usePageTitle(() => stage.value?.stageName);
 							</div>
 						</DeskSection>
 
-						<DeskSection :title="__('Tasks')">
+						<DeskSection id="tasks" :title="__('Tasks')">
 							<div class="md:col-span-2 text-xs text-ink-500">
 								{{ (stage.stagePlanningTasks || []).length }} task{{
 									(stage.stagePlanningTasks || []).length === 1 ? "" : "s"
@@ -1483,7 +1499,9 @@ usePageTitle(() => stage.value?.stageName);
 							:disabled="workflowActing === 'Reject'"
 							@click="confirmReject"
 						>
-							{{ workflowActing === "Reject" ? __("Rejecting…") : __("Reject stage") }}
+							{{
+								workflowActing === "Reject" ? __("Rejecting…") : __("Reject stage")
+							}}
 						</button>
 					</footer>
 				</div>

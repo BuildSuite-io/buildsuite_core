@@ -1115,7 +1115,7 @@ Save invoice,Enregistrer la facture
 Saved,Enregistré
 Search accounts…,Rechercher des comptes…
 "Search bill, party, project…","Rechercher facture, tiers, projet…"
-"Search description, holder, project, account…","Rechercher description, titulaire, projet, compte…"
+"Search description, holder, project, account, amount…","Rechercher description, titulaire, projet, compte, montant…"
 Search holders…,Rechercher des titulaires…
 "Search invoice, customer…","Rechercher facture, client…"
 "Search name, contact, tax ID…","Rechercher nom, contact, n° fiscal…"

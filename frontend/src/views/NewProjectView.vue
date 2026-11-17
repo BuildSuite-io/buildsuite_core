@@ -6,6 +6,9 @@
 import { reactive, ref, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -100,6 +103,8 @@ const form = reactive({
 	seedDefaultTasks: !route.query.parentId,
 	seedDefaultWorkPackages: !route.query.parentId,
 });
+const ext = useExtensionFields("Project", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	project_name: "name",
 	custom_project_id: "code",
@@ -244,7 +249,7 @@ async function save() {
 	}
 	saving.value = true;
 	try {
-		const res = await adapter.create("Project", {
+		const payload = {
 			project_name: form.name,
 			custom_project_id: form.code,
 			// parent_project only ever comes from the ?parentId= route (the "+ Add
@@ -271,7 +276,11 @@ async function save() {
 			custom_seed_default_stages: form.seedDefaultStages ? 1 : 0,
 			custom_seed_default_tasks: form.seedDefaultTasks ? 1 : 0,
 			custom_seed_default_work_packages: form.seedDefaultWorkPackages ? 1 : 0,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Project", payload);
+		await ext.afterSave(res, { isNew: true });
 		showToast(__("Project created"));
 		router.push(`/projects/${res.name}`);
 	} catch (err) {
@@ -325,8 +334,14 @@ const breadcrumbs = computed(() => {
            above stays full-width (matches Frappe Desk's form layout). Same
            pattern as NewTaskView and NewTaskProgressEntryView. -->
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Basic information')">
-					<DeskField :label="__('Project name')" required :error="errors.name">
+				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+				<DeskSection id="basic-information" :title="__('Basic information')">
+					<DeskField
+						name="name"
+						:label="__('Project name')"
+						required
+						:error="errors.name"
+					>
 						<DeskInput
 							v-model="form.name"
 							data-test="field-name"
@@ -334,9 +349,14 @@ const breadcrumbs = computed(() => {
 						/>
 					</DeskField>
 					<DeskField
+						name="code"
 						:label="__('Project ID')"
 						:error="errors.code"
-						:hint="__('Optional. If given, it becomes the project\'s record ID; otherwise the naming series is used.')"
+						:hint="
+							__(
+								'Optional. If given, it becomes the project\'s record ID; otherwise the naming series is used.'
+							)
+						"
 					>
 						<DeskInput
 							v-model="form.code"
@@ -347,6 +367,7 @@ const breadcrumbs = computed(() => {
 					<!-- Shown only when the org's project naming mode is "Name Series":
 					     the record ID is generated from the chosen series. -->
 					<DeskField
+						name="naming_series"
 						v-if="namingMode === 'Name Series'"
 						:label="__('Name series')"
 						:hint="__('The naming series used to generate this project\'s record ID.')"
@@ -360,6 +381,7 @@ const breadcrumbs = computed(() => {
              customer's `name` so existing project records (whose client was
              plain text) still resolve. -->
 					<DeskField
+						name="client"
 						:label="__('Client')"
 						:error="errors.client"
 						:hint="errors.client ? '' : __('Pick a customer, or create one inline.')"
@@ -391,7 +413,11 @@ const breadcrumbs = computed(() => {
 							</button>
 						</div>
 					</DeskField>
-					<DeskField :label="__('Project type')" :hint="__('Internal or External (ERPNext).')">
+					<DeskField
+						name="project_type"
+						:label="__('Project type')"
+						:hint="__('Internal or External (ERPNext).')"
+					>
 						<DeskLinkPicker
 							v-model="form.projectType"
 							data-test="pick-project-type"
@@ -403,7 +429,7 @@ const breadcrumbs = computed(() => {
 							:page-length="20"
 						/>
 					</DeskField>
-					<DeskField :label="__('Project category')" :error="errors.type">
+					<DeskField name="type" :label="__('Project category')" :error="errors.type">
 						<DeskLinkPicker
 							v-model="form.type"
 							data-test="pick-project-category"
@@ -435,7 +461,8 @@ const breadcrumbs = computed(() => {
 								<div>
 									{{ __("Template seeds") }}
 									<span class="font-medium text-ink-900"
-										>{{ templateStageNames.length }} {{ __("default stages") }}</span
+										>{{ templateStageNames.length }}
+										{{ __("default stages") }}</span
 									>:
 									<span class="text-ink-600">{{
 										templateStageNames.join(" → ")
@@ -449,7 +476,9 @@ const breadcrumbs = computed(() => {
 										v-model="form.seedDefaultStages"
 										class="accent-brand-600"
 									/>
-									<span class="text-ink-700">{{ __("Seed default stages") }}</span>
+									<span class="text-ink-700">{{
+										__("Seed default stages")
+									}}</span>
 								</label>
 							</div>
 							<div
@@ -458,7 +487,8 @@ const breadcrumbs = computed(() => {
 							>
 								<div>
 									<span class="font-medium text-ink-900"
-										>{{ templateWorkPackageCount }} {{ __("work packages") }}</span
+										>{{ templateWorkPackageCount }}
+										{{ __("work packages") }}</span
 									>
 									{{ __("from this template can be imported.") }}
 								</div>
@@ -470,7 +500,9 @@ const breadcrumbs = computed(() => {
 										v-model="form.seedDefaultWorkPackages"
 										class="accent-brand-600"
 									/>
-									<span class="text-ink-700">{{ __("Import work packages") }}</span>
+									<span class="text-ink-700">{{
+										__("Import work packages")
+									}}</span>
 								</label>
 							</div>
 							<div
@@ -491,7 +523,9 @@ const breadcrumbs = computed(() => {
 										v-model="form.seedDefaultTasks"
 										class="accent-brand-600"
 									/>
-									<span class="text-ink-700">{{ __("Import default tasks") }}</span>
+									<span class="text-ink-700">{{
+										__("Import default tasks")
+									}}</span>
 								</label>
 							</div>
 						</div>
@@ -509,6 +543,7 @@ const breadcrumbs = computed(() => {
              default company (Global Defaults) and stays editable. Subproject:
              inherits the parent's company, shown read-only. Locked after create. -->
 					<DeskField
+						name="company"
 						:label="__('Company')"
 						:error="errors.company"
 						:hint="
@@ -516,7 +551,9 @@ const breadcrumbs = computed(() => {
 								? __('Inherited from the parent project — locked.')
 								: errors.company
 								? ''
-								: __('Defaults to your default company. This is locked after the project is created.')
+								: __(
+										'Defaults to your default company. This is locked after the project is created.'
+								  )
 						"
 					>
 						<DeskLinkPicker
@@ -534,10 +571,10 @@ const breadcrumbs = computed(() => {
 							@change="clearError('company')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Location')">
+					<DeskField name="location" :label="__('Location')">
 						<DeskInput v-model="form.location" :placeholder="__('Site address')" />
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -545,9 +582,14 @@ const breadcrumbs = computed(() => {
 						/>
 					</DeskField>
 					<DeskField
+						name="allow_subprojects"
 						v-if="!route.query.parentId"
 						:label="__('Subprojects')"
-						:hint="__('Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).')"
+						:hint="
+							__(
+								'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
+							)
+						"
 					>
 						<label class="inline-flex items-center gap-2 cursor-pointer select-none">
 							<input
@@ -555,24 +597,35 @@ const breadcrumbs = computed(() => {
 								v-model="form.allowSubprojects"
 								class="accent-brand-600"
 							/>
-							<span class="text-sm text-ink-700"
-								>{{ __("Allow subprojects under this project") }}</span
-							>
+							<span class="text-sm text-ink-700">{{
+								__("Allow subprojects under this project")
+							}}</span>
 						</label>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule & cost')">
-					<DeskField :label="__('Start date')" :error="errors.startDate">
+				<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
+					<DeskField
+						name="start_date"
+						:label="__('Start date')"
+						:error="errors.startDate"
+					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Expected end date')" :error="errors.endDate">
+					<DeskField
+						name="end_date"
+						:label="__('Expected end date')"
+						:error="errors.endDate"
+					>
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="`${__('Project budget')} (${currencySymbol()})`">
+					<DeskField
+						name="budget"
+						:label="`${__('Project budget')} (${currencySymbol()})`"
+					>
 						<DeskInput v-model="form.budget" type="number" placeholder="0" />
 					</DeskField>
-					<DeskField :label="__('Priority')">
+					<DeskField name="priority" :label="__('Priority')">
 						<DeskSelect v-model="form.priority">
 							<option value="Low">{{ __("Low") }}</option>
 							<option value="Medium">{{ __("Medium") }}</option>
@@ -581,8 +634,8 @@ const breadcrumbs = computed(() => {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Team & status')">
-					<DeskField :label="__('Project Manager')" :error="errors.pm">
+				<DeskSection id="team-status" :title="__('Team & status')">
+					<DeskField name="pm" :label="__('Project Manager')" :error="errors.pm">
 						<DeskLinkPicker
 							v-model="form.pm"
 							doctype="User"
@@ -597,7 +650,7 @@ const breadcrumbs = computed(() => {
 							@change="clearError('pm')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Initial status')">
+					<DeskField name="status" :label="__('Initial status')">
 						<DeskSelect v-model="form.status">
 							<option value="New">{{ __("New") }}</option>
 							<option value="Ongoing">{{ __("Ongoing") }}</option>
@@ -612,6 +665,7 @@ const breadcrumbs = computed(() => {
            the "+ Add Subproject" entry inside Project Detail, which passes
            ?parentId= on the route — form.parentId picks that up from the route
            query during init and the subproject path still works. -->
+				<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 			</div>
 		</DeskForm>
 

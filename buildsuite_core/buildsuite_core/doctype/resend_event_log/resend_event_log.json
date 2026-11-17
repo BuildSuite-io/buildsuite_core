@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "autoname": "field:event_id",
+ "creation": "2026-11-23 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "event_id",
+  "event_type",
+  "outcome",
+  "column_break_a",
+  "email_account",
+  "resend_email_id",
+  "recipient",
+  "section_break_links",
+  "email_queue",
+  "communication",
+  "detail",
+  "payload"
+ ],
+ "fields": [
+  {"fieldname": "event_id", "fieldtype": "Data", "label": "Event ID", "read_only": 1, "reqd": 1, "unique": 1, "description": "The svix-id of the webhook delivery. Resend retries reuse it, which is how duplicates are ignored."},
+  {"fieldname": "event_type", "fieldtype": "Data", "in_list_view": 1, "in_standard_filter": 1, "label": "Event", "read_only": 1},
+  {"fieldname": "outcome", "fieldtype": "Select", "in_list_view": 1, "in_standard_filter": 1, "label": "Outcome", "options": "Applied\nNo Change\nUnmatched", "read_only": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "email_account", "fieldtype": "Link", "in_list_view": 1, "in_standard_filter": 1, "label": "Email Account", "options": "Email Account", "read_only": 1},
+  {"fieldname": "resend_email_id", "fieldtype": "Data", "label": "Resend Email ID", "read_only": 1},
+  {"fieldname": "recipient", "fieldtype": "Data", "in_list_view": 1, "label": "Recipient", "read_only": 1},
+  {"fieldname": "section_break_links", "fieldtype": "Section Break"},
+  {"fieldname": "email_queue", "fieldtype": "Link", "label": "Email Queue", "options": "Email Queue", "read_only": 1},
+  {"fieldname": "communication", "fieldtype": "Link", "label": "Communication", "options": "Communication", "read_only": 1},
+  {"fieldname": "detail", "fieldtype": "Small Text", "label": "Detail", "read_only": 1},
+  {"fieldname": "payload", "fieldtype": "Code", "label": "Payload", "options": "JSON", "read_only": 1}
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2026-11-23 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Resend Event Log",
+ "owner": "Administrator",
+ "permissions": [
+  {"email": 1, "export": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1}
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "event_type"
+}

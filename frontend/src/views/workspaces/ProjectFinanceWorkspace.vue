@@ -52,12 +52,19 @@ const MASTERS = [
 ];
 const txTiles = computed(() => TRANSACTIONS.filter((t) => canRead(t.cap)));
 const masterTiles = computed(() => MASTERS.filter((t) => canRead(t.cap)));
+const recordTiles = computed(() =>
+	[...txTiles.value, ...masterTiles.value].map((t) => ({
+		icon: t.icon,
+		label: __(t.label),
+		route: `/project-finance/${t.section}`,
+	}))
+);
 // The Financial Overview (company-wide cash & bank) and the Reports group are for
 // ledger-level finance personas — those who can read Invoices / Bills / Payments.
 // Site personas (Foreman / Site Engineer) still get their permitted tiles, but not
 // the company-wide overview.
 const hasLedgerFinance = computed(
-	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance"),
+	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance")
 );
 const showOverview = computed(() => hasLedgerFinance.value);
 
@@ -67,7 +74,7 @@ const showOverview = computed(() => hasLedgerFinance.value);
 // bill / payment access. Any permitted Project Finance report route enables the group; the
 // section itself renders only the tiles the backend returns.
 const hasReports = computed(() =>
-	(session.access?.reportRoutes || []).some((r) => r.startsWith("/project-finance/report/")),
+	(session.access?.reportRoutes || []).some((r) => r.startsWith("/project-finance/report/"))
 );
 
 // Cash & bank on the Overview CTA — live GL balances for the active company (bank + cash),
@@ -91,7 +98,7 @@ const noAccess = computed(
 		!txTiles.value.length &&
 		!masterTiles.value.length &&
 		!showOverview.value &&
-		!hasReports.value,
+		!hasReports.value
 );
 </script>
 
@@ -164,46 +171,8 @@ const noAccess = computed(
 					</div>
 				</RouterLink>
 
-				<!-- Transactions -->
-				<div v-if="txTiles.length" class="mb-8">
-					<h2
-						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
-					>
-						{{ __("Transactions") }}
-					</h2>
-					<div class="border-t border-ink-200 mb-3"></div>
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-						<WorkspaceShortcut
-							v-for="t in txTiles"
-							:key="t.section"
-							:icon="t.icon"
-							:label="__(t.label)"
-							:to="`/project-finance/${t.section}`"
-						/>
-					</div>
-				</div>
-
-				<!-- Masters -->
-				<div v-if="masterTiles.length" class="mb-8">
-					<h2
-						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
-					>
-						{{ __("Masters") }}
-					</h2>
-					<div class="border-t border-ink-200 mb-3"></div>
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-						<WorkspaceShortcut
-							v-for="t in masterTiles"
-							:key="t.section"
-							:icon="t.icon"
-							:label="__(t.label)"
-							:to="`/project-finance/${t.section}`"
-						/>
-					</div>
-				</div>
-
-				<!-- Records (admin-curated DocTypes) -->
-				<WorkspaceRecordsSection workspace="project-finance" />
+				<!-- Records — transactions and masters as one group, plus admin-curated DocTypes -->
+				<WorkspaceRecordsSection workspace="project-finance" :tiles="recordTiles" />
 
 				<!-- Reports — per-report backend permission, not the ledger caps; shared section
 				     owns fetch + skeleton and renders only the tiles the backend returns -->

@@ -6,8 +6,8 @@ prototype's document layouts, and seeded as each doctype's DEFAULT so the SPA's 
 print view (ServerPrintDocument → meta.default_print_format) picks them up with no code change.
 
 Jinja templates over `doc`; Frappe prepends the company Letter Head, so these author only the body.
-CSS is scoped under `.bs-print` so it never leaks into the SPA it's injected into. Seeded (upsert)
-on install/migrate so the format stays in step with this code."""
+CSS is scoped under `.bs-print` so it never leaks into the SPA it's injected into. Seeded create-if-missing
+on install/migrate, so an admin's edits to a format survive."""
 
 import frappe
 
@@ -43,6 +43,11 @@ _SHARED_CSS = """
 .bs-print .bs-totals .due { color: #b91c1c; font-weight: 600; }
 .bs-print .bs-totals .paid { color: #15803d; font-weight: 600; }
 .bs-print .bs-terms-text { font-size: 9pt; color: #475569; line-height: 1.5; white-space: pre-line; }
+/* Rich text brings its own block tags; pre-line would print every tag boundary as a blank line.
+   Terms typed before the editor landed are plain text and keep pre-line, so both print right. */
+.bs-print .bs-terms-text.bs-rich { white-space: normal; }
+.bs-print .bs-terms-text.bs-rich > :first-child { margin-top: 0; }
+.bs-print .bs-terms-text.bs-rich > :last-child { margin-bottom: 0; }
 .bs-print .bs-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 8px; }
 .bs-print .bs-sign .sig { border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 36px; font-size: 9pt; color: #475569; }
 .bs-print .bs-footer { text-align: center; font-size: 8pt; color: #94a3b8; padding-top: 10px; border-top: 1px solid #e2e8f0; margin-top: 20px; }
@@ -58,7 +63,9 @@ _SHARED_CSS = """
 .bs-print .bs-lh > div { border-bottom: none !important; padding-bottom: 0 !important; }
 """
 
-_INVOICE_CSS = _SHARED_CSS + """
+_INVOICE_CSS = (
+	_SHARED_CSS
+	+ """
 .bs-print .bs-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
 .bs-print .bs-meta .bs-name { font-size: 10.5pt; font-weight: 600; }
 .bs-print table.bs-kv { width: 100%; font-size: 9pt; }
@@ -66,23 +73,27 @@ _INVOICE_CSS = _SHARED_CSS + """
 .bs-print .bs-terms { margin-bottom: 28px; }
 .bs-print .bs-sign .c.r { text-align: right; }
 """
+)
 
 _INVOICE_HTML = """
 <div class="bs-print">
   <div class="bs-title-row">
-    <div>
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
       <div class="bs-doc-title">TAX INVOICE</div>
       {% if doc.docstatus == 0 %}<div class="bs-marker draft">Draft — not posted</div>
       {% elif doc.docstatus == 2 %}<div class="bs-marker cancelled">Cancelled</div>{% endif %}
+      <div class="bold mono" style="margin-top:4px">{{ doc.name }}</div>
     </div>
-    <div class="bs-doc-ref"><span class="mono">{{ doc.name }}</span></div>
   </div>
 
   <div class="bs-meta">
     <div>
       <div class="bs-label">Bill to</div>
       <div class="bs-name">{{ doc.customer_name or doc.customer }}</div>
+      {% if doc.contact_display %}<div class="muted small">Attn: {{ doc.contact_display }}</div>{% endif %}
       {% if doc.tax_id %}<div class="mono muted">GSTIN: {{ doc.tax_id }}</div>{% endif %}
+      {% if doc.address_display %}<div class="muted small" style="margin-top:4px; line-height:1.5;">{{ doc.address_display | safe }}</div>{% endif %}
     </div>
     <div>
       <table class="bs-kv">
@@ -111,9 +122,11 @@ _INVOICE_HTML = """
 
   <div class="bs-totals-wrap">
     <div class="bs-totals">
-      <div class="row"><span>Net total</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>
-      {% if doc.discount_amount %}<div class="row"><span>Discount</span><span class="nums">− {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
-      {% for tax in doc.taxes %}<div class="row"><span>{{ tax.description }}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>{% endfor %}
+      <div class="row"><span>Net total</span><span class="nums">{{ doc.get_formatted("total") }}</span></div>
+      {% if doc.discount_amount and doc.apply_discount_on == "Net Total" %}<div class="row"><span>Discount (on net total)</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
+      {% if doc.total - doc.net_total > 0.005 %}<div class="row"><span>Taxable value</span><span class="nums">{{ doc.get_formatted("net_total") }}</span></div>{% endif %}
+      {% for tax in doc.taxes %}<div class="row"><span>{{ tax.account_head.rsplit(" - ", 1)[0] }}{% if tax.rate %} ({{ tax.rate }}%){% endif %}</span><span class="nums">{{ tax.get_formatted("tax_amount") }}</span></div>{% endfor %}
+      {% if doc.discount_amount and doc.apply_discount_on == "Grand Total" %}<div class="row"><span>Discount (on grand total)</span><span class="nums">&minus; {{ doc.get_formatted("discount_amount") }}</span></div>{% endif %}
       <div class="row grand"><span>Invoice total</span><span class="nums">{{ doc.get_formatted("grand_total") }}</span></div>
       {% if doc.docstatus == 1 %}
       <div class="row"><span>Received</span><span class="nums">{{ frappe.utils.fmt_money(doc.grand_total - doc.outstanding_amount, currency=doc.currency) }}</span></div>
@@ -124,7 +137,7 @@ _INVOICE_HTML = """
 
   <div class="bs-terms">
     <div class="bs-label">Terms</div>
-    {% if doc.terms %}<div class="bs-terms-text">{{ doc.terms }}</div>
+    {% if doc.terms %}<div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
     {% else %}<div class="bs-terms-text">Payment due by {{ frappe.utils.formatdate(doc.due_date) }}. Interest may be charged on overdue amounts as per contract. This is a computer-generated invoice.</div>{% endif %}
   </div>
 
@@ -132,10 +145,14 @@ _INVOICE_HTML = """
     <div class="c"><div class="sig">Prepared by</div></div>
     <div class="c r"><div class="sig">For {{ doc.company }} — Authorised signatory</div></div>
   </div>
+
+  <div class="bs-footer">Generated {{ frappe.utils.format_datetime(frappe.utils.now()) }} using <span class="bold">BuildSuite</span></div>
 </div>
 """
 
-_WO_CSS = _SHARED_CSS + """
+_WO_CSS = (
+	_SHARED_CSS
+	+ """
 .bs-print .bs-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .bs-print .bs-party { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
 .bs-print .bs-party .bs-name { font-size: 10.5pt; font-weight: 600; }
@@ -149,15 +166,20 @@ _WO_CSS = _SHARED_CSS + """
 .bs-print .bs-wo-totals .due { color: #b91c1c; }
 .bs-print .bs-terms-list { font-size: 9pt; color: #475569; padding-left: 16px; line-height: 1.5; }
 """
+)
 
 _WO_HTML = """
 <div class="bs-print">
   <div class="bs-title-row">
-    <div><div class="bs-doc-title">WORK ORDER</div></div>
-    <div class="bs-doc-ref"><span class="bold">{{ doc.name }}</span><br><span class="muted">{{ frappe.utils.formatdate(doc.date) }}</span></div>
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
+      <div class="bs-doc-title">WORK ORDER</div>
+      <div class="bold mono" style="margin-top:4px">{{ doc.name }}</div>
+      <div class="muted">{{ frappe.utils.formatdate(doc.date) }}</div>
+    </div>
   </div>
 
-  {% set gstin = frappe.db.get_value("Supplier", doc.subcontractor, "tax_id") %}
+  {% set sub = frappe.db.get_value("Supplier", doc.subcontractor, ["custom_trade", "tax_id", "mobile_no", "email_id"], as_dict=True) or {} %}
   <div class="bs-parties">
     <div class="bs-party">
       <div class="bs-label">Issued by</div>
@@ -166,7 +188,9 @@ _WO_HTML = """
     <div class="bs-party">
       <div class="bs-label">To — Subcontractor</div>
       <div class="bs-name">{{ doc.subcontractor_name or doc.subcontractor }}</div>
-      {% if gstin %}<div class="muted small" style="margin-top:4px">GSTIN: {{ gstin }}</div>{% endif %}
+      {% if sub.custom_trade %}<div class="muted small" style="margin-top:2px">{{ sub.custom_trade }}</div>{% endif %}
+      {% if sub.mobile_no or sub.email_id %}<div class="muted small" style="margin-top:4px">{% if sub.mobile_no %}{{ sub.mobile_no }}{% endif %}{% if sub.mobile_no and sub.email_id %} &middot; {% endif %}{% if sub.email_id %}{{ sub.email_id }}{% endif %}</div>{% endif %}
+      {% if sub.tax_id %}<div class="muted small" style="margin-top:2px">GSTIN: {{ sub.tax_id }}</div>{% endif %}
     </div>
   </div>
 
@@ -202,7 +226,7 @@ _WO_HTML = """
   <div class="bs-wo-footer">
     <div>
       <div class="bs-h3">Terms &amp; conditions</div>
-      {% if doc.terms %}<div class="bs-terms-text">{{ doc.terms }}</div>
+      {% if doc.terms %}<div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
       {% else %}<ul class="bs-terms-list">
         <li>Progress billing is measurement-based: certified Measurement Books drive each subcontractor bill.</li>
         <li>Retention of {{ doc.retention_percent or 0 }}% is withheld on each bill, released after completion and defect-liability sign-off.</li>
@@ -210,7 +234,7 @@ _WO_HTML = """
     </div>
     <div class="bs-wo-totals">
       <div class="row"><span>Total order value</span><span class="nums">{{ doc.get_formatted("total_value") }}</span></div>
-      <div class="row"><span>Retention ({{ doc.retention_percent or 0 }}%)</span><span class="nums due">− {{ frappe.utils.fmt_money(retention, currency=currency) }}</span></div>
+      <div class="row"><span>Retention ({{ doc.retention_percent or 0 }}%)</span><span class="nums due">&minus; {{ frappe.utils.fmt_money(retention, currency=currency) }}</span></div>
       <div class="row grand"><span>Net of retention</span><span class="nums">{{ frappe.utils.fmt_money((doc.total_value or 0) - retention, currency=currency) }}</span></div>
     </div>
   </div>
@@ -219,6 +243,8 @@ _WO_HTML = """
     <div class="c"><div class="sig">For {{ doc.company }}</div><div class="muted small">Authorised signatory · Date</div></div>
     <div class="c"><div class="sig">For {{ doc.subcontractor_name or doc.subcontractor }}</div><div class="muted small">Accepted · Date</div></div>
   </div>
+
+  <div class="bs-footer">{{ doc.name }} &middot; Generated {{ frappe.utils.format_datetime(frappe.utils.now()) }} using <span class="bold">BuildSuite</span></div>
 </div>
 """
 
@@ -285,7 +311,7 @@ _QUOTATION_HTML = """
 
   {% if doc.terms %}
   <div class="bs-label">Terms &amp; conditions</div>
-  <div class="bs-terms-text">{{ doc.terms }}</div>
+  <div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}">{{ doc.terms }}</div>
   {% endif %}
 
   <div class="bs-sign">
@@ -337,7 +363,7 @@ _TENDER_HTML = """
 
   {% for s in doc.preamble_sections %}
     <div class="bs-label">{{ s.heading }}</div>
-    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+    <div class="bs-terms-text{{ ' bs-rich' if '<' in (s.text or '') else '' }}" style="margin-bottom:16px;">{{ s.text }}</div>
   {% endfor %}
 
   <div class="bs-label">Schedule of prices</div>
@@ -376,7 +402,7 @@ _TENDER_HTML = """
   {# Numbered: a tender's terms get quoted back by number in correspondence. #}
   {% for s in doc.terms_sections %}
     <div class="bs-label">{{ loop.index }}. {{ s.heading }}</div>
-    <div class="bs-terms-text" style="margin-bottom:16px;">{{ s.text }}</div>
+    <div class="bs-terms-text{{ ' bs-rich' if '<' in (s.text or '') else '' }}" style="margin-bottom:16px;">{{ s.text }}</div>
   {% endfor %}
 
   <div class="bs-sign">
@@ -389,24 +415,36 @@ _TENDER_HTML = """
 """
 
 _FORMATS = (
-	{"name": "BuildSuite Tax Invoice", "doc_type": "Sales Invoice", "html": _INVOICE_HTML, "css": _INVOICE_CSS},
-	{"name": "BuildSuite Work Order", "doc_type": "Subcontractor Work Order", "html": _WO_HTML, "css": _WO_CSS},
+	{
+		"name": "BuildSuite Tax Invoice",
+		"doc_type": "Sales Invoice",
+		"html": _INVOICE_HTML,
+		"css": _INVOICE_CSS,
+	},
+	{
+		"name": "BuildSuite Work Order",
+		"doc_type": "Subcontractor Work Order",
+		"html": _WO_HTML,
+		"css": _WO_CSS,
+	},
 	{"name": "BuildSuite Quotation", "doc_type": "Quotation", "html": _QUOTATION_HTML, "css": _SHARED_CSS},
 	{"name": "BuildSuite Tender", "doc_type": "BuildSuite Tenders", "html": _TENDER_HTML, "css": _SHARED_CSS},
 )
 
 
 def seed_print_formats():
-	"""Upsert the two custom print formats and set each as its doctype's default_print_format so the
-	SPA's print view picks them up. Idempotent; keeps the format in step with this code on migrate."""
+	"""Create each custom print format that is missing and make it its doctype's default_print_format.
+
+	Create-if-missing: a format that already exists is left exactly as it is, so an admin's edits
+	to its layout, and their choice of default print format, survive every migrate. Shipping a new
+	layout to existing sites is a patch's job, not this seed's."""
 	for pf in _FORMATS:
 		if not frappe.db.exists("DocType", pf["doc_type"]):
 			continue
 		if frappe.db.exists("Print Format", pf["name"]):
-			doc = frappe.get_doc("Print Format", pf["name"])
-		else:
-			doc = frappe.new_doc("Print Format")
-			doc.name = pf["name"]
+			continue
+		doc = frappe.new_doc("Print Format")
+		doc.name = pf["name"]
 		doc.update(
 			{
 				"doc_type": pf["doc_type"],
@@ -421,7 +459,8 @@ def seed_print_formats():
 		)
 		doc.flags.ignore_permissions = True
 		doc.save()
-		# Make it the doctype's default so ServerPrintDocument (meta.default_print_format) uses it.
+		# Default for the doctype so ServerPrintDocument (meta.default_print_format) uses it. Set
+		# only now, when the format is first created, so a later admin choice is never undone.
 		frappe.make_property_setter(
 			{
 				"doctype": pf["doc_type"],

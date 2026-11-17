@@ -25,6 +25,7 @@ import {
 	DOCSTATUS_LABELS,
 	validateFieldAttendance,
 } from "@/utils/workforceForms";
+import { costCodeFromDoc } from "@/utils/costCode";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { isPermissionDenied } from "@/utils/frappeError";
 import { __ } from "@/utils/translate";
@@ -99,21 +100,12 @@ const cards = computed(() => {
 	if (!d) return [];
 
 	const present = rows.value.filter(
-		(r) => r.status === "Present" || r.status === "Half Day",
+		(r) => r.status === "Present" || r.status === "Half Day"
 	).length;
 
 	return [
 		{ label: __("Project"), value: d.project_name || projectLabel(d.project) || "—" },
-		{
-			label: __("Crew"),
-			value: d.crew_name || d.crew || "—",
-			to: d.crew ? `/crews/${d.crew}` : null,
-		},
-		{
-			label: __("Task"),
-			value: d.task_subject || d.task || "—",
-			to: d.task ? `/tasks/${d.task}` : null,
-		},
+		{ label: __("Cost code"), value: d.cost_code_label || "—" },
 		{
 			label: __("Present"),
 			value: `${present} / ${rows.value.length}`,
@@ -134,6 +126,7 @@ const {
 	setHeaderStatus,
 	setHeaderOvertime,
 	setHeaderComments,
+	setHeaderCostCode,
 	setHeaderProject,
 	rosterToAdd,
 	rosterTitle,
@@ -147,8 +140,7 @@ function snapshot() {
 		project: d.project || "",
 		date: d.date || "",
 		status: d.status || "Present",
-		task: d.task || "",
-		crew: d.crew || "",
+		cost_code: costCodeFromDoc(d),
 		overtime_hours: d.overtime_hours ?? 0,
 		comments: d.comments || "",
 		employee_list: (d.employee_list || []).map((r) => ({
@@ -158,6 +150,7 @@ function snapshot() {
 			status: r.status,
 			overtime_hours: r.overtime_hours,
 			comments: r.comments,
+			cost_code: costCodeFromDoc(r),
 			labour_rate: r.labour_rate,
 			overtime_rate: r.overtime_rate,
 		})),
@@ -209,18 +202,27 @@ async function onSubmit() {
 	const ok = await confirmDialog({
 		title: __("Submit {0}?", [props.id]),
 		message: __(
-			"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited.",
+			"This posts the attendance and generates the Labour and Overtime registers. A posted sheet is cancelled, not edited."
 		),
 		confirmLabel: __("Submit"),
 	});
-	if (ok) await run(() => submitFieldAttendance(props.id), __("Attendance submitted"));
+	if (!ok) return;
+	await run(() => submitFieldAttendance(props.id), __("Attendance submitted"));
+	if (doc.value?.unposted_cost > 0) {
+		showToast(
+			__("{0} of wages has no cost code and was not posted to the BOQ.", [
+				fmtINR(doc.value.unposted_cost),
+			]),
+			"warning"
+		);
+	}
 }
 
 async function onCancelSheet() {
 	const ok = await confirmDialog({
 		title: __("Cancel {0}?", [props.id]),
 		message: __(
-			"This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy.",
+			"This reverses the sheet — its Labour and Overtime register entries are cancelled with it. Amend afterwards to raise a corrected copy."
 		),
 		confirmLabel: __("Cancel sheet"),
 		destructive: true,
@@ -378,7 +380,11 @@ const breadcrumbs = computed(() => [
 				class="mb-4 px-3 py-2 bg-ink-50 border border-ink-200 text-xs text-ink-600"
 				style="border-radius: 6px"
 			>
-				{{ __("This sheet is {0} and can no longer be edited here.", [docStatusLabel.toLowerCase()]) }}
+				{{
+					__("This sheet is {0} and can no longer be edited here.", [
+						docStatusLabel.toLowerCase(),
+					])
+				}}
 			</div>
 
 			<!-- Headline strip — project / crew / task / present / labour cost -->
@@ -399,10 +405,32 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 
+			<div
+				v-if="doc.unposted_cost > 0"
+				class="mb-4 px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700"
+				style="border-radius: 6px"
+			>
+				{{
+					isDraft
+						? __(
+								"{0} of wages is on rows with no cost code and will not post to the BOQ Actual.",
+								[fmtINR(doc.unposted_cost)]
+						  )
+						: __(
+								"{0} of wages is on rows with no cost code and did not post to the BOQ Actual.",
+								[fmtINR(doc.unposted_cost)]
+						  )
+				}}
+			</div>
+
 			<AttendanceEmployeeTable :rows="rows" :statuses="ATTENDANCE_STATUSES" />
 
 			<p v-if="isDraft" class="text-[11px] text-ink-400 mt-3">
-				{{ __("Submit to post the attendance and generate the Labour and Overtime registers.") }}
+				{{
+					__(
+						"Submit to post the attendance and generate the Labour and Overtime registers."
+					)
+				}}
 			</p>
 		</div>
 
@@ -415,12 +443,14 @@ const breadcrumbs = computed(() => [
 				@overtime="setHeaderOvertime"
 				@comments="setHeaderComments"
 				@project="setHeaderProject"
+				@cost-code="setHeaderCostCode"
 			/>
 
 			<AttendanceEmployeeTable
 				:rows="form.employee_list"
 				:statuses="ATTENDANCE_STATUSES"
 				:error="errors.employee_list"
+				:project-id="form.project"
 				editable
 				@remove="(i) => form.employee_list.splice(i, 1)"
 			>
@@ -443,14 +473,14 @@ const breadcrumbs = computed(() => [
 			:date="form.date"
 			:project-label="projectLabel(form.project)"
 			:existing="[...inTable]"
-			:crew="form.crew"
 			@close="bulkOpen = false"
 			@add="addWorkers"
-			@crew="form.crew = $event"
 		/>
 	</DeskPage>
 
-	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">{{ __("Loading attendance…") }}</div>
+	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">
+		{{ __("Loading attendance…") }}
+	</div>
 
 	<AccessDenied
 		v-else-if="accessDenied"
@@ -459,5 +489,7 @@ const breadcrumbs = computed(() => [
 		:back-label="__('Back to Field Attendance')"
 	/>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Field attendance not found.") }}</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">
+		{{ __("Field attendance not found.") }}
+	</div>
 </template>

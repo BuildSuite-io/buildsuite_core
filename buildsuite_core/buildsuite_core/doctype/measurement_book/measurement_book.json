@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "MB-.YYYY.-.#####",
  "creation": "2026-07-13 00:00:00.000000",
  "doctype": "DocType",

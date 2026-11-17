@@ -3,10 +3,14 @@
 // Invoice. Summary strip, item lines, payments, supplier-advance adjustment, and the docstatus
 // lifecycle: Submit/Delete/Edit (Draft), Pay/Cancel (Submitted). Pay = a real Payment Entry
 // from a Bank/Cash account. Mirrors the customer-invoice detail (payable side).
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { createDataAdapter } from "@/data/adapters";
+import { useDataStore } from "@/stores";
+import FileUploadHandler from "frappe-ui-file-upload-handler";
 import {
 	getSupplierBill,
 	submitSupplierBill,
@@ -26,6 +30,7 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { usePermissions } from "@/composables/usePermissions";
 import { fmtDate, fmtCurrency } from "@/utils/format";
@@ -331,6 +336,119 @@ async function unlinkAdvance(row) {
 		showToast(err.message || __("Unlink failed"), "error");
 	}
 }
+
+// --- attachments (native Frappe File on the underlying Purchase Invoice) ---
+// props.id is the Purchase Invoice name, so files attach to it directly — the
+// same native model the Desk uses, visible from both the SPA and the Desk sidebar.
+const adapter = createDataAdapter(useDataStore());
+const filesRes = useDocTypeList("File", {
+	fields: ["name", "file_name", "file_url", "file_size", "creation", "owner"],
+	filters: [
+		["attached_to_doctype", "=", "Purchase Invoice"],
+		["attached_to_name", "=", props.id],
+	],
+	orderBy: "creation desc",
+	pageLength: 0,
+	cache: `buildsuite-supplier-bill-files-${props.id}`,
+});
+const attachments = computed(() => filesRes.data || []);
+const canAttach = computed(() => canEdit("supplierBill"));
+const fileInput = ref(null);
+const uploading = ref(0);
+const dragOver = ref(false);
+
+async function uploadFiles(files) {
+	if (!files.length) return;
+	uploading.value += files.length;
+	for (const f of files) {
+		try {
+			await new FileUploadHandler().upload(f, {
+				doctype: "Purchase Invoice",
+				docname: props.id,
+				private: true,
+			});
+		} catch (err) {
+			showToast(err.message || __("Failed to upload {0}", [f.name]), "error");
+		} finally {
+			uploading.value--;
+		}
+	}
+	filesRes.reload?.();
+}
+async function onFilesPicked(e) {
+	await uploadFiles(Array.from(e.target.files || []));
+	if (e.target) e.target.value = "";
+}
+async function onDrop(e) {
+	dragOver.value = false;
+	if (!canAttach.value) return;
+	await uploadFiles(Array.from(e.dataTransfer?.files || []));
+}
+async function onDeleteFile(row) {
+	const ok = await confirmDialog({
+		title: __("Delete attachment"),
+		message: __('Delete "{0}"? This cannot be undone.', [row.file_name]),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await adapter.remove("File", row.name);
+		filesRes.reload?.();
+		showToast(__("Attachment deleted."));
+	} catch (err) {
+		showToast(err.message || __("Failed to delete attachment"), "error");
+	}
+}
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"];
+function extOf(att) {
+	const url = typeof att === "string" ? att : att?.file_url || att?.file_name;
+	return (url || "").split(".").pop().toLowerCase().split("?")[0];
+}
+function fileIcon(att) {
+	const ext = extOf(att);
+	if (IMAGE_EXTS.includes(ext)) return "🖼️";
+	if (ext === "pdf") return "📕";
+	if (["dwg", "dxf"].includes(ext)) return "📐";
+	if (["doc", "docx"].includes(ext)) return "📝";
+	if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
+	if (["zip", "rar", "7z"].includes(ext)) return "🗜️";
+	return "📄";
+}
+function isImage(att) {
+	return IMAGE_EXTS.includes(extOf(att));
+}
+function isPdf(att) {
+	return extOf(att) === "pdf";
+}
+
+// Click-to-preview: images and PDFs open in an in-app lightbox instead of a new
+// tab; anything we can't render inline falls back to opening the file.
+const preview = ref(null);
+function openPreview(att) {
+	if (!att?.file_url) return;
+	if (isImage(att) || isPdf(att)) preview.value = att;
+	else window.open(att.file_url, "_blank", "noopener");
+}
+function closePreview() {
+	preview.value = null;
+}
+function onPreviewKey(e) {
+	if (e.key === "Escape" && preview.value) closePreview();
+}
+onMounted(() => window.addEventListener("keydown", onPreviewKey));
+onUnmounted(() => window.removeEventListener("keydown", onPreviewKey));
+function formatFileSize(bytes) {
+	if (!bytes) return "0 B";
+	const units = ["B", "KB", "MB", "GB"];
+	let i = 0;
+	let n = bytes;
+	while (n >= 1024 && i < units.length - 1) {
+		n /= 1024;
+		i++;
+	}
+	return (i === 0 ? n : n.toFixed(n < 10 ? 1 : 0)) + " " + units[i];
+}
 </script>
 
 <template>
@@ -427,7 +545,11 @@ async function unlinkAdvance(row) {
 				v-if="state === 'Draft'"
 				class="px-4 py-2.5 bg-warning-50 border border-warning-200 rounded-lg text-sm text-warning-700"
 			>
-				{{ __("Draft — not posted yet. Submit it to make it a payable and enable payment.") }}
+				{{
+					__(
+						"Draft — not posted yet. Submit it to make it a payable and enable payment."
+					)
+				}}
 			</div>
 			<div
 				v-if="state === 'Cancelled'"
@@ -457,8 +579,14 @@ async function unlinkAdvance(row) {
 				<span>
 					<span class="font-medium text-ink-900">{{
 						availableAdvances.length === 1
-							? __("{0} has {1} in unlinked advance payment", [bill.supplier_name, fmtDoc(unlinkedTotal)])
-							: __("{0} has {1} in unlinked advance payments", [bill.supplier_name, fmtDoc(unlinkedTotal)])
+							? __("{0} has {1} in unlinked advance payment", [
+									bill.supplier_name,
+									fmtDoc(unlinkedTotal),
+							  ])
+							: __("{0} has {1} in unlinked advance payments", [
+									bill.supplier_name,
+									fmtDoc(unlinkedTotal),
+							  ])
 					}}</span>
 					{{
 						availableAdvances.length === 1
@@ -535,7 +663,8 @@ async function unlinkAdvance(row) {
 				</div>
 			</div>
 			<div v-if="bill.bill_no" class="text-xs text-ink-500">
-				{{ __("Supplier invoice") }} <span class="font-medium text-ink-700">{{ bill.bill_no }}</span
+				{{ __("Supplier invoice") }}
+				<span class="font-medium text-ink-700">{{ bill.bill_no }}</span
 				><span v-if="bill.bill_date"> · {{ fmtDate(bill.bill_date) }}</span>
 			</div>
 
@@ -663,9 +792,9 @@ async function unlinkAdvance(row) {
 							<div
 								class="px-4 py-2 border-t border-ink-100 flex items-center justify-between text-[11px]"
 							>
-								<span class="uppercase tracking-wider text-ink-500 font-medium"
-									>{{ __("Total advance adjusted") }}</span
-								>
+								<span class="uppercase tracking-wider text-ink-500 font-medium">{{
+									__("Total advance adjusted")
+								}}</span>
 								<span class="tabular-nums font-semibold text-ink-900">{{
 									fmtDoc(advanceAdjusted)
 								}}</span>
@@ -731,6 +860,241 @@ async function unlinkAdvance(row) {
 					</div>
 				</section>
 			</div>
+
+			<!-- Attachments — native Frappe File on the Purchase Invoice, with drag-and-drop -->
+			<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+				<div
+					class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between gap-3"
+				>
+					<h3 class="text-[11px] uppercase tracking-wider font-semibold text-ink-700">
+						{{ __("Attachments")
+						}}<span
+							v-if="attachments.length"
+							class="ml-1 text-ink-400 font-normal normal-case tracking-normal"
+							>· {{ attachments.length }}</span
+						>
+					</h3>
+					<button
+						v-if="canAttach"
+						type="button"
+						class="text-xs text-brand-700 hover:underline disabled:opacity-60 flex items-center gap-1"
+						:disabled="uploading > 0"
+						@click="fileInput?.click()"
+					>
+						<svg
+							class="w-3.5 h-3.5"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.75"
+								d="M12 4v12m0-12l-4 4m4-4l4 4M4 17v1a2 2 0 002 2h12a2 2 0 002-2v-1"
+							/>
+						</svg>
+						{{ uploading > 0 ? __("Uploading… ({0})", [uploading]) : __("Upload") }}
+					</button>
+				</div>
+				<input
+					ref="fileInput"
+					type="file"
+					multiple
+					class="hidden"
+					@change="onFilesPicked"
+				/>
+				<div
+					class="transition-colors"
+					:class="
+						dragOver && canAttach
+							? 'bg-brand-50/60 ring-2 ring-inset ring-brand-300'
+							: ''
+					"
+					@dragover.prevent="dragOver = canAttach"
+					@dragleave.prevent="dragOver = false"
+					@drop.prevent="onDrop"
+				>
+					<ul v-if="attachments.length" class="divide-y divide-ink-100">
+						<li
+							v-for="att in attachments"
+							:key="att.name"
+							class="group flex items-center gap-3 px-4 py-2.5 hover:bg-ink-50/70"
+						>
+							<button
+								type="button"
+								class="flex-shrink-0 w-9 h-9 rounded-md bg-ink-50 border border-ink-200 overflow-hidden flex items-center justify-center text-base hover:ring-2 hover:ring-brand-200"
+								:title="__('Preview {0}', [att.file_name])"
+								@click="openPreview(att)"
+							>
+								<img
+									v-if="isImage(att) && att.file_url"
+									:src="att.file_url"
+									:alt="att.file_name"
+									class="w-full h-full object-cover"
+									loading="lazy"
+								/>
+								<span v-else>{{ fileIcon(att) }}</span>
+							</button>
+							<div class="min-w-0 flex-1">
+								<button
+									v-if="att.file_url"
+									type="button"
+									class="text-sm font-medium text-ink-900 hover:text-brand-700 hover:underline truncate block max-w-full text-left"
+									:title="att.file_name"
+									@click="openPreview(att)"
+								>
+									{{ att.file_name }}
+								</button>
+								<span
+									v-else
+									class="text-sm font-medium text-ink-900 truncate block"
+									>{{ att.file_name }}</span
+								>
+								<div
+									class="text-[11px] text-ink-400 flex items-center gap-1.5 mt-0.5 flex-wrap"
+								>
+									<span class="tabular-nums">{{
+										formatFileSize(att.file_size)
+									}}</span>
+									<span aria-hidden="true">·</span>
+									<span>{{ fmtDate(att.creation) }}</span>
+									<span aria-hidden="true">·</span>
+									<FrappeUserBadge :user-id="att.owner" size="xs" />
+								</div>
+							</div>
+							<button
+								v-if="canAttach"
+								type="button"
+								class="flex-shrink-0 text-ink-300 hover:text-danger-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+								:title="__('Delete {0}', [att.file_name])"
+								@click="onDeleteFile(att)"
+							>
+								✕
+							</button>
+						</li>
+					</ul>
+					<button
+						v-else
+						type="button"
+						class="w-full px-4 py-8 flex flex-col items-center justify-center gap-1.5 text-center"
+						:class="canAttach ? 'cursor-pointer hover:bg-ink-50/50' : 'cursor-default'"
+						:disabled="!canAttach"
+						@click="canAttach && fileInput?.click()"
+					>
+						<svg
+							class="w-7 h-7 text-ink-300"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.5"
+								d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 13l3-3m0 0l3 3m-3-3v9"
+							/>
+						</svg>
+						<div class="text-sm text-ink-500">
+							{{
+								dragOver && canAttach
+									? __("Drop to attach")
+									: __("No attachments yet.")
+							}}
+						</div>
+						<div class="text-xs text-ink-400 italic">
+							{{
+								canAttach
+									? __(
+											"Drag files here or click to attach the supplier invoice, delivery notes, or approvals."
+									  )
+									: __(
+											"The supplier invoice, delivery notes, and approvals appear here."
+									  )
+							}}
+						</div>
+					</button>
+				</div>
+			</section>
+		</div>
+
+		<!-- Attachment preview (lightbox) — images inline, PDFs embedded -->
+		<div
+			v-if="preview"
+			class="fixed inset-0 bg-ink-900/70 z-[70] flex items-center justify-center p-4 sm:p-8"
+			@click.self="closePreview"
+		>
+			<div
+				class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between gap-3 flex-shrink-0"
+				>
+					<div class="min-w-0 flex items-center gap-2">
+						<span class="text-base flex-shrink-0">{{ fileIcon(preview) }}</span>
+						<div class="min-w-0">
+							<h2
+								class="text-sm font-semibold text-ink-900 truncate"
+								:title="preview.file_name"
+							>
+								{{ preview.file_name }}
+							</h2>
+							<div class="text-[11px] text-ink-400 tabular-nums">
+								{{ formatFileSize(preview.file_size) }}
+							</div>
+						</div>
+					</div>
+					<div class="flex items-center gap-1.5 flex-shrink-0">
+						<a
+							:href="preview.file_url"
+							target="_blank"
+							rel="noopener"
+							download
+							class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md flex items-center gap-1.5"
+						>
+							<svg
+								class="w-3.5 h-3.5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.75"
+									d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"
+								/>
+							</svg>
+							{{ __("Download") }}
+						</a>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-ink-900 p-1"
+							:title="__('Close')"
+							@click="closePreview"
+						>
+							✕
+						</button>
+					</div>
+				</header>
+				<div
+					class="flex-1 min-h-0 overflow-auto bg-ink-50 flex items-center justify-center"
+				>
+					<img
+						v-if="isImage(preview)"
+						:src="preview.file_url"
+						:alt="preview.file_name"
+						class="max-w-full max-h-[75vh] object-contain"
+					/>
+					<iframe
+						v-else-if="isPdf(preview)"
+						:src="preview.file_url"
+						class="w-full h-[75vh] bg-white"
+						:title="preview.file_name"
+					></iframe>
+				</div>
+			</div>
 		</div>
 
 		<!-- Pay modal -->
@@ -791,7 +1155,9 @@ async function unlinkAdvance(row) {
 							></DeskField
 						>
 						<DeskField :label="__('Reference no.')"
-							><DeskInput v-model="pay.reference_no" :placeholder="__('UTR / cheque no.')"
+							><DeskInput
+								v-model="pay.reference_no"
+								:placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -830,7 +1196,9 @@ async function unlinkAdvance(row) {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Link advance payment") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Link advance payment") }}
+					</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -893,7 +1261,11 @@ async function unlinkAdvance(row) {
 									:disabled="adv.saving === a.payment_entry"
 									@click="doLink(a)"
 								>
-									{{ adv.saving === a.payment_entry ? __("Linking…") : __("Link") }}
+									{{
+										adv.saving === a.payment_entry
+											? __("Linking…")
+											: __("Link")
+									}}
 								</button>
 							</div>
 						</div>

@@ -1,5 +1,5 @@
 {
- "app": "buildsuite_core`",
+ "app": "buildsuite_core",
  "charts": [],
  "content": "[{\"id\":\"7LVy0pHLD1\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Site Execution Workspace\",\"col\":12}}]",
  "creation": "2026-05-20 00:00:00",
@@ -18,7 +18,7 @@
  "is_hidden": 0,
  "label": "BuildSuite",
  "links": [],
- "modified": "2026-05-28 13:50:36.314949",
+ "modified": "2026-10-14 13:50:36.314949",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite",

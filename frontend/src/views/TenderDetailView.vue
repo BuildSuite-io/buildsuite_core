@@ -16,6 +16,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import TenderSections from "@/components/TenderSections.vue";
+import OfferPaymentTerms from "@/components/OfferPaymentTerms.vue";
 
 const props = defineProps({ id: { type: String, required: true } });
 
@@ -54,13 +55,17 @@ const deadlineGone = computed(
 );
 
 // Saved as each change is made — there is no Save button on this page.
-async function persistSections(field, rows) {
+async function persist(values) {
 	try {
-		await adapter.update("BuildSuite Tenders", props.id, { [field]: rows });
+		await adapter.update("BuildSuite Tenders", props.id, values);
 		await resource?.reload?.();
 	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? __("Failed to update sections"), "error");
+		showToast(parseFrappeError(err).summary ?? __("Failed to update tender"), "error");
 	}
+}
+
+function persistSections(field, rows) {
+	return persist({ [field]: rows });
 }
 
 async function onDelete() {
@@ -185,7 +190,7 @@ async function onDelete() {
 		</div>
 
 		<TenderSections :sections="doc?.preamble_sections || []" editable :title="__('Before the items')"
-			class="mb-4" :empty-hint="__('Nothing ahead of the item table.')"
+			class="mb-4" applicable-for="Tender" :empty-hint="__('Nothing ahead of the item table.')"
 			:purpose-hint="__('Optional — scope of work, preamble or method of measurement, printed above the priced schedule.')"
 			@update:sections="(v) => persistSections('preamble_sections', v)" />
 
@@ -259,9 +264,11 @@ async function onDelete() {
 			</table>
 		</div>
 
+		<OfferPaymentTerms v-if="doc" :doc="doc" kind="Tender" :base="taxable" class="mt-4" @save="persist" />
+
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
 			<TenderSections :sections="doc?.terms_sections || []" editable class="lg:col-span-2"
-				:title="__('Terms & conditions')" :empty-hint="__('No terms sections yet.')"
+				applicable-for="Tender" :title="__('Terms & conditions')" :empty-hint="__('No terms sections yet.')"
 				:purpose-hint="__('A tender usually carries several — general conditions, payment, eligibility, defect liability.')"
 				@update:sections="(v) => persistSections('terms_sections', v)" />
 

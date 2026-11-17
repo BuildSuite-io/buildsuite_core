@@ -1,7 +1,10 @@
 <script setup>
-// Settings hub — tile grid grouped by area. Admin-only tiles hide entirely
-// from non-admin roles. Only a subset have working CRUD pages today; the
-// rest are visible placeholders for the eventual sub-sections.
+// Settings hub — tile grid grouped by area. Admin-only tiles hide entirely from non-admin roles.
+//
+// Trimmed to the settings the product needs now (the prototype's S446 cleanup). Gone: the "Soon"
+// stubs for things Frappe already provides (General, Email, Workflows, Custom Fields, Print
+// Templates, Integrations, Naming Series, Audit Log, Roles & Permissions) — Frappe Desk is where
+// those live, and the footer says so.
 
 import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
@@ -9,8 +12,10 @@ import { useDataStore } from "@/stores";
 import { listBuildsuiteUsers } from "@/data/usersApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
-import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import { __ } from "@/utils/translate";
+import { listSettingsPages } from "@/data/settingsPagesApi";
+import { settingsTilesList } from "@/sdk/registry";
 
 const store = useDataStore();
 const router = useRouter();
@@ -21,13 +26,44 @@ const isAdmin = computed(() => store.isAdmin);
 const isBSA = computed(() => store.isBSA);
 
 const userCount = ref(undefined);
+// Settings pages installed apps declare (each a Single DocType), shown as tiles of their own.
+const appPages = ref([]);
 onMounted(async () => {
 	if (isAdmin.value) userCount.value = (await listBuildsuiteUsers()).length;
+	try {
+		appPages.value = (await listSettingsPages()) || [];
+	} catch {
+		appPages.value = []; // the hub still works without them
+	}
 });
 
-// Tile groups. `adminOnly: true` filters the tile out for non-admin roles.
-// `bsaOnly: true` filters out for non-BSA. `stub: true` renders the tile in
-// muted style and disables navigation.
+// Tiles from installed apps: declared pages (hook) and tiles an extension registered (sdk), grouped
+// by their own group name, after Core's groups. Settings is admin-only, so they are too.
+const extensionGroups = computed(() => {
+	const byGroup = {};
+	const add = (group, tile) =>
+		(byGroup[group] ||= []).push({ icon: "settings", adminOnly: true, ...tile });
+	for (const p of appPages.value) {
+		add(p.group, {
+			icon: p.icon || "settings",
+			label: p.label,
+			desc: p.description,
+			to: `/settings/doc/${encodeURIComponent(p.doctype)}`,
+		});
+	}
+	for (const t of settingsTilesList()) {
+		add(t.group, {
+			icon: t.icon || "settings",
+			label: t.label,
+			desc: t.description || "",
+			to: t.to,
+		});
+	}
+	return Object.entries(byGroup).map(([title, tiles]) => ({ title, tiles }));
+});
+
+// Tile groups. `adminOnly: true` filters the tile out for non-admin roles; `bsaOnly: true` for
+// non-BSA; `rolesAny` shows it to an admin or anyone holding one of the listed roles.
 const groups = computed(() => [
 	{
 		title: __("Organisation"),
@@ -36,7 +72,7 @@ const groups = computed(() => [
 				slug: "companies",
 				icon: "building-2",
 				label: __("Company"),
-				desc: __("Companies, addresses, fiscal year per entity."),
+				desc: __("Companies, letterheads and the brand colour each one shows."),
 				to: "/settings/companies",
 				count: store.companies.length,
 				countLabel: store.companies.length === 1 ? __("company") : __("companies"),
@@ -59,22 +95,6 @@ const groups = computed(() => [
 				to: "/settings/personas",
 				adminOnly: true,
 			},
-			{
-				slug: "roles",
-				icon: "shield",
-				label: __("Roles & Permissions"),
-				desc: __("Role definitions, workspace visibility and record-level permissions."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "naming",
-				icon: "tag",
-				label: __("Naming Series"),
-				desc: __("ID prefixes for Project, Task, BOQ, SCO etc."),
-				adminOnly: true,
-				stub: true,
-			},
 		],
 	},
 	{
@@ -85,7 +105,7 @@ const groups = computed(() => [
 				icon: "puzzle",
 				label: __("BuildSuite Core Settings"),
 				desc: __(
-					"Org-wide BuildSuite toggles — company segregation, default project type, default company."
+					"Org-wide toggles: company segregation, default company, project naming, accounting defaults and app setup."
 				),
 				to: "/settings/core",
 				adminOnly: true,
@@ -95,7 +115,7 @@ const groups = computed(() => [
 				icon: "clipboard-list",
 				label: __("Project Settings"),
 				desc: __(
-					"The standard project page — which tabs every project offers by default. Each project can overrule it."
+					"The standard project page: which tabs every project offers by default. Each project can overrule it."
 				),
 				to: "/settings/project",
 				adminOnly: true,
@@ -105,7 +125,7 @@ const groups = computed(() => [
 				icon: "wallet",
 				label: __("Bank & Cash Accounts"),
 				desc: __(
-					"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances."
+					"Bank, cash and petty cash accounts shown across Project Finance, with opening and current balances."
 				),
 				to: "/settings/finance-accounts",
 				adminOnly: true,
@@ -115,7 +135,7 @@ const groups = computed(() => [
 				icon: "file",
 				label: __("Terms & Conditions"),
 				desc: __(
-					"The clause library printed documents pull from, grouped by the document (Quotation, Purchase Order, …). Rich text with tables."
+					"The clause library printed documents pull from, grouped by document. Rich text with tables."
 				),
 				to: "/settings/terms",
 				// Managed by the admin + the roles that author document terms; everyone else gets
@@ -150,60 +170,6 @@ const groups = computed(() => [
 		],
 	},
 	{
-		title: __("System"),
-		adminOnly: true,
-		tiles: [
-			{
-				slug: "general",
-				icon: "settings",
-				label: __("General Settings"),
-				desc: __("Date format, currency, time zone, default company, fiscal year."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "email",
-				icon: "mail",
-				label: __("Email & Notifications"),
-				desc: __("SMTP, notification rules, email templates, recipients."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "workflows",
-				icon: "refresh-ccw",
-				label: __("Workflows"),
-				desc: __("Approval chains for BOQ, SCO, Petty Cash and RA Bills."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "custom-fields",
-				icon: "wrench",
-				label: __("Custom Fields"),
-				desc: __("Add fields to existing DocTypes."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "print",
-				icon: "file",
-				label: __("Print Templates"),
-				desc: __("Letter heads, print formats per DocType, page sizes."),
-				adminOnly: true,
-				stub: true,
-			},
-			{
-				slug: "integrations",
-				icon: "plug",
-				label: __("Integrations"),
-				desc: __("API keys, webhooks, OAuth apps and social login providers."),
-				adminOnly: true,
-				stub: true,
-			},
-		],
-	},
-	{
 		title: __("Data & Diagnostics"),
 		tiles: [
 			{
@@ -214,15 +180,19 @@ const groups = computed(() => [
 				to: "/settings/data",
 			},
 			{
-				slug: "audit",
-				icon: "clipboard-list",
-				label: __("Audit Log"),
-				desc: __("Recent user actions across the system — who changed what when."),
+				slug: "app-icon-diagnostics",
+				icon: "activity",
+				label: __("App Icon Diagnostics"),
+				desc: __(
+					"Why the BuildSuite app icon may not be showing — a copyable server report."
+				),
+				to: "/settings/app-icon-diagnostics",
 				adminOnly: true,
-				stub: true,
 			},
 		],
 	},
+	// Tiles installed apps add (hook-declared Single DocTypes and sdk.settings.addTile).
+	...extensionGroups.value,
 ]);
 
 // Filter groups + tiles by role. Hide whole groups if every tile inside is
@@ -244,15 +214,14 @@ const visibleGroups = computed(() =>
 );
 
 function onTileClick(tile) {
-	if (tile.stub || !tile.to) return;
-	router.push(tile.to);
+	if (tile.to) router.push(tile.to);
 }
 </script>
 
 <template>
 	<DeskPage
 		:title="__('Settings')"
-		:subtitle="__('Organisation, system, data and diagnostics')"
+		:subtitle="__('Organisation, product settings, data and diagnostics')"
 		:breadcrumbs="breadcrumbs"
 	>
 		<!-- PRM-005 — Settings is restricted to System Manager + BuildSuite Administrator. -->
@@ -266,56 +235,44 @@ function onTileClick(tile) {
 		<template v-else>
 			<!-- Signed-in chip — shows which role/company is active -->
 			<div
-				class="flex items-center gap-3 mb-5 p-3 border border-ink-200 bg-ink-50"
-				style="border-radius: 6px"
+				class="flex items-center gap-3 mb-6 px-4 py-3 border border-ink-200 bg-white"
+				style="border-radius: 8px"
 			>
 				<UserAvatar :user-id="store.user?.id" size="sm" />
 				<div class="flex-1 min-w-0">
 					<div class="text-sm text-ink-900">
-						Signed in as <span class="font-medium">{{ store.user?.name }}</span> · role
-						<span class="font-medium text-ink-700">{{ store.currentRole?.name }}</span>
+						{{ __("Signed in as") }}
+						<span class="font-medium">{{ store.user?.name }}</span>
+					</div>
+					<div class="text-[11px] text-ink-500 mt-0.5">
+						{{ __("Role:") }}
+						<span class="text-ink-700">{{ store.currentRole?.name }}</span>
 						<span v-if="store.isMultiCompany && store.currentCompany">
-							· acting on
-							<span class="font-medium text-ink-700">{{
-								store.currentCompany.shortName
-							}}</span></span
-						>
+							· {{ __("Acting on:") }}
+							<span class="text-ink-700">{{ store.currentCompany.shortName }}</span>
+						</span>
 					</div>
 				</div>
 			</div>
 
-			<div v-for="group in visibleGroups" :key="group.title" class="mb-6">
-				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
+			<div v-for="group in visibleGroups" :key="group.title" class="mb-8">
+				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-500 mb-3">
 					{{ group.title }}
 				</h2>
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					<div
 						v-for="tile in group.tiles"
 						:key="tile.slug"
-						class="border border-ink-200 bg-white p-3"
-						:class="
-							tile.stub
-								? 'opacity-90'
-								: 'hover:border-brand-400 hover:bg-brand-50 cursor-pointer'
-						"
-						style="border-radius: 6px"
+						class="group border border-ink-200 bg-white p-4 transition-all hover:border-brand-400 hover:shadow-sm cursor-pointer"
+						style="border-radius: 8px"
 						@click="onTileClick(tile)"
 					>
 						<div class="flex items-start gap-3">
+							<!-- Icon chip — same shape as the workspace shortcut tiles. -->
 							<div
-								class="w-9 h-9 rounded-lg bg-ink-50 text-ink-600 flex items-center justify-center flex-shrink-0"
+								class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors bg-ink-50 text-ink-600 group-hover:bg-brand-50 group-hover:text-brand-700"
 							>
-								<svg
-									class="w-5 h-5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.8"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-									v-html="getWorkspaceIconPath(tile.icon)"
-								/>
+								<WorkspaceIcon :slug="tile.icon" :size="20" />
 							</div>
 							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2 flex-wrap">
@@ -323,12 +280,12 @@ function onTileClick(tile) {
 										{{ tile.label }}
 									</div>
 									<span
-										v-if="!tile.stub && tile.count !== undefined"
-										class="ml-auto text-[10px] text-ink-500 tabular-nums"
+										v-if="tile.count !== undefined"
+										class="ml-auto text-[10px] text-ink-500 tabular-nums whitespace-nowrap"
 										>{{ tile.count }} {{ tile.countLabel }}</span
 									>
 								</div>
-								<div class="text-[11px] text-ink-600 mt-0.5 leading-snug">
+								<div class="text-[11px] text-ink-600 mt-1 leading-snug">
 									{{ tile.desc }}
 								</div>
 							</div>
@@ -336,6 +293,14 @@ function onTileClick(tile) {
 					</div>
 				</div>
 			</div>
+
+			<p class="text-[11px] text-ink-500 border-t border-ink-100 pt-3">
+				{{
+					__(
+						"Date and currency formats, email, workflows, custom fields, print formats, naming series and the audit trail are managed in Frappe Desk, so they are not repeated here."
+					)
+				}}
+			</p>
 		</template>
 	</DeskPage>
 </template>

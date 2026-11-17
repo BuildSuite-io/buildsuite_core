@@ -3,7 +3,8 @@
 // the live Expense Entry doctype. ERPNext docstatus lifecycle: Draft → Submitted →
 // Cancelled. Submit = accountant verification; only Submitted expenses hit balances
 // & reports. Tabs: To Submit / All Expenses / My Expenses.
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import FileUploadHandler from "frappe-ui-file-upload-handler";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -21,6 +22,7 @@ import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import CostCodePicker from "@/components/CostCodePicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
@@ -32,6 +34,7 @@ import {
 import { usePermissions } from "@/composables/usePermissions";
 import { usePagination } from "@/composables/usePagination";
 import DeskPaginationFooter from "@/components/desk/DeskPaginationFooter.vue";
+import DeskListCount from "@/components/desk/DeskListCount.vue";
 import { fmtDate, fmtINR } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
@@ -109,7 +112,9 @@ const tabs = computed(() => {
 	t.push({ id: "mine", label: __("My Expenses") });
 	return t;
 });
-const tab = ref(null);
+// Deep-link: a dashboard row can open a specific tab via `?tab=<id>` (e.g. queue = To Submit).
+const route = useRoute();
+const tab = ref(typeof route.query.tab === "string" ? route.query.tab : null);
 const activeTab = computed(() =>
 	tab.value && tabs.value.some((t) => t.id === tab.value) ? tab.value : tabs.value[0]?.id
 );
@@ -119,13 +124,39 @@ const search = ref("");
 const statusFilter = ref("");
 const from = ref("");
 const to = ref("");
-const hasFilters = computed(() => search.value || statusFilter.value || from.value || to.value);
+const holderFilter = ref(""); // employee id — All Expenses only (My Expenses is already one holder)
+const accountFilter = ref(""); // expense account
+const hasFilters = computed(
+	() =>
+		search.value ||
+		statusFilter.value ||
+		holderFilter.value ||
+		accountFilter.value ||
+		from.value ||
+		to.value
+);
 function clearFilters() {
 	search.value = "";
 	statusFilter.value = "";
+	holderFilter.value = "";
+	accountFilter.value = "";
 	from.value = "";
 	to.value = "";
 }
+// Pickers offer only holders / accounts that actually appear in the rows they filter.
+const holderOptions = computed(() => {
+	const seen = new Map();
+	for (const e of expenses.value) if (e.employee) seen.set(e.employee, holderName(e));
+	return [...seen]
+		.map(([value, label]) => ({ value, label }))
+		.sort((a, b) => a.label.localeCompare(b.label));
+});
+const accountsOf = (rows) =>
+	[...new Set(rows.map((e) => e.expense_account).filter(Boolean))]
+		.sort((a, b) => a.localeCompare(b))
+		.map((a) => ({ value: a, label: a }));
+const allAccountOptions = computed(() => accountsOf(expenses.value));
+const myAccountOptions = computed(() => accountsOf(myExpensesAll.value));
 function inPeriod(d) {
 	return (!from.value || d >= from.value) && (!to.value || d <= to.value);
 }
@@ -137,18 +168,34 @@ function inPeriod(d) {
 const SORT_OPTIONS = [
 	{ key: "created-desc", label: __("Entered — newest first") },
 	{ key: "created-asc", label: __("Entered — oldest first") },
+	{ key: "modified-desc", label: __("Last modified — newest first") },
+	{ key: "modified-asc", label: __("Last modified — oldest first") },
 	{ key: "date-desc", label: __("Expense date — newest first") },
 	{ key: "date-asc", label: __("Expense date — oldest first") },
 	{ key: "amount-desc", label: __("Amount — highest first") },
 	{ key: "amount-asc", label: __("Amount — lowest first") },
+	{ key: "status-submitted", label: __("Status — Submitted first") },
 ];
 const sortBy = ref("created-desc");
+const STATUS_RANK = { Submitted: 0, Draft: 1, Cancelled: 2 };
 const cmpText = (x, y) => (x || "").localeCompare(y || "");
 function applySort(arr) {
 	const rows = arr.slice();
 	switch (sortBy.value) {
 		case "created-asc":
 			return rows.sort((a, b) => cmpText(a.created, b.created) || cmpText(a.name, b.name));
+		case "modified-desc": // the order Desk's list opens in
+			return rows.sort(
+				(a, b) =>
+					cmpText(b.modified || b.created, a.modified || a.created) ||
+					cmpText(b.name, a.name)
+			);
+		case "modified-asc":
+			return rows.sort(
+				(a, b) =>
+					cmpText(a.modified || a.created, b.modified || b.created) ||
+					cmpText(a.name, b.name)
+			);
 		case "date-desc":
 			return rows.sort((a, b) => cmpText(b.date, a.date) || cmpText(b.name, a.name));
 		case "date-asc":
@@ -161,9 +208,28 @@ function applySort(arr) {
 			return rows.sort(
 				(a, b) => (a.amount || 0) - (b.amount || 0) || cmpText(a.name, b.name)
 			);
+		case "status-submitted": // Submitted, then Draft, then Cancelled; last modified first within each
+			// (the order Desk's list shows for the same status), so the two screens line up.
+			return rows.sort(
+				(a, b) =>
+					(STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9) ||
+					cmpText(b.modified || b.created, a.modified || a.created) ||
+					cmpText(b.name, a.name)
+			);
 		default: // created-desc — Entered, newest first
 			return rows.sort((a, b) => cmpText(b.created, a.created) || cmpText(b.name, a.name));
 	}
+}
+
+// Amount search: typed as 1500, 1,500, 1500.50 or with the currency symbol, it matches the amount
+// as stored and as shown in the list.
+function amountMatches(e, term) {
+	if (/[a-z]/i.test(term)) return false; // words are not amounts: "Block 2" must not match 2
+	const digits = term.replace(/[^\d.]/g, "");
+	if (!digits) return false;
+	const n = Number(e.amount) || 0;
+	const shown = fmtINR(e.amount).replace(/[^\d.]/g, "");
+	return [String(n), n.toFixed(2), shown].some((s) => s.includes(digits));
 }
 
 const allExpenses = computed(() => {
@@ -171,22 +237,38 @@ const allExpenses = computed(() => {
 	const rows = expenses.value.filter(
 		(e) =>
 			(!statusFilter.value || e.status === statusFilter.value) &&
+			(!holderFilter.value || e.employee === holderFilter.value) &&
+			(!accountFilter.value || e.expense_account === accountFilter.value) &&
 			inPeriod(e.date) &&
 			(!term ||
 				(e.description || "").toLowerCase().includes(term) ||
 				holderName(e).toLowerCase().includes(term) ||
 				projectName(e).toLowerCase().includes(term) ||
 				(e.expense_account || "").toLowerCase().includes(term) ||
+				amountMatches(e, term) ||
 				e.name.toLowerCase().includes(term))
 	);
 	return applySort(rows);
 });
-const myExpenses = computed(() => applySort(myExpensesAll.value.filter((e) => inPeriod(e.date))));
+const myExpenses = computed(() =>
+	applySort(
+		myExpensesAll.value.filter(
+			(e) =>
+				inPeriod(e.date) &&
+				(!accountFilter.value || e.expense_account === accountFilter.value)
+		)
+	)
+);
 
 // Client-side pagers for the three bespoke expense tables (they render raw <table>s, not DeskList).
 const toSubmitPager = usePagination(toSubmit);
 const allExpensesPager = usePagination(allExpenses);
 const myExpensesPager = usePagination(myExpenses);
+// A new filter starts again from page 1 (the pagers only clamp when the row set shrinks).
+watch([search, statusFilter, holderFilter, accountFilter, from, to], () => {
+	allExpensesPager.page = 1;
+	myExpensesPager.page = 1;
+});
 
 // --- detail modal ---
 const detail = ref(null);
@@ -275,6 +357,11 @@ const PAID_FROM = [
 	{ value: "petty", label: __("Petty Cash") },
 	{ value: "company", label: __("Company") },
 ];
+// Paying straight from a company account is a finance action — only approvers (admins / Accountant)
+// may choose it; everyone else is restricted to the petty-cash float. The backend enforces the same.
+const paidFromOptions = computed(() =>
+	canVerify.value ? PAID_FROM : PAID_FROM.filter((p) => p.value === "petty")
+);
 const modalOpen = ref(false);
 const editingId = ref(null);
 const form = reactive({
@@ -473,86 +560,92 @@ const expenseAccountFilters = computed(() => [
 			</div>
 
 			<!-- To Submit queue -->
-			<section
-				v-if="activeTab === 'queue'"
-				class="bg-white border border-ink-200 rounded-lg overflow-hidden"
-			>
-				<table v-if="toSubmit.length" class="w-full text-xs">
-					<thead
-						class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
-					>
-						<tr>
-							<th class="text-left px-4 py-2">{{ __("Date") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Description") }}</th>
-							<th class="text-left px-4 py-2">{{ __("By") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Source") }}</th>
-							<th class="text-left px-4 py-2">{{ __("Account") }}</th>
-							<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
-							<th class="px-4 py-2"></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr
-							v-for="e in toSubmitPager.pagedRows"
-							:key="e.name"
-							class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer"
-							@click="openDetail(e)"
+			<div v-if="activeTab === 'queue'">
+				<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
+					<table v-if="toSubmit.length" class="w-full text-xs">
+						<thead
+							class="text-ink-500 uppercase tracking-wider text-[10px] border-b border-ink-200 bg-ink-50"
 						>
-							<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
-							<td class="px-4 py-2.5 text-ink-900">
-								{{ e.description
-								}}<span v-if="e.has_attachment" class="ml-1 text-ink-400">📎</span>
-								<div class="text-[10px] text-ink-400">{{ projectName(e) }}</div>
-							</td>
-							<td class="px-4 py-2.5 text-ink-700">
-								<div class="flex items-center gap-1.5">
-									<UserAvatar :name="holderName(e)" size="xs" /><span>{{
-										holderName(e)
-									}}</span
-									><span
-										v-if="e.raised_for_me"
-										class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
-										:title="
-											__('Raised for you by {0}', [
-												e.raised_by_name || e.raised_by,
-											])
-										"
-										>{{ __("Raised for you") }}</span
-									>
-								</div>
-							</td>
-							<td class="px-4 py-2.5">
-								<span
-									class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
-									:class="sourceChipClass(e.source)"
-									>{{ __(e.source) }}</span
-								>
-							</td>
-							<td class="px-4 py-2.5 text-ink-600">
-								{{ e.expense_account || e.cost_code || "—" }}
-							</td>
-							<td
-								class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900"
+							<tr>
+								<th class="text-left px-4 py-2">{{ __("Date") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Description") }}</th>
+								<th class="text-left px-4 py-2">{{ __("By") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Source") }}</th>
+								<th class="text-left px-4 py-2">{{ __("Account") }}</th>
+								<th class="text-right px-4 py-2">{{ __("Amount") }}</th>
+								<th class="px-4 py-2"></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="e in toSubmitPager.pagedRows"
+								:key="e.name"
+								class="border-b border-ink-100 last:border-0 hover:bg-brand-50/40 cursor-pointer"
+								@click="openDetail(e)"
 							>
-								{{ fmtINR(e.amount) }}
-							</td>
-							<td class="px-4 py-2.5 text-right">
-								<button
-									type="button"
-									class="desk-save-btn"
-									@click.stop="onSubmit(e)"
+								<td class="px-4 py-2.5 text-ink-500">{{ fmtDate(e.date) }}</td>
+								<td class="px-4 py-2.5 text-ink-900">
+									{{ e.description
+									}}<span v-if="e.has_attachment" class="ml-1 text-ink-400"
+										>📎</span
+									>
+									<div class="text-[10px] text-ink-400">
+										{{ projectName(e) }}
+									</div>
+								</td>
+								<td class="px-4 py-2.5 text-ink-700">
+									<div class="flex items-center gap-1.5">
+										<UserAvatar :name="holderName(e)" size="xs" /><span>{{
+											holderName(e)
+										}}</span
+										><span
+											v-if="e.raised_for_me"
+											class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 whitespace-nowrap"
+											:title="
+												__('Raised for you by {0}', [
+													e.raised_by_name || e.raised_by,
+												])
+											"
+											>{{ __("Raised for you") }}</span
+										>
+									</div>
+								</td>
+								<td class="px-4 py-2.5">
+									<span
+										class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+										:class="sourceChipClass(e.source)"
+										>{{ __(e.source) }}</span
+									>
+								</td>
+								<td class="px-4 py-2.5 text-ink-600">
+									{{ e.expense_account || e.cost_code || "—" }}
+								</td>
+								<td
+									class="px-4 py-2.5 text-right tabular-nums font-medium text-ink-900"
 								>
-									{{ __("Submit") }}
-								</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">
-					{{ loading ? __("Loading…") : __("No draft expenses awaiting submission.") }}
-				</div>
-				<DeskPaginationFooter :pager="toSubmitPager" />
-			</section>
+									{{ fmtINR(e.amount) }}
+								</td>
+								<td class="px-4 py-2.5 text-right">
+									<button
+										type="button"
+										class="desk-save-btn"
+										@click.stop="onSubmit(e)"
+									>
+										{{ __("Submit") }}
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div v-else class="px-4 py-10 text-center text-xs text-ink-400 italic">
+						{{
+							loading ? __("Loading…") : __("No draft expenses awaiting submission.")
+						}}
+					</div>
+					<DeskPaginationFooter :pager="toSubmitPager" />
+				</section>
+				<DeskListCount :pager="toSubmitPager" />
+			</div>
 
 			<!-- All Expenses -->
 			<template v-else-if="activeTab === 'all'">
@@ -560,7 +653,7 @@ const expenseAccountFilters = computed(() => [
 					<input
 						v-model="search"
 						type="text"
-						:placeholder="__('Search description, holder, project, account…')"
+						:placeholder="__('Search description, holder, project, account, amount…')"
 						class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-72 max-w-full"
 					/>
 					<select
@@ -572,6 +665,24 @@ const expenseAccountFilters = computed(() => [
 						<option value="Submitted">{{ __("Submitted") }}</option>
 						<option value="Cancelled">{{ __("Cancelled") }}</option>
 					</select>
+					<div class="w-48" data-test="filter-holder">
+						<DeskSearchableSelect
+							v-model="holderFilter"
+							:options="holderOptions"
+							allow-clear
+							:placeholder="__('All holders')"
+							:search-placeholder="__('Search holders…')"
+						/>
+					</div>
+					<div class="w-56" data-test="filter-account">
+						<DeskSearchableSelect
+							v-model="accountFilter"
+							:options="allAccountOptions"
+							allow-clear
+							:placeholder="__('All accounts')"
+							:search-placeholder="__('Search accounts…')"
+						/>
+					</div>
 					<div class="flex items-center gap-1.5">
 						<span
 							class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
@@ -695,11 +806,21 @@ const expenseAccountFilters = computed(() => [
 					</div>
 					<DeskPaginationFooter :pager="allExpensesPager" />
 				</section>
+				<DeskListCount :pager="allExpensesPager" />
 			</template>
 
 			<!-- My Expenses -->
 			<template v-else-if="activeTab === 'mine'">
 				<div class="flex items-center gap-2 flex-wrap">
+					<div class="w-56" data-test="filter-account">
+						<DeskSearchableSelect
+							v-model="accountFilter"
+							:options="myAccountOptions"
+							allow-clear
+							:placeholder="__('All accounts')"
+							:search-placeholder="__('Search accounts…')"
+						/>
+					</div>
 					<div class="flex items-center gap-1.5">
 						<span
 							class="text-[11px] uppercase tracking-wider text-ink-500 font-medium"
@@ -735,12 +856,13 @@ const expenseAccountFilters = computed(() => [
 						</select>
 					</div>
 					<button
-						v-if="from || to"
+						v-if="from || to || accountFilter"
 						type="button"
 						class="text-[11px] text-danger-600 hover:underline"
 						@click="
 							from = '';
 							to = '';
+							accountFilter = '';
 						"
 					>
 						{{ __("Clear") }}
@@ -807,6 +929,7 @@ const expenseAccountFilters = computed(() => [
 					</div>
 					<DeskPaginationFooter :pager="myExpensesPager" />
 				</section>
+				<DeskListCount :pager="myExpensesPager" />
 			</template>
 
 			<!-- Detail modal -->
@@ -1087,7 +1210,7 @@ const expenseAccountFilters = computed(() => [
 									v-model="form.paid_from"
 									@update:model-value="onPaidFromChange"
 									><option
-										v-for="p in PAID_FROM"
+										v-for="p in paidFromOptions"
 										:key="p.value"
 										:value="p.value"
 									>

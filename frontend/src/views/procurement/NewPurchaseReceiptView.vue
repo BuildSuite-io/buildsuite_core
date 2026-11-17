@@ -249,7 +249,7 @@ const saveLabel = computed(() =>
 				{{ error }}
 			</div>
 
-			<DeskSection :title="__('Receipt')" :cols="3">
+			<DeskSection id="receipt" :title="__('Receipt')" :cols="3">
 				<DeskField :label="__('Purchase order')" required>
 					<DeskSearchableSelect
 						v-if="!isEdit"

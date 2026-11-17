@@ -8,6 +8,7 @@ from frappe.utils import get_system_timezone
 from frappe.utils.jinja_globals import is_rtl
 
 from buildsuite_core.api.permission import has_app_permission
+from buildsuite_core.sdk import SDK_VERSION, get_customisations, get_extension_entries
 
 no_cache = 1
 
@@ -74,6 +75,11 @@ def get_boot():
 				"user": frappe.db.get_value("User", frappe.session.user, "time_zone")
 				or get_system_timezone(),
 			},
+			# Frontend extensions of the apps installed on this site (see buildsuite_core.sdk).
+			"buildsuite_sdk_version": SDK_VERSION,
+			"buildsuite_extensions": get_extension_entries(),
+			# Site-level customisations stored as data (BuildSuite Customisation).
+			"buildsuite_customisations": get_customisations(),
 		}
 	)
 

@@ -119,6 +119,7 @@ _CRW = {"read": 1, "write": 1, "create": 1, "report": 1, "print": 1}  # CRW — 
 # `select` — verified) but cannot list / report / export it. Used for reference masters a persona
 # only ever picks, never opens a screen for. Applied with _SELECT_PTYPES so read is cleared.
 _SELECT = {"select": 1, "print": 1}  # S — pick in a link field, no read
+_SELECT_READ = {"select": 1, "read": 1, "print": 1}  # SR — pick in a link field AND view the record
 
 # Assembly + Estimate Template: full for the estimation roles, hidden for the rest.
 ASSEMBLY_TEMPLATE_ROLE_PERMS = {role: _FULL for role in _ESTIMATION_ROLES}
@@ -189,6 +190,7 @@ ITEM_ROLE_PERMS = {
 	"BuildSuite Procurement Officer": _FULL,  # maintains Item.rate_master
 	"BuildSuite Store Keeper": _FULL,
 	"BuildSuite Accountant": _READ,
+	"BuildSuite Foreman": _SELECT_READ,  # picks + views items on requests / issues
 }
 
 # Roles that may confirm a Rate Master rate update from the PO-submit dialog. The
@@ -469,6 +471,12 @@ def setup_purchase_stock_permissions():
 	_apply_role_perms("Purchase Invoice", PURCHASE_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Stock Entry", STOCK_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Item", ITEM_ROLE_PERMS)
+	# Item Group backs the Item form's item_group picker (and item-group filters on item lists /
+	# pickers). Every role that can touch an Item must resolve it, so grant `select` — pick in the
+	# link field, never read / list / report — to the same roles that have Item access. Natively only
+	# ERPNext roles (Purchase User / Stock Manager / …) read Item Group, so a BuildSuite persona had
+	# no grant and the picker 403'd on a clean site.
+	_apply_role_perms("Item Group", {role: _SELECT for role in ITEM_ROLE_PERMS}, _SELECT_PTYPES)
 
 
 def _readonly_mirror(role_perms):
@@ -671,11 +679,17 @@ PETTY_CASH_ROLE_PERMS = {
 	"BuildSuite HR Manager": _RAISE_OWN,
 	"BuildSuite QS": _READ_OWN,
 }
+# Who may DISBURSE — approve/submit a petty-cash disbursement or an Expense Entry, and (on an
+# Expense Entry) set the petty-cash holder for someone else. Finance + admins only: the Accountant,
+# the Director/Owner, the BuildSuite Administrator and the System Manager. The PM is intentionally
+# NOT here — it manages its OWN petty-cash requests + expense drafts (own-scoped, see
+# PETTY_CASH_ROLE_PERMS) but is not an approver. Every non-disburse role's entries stay in Draft and
+# default the holder to themselves.
 PETTY_CASH_DISBURSE_ROLES = (
 	"BuildSuite Accountant",
 	"BuildSuite Director",
-	"BuildSuite PM",
 	"BuildSuite Administrator",
+	"System Manager",
 )
 
 
@@ -713,8 +727,16 @@ def setup_petty_cash_permissions():
 	_apply_role_perms("Expense Entry", EXPENSE_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
 	# The disburse / expense Journal Entry + its account picker read accounting masters.
 	_read = {role: _READ for role in PETTY_CASH_DISBURSE_ROLES}
-	for dt in ("Account", "Journal Entry"):
-		_apply_role_perms(dt, _read)
+	_apply_role_perms("Journal Entry", _read)
+	# Account also backs the expense_account picker for the roles that RAISE expenses but don't
+	# disburse — they must resolve + view an Account in the link field, nothing more (select + read).
+	account_perms = {
+		**_read,
+		"BuildSuite Site Engineer": _SELECT_READ,
+		"BuildSuite Foreman": _SELECT_READ,
+		"BuildSuite Procurement Officer": _SELECT_READ,
+	}
+	_apply_role_perms("Account", account_perms, _SELECT_PTYPES)
 
 
 # --- Terms & Conditions library ---------------------------------------------
@@ -820,6 +842,8 @@ CREW_ROLE_PERMS = {
 
 def setup_workforce_permissions():
 	_apply_role_perms("Field Attendance", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
+	# Timesheets (native ERPNext doctype) are entered by whoever keeps the muster, with the same rights.
+	_apply_role_perms("Timesheet", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
 	# Worker master + Crew (the M3 matrix missed both — Crew had no BuildSuite grant at all,
 	# and Employee was read-only via the picker mirror, so HR/PM/admin couldn't maintain it).
 	_upgrade_role_perms("Employee", EMPLOYEE_WRITE_ROLE_PERMS)
@@ -848,13 +872,14 @@ MACHINERY_ROLE_PERMS = {
 	"BuildSuite Foreman": _READ,
 	"BuildSuite Accountant": _READ,
 }
-# Machinery Usage (the plant usage log) — the site records usage (Site Engineer +
-# PM full, Foreman edits, Store Keeper holds custody); Procurement reads it as the
-# basis for hire bills; Director + Accountant read. Non-submittable, so CRWD is full.
+# Machinery Usage (the plant usage log) — submittable: a saved log is a Draft and only a
+# submitted log posts to the BOQ Actual. The site records usage (Foreman + Store Keeper
+# create/edit drafts); Site Engineer + PM submit, cancel and amend (CRWDSX); Procurement
+# reads it as the basis for hire bills; Director + Accountant read.
 MACHINERY_USAGE_ROLE_PERMS = {
-	"BuildSuite Administrator": _FULL,
-	"BuildSuite PM": _FULL,
-	"BuildSuite Site Engineer": _FULL,
+	"BuildSuite Administrator": _FULL_SUB,
+	"BuildSuite PM": _FULL_SUB,
+	"BuildSuite Site Engineer": _FULL_SUB,
 	"BuildSuite Store Keeper": _FULL,
 	"BuildSuite Foreman": _CRW,
 	"BuildSuite Director": _READ,
@@ -876,7 +901,7 @@ MACHINERY_TYPE_ROLE_PERMS = {
 
 def setup_equipment_permissions():
 	_apply_role_perms("Machinery", MACHINERY_ROLE_PERMS)
-	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS)
+	_apply_role_perms("Machinery Usage", MACHINERY_USAGE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Machinery Type", MACHINERY_TYPE_ROLE_PERMS)
 
 
@@ -963,6 +988,10 @@ def setup_project_finance_report_access():
 				).insert(ignore_permissions=True)
 	# Read + report on GL Entry (the reports' ref doctype), layered on ERPNext's own perms.
 	_upgrade_role_perms("GL Entry", {role: _READ for role in _PF_REPORT_ROLES})
+	# ERPNext's report filter scripts read the dimension list with a permission-checked
+	# frappe.db.get_list("Accounting Dimension"); without read the Desk shows "Insufficient
+	# Permission for Accounting Dimension" to these personas (only System/Accounts Manager have it).
+	_upgrade_role_perms("Accounting Dimension", {role: {"read": 1} for role in _PF_REPORT_ROLES})
 
 
 def _ensure_workflow_state(name):

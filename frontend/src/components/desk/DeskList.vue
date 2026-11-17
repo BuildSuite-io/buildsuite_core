@@ -5,7 +5,11 @@
 // indicator + prev/next) renders below the table when pagination is enabled
 // AND the row set spans more than one page.
 //
-// The consumer passes pre-filtered rows in via props. DeskList owns the shared
+// The consumer passes pre-filtered rows in via props. Add filter: a list that is a view over a
+// doctype passes `filter-doctype` and DeskList offers the Frappe-style dynamic filter off the shelf
+// (field / condition / value from the doctype's meta, evaluated by Frappe and intersected with the
+// rows by `rowKey`); a list that does its own querying listens to `@add-filter` instead. With
+// neither, the Add filter button is not rendered. DeskList owns the shared
 // sort chrome and can apply client-side sorting using either explicit
 // `sortOptions` or the visible columns. The search input uses two-way binding
 // via v-model.
@@ -16,8 +20,13 @@
 //
 // Columns: [{ key, label, align?: 'left'|'right'|'center', render?: (row)=>string, class?: string }]
 
-import { computed, ref, watch } from "vue";
+import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
+import { frappeRequest } from "frappe-ui-frappe-request";
+import { listColumns } from "@/sdk/registry";
 import DeskSortControl from "@/components/desk/DeskSortControl.vue";
+import DeskFilterPopover from "@/components/desk/DeskFilterPopover.vue";
+import DeskFilterChips from "@/components/desk/DeskFilterChips.vue";
+import { useDynamicFilters } from "@/composables/useDynamicFilters";
 
 const props = defineProps({
 	rows: { type: Array, required: true },
@@ -30,6 +39,20 @@ const props = defineProps({
 	showSort: { type: Boolean, default: true },
 	showColumns: { type: Boolean, default: true },
 	showAddFilter: { type: Boolean, default: true },
+	// The "1-8 of 8 records" line under the card (paginated lists). DocTypeListView renders its own.
+	showCount: { type: Boolean, default: true },
+	// Doctype the rows are records of — turns on the built-in dynamic filter (see header).
+	filterDoctype: { type: String, default: "" },
+	// Doctype whose installed-app list columns (sdk doctype(...).on({ listColumns })) this list shows;
+	// defaults to filterDoctype. Rows are matched to records by their document name: the rowKey, or
+	// extRowName(row) when the list keys its rows by something else.
+	extDoctype: { type: String, default: "" },
+	// For a list whose rows are not keyed by the document name: (row) => the document's name (or
+	// null for a row that is not a record). Without it the rowKey is taken to be the name.
+	extRowName: { type: Function, default: null },
+	// A useDynamicFilters instance the list owns itself (server-paged lists): DeskList renders its
+	// editor + chips but leaves applying the filters to the list's own query.
+	dynamicFilters: { type: Object, default: null },
 	sortField: { type: String, default: "" },
 	sortDirection: { type: String, default: "desc" },
 	sortOptions: { type: Array, default: null },
@@ -66,6 +89,26 @@ const emit = defineEmits([
 	"page-size-change",
 ]);
 
+// Built-in dynamic filter (only when the list names its doctype) and the rows it leaves visible.
+// rowKey must be a field name here — the filter matches rows to records by it.
+const ownFilters = props.filterDoctype ? useDynamicFilters(props.filterDoctype) : null;
+const filters = props.dynamicFilters || ownFilters;
+const visibleRows = computed(() =>
+	ownFilters && typeof props.rowKey === "string"
+		? ownFilters.applyTo(props.rows, props.rowKey)
+		: props.rows
+);
+// A list that handles @add-filter itself (DocTypeListView) keeps the button; one with neither a
+// filter source nor a handler would render a button that does nothing, so it doesn't.
+const hasAddFilterListener = !!getCurrentInstance()?.vnode.props?.onAddFilter;
+const addFilterEnabled = computed(
+	() => props.showAddFilter && (!!filters || hasAddFilterListener)
+);
+function onAddFilter() {
+	if (filters) filters.openEditor();
+	emit("add-filter");
+}
+
 const internalSortField = ref(props.sortField);
 const internalSortDirection = ref(props.sortDirection);
 
@@ -88,7 +131,7 @@ const resolvedSortOptions = computed(() => {
 		return props.sortOptions.filter((option) => option?.value);
 	}
 
-	return props.columns
+	return allColumns.value
 		.filter((column) => column?.key)
 		.map((column) => ({
 			value: column.key,
@@ -107,6 +150,9 @@ function updateSortDirection(value) {
 }
 
 function sortValueFor(row, field) {
+	if (typeof field === "string" && field.startsWith("ext:")) {
+		return extValues[extNameOf(row)]?.[field.slice(4)];
+	}
 	return row?.[field];
 }
 
@@ -127,12 +173,12 @@ function compareSortValues(a, b) {
 }
 
 const sortedRows = computed(() => {
-	if (!props.showSort || !internalSortField.value) return props.rows;
+	if (!props.showSort || !internalSortField.value) return visibleRows.value;
 
 	const direction = internalSortDirection.value === "asc" ? 1 : -1;
 	const field = internalSortField.value;
 
-	return [...props.rows].sort((left, right) => {
+	return [...visibleRows.value].sort((left, right) => {
 		const result = compareSortValues(sortValueFor(left, field), sortValueFor(right, field));
 		return result * direction;
 	});
@@ -142,13 +188,69 @@ function keyFor(row) {
 	return typeof props.rowKey === "function" ? props.rowKey(row) : row[props.rowKey];
 }
 
+// ----- Columns an installed app adds (sdk listColumns) --------------------------------------------
+// Their values are not on the rows the list was given, so they are read in one query for the rows on
+// screen, keyed by document name, and filled in as they arrive.
+const EXT_PREFIX = "ext:";
+const extValues = reactive({}); // document name -> { field: value }
+const extDt = computed(() => props.extDoctype || props.filterDoctype);
+const extNameOf = (row) => (props.extRowName ? props.extRowName(row) : keyFor(row));
+const extColumns = computed(() => {
+	const own = new Set(props.columns.map((c) => c.key));
+	return listColumns(extDt.value)
+		.filter((c) => !own.has(c.field))
+		.map((c) => ({
+			key: EXT_PREFIX + c.field,
+			field: c.field,
+			label: c.label || c.field,
+			align: c.align,
+			render: (row) => {
+				const value = extValues[extNameOf(row)]?.[c.field];
+				if (typeof c.render === "function") return c.render(value, row);
+				return value ?? "";
+			},
+		}));
+});
+const allColumns = computed(() =>
+	extColumns.value.length ? [...props.columns, ...extColumns.value] : props.columns
+);
+
+let extSeq = 0;
+watch(
+	[() => visibleRows.value.map(extNameOf).join("\u0001"), extColumns],
+	async () => {
+		if (!extColumns.value.length) return;
+		const wanted = visibleRows.value.map(extNameOf).filter((k) => k && !(k in extValues));
+		if (!wanted.length) return;
+		const fields = extColumns.value.map((c) => c.field);
+		const mine = ++extSeq;
+		try {
+			const rows = await frappeRequest({
+				url: "frappe.client.get_list",
+				params: {
+					doctype: extDt.value,
+					fields: ["name", ...fields],
+					filters: [["name", "in", wanted.slice(0, 500)]],
+					limit_page_length: 500,
+				},
+			});
+			if (mine !== extSeq) return;
+			for (const k of wanted.slice(0, 500)) extValues[k] = {};
+			for (const r of rows || []) extValues[r.name] = r;
+		} catch (err) {
+			console.warn("[buildsuite] extension list columns failed", err);
+		}
+	},
+	{ immediate: true }
+);
+
 const allSelected = computed(
-	() => props.rows.length > 0 && props.selected.length === props.rows.length
+	() => visibleRows.value.length > 0 && props.selected.length === visibleRows.value.length
 );
 
 function toggleAll() {
 	if (allSelected.value) emit("update:selected", []);
-	else emit("update:selected", props.rows.map(keyFor));
+	else emit("update:selected", visibleRows.value.map(keyFor));
 }
 
 function toggleRow(row) {
@@ -187,7 +289,7 @@ const pageValue = computed(() =>
 
 const totalRowsValue = computed(() => {
 	if (props.serverPaginated) {
-		return Number.isFinite(props.totalRows) ? props.totalRows : props.rows.length;
+		return Number.isFinite(props.totalRows) ? props.totalRows : visibleRows.value.length;
 	}
 	return sortedRows.value.length;
 });
@@ -212,10 +314,18 @@ const rangeEnd = computed(() =>
 	Math.min(rangeStart.value + pagedRows.value.length - 1, totalRowsValue.value)
 );
 
+// "1-8 of 8 records" — same wording as DocTypeListView, so every list reads the same, with or
+// without the pager (which only appears past the smallest page size).
+const countText = computed(() =>
+	totalRowsValue.value
+		? `${rangeStart.value}-${rangeEnd.value} of ${totalRowsValue.value} records`
+		: "0 records"
+);
+
 // Clamp current page when rows shrink (filtering / search) so we don't end up
 // past the last available page.
 watch(
-	() => props.rows.length,
+	() => visibleRows.value.length,
 	() => {
 		if (props.serverPaginated) return;
 		if (currentPage.value > totalPages.value) currentPage.value = totalPages.value;
@@ -259,223 +369,248 @@ function setPageSize(size) {
 	currentPage.value = 1;
 }
 
+// One rule for every list, server- or client-paged (and DeskPaginationFooter follows it too): the
+// pager is only worth showing once there is more than the smallest page size of rows. A server-paged
+// list that is already past page 1 keeps it, so a shrinking result can't strand the user.
 const showPagination = computed(() => {
 	if (!props.paginated) return false;
-	if (props.serverPaginated) return true;
+	if (props.serverPaginated && pageValue.value > 1) return true;
 	return totalRowsValue.value > Math.min(...props.pageSizeOptions);
 });
 </script>
 
 <template>
-	<div data-test="desk-list" class="bg-white border border-ink-200" style="border-radius: 8px">
-		<!-- Filter bar — flat white background, pill inputs, soft small buttons -->
-		<div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-			<!-- Search with leading magnifier icon -->
-			<div class="relative">
-				<svg
-					class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"
-					width="14"
-					height="14"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-				>
-					<circle cx="11" cy="11" r="7" />
-					<path d="m21 21-4.3-4.3" />
-				</svg>
-				<input
-					type="text"
-					data-test="list-search"
-					:value="modelValue"
-					:placeholder="searchPlaceholder"
-					class="desk-input"
-					style="width: 14rem; padding-left: 28px"
-					@input="emit('update:modelValue', $event.target.value)"
-				/>
-			</div>
-			<slot name="filter-chips" />
-			<button
-				v-if="showAddFilter"
-				type="button"
-				class="desk-link text-xs px-1.5"
-				@click="emit('add-filter')"
-			>
-				+ Add filter
-			</button>
-
-			<div class="ml-auto flex items-center gap-1">
-				<DeskSortControl
-					v-if="showSort"
-					:sort-field="internalSortField"
-					:sort-direction="internalSortDirection"
-					:options="resolvedSortOptions"
-					@update:sort-field="updateSortField"
-					@update:sort-direction="updateSortDirection"
-				/>
-
+	<div>
+		<div
+			data-test="desk-list"
+			class="relative bg-white border border-ink-200"
+			style="border-radius: 8px"
+		>
+			<DeskFilterPopover v-if="filters" :filters="filters" />
+			<!-- Filter bar — flat white background, pill inputs, soft small buttons -->
+			<div class="border-b border-ink-200 px-3 py-2 flex items-center gap-2 flex-wrap">
+				<!-- Search with leading magnifier icon -->
+				<div class="relative">
+					<svg
+						class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="11" cy="11" r="7" />
+						<path d="m21 21-4.3-4.3" />
+					</svg>
+					<input
+						type="text"
+						data-test="list-search"
+						:value="modelValue"
+						:placeholder="searchPlaceholder"
+						class="desk-input"
+						style="width: 14rem; padding-left: 28px"
+						@input="emit('update:modelValue', $event.target.value)"
+					/>
+				</div>
+				<slot name="filter-chips" />
+				<DeskFilterChips v-if="filters" :filters="filters" />
 				<button
-					v-if="showColumns"
+					v-if="addFilterEnabled"
 					type="button"
-					class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border border-ink-200 bg-white"
-					style="border-radius: 6px"
-					@click="emit('toggle-columns')"
+					class="desk-link text-xs px-1.5"
+					@click="onAddFilter"
 				>
-					Columns ▾
+					+ Add filter
 				</button>
-				<!-- Consumer-supplied action button(s) sit at the far right, after
-             Sort + Columns. Convention: primary "+ New / + Add" CTAs go here. -->
-				<slot name="actions" />
-			</div>
-		</div>
 
-		<!-- Table — no row stripes, hover-only row tint, generous vertical padding -->
-		<div class="overflow-x-auto">
-			<table class="w-full text-sm border-collapse">
-				<thead>
-					<tr class="border-b border-ink-200">
-						<th v-if="bulkSelect" class="w-9 px-3 py-2.5">
-							<input
-								type="checkbox"
-								:checked="allSelected"
-								aria-label="Select all rows"
-								@change="toggleAll"
-							/>
-						</th>
-						<th
-							v-for="col in columns"
-							:key="col.key"
-							class="text-[11px] uppercase tracking-wider font-medium text-ink-500 px-3 py-2.5 whitespace-nowrap"
-							:class="alignClass(col)"
-						>
-							{{ col.label }}
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					<!-- First-load / page-change skeleton: pulsing cells matching the columns,
-					     shown only while loading and before any rows have arrived. -->
-					<template v-if="loading && !rows.length">
-						<tr
-							v-for="n in skeletonRowCount"
-							:key="`sk-${n}`"
-							class="border-b border-ink-100"
-							aria-hidden="true"
-						>
-							<td v-if="bulkSelect" :class="['w-9 px-3', compact ? 'py-2' : 'py-3']"></td>
-							<td
-								v-for="col in columns"
+				<div class="ml-auto flex items-center gap-1">
+					<DeskSortControl
+						v-if="showSort"
+						:sort-field="internalSortField"
+						:sort-direction="internalSortDirection"
+						:options="resolvedSortOptions"
+						@update:sort-field="updateSortField"
+						@update:sort-direction="updateSortDirection"
+					/>
+
+					<button
+						v-if="showColumns"
+						type="button"
+						class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border border-ink-200 bg-white"
+						style="border-radius: 6px"
+						@click="emit('toggle-columns')"
+					>
+						Columns ▾
+					</button>
+					<!-- Consumer-supplied action button(s) sit at the far right, after
+             Sort + Columns. Convention: primary "+ New / + Add" CTAs go here. -->
+					<slot name="actions" />
+				</div>
+			</div>
+
+			<!-- Table — no row stripes, hover-only row tint, generous vertical padding -->
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm border-collapse">
+					<thead>
+						<tr class="border-b border-ink-200">
+							<th v-if="bulkSelect" class="w-9 px-3 py-2.5">
+								<input
+									type="checkbox"
+									:checked="allSelected"
+									aria-label="Select all rows"
+									@change="toggleAll"
+								/>
+							</th>
+							<th
+								v-for="col in allColumns"
 								:key="col.key"
-								:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
+								class="text-[11px] uppercase tracking-wider font-medium text-ink-500 px-3 py-2.5 whitespace-nowrap"
+								:class="alignClass(col)"
 							>
-								<div class="h-3 rounded bg-ink-100 animate-pulse" style="width: 70%"></div>
+								{{ col.label }}
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- First-load / page-change skeleton: pulsing cells matching the columns,
+					     shown only while loading and before any rows have arrived. -->
+						<template v-if="loading && !visibleRows.length">
+							<tr
+								v-for="n in skeletonRowCount"
+								:key="`sk-${n}`"
+								class="border-b border-ink-100"
+								aria-hidden="true"
+							>
+								<td
+									v-if="bulkSelect"
+									:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
+								></td>
+								<td
+									v-for="col in allColumns"
+									:key="col.key"
+									:class="['px-3', compact ? 'py-2' : 'py-3', alignClass(col)]"
+								>
+									<div
+										class="h-3 rounded bg-ink-100 animate-pulse"
+										style="width: 70%"
+									></div>
+								</td>
+							</tr>
+						</template>
+						<tr
+							v-for="row in pagedRows"
+							:key="keyFor(row)"
+							:data-test="`row-${keyFor(row)}`"
+							data-test-row
+							class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
+							@click="emit('row-click', row)"
+						>
+							<td
+								v-if="bulkSelect"
+								:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
+								@click.stop
+							>
+								<input
+									type="checkbox"
+									:checked="isSelected(row)"
+									:aria-label="`Select row ${keyFor(row)}`"
+									@change="toggleRow(row)"
+								/>
+							</td>
+							<td
+								v-for="col in allColumns"
+								:key="col.key"
+								:class="[
+									'px-3 text-ink-800',
+									compact ? 'py-2' : 'py-3',
+									alignClass(col),
+									col.class || '',
+								]"
+							>
+								<slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">{{
+									col.render ? col.render(row) : row[col.key]
+								}}</slot>
 							</td>
 						</tr>
-					</template>
-					<tr
-						v-for="row in pagedRows"
-						:key="keyFor(row)"
-						:data-test="`row-${keyFor(row)}`"
-						data-test-row
-						class="border-b border-ink-100 cursor-pointer hover:bg-brand-50/40 transition-colors"
-						@click="emit('row-click', row)"
+						<tr v-if="!visibleRows.length && !loading">
+							<td
+								:colspan="allColumns.length + (bulkSelect ? 1 : 0)"
+								class="px-3 py-12 text-center"
+							>
+								<slot name="empty">
+									<div class="text-sm text-ink-500">No records found</div>
+								</slot>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Pagination footer — only renders when there's more than one page worth -->
+			<div
+				v-if="showPagination"
+				class="border-t border-ink-200 px-3 py-2 flex items-center gap-3 flex-wrap text-xs text-ink-600"
+			>
+				<div class="flex items-center gap-2">
+					<span class="text-ink-500">Rows per page</span>
+					<select
+						data-test="pager-size"
+						:value="pageSizeValue"
+						class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
+						style="border-radius: 6px; padding: 4px 8px"
+						@change="setPageSize($event.target.value)"
 					>
-						<td
-							v-if="bulkSelect"
-							:class="['w-9 px-3', compact ? 'py-2' : 'py-3']"
-							@click.stop
-						>
-							<input
-								type="checkbox"
-								:checked="isSelected(row)"
-								:aria-label="`Select row ${keyFor(row)}`"
-								@change="toggleRow(row)"
-							/>
-						</td>
-						<td
-							v-for="col in columns"
-							:key="col.key"
-							:class="[
-								'px-3 text-ink-800',
-								compact ? 'py-2' : 'py-3',
-								alignClass(col),
-								col.class || '',
-							]"
-						>
-							<slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">{{
-								col.render ? col.render(row) : row[col.key]
-							}}</slot>
-						</td>
-					</tr>
-					<tr v-if="!rows.length && !loading">
-						<td
-							:colspan="columns.length + (bulkSelect ? 1 : 0)"
-							class="px-3 py-12 text-center"
-						>
-							<slot name="empty">
-								<div class="text-sm text-ink-500">No records found</div>
-							</slot>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+						<option v-for="opt in pageSizeOptions" :key="opt" :value="opt">
+							{{ opt }}
+						</option>
+					</select>
+				</div>
+
+				<div class="text-ink-500 tabular-nums">
+					Showing
+					<span class="text-ink-800 font-medium">{{ rangeStart }}–{{ rangeEnd }}</span>
+					of
+					<span class="text-ink-800 font-medium">{{ totalRowsValue }}</span>
+				</div>
+
+				<div class="ml-auto flex items-center gap-1">
+					<button
+						type="button"
+						data-test="pager-prev"
+						class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
+						style="border-radius: 6px; padding: 4px 10px"
+						:disabled="pageValue <= 1"
+						@click="goPrev"
+					>
+						‹ Prev
+					</button>
+					<span class="text-ink-500 tabular-nums px-2">
+						Page <span class="text-ink-800 font-medium">{{ pageValue }}</span> of
+						<span class="text-ink-800 font-medium">{{ totalPages }}</span>
+					</span>
+					<button
+						type="button"
+						data-test="pager-next"
+						class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
+						style="border-radius: 6px; padding: 4px 10px"
+						:disabled="pageValue >= totalPages"
+						@click="goNext"
+					>
+						Next ›
+					</button>
+				</div>
+			</div>
 		</div>
-
-		<!-- Pagination footer — only renders when there's more than one page worth -->
 		<div
-			v-if="showPagination"
-			class="border-t border-ink-200 px-3 py-2 flex items-center gap-3 flex-wrap text-xs text-ink-600"
+			v-if="showCount && paginated"
+			data-test="list-count"
+			class="mt-2 text-xs text-ink-500 tabular-nums"
 		>
-			<div class="flex items-center gap-2">
-				<span class="text-ink-500">Rows per page</span>
-				<select
-					data-test="pager-size"
-					:value="pageSizeValue"
-					class="text-xs border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 cursor-pointer"
-					style="border-radius: 6px; padding: 4px 8px"
-					@change="setPageSize($event.target.value)"
-				>
-					<option v-for="opt in pageSizeOptions" :key="opt" :value="opt">
-						{{ opt }}
-					</option>
-				</select>
-			</div>
-
-			<div class="text-ink-500 tabular-nums">
-				Showing
-				<span class="text-ink-800 font-medium">{{ rangeStart }}–{{ rangeEnd }}</span> of
-				<span class="text-ink-800 font-medium">{{ totalRowsValue }}</span>
-			</div>
-
-			<div class="ml-auto flex items-center gap-1">
-				<button
-					type="button"
-					data-test="pager-prev"
-					class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
-					style="border-radius: 6px; padding: 4px 10px"
-					:disabled="pageValue <= 1"
-					@click="goPrev"
-				>
-					‹ Prev
-				</button>
-				<span class="text-ink-500 tabular-nums px-2">
-					Page <span class="text-ink-800 font-medium">{{ pageValue }}</span> of
-					<span class="text-ink-800 font-medium">{{ totalPages }}</span>
-				</span>
-				<button
-					type="button"
-					data-test="pager-next"
-					class="text-xs text-ink-700 hover:bg-ink-50 disabled:text-ink-300 disabled:hover:bg-transparent disabled:cursor-not-allowed border border-ink-200 bg-white"
-					style="border-radius: 6px; padding: 4px 10px"
-					:disabled="pageValue >= totalPages"
-					@click="goNext"
-				>
-					Next ›
-				</button>
-			</div>
+			{{ countText }}
 		</div>
 	</div>
 </template>

@@ -255,7 +255,9 @@ const breadcrumbs = computed(() => [
 			v-if="isDraft"
 			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"
 		>
-			{{ __("Draft — not sent to the office yet. Submit it to enter the procurement queue.") }}
+			{{
+				__("Draft — not sent to the office yet. Submit it to enter the procurement queue.")
+			}}
 		</div>
 		<div
 			v-if="isCancelled"
@@ -342,6 +344,22 @@ const breadcrumbs = computed(() => [
 								class="block text-[11px] text-ink-500 mt-0.5"
 								>{{ it.description }}</span
 							>
+							<!-- Which part of the estimate this material is for; carried into the PO
+							     raised from this request. -->
+							<span
+								v-if="it.cost_code"
+								class="inline-block text-[10px] font-mono px-1.5 py-0.5 rounded mt-1"
+								:class="
+									it.cost_code.type === 'item'
+										? 'bg-brand-50 text-brand-700'
+										: 'bg-info-50 text-info-700'
+								"
+								:title="it.cost_code.label"
+								>{{ it.cost_code.label }}</span
+							>
+							<span v-else class="inline-block text-[10px] text-ink-400 mt-1">{{
+								__("Uncoded")
+							}}</span>
 						</td>
 						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
 							{{ it.qty }}

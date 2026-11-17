@@ -71,7 +71,17 @@ const rateDisplay = computed(() => {
 });
 
 const usageRes = useDocTypeList("Machinery Usage", {
-	fields: ["name", "date", "project", "task", "quantity", "unit", "rate", "fuel_cost"],
+	fields: [
+		"name",
+		"date",
+		"project",
+		"cost_code_label",
+		"task",
+		"quantity",
+		"unit",
+		"rate",
+		"fuel_cost",
+	],
 	filters: { machine: props.id },
 	orderBy: "date desc",
 	pageLength: 0,
@@ -125,7 +135,9 @@ async function saveEdit() {
 async function onDelete() {
 	const ok = await confirmDialog({
 		title: __("Delete {0}?", [doc.value?.machinery_name]),
-		message: __("This machinery record will be removed permanently. Its usage logs will remain."),
+		message: __(
+			"This machinery record will be removed permanently. Its usage logs will remain."
+		),
 		confirmLabel: __("Delete"),
 		destructive: true,
 	});
@@ -203,7 +215,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Machinery')" :cols="3">
+			<DeskSection id="machinery" :title="__('Machinery')" :cols="3">
 				<DeskField :label="__('Type')"
 					><div class="text-sm text-ink-700">
 						{{ doc.machinery_type || "—" }}
@@ -241,7 +253,7 @@ const breadcrumbs = computed(() => [
 						<tr class="text-left text-ink-500 border-b border-ink-100">
 							<th class="py-1.5 pr-3 font-medium">{{ __("Date") }}</th>
 							<th class="py-1.5 pr-3 font-medium">{{ __("Project") }}</th>
-							<th class="py-1.5 pr-3 font-medium">{{ __("Task") }}</th>
+							<th class="py-1.5 pr-3 font-medium">{{ __("Cost code") }}</th>
 							<th class="py-1.5 pr-3 font-medium text-right">{{ __("Qty") }}</th>
 							<th class="py-1.5 font-medium text-right">{{ __("Total") }}</th>
 						</tr>
@@ -257,7 +269,9 @@ const breadcrumbs = computed(() => [
 							<td class="py-1.5 pr-3 text-ink-700">
 								{{ projectName(u.project) || "—" }}
 							</td>
-							<td class="py-1.5 pr-3 text-ink-500">{{ u.task || "—" }}</td>
+							<td class="py-1.5 pr-3 text-ink-500">
+								{{ u.cost_code_label || (u.task ? `${u.task}` : "—") }}
+							</td>
 							<td class="py-1.5 pr-3 text-right tabular-nums">
 								{{ u.quantity }} {{ u.unit }}
 							</td>
@@ -267,13 +281,15 @@ const breadcrumbs = computed(() => [
 						</tr>
 					</tbody>
 				</table>
-				<div v-else class="text-sm text-ink-400 italic">{{ __("No usage logged yet.") }}</div>
+				<div v-else class="text-sm text-ink-400 italic">
+					{{ __("No usage logged yet.") }}
+				</div>
 			</DeskSection>
 		</div>
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection :title="__('Machinery')" :cols="3">
+			<DeskSection id="machinery-2" :title="__('Machinery')" :cols="3">
 				<DeskField :label="__('Name')" required :error="errors.machinery_name"
 					><DeskInput v-model="form.machinery_name"
 				/></DeskField>

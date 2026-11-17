@@ -15,6 +15,7 @@ const props = defineProps({
 	project: { type: Object, required: true },
 	pmName: { type: String, default: "" },
 	activeBoq: { type: Object, default: null },
+	actualExpense: { type: Number, default: null },
 	projectReports: { type: Array, default: () => [] },
 	delayedDays: { type: Number, default: 0 },
 	scheduleSummary: { type: Object, default: null },
@@ -56,9 +57,9 @@ function plannedCost() {
 	if (props.activeBoq) return props.activeBoq.totals?.planned || 0;
 	return props.project?.budget || 0;
 }
+// Actual = expense booked on the project in the ledger (matches the finance reports).
 function actualCost() {
-	if (props.activeBoq) return props.activeBoq.totals?.actual || 0;
-	return 0;
+	return props.actualExpense ?? 0;
 }
 function costDeviation() {
 	return actualCost() - plannedCost();

@@ -206,8 +206,6 @@ const breadcrumbs = [
 	{ label: __("Settings"), to: "/settings" },
 	{ label: __("BuildSuite Core Settings") },
 ];
-
-const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industrial", "Renovation"];
 </script>
 
 <template>
@@ -236,7 +234,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Multi-company')">
+				<DeskSection id="multi-company" :title="__('Multi-company')">
 					<DeskField
 						:label="__('Enable company awareness')"
 						:hint="
@@ -273,20 +271,9 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Project defaults')">
-					<DeskField
-						:label="__('Default project type')"
-						:hint="__('Pre-fills the Project type field on new projects.')"
-					>
-						<div v-if="!editing" class="text-sm text-ink-900 py-1">
-							{{ __(store.coreSettings.default_project_type) }}
-						</div>
-						<DeskSelect v-else v-model="form.default_project_type">
-							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">
-								{{ __(t) }}
-							</option>
-						</DeskSelect>
-					</DeskField>
+				<!-- "Default project type" went: it said it pre-filled new projects, and nothing ever
+				     read it. -->
+				<DeskSection id="project-defaults" :title="__('Project defaults')">
 					<DeskField
 						:label="__('Project naming')"
 						:hint="
@@ -306,7 +293,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Accounting')">
+				<DeskSection id="accounting" :title="__('Accounting')">
 					<DeskField
 						:label="__('Petty Cash Account')"
 						:hint="
@@ -327,7 +314,7 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection v-if="store.isAdmin" :title="__('App setup')">
+				<DeskSection id="app-setup" v-if="store.isAdmin" :title="__('App setup')">
 					<DeskField
 						:label="__('Set up app data')"
 						:hint="
@@ -354,7 +341,11 @@ const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industria
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection v-if="store.isAdmin" :title="__('Role permissions')">
+				<DeskSection
+					id="role-permissions"
+					v-if="store.isAdmin"
+					:title="__('Role permissions')"
+				>
 					<DeskField
 						:label="__('Default permission matrix')"
 						:hint="

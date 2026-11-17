@@ -9,6 +9,7 @@ import { usePageTitle } from "@/composables/usePageTitle";
 import { computed, ref, watch } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useDataStore } from "@/stores";
+import { useSessionStore } from "@/stores/session";
 import { createDataAdapter } from "@/data/adapters";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { useConfirm } from "@/composables/useConfirm";
@@ -16,7 +17,7 @@ import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
 import { parseFrappeError } from "@/utils/frappeError";
 import * as boqApi from "@/utils/boqApi";
-import { getCommittedByCostCode } from "@/data/subcontractApi";
+import { getCommittedByCostCode, getCommittedForCode } from "@/data/subcontractApi";
 import StatusBadge from "@/components/StatusBadge.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -35,10 +36,12 @@ import { __ } from "@/utils/translate";
 const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const adapter = createDataAdapter(useDataStore());
+const session = useSessionStore();
 const confirmDialog = useConfirm();
-// Gate BOQ mutations by the persona's capability, not just docstatus. `canSubmit` is
-// aliased to canSubmitCap to avoid colliding with the local draft-status computed below.
-const { canEdit, canDelete, canCreate, canSubmit: canSubmitCap } = usePermissions();
+// Gate BOQ mutations by the persona's capability, not just status. (Submit for approval and
+// Approve are gated by write / the approve-role list below — see the primary-action block — not
+// the "submit" DocPerm, which BOQ doesn't use.)
+const { canEdit, canDelete, canCreate } = usePermissions();
 
 // === Data load: BOQ header + the three child levels ===
 const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
@@ -71,6 +74,7 @@ const boq = computed(() => {
 		revision: d.revision,
 		title: d.title,
 		projectId: d.project,
+		customer: d.customer,
 		preparedBy: d.prepared_by,
 		preparedDate: d.prepared_date,
 		approvedBy: d.approved_by,
@@ -383,9 +387,47 @@ function groupCommitted(group) {
 	return committedMap.value[group.code] || 0;
 }
 
+// Committed drill-down — the submitted PO + Subcontractor WO lines behind a group's Committed
+// figure (the counterpart to the Actual drill-down).
+const committedDrill = ref(null);
+async function openGroupCommitted(group) {
+	const pid = boq.value?.projectId;
+	if (!pid || !groupCommitted(group)) return;
+	committedDrill.value = {
+		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
+		subtitle: __("Committed — submitted orders against this cost code"),
+		entries: [],
+		total: 0,
+		loading: true,
+	};
+	try {
+		const res = await getCommittedForCode(pid, group.code);
+		committedDrill.value = {
+			...committedDrill.value,
+			entries: res.entries || [],
+			total: res.total || 0,
+			loading: false,
+		};
+	} catch (err) {
+		showToast(err.message || __("Failed to load committed"), "error");
+		committedDrill.value = null;
+	}
+}
+function closeCommittedDrill() {
+	committedDrill.value = null;
+}
+// Open the document behind a committed entry.
+function openCommittedSource(e) {
+	if (e.source_doctype === "Purchase Order") {
+		router.push(`/procurement/purchase-orders/${e.source_name}`);
+	} else if (e.source_doctype === "Subcontractor Work Order") {
+		router.push(`/subcontractor-work-orders/${e.source_name}`);
+	}
+}
+
 // === Actual — the cost-code actuals log ===
 // Real spend reaches the BOQ through the cost code (Material Consumption + Subcontractor Bill +
-// Expense Entry), resolved by code against this project. The Actual column and the per-code
+// Expense Entry + Journal Entry + Machinery Usage), resolved by code against this project. The Actual column and the per-code
 // drill-down both read this one summary, so the row figure and the modal total always reconcile
 // (one calculation path — R2). Derived live from submitted docs, so a cancelled source drops
 // out for free (R3).
@@ -422,9 +464,27 @@ function groupCoverage(group) {
 // source documents. A group rolls up every line carrying its code (item-coded + group-coded);
 // an item shows only its own lines. Each entry links to the source document it was derived from.
 const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
+const drillTab = ref("all"); // "all" | "machinery" | "labour" | "timesheets"
+const machineryEntries = computed(() =>
+	(actualsDrill.value?.entries || []).filter((e) => e.source_doctype === "Machinery Usage")
+);
+const machineryTotal = computed(() => machineryEntries.value.reduce((t, e) => t + e.amount, 0));
+const LABOUR_SOURCES = ["Labour Attendance Register", "Overtime Attendance Register"];
+// Labour is one reading of the registers, split by how it was captured: attendance sheets under
+// "Labour attendance", timesheets under "Timesheets".
+const allLabourEntries = computed(() =>
+	(actualsDrill.value?.entries || []).filter((e) => LABOUR_SOURCES.includes(e.source_doctype))
+);
+const labourEntries = computed(() =>
+	allLabourEntries.value.filter((e) =>
+		drillTab.value === "timesheets" ? e.source === "Timesheet" : e.source !== "Timesheet"
+	)
+);
+const labourTotal = computed(() => labourEntries.value.reduce((t, e) => t + e.amount, 0));
 async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
 	const pid = boq.value?.projectId;
 	if (!pid || (!groupCode && !itemCode)) return;
+	drillTab.value = "all";
 	actualsDrill.value = { title, subtitle, entries: [], total: 0, loading: true };
 	try {
 		const res = await boqApi.getActualsForCode(pid, groupCode, itemCode);
@@ -464,6 +524,14 @@ function closeActualsDrill() {
 function openActualSource(e) {
 	if (e.source_doctype === "Subcontractor Bill") {
 		router.push(`/subcontractor-bills/${e.source_name}`);
+	} else if (e.source_doctype === "Machinery Usage") {
+		router.push(`/machinery-usage/${e.source_name}`);
+	} else if (LABOUR_SOURCES.includes(e.source_doctype)) {
+		router.push(
+			e.source === "Timesheet"
+				? `/timesheets/${e.timesheet}`
+				: `/field-attendance/${e.field_attendance}`
+		);
 	} else if (e.source_doctype === "Stock Entry") {
 		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
 	} else if (e.source_doctype === "Expense Entry") {
@@ -514,15 +582,6 @@ function baseAmount(code) {
 }
 
 // === Workflow / advanced actions (boqApi) ===
-async function recalculate() {
-	try {
-		await boqApi.recalculateActuals(boq.value.id);
-		reloadTree();
-		showToast(__("Actuals recalculated"));
-	} catch (err) {
-		showToast(parseFrappeError(err).summary ?? __("Failed to recalculate"), "error");
-	}
-}
 async function submit() {
 	const ok = await confirmDialog({
 		title: __("Submit for approval"),
@@ -686,10 +745,32 @@ function exportCsv() {
 // === Import Estimate Template ===
 const importModal = ref(false);
 const importForm = ref({ template: "" });
+const importPreview = ref(null);
+const importPreviewLoading = ref(false);
 function openImport() {
 	importForm.value = { template: "" };
+	importPreview.value = null;
 	importModal.value = true;
 }
+// Preview what the picked template will seed — grouped rows, rates and total — before importing.
+watch(
+	() => importForm.value.template,
+	async (tpl) => {
+		importPreview.value = null;
+		if (!tpl) return;
+		importPreviewLoading.value = true;
+		try {
+			importPreview.value = await boqApi.estimateTemplatePreview(tpl);
+		} catch (err) {
+			showToast(
+				parseFrappeError(err).summary ?? __("Could not load the template preview"),
+				"error"
+			);
+		} finally {
+			importPreviewLoading.value = false;
+		}
+	}
+);
 async function doImport() {
 	if (!importForm.value.template) return;
 	try {
@@ -738,6 +819,20 @@ async function doClone() {
 
 const canSubmit = computed(() => boq.value?.status === "Draft");
 const canApprove = computed(() => boq.value?.status === "Submitted");
+
+// Who may APPROVE a BOQ — mirrors the server's authoritative check
+// (buildsuite_core.permissions.setup.BOQ_APPROVE_ROLES, enforced in api.boq.approve_boq).
+// BOQ isn't a submittable doctype, so approval is a role gate, not the "submit" DocPerm — which
+// no role holds, so gating the button on it showed Approve to the Administrator alone.
+const BOQ_APPROVE_ROLES = [
+	"BuildSuite Director",
+	"BuildSuite PM",
+	"BuildSuite Administrator",
+	"System Manager",
+];
+const canApproveBoq = computed(() =>
+	(session.access?.roles || []).some((r) => BOQ_APPROVE_ROLES.includes(r))
+);
 const isLocked = computed(
 	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded"
 );
@@ -856,6 +951,11 @@ const itemForm = ref({
 // The BOQ's project — scopes the Work Package + Task pickers in the item modal
 // so you can only link records that belong to this BOQ's project.
 const boqProjectId = computed(() => boq.value?.projectId || "");
+// WP + Task link pickers in the item modal are project-scoped. A project-less estimate has no work
+// packages or tasks to link, so match nothing rather than leaking every project's records.
+const itemLinkFilters = computed(() =>
+	boqProjectId.value ? [["project", "=", boqProjectId.value]] : [["name", "=", "__none__"]]
+);
 const itemPlannedAmountPreview = computed(
 	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
 );
@@ -1115,14 +1215,241 @@ async function deleteSubItemConfirm(si) {
 	}
 }
 
-// Primary action dispatcher — Submit when Draft, Approve when Submitted.
-const showPrimary = computed(() => (canSubmit.value || canApprove.value) && canSubmitCap("boq"));
+// An Approved estimate (no project) is ready to be bid — the terminal step of the estimate
+// workflow: price it, approve it, then raise a Quotation/Tender when you pursue the work.
+const hasProject = computed(() => !!boq.value?.projectId);
+const canRaiseBid = computed(() => boq.value?.status === "Approved" && !hasProject.value);
+
+// Create a project from this approved estimate (BOQ groups → Work Packages, items → Tasks), or
+// set up that work on a project it's already attached to.
+const canCreateProjectHere = computed(
+	() => boq.value?.status === "Approved" && !hasProject.value && canCreate("project")
+);
+const canSetUpWork = computed(
+	() =>
+		boq.value?.status === "Approved" &&
+		hasProject.value &&
+		canCreate("workPackage") &&
+		canCreate("task")
+);
+
+// The secondary actions collapse into a single ⋯ overflow menu (was a flat row of buttons).
+const mobileMenuOpen = ref(false);
+
+// A bid raised from this estimate, still waiting to become a project. When present, creating the
+// project is the suggested next step (primary action) and its contract value + payment schedule
+// come across — see create_project_from_boq.
+const wonOffer = ref(null);
+watch(
+	() => [boq.value?.id, boq.value?.status, hasProject.value],
+	async () => {
+		wonOffer.value = null;
+		if (boq.value?.status === "Approved" && !hasProject.value) {
+			try {
+				wonOffer.value = await boqApi.boqWonOffer(boq.value.id);
+			} catch {
+				wonOffer.value = null;
+			}
+		}
+	},
+	{ immediate: true }
+);
+// Create project leads over create bid once a bid exists (the bid was the point; now bank it).
+const projectIsPrimary = computed(() => canCreateProjectHere.value && !!wonOffer.value);
+
+// Primary action dispatcher — Submit when Draft, Approve when Submitted, Create bid when it's an
+// approved estimate.
+// Submit for approval is a write (server: submit_boq → _require_write); Approve is the role gate
+// above (server: approve_boq → BOQ_APPROVE_ROLES). Each button mirrors exactly what the server
+// allows, so the person who sees it can actually do it.
+const canSubmitForApproval = computed(() => canSubmit.value && canEdit("boq"));
+const canApproveHere = computed(() => canApprove.value && canApproveBoq.value);
+const showPrimary = computed(
+	() =>
+		canSubmitForApproval.value ||
+		canApproveHere.value ||
+		projectIsPrimary.value ||
+		canRaiseBid.value
+);
 const primaryLabel = computed(() =>
-	canSubmit.value ? __("Submit for approval") : canApprove.value ? __("Approve") : ""
+	canSubmitForApproval.value
+		? __("Submit for approval")
+		: canApproveHere.value
+		? __("Approve")
+		: projectIsPrimary.value
+		? __("Create project")
+		: canRaiseBid.value
+		? __("Create bid from this estimate")
+		: ""
 );
 function primaryAction() {
-	if (canSubmit.value) submit();
-	else if (canApprove.value) approve();
+	if (canSubmitForApproval.value) submit();
+	else if (canApproveHere.value) approve();
+	else if (projectIsPrimary.value) openProjectModal("create");
+	else if (canRaiseBid.value) openBidModal();
+}
+
+// ---- Raise a bid (Quotation or Tender) from this estimate ------------------
+const bidModalOpen = ref(false);
+const bidForm = ref({ kind: "Quotation", lineMode: "item", title: "", deadline: "" });
+const bidBusy = ref(false);
+// A bid can price every BOQ item, or roll each group into one lump-sum line. Show the count for
+// each so the choice is made with the answer in front of you.
+const bidLineCounts = computed(() => ({
+	item: allItems.value.length,
+	group: groups.value.filter((g) => boqItemsByGroup(g.id).length).length,
+}));
+function openBidModal() {
+	bidForm.value = {
+		kind: boq.value?.customer ? "Quotation" : "Tender",
+		lineMode: "item",
+		title: boq.value?.title || "",
+		deadline: "",
+	};
+	bidModalOpen.value = true;
+}
+async function confirmCreateBid() {
+	if (bidBusy.value) return;
+	if (bidForm.value.kind === "Quotation" && !boq.value?.customer) {
+		showToast(
+			__("Set a customer on the estimate to raise a quotation, or raise a tender."),
+			"error"
+		);
+		return;
+	}
+	if (bidForm.value.kind === "Tender" && !bidForm.value.deadline) {
+		showToast(__("A tender needs a submission deadline."), "error");
+		return;
+	}
+	bidBusy.value = true;
+	try {
+		const res = await boqApi.createBidFromBoq(
+			boq.value.id,
+			bidForm.value.kind,
+			bidForm.value.lineMode,
+			bidForm.value.title?.trim() || null,
+			bidForm.value.kind === "Tender" ? bidForm.value.deadline : null
+		);
+		bidModalOpen.value = false;
+		const path = res.doctype === "Quotation" ? "quotations" : "tenders";
+		router.push(`/${path}/${encodeURIComponent(res.name)}`);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to create the bid"), "error");
+	} finally {
+		bidBusy.value = false;
+	}
+}
+
+// ---- Attach this estimate to a project (once the work is won) ---------------
+const attachModalOpen = ref(false);
+const attachTarget = ref("");
+const attachBusy = ref(false);
+function openAttachModal() {
+	attachTarget.value = "";
+	attachModalOpen.value = true;
+}
+async function confirmAttach() {
+	if (!attachTarget.value || attachBusy.value) return;
+	attachBusy.value = true;
+	try {
+		const res = await boqApi.attachEstimateToProject(boq.value.id, attachTarget.value);
+		attachModalOpen.value = false;
+		showToast(__("Attached to the project ({0} revision(s) moved).", [res.moved]));
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not attach to the project"), "error");
+	} finally {
+		attachBusy.value = false;
+	}
+}
+
+// ---- Create a project from this estimate (groups → WPs, items → Tasks) ------
+// mode: 'create' spins up a new project from the estimate; 'setup' builds the work breakdown on
+// the project this estimate is already attached to.
+const projectModal = ref(null);
+const projectForm = ref({ name: "", code: "", category: "", startDate: "", endDate: "", pm: "" });
+const projectWork = ref("tasks"); // 'tasks' | 'packages' | 'none'
+const workPlan = ref({ groups: [], total: 0 });
+const workGroupIds = ref([]); // selected group names; all selected == build everything
+const projectBusy = ref(false);
+
+async function openProjectModal(mode) {
+	projectWork.value = "tasks";
+	workPlan.value = { groups: [], total: 0 };
+	workGroupIds.value = [];
+	if (mode === "create") {
+		projectForm.value = {
+			name: boq.value?.title || "",
+			code: "",
+			category: "",
+			startDate: "",
+			endDate: "",
+			pm: "",
+		};
+	}
+	projectModal.value = mode;
+	mobileMenuOpen.value = false;
+	try {
+		const plan = await boqApi.boqWorkPlan(boq.value.id);
+		workPlan.value = plan;
+		workGroupIds.value = plan.groups.map((g) => g.name); // everything selected by default
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not load the BOQ groups"), "error");
+	}
+}
+function toggleWorkGroup(name) {
+	const i = workGroupIds.value.indexOf(name);
+	if (i === -1) workGroupIds.value.push(name);
+	else workGroupIds.value.splice(i, 1);
+}
+async function confirmProject() {
+	if (projectBusy.value) return;
+	if (projectModal.value === "create" && !projectForm.value.name.trim()) {
+		showToast(__("Give the project a name."), "error");
+		return;
+	}
+	projectBusy.value = true;
+	try {
+		// null = build every group (the common case); a subset is only sent when the user unticks some.
+		const groupIds =
+			workGroupIds.value.length === workPlan.value.groups.length
+				? null
+				: [...workGroupIds.value];
+		if (projectModal.value === "create") {
+			const res = await boqApi.createProjectFromBoq(boq.value.id, {
+				name: projectForm.value.name.trim(),
+				code: projectForm.value.code.trim() || null,
+				projectCategory: projectForm.value.category || null,
+				startDate: projectForm.value.startDate || null,
+				endDate: projectForm.value.endDate || null,
+				pm: projectForm.value.pm || null,
+				work: projectWork.value,
+				groupIds,
+			});
+			projectModal.value = null;
+			showToast(
+				__("Project created — {0} work package(s), {1} task(s).", [
+					res.work.work_packages,
+					res.work.tasks,
+				])
+			);
+			router.push(`/projects/${encodeURIComponent(res.project)}`);
+		} else {
+			const res = await boqApi.setUpWorkFromBoq(boq.value.id, {
+				work: projectWork.value,
+				groupIds,
+			});
+			projectModal.value = null;
+			showToast(
+				__("Set up {0} work package(s) and {1} task(s).", [res.work_packages, res.tasks])
+			);
+			reloadTree();
+		}
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Could not create the project"), "error");
+	} finally {
+		projectBusy.value = false;
+	}
 }
 
 // The BOQ id + revision live in the subtitle (as in the prototype), so the
@@ -1172,82 +1499,119 @@ const breadcrumbs = computed(() => {
 						</span>
 					</template>
 					<template #menu>
-						<!-- Compare toggle — LEFT AS-IS per prompt (Phase-5 prelude: Revision Compare page).
-                 Uses brand-green styling and rounded corners deliberately. -->
+						<!-- Create project sits outside the overflow menu so it's one click from an
+                 approved estimate; everything else collapses under ⋯. -->
 						<button
-							v-if="baseBoq"
+							v-if="canCreateProjectHere && !projectIsPrimary"
 							type="button"
-							class="text-xs px-2.5 py-1.5 border border-ink-200 rounded hover:bg-ink-50"
-							:class="
-								compareMode ? 'bg-brand-50 border-brand-300 text-brand-700' : ''
-							"
-							@click="compareMode = !compareMode"
+							class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 rounded"
+							@click="openProjectModal('create')"
 						>
-							{{
-								compareMode
-									? __("✓ Comparing R{0}", [baseBoq.revision])
-									: __("Compare to R{0}", [baseBoq.revision])
-							}}
+							{{ __("Create project…") }}
 						</button>
 
-						<button
-							v-if="canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="recalculate"
-						>
-							↻ {{ __("Recalc actuals") }}
-						</button>
-
-						<button
-							v-if="canCreate('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openRevisionModal"
-						>
-							+ {{ __("Revision") }}
-						</button>
-
-						<button
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="exportCsv"
-						>
-							⬇ {{ __("Export CSV") }}
-						</button>
-
-						<button
-							v-if="isEditable && canEdit('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openImport"
-						>
-							{{ __("Import Template…") }}
-						</button>
-
-						<button
-							v-if="canCreate('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px"
-							@click="openClone"
-						>
-							{{ __("Clone…") }}
-						</button>
-
-						<button
-							v-if="!isLocked && canDelete('boq')"
-							type="button"
-							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
-							style="border-radius: 2px; color: #b91c1c"
-							@click="removeBoq"
-						>
-							{{ __("Delete") }}
-						</button>
+						<div class="relative">
+							<button
+								type="button"
+								class="text-xs px-2 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 rounded"
+								:aria-label="__('Actions menu')"
+								@click="mobileMenuOpen = !mobileMenuOpen"
+							>
+								⋯
+							</button>
+							<!-- click-away backdrop -->
+							<div
+								v-if="mobileMenuOpen"
+								class="fixed inset-0 z-30"
+								@click="mobileMenuOpen = false"
+							></div>
+							<div
+								v-if="mobileMenuOpen"
+								class="absolute right-0 top-full mt-1 z-40 w-60 bg-white border border-ink-200 shadow-fp-lg py-1"
+								style="border-radius: 6px"
+								@click="mobileMenuOpen = false"
+							>
+								<button
+									v-if="baseBoq"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									:class="compareMode ? 'text-brand-700 font-medium' : ''"
+									@click="compareMode = !compareMode"
+								>
+									{{
+										compareMode
+											? __("✓ Comparing R{0}", [baseBoq.revision])
+											: __("Compare to R{0}", [baseBoq.revision])
+									}}
+								</button>
+								<button
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="exportCsv"
+								>
+									⬇ {{ __("Export CSV") }}
+								</button>
+								<button
+									v-if="canCreate('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openRevisionModal"
+								>
+									+ {{ __("Revision") }}
+								</button>
+								<button
+									v-if="isEditable && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openImport"
+								>
+									{{ __("Import from Template…") }}
+								</button>
+								<button
+									v-if="isEditable && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="router.push(`/boq/${boq.id}/import`)"
+								>
+									{{ __("Import from Excel…") }}
+								</button>
+								<button
+									v-if="canCreate('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openClone"
+								>
+									{{ __("Clone…") }}
+								</button>
+								<button
+									v-if="!hasProject && canEdit('boq')"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openAttachModal"
+								>
+									{{ __("Attach to a project…") }}
+								</button>
+								<button
+									v-if="canSetUpWork"
+									type="button"
+									class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+									@click="openProjectModal('setup')"
+								>
+									{{ __("Set up work packages and tasks…") }}
+								</button>
+								<template v-if="!isLocked && canDelete('boq')">
+									<div class="my-1 border-t border-ink-100"></div>
+									<button
+										type="button"
+										class="w-full text-left text-xs px-3 py-2 hover:bg-ink-50"
+										style="color: #b91c1c"
+										@click="removeBoq"
+									>
+										{{ __("Delete") }}
+									</button>
+								</template>
+							</div>
+						</div>
 					</template>
 				</DeskActionBar>
 			</template>
@@ -1470,15 +1834,19 @@ const breadcrumbs = computed(() => {
 						>
 							{{ fmtCompactINR(groupTotals(g.id).planned) }}
 						</div>
-						<div
-							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
-							:title="
-								__('Open subcontractor work orders mapped to cost code {0}', [
-									g.code,
-								])
-							"
-						>
-							{{ fmtCompactINR(groupCommitted(g)) }}
+						<div class="px-3 py-2 text-right tabular-nums text-sm text-info-700">
+							<button
+								v-if="groupCommitted(g)"
+								type="button"
+								class="tabular-nums text-info-700 hover:underline decoration-dotted"
+								:title="
+									__('Committed for {0} — click to see the orders', [g.code])
+								"
+								@click.stop="openGroupCommitted(g)"
+							>
+								{{ fmtCompactINR(groupCommitted(g)) }}
+							</button>
+							<span v-else>{{ fmtCompactINR(groupCommitted(g)) }}</span>
 						</div>
 						<div class="px-3 py-2 text-right text-sm text-ink-700">
 							<span v-if="groupActual(g)" class="relative inline-block group/cov">
@@ -1653,7 +2021,7 @@ const breadcrumbs = computed(() => {
 								<div class="px-3 py-1.5 font-mono text-xs text-ink-700">
 									{{ item.code }}
 								</div>
-								<div class="px-3 py-1.5 text-sm text-ink-800">
+								<div class="px-3 py-1.5 text-sm text-ink-800 min-w-0 break-words">
 									{{ item.description }}
 									<!-- LEFT AS-IS per prompt (Phase-5 prelude): Δ chip uses brand-tinted danger/success styling -->
 									<span
@@ -1797,7 +2165,9 @@ const breadcrumbs = computed(() => {
 								>
 									<div></div>
 									<div></div>
-									<div class="px-3 py-1 text-xs text-ink-600 pl-10">
+									<div
+										class="px-3 py-1 text-xs text-ink-600 pl-10 min-w-0 break-words"
+									>
 										↳ {{ si.description }}
 										<DeskLink
 											v-if="si.rateMasterId"
@@ -2193,9 +2563,7 @@ const breadcrumbs = computed(() => {
 										label-field="work_package_name"
 										value-field="name"
 										:search-fields="['work_package_name', 'code', 'name']"
-										:filters="
-											boqProjectId ? [['project', '=', boqProjectId]] : []
-										"
+										:filters="itemLinkFilters"
 										:placeholder="__('— None —')"
 									/>
 								</DeskField>
@@ -2209,9 +2577,7 @@ const breadcrumbs = computed(() => {
 										label-field="subject"
 										value-field="name"
 										:search-fields="['subject', 'name']"
-										:filters="
-											boqProjectId ? [['project', '=', boqProjectId]] : []
-										"
+										:filters="itemLinkFilters"
 										:placeholder="__('— Not linked —')"
 									/>
 								</DeskField>
@@ -2461,67 +2827,702 @@ const breadcrumbs = computed(() => {
 				</div>
 			</div>
 
+			<!-- ========== Attach-to-project modal (estimate → project) ========== -->
+			<div
+				v-if="attachModalOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="attachModalOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Attach to a project") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Moves this estimate and all its revisions onto the project as its baseline. The project carries one baseline, so it must not already have an approved BOQ."
+									)
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="attachModalOpen = false"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Project')" required>
+							<DeskLinkPicker
+								v-model="attachTarget"
+								doctype="Project"
+								label-field="project_name"
+								value-field="name"
+								:search-fields="['project_name', 'custom_project_id', 'name']"
+								order-by="creation desc"
+								:placeholder="__('Search projects…')"
+							/>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="attachModalOpen = false"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="!attachTarget || attachBusy"
+							@click="confirmAttach"
+						>
+							{{ attachBusy ? __("Attaching…") : __("Attach") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Raise-a-bid modal (estimate → Quotation / Tender) ========== -->
+			<div
+				v-if="bidModalOpen"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="bidModalOpen = false"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Create a bid from this estimate") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Snapshots this estimate's lines into a new Quotation or Tender you can price and send."
+									)
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="bidModalOpen = false"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Bid type')">
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+									style="border-radius: 6px"
+									:class="
+										bidForm.kind === 'Quotation'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									:disabled="!boq.customer"
+									@click="bidForm.kind = 'Quotation'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Quotation") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{
+											boq.customer
+												? __("A priced offer to {0}", [boq.customer])
+												: __("Needs a customer on the estimate")
+										}}
+									</div>
+								</button>
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.kind === 'Tender'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.kind = 'Tender'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Tender") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("A formal tender submission") }}
+									</div>
+								</button>
+							</div>
+						</DeskField>
+
+						<DeskField
+							:label="__('Lines')"
+							:hint="
+								__(
+									'Price every item, or roll each group into a single lump-sum line.'
+								)
+							"
+						>
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.lineMode === 'item'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.lineMode = 'item'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Per item") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("{0} lines", [bidLineCounts.item]) }}
+									</div>
+								</button>
+								<button
+									type="button"
+									class="text-left border px-3 py-2.5"
+									style="border-radius: 6px"
+									:class="
+										bidForm.lineMode === 'group'
+											? 'border-brand-600 bg-brand-50'
+											: 'border-ink-200'
+									"
+									@click="bidForm.lineMode = 'group'"
+								>
+									<div class="text-sm font-medium text-ink-900">
+										{{ __("Per group") }}
+									</div>
+									<div class="text-[11px] text-ink-500">
+										{{ __("{0} lines", [bidLineCounts.group]) }}
+									</div>
+								</button>
+							</div>
+						</DeskField>
+
+						<DeskField :label="__('Title')">
+							<DeskInput
+								v-model="bidForm.title"
+								:placeholder="__('e.g. Whitefield villa — interior fit-out')"
+							/>
+						</DeskField>
+
+						<DeskField
+							v-if="bidForm.kind === 'Tender'"
+							:label="__('Submission deadline')"
+							required
+						>
+							<DeskInput v-model="bidForm.deadline" type="date" />
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="bidModalOpen = false"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="bidBusy"
+							@click="confirmCreateBid"
+						>
+							{{ bidBusy ? __("Creating…") : __("Create {0}", [__(bidForm.kind)]) }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ===== Create-project / set-up-work modal (estimate → Project) ===== -->
+			<div
+				v-if="projectModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="projectModal = null"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{
+									projectModal === "create"
+										? __("Create a project from this estimate")
+										: __("Set up work packages and tasks")
+								}}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									projectModal === "create"
+										? __(
+												"Each BOQ group becomes a work package; each item becomes a task."
+										  )
+										: __(
+												"Builds the work breakdown on the attached project. Re-running only adds what's new."
+										  )
+								}}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="projectModal = null"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<!-- Carried from the won bid -->
+						<div
+							v-if="projectModal === 'create' && wonOffer"
+							class="bg-brand-50 border border-brand-200 px-3 py-2 text-xs text-brand-800"
+							style="border-radius: 6px"
+						>
+							{{
+								__(
+									"Won from {0} {1} — its contract value and payment schedule carry onto the project.",
+									[wonOffer.kind, wonOffer.name]
+								)
+							}}
+						</div>
+
+						<!-- Project details (create only) -->
+						<div v-if="projectModal === 'create'" class="grid grid-cols-2 gap-3">
+							<DeskField :label="__('Project name')" required>
+								<DeskInput
+									v-model="projectForm.name"
+									:placeholder="__('Project name')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Project ID')">
+								<DeskInput v-model="projectForm.code" :placeholder="__('Auto')" />
+							</DeskField>
+							<DeskField :label="__('Category')">
+								<DeskLinkPicker
+									v-model="projectForm.category"
+									doctype="Project Category"
+									label-field="name"
+									value-field="name"
+									:placeholder="__('Optional')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Project manager')">
+								<DeskLinkPicker
+									v-model="projectForm.pm"
+									doctype="User"
+									label-field="full_name"
+									value-field="name"
+									:search-fields="['full_name', 'name']"
+									:placeholder="__('Optional')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Start date')">
+								<DeskInput v-model="projectForm.startDate" type="date" />
+							</DeskField>
+							<DeskField :label="__('End date')">
+								<DeskInput v-model="projectForm.endDate" type="date" />
+							</DeskField>
+						</div>
+
+						<!-- What to build -->
+						<DeskField :label="__('Set up the work')">
+							<div class="space-y-1.5">
+								<label class="flex items-start gap-2 text-xs cursor-pointer">
+									<input
+										type="radio"
+										value="tasks"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Work packages + tasks")
+										}}</span>
+										<span class="text-ink-500">
+											—
+											{{
+												__("a work package per group, a task per item")
+											}}</span
+										>
+									</span>
+								</label>
+								<label class="flex items-start gap-2 text-xs cursor-pointer">
+									<input
+										type="radio"
+										value="packages"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Work packages only")
+										}}</span>
+										<span class="text-ink-500"> — {{ __("no tasks") }}</span>
+									</span>
+								</label>
+								<label
+									v-if="projectModal === 'create'"
+									class="flex items-start gap-2 text-xs cursor-pointer"
+								>
+									<input
+										type="radio"
+										value="none"
+										v-model="projectWork"
+										class="mt-0.5"
+									/>
+									<span>
+										<span class="font-medium text-ink-900">{{
+											__("Nothing yet")
+										}}</span>
+										<span class="text-ink-500">
+											—
+											{{
+												__("just the project; set up the work later")
+											}}</span
+										>
+									</span>
+								</label>
+							</div>
+						</DeskField>
+
+						<!-- Groups to include -->
+						<DeskField
+							v-if="projectWork !== 'none'"
+							:label="__('Groups ({0} selected)', [workGroupIds.length])"
+						>
+							<div
+								class="border border-ink-200 divide-y divide-ink-100 max-h-56 overflow-y-auto"
+								style="border-radius: 6px"
+							>
+								<label
+									v-for="g in workPlan.groups"
+									:key="g.name"
+									class="flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-ink-50"
+								>
+									<input
+										type="checkbox"
+										:checked="workGroupIds.includes(g.name)"
+										@change="toggleWorkGroup(g.name)"
+									/>
+									<span class="font-mono text-ink-500">{{ g.code }}</span>
+									<span class="text-ink-900 truncate flex-1">{{
+										g.group_name
+									}}</span>
+									<span
+										v-if="g.has_work_package"
+										class="text-[10px] px-1 py-0.5 bg-ink-100 text-ink-500"
+										style="border-radius: 2px"
+										>{{ __("WP exists") }}</span
+									>
+									<span class="text-ink-500">{{
+										projectWork === "tasks"
+											? __("{0} task(s)", [g.new_tasks])
+											: __("{0} item(s)", [g.item_count])
+									}}</span>
+									<span class="text-ink-700 tabular-nums">{{
+										fmtINR(g.amount)
+									}}</span>
+								</label>
+								<div
+									v-if="!workPlan.groups.length"
+									class="px-3 py-3 text-xs text-ink-500 text-center"
+								>
+									{{ __("This BOQ has no groups.") }}
+								</div>
+							</div>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="projectModal = null"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							type="button"
+							class="desk-save-btn"
+							:disabled="
+								projectBusy ||
+								(projectModal === 'create' && !projectForm.name.trim())
+							"
+							@click="confirmProject"
+						>
+							{{
+								projectBusy
+									? __("Working…")
+									: projectModal === "create"
+									? __("Create project")
+									: __("Set up work")
+							}}
+						</button>
+					</footer>
+				</div>
+			</div>
+
 			<!-- ========== Import template modal ========== -->
 			<div
 				v-if="importModal"
-				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
-				@click="importModal = false"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="importModal = false"
 			>
 				<div
-					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
-					style="border-radius: 2px"
+					class="bg-white border border-ink-200 w-full max-w-3xl shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
 					@click.stop
 				>
-					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
-						<h2 class="text-sm font-semibold text-ink-900">
-							{{ __("Import from template") }}
-						</h2>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Import from Template") }}
+							</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{
+									__(
+										"Seeds skeleton rows onto this Draft BOQ. Existing lines stay intact. Assembly-driven lines auto-explode into snapshot sub-items."
+									)
+								}}
+							</p>
+						</div>
 						<button
 							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
 							@click="importModal = false"
-							class="ml-auto text-ink-400 hover:text-ink-900"
 						>
-							✕
+							×
 						</button>
-					</div>
-					<div class="p-4 space-y-3">
-						<DeskField :label="__('Estimate template')" required>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField :label="__('Template')" required>
 							<DeskLinkPicker
 								v-model="importForm.template"
 								doctype="Estimate Template"
 								label-field="template_name"
 								value-field="name"
 								:search-fields="['template_code', 'template_name', 'name']"
-								:placeholder="__('Pick a template')"
+								:placeholder="__('Pick a template…')"
 							/>
 						</DeskField>
-						<p class="text-[11px] text-ink-500">
-							{{
-								__(
-									"Adds the template's rows to this BOQ. Assembly lines explode into sub-items."
-								)
-							}}
-						</p>
+
+						<!-- Selected template description -->
+						<div
+							v-if="importPreview?.description"
+							class="px-3 py-2 bg-ink-50 border border-ink-200 text-[11px] text-ink-700 italic"
+							style="border-radius: 6px"
+						>
+							{{ importPreview.description }}
+						</div>
+
+						<div
+							v-if="importPreviewLoading"
+							class="text-xs text-ink-500 py-4 text-center"
+						>
+							{{ __("Loading preview…") }}
+						</div>
+
+						<!-- Preview block — header strip + per-row grid + footer total -->
+						<div
+							v-else-if="importPreview && importPreview.rows.length"
+							class="border border-ink-200 overflow-hidden"
+							style="border-radius: 8px"
+						>
+							<div
+								class="px-3 py-2 bg-gradient-to-r from-brand-50 to-white border-b border-ink-200 flex items-center justify-between"
+							>
+								<div>
+									<div
+										class="text-[11px] uppercase tracking-wider text-ink-500 font-semibold"
+									>
+										{{ __("Preview · what gets created") }}
+									</div>
+									<div class="text-[11px] text-ink-500 mt-0.5">
+										{{
+											__("{0} line(s) · grouped by template's group names", [
+												importPreview.rows.length,
+											])
+										}}
+									</div>
+								</div>
+								<div class="text-right">
+									<div
+										class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+									>
+										{{ __("Estimated total") }}
+									</div>
+									<div class="text-sm font-semibold text-ink-900 tabular-nums">
+										{{ fmtINR(importPreview.total) }}
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="grid bg-ink-50 border-b border-ink-100 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								style="
+									grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+								"
+							>
+								<div class="px-2 py-1.5">#</div>
+								<div class="px-2 py-1.5">{{ __("Source") }}</div>
+								<div class="px-2 py-1.5">{{ __("Unit") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Qty") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Rate") }}</div>
+								<div class="px-2 py-1.5 text-right">{{ __("Amount") }}</div>
+								<div class="px-2 py-1.5">{{ __("Cost head") }}</div>
+							</div>
+
+							<div class="divide-y divide-ink-100 text-xs">
+								<div
+									v-for="(row, i) in importPreview.rows"
+									:key="i"
+									class="grid items-center"
+									style="
+										grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+									"
+								>
+									<div class="px-2 py-2 text-ink-400 tabular-nums">
+										{{ i + 1 }}
+									</div>
+									<div class="px-2 py-2 min-w-0">
+										<div class="text-ink-900 font-medium truncate">
+											{{ row.source_label || "—" }}
+										</div>
+										<div class="text-ink-500 text-[11px] truncate">
+											<span
+												v-if="row.source_kind"
+												class="text-[9px] px-1 py-0.5 mr-1 font-medium uppercase tracking-wider"
+												:class="
+													row.source_kind === 'Assembly'
+														? 'bg-brand-50 text-brand-700'
+														: 'bg-ink-100 text-ink-600'
+												"
+												style="border-radius: 2px"
+												>{{ row.source_kind }}</span
+											>
+											{{ row.group_name || __("Auto from template") }}
+										</div>
+									</div>
+									<div class="px-2 py-2 text-ink-700">{{ row.unit || "—" }}</div>
+									<div class="px-2 py-2 text-right tabular-nums text-ink-700">
+										{{ row.qty }}
+									</div>
+									<div class="px-2 py-2 text-right tabular-nums text-ink-700">
+										{{ fmtINR(row.rate) }}
+									</div>
+									<div
+										class="px-2 py-2 text-right tabular-nums font-medium text-ink-900"
+									>
+										{{ fmtINR(row.amount) }}
+									</div>
+									<div class="px-2 py-2 text-ink-700">
+										{{ row.cost_head || "—" }}
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="grid border-t border-ink-200 bg-ink-50 text-xs"
+								style="
+									grid-template-columns: 32px minmax(0, 1.4fr) 60px 70px 90px 90px 90px;
+								"
+							>
+								<div
+									class="px-2 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+									style="grid-column: 1 / span 5"
+								>
+									{{ __("Total of imported lines") }}
+								</div>
+								<div
+									class="px-2 py-2 text-right tabular-nums font-semibold text-ink-900"
+								>
+									{{ fmtINR(importPreview.total) }}
+								</div>
+								<div></div>
+							</div>
+						</div>
+
+						<!-- Empty state -->
+						<div
+							v-else-if="importPreview"
+							class="px-3 py-4 bg-ink-50 border border-ink-200 text-xs text-ink-500 italic"
+							style="border-radius: 6px"
+						>
+							{{ __("No rows on the chosen template. Author rows on") }}
+							<DeskLink to="/estimate-template" class="desk-link">{{
+								__("Estimate Templates")
+							}}</DeskLink>
+							{{ __("or pick another template above.") }}
+						</div>
 					</div>
-					<div
-						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
 					>
 						<button
 							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
 							@click="importModal = false"
-							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
 						>
 							{{ __("Cancel") }}
 						</button>
 						<button
 							v-if="canEdit('boq')"
 							type="button"
-							@click="doImport"
 							class="desk-save-btn"
+							:disabled="!importPreview || !importPreview.rows.length"
+							@click="doImport"
 						>
-							{{ __("Import") }}
+							{{ __("Import {0} row(s)", [importPreview?.rows?.length || 0]) }}
 						</button>
-					</div>
+					</footer>
 				</div>
 			</div>
 
@@ -2708,7 +3709,185 @@ const breadcrumbs = computed(() => {
 					>
 						{{ __("No source documents yet — this actual is “— pending”.") }}
 					</div>
-					<table v-else class="w-full text-xs">
+					<div
+						v-if="!actualsDrill.loading && actualsDrill.entries.length"
+						class="flex gap-1 mb-3"
+					>
+						<button
+							v-for="t in [
+								{ key: 'all', label: __('All') },
+								{ key: 'machinery', label: __('Machinery usage') },
+								{ key: 'labour', label: __('Labour attendance') },
+								{ key: 'timesheets', label: __('Timesheets') },
+							]"
+							:key="t.key"
+							type="button"
+							class="text-xs px-2.5 py-1 rounded-full border"
+							:class="
+								drillTab === t.key
+									? 'bg-brand-50 text-brand-700 border-brand-200'
+									: 'text-ink-600 border-ink-200 hover:bg-ink-50'
+							"
+							@click="drillTab = t.key"
+						>
+							{{ t.label }}
+						</button>
+					</div>
+					<template
+						v-if="
+							(drillTab === 'labour' || drillTab === 'timesheets') &&
+							actualsDrill.entries.length
+						"
+					>
+						<div
+							v-if="!labourEntries.length"
+							class="py-8 text-center text-xs text-ink-400"
+						>
+							{{
+								drillTab === "timesheets"
+									? __("No timesheet is coded to this cost code.")
+									: __("No labour attendance is coded to this cost code.")
+							}}
+						</div>
+						<table v-else class="w-full text-xs">
+							<thead
+								class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+							>
+								<tr>
+									<th class="text-left py-2 pr-2">{{ __("Worker") }}</th>
+									<th class="text-left py-2 pr-2">{{ __("Day / overtime") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Rate") }}</th>
+									<th class="text-right py-2">{{ __("Amount") }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="e in labourEntries"
+									:key="e.source_doctype + e.source_name"
+									class="border-b border-ink-100 last:border-0"
+								>
+									<td class="py-2 pr-2">
+										<button
+											type="button"
+											class="text-brand-700 hover:underline text-left"
+											@click="openActualSource(e)"
+										>
+											{{ e.employee_name }}
+										</button>
+										<div class="text-[10px] text-ink-400">
+											<span class="font-mono">{{
+												e.field_attendance || e.timesheet
+											}}</span>
+											<span v-if="e.date"> · {{ fmtDate(e.date) }}</span>
+										</div>
+									</td>
+									<td class="py-2 pr-2 text-ink-600 whitespace-nowrap">
+										{{ e.kind === "Overtime" ? __("Overtime") : __(e.kind) }}
+										· {{ e.quantity }} {{ e.unit }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.rate) }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ fmtINR(e.amount) }}
+									</td>
+								</tr>
+							</tbody>
+							<tfoot>
+								<tr class="border-t-2 border-ink-200">
+									<td
+										colspan="3"
+										class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+									>
+										{{
+											drillTab === "timesheets"
+												? __("Timesheets total")
+												: __("Labour total")
+										}}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+									>
+										{{ fmtINR(labourTotal) }}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</template>
+					<template v-else-if="drillTab === 'machinery' && actualsDrill.entries.length">
+						<div
+							v-if="!machineryEntries.length"
+							class="py-8 text-center text-xs text-ink-400"
+						>
+							{{ __("No machinery usage is coded to this cost code.") }}
+						</div>
+						<table v-else class="w-full text-xs">
+							<thead
+								class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+							>
+								<tr>
+									<th class="text-left py-2 pr-2">{{ __("Machine") }}</th>
+									<th class="text-left py-2 pr-2">{{ __("Time used") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Rate") }}</th>
+									<th class="text-right py-2 pr-2">{{ __("Fuel") }}</th>
+									<th class="text-right py-2">{{ __("Amount") }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="e in machineryEntries"
+									:key="e.source_name"
+									class="border-b border-ink-100 last:border-0"
+								>
+									<td class="py-2 pr-2">
+										<button
+											type="button"
+											class="text-brand-700 hover:underline text-left"
+											@click="openActualSource(e)"
+										>
+											{{ e.machine_name }}
+										</button>
+										<div class="text-[10px] text-ink-400">
+											<span class="font-mono">{{ e.source_name }}</span>
+											<span v-if="e.date"> · {{ fmtDate(e.date) }}</span>
+										</div>
+									</td>
+									<td class="py-2 pr-2 text-ink-600 whitespace-nowrap">
+										{{ e.quantity }} {{ e.unit }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.rate) }}
+									</td>
+									<td class="py-2 pr-2 text-right tabular-nums text-ink-600">
+										{{ fmtINR(e.fuel) }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ fmtINR(e.amount) }}
+									</td>
+								</tr>
+							</tbody>
+							<tfoot>
+								<tr class="border-t-2 border-ink-200">
+									<td
+										colspan="4"
+										class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+									>
+										{{ __("Machinery total") }}
+									</td>
+									<td
+										class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+									>
+										{{ fmtINR(machineryTotal) }}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</template>
+					<table v-else-if="actualsDrill.entries.length" class="w-full text-xs">
 						<thead
 							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
 						>
@@ -2777,7 +3956,118 @@ const breadcrumbs = computed(() => {
 					<p class="text-[10px] text-ink-400 mt-3">
 						{{
 							__(
-								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only."
+								"Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only. A machinery usage log counts once submitted and drops out when cancelled. Labour counts from the attendance registers a submitted Field Attendance creates; rows without a cost code do not post."
+							)
+						}}
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Committed drill-down — the submitted PO + Subcontractor WO lines behind a group's Committed -->
+		<div
+			v-if="committedDrill"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto"
+			@click.self="closeCommittedDrill"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-start justify-between gap-3"
+				>
+					<div class="min-w-0">
+						<h2 class="text-sm font-semibold text-ink-900 truncate">
+							{{ committedDrill.title }}
+						</h2>
+						<p class="text-[11px] text-ink-500">{{ committedDrill.subtitle }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+						@click="closeCommittedDrill"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-3">
+					<div
+						v-if="committedDrill.loading"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("Loading…") }}
+					</div>
+					<div
+						v-else-if="!committedDrill.entries.length"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("No submitted orders are coded to this cost code yet.") }}
+					</div>
+					<table v-else class="w-full text-xs">
+						<thead
+							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+						>
+							<tr>
+								<th class="text-left py-2 pr-2">{{ __("Order") }}</th>
+								<th class="text-left py-2 pr-2">
+									{{ __("Supplier / subcontractor") }}
+								</th>
+								<th class="text-left py-2 pr-2">{{ __("Scope / item") }}</th>
+								<th class="text-right py-2">{{ __("Amount") }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="e in committedDrill.entries"
+								:key="e.source_doctype + e.source_name + e.description"
+								class="border-b border-ink-100 last:border-0"
+							>
+								<td class="py-2 pr-2">
+									<button
+										type="button"
+										class="text-brand-700 hover:underline text-left"
+										@click="openCommittedSource(e)"
+									>
+										{{ e.source_name }}
+									</button>
+									<div class="text-[10px] text-ink-400">
+										{{
+											e.source_doctype === "Purchase Order"
+												? __("Purchase Order")
+												: __("Work Order")
+										}}
+									</div>
+								</td>
+								<td class="py-2 pr-2 text-ink-600">{{ e.party || "—" }}</td>
+								<td class="py-2 pr-2 text-ink-600">
+									{{ e.description || e.cost_code_label || "—" }}
+								</td>
+								<td class="py-2 text-right tabular-nums text-ink-900 font-medium">
+									{{ fmtINR(e.amount) }}
+								</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr class="border-t-2 border-ink-200">
+								<td
+									colspan="3"
+									class="py-2 pr-2 text-right text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+								>
+									{{ __("Total committed") }}
+								</td>
+								<td
+									class="py-2 text-right tabular-nums text-ink-900 font-semibold"
+								>
+									{{ fmtINR(committedDrill.total) }}
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+					<p class="text-[10px] text-ink-400 mt-3">
+						{{
+							__(
+								"Committed = submitted Purchase Orders and Subcontractor Work Orders coded to this group. Cancelling an order removes its line."
 							)
 						}}
 					</p>

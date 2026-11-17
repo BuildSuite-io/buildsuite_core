@@ -6,14 +6,20 @@ import { defineStore } from "pinia";
 import { useSessionStore } from "@/stores/session";
 import { seedData } from "@/data/seed";
 import { ROLES } from "@/data/roles";
-import { getVisibleWorkspaces } from "@/data/workspaceSettingApi";
+import { getVisibleWorkspaces, getErpnextNavEnabled } from "@/data/workspaceSettingApi";
 import { myUnreadTodoCount } from "@/data/todoApi";
 import { myUnseenNotificationCount } from "@/data/notificationApi";
 import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
-import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
+import {
+	listCompanies,
+	setActiveCompanyRemote,
+	getCompanyContext,
+	renameCompany,
+} from "@/data/companyApi";
 import { setDisplayCurrency } from "@/utils/format";
+import { colourClass, colourNameForClass } from "@/utils/companyColours";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
 import {
 	setActiveCompany as setActiveCompanyScope,
@@ -201,6 +207,9 @@ export const useDataStore = defineStore("data", {
 		// Sidebar workspaces the logged-in user may see — loaded from the backend registry
 		// on boot (loadWorkspaces). Each: {slug, label, icon, route, group, order, access}.
 		workspaces: [],
+		// Site-wide toggle (Workspace Setting): show the ERPNext nav section in the sidebar.
+		// Default off — loaded on boot by loadWorkspaces. The DeskShell sidebar reads it.
+		showErpnextNav: false,
 		// Companies master list. Project-scoped slices derive `company` from their
 		// parent project; this slice is the source of truth for what companies exist.
 		companies: [],
@@ -592,7 +601,7 @@ export const useDataStore = defineStore("data", {
 				this.workPackages = JSON.parse(JSON.stringify(seedData.workPackages));
 				this.tasks = JSON.parse(JSON.stringify(seedData.tasks));
 				this.taskProgressEntries = JSON.parse(
-					JSON.stringify(seedData.taskProgressEntries),
+					JSON.stringify(seedData.taskProgressEntries)
 				);
 				this.stagePlannings = JSON.parse(JSON.stringify(seedData.stagePlannings));
 				this.attachments = JSON.parse(JSON.stringify(seedData.attachments));
@@ -606,7 +615,7 @@ export const useDataStore = defineStore("data", {
 				// Session 34 — Settings DocTypes from seed defaults (first-run branch).
 				this.coreSettings = JSON.parse(JSON.stringify(seedData.coreSettings));
 				this.siteExecutionSettings = JSON.parse(
-					JSON.stringify(seedData.siteExecutionSettings),
+					JSON.stringify(seedData.siteExecutionSettings)
 				);
 				// Session 39 — Project Type Settings (exploratory).
 				this.projectTypes = JSON.parse(JSON.stringify(seedData.projectTypes));
@@ -729,6 +738,13 @@ export const useDataStore = defineStore("data", {
 				this.workspaces = [];
 				console.warn("Failed to load workspaces:", e);
 			}
+			// Site-wide ERPNext-nav toggle (default off). Separate call so a failure here never
+			// empties the sidebar; the ERPNext section simply stays hidden.
+			try {
+				this.showErpnextNav = !!(await getErpnextNavEnabled());
+			} catch {
+				this.showErpnextNav = false;
+			}
 		},
 
 		// Refresh the unread to-do badge count. Called on boot, on opening a to-do, and after the
@@ -788,7 +804,11 @@ export const useDataStore = defineStore("data", {
 				name: r.name,
 				shortName: r.abbr || r.name,
 				description: "",
-				color: colourForId(r.id),
+				// The saved brand colour, else one derived from the id so the pill is never blank.
+				color: colourClass(r.colour) || colourForId(r.id),
+				colourName: r.colour || colourNameForClass(colourForId(r.id)),
+				colourSaved: !!r.colour,
+				fullDayHours: r.full_day_hours ?? null,
 				logo: r.logo,
 				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,
@@ -799,9 +819,7 @@ export const useDataStore = defineStore("data", {
 			const stored = loadCompanyFromStorage();
 			const defaultRow = (rows || []).find((r) => r.is_default);
 			this.activeCompany =
-				stored && ids.includes(stored)
-					? stored
-					: defaultRow?.id || mapped[0]?.id || null;
+				stored && ids.includes(stored) ? stored : defaultRow?.id || mapped[0]?.id || null;
 			// Keep the picker-scope seam in step with the resolved active company.
 			if (this.activeCompany) setActiveCompanyScope(this.activeCompany);
 			// Render all amounts in the resolved company's currency (authoritative over the early ctx set).
@@ -813,7 +831,7 @@ export const useDataStore = defineStore("data", {
 			// (and new-record company defaults) disagree with the UI.
 			if (this.activeCompany && this.activeCompany !== defaultRow?.id) {
 				setActiveCompanyRemote(this.activeCompany).catch((e) =>
-					console.warn("Failed to reconcile active company server-side:", e),
+					console.warn("Failed to reconcile active company server-side:", e)
 				);
 			}
 			return mapped;
@@ -892,14 +910,21 @@ export const useDataStore = defineStore("data", {
 			// Round-trip the FULL doc: frappe.client.save instantiates the doc from exactly
 			// what we send, so a partial { name, company_name } would blank Company's mandatory
 			// fields (abbr / currency / country) and fail its modified-timestamp check. Fetch
-			// the current doc, apply the editable identity fields, save. id (docname) is immutable;
+			// the current doc, apply the short name, save; a changed name is a rename (below).
 			// colour + description are store-derived and not persisted.
 			const doc = await getRecord("Company", id);
-			if (patch.name !== undefined) doc.company_name = patch.name;
 			if (patch.shortName !== undefined && patch.shortName) doc.abbr = patch.shortName;
 			await saveRecord(doc);
+			// The company is named after its name, so a new name is a rename (the server keeps
+			// every link, the Letter Head and company_name in step) and the id changes with it.
+			let newId = id;
+			const wanted = (patch.name || "").trim();
+			if (wanted && wanted !== doc.company_name) {
+				newId = (await renameCompany(id, wanted)).company;
+				if (this.activeCompany === id) this.activeCompany = newId;
+			}
 			await this.loadCompanies();
-			return this.companies.find((c) => c.id === id) || null;
+			return this.companies.find((c) => c.id === newId) || null;
 		},
 		async deleteCompany(id) {
 			try {
@@ -1043,7 +1068,7 @@ export const useDataStore = defineStore("data", {
 			this.workPackages = this.workPackages.filter((wp) => !allIds.includes(wp.projectId));
 			this.tasks = this.tasks.filter((t) => !allIds.includes(t.projectId));
 			this.taskProgressEntries = this.taskProgressEntries.filter(
-				(e) => !deletedTaskIds.includes(e.taskId),
+				(e) => !deletedTaskIds.includes(e.taskId)
 			);
 			this.stagePlannings = this.stagePlannings.filter((s) => !allIds.includes(s.project));
 			this.scos = this.scos.filter((s) => !allIds.includes(s.projectId));
@@ -1116,7 +1141,7 @@ export const useDataStore = defineStore("data", {
 			this.workPackages = this.workPackages.filter((wp) => wp.id !== id);
 			this.tasks = this.tasks.filter((t) => t.workPackageId !== id);
 			this.taskProgressEntries = this.taskProgressEntries.filter(
-				(e) => !deletedTaskIds.includes(e.taskId),
+				(e) => !deletedTaskIds.includes(e.taskId)
 			);
 			// Attachments cascade (no UI for WP/Task/TPE attachments yet, but the
 			// store contract should stay coherent — same pattern as deleteProject).
@@ -1300,7 +1325,7 @@ export const useDataStore = defineStore("data", {
 			const idx = this.stagePlannings.findIndex((sp) => sp.id === stageId);
 			if (idx === -1) return;
 			const rows = (this.stagePlannings[idx].stagePlanningTasks || []).filter(
-				(r) => r.id !== sptId,
+				(r) => r.id !== sptId
 			);
 			this.stagePlannings[idx] = { ...this.stagePlannings[idx], stagePlanningTasks: rows };
 			this._persist();

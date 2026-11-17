@@ -10,6 +10,7 @@ import { ref, computed, watch } from "vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { loadDoctypeMeta, linkPickerProps, resolveLinkLabels } from "@/utils/listFilters";
 
 const props = defineProps({
 	// [{ fieldname, label, fieldtype, options }]
@@ -92,7 +93,7 @@ const condition = ref(props.initial?.condition || "");
 // Copy array values (multi / between) so editing chips before Apply — or cancelling —
 // never mutates the live filter still held in the list.
 const value = ref(
-	Array.isArray(props.initial?.value) ? [...props.initial.value] : (props.initial?.value ?? "")
+	Array.isArray(props.initial?.value) ? [...props.initial.value] : props.initial?.value ?? ""
 );
 
 const selectedField = computed(
@@ -135,6 +136,49 @@ const valueKind = computed(() => {
 			return "text";
 	}
 });
+
+// Link values: a record is identified by its ID (PROJ-0042) but known by its name ("Aso Villa"), so
+// the pickers show and search the target doctype's title_field as well as the ID. The target's
+// meta loads first (the picker reads its label/search fields once, when it is created), and the
+// chosen records' names are kept in `labels` so tags and the applied chip read as names too.
+const linkTarget = computed(() =>
+	fieldtype.value === "Link" ? selectedField.value?.options || "" : ""
+);
+const linkMeta = ref(null);
+const linkMetaReady = ref(false);
+watch(
+	linkTarget,
+	async (doctype) => {
+		linkMeta.value = null;
+		linkMetaReady.value = !doctype;
+		if (!doctype) return;
+		const meta = await loadDoctypeMeta(doctype);
+		if (linkTarget.value !== doctype) return;
+		linkMeta.value = meta;
+		linkMetaReady.value = true;
+	},
+	{ immediate: true }
+);
+const linkProps = computed(() => linkPickerProps(linkMeta.value));
+const labels = ref({}); // record id -> name
+async function ensureLabels(ids) {
+	const missing = (ids || []).filter((id) => id && !(id in labels.value));
+	if (!missing.length || !linkTarget.value) return;
+	Object.assign(
+		labels.value,
+		await resolveLinkLabels(linkTarget.value, linkMeta.value, missing)
+	);
+}
+const labelOf = (id) => labels.value[id] ?? id;
+// Names for whatever is picked (and for an existing chip being edited), as soon as they're known.
+watch(
+	[value, linkMetaReady],
+	() => {
+		if (!linkMetaReady.value || !linkTarget.value) return;
+		ensureLabels(Array.isArray(value.value) ? value.value : [value.value]);
+	},
+	{ deep: true, immediate: true }
+);
 
 const selectOptions = computed(() =>
 	String(selectedField.value?.options || "")
@@ -191,9 +235,18 @@ const canApply = computed(() => {
 	return value.value !== "" && value.value != null;
 });
 
-function apply() {
+async function apply() {
 	if (!canApply.value) return;
+	// Link filters carry the record's name beside its ID so the chip can show it.
+	let valueLabel;
+	if (linkTarget.value && (valueKind.value === "link" || valueKind.value === "multi")) {
+		const ids = Array.isArray(value.value) ? value.value : [value.value];
+		await ensureLabels(ids);
+		if (ids.some((id) => labelOf(id) !== id))
+			valueLabel = Array.isArray(value.value) ? ids.map(labelOf) : labelOf(value.value);
+	}
 	emit("apply", {
+		valueLabel,
 		fieldname: fieldname.value,
 		label: selectedField.value?.label || fieldname.value,
 		fieldtype: fieldtype.value,
@@ -221,17 +274,28 @@ function apply() {
 
 			<!-- Condition -->
 			<DeskSelect v-model="condition" class="!w-32 flex-shrink-0">
-				<option v-for="[op, label] in conditions" :key="op" :value="op">{{ label }}</option>
+				<option v-for="[op, label] in conditions" :key="op" :value="op">
+					{{ label }}
+				</option>
 			</DeskSelect>
 
 			<!-- Value -->
 			<div class="flex-1 min-w-0">
 				<DeskLinkPicker
-					v-if="valueKind === 'link' && selectedField?.options"
-					:key="selectedField.options"
+					v-if="valueKind === 'link' && selectedField?.options && linkMetaReady"
+					:key="`${selectedField.options}-${linkProps.labelField}`"
 					v-model="value"
 					:doctype="selectedField.options"
+					:label-field="linkProps.labelField"
+					:search-fields="linkProps.searchFields"
 					placeholder="Select…"
+				/>
+				<input
+					v-else-if="valueKind === 'link' && selectedField?.options"
+					type="text"
+					class="desk-input w-full"
+					placeholder="Loading…"
+					disabled
 				/>
 				<!-- Link field without a resolvable target doctype (e.g. Dynamic Link): fall back to text. -->
 				<input
@@ -289,7 +353,7 @@ function apply() {
 							class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-ink-100 text-ink-700"
 							style="border-radius: 9999px"
 						>
-							{{ item }}
+							{{ labelOf(item) }}
 							<button
 								type="button"
 								class="text-ink-500 hover:text-ink-800 leading-none"
@@ -302,10 +366,12 @@ function apply() {
 					</div>
 					<!-- Add control: link picker for Link fields, option list for Select, else a tag input. -->
 					<DeskLinkPicker
-						v-if="fieldtype === 'Link' && selectedField?.options"
-						:key="`multi-${selectedField.options}-${multiPickerKey}`"
+						v-if="fieldtype === 'Link' && selectedField?.options && linkMetaReady"
+						:key="`multi-${selectedField.options}-${linkProps.labelField}-${multiPickerKey}`"
 						:model-value="''"
 						:doctype="selectedField.options"
+						:label-field="linkProps.labelField"
+						:search-fields="linkProps.searchFields"
 						placeholder="Add…"
 						@update:model-value="addMultiItem"
 					/>

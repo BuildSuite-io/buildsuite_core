@@ -62,3 +62,23 @@ buildsuite_core.patches.scope_petty_cash_expense_visibility # 2026-10-07
 buildsuite_core.patches.restore_petty_cash_expense_owner_to_creator # 2026-10-07
 buildsuite_core.patches.adopt_beneficiary_owner_for_petty_cash_expense # 2026-10-09 owner=beneficiary + raised_by=creator; native if_owner (no finance_access hook)
 buildsuite_core.patches.seed_terms_permissions # 2026-10-12 Terms & Conditions DocPerms (admin/accountant/procurement/estimator full; rest select)
+buildsuite_core.patches.fix_buildsuite_workspace_app # 2026-10-14 strip stray backtick from desk Workspace app (icon missing on Frappe 16.50)
+buildsuite_core.patches.grant_account_select_read # 2026-10-16 Account select+read for Site Engineer / Foreman / Procurement Officer
+buildsuite_core.patches.grant_item_group_select # 2026-10-19 Item Group select for Item-accessible BuildSuite roles (item_group picker)
+buildsuite_core.patches.backfill_field_employee_employment_type # 2026-10-19 field employees get the Labour Employment Type (attendance roster visibility)
+buildsuite_core.patches.submit_existing_machinery_usage # 2026-10-25 Machinery Usage submittable: existing logs -> Submitted, re-grant submit perms
+buildsuite_core.patches.seed_sales_workspace # 2026-10-25 register Sales in the live workspace sidebar
+buildsuite_core.patches.grant_foreman_item_select_read # 2026-10-25 Foreman Item select+read in the seeded matrix
+buildsuite_core.patches.retire_subcontractor_work_order_print_format # 2026-10-28 delete the orphaned Subcontractor Work Order print format (BuildSuite Work Order is the default)
+buildsuite_core.patches.drop_item_company_field # 2026-10-30 Item is a global master, not company-scoped: drop its BuildSuite company field
+buildsuite_core.patches.set_company_full_day_hours # 2026-11-07 every Company gets a full day of 8 hours (Company.full_day_hours is required)
+buildsuite_core.patches.set_attendance_full_day_hours # 2026-11-08 existing attendance sheets and registers were made on an 8-hour day (full_day_hours, regular_hours, source)
+buildsuite_core.patches.seed_workforce_timesheet_tile # 2026-11-07 Timesheets record tile on the Workforce landing
+buildsuite_core.patches.grant_timesheet_workforce_perms # 2026-11-09 the Field Attendance roles may enter timesheets (native Timesheet matrix)
+buildsuite_core.patches.set_timesheet_costing_defaults # 2026-11-09 existing timesheet rows: 8-hour day; cost code from the task's BOQ line
+buildsuite_core.patches.retire_workforce_timesheet_record_tile # 2026-11-09 Timesheets has its own screens: drop the generic Records tile
+buildsuite_core.patches.add_labour_cost_summary_report # 2026-11-09 Labour Cost Summary joins the Workforce reports (first); drop "Labour cost from timesheets" if present
+buildsuite_core.patches.set_register_day_type_regular # 2026-11-12 Labour Attendance Register / Field Attendance: existing rows are Regular days
+buildsuite_core.patches.refresh_purchase_order_print_format # 2026-11-12 Purchase Order print: company address/GSTIN/CIN/phone/email in Ordered by, PO terms printed (only if the format was never edited)
+buildsuite_core.patches.move_subcontractor_charges_to_direct_expenses # 2026-11-12 Subcontractor Charges moves from the root Expenses group to Direct Expenses (only when still on the root)
+buildsuite_core.patches.fix_default_petty_cash_account # 2026-11-16 Petty Cash Account setting must be a ledger: clear a stored group, fill the single candidate, else leave for the admin to choose

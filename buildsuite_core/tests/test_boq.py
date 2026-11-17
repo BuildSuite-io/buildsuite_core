@@ -201,6 +201,152 @@ class TestBOQ(BuildSuiteTestCase):
 		self.assertEqual(frappe.db.get_value("BOQ", b.name, "status"), "Superseded")
 		self.assertEqual(frappe.db.get_value("BOQ", new, "status"), "Approved")
 
+	# --- project-less estimates -----------------------------------------
+	def test_estimate_without_project_anchors_default_company(self):
+		# A BOQ priced before the work is won has no project; its company falls back to the
+		# default company rather than failing the mandatory-project check (now relaxed).
+		from buildsuite_core.utils.project import default_company
+
+		b = frappe.get_doc({"doctype": "BOQ", "title": "Unwon estimate", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		self.assertFalse(b.project)
+		self.assertEqual(b.company, default_company())
+
+	def test_approve_estimate_does_not_supersede_other_estimates(self):
+		# Estimates aren't revisions of one another, so approving one must leave every other
+		# project-less estimate untouched (a blank project must not group them).
+		a = frappe.get_doc({"doctype": "BOQ", "title": "Estimate A", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		b = frappe.get_doc({"doctype": "BOQ", "title": "Estimate B", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		api.submit_boq(a.name)
+		api.approve_boq(a.name)
+		api.submit_boq(b.name)
+		api.approve_boq(b.name)
+		self.assertEqual(frappe.db.get_value("BOQ", a.name, "status"), "Approved")
+		self.assertEqual(frappe.db.get_value("BOQ", b.name, "status"), "Approved")
+
+	def test_create_revision_of_estimate_numbers_within_its_lineage(self):
+		# A revision of a project-less estimate increments within its own base_revision lineage,
+		# independent of unrelated estimates (which would collide if numbered by a blank project).
+		frappe.get_doc(
+			{"doctype": "BOQ", "title": "Unrelated estimate", "revision": 7, "status": "Draft"}
+		).insert(ignore_permissions=True)
+		base = frappe.get_doc({"doctype": "BOQ", "title": "My estimate", "status": "Draft"}).insert(
+			ignore_permissions=True
+		)
+		rev = frappe.get_doc("BOQ", api.create_revision(base.name))
+		self.assertEqual(rev.revision, base.revision + 1)  # 2, not 8
+		self.assertEqual(rev.base_revision, base.name)
+		self.assertFalse(rev.project)
+
+	# --- estimate -> bid (Quotation / Tender) ---------------------------
+	def _approved_estimate(self, with_customer=True):
+		"""An Approved, project-less estimate with one group of two priced items."""
+		cust = self._make_customer().name if with_customer else None
+		b = frappe.get_doc(
+			{
+				"doctype": "BOQ",
+				"customer": cust,
+				"title": "Estimate to bid",
+				"margin_rate": 12,
+				"tax_rate": 18,
+			}
+		).insert(ignore_permissions=True)
+		g = self._group(b.name)
+		self._item(b.name, g.name, 10, 100)  # 1000
+		self._item(b.name, g.name, 5, 200)  # 1000
+		api.submit_boq(b.name)
+		api.approve_boq(b.name)
+		return b
+
+	def test_create_tender_from_estimate_item_and_group(self):
+		from frappe.utils import add_days, today
+
+		b = self._approved_estimate()
+		dl = add_days(today(), 30)
+		res = api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline=dl)
+		self.assertEqual(res["doctype"], "BuildSuite Tenders")
+		self.assertEqual(frappe.db.count("BuildSuite Tenders Items", {"parent": res["name"]}), 2)
+		# Tender derives the sell value from cost + margin (12%): (1000+1000)*1.12 = 2240 before tax.
+		self.assertEqual(frappe.db.get_value("BuildSuite Tenders", res["name"], "bid_before_tax"), 2240)
+
+		grp = api.create_bid_from_boq(b.name, "Tender", "group", submission_deadline=dl)
+		self.assertEqual(frappe.db.count("BuildSuite Tenders Items", {"parent": grp["name"]}), 1)
+		line = frappe.get_all(
+			"BuildSuite Tenders Items", filters={"parent": grp["name"]}, fields=["rate", "unit"]
+		)[0]
+		self.assertEqual(line.rate, 2000)  # the group's lump sum
+
+	def test_create_quotation_from_estimate(self):
+		b = self._approved_estimate()
+		res = api.create_bid_from_boq(b.name, "Quotation", "item")
+		self.assertEqual(res["doctype"], "Quotation")
+		items = frappe.get_all(
+			"Quotation Item",
+			filters={"parent": res["name"]},
+			fields=["source", "price_list_rate", "rate", "qty"],
+			order_by="idx asc",
+		)
+		self.assertEqual(len(items), 2)
+		self.assertEqual(items[0].source, "BOQ")
+		self.assertEqual(items[0].price_list_rate, 100)  # cost carried as price-list rate
+		self.assertEqual(items[0].rate, 112)  # +12% margin derived by ERPNext
+
+	def test_bid_rejects_non_approved_boq(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)  # Draft
+		with self.assertRaises(frappe.ValidationError):
+			api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline="2026-12-31")
+
+	def test_quotation_requires_a_customer(self):
+		b = self._approved_estimate(with_customer=False)
+		with self.assertRaises(frappe.ValidationError):
+			api.create_bid_from_boq(b.name, "Quotation", "item")
+		# a Tender does not need one
+		from frappe.utils import add_days, today
+
+		res = api.create_bid_from_boq(b.name, "Tender", "item", submission_deadline=add_days(today(), 15))
+		self.assertEqual(res["doctype"], "BuildSuite Tenders")
+
+	# --- attach an estimate to a project --------------------------------
+	def _project_with_customer(self):
+		cust = self._make_customer().name
+		p = self._make_project(company=self.company)
+		frappe.db.set_value("Project", p.name, "customer", cust)
+		return p.name, cust
+
+	def test_attach_estimate_moves_whole_lineage(self):
+		project, cust = self._project_with_customer()
+		est = frappe.get_doc({"doctype": "BOQ", "title": "Unwon"}).insert(ignore_permissions=True)
+		self._item(est.name, self._group(est.name).name, 1, 10)
+		rev = api.create_revision(est.name)  # a 2-revision lineage, both project-less
+		res = api.attach_estimate_to_project(est.name, project)
+		self.assertEqual(res["moved"], 2)
+		for name in (est.name, rev):
+			self.assertEqual(frappe.db.get_value("BOQ", name, "project"), project)
+			self.assertEqual(frappe.db.get_value("BOQ", name, "company"), self.company)
+			self.assertEqual(frappe.db.get_value("BOQ", name, "customer"), cust)
+
+	def test_attach_rejects_already_attached(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)  # already has a project
+		with self.assertRaises(frappe.ValidationError):
+			api.attach_estimate_to_project(b.name, p.name)
+
+	def test_attach_rejects_project_with_approved_baseline(self):
+		# A project that already carries an approved BOQ can't take another estimate.
+		p = self._make_project(company=self.company)
+		base = self._boq(p.name)
+		api.submit_boq(base.name)
+		api.approve_boq(base.name)
+		est = frappe.get_doc({"doctype": "BOQ", "title": "Unwon"}).insert(ignore_permissions=True)
+		with self.assertRaises(frappe.ValidationError):
+			api.attach_estimate_to_project(est.name, p.name)
+
 	# --- actuals --------------------------------------------------------
 	def test_recalculate_actuals_from_task(self):
 		p = self._make_project(company=self.company)
@@ -236,8 +382,18 @@ class TestBOQ(BuildSuiteTestCase):
 				"template_code": f"TPL-{frappe.generate_hash(length=5)}",
 				"template_name": "Tpl",
 				"rows": [
-					{"group_name": "Civil", "line_type": "Assembly", "assembly": asm.name, "placeholder_qty": 4},
-					{"group_name": "Civil", "line_type": "Resource", "resource": rm.name, "placeholder_qty": 3},
+					{
+						"group_name": "Civil",
+						"line_type": "Assembly",
+						"assembly": asm.name,
+						"placeholder_qty": 4,
+					},
+					{
+						"group_name": "Civil",
+						"line_type": "Resource",
+						"resource": rm.name,
+						"placeholder_qty": 3,
+					},
 				],
 			}
 		).insert(ignore_permissions=True)
@@ -259,6 +415,74 @@ class TestBOQ(BuildSuiteTestCase):
 		subs = frappe.get_all("BOQ Sub Item", filters={"boq_item": res_item.name}, fields=["rate_master"])
 		self.assertEqual(len(subs), 1)
 		self.assertEqual(subs[0].rate_master, rm.name)
+
+	def test_import_rows_creates_groups_items_and_units(self):
+		# S430 — the parsed-spreadsheet import persists groups + items on a Draft BOQ, creating any
+		# missing UOM, auto-coding groups, and reallocating a duplicate item code.
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		payload = {
+			"units": ["Running Meter"],  # not in the UOM master -> created
+			"groups": [
+				{"key": "new:civil", "existingId": None, "code": "", "name": "Civil works"},
+				{"key": "new:finishes", "existingId": None, "code": "", "name": "Finishes"},
+			],
+			"items": [
+				{
+					"groupKey": "new:civil",
+					"code": "1",
+					"description": "PCC",
+					"unit": "Cubic Meter",
+					"plannedQty": 12.5,
+					"rate": 5200,
+					"costHead": "Material",
+				},
+				{
+					"groupKey": "new:civil",
+					"code": "1",
+					"description": "RCC (dup code)",
+					"unit": "Cubic Meter",
+					"plannedQty": 40,
+					"rate": 7800,
+					"costHead": "Material",
+				},
+				{
+					"groupKey": "new:finishes",
+					"code": "",
+					"description": "Tile",
+					"unit": "Square Meter",
+					"plannedQty": 850,
+					"rate": 1250,
+					"costHead": "",
+				},
+				{
+					"groupKey": "new:finishes",
+					"code": "",
+					"description": "Custom-unit line",
+					"unit": "Running Meter",
+					"plannedQty": 10,
+					"rate": 100,
+					"costHead": "",
+				},
+			],
+		}
+		res = api.import_rows(b.name, payload)
+		self.assertEqual(res["items"], 4)
+		self.assertEqual(res["groups"], 2)
+		self.assertTrue(frappe.db.exists("UOM", "Running Meter"))  # created on the user's choice
+		self.assertEqual(frappe.db.count("BOQ Group", {"boq": b.name}), 2)
+		# The duplicate "1" is reallocated, so all four codes are distinct.
+		codes = frappe.get_all("BOQ Item", filters={"boq": b.name}, pluck="code")
+		self.assertEqual(len(set(codes)), 4)
+		b.reload()
+		self.assertEqual(b.planned_amount, 12.5 * 5200 + 40 * 7800 + 850 * 1250 + 10 * 100)
+
+	def test_import_rows_rejects_non_draft(self):
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		api.submit_boq(b.name)
+		with self.assertRaises(frappe.ValidationError):
+			api.import_rows(b.name, {"groups": [], "items": []})
 
 	def test_clone_estimate_project_to_project(self):
 		# EST-019 — cloning to a different project creates a fresh Draft BOQ
@@ -401,9 +625,7 @@ class TestBOQ(BuildSuiteTestCase):
 
 		it = self._item(b.name, g.name, 1, 0, assembly=asm.name, driving_qty=1)
 		api.explode_item(it.name)
-		subs = frappe.get_all(
-			"BOQ Sub Item", filters={"boq_item": it.name}, fields=["rate_master", "amount"]
-		)
+		subs = frappe.get_all("BOQ Sub Item", filters={"boq_item": it.name}, fields=["rate_master", "amount"])
 		self.assertEqual(len(subs), 2)
 		by_resource = {s.rate_master: s for s in subs}
 		self.assertEqual(by_resource[r_nos.name].amount, 200)

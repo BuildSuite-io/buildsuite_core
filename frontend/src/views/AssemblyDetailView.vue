@@ -14,6 +14,7 @@ import { createDataAdapter } from "@/data/adapters";
 import { fmtINR } from "@/utils/format";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskTextarea from "@/components/desk/DeskTextarea.vue";
@@ -75,7 +76,7 @@ watch(
 	(v) => {
 		if (v && !editing.value) form.value = snapshot();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -152,15 +153,15 @@ const rateMasterOptions = computed(() =>
 		label: `${r.name} · ${r.rate_name}`,
 		group: r.category,
 		hint: __("{0} per {1}", [fmtINR(r.current_rate), r.uom]),
-	})),
+	}))
 );
 
 // Add-row preview — unit/rate from the picked resource (server recomputes on save).
 const newRowResource = computed(
-	() => (rateMastersRes.data || []).find((r) => r.name === newRow.resource) || null,
+	() => (rateMastersRes.data || []).find((r) => r.name === newRow.resource) || null
 );
 const newRowAmount = computed(
-	() => (Number(newRow.coefficient) || 0) * (newRowResource.value?.current_rate || 0),
+	() => (Number(newRow.coefficient) || 0) * (newRowResource.value?.current_rate || 0)
 );
 
 // Keep each child `name` so Frappe updates rows in place, not delete + recreate.
@@ -172,6 +173,23 @@ function currentRows() {
 		remarks: r.remarks || "",
 	}));
 }
+
+// What an installed app's components get on this page (slots detail.Assembly.*).
+async function extPersist(values) {
+	try {
+		await adapter.update("Assembly", props.id, values);
+		await resource?.reload?.();
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to update assembly"), "error");
+		throw err;
+	}
+}
+const extContext = computed(() => ({
+	doctype: "Assembly",
+	doc: doc.value,
+	persist: extPersist,
+	reload: () => resource?.reload?.(),
+}));
 
 async function persistComponents(rows) {
 	savingComponents.value = true;
@@ -283,15 +301,16 @@ async function removeComponent(index) {
 			</div>
 		</div>
 
+		<ExtensionSlot name="detail.Assembly.after.summary" :context="extContext" />
+
 		<!-- Components child table -->
 		<section>
 			<div class="flex items-center justify-between mb-2 gap-3">
 				<div class="text-xs text-ink-500">
 					<span class="text-ink-900 font-medium">{{
-						__(
-							components.length === 1 ? "{0} component" : "{0} components",
-							[components.length],
-						)
+						__(components.length === 1 ? "{0} component" : "{0} components", [
+							components.length,
+						])
 					}}</span>
 					{{ __("· linked to Rate Master · coefficient × rate") }}
 				</div>
@@ -313,7 +332,9 @@ async function removeComponent(index) {
 					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
 				>
 					<div class="px-3 py-1.5">{{ __("Resource") }}</div>
-					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Coefficient") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">
+						{{ __("Coefficient") }}
+					</div>
 					<div class="px-3 py-1.5">{{ __("Unit") }}</div>
 					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Rate") }}</div>
 					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Amount") }}</div>
@@ -390,7 +411,10 @@ async function removeComponent(index) {
 							:search-placeholder="__('Search rate master…')"
 						/>
 						<div class="mt-1">
-							<DeskInput v-model="newRow.remarks" :placeholder="__('Remarks (optional)')" />
+							<DeskInput
+								v-model="newRow.remarks"
+								:placeholder="__('Remarks (optional)')"
+							/>
 						</div>
 					</div>
 					<div class="px-2 py-2">
@@ -468,7 +492,9 @@ async function removeComponent(index) {
 						style="border-radius: 12px 12px 0 0"
 					>
 						<div class="min-w-0 flex-1">
-							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit assembly") }}</h2>
+							<h2 class="text-sm font-semibold text-ink-900">
+								{{ __("Edit assembly") }}
+							</h2>
 							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
 								{{ doc.assembly_name }}
 							</p>
@@ -484,7 +510,7 @@ async function removeComponent(index) {
 					</header>
 
 					<div class="p-5 overflow-y-auto flex-1">
-						<DeskSection :title="__('Assembly details')">
+						<DeskSection id="assembly-details" :title="__('Assembly details')">
 							<DeskField
 								:label="__('Code')"
 								:hint="__('The assembly\'s identifier — not editable.')"
@@ -499,7 +525,11 @@ async function removeComponent(index) {
 							<DeskField
 								:label="__('Unit (per)')"
 								required
-								:hint="__('The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.')"
+								:hint="
+									__(
+										'The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.'
+									)
+								"
 								:error="errors.uom"
 							>
 								<DeskLinkPicker

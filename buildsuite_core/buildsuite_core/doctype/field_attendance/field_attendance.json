@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2026-07-22 16:11:04.323007",
@@ -15,10 +16,15 @@
   "date",
   "column_break_vbqw",
   "status",
+  "day_type",
   "section_break_dkns",
   "project_name",
   "column_break_rg0g",
   "overtime_hours",
+  "cost_code_label",
+  "cost_code_type",
+  "cost_code_group",
+  "cost_code_item",
   "section_break_p3ti",
   "comments",
   "section_break_20su",
@@ -27,7 +33,8 @@
   "section_break_pdmm",
   "amended_from",
   "column_break_3cdg",
-  "naming_series"
+  "naming_series",
+  "full_day_hours"
  ],
  "fields": [
   {
@@ -85,13 +92,15 @@
    "fieldname": "task",
    "fieldtype": "Link",
    "label": "Task",
-   "options": "Task"
+   "options": "Task",
+   "hidden": 1
   },
   {
    "fieldname": "crew",
    "fieldtype": "Link",
    "label": "Crew",
-   "options": "Crew"
+   "options": "Crew",
+   "hidden": 1
   },
   {
    "fieldname": "section_break_dkns",
@@ -148,13 +157,58 @@
    "hidden": 1,
    "label": "Employees Count",
    "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_label",
+   "fieldtype": "Data",
+   "label": "Cost code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_code_type",
+   "fieldtype": "Select",
+   "label": "Cost Code Type",
+   "options": "\nGroup\nItem",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_group",
+   "fieldtype": "Data",
+   "label": "Cost Code Group",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "cost_code_item",
+   "fieldtype": "Data",
+   "label": "Cost Code Item",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "full_day_hours",
+   "fieldtype": "Float",
+   "label": "Full day hours",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Copied from the project / company while the sheet is a draft and frozen on submit."
+  },
+  {
+   "default": "Regular",
+   "fieldname": "day_type",
+   "fieldtype": "Select",
+   "label": "Day type",
+   "options": "Regular\nOff Day",
+   "description": "Off Day: work on a weekly off or a holiday. It is copied onto the worker's Labour Attendance Register row."
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-09 20:24:19.858194",
+ "modified": "2026-11-12 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Field Attendance",

@@ -20,6 +20,11 @@ Rails (all post on Submit, reverse on Cancel):
   Subcontractor Bill     this-period amount    (Subcontractor Bill Line)           -> "Subcontract"
   Expense Entry          expense amount        (Expense Entry Table)               -> "Overhead"
   Journal Entry          line debit            (Journal Entry Account.debit)        -> "Overhead"
+  Machinery Usage        qty x rate + fuel     (Machinery Usage)                    -> "Plant"
+  Labour Attendance      daily wage            (Labour Attendance Register)         -> "Labour"
+  Overtime Attendance    hours x overtime rate (Overtime Attendance Register)       -> "Labour"
+  The two attendance rails read the registers a submitted Field Attendance creates, not the sheet;
+  cancelling the sheet cancels them. A register with no cost code does not post.
 
 Cost is recognised at consumption, not at purchase — a Purchase Receipt increases stock but
 does not touch BOQ actual. The Subcontractor Work Order (Committed) is a separate promise and
@@ -227,6 +232,109 @@ def _journal_entries(project):
 	return out
 
 
+def _machinery_entries(project):
+	"""Submitted Machinery Usage logs charged to a cost code: quantity x rate + fuel. A Draft
+	does not count; cancelling a submitted log removes it."""
+	filters = {"project": project, "docstatus": 1, "cost_code_type": ["in", ["Group", "Item"]]}
+	rows = frappe.get_all(
+		"Machinery Usage",
+		filters=filters,
+		fields=[
+			"name",
+			"machine",
+			"date",
+			"quantity",
+			"unit",
+			"rate",
+			"fuel_cost",
+			"cost_code_type",
+			"cost_code_group",
+			"cost_code_item",
+			"cost_code_label",
+		],
+	)
+	machine_names = {
+		m.name: m.machinery_name
+		for m in frappe.get_all(
+			"Machinery",
+			filters={"name": ["in", list({r.machine for r in rows})]},
+			fields=["name", "machinery_name"],
+		)
+	}
+	out = []
+	for r in rows:
+		amount = flt(r.quantity) * flt(r.rate) + flt(r.fuel_cost)
+		if not (r.cost_code_group or r.cost_code_item) or amount == 0:
+			continue
+		out.append(
+			{
+				"cost_code_type": r.cost_code_type,
+				"group_code": r.cost_code_group or "",
+				"item_code": r.cost_code_item or "",
+				"cost_type": "Plant",
+				"amount": amount,
+				"source_doctype": "Machinery Usage",
+				"source_name": r.name,
+				"source_line": r.name,
+				"party": machine_names.get(r.machine) or r.machine,
+				"date": str(r.date) if r.date else None,
+				"label": r.cost_code_label or "",
+				"machine": r.machine,
+				"machine_name": machine_names.get(r.machine) or r.machine,
+				"quantity": flt(r.quantity),
+				"unit": r.unit,
+				"rate": flt(r.rate),
+				"fuel": flt(r.fuel_cost),
+			}
+		)
+	return out
+
+
+def _labour_entries(project):
+	"""Submitted labour charged to a cost code, from the one reader of the labour registers
+	(utils.labour_cost): attendance rows (Field Attendance sheets) and timesheet rows, each counted
+	once. A row's cost code is its own, else its sheet's; rows with none, or no cost, do not post."""
+	from buildsuite_core.utils.labour_cost import cost_of, labour_cost_rows
+
+	out = []
+	for r in labour_cost_rows({"project": project}):
+		code = r["cost_code"]
+		amount = cost_of(r)
+		if not code or amount == 0:
+			continue
+		is_overtime = r["doctype"] == "Overtime Attendance Register"
+		hours = r["ot_hours"] if is_overtime else r["regular_hours"]
+		# Attendance counts in days (a Half Day is half); a timesheet counts in hours.
+		in_days = r["source"] == "Attendance" and not is_overtime
+		out.append(
+			{
+				"cost_code_type": (code["type"] or "").title(),
+				"group_code": code["group_code"],
+				"item_code": code["item_code"] or "",
+				"cost_type": "Labour",
+				"amount": amount,
+				"source_doctype": r["doctype"],
+				"source_name": r["name"],
+				"source_line": r["name"],
+				"party": r["employee_name"],
+				"date": str(r["date"]) if r["date"] else None,
+				"label": code["label"],
+				"employee": r["employee"],
+				"employee_name": r["employee_name"],
+				"field_attendance": r["field_attendance"],
+				"timesheet": r["timesheet"],
+				"source": r["source"],
+				"kind": "Overtime" if is_overtime else r["status"],
+				"quantity": (1 if r["status"] == "Full Day" else 0.5 if r["status"] == "Half Day" else 0)
+				if in_days
+				else hours,
+				"unit": "day" if in_days else "h",
+				"rate": amount / hours if hours else 0,
+			}
+		)
+	return out
+
+
 def _actual_entries(project):
 	"""The full actuals log for a project — one line per contributing source line, across all
 	rails. Derived live from submitted documents (never stored). This is the single source
@@ -238,6 +346,8 @@ def _actual_entries(project):
 		+ _subcontract_entries(project)
 		+ _expense_entries(project)
 		+ _journal_entries(project)
+		+ _machinery_entries(project)
+		+ _labour_entries(project)
 	)
 
 
@@ -247,7 +357,13 @@ COST_TYPES = ("Material", "Labour", "Plant", "Subcontract", "Overhead")
 
 
 @frappe.whitelist()
-def get_actuals_log(project: str, cost_type: str | None = None, from_date: str | None = None, to_date: str | None = None, source_doctype: str | None = None):
+def get_actuals_log(
+	project: str,
+	cost_type: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	source_doctype: str | None = None,
+):
 	"""The actuals log, optionally filtered by cost type / date range / source doctype (R4).
 	Also the data source for cost-vs-budget."""
 	entries = _actual_entries(project)
@@ -302,6 +418,20 @@ def get_actuals_summary(project: str):
 		"by_group": by_group,
 		"by_item": by_item,
 		"total": sum(flt(e["amount"]) for e in entries),
+	}
+
+
+@frappe.whitelist()
+def get_actuals_totals(projects):
+	"""Total actual cost per project — the cost-code actuals log summed per project, for the BOQ
+	list's Actual column. Takes a JSON list (or comma string) of project ids and returns
+	{project: total} in ONE call, so the list doesn't fire a summary request per BOQ. Same
+	calculation path as get_actuals_summary, so the list figure reconciles with the BOQ page (R2)."""
+	if isinstance(projects, str):
+		projects = frappe.parse_json(projects) if projects.strip().startswith("[") else projects.split(",")
+	return {
+		p: sum(flt(e["amount"]) for e in _actual_entries(p))
+		for p in {str(x).strip() for x in (projects or []) if str(x).strip()}
 	}
 
 

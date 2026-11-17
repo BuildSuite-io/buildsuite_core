@@ -8,11 +8,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
+from buildsuite_core.utils.daily_hours import validate_attendance_hours
+from buildsuite_core.utils.full_day import get_full_day_hours, regular_hours_for
 from buildsuite_core.utils.project import anchor_company_to_project
 
 # --- tunables: move to a Settings doctype when the client asks ---
 DAYS_PER_MONTH = 30
-HOURS_PER_DAY = 8
 MAX_OT_HOURS_PER_DAY = 16
 
 # Rows above this count are processed in a background job on submit/cancel.
@@ -52,6 +53,52 @@ def sheet_labour_cost(doc):
 	)
 
 
+def row_wage(row):
+	"""What one row pays: its daily share plus its overtime."""
+	return flt(row.labour_rate) * WAGE_FACTOR.get(row.status, 0.0) + flt(row.overtime_rate) * flt(
+		row.overtime_hours
+	)
+
+
+def uncoded_wage(doc):
+	"""Wages on rows with no cost code. Their registers are created but do not post to the
+	BOQ Actual, so the user is told how much that is."""
+	return sum(row_wage(r) for r in doc.employee_list if not (r.cost_code_group or r.cost_code_item))
+
+
+COST_CODE_FIELDS = ("cost_code_type", "cost_code_group", "cost_code_item", "cost_code_label")
+
+
+def _clear_cost_code(obj):
+	for f in COST_CODE_FIELDS:
+		obj.set(f, "")
+
+
+def _apply_cost_code(obj, codes, where):
+	"""Check a header or row cost code against the project's estimate and fill in its
+	type and label. An empty code stays empty (uncoded)."""
+	if not (obj.cost_code_group or obj.cost_code_item):
+		_clear_cost_code(obj)
+		return
+
+	is_item = bool(obj.cost_code_item)
+	for c in codes:
+		if is_item and c["type"] == "Item" and c["item_code"] == obj.cost_code_item:
+			break
+		if not is_item and c["type"] == "Group" and c["group_code"] == obj.cost_code_group:
+			break
+	else:
+		frappe.throw(
+			_("{0}: cost code {1} is not in the approved estimate of this project.").format(
+				where, obj.cost_code_item or obj.cost_code_group
+			)
+		)
+	obj.cost_code_type = "Item" if is_item else "Group"
+	obj.cost_code_group = c["group_code"]
+	obj.cost_code_item = c["item_code"] if is_item else ""
+	obj.cost_code_label = c["label"]
+
+
 class FieldAttendance(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -59,15 +106,23 @@ class FieldAttendance(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.field_attendance_employee.field_attendance_employee import FieldAttendanceEmployee
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.field_attendance_employee.field_attendance_employee import (
+			FieldAttendanceEmployee,
+		)
 
 		amended_from: DF.Link | None
 		comments: DF.SmallText | None
+		cost_code_group: DF.Data | None
+		cost_code_item: DF.Data | None
+		cost_code_label: DF.Data | None
+		cost_code_type: DF.Literal["", "Group", "Item"]
 		crew: DF.Link | None
 		date: DF.Date
 		employee_list: DF.Table[FieldAttendanceEmployee]
 		employees_count: DF.Int
+		full_day_hours: DF.Float
 		naming_series: DF.Literal["HR-FA-.YYYY.-"]
 		overtime_hours: DF.Float
 		project: DF.Link
@@ -78,9 +133,11 @@ class FieldAttendance(Document):
 
 	def validate(self):
 		anchor_company_to_project(self)
+		self.set_full_day_hours()
 
 		self.validate_rows_present()
 		self.validate_task_project()
+		self.validate_cost_codes()
 
 		self.employees_count = len(self.employee_list)
 
@@ -88,6 +145,8 @@ class FieldAttendance(Document):
 		leave_map = self.get_leave_map()
 		la_map, ot_map = self.get_register_maps()
 		structure_cache = {}
+		# The sheet's own (draft: just set; submitted: frozen) full day prices a salaried overtime hour.
+		full_day_hours = self.full_day_hours or get_full_day_hours(self.project, self.company)
 
 		for row in self.employee_list:
 			emp = emp_map.get(row.employee)
@@ -107,9 +166,20 @@ class FieldAttendance(Document):
 				ot_map.get(row.employee, []),
 			)
 			row.labour_rate, row.overtime_rate = get_employee_rates(
-				emp, self.date, structure_cache
+				emp, self.date, structure_cache, full_day_hours
 			)
 
+	def set_full_day_hours(self):
+		"""The sheet's full day, from the helper (project -> company -> default). Set while the sheet
+		is a draft and once more just before submit; after that it is never touched, so a later change
+		to the company or project cannot rewrite what the sheet and its registers were made with."""
+		if self.docstatus == 0:
+			self.full_day_hours = get_full_day_hours(self.project, self.company)
+
+	def before_submit(self):
+		# By now docstatus is already 1, so set it directly: this is the last moment it may change.
+		self.full_day_hours = get_full_day_hours(self.project, self.company)
+		validate_attendance_hours(self)
 
 	# ------------------------------------------------------------------
 	# submit / cancel
@@ -153,14 +223,34 @@ class FieldAttendance(Document):
 	# row / list level
 	# ------------------------------------------------------------------
 
+	def validate_cost_codes(self):
+		"""Header and row codes must come from the project's approved estimate. Changing the
+		project drops them: a code belongs to one project's estimate."""
+		before = self.get_doc_before_save()
+		if before and before.project != self.project:
+			_clear_cost_code(self)
+			for row in self.employee_list:
+				_clear_cost_code(row)
+
+		coded = [o for o in [self, *self.employee_list] if o.cost_code_group or o.cost_code_item]
+		if not coded:
+			return
+
+		from buildsuite_core.api.subcontract import get_project_cost_codes
+
+		codes = get_project_cost_codes(self.project)
+		for obj in coded:
+			_apply_cost_code(obj, codes, _("Row {0}").format(obj.idx) if obj is not self else _("Header"))
+		for row in self.employee_list:
+			if not (row.cost_code_group or row.cost_code_item):
+				_clear_cost_code(row)
+
 	def validate_task_project(self):
 		if not (self.task and self.project):
 			return
 
 		if frappe.db.get_value("Task", self.task, "project") != self.project:
-			frappe.throw(
-				_("Task {0} does not belong to project {1}.").format(self.task, self.project)
-			)
+			frappe.throw(_("Task {0} does not belong to project {1}.").format(self.task, self.project))
 
 	def validate_rows_present(self):
 		if not self.employee_list:
@@ -176,18 +266,14 @@ class FieldAttendance(Document):
 
 			if row.status == "Overtime Only" and flt(row.overtime_hours) <= 0:
 				frappe.throw(
-					_("Row {0}: Overtime hours are required when status is Overtime Only.").format(
-						row.idx
-					)
+					_("Row {0}: Overtime hours are required when status is Overtime Only.").format(row.idx)
 				)
 
 			emp_ids.append(row.employee)
 
 		dupes = [e for e, count in Counter(emp_ids).items() if count > 1]
 		if dupes:
-			frappe.throw(
-				_("The same employee appears more than once: {0}").format(", ".join(dupes))
-			)
+			frappe.throw(_("The same employee appears more than once: {0}").format(", ".join(dupes)))
 
 	# ------------------------------------------------------------------
 	# batch lookups - one query each instead of one per row
@@ -213,8 +299,7 @@ class FieldAttendance(Document):
 			fields.append("custom_labour_wage_type")
 
 		return {
-			d.name: d
-			for d in frappe.get_all("Employee", filters={"name": ["in", emp_ids]}, fields=fields)
+			d.name: d for d in frappe.get_all("Employee", filters={"name": ["in", emp_ids]}, fields=fields)
 		}
 
 	def get_leave_map(self):
@@ -368,9 +453,7 @@ class FieldAttendance(Document):
 
 		if mapped == "Half Day" and half_count >= 2:
 			frappe.throw(
-				_("{0}: Only 2 Half Day attendances are allowed on {1}.").format(
-					emp_name, self.date
-				)
+				_("{0}: Only 2 Half Day attendances are allowed on {1}.").format(emp_name, self.date)
 			)
 
 		if mapped == "Absent" and (half_count or has_full):
@@ -384,6 +467,7 @@ class FieldAttendance(Document):
 # ----------------------------------------------------------------------
 # register creation / cancellation
 # ----------------------------------------------------------------------
+
 
 def create_registers(doc_name):
 	"""Create the Labour / Overtime register entries for a submitted Field Attendance.
@@ -408,6 +492,9 @@ def create_registers(doc_name):
 		)
 	)
 
+	# The sheet's own full day (frozen at submit); a sheet from before it existed gets the helper's.
+	full_day_hours = doc.full_day_hours or get_full_day_hours(doc.project, doc.company)
+
 	for row in doc.employee_list:
 		mapped = STATUS_MAP.get(row.status)
 
@@ -421,6 +508,9 @@ def create_registers(doc_name):
 				comments=row.comments,
 				wage_rate=row.labour_rate,
 				task=doc.task,
+				cost_code=row,
+				full_day_hours=full_day_hours,
+				day_type=doc.get("day_type") or "Regular",
 			)
 
 		if flt(row.overtime_hours) > 0 and row.employee not in existing_ot:
@@ -433,6 +523,8 @@ def create_registers(doc_name):
 				comments=row.comments,
 				overtime_rate=row.overtime_rate,
 				task=doc.task,
+				cost_code=row,
+				full_day_hours=full_day_hours,
 			)
 
 
@@ -451,16 +543,37 @@ def cancel_registers(doc_name):
 			reg.cancel()
 
 
-def create_labour_attendance(employee, date, project, status, reference, comments, wage_rate, task=None):
+def _cost_code_values(row):
+	return {f: (row.get(f) if row else "") or "" for f in COST_CODE_FIELDS}
+
+
+def create_labour_attendance(
+	employee,
+	date,
+	project,
+	status,
+	reference,
+	comments,
+	wage_rate,
+	task=None,
+	cost_code=None,
+	full_day_hours=None,
+	day_type="Regular",
+):
 	doc = frappe.get_doc(
 		{
+			**_cost_code_values(cost_code),
 			"doctype": "Labour Attendance Register",
+			"day_type": "Off Day" if day_type in ("Off Day", "Holiday") else "Regular",
 			"employee": employee,
 			"attendance_date": date,
 			"project": project,
 			"status": status,
 			"wage_rate": wage_rate,
 			"task": task,
+			"source": "Attendance",
+			"full_day_hours": full_day_hours,
+			"regular_hours": regular_hours_for(status, full_day_hours),
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -470,10 +583,20 @@ def create_labour_attendance(employee, date, project, status, reference, comment
 
 
 def create_overtime_attendance(
-	employee, date, project, overtime_hours, reference, comments, overtime_rate, task=None
+	employee,
+	date,
+	project,
+	overtime_hours,
+	reference,
+	comments,
+	overtime_rate,
+	task=None,
+	cost_code=None,
+	full_day_hours=None,
 ):
 	doc = frappe.get_doc(
 		{
+			**_cost_code_values(cost_code),
 			"doctype": "Overtime Attendance Register",
 			"employee": employee,
 			"overtime_date": date,
@@ -481,6 +604,8 @@ def create_overtime_attendance(
 			"overtime_rate": overtime_rate,
 			OT_HOURS_FIELD: overtime_hours,
 			"task": task,
+			"source": "Attendance",
+			"full_day_hours": full_day_hours,
 			REGISTER_SOURCE_FIELD: reference,
 			"comments": comments,
 		}
@@ -493,8 +618,12 @@ def create_overtime_attendance(
 # rates
 # ----------------------------------------------------------------------
 
-def get_employee_rates(emp, date, structure_cache=None):
-	"""`emp` is a dict from get_employee_map(), not an employee id."""
+
+def get_employee_rates(emp, date, structure_cache=None, full_day_hours=None):
+	"""`emp` is a dict from get_employee_map(), not an employee id. `full_day_hours` (the sheet's
+	project / company full day, see utils.full_day) turns a salaried daily rate into the hourly
+	overtime rate."""
+	full_day_hours = full_day_hours or get_full_day_hours()
 	if structure_cache is None:
 		structure_cache = {}
 
@@ -520,7 +649,7 @@ def get_employee_rates(emp, date, structure_cache=None):
 			)
 		)
 
-	if salary_structure not in structure_cache:
+	if (salary_structure, full_day_hours) not in structure_cache:
 		doc = frappe.get_doc("Salary Structure", salary_structure)
 		net = sum(flt(e.amount) for e in doc.earnings) - sum(flt(d.amount) for d in doc.deductions)
 
@@ -533,14 +662,15 @@ def get_employee_rates(emp, date, structure_cache=None):
 			)
 
 		labour_rate = net / DAYS_PER_MONTH
-		structure_cache[salary_structure] = (labour_rate, labour_rate / HOURS_PER_DAY)
+		structure_cache[(salary_structure, full_day_hours)] = (labour_rate, labour_rate / full_day_hours)
 
-	return structure_cache[salary_structure]
+	return structure_cache[(salary_structure, full_day_hours)]
 
 
 # ----------------------------------------------------------------------
 # whitelisted helpers
 # ----------------------------------------------------------------------
+
 
 def _labour_filters():
 	"""Employment filter differs depending on whether hrms is on the site."""

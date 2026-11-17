@@ -10,6 +10,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import { useProjectOptions } from "@/composables/useProjectOptions";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
@@ -35,9 +37,14 @@ const recoverableTotal = computed(() =>
 	all.value.filter((s) => s.recoverable).reduce((a, s) => a + (Number(s.impact) || 0), 0)
 );
 
+const { projectOptions } = useProjectOptions();
+const projectFilter = ref("");
 const statusFilter = ref("");
-const filterValues = computed(() => ({ status: statusFilter.value }));
-const filterFieldMap = { status: "status" };
+const filterValues = computed(() => ({
+	project: projectFilter.value,
+	status: statusFilter.value,
+}));
+const filterFieldMap = { project: "project", status: "status" };
 
 const FIELDS = [
 	"name",
@@ -76,9 +83,9 @@ function onRowClick(row) {
 <template>
 	<DeskPage :title="__('Scope Change Orders')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('sco')" to="/sco/new" class="desk-save-btn"
-				>{{ __("+ Raise SCO") }}</RouterLink
-			>
+			<RouterLink v-if="canCreate('sco')" to="/sco/new" class="desk-save-btn">{{
+				__("+ Raise SCO")
+			}}</RouterLink>
 		</template>
 
 		<!-- KPI strip -->
@@ -132,6 +139,15 @@ function onRowClick(row) {
 			@row-click="onRowClick"
 		>
 			<template #filter-chips>
+				<div class="w-56">
+					<DeskSearchableSelect
+						v-model="projectFilter"
+						:options="projectOptions"
+						:placeholder="__('All projects')"
+						:search-placeholder="__('Search projects…')"
+						allow-clear
+					/>
+				</div>
 				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-44">
 					<option value="">{{ __("Status: Any") }}</option>
 					<option value="Pending Approval">{{ __("Pending Approval") }}</option>

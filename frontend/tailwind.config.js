@@ -1,6 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-	content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
+	content: [
+		"./index.html",
+		"./src/**/*.{vue,js,ts,jsx,tsx}",
+		// frappe-ui's TextEditor (RichTextEditor.vue) is imported from source, so Tailwind must scan
+		// it too — otherwise its utility classes (e.g. the colour-picker's grid-cols-6 + text-red-600
+		// swatches) are never generated and the menu renders unstyled (bare "A"s, no grid).
+		"./node_modules/frappe-ui/src/**/*.{vue,js,ts}",
+	],
 	darkMode: "class",
 	theme: {
 		extend: {

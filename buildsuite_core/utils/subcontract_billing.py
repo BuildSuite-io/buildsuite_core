@@ -35,6 +35,15 @@ def ensure_supplier(subcontractor):
 # --------------------------------------------------------------------------- #
 # Account + service-item resolution (per company)
 # --------------------------------------------------------------------------- #
+def direct_expenses_hint(company) -> str:
+	"""The parent for subcontractor charges: a subcontractor's work is a direct cost of the job, so
+	it sits under "Direct Expenses". A chart of accounts without that group falls back to the
+	root "Expenses"."""
+	if frappe.db.exists("Account", {"account_name": "Direct Expenses", "company": company, "is_group": 1}):
+		return "Direct Expenses"
+	return "Expenses"
+
+
 def resolve_accounts(company):
 	"""Return {expense, retention, advance, cost_center} for a company, creating the BuildSuite
 	accounts if a prior seed pass has not. Idempotent.
@@ -43,7 +52,9 @@ def resolve_accounts(company):
 	type forces a party subledger (a supplier) on every GL line, but retention is withheld
 	against the company, not a party — so a plain Current Liability / Current Asset ledger."""
 	return {
-		"expense": _ensure_account(company, EXPENSE_ACCOUNT_NAME, "Expense", "Expense Account", "Expenses"),
+		"expense": _ensure_account(
+			company, EXPENSE_ACCOUNT_NAME, "Expense", "Expense Account", direct_expenses_hint(company)
+		),
 		"retention": _ensure_account(company, RETENTION_ACCOUNT_NAME, "Liability", "", "Current Liabilities"),
 		"advance": _ensure_account(company, ADVANCE_ACCOUNT_NAME, "Asset", "", "Current Assets"),
 		"cost_center": frappe.db.get_value("Company", company, "cost_center"),
@@ -51,23 +62,32 @@ def resolve_accounts(company):
 
 
 def _ensure_account(company, account_name, root_type, account_type, parent_hint):
-	"""Find (by name, per company) or create a ledger Account. Parent is the `parent_hint`
-	group for this company, else any group of `root_type`."""
-	abbr = frappe.db.get_value("Company", company, "abbr")
-	full_name = f"{account_name} - {abbr}"
-	if frappe.db.exists("Account", full_name):
-		return full_name
-	existing = frappe.db.get_value("Account", {"account_name": account_name, "company": company}, "name")
-	if existing:
-		return existing
+	"""Find (by name, per company) or create a postable ledger Account. Parent is the
+	`parent_hint` group for this company, else any group of `root_type`.
 
-	parent = frappe.db.get_value(
-		"Account", {"account_name": parent_hint, "company": company, "is_group": 1}, "name"
+	Always returns a ledger: Journal Entries and invoices reject group accounts, and some charts
+	ship a group under the same name (e.g. the UAE chart's "Petty Cash"). When the name only
+	exists as a group, a "<name> Ledger" account is created beneath it instead."""
+	abbr = frappe.db.get_value("Company", company, "abbr")
+	existing = frappe.db.get_value(
+		"Account", {"account_name": account_name, "company": company}, ["name", "is_group"], as_dict=True
 	)
-	if not parent:
+	if existing and not existing.is_group:
+		return existing.name
+	if existing:  # a group of that name: use (or create) a ledger beneath it
+		account_name = f"{account_name} Ledger"
+		full_name = f"{account_name} - {abbr}"
+		if frappe.db.exists("Account", full_name):
+			return full_name
+		parent = existing.name
+	else:
 		parent = frappe.db.get_value(
-			"Account", {"company": company, "is_group": 1, "root_type": root_type}, "name"
+			"Account", {"account_name": parent_hint, "company": company, "is_group": 1}, "name"
 		)
+		if not parent:
+			parent = frappe.db.get_value(
+				"Account", {"company": company, "is_group": 1, "root_type": root_type}, "name"
+			)
 	if not parent:
 		frappe.throw(_("Could not resolve a parent account for {0} in {1}.").format(account_name, company))
 
@@ -91,9 +111,9 @@ def _ensure_service_uom():
 	is whole-number only, which rejects the measured (often fractional) quantities a subcontractor
 	bill carries, so those quantities failed to post to the Purchase Invoice."""
 	if not frappe.db.exists("UOM", SERVICE_UOM):
-		frappe.get_doc(
-			{"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}
-		).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "UOM", "uom_name": SERVICE_UOM, "must_be_whole_number": 0}).insert(
+			ignore_permissions=True
+		)
 	return SERVICE_UOM
 
 
@@ -104,9 +124,15 @@ def ensure_service_item():
 	if frappe.db.exists("Item", SERVICE_ITEM):
 		# Older installs created this on ERPNext's default 'Nos' (whole-number only), so fractional
 		# measured quantities were rejected. Move it onto the fraction-allowing UOM — it's a
-		# non-stock item, so there's no stock ledger to block the change.
-		if frappe.db.get_value("Item", SERVICE_ITEM, "stock_uom") != uom:
-			frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", uom)
+		# non-stock item, so there's no stock ledger to block the change. The UOM must also be in
+		# the item's conversion table, or ERPNext refuses the PI line ("UOM ... not found in Item").
+		item = frappe.get_doc("Item", SERVICE_ITEM)
+		if item.stock_uom != uom or not any(u.uom == uom for u in item.uoms):
+			item.stock_uom = uom
+			if not any(u.uom == uom for u in item.uoms):
+				item.append("uoms", {"uom": uom, "conversion_factor": 1})
+			item.flags.ignore_permissions = True
+			item.save()
 		return SERVICE_ITEM
 	if not frappe.db.exists("Item Group", SERVICE_ITEM_GROUP):
 		parent = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"

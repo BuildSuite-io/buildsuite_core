@@ -56,6 +56,10 @@ const {
 	applyAction: applyWorkflowAction,
 } = useWorkflow("Subcontractor Bill");
 
+// Collapsible "Subcontractor Invoice reference" — opens by default once a reference is set.
+const showRefs = ref(false);
+const CHARGE_TYPES = ["On Net Total", "Actual", "On Previous Row Amount", "On Previous Row Total"];
+
 const bill = ref(null);
 const busy = ref(false);
 const savingBilling = ref(false);
@@ -75,6 +79,7 @@ async function load() {
 			discType.value = "%";
 			discValue.value = Number(bill.value.additional_discount_percentage) || 0;
 		}
+		showRefs.value = !!(bill.value.supplier_invoice_no || bill.value.supplier_invoice_date);
 		await refreshWorkflow(props.id);
 	} catch (err) {
 		showToast(err.message || __("Failed to load bill"), "error");
@@ -174,6 +179,8 @@ async function saveBilling() {
 			subcontractor: b.subcontractor,
 			project: b.project,
 			date: b.date,
+			supplier_invoice_no: b.supplier_invoice_no,
+			supplier_invoice_date: b.supplier_invoice_date,
 			bill_type: b.bill_type,
 			retention_percent: b.retention_percent,
 			taxes_and_charges: b.taxes_and_charges,
@@ -658,6 +665,25 @@ const accountFilters = computed(() =>
 			</button>
 		</template>
 
+		<!-- Cancelled banner + amend lineage -->
+		<div
+			v-if="isCancelled"
+			class="mb-4 px-4 py-2.5 bg-ink-100 border border-ink-200 rounded-md text-xs text-ink-600"
+		>
+			{{ __("This bill is") }} <span class="font-semibold">{{ __("cancelled") }}</span> —
+			{{ __("its postings were reversed. Click") }}
+			<span class="font-medium">{{ __("Amend") }}</span>
+			{{ __("to create a corrected Draft, or Delete it.") }}
+		</div>
+		<div v-if="bill.amended_from" class="mb-4 text-xs text-ink-500">
+			{{ __("Amended from") }}
+			<RouterLink
+				:to="`/subcontractor-bills/${bill.amended_from}`"
+				class="text-brand-700 hover:underline"
+				>{{ bill.amended_from }}</RouterLink
+			>
+		</div>
+
 		<!-- Submit success + PI reference -->
 		<div
 			v-if="submitMsg"
@@ -679,7 +705,8 @@ const accountFilters = computed(() =>
 				fmtINR(payment.outstanding)
 			}}</span>
 			<span v-if="payment.paid > 0">
-				· {{ __("paid {0} of {1}", [fmtINR(payment.paid), fmtINR(payment.invoiced)]) }}</span
+				·
+				{{ __("paid {0} of {1}", [fmtINR(payment.paid), fmtINR(payment.invoiced)]) }}</span
 			>
 		</div>
 		<div
@@ -777,6 +804,9 @@ const accountFilters = computed(() =>
 					>{{ bill.work_order }}</DeskLink
 				>
 				<div v-else class="text-sm text-ink-900 mt-0.5">{{ bill.subcontractor_name }}</div>
+				<div class="text-[10px] text-ink-500">
+					{{ bill.is_direct ? __("Direct bill · no WO") : bill.delivery_type }}
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
@@ -823,6 +853,70 @@ const accountFilters = computed(() =>
 			</div>
 		</div>
 
+		<!-- Optional Subcontractor Invoice reference (collapsed until one is set) -->
+		<div class="mb-4 border border-ink-200 rounded-lg overflow-hidden">
+			<button
+				type="button"
+				class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-ink-50 transition-colors"
+				@click="showRefs = !showRefs"
+			>
+				<span class="text-xs font-medium text-ink-700 flex items-center gap-2">
+					{{ __("Subcontractor Invoice reference") }}
+					<span class="text-[10px] text-ink-400 font-normal normal-case">{{
+						__("optional")
+					}}</span>
+					<span
+						v-if="
+							!showRefs && (bill.supplier_invoice_no || bill.supplier_invoice_date)
+						"
+						class="text-[10px] px-1.5 py-0.5 bg-info-50 text-info-700 rounded-full"
+						>{{ bill.supplier_invoice_no || __("set") }}</span
+					>
+				</span>
+				<span
+					class="text-ink-400 text-xs transition-transform"
+					:class="showRefs ? 'rotate-180' : ''"
+					>▾</span
+				>
+			</button>
+			<div v-if="showRefs" class="px-4 pb-4 pt-1 border-t border-ink-100">
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Subcontractor Invoice No") }}</label
+						>
+						<input
+							v-model="bill.supplier_invoice_no"
+							:readonly="!editable"
+							type="text"
+							placeholder="e.g. SI-2026-0042"
+							class="desk-input"
+						/>
+					</div>
+					<div>
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Subcontractor Invoice Date") }}</label
+						>
+						<input
+							v-model="bill.supplier_invoice_date"
+							:readonly="!editable"
+							type="date"
+							class="desk-input"
+						/>
+					</div>
+				</div>
+				<p class="text-[10px] text-ink-400 mt-2">
+					{{
+						__(
+							"The subcontractor's own invoice / bill number — carries to the Purchase Invoice."
+						)
+					}}
+				</p>
+			</div>
+		</div>
+
 		<!-- Bill lines -->
 		<section class="bg-white border border-ink-200 rounded-lg overflow-hidden">
 			<div class="bg-ink-50 px-4 py-2 border-b border-ink-200">
@@ -837,7 +931,7 @@ const accountFilters = computed(() =>
 				<span class="font-medium text-ink-900">{{ __("How qty is computed:") }}</span>
 				{{
 					__(
-						"This period qty = (Measured to date from Certified MBs) − (Previously billed qty). Read-only on this bill."
+						"This period qty = (Measured to date from Certified MBs) − (Previously billed qty). Read-only on this bill — derived at the moment it was raised."
 					)
 				}}
 			</div>
@@ -846,13 +940,15 @@ const accountFilters = computed(() =>
 				class="px-4 py-2 bg-info-50 border-b border-info-200 text-[11px] text-ink-700"
 			>
 				<span class="font-medium text-ink-900">{{ __("Direct bill") }}</span> —
-				{{ __("manual charge lines, not tied to a Work Order.") }}
+				{{ __("manual charge lines, not tied to a Work Order or Measurement Book.") }}
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-xs" style="min-width: 640px">
 					<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
-							<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+							<th class="text-left px-3 py-2">
+								{{ bill.is_direct ? __("Scope") : __("Scope (from WO)") }}
+							</th>
 							<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
 							<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
 							<th class="text-right px-3 py-2">{{ __("Measured to date") }}</th>
@@ -884,21 +980,24 @@ const accountFilters = computed(() =>
 							>
 								{{
 									l.measured_qty_to_date != null
-										? Number(l.measured_qty_to_date).toLocaleString("en-IN")
+										? Number(l.measured_qty_to_date).toLocaleString("en-IN") +
+										  (l.uom ? " " + l.uom : "")
 										: "—"
 								}}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-500">
 								{{
 									l.previous_qty != null
-										? Number(l.previous_qty).toLocaleString("en-IN")
+										? Number(l.previous_qty).toLocaleString("en-IN") +
+										  (l.uom ? " " + l.uom : "")
 										: "—"
 								}}
 							</td>
 							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
 								{{
 									l.this_period_qty != null
-										? Number(l.this_period_qty).toLocaleString("en-IN")
+										? Number(l.this_period_qty).toLocaleString("en-IN") +
+										  (l.uom ? " " + l.uom : "")
 										: "—"
 								}}
 							</td>
@@ -935,9 +1034,9 @@ const accountFilters = computed(() =>
 					{{ __("Taxes and Charges") }}
 				</h3>
 				<div v-if="editable" class="flex items-center gap-2">
-					<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
-						>{{ __("Template") }}</label
-					>
+					<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Template")
+					}}</label>
 					<div class="w-48">
 						<DeskLinkPicker
 							:model-value="bill.taxes_and_charges"
@@ -959,6 +1058,7 @@ const accountFilters = computed(() =>
 					<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
 						<tr>
 							<th class="text-left px-3 py-2 w-8">#</th>
+							<th class="text-left px-3 py-2 w-40">{{ __("Type") }}</th>
 							<th class="text-left px-3 py-2">{{ __("Account Head") }}</th>
 							<th class="text-right px-3 py-2 w-24">{{ __("Tax Rate") }}</th>
 							<th class="text-right px-3 py-2 w-32">{{ __("Amount") }}</th>
@@ -968,6 +1068,18 @@ const accountFilters = computed(() =>
 					<tbody>
 						<tr v-for="(t, i) in wf.taxRows" :key="i" class="border-t border-ink-100">
 							<td class="px-3 py-1.5 text-ink-500">{{ i + 1 }}</td>
+							<td class="px-3 py-1.5">
+								<select
+									v-if="editable"
+									v-model="bill.taxes[i].charge_type"
+									class="desk-input !py-1 !text-xs"
+								>
+									<option v-for="ct in CHARGE_TYPES" :key="ct" :value="ct">
+										{{ __(ct) }}
+									</option>
+								</select>
+								<span v-else class="text-ink-700">{{ t.charge_type }}</span>
+							</td>
 							<td class="px-3 py-1.5">
 								<DeskLinkPicker
 									v-if="editable"
@@ -1010,7 +1122,7 @@ const accountFilters = computed(() =>
 						</tr>
 						<tr v-if="!wf.taxRows.length">
 							<td
-								:colspan="editable ? 5 : 4"
+								:colspan="editable ? 6 : 5"
 								class="px-3 py-3 text-center text-ink-400 italic"
 							>
 								{{ __("No tax. Pick a template or add a row.") }}
@@ -1020,7 +1132,7 @@ const accountFilters = computed(() =>
 					<tfoot v-if="wf.taxRows.length">
 						<tr class="border-t border-ink-200 bg-ink-50">
 							<td
-								colspan="3"
+								colspan="4"
 								class="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-700"
 							>
 								{{ __("Total taxes") }}
@@ -1055,22 +1167,24 @@ const accountFilters = computed(() =>
 					</h3>
 				</div>
 				<div class="p-4 space-y-3 text-xs">
-					<div class="grid grid-cols-2 gap-3">
-						<div>
-							<label
-								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>{{ __("Retention %") }}</label
-							>
-							<input
-								v-model.number="bill.retention_percent"
-								:readonly="!editable"
-								type="number"
-								min="0"
-								max="20"
-								step="0.5"
-								class="desk-input"
-							/>
-						</div>
+					<div>
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Retention %") }}</label
+						>
+						<input
+							v-model.number="bill.retention_percent"
+							:readonly="!editable"
+							type="number"
+							min="0"
+							max="20"
+							step="0.5"
+							class="desk-input"
+						/>
+					</div>
+					<!-- Draft-only inputs the prototype dropped: advances can't be linked until submit, and a
+					     Final bill releases retention. Once submitted they read from the waterfall instead. -->
+					<div v-if="editable" class="grid grid-cols-2 gap-3">
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
@@ -1078,53 +1192,28 @@ const accountFilters = computed(() =>
 							>
 							<input
 								v-model.number="bill.advance_recovery"
-								:readonly="!editable"
 								type="number"
 								min="0"
 								step="0.01"
 								class="desk-input"
 							/>
 						</div>
-					</div>
-					<div class="grid grid-cols-2 gap-3">
 						<div>
 							<label
 								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 								>{{ __("Bill type") }}</label
 							>
-							<select
-								v-model="bill.bill_type"
-								:disabled="!editable"
-								class="desk-input"
-							>
+							<select v-model="bill.bill_type" class="desk-input">
 								<option value="Normal">{{ __("Normal") }}</option>
-								<option value="Final">{{ __("Final (release retention)") }}</option>
+								<option value="Final">
+									{{ __("Final (release retention)") }}
+								</option>
 							</select>
 						</div>
-						<div>
-							<label
-								class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-								>{{ __("Expense account") }}</label
-							>
-							<DeskLinkPicker
-								v-model="bill.expense_account"
-								doctype="Account"
-								label-field="name"
-								value-field="name"
-								:filters="
-									bill.company
-										? [
-												['root_type', '=', 'Expense'],
-												['is_group', '=', 0],
-												['company', '=', bill.company],
-										  ]
-										: []
-								"
-								:placeholder="__('Default (Subcontractor Charges)')"
-								:disabled="!editable"
-							/>
-						</div>
 					</div>
+					<p v-else-if="bill.bill_type === 'Final'" class="text-[10px] text-ink-500">
+						{{ __("Final bill — retention released.") }}
+					</p>
 					<div>
 						<label class="flex items-center gap-2 py-0.5"
 							><input
@@ -1132,7 +1221,9 @@ const accountFilters = computed(() =>
 								v-model="bill.apply_tds"
 								:disabled="!editable"
 								class="accent-brand-600"
-							/><span class="text-ink-800">{{ __("Apply TDS (withholding)") }}</span></label
+							/><span class="text-ink-800">{{
+								__("Apply TDS (withholding)")
+							}}</span></label
 						>
 						<div v-if="bill.apply_tds" class="mt-1.5">
 							<label
@@ -1140,6 +1231,7 @@ const accountFilters = computed(() =>
 								>{{ __("Withholding category") }}</label
 							>
 							<DeskLinkPicker
+								v-if="editable"
 								v-model="bill.tax_withholding_category"
 								doctype="Tax Withholding Category"
 								label-field="name"
@@ -1147,6 +1239,10 @@ const accountFilters = computed(() =>
 								:placeholder="__('Pick category…')"
 								:disabled="!editable"
 							/>
+							<div v-else class="text-ink-900 py-1">
+								{{ bill.tax_withholding_category || "—" }}
+								<span class="text-ink-400">({{ bill.tds_rate || 0 }}%)</span>
+							</div>
 						</div>
 					</div>
 					<div>
@@ -1156,13 +1252,16 @@ const accountFilters = computed(() =>
 						>
 						<div class="flex items-center gap-2">
 							<select
+								v-if="editable"
 								v-model="bill.additional_discount_on"
-								:disabled="!editable"
 								class="desk-input !w-32"
 							>
 								<option value="Net Total">{{ __("Net Total") }}</option>
 								<option value="Grand Total">{{ __("Grand Total") }}</option>
 							</select>
+							<span v-else class="text-ink-600">{{
+								__("On {0}:", [bill.additional_discount_on])
+							}}</span>
 							<input
 								v-model.number="discValue"
 								:readonly="!editable"
@@ -1203,6 +1302,35 @@ const accountFilters = computed(() =>
 						<p class="text-[10px] text-ink-400 mt-1">
 							Apply on <span class="font-medium">Net Total</span> (before tax) or
 							<span class="font-medium">Grand Total</span> (after tax).
+						</p>
+					</div>
+					<div class="pt-3 border-t border-ink-100">
+						<label
+							class="block text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1"
+							>{{ __("Expense account") }}</label
+						>
+						<DeskLinkPicker
+							v-if="editable"
+							v-model="bill.expense_account"
+							doctype="Account"
+							label-field="name"
+							value-field="name"
+							:filters="
+								bill.company
+									? [
+											['root_type', '=', 'Expense'],
+											['is_group', '=', 0],
+											['company', '=', bill.company],
+									  ]
+									: []
+							"
+							:placeholder="__('Default (Subcontractor Charges)')"
+						/>
+						<div v-else class="text-ink-900 py-1">
+							{{ bill.expense_account || __("Subcontractor Charges (default)") }}
+						</div>
+						<p class="text-[10px] text-ink-400 mt-1">
+							{{ __("Where the cost posts in the ledger.") }}
 						</p>
 					</div>
 					<button
@@ -1258,7 +1386,9 @@ const accountFilters = computed(() =>
 						v-if="bill.additional_discount_on === 'Grand Total' && wf.grandDiscount"
 					>
 						<div class="flex justify-between py-1">
-							<span class="text-ink-500">{{ __("Less: Discount (on Grand Total)") }}</span
+							<span class="text-ink-500">{{
+								__("Less: Discount (on Grand Total)")
+							}}</span
 							><span class="tabular-nums text-ink-600"
 								>({{ fmtINR(wf.grandDiscount) }})</span
 							>
@@ -1270,14 +1400,18 @@ const accountFilters = computed(() =>
 							}}</span>
 						</div>
 					</template>
-					<div v-if="wf.tds" class="flex justify-between py-1">
-						<span class="text-ink-500">{{ __("Less: TDS withheld @ {0}%", [bill.tds_rate]) }}</span
+					<div class="flex justify-between py-1">
+						<span class="text-ink-500">{{
+							__("Less: TDS withheld @ {0}%", [
+								bill.apply_tds ? bill.tds_rate || 0 : 0,
+							])
+						}}</span
 						><span class="tabular-nums text-ink-600">({{ fmtINR(wf.tds) }})</span>
 					</div>
 					<div class="flex justify-between py-1">
-						<span class="text-ink-500"
-							>{{ __("Less: Retention held @ {0}%", [bill.retention_percent]) }}</span
-						>
+						<span class="text-ink-500">{{
+							__("Less: Retention held @ {0}%", [bill.retention_percent])
+						}}</span>
 						<span class="tabular-nums text-warning-700"
 							>({{ fmtINR(wf.retention) }})</span
 						>
@@ -1290,9 +1424,9 @@ const accountFilters = computed(() =>
 						><span class="tabular-nums text-ink-600">({{ fmtINR(wf.advance) }})</span>
 					</div>
 					<div class="flex justify-between py-2 border-t-2 border-ink-200 mt-1">
-						<span class="font-semibold text-ink-900"
-							>{{ __("Net payable to subcontractor") }}</span
-						>
+						<span class="font-semibold text-ink-900">{{
+							__("Net payable to subcontractor")
+						}}</span>
 						<span class="tabular-nums font-bold text-base text-brand-700">{{
 							fmtINR(wf.netPayable)
 						}}</span>
@@ -1577,7 +1711,8 @@ const accountFilters = computed(() =>
 					<div>
 						<label
 							class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
-							>{{ __("Paid from account") }} <span class="text-danger-600">*</span></label
+							>{{ __("Paid from account") }}
+							<span class="text-danger-600">*</span></label
 						>
 						<select
 							v-model="pay.account"
@@ -1606,7 +1741,9 @@ const accountFilters = computed(() =>
 							<label
 								class="block text-[11px] uppercase tracking-wider text-ink-500 font-medium mb-1"
 								>{{ __("Reference no.") }}
-								<span class="text-ink-400 normal-case">{{ __("(optional)") }}</span></label
+								<span class="text-ink-400 normal-case">{{
+									__("(optional)")
+								}}</span></label
 							>
 							<input
 								v-model="pay.reference_no"
@@ -1652,7 +1789,9 @@ const accountFilters = computed(() =>
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Link advance payment") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Link advance payment") }}
+					</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -1714,7 +1853,11 @@ const accountFilters = computed(() =>
 									:disabled="adv.saving === a.payment_entry"
 									@click="doLink(a)"
 								>
-									{{ adv.saving === a.payment_entry ? __("Linking…") : __("Link") }}
+									{{
+										adv.saving === a.payment_entry
+											? __("Linking…")
+											: __("Link")
+									}}
 								</button>
 							</div>
 						</div>

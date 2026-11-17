@@ -90,3 +90,11 @@ class TestSubcontractor(BuildSuiteTestCase):
 		names = {s["name"] for s in api.list_subcontractors()}
 		self.assertIn(sub.name, names)
 		self.assertNotIn(other.name, names)
+
+	def test_list_subcontractors_not_company_scoped_when_multi_company_on(self):
+		# Suppliers are global parties with no company field; the working-company scope must not
+		# hide them (it once filtered on a column that doesn't exist, so the list came back empty).
+		sub = self._subcontractor()
+		frappe.db.set_single_value("BuildSuite Core Settings", "multi_company_enabled", 1)
+		names = {s["name"] for s in api.list_subcontractors()}
+		self.assertIn(sub.name, names)

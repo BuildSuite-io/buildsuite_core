@@ -15,6 +15,7 @@ persona lacking read on it and 500s the whole landing page (it did, for Task Pro
 Single-company for now."""
 
 import json
+from urllib.parse import quote
 
 import frappe
 from frappe.utils import add_days, date_diff, flt, getdate, nowdate
@@ -51,9 +52,9 @@ def _sum(doctype, filters, field):
 
 	try:
 		table = frappe.qb.DocType(doctype)
-		rows = frappe.qb.get_query(
-			doctype, filters=filters or {}, fields=[Sum(table[field]).as_("t")]
-		).run(as_dict=True)
+		rows = frappe.qb.get_query(doctype, filters=filters or {}, fields=[Sum(table[field]).as_("t")]).run(
+			as_dict=True
+		)
 		return flt(rows[0].t) if rows and rows[0].t is not None else 0.0
 	except Exception:
 		return 0.0
@@ -138,6 +139,20 @@ def _cash_and_bank(company):
 # --------------------------------------------------------------------------- #
 # snapshot / CTA / alerts — per role
 # --------------------------------------------------------------------------- #
+def _filtered(route, filters):
+	"""A list route carrying a ?filters=<JSON> deep link — the SPA list (DocTypeListView) seeds its
+	dynamic filters from it, so a Home tile opens the list already filtered to match its count."""
+	return f"{route}?filters={quote(json.dumps(filters))}"
+
+
+def _open_tasks_link(overdue_before=None):
+	"""The Tasks list as the Open / Overdue tile counts it — carried as visible, removable filter chips."""
+	filters = [["task_status", "not in", list(_OPEN_TASK)]]
+	if overdue_before:
+		filters.append(["exp_end_date", "<", overdue_before])
+	return _filtered("/tasks", filters)
+
+
 def _tile(label, value, slug, tone="brand", fmt="int", to=None):
 	# `to` makes a snapshot tile clickable — it opens the matching SPA list (with a filter query),
 	# so the number and the list it drills into stay in step.
@@ -341,7 +356,7 @@ def get_home_dashboard():
 		"Task", {**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]}
 	)
 	progress_today = _count("Task Progress Entry", {"entry_date": str(today)})
-	# Count the team — enabled users carrying a BuildSuite persona (what Settings › Users lists) —
+	# Count the team — enabled users carrying a BuildSuite persona (what Settings > Users lists) —
 	# not every enabled Frappe user (which pulled in integration/system accounts).
 	users = _count("User", {"enabled": 1, "persona": ["is", "set"]})
 	stage_pending = _count("Stage Planning", {**proj_in, "workflow_state": "Pending Approval"})
@@ -454,7 +469,7 @@ def get_home_dashboard():
 	if role in _ADMIN_ROLES:
 		snapshot = [
 			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
-			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to=_open_tasks_link()),
 			_tile("Users", users, "users", "success", to="/settings/users"),
 			_tile(
 				"Pending stage approvals",
@@ -473,7 +488,7 @@ def get_home_dashboard():
 				overdue_tasks,
 				f"{overdue_tasks} past their end date" if overdue_tasks else "Nothing overdue",
 				"refresh-ccw",
-				"/tasks?status=overdue",
+				_open_tasks_link(overdue_before=str(today)),
 				overdue_tasks > 0,
 				"danger",
 			),
@@ -504,7 +519,7 @@ def get_home_dashboard():
 		on_order, on_order_ct, overdue_del, mrs_pending, _rw = procurement()
 		snapshot = [
 			_tile("Active projects", active_ct, "clipboard-list", to="/projects?status=active"),
-			_tile("Open tasks", open_tasks, "check-circle", "info", to="/tasks?status=open"),
+			_tile("Open tasks", open_tasks, "check-circle", "info", to=_open_tasks_link()),
 			_tile(
 				"Stage approvals",
 				stage_pending,
@@ -517,7 +532,9 @@ def get_home_dashboard():
 				mrs_pending,
 				"procurement",
 				"warning" if mrs_pending else "muted",
-				to="/procurement/material-requests?status=Pending Approval",
+				# Match the count (docstatus 0 = drafts awaiting approval); the old ?status=Pending
+				# Approval was neither a real MR state nor read by the list.
+				to=_filtered("/procurement/material-requests", [["docstatus", "=", 0]]),
 			),
 		]
 		alerts = [
@@ -528,7 +545,7 @@ def get_home_dashboard():
 				mrs_pending,
 				f"{mrs_pending} request(s) to review" if mrs_pending else "No requests waiting",
 				"procurement",
-				"/procurement/material-requests",
+				_filtered("/procurement/material-requests", [["docstatus", "=", 0]]),
 				mrs_pending > 0,
 			),
 			_alert(

@@ -4,12 +4,26 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "sidebar_section",
+  "show_erpnext_nav",
   "reports_section",
   "reports",
   "doctypes_section",
   "doctypes"
  ],
  "fields": [
+  {
+   "fieldname": "sidebar_section",
+   "fieldtype": "Section Break",
+   "label": "Sidebar"
+  },
+  {
+   "default": "0",
+   "description": "When on, the ERPNext navigation section appears in the app sidebar. Off (default) hides it.",
+   "fieldname": "show_erpnext_nav",
+   "fieldtype": "Check",
+   "label": "Show ERPNext navigation in sidebar"
+  },
   {
    "fieldname": "reports_section",
    "fieldtype": "Section Break",
@@ -38,7 +52,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-16 00:00:00.000000",
+ "modified": "2026-10-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Workspace Setting",

@@ -16,16 +16,27 @@ APP_ROUTE = "core"
 
 required_apps = ["erpnext"]
 
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "buildsuite_core",
-# 		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
-# 		"title": "BuildSuite Core",
-# 		"route": f"/{APP_ROUTE}",
-#         "has_permission": "buildsuite_core.api.permission.has_app_permission",
-# 	}
-# ]
+# Shown as an app tile on the /apps launcher grid (the "icon grid" fallback kept alongside the
+# new desk Dock). Without this the BuildSuite icon never appears there — Frappe only lists apps
+# that register via this hook. Route opens the SPA at /core; the tile is gated by app permission.
+add_to_apps_screen = [
+	{
+		"name": "buildsuite_core",
+		"logo": "/assets/buildsuite_core/images/bs-icon.svg",
+		"title": "BuildSuite",
+		"route": f"/{APP_ROUTE}",
+		"has_permission": "buildsuite_core.api.permission.has_app_permission",
+	},
+	# To-dos are embedded in Core but presented as their own app — own launcher tile, own
+	# full-width shell, and Home returns to the desk. The tile opens the SPA's /todo route.
+	{
+		"name": "buildsuite_todo",
+		"logo": "/assets/buildsuite_core/images/to-do-icon.png",
+		"title": "To-dos",
+		"route": f"/{APP_ROUTE}/todo",
+		"has_permission": "buildsuite_core.api.permission.has_app_permission",
+	},
+]
 
 website_route_rules = [
 	{"from_route": f"/{APP_ROUTE}/<path:app_path>", "to_route": APP_ROUTE},
@@ -176,6 +187,9 @@ override_doctype_class = {  # nosemgrep: override-doctype-class -- intentional, 
 # Hook on document methods and events
 
 doc_events = {
+	# Resend as an Email Account service: pin the account to Resend's SMTP relay before core's
+	# validate tests the connection.
+	"Email Account": {"before_validate": "buildsuite_core.resend.account.apply_resend_defaults"},
 	# "Project": {
 	# 	"validate": "buildsuite_core.utils.project.create_warehouse_for_project",
 	# 	"on_trash": "buildsuite_core.utils.project.delete_warehouse_for_project"
@@ -185,15 +199,15 @@ doc_events = {
 	# report only if that role can see the workspace (else the tile never shows). Interactive only;
 	# skipped during install/migrate/patch where seeders set the baseline.
 	"Report": {"validate": "buildsuite_core.report_access.validate_report_roles"},
-	# Org-wide ERPNext masters made company-scoped: stamp the working company on insert.
-	# Supplier / Customer are global ERPNext parties (no BuildSuite company field) — not stamped.
-	"Item": {"before_insert": "buildsuite_core.utils.project.stamp_company_on_insert"},
 	# Reference No is optional in BuildSuite (SPA + mobile); default it for a bank Payment
 	# Entry so no path (advance / receipt / bill payment) hits ERPNext's mandatory check.
 	"Payment Entry": {"before_validate": "buildsuite_core.utils.payment.default_bank_reference"},
 	# ERPNext stamps the global default company; BuildSuite resolves the working one (which
 	# follows the topbar switcher), and the print's letter head is picked from it.
-	"Quotation": {"before_insert": "buildsuite_core.utils.quotation.set_company"},
+	"Quotation": {
+		"before_insert": "buildsuite_core.utils.quotation.set_company",
+		"validate": "buildsuite_core.utils.quotation.clear_milestone_timing",
+	},
 	# Petty Cash Request + Expense Entry: the beneficiary (requested_by / holder Employee's user)
 	# becomes `owner` so native "Only If Creator" DocPerms scope to them; the real entry-maker is
 	# kept in `raised_by`. owner must be swapped after_insert (insert() force-sets owner=session.user).
@@ -212,12 +226,14 @@ doc_events = {
 		"after_insert": "buildsuite_core.utils.employee_permissions.drop_self_service_for_managers"
 	},
 	"Project": {
+		"autoname": "buildsuite_core.overrides.project.autoname_project",
 		"before_insert": "buildsuite_core.utils.project.set_company_on_insert",
 		"validate": [
 			"buildsuite_core.utils.project.sync_project_status",
 			"buildsuite_core.utils.project.enforce_company_rules",
 			"buildsuite_core.utils.date_bounds.validate_project_dates",
 			"buildsuite_core.overrides.project.reject_duplicate_project_id",
+			"buildsuite_core.utils.full_day.validate_project_full_day_hours",
 		],
 		# create_warehouse_for_project must run after_insert, not on validate: it
 		# creates a Warehouse linked to this project, which doesn't exist in the DB
@@ -262,11 +278,30 @@ doc_events = {
 			"buildsuite_core.utils.task.sync_stage_tasks_on_delete",
 		],
 	},
+	# Timesheet rows are costed at the worker's daily rate over their project's full day; the cost is
+	# recalculated on every draft save and frozen on submit (utils.timesheet).
+	"Timesheet": {
+		# One timesheet per worker per day, whoever creates it. Before ERPNext's own validate, so
+		# the clear message is the one shown (its overlap check would otherwise answer first).
+		"before_validate": "buildsuite_core.utils.timesheet.validate_one_timesheet_per_day",
+		"validate": [
+			"buildsuite_core.utils.timesheet.cost_timesheet",
+			# A worker's day: regular time at most one full day, all hours at most 24.
+			"buildsuite_core.utils.daily_hours.validate_timesheet_hours",
+		],
+		# A submitted timesheet writes its rows into the labour registers; cancelling / deleting it
+		# removes them (utils.labour_cost is the one reader of those registers).
+		"on_submit": "buildsuite_core.utils.timesheet.create_registers_from_timesheet",
+		"on_cancel": "buildsuite_core.utils.timesheet.cancel_registers_of_timesheet",
+		"on_trash": "buildsuite_core.utils.timesheet.delete_registers_of_timesheet",
+	},
 	"Company": {
+		"validate": "buildsuite_core.utils.full_day.validate_company_full_day_hours",
 		"on_update": [
 			"buildsuite_core.utils.petty_cash.create_account",
 			"buildsuite_core.utils.branding.rebuild_letter_head_on_company_change",
 		],
+		"after_rename": "buildsuite_core.utils.branding.rebuild_letter_head_after_company_rename",
 	},
 	# Direct-in-Desk petty cash disbursement: a Journal Entry linked to a Petty Cash Request
 	# (the `petty_cash_request` field) disburses it on submit / reverts on cancel, and carries
@@ -396,9 +431,8 @@ scheduler_events = {"daily": ["buildsuite_core.utils.task.update_delayed_tasks"]
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
+# The Resend webhook audit trail (days to keep).
+default_log_clearing_doctypes = {"Resend Event Log": 90}
 
 # Translation
 # ------------
@@ -410,6 +444,8 @@ export_python_type_annotations = True
 
 fixtures = [
 	{"doctype": "Custom HTML Block", "filters": [["name", "in", ["Site Execution Workspace"]]]},
+	# The shipped Workflows are NOT fixtures (a fixture is re-imported over the site's copy on every
+	# migrate, discarding admin edits): see buildsuite_core.seed_workflows, create-if-missing.
 	# Custom Field and Property Setter are managed via after_migrate / before_migrate
 	# hooks in buildsuite_core.install — not as JSON fixtures.
 	{
@@ -422,16 +458,6 @@ fixtures = [
 		"doctype": "Workflow Action Master",
 		"filters": [
 			["workflow_action_name", "in", ["Submit for Approval", "Approve", "Reject", "Revise", "Cancel"]]
-		],
-	},
-	{
-		"doctype": "Workflow",
-		"filters": [
-			[
-				"workflow_name",
-				"in",
-				["Stage Planning Approval", "Scope Change Order Approval", "Material Request Approval"],
-			]
 		],
 	},
 ]
@@ -447,6 +473,7 @@ doctype_js = {
 	"Purchase Receipt": "public/js/purchase_receipt.js",
 	"Journal Entry": "public/js/journal_entry.js",
 	"Petty Cash Request": "public/js/petty_cash_request.js",
+	"Email Account": "public/js/email_account.js",
 }
 
 doctype_list_js = {"Task": "public/js/task_list.js"}

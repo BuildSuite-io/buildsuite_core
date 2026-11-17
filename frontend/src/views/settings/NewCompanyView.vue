@@ -102,27 +102,45 @@ const breadcrumbs = [
 					>. Saving requires the System Manager role.
 				</div>
 
-				<DeskSection :title="__('Identity')">
+				<DeskSection id="identity" :title="__('Identity')">
 					<DeskField
 						:label="__('Company Name')"
 						required
 						:error="errors.name"
-						:hint="__('Legal entity name. Becomes the company\'s name and appears on invoices / contracts.')"
+						:hint="
+							__(
+								'Legal entity name. Becomes the company\'s name and appears on invoices / contracts.'
+							)
+						"
 					>
-						<DeskInput v-model="form.name" :placeholder="__('e.g. Acme Realty Pvt Ltd')" />
+						<DeskInput
+							v-model="form.name"
+							:placeholder="__('e.g. Acme Realty Pvt Ltd')"
+						/>
 					</DeskField>
 					<DeskField
 						:label="__('Abbreviation')"
 						required
 						:error="errors.abbr"
-						:hint="__('Short code ERPNext prefixes onto the company\'s accounts (e.g. ARP).')"
+						:hint="
+							__(
+								'Short code ERPNext prefixes onto the company\'s accounts (e.g. ARP).'
+							)
+						"
 					>
-						<DeskInput v-model="form.abbr" :placeholder="__('e.g. ARP')" class="font-mono" />
+						<DeskInput
+							v-model="form.abbr"
+							:placeholder="__('e.g. ARP')"
+							class="font-mono"
+						/>
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Accounting')" :cols="2">
-					<DeskField :label="__('Default currency')" :hint="__('ISO code. Defaults to INR.')">
+				<DeskSection id="accounting" :title="__('Accounting')" :cols="2">
+					<DeskField
+						:label="__('Default currency')"
+						:hint="__('ISO code. Defaults to INR.')"
+					>
 						<DeskInput v-model="form.currency" placeholder="INR" class="font-mono" />
 					</DeskField>
 					<DeskField :label="__('Country')" :hint="__('Defaults to India.')">

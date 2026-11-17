@@ -9,7 +9,7 @@ from the live records (Material Request / Purchase Order / Purchase Receipt / Ma
 Construction Rate Master), so every figure comes from a document.
 
 One whitelisted endpoint per report. Each takes an optional `project` that narrows the report
-to that project and its direct sub-projects; without it the report runs portfolio-wide. The
+to exactly that project (sub-projects are not rolled in); without it the report runs portfolio-wide. The
 Vue view applies the lighter, in-reading filters (search, supplier, status, dates, the
 one-click narrowings) over the rows returned here."""
 
@@ -20,14 +20,11 @@ from buildsuite_core.api.material_consumption import get_warehouse_from_project
 
 
 def _scoped_projects(project):
-	"""The project plus its direct sub-projects, or None for portfolio-wide — the same rollup
-	rule the rest of the app follows for a parent project."""
+	"""Exactly the selected project, or None for portfolio-wide. The filter is an exact match —
+	a parent does NOT pull in its sub-projects' documents; pick a sub-project to see its own."""
 	if not project or not isinstance(project, str):
 		return None
-	ids = {project}
-	for child in frappe.get_all("Project", filters={"parent_project": project}, pluck="name"):
-		ids.add(child)
-	return ids
+	return {project}
 
 
 def _project_names(ids):
@@ -68,7 +65,15 @@ def requests_to_order(project: str | None = None):
 	mrs = frappe.get_all(
 		"Material Request",
 		filters=filters,
-		fields=["name", "project", "transaction_date", "schedule_date", "status", "per_ordered"],
+		fields=[
+			"name",
+			"project",
+			"transaction_date",
+			"schedule_date",
+			"status",
+			"workflow_state",
+			"per_ordered",
+		],
 		order_by="schedule_date asc",
 	)
 	rollup = _item_rollup("Material Request Item", [m.name for m in mrs])
@@ -85,10 +90,30 @@ def requests_to_order(project: str | None = None):
 				"required_by": str(m.schedule_date) if m.schedule_date else None,
 				"item_count": agg["count"],
 				"value": agg["value"],
-				"status": m.status,
+				"status": _mr_order_status(m.status, m.workflow_state, m.per_ordered),
 			}
 		)
 	return rows
+
+
+def _mr_order_status(native_status, workflow_state, per_ordered):
+	"""One coherent status for the request, as the detail header and the prototype show it.
+
+	A Material Request carries two axes: ERPNext's native `status` tracks ORDERING
+	(`Pending` there just means "submitted, not yet on a PO"), while the approval workflow's
+	`workflow_state` tracks APPROVAL (`Approved`). Showing the raw native `status` made the
+	report read `Pending` while the request's header read `Approved` — the same request looking
+	unapproved in one place and approved in another. Collapse them onto the prototype's single
+	lifecycle (Pending Approval → Approved → Partially Ordered → Ordered): ordering progress wins
+	once it has begun, otherwise the approval state is what the user is tracking."""
+	pct = flt(per_ordered)
+	if pct >= 100:
+		return "Ordered"
+	if pct > 0:
+		return "Partially Ordered"
+	# No ordering yet → show where it sits in approval (Approved / Pending Approval / Rejected…).
+	# Fall back to the native status only when no workflow governs the request.
+	return workflow_state or native_status
 
 
 def _item_rollup(child_doctype, parents):
@@ -206,17 +231,25 @@ def site_stock(project: str | None = None):
 	return rows
 
 
-@frappe.whitelist()
-def rate_check(project: str | None = None):
-	"""Purchase rate vs estimate — the latest order line per item that carries a Rate Master
-	code, against the Rate Master's current QS rate. Lines without a code are counted as
-	`unlinked` rather than silently dropped."""
-	scope = _scoped_projects(project)
+# A paid rate counts as above the estimate once it is more than this % over the Rate Master rate (a
+# little slack for rounding). The report colours the Variance cell red above it, and the dashboard's
+# "Above estimated rate" KPI counts the same rows, so the two always agree.
+ABOVE_ESTIMATE_PCT = 0.5
+
+
+def rate_check_rows(projects=None, company: str | None = None):
+	"""(rows, unlinked) for Purchase rate vs estimate: the latest submitted order line per item that
+	carries a Rate Master code, against the Rate Master's current QS rate. `projects` limits it to
+	those projects and `company` to that company's orders (None = no limit). Lines without a code
+	are counted as `unlinked` rather than silently dropped."""
 	where = "po.docstatus = 1"
 	params = []
-	if scope is not None:
+	if projects is not None:
 		where += " AND po.project IN %s"
-		params.append(tuple(scope))
+		params.append(tuple(projects))
+	if company:
+		where += " AND po.company = %s"
+		params.append(company)
 	lines = frappe.db.sql(
 		"""SELECT poi.item_code, poi.item_name, poi.uom, poi.rate, poi.custom_rate_master AS code,
 			po.supplier_name AS supplier, po.supplier AS supplier_id, po.name AS po, po.transaction_date AS order_date
@@ -233,7 +266,8 @@ def rate_check(project: str | None = None):
 			unlinked += 1
 			continue
 		prev = latest.get(ln.item_code)
-		if not prev or (str(ln.order_date) or "") > (str(prev["order_date"]) or ""):
+		# Latest by order date; two orders on one day: the later PO number wins.
+		if not prev or (str(ln.order_date), ln.po) > (str(prev["order_date"]), prev["po"]):
 			latest[ln.item_code] = ln
 
 	# Current QS rate + unit from the Rate Master, resolved once for the codes in play.
@@ -266,6 +300,18 @@ def rate_check(project: str | None = None):
 			}
 		)
 	rows.sort(key=lambda r: (r["variance"] if r["variance"] is not None else -999), reverse=True)
+	return rows, unlinked
+
+
+def count_above_estimate(rows) -> int:
+	"""How many rate-check rows are priced above their Rate Master rate."""
+	return sum(1 for r in rows if r["variance"] is not None and r["variance"] > ABOVE_ESTIMATE_PCT)
+
+
+@frappe.whitelist()
+def rate_check(project: str | None = None):
+	"""Purchase rate vs estimate — see rate_check_rows."""
+	rows, unlinked = rate_check_rows(_scoped_projects(project))
 	return {"rows": rows, "unlinked": unlinked}
 
 

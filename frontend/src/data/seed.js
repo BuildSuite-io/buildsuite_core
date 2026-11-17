@@ -1078,7 +1078,6 @@ export const seedData = {
 
 	coreSettings: {
 		enable_company_segregation: true,
-		default_project_type: "Commercial",
 		default_company: "ACME-COM",
 		prototype_demo_mode: true,
 	},
@@ -1089,7 +1088,6 @@ export const seedData = {
 		tpe_attachment_required: false,
 		cascade_delete_confirmation: true,
 	},
-
 
 	// ===== Project Type Settings (Session 39 — exploratory) =====
 	// Configurable wrapper around Project Type. The `name` is still the join
