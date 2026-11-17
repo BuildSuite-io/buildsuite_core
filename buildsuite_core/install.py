@@ -338,5 +338,9 @@ def delete_custom_fields(custom_fields):
 
 
 def make_property_setters():
+	# Written only where a value differs — frappe.make_property_setter would delete and re-insert
+	# every setter on every migrate (see utils.property_setter).
+	from buildsuite_core.utils.property_setter import ensure_property_setter
+
 	for property_setter in get_property_setters():
-		frappe.make_property_setter(property_setter, validate_fields_for_doctype=False)
+		ensure_property_setter(property_setter, validate_fields_for_doctype=False)
