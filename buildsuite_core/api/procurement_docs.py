@@ -312,6 +312,11 @@ def get_purchase_order(name: str):
 	doc.check_permission("read")
 	out = _serialize_po(doc)
 	out["actions"] = _po_actions(doc)
+	# Something left to bill (received less billed, or ordered less billed with nothing received),
+	# counting draft bills too — the PO page offers "+ Create supplier bill" only then.
+	from buildsuite_core.api.supplier_bill import has_billable_quantity
+
+	out["billable"] = has_billable_quantity(doc)
 	return out
 
 

@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
 # For license information, please see license.txt
 
-"""Project Finance › Bills — the supplier bill (Purchase Invoice) wrapper: create, submit, pay,
+"""Project Finance > Bills — the supplier bill (Purchase Invoice) wrapper: create, submit, pay,
 and the unified payables list."""
 
 import json
@@ -105,8 +105,8 @@ class TestSupplierBill(BuildSuiteTestCase):
 		# Document currency + rate are what we sent; ERPNext derived the base total — not us.
 		self.assertEqual(pi.currency, foreign)
 		self.assertAlmostEqual(flt(pi.conversion_rate), 1500, places=2)
-		self.assertAlmostEqual(flt(pi.grand_total), 400, places=2)  # 2 × 200, in USD
-		self.assertAlmostEqual(flt(pi.base_grand_total), 600000, places=2)  # × 1500, in company ccy
+		self.assertAlmostEqual(flt(pi.grand_total), 400, places=2)  # 2 x 200, in USD
+		self.assertAlmostEqual(flt(pi.base_grand_total), 600000, places=2)  # x 1500, in company ccy
 
 		bill = get_bill(name)
 		self.assertEqual(bill["currency"], foreign)
@@ -189,7 +189,7 @@ class TestSupplierBill(BuildSuiteTestCase):
 		name = self._draft_bill(supp, rate=50000)
 
 		self.assertAlmostEqual(
-			[a for a in available_advances(name) if a["payment_entry"] == pe][0]["unallocated"],
+			next(a for a in available_advances(name) if a["payment_entry"] == pe)["unallocated"],
 			30000,
 			places=2,
 		)
@@ -202,7 +202,7 @@ class TestSupplierBill(BuildSuiteTestCase):
 		)
 		# 10000 left, not the full 30000
 		self.assertAlmostEqual(
-			[a for a in available_advances(name) if a["payment_entry"] == pe][0]["unallocated"],
+			next(a for a in available_advances(name) if a["payment_entry"] == pe)["unallocated"],
 			10000,
 			places=2,
 		)
@@ -809,3 +809,135 @@ class TestSupplierBill(BuildSuiteTestCase):
 		pi_item = frappe.get_doc("Purchase Invoice", res["name"]).items[0]
 		self.assertEqual(pi_item.purchase_order, po.name)
 		self.assertEqual(pi_item.po_detail, line["po_detail"])
+
+	# --- H: a bill raised straight from a submitted PO (the PO page's "+ Create supplier bill") ---
+	# What get_po_bill_lines offers, and what save_bill will accept.
+
+	def _receive(self, po, qty):
+		# What a goods receipt leaves on the order: the line's received quantity and per_received.
+		row = po.items[0]
+		frappe.db.set_value("Purchase Order Item", row.name, "received_qty", qty)
+		frappe.db.set_value("Purchase Order", po.name, "per_received", 100.0 * qty / flt(row.qty))
+
+	def _bill_line(self, line, qty):
+		return {
+			"item_code": line["item_code"],
+			"description": line["description"],
+			"qty": qty,
+			"uom": line["uom"],
+			"rate": line["rate"],
+			"purchase_order": line["purchase_order"],
+			"po_detail": line["po_detail"],
+		}
+
+	def _draft(self, supp, line, qty, name=None):
+		from buildsuite_core.api.supplier_bill import save_bill
+
+		payload = {"supplier": supp, "project": self.project, "date": "2026-07-20"}
+		if name:
+			payload["name"] = name
+		payload["items"] = [self._bill_line(line, qty)]
+		return save_bill(json.dumps(payload))["name"]
+
+	def test_with_nothing_received_it_bills_the_ordered_quantity(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		po = self._submitted_po(self._supplier(), qty=10, rate=1000)
+		data = get_po_bill_lines(po.name)
+		self.assertEqual(data["basis"], "order")
+		self.assertEqual(flt(data["lines"][0]["qty"]), 10)
+		self.assertEqual(flt(data["lines"][0]["max_qty"]), 10)
+		self.assertEqual(data["currency"], po.currency)
+
+	def test_once_goods_are_received_it_bills_what_was_received(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		po = self._submitted_po(self._supplier(), qty=10, rate=1000)
+		self._receive(po, 4)
+		data = get_po_bill_lines(po.name)
+		self.assertEqual(data["basis"], "receipt")
+		self.assertEqual(flt(data["lines"][0]["qty"]), 4)
+		self.assertEqual(flt(data["lines"][0]["max_qty"]), 10)
+
+	def test_a_draft_bill_counts_so_nothing_is_billed_twice(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		supp = self._supplier()
+		po = self._submitted_po(supp, qty=10, rate=1000)
+		line = get_po_bill_lines(po.name)["lines"][0]
+		self._draft(supp, line, 6)
+		self.assertEqual(flt(get_po_bill_lines(po.name)["lines"][0]["qty"]), 4)
+		self._draft(supp, line, 4)
+		self.assertEqual(get_po_bill_lines(po.name)["lines"], [])
+
+	def test_a_line_cannot_go_past_what_is_left(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		supp = self._supplier()
+		po = self._submitted_po(supp, qty=10, rate=1000)
+		line = get_po_bill_lines(po.name)["lines"][0]
+		with self.assertRaises(frappe.ValidationError):
+			self._draft(supp, line, 11)
+		first = self._draft(supp, line, 7)
+		with self.assertRaises(frappe.ValidationError):
+			self._draft(supp, line, 4)  # 7 + 4 > 10
+		# Editing the draft itself doesn't count its own quantity against it.
+		self.assertEqual(self._draft(supp, line, 10, name=first), first)
+
+	def test_the_orders_taxes_come_across(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		tax_account = frappe.db.get_value(
+			"Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name"
+		)
+		if not tax_account:
+			self.skipTest("no tax account on this company")
+		supp = self._supplier()
+		item = self._item()
+		due = frappe.utils.add_days(frappe.utils.nowdate(), 7)
+		wh = frappe.db.get_value("Warehouse", {"is_group": 0, "company": self.company}, "name")
+		po = frappe.get_doc(
+			{
+				"doctype": "Purchase Order",
+				"supplier": supp,
+				"company": self.company,
+				"project": self.project,
+				"transaction_date": "2026-07-01",
+				"schedule_date": due,
+				"items": [
+					{"item_code": item.name, "qty": 2, "rate": 500, "schedule_date": due, "warehouse": wh}
+				],
+				"taxes": [
+					{
+						"charge_type": "On Net Total",
+						"account_head": tax_account,
+						"rate": 18,
+						"description": "GST 18%",
+						"category": "Total",
+						"add_deduct_tax": "Add",
+					}
+				],
+			}
+		).insert(ignore_permissions=True)
+		po.submit()
+		data = get_po_bill_lines(po.name)
+		self.assertEqual([(t["account_head"], t["rate"]) for t in data["taxes"]], [(tax_account, 18)])
+
+	def test_a_draft_order_is_refused(self):
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		po = self._submitted_po(self._supplier())
+		frappe.db.set_value("Purchase Order", po.name, "docstatus", 0)
+		with self.assertRaises(frappe.ValidationError):
+			get_po_bill_lines(po.name)
+
+	def test_the_po_page_offers_a_bill_only_while_quantity_is_left(self):
+		from buildsuite_core.api.procurement_docs import get_purchase_order
+		from buildsuite_core.api.supplier_bill import get_po_bill_lines
+
+		supp = self._supplier()
+		po = self._submitted_po(supp, qty=10, rate=1000)
+		self.assertTrue(get_purchase_order(po.name)["billable"])
+		line = get_po_bill_lines(po.name)["lines"][0]
+		self._draft(supp, line, 10)  # all of it on a draft bill
+		self.assertFalse(get_purchase_order(po.name)["billable"])

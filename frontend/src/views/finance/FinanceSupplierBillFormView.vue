@@ -7,7 +7,7 @@
 // Item lines carry a real Item (qty × rate), then taxes & discount via templates + a live
 // waterfall, and terms. Mirrors the customer-invoice form.
 import { computed, defineAsyncComponent, reactive, ref, nextTick } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
 	getSupplierBill,
@@ -36,6 +36,7 @@ const props = defineProps({ id: { type: String, default: "" } });
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
 const router = useRouter();
+const route = useRoute();
 const companyFilter = activeCompanyFilter();
 const accountFilters = computed(() => [["is_group", "=", 0], ...companyFilter.value]);
 const isEdit = computed(() => !!props.id);
@@ -173,28 +174,58 @@ if (isEdit.value) {
 		.finally(() => (loading.value = false));
 }
 
-// --- From Purchase Order: prefill lines from the PO's unbilled quantities ---
+// --- From Purchase Order: everything the bill starts with comes from the PO ---
+// Supplier, project, currency, the order's taxes, and one line per PO item with what is left to
+// bill at the PO rate (api.supplier_bill.get_po_bill_lines). `poBasis` says which quantity that
+// is: "receipt" (received, not yet billed) or "order" (nothing received: ordered, not yet billed).
+const poBasis = ref("");
 async function onPickPo(po) {
 	form.purchase_order = po || "";
+	poBasis.value = "";
 	if (!po) return;
 	try {
 		const ctx = await getPoBillLines(po);
+		poBasis.value = ctx.basis || "";
 		form.supplier = ctx.supplier || "";
 		form.supplier_name = ctx.supplier_name || "";
 		form.project = ctx.project || "";
+		if (ctx.currency && ctx.currency !== form.currency) {
+			form.currency = ctx.currency;
+			onCurrencyChange();
+		}
 		form.lines = (ctx.lines || []).map((l) => ({
 			item_code: l.item_code || "",
 			description: l.description || "",
 			qty: l.qty ?? 1,
+			max_qty: l.max_qty ?? null,
 			uom: l.uom || "",
 			rate: l.rate,
 			purchase_order: l.purchase_order || po,
 			po_detail: l.po_detail || "",
 		}));
 		if (!form.lines.length) form.lines = [blankLine()];
+		// The bill starts with the order's taxes, as ERPNext copies them; change them here or on
+		// the bill while it is a draft.
+		form.taxes_and_charges = ctx.taxes_and_charges || "";
+		form.taxes = (ctx.taxes || []).map((t) => ({
+			charge_type: t.charge_type,
+			account_head: t.account_head,
+			description: t.description,
+			rate: t.rate,
+		}));
 	} catch (err) {
 		showToast(err.message || __("Failed to load PO lines"), "error");
 	}
+}
+// Opened from a submitted PO's page ("+ Create supplier bill"): ?po=<name> starts the bill
+// against that order, already filled in.
+if (!isEdit.value && route.query.po) {
+	mode.value = "po";
+	onPickPo(String(route.query.po));
+}
+// A PO line may not be billed past what is left on the order (the server checks it too).
+function overLimit(l) {
+	return l.po_detail && l.max_qty != null && Number(l.qty) > Number(l.max_qty) + 1e-6;
 }
 function switchMode(m) {
 	if (isEdit.value || mode.value === m) return;
@@ -343,6 +374,14 @@ async function save() {
 	if (!form.supplier) errors.supplier = __("Supplier is required.");
 	const lines = form.lines.filter((l) => (l.item_code || l.description) && lineAmount(l) > 0);
 	if (!lines.length) errors.lines = __("Add at least one item with a quantity and rate.");
+	const over = lines.find(overLimit);
+	if (over)
+		errors.lines = __("Only {0} {1} of {2} is left to bill on {3}.", [
+			over.max_qty,
+			over.uom,
+			over.description || over.item_code,
+			over.purchase_order,
+		]);
 	if (errors.supplier || errors.po || errors.lines) return;
 
 	saving.value = true;
@@ -472,6 +511,27 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 							>
 						</div>
 					</DeskField>
+					<p
+						v-if="poBasis && !isEdit"
+						class="md:col-span-2 text-[11px] text-ink-600 bg-info-50 border border-info-200 px-3 py-2"
+						style="border-radius: 6px"
+						data-test="po-bill-basis"
+					>
+						{{
+							poBasis === "order"
+								? __(
+										"Nothing received yet: the lines are the ordered quantity not yet billed, at PO rates. Receipts that arrive later count as billed by this bill."
+								  )
+								: __(
+										"The lines are what was received and not yet billed, at PO rates."
+								  )
+						}}
+						<span v-if="form.taxes.length">{{
+							__(
+								"The order's taxes come across; change them below while the bill is a draft."
+							)
+						}}</span>
+					</p>
 				</DeskSection>
 
 				<!-- Direct mode header -->
@@ -580,12 +640,29 @@ const { status: autosaveStatus } = useAutosave(form, quietSave, {
 								v-model.number="l.qty"
 								type="number"
 								min="0"
+								:max="l.po_detail && l.max_qty != null ? l.max_qty : undefined"
 								:placeholder="__('Qty')"
 								class="text-right"
+								:class="{ '!border-danger-400': overLimit(l) }"
+								:title="
+									l.po_detail && l.max_qty != null
+										? __('Up to {0} {1} left to bill on {2}', [
+												l.max_qty,
+												l.uom,
+												l.purchase_order,
+										  ])
+										: ''
+								"
 							/>
-							<span v-if="mode === 'po'" class="text-xs text-ink-500 truncate">{{
-								l.uom || "—"
-							}}</span>
+							<span
+								v-if="mode === 'po'"
+								class="text-xs truncate"
+								:class="overLimit(l) ? 'text-danger-700' : 'text-ink-500'"
+								>{{ l.uom || "—"
+								}}<template v-if="overLimit(l)">
+									· {{ __("max {0}", [l.max_qty]) }}</template
+								></span
+							>
 							<DeskLinkPicker
 								v-else
 								v-model="l.uom"
