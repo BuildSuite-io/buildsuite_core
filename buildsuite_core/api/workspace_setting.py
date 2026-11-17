@@ -454,25 +454,10 @@ _ACCESS_RANK = {
 # home of the former client-side workspaceStructure config. Role-gated per
 # shortcut; an empty role list inherits the workspace's own visibility.
 # --------------------------------------------------------------------------- #
-def _shortcut_roles(names, parenttype):
-	"""role-name sets grouped by parent, for the given child parenttype."""
-	out = {}
-	if not names:
-		return out
-	for row in frappe.get_all(
-		"BuildSuite Workspace Role",
-		filters={"parent": ["in", names], "parenttype": parenttype},
-		fields=["parent", "role"],
-	):
-		out.setdefault(row.parent, set()).add(row.role)
-	return out
-
-
 @frappe.whitelist()
 def get_workspace_shortcuts(workspace: str):
-	"""Ordered quick-nav shortcuts for a workspace, filtered to the current user's roles. A
-	shortcut with no roles inherits the workspace's visibility (shown to anyone who can see it).
-	Returns [] if the user can't see the workspace at all."""
+	"""Ordered quick-nav shortcuts for a workspace: those the current user may open, by Frappe
+	permissions (_shortcut_permitted). Returns [] if the user can't see the workspace at all."""
 	if not frappe.db.exists("BuildSuite Workspace", workspace):
 		return []
 	user_roles = set(frappe.get_roles())
@@ -489,30 +474,34 @@ def get_workspace_shortcuts(workspace: str):
 	shortcuts = frappe.get_all(
 		"BuildSuite Workspace Shortcut",
 		filters={"workspace": workspace, "enabled": 1},
-		fields=["name", "label", "icon", "route", "sort_order"],
+		fields=["label", "icon", "route", "sort_order"],
 		order_by="sort_order asc",
 	)
-	roles_by_sc = _shortcut_roles([s.name for s in shortcuts], "BuildSuite Workspace Shortcut")
-	out = []
-	for s in shortcuts:
-		restrict = roles_by_sc.get(s.name)
-		if restrict and not (restrict & user_roles):
-			continue  # restricted, and the user holds none of the allowed roles
-		# Hide a shortcut that points at a DocType the user can't read — a role may see the
-		# workspace yet lack read on one of its records (e.g. Procurement persona with Task
-		# read revoked). Mirrors _resolve_doctype's gate for the curated DocType tiles; routes
-		# with no doctype behind them (dashboards, schedule, reports) stay un-gated.
-		dt = route_doctype(s.route)
-		if dt and not frappe.has_permission(dt, "read"):
-			continue
-		out.append({"label": s.label, "icon": s.icon, "route": s.route, "order": s.sort_order})
-	return out
+	return [
+		{"label": s.label, "icon": s.icon, "route": s.route, "order": s.sort_order}
+		for s in shortcuts
+		if _shortcut_permitted(s.route)
+	]
+
+
+def _shortcut_permitted(route):
+	"""Whether the session user may open what a shortcut points at — decided by Frappe
+	permissions, the same ones the page itself and the backend enforce, never by a role list on
+	the shortcut: read on the DocType behind the route, or a report anchor's roles for a custom
+	report route. A route with neither (a dashboard) shows to anyone who sees the workspace."""
+	from buildsuite_core.report_access import ROUTE_TO_REPORT, is_route_permitted
+
+	path = (route or "").split("?")[0].rstrip("/") or "/"
+	if path in ROUTE_TO_REPORT:
+		return is_route_permitted(path)
+	dt = route_doctype(route)
+	return not dt or bool(frappe.has_permission(dt, "read"))
 
 
 @frappe.whitelist()
 def get_workspace_shortcuts_config():
-	"""Every BuildSuite workspace + its shortcut rows (incl. restrict-to role names), for the
-	admin Workspace Structure screen."""
+	"""Every BuildSuite workspace + its shortcut rows, for the admin Workspace Structure screen.
+	Who sees a shortcut is not configured here: it follows Frappe permissions on what it opens."""
 	_require_admin()
 	workspaces = frappe.get_all(
 		"BuildSuite Workspace",
@@ -525,9 +514,6 @@ def get_workspace_shortcuts_config():
 		fields=["name", "workspace", "label", "icon", "route", "sort_order", "enabled"],
 		order_by="sort_order asc",
 	)
-	roles_by_sc = _shortcut_roles([s.name for s in shortcuts], "BuildSuite Workspace Shortcut")
-	# Each workspace's own Visible-To roles = the set a shortcut may be restricted to.
-	ws_roles = _shortcut_roles([w.name for w in workspaces], "BuildSuite Workspace")
 	by_ws = {w.name: [] for w in workspaces}
 	for s in shortcuts:
 		if s.workspace not in by_ws:
@@ -539,14 +525,12 @@ def get_workspace_shortcuts_config():
 				"route": s.route,
 				"sort_order": s.sort_order,
 				"enabled": bool(s.enabled),
-				"roles": sorted(roles_by_sc.get(s.name, set())),
 			}
 		)
 	return [
 		{
 			"slug": w.name,
 			"label": w.label,
-			"available_roles": sorted(ws_roles.get(w.name, set())),
 			"shortcuts": by_ws[w.name],
 		}
 		for w in workspaces
@@ -556,8 +540,8 @@ def get_workspace_shortcuts_config():
 @frappe.whitelist()
 def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
 	"""Replace one workspace's shortcut rows (order preserved). Admin only. `shortcuts` is a
-	JSON list of {label, icon, route, sort_order, enabled, roles:[role names]}; empty roles =
-	inherit the workspace's visibility."""
+	JSON list of {label, icon, route, sort_order, enabled}. Who sees each one follows Frappe
+	permissions on what it opens (get_workspace_shortcuts)."""
 	_require_admin()
 	if not frappe.db.exists("BuildSuite Workspace", workspace):
 		frappe.throw(_("Unknown workspace: {0}").format(workspace))
@@ -573,7 +557,6 @@ def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
 		route = (row.get("route") or "").strip()
 		if not (label and route):
 			continue
-		roles = [{"role": r} for r in (row.get("roles") or []) if frappe.db.exists("Role", r)]
 		doc = frappe.new_doc("BuildSuite Workspace Shortcut")
 		doc.workspace = workspace
 		doc.label = label
@@ -581,7 +564,6 @@ def set_workspace_shortcuts(workspace: str, shortcuts: str | None = None):
 		doc.route = route
 		doc.sort_order = row.get("sort_order") if row.get("sort_order") is not None else i + 1
 		doc.enabled = 1 if row.get("enabled", True) else 0
-		doc.set("roles", roles)
 		doc.insert(ignore_permissions=True)
 	frappe.db.commit()
 	return get_workspace_shortcuts_config()

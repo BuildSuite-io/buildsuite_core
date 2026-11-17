@@ -291,22 +291,16 @@ def seed_workspaces():
 	frappe.db.commit()
 
 
-# Per-workspace quick-nav shortcut tiles (formerly the client-side seed.js workspaceStructure).
-# `restrict_to` = persona ids the shortcut is limited to; empty tuple = inherit the workspace's
-# visibility (anyone who can see the workspace sees the shortcut).
+# Per-workspace quick-nav shortcut tiles (formerly the client-side seed.js workspaceStructure). Who
+# sees each one is not set here: it follows Frappe permissions on what it opens (read on the
+# DocType behind the route — api.workspace_setting.get_workspace_shortcuts).
 SHORTCUTS = {
 	"site-execution": [
-		{"label": "Projects", "icon": "📋", "route": "/projects", "sort": 1, "restrict_to": ()},
-		{"label": "Tasks", "icon": "✓", "route": "/tasks", "sort": 3, "restrict_to": ()},
-		{
-			"label": "Progress Entries",
-			"icon": "📝",
-			"route": "/progress-entries",
-			"sort": 5,
-			"restrict_to": ("admin", "bsa", "director", "pm", "site-engineer", "foreman"),
-		},
-		{"label": "Scope Change Orders", "icon": "🔁", "route": "/sco", "sort": 6, "restrict_to": ()},
-		{"label": "Schedule", "icon": "📅", "route": "/schedule", "sort": 7, "restrict_to": ()},
+		{"label": "Projects", "icon": "📋", "route": "/projects", "sort": 1},
+		{"label": "Tasks", "icon": "✓", "route": "/tasks", "sort": 3},
+		{"label": "Progress Entries", "icon": "📝", "route": "/progress-entries", "sort": 5},
+		{"label": "Scope Change Orders", "icon": "🔁", "route": "/sco", "sort": 6},
+		{"label": "Schedule", "icon": "📅", "route": "/schedule", "sort": 7},
 	],
 }
 
@@ -321,11 +315,6 @@ def seed_workspace_shortcuts():
 		if not frappe.db.exists("BuildSuite Workspace", workspace):
 			continue
 		for sc in shortcuts:
-			roles = [
-				{"role": PERSONA_ROLE[p]}
-				for p in sc["restrict_to"]
-				if frappe.db.exists("Role", PERSONA_ROLE[p])
-			]
 			name = frappe.db.get_value(
 				"BuildSuite Workspace Shortcut", {"workspace": workspace, "label": sc["label"]}
 			)
@@ -340,5 +329,4 @@ def seed_workspace_shortcuts():
 			doc.route = sc["route"]
 			doc.sort_order = sc["sort"]
 			doc.enabled = 1
-			doc.set("roles", roles)
 			doc.save(ignore_permissions=True)

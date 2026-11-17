@@ -4,9 +4,10 @@
 // filtered shortcuts grid, no Number Cards / Quick Lists / charts per §13.2.
 //
 // Architectural win: shortcuts are NOT hardcoded — they come from the backend
-// registry (BuildSuite Workspace Shortcut, role-filtered server-side by
-// get_workspace_shortcuts). A BSA at a customer org can reorder / hide / add
-// shortcuts via /settings/workspaces without developer involvement.
+// registry (BuildSuite Workspace Shortcut, filtered server-side by
+// get_workspace_shortcuts to what the user may open under Frappe permissions —
+// read on the DocType behind each tile). Who sees a tile is changed in Role
+// Permission Manager, not on the tile.
 //
 // Session 35 — EXPLORATORY DESIGN VISUALISATION (additive, NOT M1 scope):
 //   1. A prominent Project Dashboard tile rendered ABOVE the shortcuts grid,
@@ -36,8 +37,8 @@ import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSec
 
 const store = useDataStore();
 
-// Shortcuts come from the backend registry (BuildSuite Workspace Shortcut), role-filtered
-// server-side. A BSA configures them at /settings/workspaces.
+// Shortcuts come from the backend registry (BuildSuite Workspace Shortcut), filtered
+// server-side by Frappe permissions on what each one opens.
 const shortcuts = ref([]);
 const shortcutsLoaded = ref(false);
 
@@ -160,7 +161,7 @@ onMounted(async () => {
 				</div>
 			</RouterLink>
 
-			<!-- Shortcuts grid — role-filtered by the backend registry. Tiles use the
+			<!-- Shortcuts grid — filtered by Frappe permissions on the backend. Tiles use the
            shared <WorkspaceShortcut> component so every workspace landing renders
            the same tile shape. -->
 			<!-- Loading — placeholders match the tile shape so shortcuts swap in without shift. -->
