@@ -30,6 +30,7 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { createDataAdapter } from "@/data/adapters";
 import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { docFields } from "@/sdk/registry";
+import { getProjectActualExpense } from "@/data/projectActualApi";
 import { addProjectTeamMember, removeProjectTeamMember } from "@/data/projectTeamApi";
 import { PROJECT_TABS } from "@/data/projectTabs";
 import { getProjectTabOverrides, setProjectTabOverrides } from "@/data/projectSettingsApi";
@@ -589,16 +590,22 @@ const activeBoq = computed(() => boqs.value.find((b) => b.status === "Approved")
 
 // Cost rollups for the summary strip. Planned honours the active BOQ's
 // planned total when one exists, otherwise falls back to the project budget.
-// Actual is 0 until an Approved BOQ exists and its actuals have been
-// recalculated.
+// Actual is the project's expense booked in the ledger (same source as the
+// finance reports), not the BOQ's quantity-driven actual.
+const ledgerActual = ref(null);
+watch(
+	() => props.id,
+	async (id) => {
+		ledgerActual.value = null;
+		ledgerActual.value = await getProjectActualExpense(id);
+	},
+	{ immediate: true }
+);
 const plannedCost = computed(() => {
 	if (activeBoq.value) return activeBoq.value.totals.planned;
 	return project.value?.budget || 0;
 });
-const actualCost = computed(() => {
-	if (activeBoq.value) return activeBoq.value.totals.actual;
-	return 0;
-});
+const actualCost = computed(() => ledgerActual.value ?? 0);
 const costDeviation = computed(() => actualCost.value - plannedCost.value);
 const costDeviationPct = computed(() =>
 	plannedCost.value ? (costDeviation.value / plannedCost.value) * 100 : 0
@@ -1414,6 +1421,7 @@ usePageTitle(() => project.value?.name);
 				:project="project"
 				:pm-name="pmName"
 				:active-boq="activeBoq"
+				:actual-expense="ledgerActual"
 				:project-reports="projectReports"
 				:delayed-days="delayedDays"
 				:schedule-summary="scheduleSummary"
