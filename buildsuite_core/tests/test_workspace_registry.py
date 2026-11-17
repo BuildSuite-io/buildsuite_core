@@ -117,24 +117,88 @@ class TestWorkspaceRegistry(_PersonaBase):
 		self.assertEqual(hint(fore, "procurement"), "create-own")
 		self.assertEqual(hint(fore, "project-finance"), "self-service")
 
-	def test_shortcuts_are_role_filtered(self):
-		# Progress Entries is restricted to admin/bsa/director/pm/site-engineer/foreman;
-		# everyone else who can see the workspace sees the other four but not that one.
-		def labels(persona):
-			email = self._make_user(persona)
-			frappe.set_user(email)
+	def _shortcut_labels(self, user):
+		frappe.set_user(user)
+		try:
+			return {s["label"] for s in get_workspace_shortcuts("site-execution")}
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_shortcuts_follow_read_permission_not_role_lists(self):
+		# Who sees a shortcut is Frappe permissions on what it opens: the Progress Entries tile
+		# shows exactly to the personas that can read Task Progress Entry.
+		for persona in ("Foreman / Supervisor", "Estimator", "Quantity Surveyor", "Accountant"):
+			user = self._make_user(persona)
+			frappe.set_user(user)
 			try:
-				return {s["label"] for s in get_workspace_shortcuts("site-execution")}
+				can_read = frappe.has_permission("Task Progress Entry", "read")
 			finally:
 				frappe.set_user("Administrator")
+			labels = self._shortcut_labels(user)
+			self.assertEqual("Progress Entries" in labels, bool(can_read), persona)
+			self.assertIn("Projects", labels, persona)
 
-		foreman = labels("Foreman / Supervisor")
-		self.assertIn("Progress Entries", foreman)
-		self.assertIn("Projects", foreman)
+	def test_granting_read_in_role_permission_manager_shows_the_tile(self):
+		# A role BuildSuite does not ship: once given read on Task Progress Entry (and a view
+		# of the workspace), its users get the tile — no shortcut configuration involved.
+		from frappe.permissions import add_permission, update_permission_property
 
-		estimator = labels("Estimator")
-		self.assertNotIn("Progress Entries", estimator)  # restricted, estimator excluded
-		self.assertIn("Projects", estimator)  # unrestricted
+		self.addCleanup(frappe.clear_cache)  # runs after the rollback, so no grant stays cached
+		role = f"Shortcut Test {frappe.generate_hash(length=5)}"
+		frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(
+			ignore_permissions=True
+		)
+		ws = frappe.get_doc("BuildSuite Workspace", "site-execution")
+		ws.append("roles", {"role": role, "access": "read"})
+		ws.save(ignore_permissions=True)
+		user = self._make_user("Estimator")
+		frappe.get_doc("User", user).add_roles(role)
+
+		add_permission("Task Progress Entry", role, 0)
+		update_permission_property("Task Progress Entry", role, 0, "read", 1, validate=False)
+		frappe.clear_cache()
+		self.assertIn("Progress Entries", self._shortcut_labels(user))
+
+	def test_a_leftover_restriction_row_is_ignored(self):
+		# Rows from the retired "Restrict To Roles" list must not hide a tile.
+		sc = frappe.db.get_value(
+			"BuildSuite Workspace Shortcut", {"workspace": "site-execution", "label": "Projects"}
+		)
+		frappe.get_doc(
+			{
+				"doctype": "BuildSuite Workspace Role",
+				"parent": sc,
+				"parenttype": "BuildSuite Workspace Shortcut",
+				"parentfield": "roles",
+				"role": "System Manager",
+			}
+		).db_insert()
+		self.assertIn("Projects", self._shortcut_labels(self._make_user("Foreman / Supervisor")))
+
+	def test_the_patch_removes_only_shortcut_restriction_rows(self):
+		from buildsuite_core.patches.drop_workspace_shortcut_role_restrictions import execute
+
+		sc = frappe.db.get_value(
+			"BuildSuite Workspace Shortcut", {"workspace": "site-execution", "label": "Tasks"}
+		)
+		frappe.get_doc(
+			{
+				"doctype": "BuildSuite Workspace Role",
+				"parent": sc,
+				"parenttype": "BuildSuite Workspace Shortcut",
+				"parentfield": "roles",
+				"role": "System Manager",
+			}
+		).db_insert()
+		workspace_roles = frappe.db.count("BuildSuite Workspace Role", {"parenttype": "BuildSuite Workspace"})
+		execute()
+		self.assertEqual(
+			frappe.db.count("BuildSuite Workspace Role", {"parenttype": "BuildSuite Workspace Shortcut"}), 0
+		)
+		self.assertEqual(
+			frappe.db.count("BuildSuite Workspace Role", {"parenttype": "BuildSuite Workspace"}),
+			workspace_roles,
+		)
 
 	def test_shortcuts_hidden_when_workspace_not_visible(self):
 		# Procurement can't see Site Execution, so even though it HAS shortcuts, none leak.
@@ -152,7 +216,7 @@ class TestWorkspaceRegistry(_PersonaBase):
 		self.assertFalse(bad, f"SHORTCUT_ROUTE_RESOURCES values not in RESOURCE_DOCTYPES: {bad}")
 		self.assertEqual(route_doctype("/tasks"), "Task")
 		self.assertEqual(route_doctype("/tasks?x=1"), "Task")  # query string ignored
-		self.assertIsNone(route_doctype("/schedule"))  # not doctype-backed -> never gated
+		self.assertEqual(route_doctype("/schedule"), "Task")  # the schedule shows the tasks
 
 	def test_shortcut_hidden_when_doctype_unreadable(self):
 		# A user may SEE a workspace yet lack read on one of its shortcut targets (the reported

@@ -69,12 +69,12 @@ RESOURCE_DOCTYPES = {
 }
 
 
-# SPA list-route path → the resource key whose READ permission gates a workspace shortcut
-# pointing there. Shortcuts (BuildSuite Workspace Shortcut) store a route, not a doctype, so
-# this is the seam that lets ``get_workspace_shortcuts`` hide a tile a persona can't read —
-# mirroring ``_resolve_doctype`` for the curated DocType tiles. Routes with no doctype behind
-# them (dashboards, schedule, reports, workspace landings) are intentionally ABSENT here, so
-# they are never gated. Values are validated against RESOURCE_DOCTYPES by test_workspace_registry.
+# SPA route path → the resource key whose READ permission decides whether a workspace shortcut
+# pointing there is shown (get_workspace_shortcuts). Shortcuts store a route, not a doctype, so
+# this is the seam between them and Frappe permissions. Custom report routes are gated by their
+# report anchor instead (report_access), and a route with neither (a dashboard, a workspace
+# landing) is shown to anyone who sees the workspace. Values are validated against
+# RESOURCE_DOCTYPES by test_workspace_registry.
 SHORTCUT_ROUTE_RESOURCES = {
 	# Site execution
 	"/projects": "project",
@@ -83,6 +83,7 @@ SHORTCUT_ROUTE_RESOURCES = {
 	"/progress-entries": "taskProgressEntry",
 	"/stage-plannings": "stagePlanning",
 	"/sco": "sco",
+	"/schedule": "task",  # the schedule is the project's tasks on a timeline
 	# Estimation
 	"/boq": "boq",
 	"/rate-master": "rateMaster",
