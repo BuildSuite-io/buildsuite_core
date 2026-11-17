@@ -249,6 +249,113 @@ class TestPermissions(BuildSuiteTestCase):
 		team_project(d, "dir")
 		self.assertEqual(query(d), "", "an EXEMPT role must never be scoped")
 
+	# --- Persona.project_visibility: team scoping set per persona, not per role ----------------
+	def _persona(self, roles, visibility):
+		return frappe.get_doc(
+			{
+				"doctype": "Persona",
+				"persona_name": f"Scoping {visibility[:8]} {frappe.generate_hash(length=5)}",
+				"enabled": 1,
+				"project_visibility": visibility,
+				"roles": [{"role": r} for r in roles],
+			}
+		).insert(ignore_permissions=True)
+
+	def test_default_personas_keep_the_scoping_they_had(self):
+		from buildsuite_core.buildsuite_core.doctype.persona.seed_personas import DEFAULT_PROJECT_VISIBILITY
+
+		for persona, visibility in DEFAULT_PROJECT_VISIBILITY.items():
+			self.assertEqual(
+				frappe.db.get_value("Persona", persona, "project_visibility"), visibility, persona
+			)
+
+	def test_a_persona_on_a_site_role_can_be_set_to_see_every_project(self):
+		# Site Engineer's role was always team-scoped in code; a persona can now open it up.
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		persona = self._persona(["BuildSuite Site Engineer"], "All projects")
+		user = self._make_persona_user(persona.name, "seall")
+		self.assertEqual(query(user), "")
+
+		# Doc-level too: a task on a project they are not teamed on is readable.
+		other = self._make_project(company=self.company)
+		task = self._make_task(other.name)
+		frappe.set_user(user)
+		try:
+			self.assertTrue(frappe.get_doc("Task", task.name).has_permission("read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_persona_on_an_exempt_role_can_be_narrowed_to_its_teams(self):
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		persona = self._persona(["BuildSuite Director"], "Team projects only")
+		user = self._make_persona_user(persona.name, "dirteam")
+		self.assertIn("Project Team", query(user))
+
+	def test_a_custom_role_persona_follows_its_setting(self):
+		# A persona built from a role BuildSuite does not ship — "All projects" leaves access to
+		# its DocPerms (Frappe's default processing); "until teamed" narrows once teamed.
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		everything = self._make_persona_user(self._persona(["Projects User"], "All projects").name, "cuall")
+		self.assertEqual(query(everything), "")
+
+		flip = self._make_persona_user(
+			self._persona(["Projects User"], "All projects until added to a team").name, "cuflip"
+		)
+		self.assertEqual(query(flip), "")
+		self._project_with_member(flip)
+		self.assertIn("Project Team", query(flip))
+
+	def test_changing_the_setting_takes_effect_for_existing_users(self):
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		persona = self._persona(["BuildSuite Site Engineer"], "Team projects only")
+		user = self._make_persona_user(persona.name, "sechg")
+		self.assertIn("Project Team", query(user))
+		persona.project_visibility = "All projects"
+		persona.save(ignore_permissions=True)
+		self.assertEqual(query(user), "")
+
+	def test_system_manager_is_never_scoped_whatever_the_persona(self):
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		persona = self._persona(["BuildSuite Site Engineer"], "Team projects only")
+		user = self._make_persona_user(persona.name, "smteam")
+		frappe.get_doc("User", user).add_roles("System Manager")
+		self.assertEqual(query(user), "")
+
+	def test_a_user_without_a_persona_falls_back_to_the_role_rule(self):
+		from buildsuite_core.permissions.project import get_project_permission_query as query
+
+		email = f"nopersona-{self._n}@example.com"
+		frappe.get_doc(
+			{"doctype": "User", "email": email, "first_name": "NP", "send_welcome_email": 0}
+		).insert(ignore_permissions=True)
+		frappe.get_doc("User", email).add_roles("BuildSuite PM")  # PM: all until teamed
+		self.assertEqual(query(email), "")
+		self._project_with_member(email)
+		self.assertIn("Project Team", query(email))
+
+	def test_the_patch_derives_a_custom_personas_setting_from_its_roles(self):
+		from buildsuite_core.patches.set_persona_project_visibility import execute
+
+		custom_pm = self._persona(["BuildSuite PM"], "Team projects only")
+		custom_other = self._persona(["Projects User"], "All projects")
+		frappe.db.set_value("Persona", "Director / Owner", "project_visibility", "Team projects only")
+		execute()
+		self.assertEqual(
+			frappe.db.get_value("Persona", custom_pm.name, "project_visibility"),
+			"All projects until added to a team",
+		)
+		self.assertEqual(
+			frappe.db.get_value("Persona", custom_other.name, "project_visibility"), "Team projects only"
+		)
+		self.assertEqual(
+			frappe.db.get_value("Persona", "Director / Owner", "project_visibility"), "All projects"
+		)
+
 	# --- M2 access control (Estimation / Rate Master / Purchase & Stock) -----
 	def _as(self, persona, prefix):
 		user = self._make_persona_user(persona, prefix)

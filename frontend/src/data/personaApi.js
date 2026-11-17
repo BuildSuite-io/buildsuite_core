@@ -15,6 +15,27 @@ async function call(method, args) {
 	}
 }
 
+// Persona.project_visibility — which projects (and their tasks, work packages, progress entries
+// and stage plans) the persona's users see. `value` is the stored option (permissions/project.py).
+export const PROJECT_VISIBILITY_OPTIONS = [
+	{
+		value: "Team projects only",
+		label: "Team projects only",
+		hint: "Only the projects whose team they are on.",
+	},
+	{
+		value: "All projects until added to a team",
+		label: "All projects until added to a team",
+		hint: "Every project until they join any project team, then only their teams.",
+	},
+	{
+		value: "All projects",
+		label: "All projects",
+		hint: "Every project their role permissions allow, team or not.",
+	},
+];
+export const DEFAULT_PROJECT_VISIBILITY = "Team projects only";
+
 export const listPersonas = () => call("list_personas");
 export const getPersona = (name) => call("get_persona", { name });
 export const listAssignableRoles = () => call("list_assignable_roles");

@@ -30,6 +30,7 @@ def _serialize(doc):
 		"enabled": doc.enabled,
 		"sort_order": doc.sort_order,
 		"is_default": doc.is_default,
+		"project_visibility": doc.project_visibility,
 		"roles": [r.role for r in doc.roles],
 	}
 
@@ -40,7 +41,7 @@ def list_personas():
 	_require_admin()
 	rows = frappe.get_all(
 		"Persona",
-		fields=["name", "persona_name", "slug", "enabled", "sort_order"],
+		fields=["name", "persona_name", "slug", "enabled", "sort_order", "project_visibility"],
 		order_by="sort_order asc",
 	)
 	for row in rows:
@@ -89,6 +90,7 @@ def save_persona(
 	enabled: int = 1,
 	sort_order: int = 0,
 	roles: str | None = None,
+	project_visibility: str | None = None,
 ):
 	"""Create or update a persona. The persona_name is the record key and is only
 	settable on create (renaming would orphan the User.persona links that point at
@@ -112,6 +114,9 @@ def save_persona(
 		doc.description = description
 	doc.enabled = 1 if cint(enabled) else 0
 	doc.sort_order = cint(sort_order)
+	if project_visibility:
+		# The doctype's Select validation rejects anything that is not one of its options.
+		doc.project_visibility = project_visibility
 
 	doc.set("roles", [])
 	for role in roles:
@@ -131,8 +136,6 @@ def delete_persona(name: str):
 		frappe.throw(_("Persona not found."))
 	in_use = frappe.db.count("User", {"persona": name})
 	if in_use:
-		frappe.throw(
-			_("{0} user(s) are still assigned this persona — reassign them first.").format(in_use)
-		)
+		frappe.throw(_("{0} user(s) are still assigned this persona — reassign them first.").format(in_use))
 	frappe.delete_doc("Persona", name, ignore_permissions=True)
 	return {"ok": True}

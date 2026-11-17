@@ -8,7 +8,14 @@ import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
 import { useConfirm } from "@/composables/useConfirm";
-import { getPersona, savePersona, deletePersona, listAssignableRoles } from "@/data/personaApi";
+import {
+	getPersona,
+	savePersona,
+	deletePersona,
+	listAssignableRoles,
+	PROJECT_VISIBILITY_OPTIONS,
+	DEFAULT_PROJECT_VISIBILITY,
+} from "@/data/personaApi";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -16,6 +23,7 @@ import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import PersonaRolesField from "@/components/PersonaRolesField.vue";
 
 const props = defineProps({ id: { type: String, required: true } });
@@ -29,8 +37,11 @@ const form = reactive({
 	enabled: true,
 	description: "",
 	roles: [],
+	projectVisibility: DEFAULT_PROJECT_VISIBILITY,
 });
 const errors = ref({});
+const visibilityHint = () =>
+	__(PROJECT_VISIBILITY_OPTIONS.find((o) => o.value === form.projectVisibility)?.hint || "");
 const isDefault = ref(false);
 const saving = ref(false);
 const loading = ref(true);
@@ -48,6 +59,7 @@ async function load() {
 		form.enabled = !!data.enabled;
 		form.description = data.description || "";
 		form.roles = data.roles || [];
+		form.projectVisibility = data.project_visibility || DEFAULT_PROJECT_VISIBILITY;
 		isDefault.value = !!data.is_default;
 	} catch (err) {
 		loadError.value = err.message || __("Could not load persona.");
@@ -72,6 +84,7 @@ async function save() {
 			enabled: form.enabled ? 1 : 0,
 			sort_order: Number(form.sortOrder) || 0,
 			roles: form.roles,
+			project_visibility: form.projectVisibility,
 		});
 		showToast(__("Persona saved"));
 		router.push("/settings/personas");
@@ -176,6 +189,32 @@ onMounted(() => {
 						:hint="__('Assigning this persona to a user grants these Frappe roles.')"
 					>
 						<PersonaRolesField v-model="form.roles" :available="assignableRoles" />
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection id="project-access" :title="__('Project access')" :cols="1">
+					<DeskField
+						:label="__('Project visibility')"
+						:hint="
+							visibilityHint() +
+							' ' +
+							__(
+								'Applies to projects and their tasks, work packages, progress entries and stage plans. System Manager always sees all projects.'
+							)
+						"
+					>
+						<DeskSelect
+							v-model="form.projectVisibility"
+							data-test="project-visibility"
+						>
+							<option
+								v-for="o in PROJECT_VISIBILITY_OPTIONS"
+								:key="o.value"
+								:value="o.value"
+							>
+								{{ __(o.label) }}
+							</option>
+						</DeskSelect>
 					</DeskField>
 				</DeskSection>
 
