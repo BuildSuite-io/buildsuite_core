@@ -669,3 +669,118 @@ class TestPettyCash(BuildSuiteTestCase):
 		req.disburse(self._cash_account())
 
 		self.assertEqual(holder_balances(self.company), reconciled_holder_balances(self.company))
+
+	# --- Paid On: the day the cash was paid is the ledger's transaction date -----------------
+	def _gl_dates(self, je_name):
+		return set(
+			str(d)
+			for d in frappe.get_all(
+				"GL Entry", filters={"voucher_no": je_name, "is_cancelled": 0}, pluck="posting_date"
+			)
+		)
+
+	def test_disbursing_posts_on_the_day_the_cash_was_paid(self):
+		req = self._request(amount=5000)  # requested 2026-07-20
+		req.disburse(self._cash_account(), "2026-07-25")
+		req.reload()
+		self.assertEqual(str(req.disbursement_date), "2026-07-25")
+		self.assertEqual(
+			str(frappe.db.get_value("Journal Entry", req.journal_entry, "posting_date")), "2026-07-25"
+		)
+		self.assertEqual(self._gl_dates(req.journal_entry), {"2026-07-25"})
+		self.assertTrue(req.disbursed_on)  # when it was recorded, kept apart
+
+	def test_paid_on_defaults_to_today(self):
+		req = self._request(amount=5000)
+		req.disburse(self._cash_account())
+		req.reload()
+		self.assertEqual(str(req.disbursement_date), frappe.utils.nowdate())
+		self.assertEqual(self._gl_dates(req.journal_entry), {frappe.utils.nowdate()})
+
+	def test_paid_on_cannot_be_in_the_future_or_before_the_request(self):
+		req = self._request(amount=5000)  # requested 2026-07-20
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(self._cash_account(), frappe.utils.add_days(frappe.utils.nowdate(), 1))
+		with self.assertRaises(frappe.ValidationError):
+			req.disburse(self._cash_account(), "2026-07-19")
+		self.assertEqual(frappe.db.get_value("Petty Cash Request", req.name, "status"), "Requested")
+
+	def test_the_api_disburses_on_the_given_day(self):
+		from buildsuite_core.api import petty_cash as pc
+
+		req = self._request(amount=5000)
+		rec = pc.disburse(req.name, self._cash_account(), "2026-07-22")
+		self.assertEqual(rec["disbursement_date"], "2026-07-22")
+		self.assertEqual(self._gl_dates(rec["journal_entry"]), {"2026-07-22"})
+
+	def test_a_direct_issue_posts_on_its_paid_on_day(self):
+		import json
+
+		from buildsuite_core.api import petty_cash as pc
+
+		rec = pc.issue_direct(
+			json.dumps(
+				{
+					"requested_by": "Administrator",
+					"amount": 2500,
+					"paid_from": self._cash_account(),
+					"purpose": "Float for the week",
+					"disbursement_date": "2026-07-21",
+				}
+			)
+		)
+		self.assertEqual(rec["disbursement_date"], "2026-07-21")
+		self.assertEqual(rec["request_date"], "2026-07-21")  # no request before it
+		self.assertEqual(self._gl_dates(rec["journal_entry"]), {"2026-07-21"})
+
+	def test_a_desk_journal_entry_sets_paid_on_and_cancelling_clears_it(self):
+		from buildsuite_core.utils.petty_cash import resolve_petty_cash_account
+
+		req = self._request(amount=4000)
+		je = frappe.new_doc("Journal Entry")
+		je.company = self.company
+		je.posting_date = "2026-07-23"
+		je.petty_cash_request = req.name
+		je.append(
+			"accounts",
+			{"account": resolve_petty_cash_account(self.company), "debit_in_account_currency": 4000},
+		)
+		je.append("accounts", {"account": self._cash_account(), "credit_in_account_currency": 4000})
+		je.flags.ignore_permissions = True
+		je.insert()
+		je.submit()
+		self.assertEqual(
+			str(frappe.db.get_value("Petty Cash Request", req.name, "disbursement_date")), "2026-07-23"
+		)
+		je.cancel()
+		self.assertIsNone(frappe.db.get_value("Petty Cash Request", req.name, "disbursement_date"))
+
+	def test_reversing_clears_paid_on(self):
+		req = self._request(amount=3000)
+		req.disburse(self._cash_account(), "2026-07-24")
+		req.reload()
+		req.cancel_disbursement()
+		req.reload()
+		self.assertFalse(req.disbursement_date)
+
+	def test_the_holders_statement_dates_a_disbursement_by_paid_on(self):
+		from buildsuite_core.api import petty_cash as pc
+
+		req = self._request(amount=3500)
+		req.disburse(self._cash_account(), "2026-07-26")
+		employee = frappe.db.get_value("Employee", {"user_id": "Administrator", "status": "Active"}, "name")
+		rows = pc.statement(employee)
+		rows = rows.get("rows", rows) if isinstance(rows, dict) else rows
+		mine = [r for r in rows if r.get("ref") == req.name]
+		self.assertEqual([r["date"] for r in mine], ["2026-07-26"])
+
+	def test_the_patch_fills_paid_on_from_the_journal_entry(self):
+		from buildsuite_core.patches.backfill_petty_cash_paid_on import execute
+
+		req = self._request(amount=3000)
+		req.disburse(self._cash_account(), "2026-07-27")
+		frappe.db.set_value("Petty Cash Request", req.name, "disbursement_date", None)
+		execute()
+		self.assertEqual(
+			str(frappe.db.get_value("Petty Cash Request", req.name, "disbursement_date")), "2026-07-27"
+		)

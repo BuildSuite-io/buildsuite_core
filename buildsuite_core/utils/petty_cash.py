@@ -14,7 +14,7 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
-from frappe.utils import flt, formatdate, getdate, now_datetime
+from frappe.utils import flt, formatdate, getdate, now_datetime, nowdate
 
 PETTY_CASH_ACCOUNT_NAME = "Petty Cash"
 PETTY_CASH_PARENT_ACCOUNT = "Cash In Hand"
@@ -127,7 +127,10 @@ def seed_default_petty_cash_account(company=None):
 			current = None
 
 	named = frappe.db.get_value(
-		"Account", {"account_name": PETTY_CASH_ACCOUNT_NAME, "company": company}, ["name", "is_group"], as_dict=True
+		"Account",
+		{"account_name": PETTY_CASH_ACCOUNT_NAME, "company": company},
+		["name", "is_group"],
+		as_dict=True,
 	)
 	if not named:
 		chosen = resolve_petty_cash_account(company)
@@ -175,6 +178,19 @@ def employee_for_user(user):
 	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
 
 
+def disbursement_date_for(date=None, request_date=None):
+	"""The day petty cash was paid out — the date its Journal Entry is posted on. Today unless
+	given; never a day still to come, nor before the cash was asked for."""
+	paid_on = getdate(date) if date else getdate(nowdate())
+	if paid_on > getdate(nowdate()):
+		frappe.throw(_("The date the cash was paid cannot be in the future."))
+	if request_date and paid_on < getdate(request_date):
+		frappe.throw(
+			_("The cash cannot be paid before it was requested, on {0}.").format(formatdate(request_date))
+		)
+	return paid_on
+
+
 def post_disbursement_journal_entry(doc):
 	"""Build + submit the disbursement JE and return its name."""
 	amount = flt(doc.amount)
@@ -202,7 +218,10 @@ def post_disbursement_journal_entry(doc):
 	# the petty-cash reconciliation that filters GL on "Journal Entry" is unaffected.
 	je.voucher_type = "Petty Cash Issue"
 	je.company = doc.company
-	je.posting_date = str(doc.request_date) if doc.request_date else None
+	# Posted on the day the cash was paid (Paid On), which the accountant chose; the request date
+	# only for a record that has none (it predates the field).
+	paid_on = doc.get("disbursement_date") or doc.request_date
+	je.posting_date = str(paid_on) if paid_on else None
 	je.user_remark = f"Petty cash {doc.name}: {doc.purpose or ''}"[:140]
 	if frappe.get_meta("Journal Entry").has_field("petty_cash_request"):
 		je.petty_cash_request = doc.name
@@ -318,6 +337,8 @@ def sync_petty_cash_request_on_je_submit(doc, method=None):
 			"paid_from": _je_funding_account(doc, company),
 			"disbursed_by": frappe.session.user,
 			"disbursed_on": now_datetime(),
+			# Posted by hand in Desk: the Journal Entry's own posting date is the day it was paid.
+			"disbursement_date": doc.posting_date,
 		},
 	)
 	frappe.get_doc("Petty Cash Request", request).add_comment(
@@ -344,6 +365,7 @@ def revert_petty_cash_request_on_je_cancel(doc, method=None):
 			"paid_from": None,
 			"disbursed_by": None,
 			"disbursed_on": None,
+			"disbursement_date": None,
 		},
 	)
 	frappe.get_doc("Petty Cash Request", request).add_comment(
@@ -378,7 +400,7 @@ def _employee_context(employee):
 
 
 def _posted_balance(employee, account):
-	"""Net Dr − Cr of submitted, non-cancelled GL entries."""
+	"""Net Dr - Cr of submitted, non-cancelled GL entries."""
 	balance = frappe.db.sql(
 		"""
 		SELECT COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0)
@@ -393,7 +415,7 @@ def _posted_balance(employee, account):
 
 
 def _draft_journal_balance(employee, account):
-	"""Net Dr − Cr sitting in unsubmitted Journal Entries."""
+	"""Net Dr - Cr sitting in unsubmitted Journal Entries."""
 	balance = frappe.db.sql(
 		"""
 		SELECT COALESCE(SUM(jea.debit), 0) - COALESCE(SUM(jea.credit), 0)
@@ -573,7 +595,13 @@ def _fetch_display_fields(targets):
 
 
 @frappe.whitelist()
-def get_transaction_list(employee: str, transaction_type: str | None = None, project: str | None = None, from_date: str | None = None, to_date: str | None = None):
+def get_transaction_list(
+	employee: str,
+	transaction_type: str | None = None,
+	project: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+):
 	"""Petty cash ledger for an employee, newest first, with a running balance.
 
 	The running balance is accumulated across the employee's full history before the
