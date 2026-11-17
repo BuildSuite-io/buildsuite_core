@@ -98,19 +98,27 @@ def ensure_cypress_work_order():
 		)
 		project = frappe.db.get_value("Project", {"company": company}, "name")
 		if not project:
-			project = frappe.get_doc(
-				{"doctype": "Project", "project_name": "Cypress WO Project", "company": company}
-			).insert(ignore_permissions=True).name
+			project = (
+				frappe.get_doc(
+					{"doctype": "Project", "project_name": "Cypress WO Project", "company": company}
+				)
+				.insert(ignore_permissions=True)
+				.name
+			)
 		sub = frappe.db.get_value("Supplier", {"supplier_group": "Subcontractor"}, "name")
 		if not sub:
 			grp = frappe.db.get_value("Supplier Group", {"supplier_group_name": "Subcontractor"}, "name")
-			sub = frappe.get_doc(
-				{
-					"doctype": "Supplier",
-					"supplier_name": "Cypress Subcontractor",
-					"supplier_group": grp or "Subcontractor",
-				}
-			).insert(ignore_permissions=True).name
+			sub = (
+				frappe.get_doc(
+					{
+						"doctype": "Supplier",
+						"supplier_name": "Cypress Subcontractor",
+						"supplier_group": grp or "Subcontractor",
+					}
+				)
+				.insert(ignore_permissions=True)
+				.name
+			)
 
 		out = sc.save_work_order(
 			subcontractor=sub,
@@ -162,7 +170,9 @@ def ensure_cypress_material_request():
 		project = frappe.db.get_value("Project", {"company": company}, "name")
 		if not project:
 			project = (
-				frappe.get_doc({"doctype": "Project", "project_name": "Cypress MR Project", "company": company})
+				frappe.get_doc(
+					{"doctype": "Project", "project_name": "Cypress MR Project", "company": company}
+				)
 				.insert(ignore_permissions=True)
 				.name
 			)
@@ -170,9 +180,9 @@ def ensure_cypress_material_request():
 		item = frappe.db.get_value("Item", {"gst_hsn_code": ["is", "set"]}, "name") or frappe.db.get_value(
 			"Item", {}, "name"
 		)
-		wh = frappe.db.get_value("Warehouse", {"is_group": 0, "company": company}, "name") or frappe.db.get_value(
-			"Warehouse", {"is_group": 0}, "name"
-		)
+		wh = frappe.db.get_value(
+			"Warehouse", {"is_group": 0, "company": company}, "name"
+		) or frappe.db.get_value("Warehouse", {"is_group": 0}, "name")
 		doc = frappe.get_doc(
 			{
 				"doctype": "Material Request",
@@ -245,4 +255,108 @@ def ensure_cypress_records():
 		# Project Finance
 		"salesInvoice": draft_submitted("Sales Invoice"),
 		"supplierBill": draft_submitted("Purchase Invoice"),
+	}
+
+
+# A persona an admin builds from a role BuildSuite does not ship, and configures by hand — the
+# way a site would in Settings > Personas, Role Permission Manager, Workspace Structure and the
+# Report's roles. custom_persona_access.cy.js proves such a user gets exactly what was configured.
+CUSTOM_ROLE = "Cypress Plant Coordinator"
+CUSTOM_PERSONA = "Cypress Plant Coordinator"
+CUSTOM_PERSONA_USER = "cypress-plant-coordinator@buildsuite.test"
+# DocPerms the admin grants the role, by doctype (ptype -> 1).
+CUSTOM_DOCPERMS = {
+	"Machinery": {"read": 1, "write": 1, "create": 1, "report": 1, "export": 1, "print": 1},
+	"Machinery Type": {"read": 1},  # the type picker on the Machinery form
+	# The company picker. Built-in roles get Company (and the other linked masters) from the
+	# install-time read mirror, which covers only BuildSuite's own roles — a custom role is given it.
+	"Company": {"read": 1},
+	"Purchase Order": {"read": 1, "report": 1},  # the data behind the Purchase Register report
+}
+# Workspaces the role may see (BuildSuite Workspace -> Visible To), and the report it may open.
+CUSTOM_WORKSPACES = {"equipment": "full", "procurement": "full"}
+CUSTOM_REPORT = "BuildSuite Purchase Register"
+
+
+@frappe.whitelist()  # nosemgrep
+def ensure_cypress_custom_persona(password: str = "Cypress-Suite-2026!"):
+	"""Idempotently configure the custom persona + its user for the Cypress suite. Dev/test only.
+
+	bench --site <site> execute buildsuite_core.api.cypress_setup.ensure_cypress_custom_persona
+	"""
+	if not (frappe.conf.developer_mode or frappe.flags.in_test):
+		frappe.throw(frappe._("ensure_cypress_custom_persona is only available in developer / test mode"))
+	from frappe.permissions import add_permission, update_permission_property
+
+	if not frappe.db.exists("Role", CUSTOM_ROLE):
+		frappe.get_doc({"doctype": "Role", "role_name": CUSTOM_ROLE, "desk_access": 1}).insert(
+			ignore_permissions=True
+		)
+
+	# Role Permission Manager: what the role may do on each doctype (only this role is touched).
+	for doctype, perms in CUSTOM_DOCPERMS.items():
+		add_permission(doctype, CUSTOM_ROLE, 0)
+		for ptype in ("read", "write", "create", "delete", "submit", "report", "export", "print"):
+			update_permission_property(doctype, CUSTOM_ROLE, 0, ptype, perms.get(ptype, 0), validate=False)
+
+	# Workspace Structure: the sidebar entries the role sees.
+	for slug, access in CUSTOM_WORKSPACES.items():
+		ws = frappe.get_doc("BuildSuite Workspace", slug)
+		if not any(r.role == CUSTOM_ROLE for r in ws.roles):
+			ws.append("roles", {"role": CUSTOM_ROLE, "access": access})
+			ws.save(ignore_permissions=True)
+
+	# The report's own roles (after the workspace, which the report's validation requires).
+	report = frappe.get_doc("Report", CUSTOM_REPORT)
+	if not any(r.role == CUSTOM_ROLE for r in report.roles):
+		report.append("roles", {"role": CUSTOM_ROLE})
+		report.save(ignore_permissions=True)
+
+	# Settings > Personas: a persona carrying only the custom role.
+	if not frappe.db.exists("Persona", CUSTOM_PERSONA):
+		frappe.get_doc(
+			{
+				"doctype": "Persona",
+				"persona_name": CUSTOM_PERSONA,
+				"enabled": 1,
+				"roles": [{"role": CUSTOM_ROLE}],
+			}
+		).insert(ignore_permissions=True)
+
+	# A machine type the spec's Machinery record can point at.
+	if not frappe.db.exists("Machinery Type", "Cypress Excavator"):
+		frappe.get_doc({"doctype": "Machinery Type", "type_name": "Cypress Excavator"}).insert(
+			ignore_permissions=True
+		)
+
+	if frappe.db.exists("User", CUSTOM_PERSONA_USER):
+		user = frappe.get_doc("User", CUSTOM_PERSONA_USER)
+		user.enabled = 1
+		user.persona = CUSTOM_PERSONA
+		user.first_name, user.last_name = "Casey", "Custom"
+	else:
+		user = frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": CUSTOM_PERSONA_USER,
+				# Named apart from the persona, so the spec can tell the persona label from the name.
+				"first_name": "Casey",
+				"last_name": "Custom",
+				"enabled": 1,
+				"send_welcome_email": 0,
+				"persona": CUSTOM_PERSONA,
+			}
+		)
+	user.new_password = password
+	user.flags.ignore_password_policy = True
+	user.save(ignore_permissions=True)
+
+	frappe.clear_cache()
+	# Dev-only helper run via `bench execute`, which does not auto-commit.
+	frappe.db.commit()  # nosemgrep
+	return {
+		"user": CUSTOM_PERSONA_USER,
+		"persona": CUSTOM_PERSONA,
+		"roles": sorted(r.role for r in frappe.get_doc("User", CUSTOM_PERSONA_USER).roles),
+		"machinery_type": "Cypress Excavator",
 	}
