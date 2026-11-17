@@ -542,6 +542,48 @@ class TestPermissions(BuildSuiteTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_hr_manager_creates_and_deletes_attendance_registers(self):
+		# HR keeps the attendance books: it may add a register by hand and delete one, but editing
+		# (and submit / cancel) stays with the muster.
+		self._as("HR Manager", "hrar")
+		try:
+			for dt in ("Labour Attendance Register", "Overtime Attendance Register"):
+				for ptype in ("read", "create", "delete"):
+					self.assertTrue(frappe.has_permission(dt, ptype), f"{dt} {ptype}")
+				for ptype in ("write", "submit", "cancel"):
+					self.assertFalse(frappe.has_permission(dt, ptype), f"{dt} {ptype}")
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_hr_register_patch_adds_only_create_and_delete(self):
+		# Live sites: the patch raises create + delete on HR Manager's own rule and leaves the
+		# rest of that rule (here a site-edited `export` = 0) and every other role alone.
+		from buildsuite_core.patches import grant_hr_manager_attendance_registers as patch
+
+		dt, role = "Labour Attendance Register", "BuildSuite HR Manager"
+		perm = {"parent": dt, "role": role, "permlevel": 0}
+		frappe.db.set_value("Custom DocPerm", perm, {"create": 0, "delete": 0, "export": 0})
+		foreman = frappe.db.get_value(
+			"Custom DocPerm",
+			{"parent": dt, "role": "BuildSuite Foreman", "permlevel": 0},
+			["read", "create", "delete", "write"],
+			as_dict=True,
+		)
+		patch.execute()
+		row = frappe.db.get_value(
+			"Custom DocPerm", perm, ["read", "create", "delete", "export", "write"], as_dict=True
+		)
+		self.assertEqual((row.read, row.create, row.delete, row.export, row.write), (1, 1, 1, 0, 0))
+		self.assertEqual(
+			frappe.db.get_value(
+				"Custom DocPerm",
+				{"parent": dt, "role": "BuildSuite Foreman", "permlevel": 0},
+				["read", "create", "delete", "write"],
+				as_dict=True,
+			),
+			foreman,
+		)
+
 	def test_field_attendance_site_submits(self):
 		# M3-WF — Site Engineer submits the muster; Estimator has no access to it.
 		self._as("Site Engineer", "sewf")
