@@ -821,7 +821,8 @@ FIELD_ATTENDANCE_ROLE_PERMS = {
 }
 # Labour / Overtime Attendance are DERIVED registers — system-written when a Field
 # Attendance is submitted. No role edits them directly (corrections go through cancel
-# + amend on the muster), so every role that can see them is read-only.
+# + amend on the muster), so every role that can see them reads them; only HR Manager may
+# also create and delete one (below).
 DERIVED_ATTENDANCE_ROLE_PERMS = {
 	role: _READ
 	for role in (
@@ -832,9 +833,12 @@ DERIVED_ATTENDANCE_ROLE_PERMS = {
 		"BuildSuite Site Engineer",
 		"BuildSuite Foreman",
 		"BuildSuite Accountant",
-		"BuildSuite HR Manager",
 	)
 }
+# HR keeps the attendance books, so it may also add a register by hand and delete one (a draft or
+# a cancelled one: Frappe never deletes a submitted record). Editing stays with the muster.
+HR_ATTENDANCE_REGISTER_PERMS = {"create": 1, "delete": 1}
+DERIVED_ATTENDANCE_ROLE_PERMS["BuildSuite HR Manager"] = {**_READ, **HR_ATTENDANCE_REGISTER_PERMS}
 
 
 # Worker master — the standard Employee doctype (BuildSuite has no separate Field Employee

@@ -413,8 +413,8 @@ PERSONA_CRUD_MATRIX = {
 	"HR Manager": {
 		"Employee": "crwd",  # Field Employee — full
 		"Crew": "crwd",  # full
-		"Labour Attendance Register": "r",  # read-only
-		"Overtime Attendance Register": "r",  # read-only
+		"Labour Attendance Register": "crd",  # keeps the books: add + delete, no edit
+		"Overtime Attendance Register": "crd",  # keeps the books: add + delete, no edit
 		"Petty Cash Request": "cr",  # create + read
 		"Expense Entry": "cr",  # create + read
 		"Payment Entry": "",  # advances — no access
