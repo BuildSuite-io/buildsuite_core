@@ -118,6 +118,27 @@ export function personaIdFromName(name) {
 	return match ? match.id : null;
 }
 
+// The logged-in user's persona, from the access payload (api.permission.get_access_context).
+//   { id, custom: null }               — one of the built-in personas above
+//   { id: <slug>, custom: { id, name, baseRole } } — a persona an admin created in Settings › Personas.
+// A custom persona keeps its own name and id for display; `baseRole` is the built-in persona its
+// roles are closest to (personaIdFromRoles) — what the few remaining per-persona UI defaults, like
+// the Home quick actions, fall back to. Access itself is decided by the backend, never by this.
+export function resolvePersona({ persona, personaSlug, roles } = {}) {
+	const builtIn =
+		personaIdFromName(persona) ||
+		(ROLES.some((r) => r.id === personaSlug) ? personaSlug : null);
+	if (builtIn) return { id: builtIn, custom: null };
+	if (persona && personaSlug) {
+		return {
+			id: personaSlug,
+			custom: { id: personaSlug, name: persona, baseRole: personaIdFromRoles(roles) },
+		};
+	}
+	const fromRoles = personaIdFromRoles(roles);
+	return fromRoles ? { id: fromRoles, custom: null } : null;
+}
+
 // Frappe BuildSuite role -> persona id. Used as a fallback when the User.persona
 // field is unset (e.g. Administrator). Mirrors the backend permissions/setup map.
 export const ROLE_TO_PERSONA = {

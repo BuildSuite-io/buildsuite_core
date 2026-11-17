@@ -13,12 +13,27 @@ def has_app_permission() -> bool:
 	return _has_app_permission(log_denial=True)
 
 
+def _user_persona(user: str) -> dict | None:
+	"""The user's enabled Persona as {name, slug}, or None. Being given a persona is what makes
+	someone a BuildSuite user, whichever roles it carries — a persona an admin builds from custom
+	or ERPNext roles opens the app too. What they then see is decided by those roles' DocPerms."""
+	persona = frappe.db.get_value("User", user, "persona")
+	if not persona:
+		return None
+	row = frappe.db.get_value("Persona", persona, ["name", "slug", "enabled"], as_dict=True)
+	if not row or not row.enabled:
+		return None
+	return {"name": row.name, "slug": row.slug}
+
+
 def _has_app_permission(log_denial: bool = True) -> bool:
 	if frappe.session.user == "Guest":
 		return False
 
 	roles = set(frappe.get_roles())
 	if roles.intersection(ALLOWED_ROLES):
+		return True
+	if _user_persona(frappe.session.user):
 		return True
 
 	if log_denial:
@@ -55,9 +70,11 @@ def get_access_context():
 	allowed = _has_app_permission(log_denial=False)
 	reason = "ok" if allowed else "missing_role"
 
-	# Persona (User.persona Select) is the single source of truth for the user's
-	# BuildSuite role; the frontend uses it to set the active persona on load.
-	persona = frappe.db.get_value("User", user, "persona") if user != "Guest" else None
+	# Persona (User.persona, a Link to the Persona master) is the single source of truth for the
+	# user's BuildSuite role; the frontend uses it to set the active persona on load. The slug is
+	# the persona's stable id — the SPA's key for a persona an admin created, which it can't know.
+	persona = frappe.db.get_value("User", user, "persona")
+	persona_slug = frappe.db.get_value("Persona", persona, "slug") if persona else None
 
 	return frappe._dict(
 		{
@@ -65,6 +82,7 @@ def get_access_context():
 			"user": user,
 			"roles": roles,
 			"persona": persona,
+			"persona_slug": persona_slug,
 			# Backend-derived UI gating caps, folded into the boot probe so the SPA needs
 			# no extra round trip. Empty for a user who can't open the app anyway.
 			"resource_permissions": _resource_permissions() if allowed else {},

@@ -2,7 +2,7 @@
 import { onMounted, watch } from "vue";
 import { useDataStore } from "@/stores";
 import { useSessionStore } from "@/stores/session";
-import { personaIdFromName, personaIdFromRoles } from "@/data/roles";
+import { resolvePersona } from "@/data/roles";
 import { toasts } from "@/utils/appToast";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import { useConfirmState } from "@/composables/useConfirm";
@@ -16,10 +16,9 @@ onMounted(() => {
 	store.hydrate();
 	// Set the active persona from the logged-in user (real persona wins over any
 	// persisted switcher choice). The switcher remains usable for previewing other
-	// personas within the session; the backend is the authoritative gate.
-	const personaId =
-		personaIdFromName(session.access?.persona) || personaIdFromRoles(session.access?.roles);
-	if (personaId) store.setRole(personaId);
+	// personas within the session; the backend is the authoritative gate. A persona an admin
+	// created is kept under its own name and id (see resolvePersona).
+	store.setPersona(resolvePersona(session.access || {}));
 });
 
 // Apply the `dark` class on <html> based on store.theme. Watch immediate so
