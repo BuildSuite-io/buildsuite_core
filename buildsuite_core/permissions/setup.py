@@ -988,6 +988,10 @@ def setup_project_finance_report_access():
 				).insert(ignore_permissions=True)
 	# Read + report on GL Entry (the reports' ref doctype), layered on ERPNext's own perms.
 	_upgrade_role_perms("GL Entry", {role: _READ for role in _PF_REPORT_ROLES})
+	# ERPNext's report filter scripts read the dimension list with a permission-checked
+	# frappe.db.get_list("Accounting Dimension"); without read the Desk shows "Insufficient
+	# Permission for Accounting Dimension" to these personas (only System/Accounts Manager have it).
+	_upgrade_role_perms("Accounting Dimension", {role: {"read": 1} for role in _PF_REPORT_ROLES})
 
 
 def _ensure_workflow_state(name):
