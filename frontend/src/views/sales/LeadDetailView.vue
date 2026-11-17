@@ -19,6 +19,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
 import LeadMobileMatches from "@/components/LeadMobileMatches.vue";
+import LeadNotesPanel from "@/components/LeadNotesPanel.vue";
 import { useConfirm } from "@/composables/useConfirm";
 import { usePageTitle } from "@/composables/usePageTitle";
 import { convertLead, deleteLead, findMobileMatches, getLead, updateLead } from "@/data/leadsApi";
@@ -55,6 +56,13 @@ const nameError = ref("");
 const lead = computed(() => data.value?.lead || null);
 const can = computed(() => data.value?.can || {});
 const quotations = computed(() => data.value?.quotations || []);
+// Notes are ERPNext's CRM Note table on the lead, in their own tab (as in ERPNext's Lead form).
+// "First enquiry" (enquiry_note) stays on Details: the one line taken down on the first call.
+const tab = ref("details");
+const notes = computed(() => data.value?.notes || []);
+function onNotes(rows) {
+	if (data.value) data.value = { ...data.value, notes: rows };
+}
 const customer = computed(() => data.value?.customer || null);
 
 usePageTitle(() => lead.value?.lead_name || __("Lead"));
@@ -82,7 +90,7 @@ watch(() => props.id, load, { immediate: true });
 const dirty = computed(
 	() =>
 		!!lead.value &&
-		[...FIELDS, "status"].some((f) => (form[f] ?? "") !== (lead.value[f] ?? "")),
+		[...FIELDS, "status"].some((f) => (form[f] ?? "") !== (lead.value[f] ?? ""))
 );
 const statusOptions = computed(() => leadStatusOptions(lead.value));
 const statusHint = computed(() => leadStatusHint(lead.value));
@@ -105,7 +113,7 @@ watchDebounced(
 			matches.value = [];
 		}
 	},
-	{ debounce: 300 },
+	{ debounce: 300 }
 );
 
 async function onSave() {
@@ -136,7 +144,7 @@ const canConvert = computed(() => can.value.convert && !customer.value);
 const newQuotationTo = computed(() =>
 	customer.value
 		? `/quotations/new?customer=${encodeURIComponent(customer.value.name)}`
-		: `/quotations/new?lead=${encodeURIComponent(props.id)}`,
+		: `/quotations/new?lead=${encodeURIComponent(props.id)}`
 );
 
 async function onConvert() {
@@ -145,7 +153,7 @@ async function onConvert() {
 		title: __("Convert to customer"),
 		message: __(
 			"{0} becomes a customer{1}, with this mobile and email. If a customer already has this mobile number, the lead is linked to them instead.",
-			[name, lead.value.company_name ? "" : ` (${__("Individual")})`],
+			[name, lead.value.company_name ? "" : ` (${__("Individual")})`]
 		),
 		confirmLabel: __("Convert"),
 	});
@@ -156,9 +164,9 @@ async function onConvert() {
 			out.linked
 				? __("Linked to the existing customer {0} (same mobile number).", [
 						out.customer_name,
-					])
+				  ])
 				: __("Customer {0} created.", [out.customer_name]),
-			"success",
+			"success"
 		);
 		await load();
 	} catch (err) {
@@ -254,7 +262,43 @@ const secondaryBtn =
 				</DeskActionBar>
 			</template>
 
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+			<div class="border-b border-ink-200 mb-4 flex gap-1" role="tablist">
+				<button
+					v-for="t in [
+						{ id: 'details', label: __('Details') },
+						{ id: 'notes', label: __('Notes') },
+					]"
+					:key="t.id"
+					type="button"
+					role="tab"
+					:data-test="`lead-tab-${t.id}`"
+					class="px-3 py-2 text-sm -mb-px border-b-2"
+					:class="
+						tab === t.id
+							? 'border-brand-600 text-ink-900 font-medium'
+							: 'border-transparent text-ink-500 hover:text-ink-800'
+					"
+					:aria-selected="tab === t.id"
+					@click="tab = t.id"
+				>
+					{{ t.label }}
+					<span
+						v-if="t.id === 'notes' && notes.length"
+						class="ml-1 text-xs tabular-nums text-ink-500"
+						>{{ notes.length }}</span
+					>
+				</button>
+			</div>
+
+			<LeadNotesPanel
+				v-if="tab === 'notes'"
+				:lead="id"
+				:notes="notes"
+				:can-write="!!can.write"
+				@update:notes="onNotes"
+			/>
+
+			<div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 				<div class="lg:col-span-2 space-y-4">
 					<DeskSection :title="__('Person')" :cols="2">
 						<DeskField
@@ -297,7 +341,7 @@ const secondaryBtn =
 							:label="__('Organisation name')"
 							:hint="
 								__(
-									'Only for a business. Blank for a person or a family. When set, quotations and the customer carry this name.',
+									'Only for a business. Blank for a person or a family. When set, quotations and the customer carry this name.'
 								)
 							"
 						>
@@ -351,7 +395,14 @@ const secondaryBtn =
 							<DeskInput :model-value="fmtDate(lead.creation)" readonly disabled />
 						</DeskField>
 						<div class="md:col-span-2">
-							<DeskField :label="__('Notes')">
+							<DeskField
+								:label="__('First enquiry')"
+								:hint="
+									__(
+										'What they asked for, as taken down. Running notes go in the Notes tab.'
+									)
+								"
+							>
 								<DeskTextarea
 									v-model="form.enquiry_note"
 									:rows="3"

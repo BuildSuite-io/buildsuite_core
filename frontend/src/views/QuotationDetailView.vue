@@ -12,6 +12,11 @@ import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import OfferPaymentTerms from "@/components/OfferPaymentTerms.vue";
+import QuotationLostModal from "@/components/QuotationLostModal.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { offerStatus } from "@/data/offerStatus";
+import { acceptQuotation, rejectQuotation, sendQuotation } from "@/data/quotationApi";
+import { convertLead } from "@/data/leadsApi";
 // Rich text (Text Editor) is heavy (TipTap) — load it only when a quotation is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -33,14 +38,105 @@ watch(
 
 const doc = computed(() => resource.value?.doc || null);
 
+const offer = computed(() => offerStatus(doc.value));
+const isDraft = computed(() => doc.value?.docstatus === 0);
+// Still with the client: sent, not yet accepted or rejected.
+const isOut = computed(() => offer.value === "Sent");
+const { canEdit, canSubmit, canCreate } = usePermissions();
+
 // ERPNext fills `customer_name` for a lead too (its organisation, else the person), so it is the
 // name to show whoever the quotation went to; `party_name` is the record id.
 const subtitle = computed(() =>
 	[props.id, doc.value?.customer_name || doc.value?.party_name, doc.value?.customer_type]
 		.filter(Boolean)
-		.join(" · "),
+		.join(" · ")
 );
-const toLead = computed(() => doc.value?.quotation_to === "Lead" && !!doc.value?.party_name);
+
+// A quotation to a lead names the lead; once it is won, the customer it became.
+const leadResource = ref(null);
+const customerOfLead = ref(null);
+watch(
+	() => [doc.value?.quotation_to, doc.value?.party_name],
+	([to, party]) => {
+		leadResource.value = null;
+		customerOfLead.value = null;
+		if (to !== "Lead" || !party) return;
+		leadResource.value = adapter.list("Lead", {
+			fields: ["name", "lead_name", "mobile_no", "status"],
+			filters: [["name", "=", party]],
+			pageLength: 1,
+		});
+		customerOfLead.value = adapter.list("Customer", {
+			fields: ["name", "customer_name"],
+			filters: [["lead_name", "=", party]],
+			pageLength: 1,
+		});
+	},
+	{ immediate: true }
+);
+const firstRow = (r) => {
+	const raw = r?.data;
+	const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.value) ? raw.value : [];
+	return rows[0] || null;
+};
+const lead = computed(() => firstRow(leadResource.value));
+const leadCustomer = computed(() => firstRow(customerOfLead.value));
+
+async function act(fn, done) {
+	busy.value = true;
+	try {
+		const res = await fn();
+		await resource.value?.reload?.();
+		leadResource.value?.reload?.();
+		customerOfLead.value?.reload?.();
+		if (done) showToast(done(res), "success");
+	} catch (err) {
+		showToast(err.message || __("That did not work."), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+const onSend = async () => {
+	const ok = await confirmDialog({
+		title: __("Send {0}?", [props.id]),
+		message: __("It can no longer be edited once it is sent."),
+		confirmLabel: __("Send"),
+	});
+	if (ok)
+		act(
+			() => sendQuotation(props.id),
+			() => __("Sent.")
+		);
+};
+const onAccept = async () => {
+	const ok = await confirmDialog({
+		title: __("Mark {0} as accepted?", [props.id]),
+		message:
+			doc.value.quotation_to === "Lead"
+				? __(
+						"The client said yes. The lead becomes a customer, which is what the project and the invoices are raised against."
+				  )
+				: __("The client said yes."),
+		confirmLabel: __("Accepted"),
+	});
+	if (ok)
+		act(
+			() => acceptQuotation(props.id),
+			(r) => (r.customer ? __("Accepted. Customer {0}.", [r.customer]) : __("Accepted."))
+		);
+};
+const onConvert = () =>
+	act(
+		() => convertLead(doc.value.party_name),
+		(r) => __("Customer {0}.", [r.customer])
+	);
+const lostOpen = ref(false);
+function onReject(lost) {
+	act(
+		() => rejectQuotation(props.id, lost),
+		() => __("Marked as rejected.")
+	).then(() => (lostOpen.value = false));
+}
 
 // Counted from today: what is left is the number worth acting on.
 const daysLeft = computed(() => {
@@ -143,8 +239,37 @@ const breadcrumbs = computed(() => [
 </script>
 
 <template>
-	<DeskPage v-if="doc" :title="doc.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		v-if="doc"
+		:title="doc.title || id"
+		:subtitle="subtitle"
+		:status="offer"
+		:breadcrumbs="breadcrumbs"
+	>
 		<template #actions>
+			<button
+				v-if="isDraft && canSubmit('quotation')"
+				type="button"
+				class="desk-save-btn"
+				:disabled="busy"
+				@click="onSend"
+			>
+				{{ __("Send") }}
+			</button>
+			<template v-if="isOut && canEdit('quotation')">
+				<button
+					type="button"
+					class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+					style="border-radius: 6px"
+					:disabled="busy"
+					@click="lostOpen = true"
+				>
+					{{ __("Rejected") }}
+				</button>
+				<button type="button" class="desk-save-btn" :disabled="busy" @click="onAccept">
+					{{ __("Accepted") }}
+				</button>
+			</template>
 			<RouterLink
 				:to="`/quotations/${encodeURIComponent(id)}/print`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
@@ -153,6 +278,7 @@ const breadcrumbs = computed(() => [
 				{{ __("Print / PDF") }}
 			</RouterLink>
 			<RouterLink
+				v-if="isDraft"
 				:to="`/quotations/${encodeURIComponent(id)}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -160,6 +286,7 @@ const breadcrumbs = computed(() => [
 				{{ __("Edit") }}
 			</RouterLink>
 			<button
+				v-if="isDraft"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -170,15 +297,89 @@ const breadcrumbs = computed(() => [
 			</button>
 		</template>
 
-		<!-- Went to a lead: say so, and link it (converting the lead moves this to its customer). -->
-		<div v-if="toLead" class="flex items-center gap-2 flex-wrap text-xs text-ink-700 mb-3">
-			<span class="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-info-50 text-info-700"
-				style="border-radius: 4px">{{ __("Lead") }}</span>
-			<RouterLink :to="`/leads/${encodeURIComponent(doc.party_name)}`" class="desk-link">
-				{{ doc.customer_name || doc.party_name }}
-			</RouterLink>
-			<span class="text-ink-500">{{ __("· not a customer yet") }}</span>
+		<!-- Who it went to, when that is a lead. -->
+		<div
+			v-if="doc.quotation_to === 'Lead' && lead"
+			class="mb-3 flex flex-wrap items-center gap-2 text-xs text-ink-700"
+		>
+			<span
+				class="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-info-50 text-info-700"
+				style="border-radius: 4px"
+				>{{ __("Lead") }}</span
+			>
+			<RouterLink :to="`/leads/${encodeURIComponent(lead.name)}`" class="desk-link">{{
+				lead.lead_name
+			}}</RouterLink>
+			<span v-if="lead.mobile_no" class="text-ink-500 tabular-nums"
+				>· {{ lead.mobile_no }}</span
+			>
+			<StatusBadge :status="lead.status" size="xs" />
+			<span v-if="leadCustomer" class="text-success-700">
+				· {{ __("now customer {0}", [leadCustomer.customer_name || leadCustomer.name]) }}
+			</span>
 		</div>
+		<div
+			v-if="offer === 'Accepted' && doc.quotation_to === 'Lead' && lead && !leadCustomer"
+			class="mb-3 bg-warning-50 border border-warning-200 px-3 py-2.5 flex items-center justify-between gap-3"
+			style="border-radius: 6px"
+		>
+			<div class="text-xs text-warning-700">
+				{{
+					__(
+						"Won, but {0} is still a lead. The project and the invoices need a customer.",
+						[lead.lead_name]
+					)
+				}}
+				<span v-if="!canCreate('customer')" class="text-ink-600">{{
+					__("Ask someone who can create customers to convert the lead.")
+				}}</span>
+			</div>
+			<button
+				v-if="canCreate('customer')"
+				type="button"
+				class="desk-save-btn text-xs shrink-0"
+				:disabled="busy"
+				@click="onConvert"
+			>
+				{{ __("Convert to customer") }}
+			</button>
+		</div>
+		<div
+			v-if="
+				doc.docstatus === 1 &&
+				offer === 'Rejected' &&
+				(doc.lost_reasons?.length || doc.order_lost_reason)
+			"
+			class="mb-3 bg-danger-50 border border-danger-200 px-4 py-3"
+			style="border-radius: 8px"
+			data-lost
+		>
+			<div class="text-[10px] uppercase tracking-wider text-danger-700 font-semibold mb-1.5">
+				{{ __("Lost") }}
+			</div>
+			<div v-if="doc.lost_reasons?.length" class="flex flex-wrap gap-1.5 mb-1.5">
+				<span
+					v-for="r in doc.lost_reasons"
+					:key="r.lost_reason"
+					class="text-xs px-2 py-0.5 bg-white border border-danger-200 text-danger-700"
+					style="border-radius: 9999px"
+					>{{ r.lost_reason }}</span
+				>
+			</div>
+			<div v-if="doc.competitors?.length" class="text-xs text-ink-700">
+				{{ __("Lost to") }} {{ doc.competitors.map((c) => c.competitor).join(", ") }}
+			</div>
+			<p v-if="doc.order_lost_reason" class="text-sm text-ink-800 mt-1 whitespace-pre-line">
+				{{ doc.order_lost_reason }}
+			</p>
+		</div>
+		<QuotationLostModal
+			:open="lostOpen"
+			:title="`${id} · ${doc.customer_name || doc.party_name}`"
+			:saving="busy"
+			@close="lostOpen = false"
+			@confirm="onReject"
+		/>
 
 		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
@@ -351,6 +552,8 @@ const breadcrumbs = computed(() => [
 			:base="Number(doc.net_total) || 0"
 			:currency="doc.currency"
 			class="mt-4"
+			:class="isDraft ? '' : 'opacity-70'"
+			:inert="!isDraft"
 			@save="persist"
 		/>
 

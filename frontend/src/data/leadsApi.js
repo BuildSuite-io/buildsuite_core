@@ -30,3 +30,11 @@ export const updateLead = (name, values) => call("update_lead", { name, ...(valu
 export const deleteLead = (name) => call("delete_lead", { name });
 // { customer, customer_name, linked?, existing? }
 export const convertLead = (name) => call("convert_lead", { name });
+
+// Notes — ERPNext's CRM Note table on the lead. Each returns the lead's notes, newest first:
+// [{ name, note, added_by, added_on }]
+export const addLeadNote = (lead, note) => call("add_note", { lead, note });
+export const editLeadNote = (lead, rowId, note) =>
+	call("edit_note", { lead, row_id: String(rowId), note });
+export const deleteLeadNote = (lead, rowId) =>
+	call("delete_note", { lead, row_id: String(rowId) });
