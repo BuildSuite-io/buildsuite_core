@@ -14,17 +14,16 @@ import frappe
 from frappe import _
 from frappe.utils import cstr
 
-from buildsuite_core.api.customers import _default_group_and_territory
 from buildsuite_core.utils.lead import (
 	CONVERTED,
 	DO_NOT_CONTACT,
 	MANUAL_STATUSES,
 	SYSTEM_STATUSES,
+	convert_lead_to_customer,
 	converted_customer,
 	mobile_matches,
 )
 from buildsuite_core.utils.project import company_scope, default_company
-from buildsuite_core.utils.session import as_administrator
 
 # The fields the SPA edits, by their ERPNext names. `utm_source` is the Lead's Source in v16.
 _EDITABLE = (
@@ -53,10 +52,6 @@ _LIST_FIELDS = (
 	"status",
 	"lead_owner",
 	"creation",
-)
-_NEED_A_NAME = _("A lead needs a person's name or an organisation's name.")
-_CANNOT_CONVERT = _(
-	"Converting a lead makes a customer, which your role cannot do. Ask someone who can create customers."
 )
 
 
@@ -180,6 +175,8 @@ def get_lead(name: str):
 		"quotations": quotations,
 		"customer": customer,
 		"mobile_matches": mobile_matches(doc.mobile_no, except_lead=name),
+		# ERPNext's own notes table on the lead (CRM Note): who wrote what, when. Newest first.
+		"notes": _notes(doc),
 		"can": {
 			"write": bool(frappe.has_permission("Lead", "write", doc)),
 			"delete": bool(frappe.has_permission("Lead", "delete", doc)),
@@ -204,7 +201,7 @@ def _apply(doc, values):
 	if doc.utm_source and not frappe.db.exists("UTM Source", doc.utm_source):
 		doc.utm_source = None
 	if not (doc.first_name or doc.company_name):
-		frappe.throw(_NEED_A_NAME)
+		frappe.throw(_("A lead needs a person's name or an organisation's name."))
 
 
 @frappe.whitelist(methods=["POST"])
@@ -281,47 +278,70 @@ def delete_lead(name: str):
 	return {"ok": True}
 
 
-def _customer_with_mobile(mobile):
-	"""An existing customer (not already some lead's) with the same mobile, to link instead."""
-	for match in mobile_matches(mobile):
-		if match["kind"] == "Customer" and not frappe.db.get_value("Customer", match["id"], "lead_name"):
-			return match["id"]
-	return None
-
-
 @frappe.whitelist(methods=["POST"])
 def convert_lead(name: str):
 	"""Make the lead a customer. A customer already on file with the same mobile is linked to the
 	lead instead of making a second one. ERPNext marks the lead Converted and moves its
-	quotations to the customer either way."""
+	quotations to the customer either way (utils.lead.convert_lead_to_customer)."""
 	lead = frappe.get_doc("Lead", name)
 	lead.check_permission("write")
 	if not frappe.has_permission("Customer", "create"):
-		frappe.throw(_CANNOT_CONVERT, frappe.PermissionError)
+		frappe.throw(
+			_(
+				"Converting a lead makes a customer, which your role cannot do. Ask someone who can create customers."
+			),
+			frappe.PermissionError,
+		)
+	customer, linked, existing = convert_lead_to_customer(name)
+	out = {
+		"customer": customer,
+		"customer_name": frappe.db.get_value("Customer", customer, "customer_name"),
+		"linked": linked,
+	}
+	if existing:
+		out["existing"] = True
+	return out
 
-	if existing := converted_customer(name):
-		return {
-			"customer": existing,
-			"customer_name": frappe.db.get_value("Customer", existing, "customer_name"),
-			"existing": True,
-		}
 
-	from erpnext.crm.doctype.lead.lead import _make_customer, validate_lead_is_enabled
+# --- Notes: ERPNext's CRM Note table on the lead -------------------------------------------------
 
-	validate_lead_is_enabled(name, "Customer")
-	# Elevated for the plumbing only: ERPNext re-points the lead's quotations to the customer
-	# only where the session user can write them, and links the lead's Contact and Address.
-	with as_administrator():
-		if match := _customer_with_mobile(lead.mobile_no):
-			customer = frappe.get_doc("Customer", match)
-			customer.lead_name = name
-			customer.save(ignore_permissions=True)
-			# Customer.on_update only follows a lead set on a NEW customer; do what it would.
-			customer.update_lead_status()
-			linked = True
-		else:
-			customer = _make_customer(name, ignore_permissions=True)
-			_default_group_and_territory(customer)
-			customer.insert(ignore_permissions=True)
-			linked = False
-	return {"customer": customer.name, "customer_name": customer.customer_name, "linked": linked}
+
+def _notes(doc):
+	rows = [
+		{"name": n.name, "note": n.note, "added_by": n.added_by, "added_on": n.added_on}
+		for n in doc.get("notes") or []
+	]
+	return sorted(rows, key=lambda r: str(r["added_on"] or ""), reverse=True)
+
+
+def _lead_for_notes(name):
+	doc = frappe.get_doc("Lead", name)
+	doc.check_permission("write")
+	return doc
+
+
+def _require_text(note):
+	if not cstr(note).strip():
+		frappe.throw(_("A note cannot be empty."))
+
+
+@frappe.whitelist(methods=["POST"])
+def add_note(lead: str, note: str):
+	"""Add a note to the lead (ERPNext's Lead.add_note stamps who and when)."""
+	_require_text(note)
+	doc = _lead_for_notes(lead)
+	doc.add_note(note)
+	return _notes(frappe.get_doc("Lead", lead))
+
+
+@frappe.whitelist(methods=["POST"])
+def edit_note(lead: str, row_id: str, note: str):
+	_require_text(note)
+	_lead_for_notes(lead).edit_note(note, row_id)
+	return _notes(frappe.get_doc("Lead", lead))
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_note(lead: str, row_id: str):
+	_lead_for_notes(lead).delete_note(row_id)
+	return _notes(frappe.get_doc("Lead", lead))

@@ -36,6 +36,15 @@ REPORTS = (
 # Former hardcoded workspace tiles (functional ones only — the "coming soon" placeholder
 # tiles had no destination and are dropped). Seeded as explicit routes / report references.
 _SEED = {
+	# Why quotations are lost: ERPNext's own report, grouped by reason or by competitor.
+	"sales": (
+		{
+			"label": "Why we lose",
+			"icon": "chart-bar",
+			"report": "Lost Quotations",
+			"description": "Why quotations were lost, and to whom.",
+		},
+	),
 	# Rate check is a Procurement report also surfaced in Estimation (matrix: "procurement +
 	# estimation") — the Estimator/QS who own the Rate Master see it here, since they can't see
 	# the Procurement workspace. Same bespoke route; a second tile, in a workspace they can open.

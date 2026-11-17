@@ -126,11 +126,11 @@ def mobile_matches(mobile, except_lead=None):
 	key = mobile_key(mobile)
 	if not key:
 		return []
-	digits = "right(regexp_replace({0}, '[^0-9]', ''), 10)"
 	out = []
+	# The last ten digits of a stored number, compared with the key (see mobile_key).
 	leads = frappe.db.sql(
-		f"""select name, lead_name, company_name, status from `tabLead`
-		where {digits.format("mobile_no")} = %(key)s and name != %(except)s
+		"""select name, lead_name, company_name, status from `tabLead`
+		where right(regexp_replace(mobile_no, '[^0-9]', ''), 10) = %(key)s and name != %(except)s
 		order by creation desc limit 5""",
 		{"key": key, "except": except_lead or ""},
 		as_dict=True,
@@ -145,13 +145,14 @@ def mobile_matches(mobile, except_lead=None):
 			}
 		)
 	customers = frappe.db.sql(
-		f"""select distinct c.name, c.customer_name from `tabCustomer` c
+		"""select distinct c.name, c.customer_name from `tabCustomer` c
 		left join `tabDynamic Link` dl on dl.link_doctype = 'Customer' and dl.link_name = c.name
 			and dl.parenttype = 'Contact'
 		left join `tabContact Phone` cp on cp.parent = dl.parent
 		where c.disabled = 0
 			and (%(except)s = '' or ifnull(c.lead_name, '') != %(except)s)
-			and ({digits.format("c.mobile_no")} = %(key)s or {digits.format("cp.phone")} = %(key)s)
+			and (right(regexp_replace(c.mobile_no, '[^0-9]', ''), 10) = %(key)s
+				or right(regexp_replace(cp.phone, '[^0-9]', ''), 10) = %(key)s)
 		limit 5""",
 		# The lead's own customer (once converted) is not a duplicate of it.
 		{"key": key, "except": except_lead or ""},
@@ -160,3 +161,81 @@ def mobile_matches(mobile, except_lead=None):
 	for c in customers:
 		out.append({"kind": "Customer", "id": c.name, "name": c.customer_name or c.name, "status": ""})
 	return out
+
+
+def _customer_with_mobile(mobile):
+	"""An existing customer (not already some lead's) with the same mobile, to link instead."""
+	for match in mobile_matches(mobile):
+		if match["kind"] == "Customer" and not frappe.db.get_value("Customer", match["id"], "lead_name"):
+			return match["id"]
+	return None
+
+
+def _require_enabled(lead):
+	"""A disabled lead is not converted. Some ERPNext versions ship validate_lead_is_enabled for
+	this and others (16.50) do not, so the check is made here either way."""
+	try:
+		from erpnext.crm.doctype.lead.lead import validate_lead_is_enabled
+	except ImportError:
+		validate_lead_is_enabled = None
+	if validate_lead_is_enabled:
+		validate_lead_is_enabled(lead, "Customer")
+	elif frappe.db.get_value("Lead", lead, "disabled"):
+		frappe.throw(frappe._("Lead {0} is disabled, so it can't be converted to a customer.").format(lead))
+
+
+def convert_lead_to_customer(lead):
+	"""Make the lead a customer, or link the customer already on file with the same mobile.
+	ERPNext marks the lead Converted and moves its quotations to the customer either way.
+
+	Returns (customer, linked, existing): `linked` when an existing customer was linked rather
+	than a new one made, `existing` when the lead had been converted already. The caller checks
+	the user may convert (write on the lead, create on Customer)."""
+	from erpnext.crm.doctype.lead.lead import _make_customer
+
+	from buildsuite_core.api.customers import _default_group_and_territory
+	from buildsuite_core.utils.session import as_administrator
+
+	if existing := converted_customer(lead):
+		return existing, False, True
+
+	_require_enabled(lead)
+	mobile = frappe.db.get_value("Lead", lead, "mobile_no")
+	# Elevated for the plumbing only: ERPNext re-points the lead's quotations to the customer
+	# only where the session user can write them, and links the lead's Contact and Address.
+	with as_administrator():
+		if match := _customer_with_mobile(mobile):
+			customer = frappe.get_doc("Customer", match)
+			customer.lead_name = lead
+			customer.save(ignore_permissions=True)
+			# Customer.on_update only follows a lead set on a NEW customer; do what it would.
+			customer.update_lead_status()
+			linked = True
+		else:
+			customer = _make_customer(lead, ignore_permissions=True)
+			_default_group_and_territory(customer)
+			customer.insert(ignore_permissions=True)
+			linked = False
+	_move_quotations_to_customer(lead, customer)
+	return customer.name, linked, False
+
+
+def _move_quotations_to_customer(lead, customer):
+	"""Re-point the lead's quotations (drafts and sent ones; not cancelled) to the customer, so the
+	project and invoices that follow have one. Older ERPNext did this on conversion; 16.50 only
+	marks the lead Converted. Written straight to the rows, as ERPNext did — a sent quotation is
+	submitted and could not be saved — and harmless where a version already moved them."""
+	for name in frappe.get_all(
+		"Quotation",
+		filters={"quotation_to": "Lead", "party_name": lead, "docstatus": ["<", 2]},
+		pluck="name",
+	):
+		frappe.db.set_value(
+			"Quotation",
+			name,
+			{
+				"quotation_to": "Customer",
+				"party_name": customer.name,
+				"customer_name": customer.customer_name,
+			},
+		)

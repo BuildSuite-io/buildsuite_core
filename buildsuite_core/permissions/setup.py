@@ -404,6 +404,27 @@ def _apply_role_perms(doctype, role_perms, ptypes=_PTYPES):
 		update_permission_property(doctype, role, 0, "if_owner", perms.get("if_owner", 0), validate=False)
 
 
+def _grant_missing_role_perms(doctype, role_perms, ptypes=_PTYPES):
+	"""For a PATCH on a live site: give a role its default rule on the doctype only when it has
+	no rule there yet. A role that already has one — the shipped default or a site's own edit in
+	Role Permission Manager — is left exactly as it is, and nothing is ever deleted (unlike
+	_apply_role_perms, which makes the matrix authoritative and is for install only)."""
+	if not frappe.db.exists("DocType", doctype):
+		return
+	from frappe.permissions import add_permission, update_permission_property
+
+	for role, perms in role_perms.items():
+		if not frappe.db.exists("Role", role):
+			continue
+		if frappe.db.exists("Custom DocPerm", {"parent": doctype, "role": role, "permlevel": 0}):
+			continue
+		# add_permission first copies the doctype's standard perms into Custom DocPerm when the
+		# doctype has none, so those are kept as they are.
+		add_permission(doctype, role, 0)
+		for ptype in ptypes:
+			update_permission_property(doctype, role, 0, ptype, perms.get(ptype, 0), validate=False)
+
+
 def _upgrade_role_perms(doctype, role_perms, ptypes=_PTYPES):
 	"""Raise perms for specific roles WITHOUT revoking anyone else — layer write/delete on top
 	of a read mirror. Customer and Employee are readable by many roles (link pickers), but only
@@ -954,10 +975,78 @@ LEAD_ROLE_PERMS = {
 }
 
 
+# Quotations to leads and customers: whoever manages leads raises, sends (submit), accepts and
+# rejects them; the PM reads them (a quotation behind a project they run).
+QUOTATION_ROLE_PERMS = {
+	**{role: _FULL_SUB for role, perms in LEAD_ROLE_PERMS.items() if perms is _FULL},
+	"BuildSuite PM": _READ,
+}
+# The small masters the sales forms pick from. A lead's Source is a Link to UTM Source (ERPNext
+# v16); rejecting a quotation picks lost reasons and competitors, which the managers may add.
+_SALES_MASTER_PERMS = {
+	**{role: _CRW for role, perms in LEAD_ROLE_PERMS.items() if perms is _FULL},
+	"BuildSuite PM": _READ,
+}
+
+# One table for the sales area: doctype -> (role perms, ptypes). Install applies it in full
+# (setup_lead_permissions); an existing site only gets the rules it is missing
+# (grant_missing_sales_permissions), so a site's own permission edits are never undone.
+SALES_PERMS = {
+	"Lead": (LEAD_ROLE_PERMS, _PTYPES),
+	"Quotation": (QUOTATION_ROLE_PERMS, _SUBMIT_PTYPES),
+	"UTM Source": ({role: _READ for role in LEAD_ROLE_PERMS}, _PTYPES),
+	"Quotation Lost Reason": (_SALES_MASTER_PERMS, _PTYPES),
+	"Competitor": (_SALES_MASTER_PERMS, _PTYPES),
+}
+# ERPNext's own report on why quotations are lost (by reason or by competitor): the "Why we lose"
+# tile in Sales. Its roles are Sales User / Manager, so the sales personas are added.
+SALES_REPORTS = ("Lost Quotations",)
+
+
 def setup_lead_permissions():
-	_apply_role_perms("Lead", LEAD_ROLE_PERMS)
-	# A lead's Source is a Link to UTM Source (ERPNext v16): whoever reads leads picks from it.
-	_apply_role_perms("UTM Source", {role: _READ for role in LEAD_ROLE_PERMS})
+	"""Install: the sales area's default permissions."""
+	for doctype, (role_perms, ptypes) in SALES_PERMS.items():
+		_apply_role_perms(doctype, role_perms, ptypes)
+	# The Lost Quotations report's roles are added in restore_role_permissions, once the report
+	# tiles and the workspace registry they are checked against are seeded.
+
+
+def grant_missing_sales_permissions():
+	"""Existing sites: add only the sales rules a site does not have yet (see
+	_grant_missing_role_perms). Nothing is reset, lowered or deleted."""
+	for doctype, (role_perms, ptypes) in SALES_PERMS.items():
+		_grant_missing_role_perms(doctype, role_perms, ptypes)
+	_add_report_roles(SALES_REPORTS, LEAD_ROLE_PERMS)
+
+
+def _add_report_roles(reports, roles):
+	"""Add the roles to each report's roles where missing (never removes one). Only roles that can
+	see a workspace the report is tiled in are added — the rule report_access.validate_report_roles
+	enforces on an admin's save, so the grant is usable and the report stays saveable."""
+	from buildsuite_core.report_access import _grantable_roles
+
+	for report in reports:
+		if not frappe.db.exists("Report", report):
+			continue
+		grantable, constrained, _slugs = _grantable_roles(report)
+		have = set(
+			frappe.get_all("Has Role", filters={"parenttype": "Report", "parent": report}, pluck="role")
+		)
+		for role in roles:
+			if role in have or not frappe.db.exists("Role", role) or (constrained and role not in grantable):
+				continue
+			# A row of its own, not a save of the Report: saving re-validates every role the report
+			# already has (ERPNext's Sales User can't see the Sales workspace) and would be refused.
+			frappe.get_doc(
+				{
+					"doctype": "Has Role",
+					"parenttype": "Report",
+					"parentfield": "roles",
+					"parent": report,
+					"role": role,
+				}
+			).insert(ignore_permissions=True)
+		frappe.clear_document_cache("Report", report)
 
 
 def setup_project_finance_permissions():
@@ -1288,3 +1377,6 @@ def setup_record_permissions():
 	# The workspace registry (sidebar visibility + order + metadata). Runs after the roles
 	# above exist so each workspace's Visible-To roles resolve.
 	seed_workspaces()
+	# Sales reports for the sales personas — after the tiles and the registry above, so only roles
+	# that can see where a report is tiled are given it.
+	_add_report_roles(SALES_REPORTS, LEAD_ROLE_PERMS)
