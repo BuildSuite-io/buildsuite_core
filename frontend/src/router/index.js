@@ -61,6 +61,8 @@ const PAGE_TITLES = {
 	estimation: "Estimation",
 	sales: "Sales",
 	customers: "Customers",
+	leads: "Leads",
+	"lead-detail": "Lead",
 	procurement: "Procurement",
 	"procurement-dashboard": "Procurement Dashboard",
 	items: "Items",
@@ -456,6 +458,20 @@ const routes = [
 				name: "customers",
 				meta: { cap: "customer" },
 				component: () => import("@/views/sales/SalesCustomersView.vue"),
+			},
+			// Sales › Leads — enquiries that are not customers yet (ERPNext Lead).
+			{
+				path: "leads",
+				name: "leads",
+				meta: { cap: "lead" },
+				component: () => import("@/views/sales/LeadsView.vue"),
+			},
+			{
+				path: "leads/:id",
+				name: "lead-detail",
+				meta: { cap: "lead" },
+				component: () => import("@/views/sales/LeadDetailView.vue"),
+				props: true,
 			},
 			{
 				path: "procurement",
@@ -1281,6 +1297,8 @@ const ROUTE_CAPS = {
 	"timesheet-detail": "fieldAttendance",
 	"timesheet-edit": "fieldAttendance",
 	customers: "customer",
+	leads: "lead",
+	"lead-detail": "lead",
 	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
 	"finance-invoice-new": "salesInvoice",
 	"finance-invoice-edit": "salesInvoice",

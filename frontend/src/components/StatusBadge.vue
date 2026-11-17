@@ -40,6 +40,9 @@ const classes = computed(() => {
 		"Pending Approval": "bg-warning-50 text-warning-700",
 		Approved: "bg-success-50 text-success-700",
 		Rejected: "bg-danger-50 text-danger-700",
+		// Quotation offer labels (data/offerStatus.js).
+		Sent: "bg-info-50 text-info-700",
+		Accepted: "bg-success-50 text-success-700",
 		// Petty Cash Request lifecycle.
 		Requested: "bg-warning-50 text-warning-700",
 		Disbursed: "bg-success-50 text-success-700",
@@ -73,6 +76,16 @@ const classes = computed(() => {
 		"Half Day": "bg-warning-50 text-warning-700",
 		Absent: "bg-danger-50 text-danger-700",
 		"Overtime Only": "bg-info-50 text-info-700",
+		// Sales › Leads (ERPNext Lead status). Open is shared with the neutral entry above.
+		Lead: "bg-info-50 text-info-700",
+		Interested: "bg-success-50 text-success-700",
+		Quotation: "bg-ink-100 text-ink-700",
+		"Lost Quotation": "bg-danger-50 text-danger-700",
+		Converted: "bg-brand-50 text-brand-700",
+		"Do Not Contact": "bg-ink-100 text-ink-500",
+		// Quotation outcomes a lead's quotation can carry.
+		Lost: "bg-danger-50 text-danger-700",
+		Expired: "bg-ink-100 text-ink-500",
 	};
 	// Session 37 — pill shape (rounded-full + bumped horizontal padding) matching
 	// the Frappe Cloud reference. Used on both Desk and Vue pages; both look

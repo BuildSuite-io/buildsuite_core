@@ -230,6 +230,24 @@ def get_property_setters():
 			"property_type": "Check",
 			"value": "1",
 		},
+		# Sales > Leads are numbered LEAD-2026-0001, as the prototype shows them. ERPNext's own
+		# CRM-LEAD- series stays selectable so leads made under it keep a valid series.
+		{
+			"doctype_or_field": "DocField",
+			"doctype": "Lead",
+			"fieldname": "naming_series",
+			"property": "options",
+			"property_type": "Text",
+			"value": "LEAD-.YYYY.-.####\nCRM-LEAD-.YYYY.-",
+		},
+		{
+			"doctype_or_field": "DocField",
+			"doctype": "Lead",
+			"fieldname": "naming_series",
+			"property": "default",
+			"property_type": "Text",
+			"value": "LEAD-.YYYY.-.####",
+		},
 		{
 			"doctype": "Material Request",
 			"fieldname": "naming_series",

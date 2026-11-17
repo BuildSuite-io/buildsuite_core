@@ -453,11 +453,14 @@ def _won_offer_for_boq(src):
 		("BuildSuite Tenders", "Tender", "bid_before_tax", "date_issued"),
 		("Quotation", "Quotation", "net_total", "transaction_date"),
 	):
-		for r in frappe.get_all(
-			doctype,
-			filters={"source_boq": ("in", lineage), "project": ("in", ["", None])},
-			fields=["name", f"{total_field} as taxable", f"{date_field} as decided"],
-		):
+		filters = {"source_boq": ("in", lineage), "project": ("in", ["", None])}
+		fields = ["name", f"{total_field} as taxable", f"{date_field} as decided"]
+		if doctype == "Quotation":
+			# A quotation the client turned down, or one that was cancelled, never wins.
+			filters["docstatus"] = ("!=", 2)
+			filters["status"] = ("!=", "Lost")
+			fields.append("accepted_on")
+		for r in frappe.get_all(doctype, filters=filters, fields=fields):
 			cands.append(
 				{
 					"kind": kind,
@@ -465,13 +468,36 @@ def _won_offer_for_boq(src):
 					"name": r.name,
 					"taxable": flt(r.taxable),
 					"decided": str(r.decided or ""),
+					"accepted": bool(r.get("accepted_on")),
 				}
 			)
 	if not cands:
 		return None
-	cands.sort(key=lambda c: c["decided"], reverse=True)
+	# An accepted quotation is the winning one; otherwise the most recent raised bid.
+	cands.sort(key=lambda c: (c["accepted"], c["decided"]), reverse=True)
 	top = cands[0]
 	return {"kind": top["kind"], "doctype": top["doctype"], "name": top["name"], "taxable": top["taxable"]}
+
+
+def _customer_of_won_quotation(won):
+	"""The customer a won quotation is with. A quotation to a lead names the lead; the project and
+	its invoices need a customer, so a lead that has not become one yet stops the project."""
+	if not won or won["doctype"] != "Quotation":
+		return None
+	q = frappe.db.get_value("Quotation", won["name"], ["quotation_to", "party_name"], as_dict=True)
+	if q.quotation_to == "Customer":
+		return q.party_name
+	if q.quotation_to == "Lead":
+		customer = frappe.db.get_value("Customer", {"lead_name": q.party_name})
+		if not customer:
+			frappe.throw(
+				_(
+					"Quotation {0} was raised for lead {1}, who is not a customer yet. "
+					"Accept the quotation, or convert the lead, before creating the project."
+				).format(won["name"], q.party_name)
+			)
+		return customer
+	return None
 
 
 @frappe.whitelist()
@@ -510,6 +536,7 @@ def create_project_from_boq(
 	# the payment schedule onto the project; otherwise the contract value is the estimate's own
 	# priced total (planned cost + margin).
 	won = _won_offer_for_boq(src)
+	won_customer = _customer_of_won_quotation(won)
 	contract_value = won["taxable"] if won else flt(src.planned_amount) * (1 + flt(src.margin_rate) / 100.0)
 
 	proj = frappe.get_doc(
@@ -518,7 +545,7 @@ def create_project_from_boq(
 			"project_name": project_name,
 			"custom_project_id": (code or "").strip() or None,
 			"company": src.company,
-			"customer": src.customer or None,
+			"customer": src.customer or won_customer or None,
 			"project_category": project_category or None,
 			"project_type": project_type or None,
 			"expected_start_date": start_date or None,

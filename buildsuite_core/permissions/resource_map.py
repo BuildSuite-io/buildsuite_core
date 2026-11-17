@@ -58,6 +58,9 @@ RESOURCE_DOCTYPES = {
 	# Equipment
 	"machinery": "Machinery",
 	"machineryUsage": "Machinery Usage",
+	# Sales
+	"lead": "Lead",
+	"quotation": "Quotation",
 	# Project Finance
 	"supplier": "Supplier",
 	"customer": "Customer",

@@ -18,6 +18,9 @@ const today = computed(() =>
 
 const ESTIMATES = [
 	{ to: "/boq", icon: "chart-bar", label: "BOQ", cap: "boq" },
+	// Estimators and QSs have no Sales workspace, and whoever prices an offer takes the enquiry
+	// it starts from.
+	{ to: "/leads", icon: "users", label: "Leads", cap: "lead" },
 	// Quotations and Tenders moved to the Sales workspace. An estimate still
 	// raises one ("Create bid from this estimate" on an approved BOQ).
 ];

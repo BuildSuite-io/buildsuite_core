@@ -897,8 +897,32 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Sales > Leads. What the person asked for, typed once — ERPNext's own Notes are a timeline
+	# table (CRM Note), not the one line a salesperson jots down on the first call.
+	"Lead": [
+		{
+			"fieldname": "enquiry_note",
+			"fieldtype": "Small Text",
+			"label": "First Enquiry",
+			"insert_after": "utm_source",
+			"module": "BuildSuite Core",
+		},
+	],
 	# Quotation (native ERPNext) — the estimator's priced offer to a customer.
 	"Quotation": [
+		# When the client accepted the offer. Kept apart from `status`: ERPNext only reaches
+		# "Ordered" through a Sales Order (BuildSuite raises projects and invoices, not Sales
+		# Orders), and its daily expiry job would turn an accepted offer past its validity into
+		# "Expired". The Accepted label and the lead's conversion read this instead.
+		{
+			"fieldname": "accepted_on",
+			"fieldtype": "Datetime",
+			"label": "Accepted On",
+			"insert_after": "valid_till",
+			"read_only": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
 		{
 			"fieldname": "customer_type",
 			"fieldtype": "Select",

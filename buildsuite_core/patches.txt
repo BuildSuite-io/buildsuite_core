@@ -84,3 +84,4 @@ buildsuite_core.patches.move_subcontractor_charges_to_direct_expenses # 2026-11-
 buildsuite_core.patches.fix_default_petty_cash_account # 2026-11-16 Petty Cash Account setting must be a ledger: clear a stored group, fill the single candidate, else leave for the admin to choose
 buildsuite_core.patches.set_persona_project_visibility # 2026-11-17 Persona.project_visibility: the default personas keep the project team scoping they had when it was hard-coded per role
 buildsuite_core.patches.drop_workspace_shortcut_role_restrictions # 2026-11-17 workspace shortcuts follow Frappe permissions: remove their now-unused Restrict To Roles rows (nothing else touched)
+buildsuite_core.patches.setup_lead_permissions # 2026-11-10 Sales › Leads: Lead + UTM Source DocPerms, lead sources

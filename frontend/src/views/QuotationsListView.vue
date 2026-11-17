@@ -1,6 +1,7 @@
 <script setup>
-// Quotations — priced offers to customers, on ERPNext's own Quotation doctype.
-// Drafts only for now: nothing here submits, so there is no status to show or filter on.
+// Quotations — priced offers to customers and leads, on ERPNext's own Quotation doctype.
+// The status shown is the offer's (Draft / Sent / Accepted / Rejected / Expired / Cancelled),
+// derived from ERPNext's fields in data/offerStatus.js; the status filter uses the same table.
 
 import { ref, computed } from "vue";
 import { useRouter, RouterLink } from "vue-router";
@@ -10,6 +11,8 @@ import DeskInput from "@/components/desk/DeskInput.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useCustomerOptions } from "@/composables/useCustomerOptions";
+import StatusBadge from "@/components/StatusBadge.vue";
+import { OFFER_STATUSES, OFFER_STATUS_FILTERS, offerStatus } from "@/data/offerStatus";
 import { fmtCurrency, fmtDate } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
@@ -22,8 +25,16 @@ function openQuotation(row) {
 
 const customerFilter = ref("");
 const customerTypeFilter = ref("");
+const statusFilter = ref("");
+// "Who it is with": a customer, or a lead that has not become one yet.
+const toKindFilter = ref("");
 const fromFilter = ref("");
 const toFilter = ref("");
+
+const baseFilters = computed(() => [
+	...(OFFER_STATUS_FILTERS[statusFilter.value] || []),
+	...(toKindFilter.value ? [["quotation_to", "=", toKindFilter.value]] : []),
+]);
 
 const filterValues = computed(() => ({
 	customer: customerFilter.value,
@@ -46,41 +57,106 @@ const breadcrumbs = [
 // entirely, so any field a cell template reads has to be named on its own column.
 const columns = [
 	{ key: "name", label: __("Quotation"), fields: ["name", "customer_type"] },
-	{ key: "title", label: __("For") },
-	{ key: "party_name", label: __("Customer") },
+	{ key: "title", label: __("Scope") },
+	{
+		key: "party_name",
+		label: __("For"),
+		fields: ["party_name", "customer_name", "quotation_to"],
+	},
+	{
+		key: "offer_status",
+		label: __("Status"),
+		fields: ["docstatus", "status", "accepted_on"],
+	},
 	{ key: "transaction_date", label: __("Issued") },
 	{ key: "valid_till", label: __("Valid to") },
-	{ key: "grand_total", label: __("Value"), align: "right", fields: ["grand_total", "currency"] },
+	{
+		key: "grand_total",
+		label: __("Value"),
+		align: "right",
+		fields: ["grand_total", "currency"],
+	},
 ];
 </script>
 
 <template>
-	<DeskPage :title="__('Quotations')"
-		:subtitle="__('Priced offers to customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.')"
-		:breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="__('Quotations')"
+		:subtitle="
+			__(
+				'Priced offers to leads and customers who asked you for a price. Nothing here touches an estimate — a price you offer is not work you have committed to.'
+			)
+		"
+		:breadcrumbs="breadcrumbs"
+	>
 		<template #actions>
-			<RouterLink to="/quotations/new" class="desk-save-btn !text-xs">{{ __("+ New") }}</RouterLink>
+			<RouterLink to="/quotations/new" class="desk-save-btn !text-xs">{{
+				__("+ New")
+			}}</RouterLink>
 		</template>
 
-		<DocTypeListView doctype="Quotation" :columns="columns" :filter-values="filterValues"
+		<DocTypeListView
+			doctype="Quotation"
+			:columns="columns"
+			:filter-values="filterValues"
+			:base-filters="baseFilters"
 			:filter-field-map="{
 				customer: 'party_name',
 				customer_type: 'customer_type',
 				from: { field: 'transaction_date', op: '>=' },
 				to: { field: 'transaction_date', op: '<=' },
-			}" :search-fields="['name', 'party_name', 'title']" cache-key="buildsuite-quotation-list" row-key="name"
-			:search-placeholder="__('Search quotation / customer / scope…')"
-			:empty-message="__('No quotations yet. Build one when a customer asks you for a price.')"
-			@row-click="openQuotation">
+			}"
+			:search-fields="['name', 'party_name', 'customer_name', 'title']"
+			cache-key="buildsuite-quotation-list"
+			row-key="name"
+			:search-placeholder="__('Search quotation / lead / customer / scope…')"
+			:empty-message="
+				__('No quotations yet. Build one when a customer asks you for a price.')
+			"
+			@row-click="openQuotation"
+		>
 			<template #filter-chips>
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Customer") }}</span>
-					<DeskSearchableSelect v-model="customerFilter" :options="customerOptions" allow-clear
-						:placeholder="__('Any')" :search-placeholder="__('Search customers…')" class="!w-52" />
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Customer")
+					}}</span>
+					<DeskSearchableSelect
+						v-model="customerFilter"
+						:options="customerOptions"
+						allow-clear
+						:placeholder="__('Any')"
+						:search-placeholder="__('Search customers…')"
+						class="!w-52"
+					/>
 				</label>
 
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Type") }}</span>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Status")
+					}}</span>
+					<DeskSelect v-model="statusFilter" class="!w-32">
+						<option value="">{{ __("Any") }}</option>
+						<option v-for="s in OFFER_STATUSES" :key="s" :value="s">
+							{{ __(s) }}
+						</option>
+					</DeskSelect>
+				</label>
+
+				<label class="flex items-center gap-1.5">
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Goes to")
+					}}</span>
+					<DeskSelect v-model="toKindFilter" class="!w-32">
+						<option value="">{{ __("Any") }}</option>
+						<option value="Customer">{{ __("Customer") }}</option>
+						<option value="Lead">{{ __("Lead") }}</option>
+					</DeskSelect>
+				</label>
+
+				<label class="flex items-center gap-1.5">
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Type")
+					}}</span>
 					<DeskSelect v-model="customerTypeFilter" class="!w-40">
 						<option value="">{{ __("Any") }}</option>
 						<option value="Homebuyer">{{ __("Homebuyer") }}</option>
@@ -90,7 +166,9 @@ const columns = [
 				</label>
 
 				<label class="flex items-center gap-1.5">
-					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{ __("Issued") }}</span>
+					<span class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">{{
+						__("Issued")
+					}}</span>
 					<DeskInput v-model="fromFilter" type="date" class="!w-36" />
 					<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
 					<DeskInput v-model="toFilter" type="date" class="!w-36" />
@@ -102,6 +180,20 @@ const columns = [
 				<div v-if="row.customer_type" class="text-[10px] text-ink-500">
 					{{ __(row.customer_type) }}
 				</div>
+			</template>
+
+			<template #cell-party_name="{ row }">
+				<span class="text-ink-900">{{ row.customer_name || row.party_name || "—" }}</span>
+				<span
+					v-if="row.quotation_to === 'Lead'"
+					class="ml-1.5 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-info-50 text-info-700"
+					style="border-radius: 4px"
+					>{{ __("Lead") }}</span
+				>
+			</template>
+
+			<template #cell-offer_status="{ row }">
+				<StatusBadge :status="offerStatus(row)" size="xs" />
 			</template>
 
 			<template #cell-title="{ row }">

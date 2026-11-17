@@ -309,8 +309,10 @@ PERSONA_CRUD_MATRIX = {
 		"Supplier": "crwd",
 		"Expense Entry": "crwdsx",
 		"Petty Cash Request": "crwd",
+		"Lead": "crwd",  # Sales > Leads — full
 	},
 	"Foreman / Supervisor": {
+		"Lead": "",  # Sales > Leads — no access
 		"Purchase Invoice": "",  # Supplier Bill — no access at all (not even read)
 		"Employee": "r",  # Field Employee — read-only
 		"Crew": "crw",  # maintain membership; no delete
@@ -336,6 +338,7 @@ PERSONA_CRUD_MATRIX = {
 		"Machinery": "crw",  # register — maintain, no delete
 		"Machinery Type": "r",  # must read the type master or the selector is empty
 		"Customer": "crw",  # maintain, no delete
+		"Lead": "r",  # Sales > Leads — read-only (a quotation's lead on their project)
 	},
 	"Store Keeper": {
 		"Supplier": "r",  # read-only — Store Keeper reads suppliers in its receipt/custody context
@@ -345,6 +348,7 @@ PERSONA_CRUD_MATRIX = {
 		"Project": "r",  # must read Project or the project-field selector is empty
 		"Petty Cash Request": "cr",  # raises requests — create + read only
 		"Expense Entry": "cr",  # raises expenses — create + read only
+		"Lead": "",  # Sales > Leads — no access
 	},
 	"Procurement Officer": {
 		"Subcontractor Work Order": "crwdsx",  # full — Procurement owns the commitment doc
@@ -372,6 +376,7 @@ PERSONA_CRUD_MATRIX = {
 		"Expense Entry": "cr",  # raises expenses — create + read
 		"Sales Invoice": "r",  # read-only (billing context, not raising)
 		"Project": "r",  # must read Project or the project-field selector is empty
+		"Lead": "crwd",  # Sales > Leads — manages them (converting needs Customer create: no)
 	},
 	"Site Engineer": {
 		"Measurement Book": "cr",  # raise only — create + read, no edit/delete/certify
@@ -388,6 +393,7 @@ PERSONA_CRUD_MATRIX = {
 		# test_petty_cash, and surfaced to the SPA as writeScope/deleteScope = "own".
 		"Expense Entry": "cr",
 		"Project": "r",  # must read Project or the project-field selector is empty
+		"Lead": "",  # Sales > Leads — no access
 	},
 	"Estimator": {
 		"Supplier": "r",  # read-only
@@ -399,6 +405,7 @@ PERSONA_CRUD_MATRIX = {
 		"Petty Cash Request": "cr",  # create + read
 		"Expense Entry": "cr",  # create + read
 		"Project": "r",
+		"Lead": "crwd",  # Sales > Leads — full (they price the enquiry)
 	},
 	# Customer + Supplier are OMITTED for HR Manager: both survive as a bare read via the
 	# linked-master read-mirror (HR reads Project/Employee), so a hard "no access" can't be
@@ -415,6 +422,7 @@ PERSONA_CRUD_MATRIX = {
 		"Purchase Invoice": "",  # supplier bill — no access
 		"Machinery": "",  # equipment — no access
 		"Subcontractor Work Order": "",  # subcontract — no access
+		"Lead": "",  # Sales > Leads — no access
 	},
 	"Accountant": {
 		"Supplier": "crwd",  # full — maintains subcontractors
@@ -523,7 +531,8 @@ class TestPersonaCrudMatrix(_PersonaBase):
 		"Work Order",
 		"Job Card",
 		"Production Plan",
-		"Lead",
+		# Lead is NOT here: Sales > Leads is a BuildSuite surface (LEAD_ROLE_PERMS); each persona's
+		# Lead access is pinned in PERSONA_CRUD_MATRIX instead.
 		"Opportunity",
 		"Prospect",
 		"Pricing Rule",
