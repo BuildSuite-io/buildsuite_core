@@ -38,7 +38,9 @@ def ensure_todo_status_option():
 	Select). Idempotent; run on install + migrate so the board's third column is valid to save."""
 	if not frappe.db.exists("DocType", DOCTYPE):
 		return
-	frappe.make_property_setter(
+	from buildsuite_core.utils.property_setter import ensure_property_setter
+
+	ensure_property_setter(
 		{
 			"doctype": DOCTYPE,
 			"fieldname": "status",
@@ -46,6 +48,7 @@ def ensure_todo_status_option():
 			"value": _STATUS_OPTIONS,
 			"property_type": "Text",
 		},
+		validate_fields_for_doctype=True,
 		is_system_generated=True,
 	)
 
@@ -102,8 +105,18 @@ def list_todos():
 	me = frappe.session.user
 	can_all = _can_see_all()
 	fields = [
-		"name", "description", "status", "priority", "date", "color",
-		"allocated_to", "assigned_by", "reference_type", "reference_name", "creation", "_seen",
+		"name",
+		"description",
+		"status",
+		"priority",
+		"date",
+		"color",
+		"allocated_to",
+		"assigned_by",
+		"reference_type",
+		"reference_name",
+		"creation",
+		"_seen",
 	]
 	if can_all:
 		rows = frappe.get_all(DOCTYPE, fields=fields, order_by="modified desc", limit_page_length=0)
@@ -118,7 +131,12 @@ def list_todos():
 
 	users = {u for r in rows for u in (r.allocated_to, r.assigned_by) if u}
 	names = (
-		{u.name: (u.full_name or u.name) for u in frappe.get_all("User", filters={"name": ["in", list(users)]}, fields=["name", "full_name"])}
+		{
+			u.name: (u.full_name or u.name)
+			for u in frappe.get_all(
+				"User", filters={"name": ["in", list(users)]}, fields=["name", "full_name"]
+			)
+		}
 		if users
 		else {}
 	)
@@ -284,12 +302,27 @@ def get_todo(name):
 	response never confirms that a to-do you can't read exists."""
 	me = frappe.session.user
 	fields = [
-		"name", "description", "status", "priority", "date", "color",
-		"allocated_to", "assigned_by", "reference_type", "reference_name", "creation", "_seen", "owner",
+		"name",
+		"description",
+		"status",
+		"priority",
+		"date",
+		"color",
+		"allocated_to",
+		"assigned_by",
+		"reference_type",
+		"reference_name",
+		"creation",
+		"_seen",
+		"owner",
 	]
-	row = frappe.db.get_value(DOCTYPE, name, fields, as_dict=True) if frappe.db.exists(DOCTYPE, name) else None
+	row = (
+		frappe.db.get_value(DOCTYPE, name, fields, as_dict=True) if frappe.db.exists(DOCTYPE, name) else None
+	)
 	if not row or not _visible_to_me(row, me):
-		frappe.throw(_("This to-do no longer exists, or it belongs to someone else."), frappe.DoesNotExistError)
+		frappe.throw(
+			_("This to-do no longer exists, or it belongs to someone else."), frappe.DoesNotExistError
+		)
 
 	activity = get_todo_activity(name)
 	_mark_read(name)
