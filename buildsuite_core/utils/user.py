@@ -43,7 +43,16 @@ def _persona_roles(persona):
 	marker that every BuildSuite persona carries."""
 	if not persona:
 		return set()
-	roles = set(frappe.get_all("Persona Role", filters={"parent": persona}, pluck="role"))
+	return _with_marker(set(frappe.get_all("Persona Role", filters={"parent": persona}, pluck="role")))
+
+
+def persona_roles(persona_doc):
+	"""Roles a Persona document grants, read from its rows rather than the database — so the
+	version of a persona from before a save can be compared with the saved one."""
+	return _with_marker({row.role for row in persona_doc.roles})
+
+
+def _with_marker(roles):
 	if roles:
 		roles.add(WORKFLOW_EDITOR_ROLE)
 	return roles

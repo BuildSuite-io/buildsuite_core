@@ -87,6 +87,7 @@ function tileValue(m) {
 // Role-gated quick actions — each persona sees only the tiles for its slug, matching
 // the prototype's per-role Home. `store.role` is the persona slug; ALL_ACTIONS lists
 // every tile with the roles allowed to see it, and quickActions filters to the caller.
+// prettier-ignore
 const ALL_ACTIONS = [
 	{ key:'projects',      label:__('Projects'),            to:'/projects',                      icon:'clipboard-list', roles:['director','pm','site-engineer','foreman','estimator','qs','accountant'] },
 	{ key:'tasks',         label:__('Tasks'),               to:'/tasks',                         icon:'check-circle',   roles:['director','pm','site-engineer','foreman'] },
@@ -124,10 +125,14 @@ const ALL_ACTIONS = [
 ];
 // Site roles re-sort their tiles by daily frequency.
 const SITE_ROLES = ["site-engineer", "foreman"];
+// prettier-ignore
 const SITE_ACTION_ORDER = ["wf-attendance","progress-new","tasks","consumption","grn-new","mrs","fin-petty","fin-expenses","stages","schedule","projects"];
+// Keyed on baseRole, not role: a persona an admin created takes the tiles of the built-in persona
+// its roles are closest to (each tile's route is still gated by the user's real permissions).
+// prettier-ignore
 const quickActions = computed(() => {
-	const list = ALL_ACTIONS.filter((a) => a.roles.includes(store.role));
-	if (!SITE_ROLES.includes(store.role)) return list;
+	const list = ALL_ACTIONS.filter((a) => a.roles.includes(store.baseRole));
+	if (!SITE_ROLES.includes(store.baseRole)) return list;
 	const rank = (a) => { const i = SITE_ACTION_ORDER.indexOf(a.key); return i === -1 ? SITE_ACTION_ORDER.length : i; };
 	return list.slice().sort((a, b) => rank(a) - rank(b));
 });
@@ -164,7 +169,9 @@ const quickActions = computed(() => {
 				<header
 					class="px-5 py-3 bg-gradient-to-r from-brand-50 to-white border-b border-ink-100 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Today's snapshot") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Today's snapshot") }}
+					</h2>
 					<span
 						class="text-[10px] uppercase tracking-wider font-medium text-success-700 bg-success-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1"
 					>

@@ -46,6 +46,17 @@ function colourForId(id) {
 	return COMPANY_COLOURS[sum % COMPANY_COLOURS.length];
 }
 
+// A persona an admin created, in the shape of a ROLES entry (what currentRole returns).
+function customPersonaRole(persona) {
+	return {
+		id: persona.id,
+		name: persona.name,
+		shortName: persona.name,
+		description: "",
+		color: "bg-ink-600",
+	};
+}
+
 const STORAGE_KEY = "buildsuite:data:v1";
 // Role is persisted under its own key so resetAll() (which wipes domain data)
 // preserves the active role — it's a UI preference, not seed-derived state.
@@ -197,6 +208,9 @@ export const useDataStore = defineStore("data", {
 		multiCompanyEnabled: false,
 		// Active role id. NOT persisted via _persist() — see ROLE_STORAGE_KEY above.
 		role: DEFAULT_ROLE,
+		// The logged-in user's persona when an admin created it ({ id, name, baseRole }), else null.
+		// Set by setPersona; `role` then holds its id.
+		customPersona: null,
 		// Active company id. Same independent-persistence rationale as `role` — lives
 		// in COMPANY_STORAGE_KEY so resetAll() preserves it as a UI preference.
 		activeCompany: DEFAULT_COMPANY_ID,
@@ -437,7 +451,17 @@ export const useDataStore = defineStore("data", {
 
 		// ===== Role system (see src/data/roles.js, CLAUDE.md §12) =====
 		currentRole: (s) =>
-			ROLES.find((r) => r.id === s.role) || ROLES.find((r) => r.id === DEFAULT_ROLE),
+			ROLES.find((r) => r.id === s.role) ||
+			(s.customPersona?.id === s.role ? customPersonaRole(s.customPersona) : null) ||
+			ROLES.find((r) => r.id === DEFAULT_ROLE),
+		// The built-in persona id the per-persona UI defaults (e.g. Home quick actions) key on: the
+		// active persona when it is built in, else the one a custom persona's roles are closest to.
+		baseRole: (s) =>
+			ROLES.some((r) => r.id === s.role)
+				? s.role
+				: s.customPersona?.id === s.role
+				? s.customPersona.baseRole || null
+				: null,
 		// Workspace slugs visible to the logged-in user, ordered — sourced from the backend
 		// registry (api.workspace_setting.get_visible_workspaces), loaded on boot into
 		// `workspaces`. Replaces the old client WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
@@ -697,6 +721,19 @@ export const useDataStore = defineStore("data", {
 			if (!validRoleIds.includes(roleId)) return;
 			this.role = roleId;
 			saveRoleToStorage(roleId);
+		},
+		// The logged-in user's persona (data/roles.resolvePersona). A custom persona — one an admin
+		// created — is held for the session only: it is not in ROLES, so it is never persisted as
+		// the switcher's choice, and the next load resolves it from the backend again.
+		setPersona(resolved) {
+			if (!resolved) return;
+			if (!resolved.custom) {
+				this.customPersona = null;
+				this.setRole(resolved.id);
+				return;
+			}
+			this.customPersona = resolved.custom;
+			this.role = resolved.custom.id;
 		},
 
 		// ===== Theme (UI preference, persisted to THEME_STORAGE_KEY) =====
