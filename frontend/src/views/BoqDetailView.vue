@@ -212,10 +212,12 @@ function boqSubItemsByItem(itemId) {
 }
 const boqItemsByBoq = computed(() => allItems.value);
 
-// Shared 10-column grid for the tree header + group / item / sub-item rows so every
-// level lines up. Without it the rows have no column template and collapse.
+// Shared grid for the tree header + group / item / sub-item rows so every level lines up.
+// Without it the rows have no column template and collapse. The first column is 48px: a 20px
+// expand button with room for its touch area, and a group's items step 16px in from it
+// (chevron and code) so an item reads as inside its group. Descriptions stay aligned.
 const treeGridStyle =
-	"grid-template-columns: 28px 80px minmax(240px, 1fr) 80px 90px 100px 110px 120px 110px 110px 120px 80px 110px; min-width: 1360px;";
+	"grid-template-columns: 48px 80px minmax(240px, 1fr) 80px 90px 100px 110px 120px 110px 110px 120px 80px 110px; min-width: 1380px;";
 
 const totals = computed(() => {
 	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
@@ -1817,8 +1819,35 @@ const breadcrumbs = computed(() => {
 						:style="treeGridStyle"
 						@click="toggleGroup(g.id)"
 					>
-						<div class="px-2 text-ink-500 text-xs">
-							{{ groupExpanded(g) ? "▾" : "▸" }}
+						<div class="flex items-center pl-1.5">
+							<button
+								type="button"
+								class="boq-toggle"
+								:class="{ 'boq-toggle-open': groupExpanded(g) }"
+								:aria-expanded="groupExpanded(g)"
+								:aria-label="
+									groupExpanded(g)
+										? __('Collapse {0} {1}', [g.code, g.name])
+										: __('Expand {0} {1}', [g.code, g.name])
+								"
+								:title="
+									groupExpanded(g) ? __('Hide the items') : __('Show the items')
+								"
+								data-test="boq-group-toggle"
+								@click.stop="toggleGroup(g.id)"
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.25"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="m9 18 6-6-6-6" />
+								</svg>
+							</button>
 						</div>
 						<div class="px-3 py-2 font-mono text-xs text-ink-700">{{ g.code }}</div>
 						<div class="px-3 py-2 text-sm font-semibold text-ink-900">
@@ -2009,16 +2038,47 @@ const breadcrumbs = computed(() => {
 										/>
 									</button>
 								</div>
-								<div class="px-2 text-ink-400 text-[10px]">
-									{{
-										boqSubItemsByItem(item.id).length
-											? itemExpanded(item)
-												? "▾"
-												: "▸"
-											: "·"
-									}}
+								<!-- One step in from the group (16px): the chevron and the code. On every
+								     item; one with no sub-items shows a plain chevron and opens to
+								     "+ Add sub-item". -->
+								<div class="flex items-center pl-[22px]">
+									<button
+										type="button"
+										class="boq-toggle"
+										:class="{
+											'boq-toggle-open': itemExpanded(item),
+											'boq-toggle-empty': !boqSubItemsByItem(item.id).length,
+										}"
+										:aria-expanded="itemExpanded(item)"
+										:aria-label="
+											itemExpanded(item)
+												? __('Hide the rate analysis of {0}', [item.code])
+												: __('Show the rate analysis of {0}', [item.code])
+										"
+										:title="
+											itemExpanded(item)
+												? __('Hide the sub-items')
+												: boqSubItemsByItem(item.id).length
+												? __('Show the sub-items')
+												: __('No sub-items yet')
+										"
+										data-test="boq-item-toggle"
+										@click.stop="toggleItem(item.id)"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.25"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+										>
+											<path d="m9 18 6-6-6-6" />
+										</svg>
+									</button>
 								</div>
-								<div class="px-3 py-1.5 font-mono text-xs text-ink-700">
+								<div class="pl-7 pr-3 py-1.5 font-mono text-xs text-ink-700">
 									{{ item.code }}
 								</div>
 								<div class="px-3 py-1.5 text-sm text-ink-800 min-w-0 break-words">
@@ -2166,7 +2226,7 @@ const breadcrumbs = computed(() => {
 									<div></div>
 									<div></div>
 									<div
-										class="px-3 py-1 text-xs text-ink-600 pl-10 min-w-0 break-words"
+										class="pr-3 py-1 text-xs text-ink-600 pl-10 min-w-0 break-words"
 									>
 										↳ {{ si.description }}
 										<DeskLink
@@ -2255,7 +2315,7 @@ const breadcrumbs = computed(() => {
 								>
 									<div></div>
 									<div></div>
-									<div class="px-3 py-1 pl-10">
+									<div class="pr-3 py-1 pl-10">
 										{{ __("No rate analysis recorded for this item.") }}
 									</div>
 									<div></div>
@@ -2280,7 +2340,7 @@ const breadcrumbs = computed(() => {
 									<div></div>
 									<div></div>
 									<div
-										class="px-3 py-1 pl-10 text-[11px] text-brand-700 font-medium"
+										class="pr-3 py-1 pl-10 text-[11px] text-brand-700 font-medium"
 									>
 										+ {{ __("Add sub-item to {0}", [item.code]) }}
 									</div>
@@ -4076,3 +4136,86 @@ const breadcrumbs = computed(() => {
 		</div>
 	</DeskPage>
 </template>
+
+<style>
+/* The expand button on the BOQ tree (groups and items). A small chip, 20px, with a 14px
+   chevron that turns down when open, and a 32px touch area around it (the ::after) so a finger
+   on a tablet still lands it. An item with no sub-items shows the chevron alone, with no chip:
+   it still opens, to "+ Add sub-item", but the lines with something inside stand out.
+   Unscoped, so the html.dark rules below reach it. */
+.boq-toggle {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 1px solid #cbd5e1;
+	border-radius: 5px;
+	background: #ffffff;
+	box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06);
+	color: #475569;
+	cursor: pointer;
+	transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+.boq-toggle::after {
+	content: "";
+	position: absolute;
+	inset: -6px;
+}
+.boq-toggle svg {
+	width: 14px;
+	height: 14px;
+	transition: transform 150ms;
+}
+.boq-toggle:hover {
+	background: #f0fdf4;
+	border-color: #16a34a;
+	color: #15803d;
+}
+.boq-toggle:focus-visible {
+	outline: 2px solid #16a34a;
+	outline-offset: 2px;
+}
+.boq-toggle-open {
+	background: #f0fdf4;
+	border-color: #86efac;
+	color: #15803d;
+}
+.boq-toggle-open svg {
+	transform: rotate(90deg);
+}
+.boq-toggle-empty {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+	color: #64748b;
+}
+html.dark .boq-toggle {
+	background: #2a2a2a;
+	border-color: #4a4a4a;
+	box-shadow: none;
+	color: #d4d4d4;
+}
+html.dark .boq-toggle:hover {
+	background: #1f2e24;
+	border-color: #4ade80;
+	color: #4ade80;
+}
+html.dark .boq-toggle-open {
+	background: #1f2e24;
+	border-color: #2f6b45;
+	color: #4ade80;
+}
+html.dark .boq-toggle-empty {
+	background: transparent;
+	border-color: transparent;
+	color: #a3a3a3;
+}
+@media print {
+	.boq-toggle {
+		display: none;
+	}
+}
+</style>
