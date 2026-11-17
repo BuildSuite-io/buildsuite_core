@@ -73,6 +73,38 @@ class TestUserPersona(BuildSuiteTestCase):
 		u.save(ignore_permissions=True)
 		self.assertIn("System Manager", self._roles(u.name))
 
+	def test_changing_a_personas_roles_reaches_the_users_who_hold_it(self):
+		persona = frappe.get_doc(
+			{
+				"doctype": "Persona",
+				"persona_name": f"Custom {self._n}",
+				"enabled": 1,
+				"roles": [{"role": "BuildSuite PM"}],
+			}
+		).insert(ignore_permissions=True)
+		u = self._make_user(persona.name)
+		u.append("roles", {"role": "System Manager"})  # added by hand, not by the persona
+		u.save(ignore_permissions=True)
+		self.assertIn("BuildSuite PM", self._roles(u.name))
+
+		persona.set("roles", [{"role": "BuildSuite Estimator"}])
+		persona.save(ignore_permissions=True)
+
+		roles = self._roles(u.name)
+		self.assertIn("BuildSuite Estimator", roles)  # the role it now grants
+		self.assertNotIn("BuildSuite PM", roles)  # the role it no longer grants
+		self.assertIn("System Manager", roles)  # a hand-added role stays
+		self.assertIn(WORKFLOW_EDITOR_ROLE, roles)
+
+	def test_saving_a_persona_without_changing_its_roles_leaves_users_alone(self):
+		u = self._make_user("Project Manager")
+		u.append("roles", {"role": "Projects User"})
+		u.save(ignore_permissions=True)
+		persona = frappe.get_doc("Persona", "Project Manager")
+		persona.description = (persona.description or "") + " "
+		persona.save(ignore_permissions=True)
+		self.assertIn("Projects User", self._roles(u.name))
+
 	def test_unknown_persona_is_rejected(self):
 		# Frappe's Link validation blocks assigning a persona that doesn't exist, so a
 		# user can never be left pointing at a missing persona (and thus silently

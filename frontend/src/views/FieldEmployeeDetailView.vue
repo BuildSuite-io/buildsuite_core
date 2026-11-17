@@ -186,7 +186,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Worker')" :cols="3">
+			<DeskSection id="worker" :title="__('Worker')" :cols="3">
 				<DeskField :label="__('Employee code')">
 					<div class="text-sm font-mono text-ink-800">{{ doc.name }}</div>
 				</DeskField>
@@ -228,7 +228,7 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Wages')" :cols="2">
+			<DeskSection id="wages" :title="__('Wages')" :cols="2">
 				<DeskField :label="__('Daily wage')">
 					<div class="text-sm tabular-nums text-ink-900">
 						{{ doc.custom_wage ? fmtINR(doc.custom_wage) : "—" }}
@@ -261,7 +261,9 @@ const breadcrumbs = computed(() => [
 		</div>
 	</DeskPage>
 
-	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">{{ __("Loading field employee…") }}</div>
+	<div v-else-if="loading" class="px-3 py-2 text-sm text-ink-500">
+		{{ __("Loading field employee…") }}
+	</div>
 
 	<AccessDenied
 		v-else-if="accessDenied"

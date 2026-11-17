@@ -11,6 +11,7 @@ import { ref, computed, onMounted } from "vue";
 import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
 import TileGridSkeleton from "@/components/workspaces/TileGridSkeleton.vue";
 import { getWorkspaceReports } from "@/data/workspaceSettingApi";
+import { tilesFor } from "@/sdk/registry";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({
@@ -33,7 +34,14 @@ onMounted(async () => {
 	}
 });
 
-const show = computed(() => props.enabled && (loading.value || reports.value.length > 0));
+// Tiles installed apps add to this workspace (sdk.workspaces.addTile), after the configured reports.
+const extensionTiles = computed(() => tilesFor(props.workspace));
+
+const show = computed(
+	() =>
+		props.enabled &&
+		(loading.value || reports.value.length > 0 || extensionTiles.value.length > 0)
+);
 
 // Carry the tile's description into the report route so the report page can show it as its
 // subtitle (otherwise ReportView falls back to a generic label). Appended as a query param so it
@@ -70,6 +78,14 @@ function reportTo(r) {
 					>
 				</template>
 			</WorkspaceShortcut>
+			<WorkspaceShortcut
+				v-for="t in extensionTiles"
+				:key="t.id"
+				:icon="t.icon"
+				:label="t.label"
+				:description="t.description"
+				:to="t.to"
+			/>
 		</div>
 	</div>
 </template>

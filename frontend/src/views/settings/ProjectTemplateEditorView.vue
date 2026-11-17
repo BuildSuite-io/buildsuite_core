@@ -85,7 +85,7 @@ async function save() {
 		(t) =>
 			!t.subject.trim() ||
 			(t.stage && !stageNames.value.includes(t.stage)) ||
-			(t.work_package_code && !wpCodes.value.includes(t.work_package_code)),
+			(t.work_package_code && !wpCodes.value.includes(t.work_package_code))
 	);
 	if (badTask) {
 		showToast(__("Each task needs a subject and a valid Work Package / Stage."), "error");
@@ -154,14 +154,16 @@ onMounted(() => {
 
 			<div v-else class="space-y-6">
 				<!-- Work Packages -->
-				<DeskSection :title="__('Work Packages')" :cols="1">
+				<DeskSection id="work-packages" :title="__('Work Packages')" :cols="1">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium">{{ __("Code") }}</th>
 									<th class="py-1.5 pr-2 font-medium">{{ __("Name") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-32">{{ __("Budget") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-32">
+										{{ __("Budget") }}
+									</th>
 									<th class="py-1.5 pr-2 font-medium w-16">{{ __("Sort") }}</th>
 									<th class="w-8"></th>
 								</tr>
@@ -210,15 +212,21 @@ onMounted(() => {
 				</DeskSection>
 
 				<!-- Stages -->
-				<DeskSection :title="__('Stages')" :cols="1">
+				<DeskSection id="stages" :title="__('Stages')" :cols="1">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium">{{ __("Stage name") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-24">{{ __("Start (day)") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-24">{{ __("End (day)") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Planned tasks") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-24">
+										{{ __("Start (day)") }}
+									</th>
+									<th class="py-1.5 pr-2 font-medium w-24">
+										{{ __("End (day)") }}
+									</th>
+									<th class="py-1.5 pr-2 font-medium w-28">
+										{{ __("Planned tasks") }}
+									</th>
 									<th class="w-8"></th>
 								</tr>
 							</thead>
@@ -273,18 +281,26 @@ onMounted(() => {
 				</DeskSection>
 
 				<!-- Tasks -->
-				<DeskSection :title="__('Tasks')" :cols="1">
+				<DeskSection id="tasks" :title="__('Tasks')" :cols="1">
 					<p class="text-sm text-ink-500 -mt-1">
-						{{ __("Each task is assigned to a Work Package and a Stage. On import it becomes a project task and lands in that stage's plan.") }}
+						{{
+							__(
+								"Each task is assigned to a Work Package and a Stage. On import it becomes a project task and lands in that stage's plan."
+							)
+						}}
 					</p>
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="text-left text-ink-500 border-b border-ink-100">
 									<th class="py-1.5 pr-2 font-medium">{{ __("Subject") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-28">{{ __("Priority") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-28">
+										{{ __("Priority") }}
+									</th>
 									<th class="py-1.5 pr-2 font-medium w-24">{{ __("Hours") }}</th>
-									<th class="py-1.5 pr-2 font-medium w-40">{{ __("Work Package") }}</th>
+									<th class="py-1.5 pr-2 font-medium w-40">
+										{{ __("Work Package") }}
+									</th>
 									<th class="py-1.5 pr-2 font-medium w-40">{{ __("Stage") }}</th>
 									<th class="w-8"></th>
 								</tr>

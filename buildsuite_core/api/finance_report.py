@@ -7,6 +7,7 @@ views render the prototype layout against live data. Finance is single-company f
 default to the site's default company."""
 
 import frappe
+from frappe.query_builder.functions import Sum
 from frappe.utils import flt
 
 from buildsuite_core.utils.project import default_company
@@ -121,7 +122,11 @@ def financial_position(company: str | None = None):
 			frappe.db.sql(
 				# field/doctype are server-controlled identifiers (called with hardcoded values);
 				# the company value is parameterized. Concatenated to avoid an f-string in SQL.
-				"SELECT IFNULL(SUM(`" + field + "`), 0) FROM `tab" + doctype + "` WHERE docstatus = 1 AND company = %s",
+				"SELECT IFNULL(SUM(`"
+				+ field
+				+ "`), 0) FROM `tab"
+				+ doctype
+				+ "` WHERE docstatus = 1 AND company = %s",
 				(company,),
 			)[0][0]
 		)
@@ -193,7 +198,12 @@ def _direct_expense_range(company):
 
 
 @frappe.whitelist()
-def profit_and_loss(project: str | None = None, from_date: str | None = None, to_date: str | None = None, company: str | None = None):
+def profit_and_loss(
+	project: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	company: str | None = None,
+):
 	"""Our own account-tree Profit & Loss for the Project Finance workspace — computed from the
 	posted GL so it's a real P&L, but ours (labels + layout), not the stock ERPNext financial
 	statement. Income and expense ledger accounts, scoped to an optional project + period, with
@@ -232,7 +242,9 @@ def profit_and_loss(project: str | None = None, from_date: str | None = None, to
 	for r in rows:
 		income = r.root_type == "Income"
 		amt = flt(r.credit - r.debit) if income else flt(r.debit - r.credit)
-		a = accounts.setdefault(r.account, {"root_type": r.root_type, "lft": r.lft, "amount": 0.0, "docs": []})
+		a = accounts.setdefault(
+			r.account, {"root_type": r.root_type, "lft": r.lft, "amount": 0.0, "docs": []}
+		)
 		a["amount"] += amt
 		who = r.party or r.against or r.voucher_type
 		a["docs"].append(
@@ -276,6 +288,36 @@ def profit_and_loss(project: str | None = None, from_date: str | None = None, to
 	}
 
 
+def ledger_project_expense(projects, company=None):
+	"""Expense booked on the given project(s) in the posted ledger: Expense-account GL entries
+	tagged to them, cancelled entries excluded. The one reader behind every project-level
+	"actual" (project page tile, project dashboard) so they reconcile with the P&L."""
+	projects = [p for p in (projects or []) if p]
+	if not projects:
+		return 0.0
+	company = company or default_company()
+	gle, acc = frappe.qb.DocType("GL Entry"), frappe.qb.DocType("Account")
+	total = (
+		frappe.qb.from_(gle)
+		.join(acc)
+		.on(acc.name == gle.account)
+		.select(Sum(gle.debit - gle.credit))
+		.where((gle.is_cancelled == 0) & (gle.company == company))
+		.where((acc.root_type == "Expense") & (gle.project.isin(projects)))
+	).run()[0][0]
+	return flt(total)
+
+
+@frappe.whitelist()
+def project_actual_expense(project: str, company: str | None = None):
+	"""Actual expense booked on one project, read from the posted ledger so it reconciles with
+	the Project Finance P&L and expense reports. Backs the Actual vs Planned tile on the project
+	page. Returns only the aggregate; gated on read access to the Project so site personas
+	without ledger rights still see the figure. Single-company (finance seam)."""
+	frappe.has_permission("Project", "read", project, throw=True)
+	return {"actual": ledger_project_expense([project], company)}
+
+
 def _cash_bank_accounts(company):
 	"""Bank, Cash and Petty Cash accounts a statement can be drawn for (matching the prototype's
 	account picker). Petty Cash accounts are Cash accounts with "Petty" in the name; the statement
@@ -297,7 +339,12 @@ def cash_bank_accounts(company: str | None = None):
 
 
 @frappe.whitelist()
-def cash_bank_statement(account: str | None = None, from_date: str | None = None, to_date: str | None = None, company: str | None = None):
+def cash_bank_statement(
+	account: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	company: str | None = None,
+):
 	"""A running-balance statement for one Bank/Cash account, from its GL. Cash/Bank are asset
 	accounts, so a debit is money in and a credit is money out. The opening balance folds in
 	everything posted before `from_date` (0 when no period is set — the statement runs from the

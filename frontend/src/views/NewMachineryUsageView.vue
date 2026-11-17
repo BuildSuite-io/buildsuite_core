@@ -5,6 +5,9 @@ import { reactive, ref, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { useDocTypeList } from "@/composables/useDocTypeList";
@@ -57,6 +60,8 @@ const form = reactive({
 	rate: 0,
 	fuel_cost: 0,
 });
+const ext = useExtensionFields("Machinery Usage", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	machine: "machine",
 	project: "project",
@@ -107,7 +112,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Machinery Usage", {
+		const payload = {
 			machine: form.machine,
 			project: form.project,
 			...costCodeToFields(form.cost_code),
@@ -116,7 +121,11 @@ async function onSave() {
 			unit: form.unit,
 			rate: form.rate,
 			fuel_cost: form.fuel_cost,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Machinery Usage", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/machinery-usage/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to log usage"), "error");
@@ -152,8 +161,9 @@ const breadcrumbs = [
 				/>
 			</template>
 
-			<DeskSection :title="__('Usage')" :cols="3">
-				<DeskField :label="__('Machine')" required :error="errors.machine">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+			<DeskSection id="usage" :title="__('Usage')" :cols="3">
+				<DeskField name="machine" :label="__('Machine')" required :error="errors.machine">
 					<DeskSearchableSelect
 						v-model="form.machine"
 						:options="machineryOptions"
@@ -161,7 +171,7 @@ const breadcrumbs = [
 						:search-placeholder="__('Search machine…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Project')" required :error="errors.project">
+				<DeskField name="project" :label="__('Project')" required :error="errors.project">
 					<DeskLinkPicker
 						v-model="form.project"
 						doctype="Project"
@@ -173,6 +183,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 				<DeskField
+					name="cost_code"
 					:label="__('Cost code')"
 					:hint="
 						__(
@@ -189,31 +200,32 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 
-				<DeskField :label="__('Date')"
+				<DeskField name="date" :label="__('Date')"
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Quantity')">
+				<DeskField name="quantity" :label="__('Quantity')">
 					<DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5" />
 				</DeskField>
-				<DeskField :label="__('Unit')">
+				<DeskField name="unit" :label="__('Unit')">
 					<DeskSelect v-model="form.unit">
 						<option value="Days">{{ __("Days") }}</option>
 						<option value="Hours">{{ __("Hours") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+				<DeskField name="rate" :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="`${__('Fuel cost')} (${currencySymbol()})`">
+				<DeskField name="fuel_cost" :label="`${__('Fuel cost')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="__('Total')">
+				<DeskField name="total" :label="__('Total')">
 					<div class="text-sm text-ink-900 font-medium tabular-nums pt-1.5">
 						{{ fmtINR(total) }}
 					</div>
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

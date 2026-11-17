@@ -215,7 +215,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- View mode -->
 		<div v-if="!editing">
-			<DeskSection :title="__('Machinery')" :cols="3">
+			<DeskSection id="machinery" :title="__('Machinery')" :cols="3">
 				<DeskField :label="__('Type')"
 					><div class="text-sm text-ink-700">
 						{{ doc.machinery_type || "—" }}
@@ -289,7 +289,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection :title="__('Machinery')" :cols="3">
+			<DeskSection id="machinery-2" :title="__('Machinery')" :cols="3">
 				<DeskField :label="__('Name')" required :error="errors.machinery_name"
 					><DeskInput v-model="form.machinery_name"
 				/></DeskField>

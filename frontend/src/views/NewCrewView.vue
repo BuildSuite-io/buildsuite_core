@@ -5,6 +5,9 @@
 import { reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { useActiveCompany } from "@/composables/useActiveCompany";
@@ -28,6 +31,8 @@ const form = reactive({
 	company: activeCompany.value || "",
 	members: [],
 });
+const ext = useExtensionFields("Crew", form);
+ext.defaults();
 
 // The default company arrives from an async fetch. Apply it only while the field
 // is still untouched, so it never overwrites a company the user already picked.
@@ -56,7 +61,13 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await saveCrew({ ...form });
+		const payload = {
+			...form,
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await saveCrew(payload);
+		await ext.afterSave(res, { isNew: true });
 		showToast(__("Crew created"));
 		router.push(`/crews/${res.name}`);
 	} catch (err) {
@@ -92,6 +103,7 @@ const breadcrumbs = [
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
 			<CrewFormFields :form="form" :errors="errors" />
 
@@ -102,6 +114,7 @@ const breadcrumbs = [
 				@add="form.members.push({ field_employee: '', role_in_crew: '' })"
 				@remove="(i) => form.members.splice(i, 1)"
 			/>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

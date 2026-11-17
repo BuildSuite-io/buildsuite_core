@@ -234,7 +234,7 @@ const breadcrumbs = [
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Multi-company')">
+				<DeskSection id="multi-company" :title="__('Multi-company')">
 					<DeskField
 						:label="__('Enable company awareness')"
 						:hint="
@@ -273,7 +273,7 @@ const breadcrumbs = [
 
 				<!-- "Default project type" went: it said it pre-filled new projects, and nothing ever
 				     read it. -->
-				<DeskSection :title="__('Project defaults')">
+				<DeskSection id="project-defaults" :title="__('Project defaults')">
 					<DeskField
 						:label="__('Project naming')"
 						:hint="
@@ -293,7 +293,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Accounting')">
+				<DeskSection id="accounting" :title="__('Accounting')">
 					<DeskField
 						:label="__('Petty Cash Account')"
 						:hint="
@@ -314,7 +314,7 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection v-if="store.isAdmin" :title="__('App setup')">
+				<DeskSection id="app-setup" v-if="store.isAdmin" :title="__('App setup')">
 					<DeskField
 						:label="__('Set up app data')"
 						:hint="
@@ -341,7 +341,11 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection v-if="store.isAdmin" :title="__('Role permissions')">
+				<DeskSection
+					id="role-permissions"
+					v-if="store.isAdmin"
+					:title="__('Role permissions')"
+				>
 					<DeskField
 						:label="__('Default permission matrix')"
 						:hint="

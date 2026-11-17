@@ -6,6 +6,9 @@
 import { reactive, ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDataStore } from "@/stores";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { showToast } from "@/utils/appToast";
 import { __ } from "@/utils/translate";
 import { useFormErrors } from "@/composables/useFormErrors";
@@ -44,6 +47,8 @@ const form = reactive({
 	endDate: "",
 	estimatedHours: 0,
 });
+const ext = useExtensionFields("Task", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors, clearError } = useFormErrors({
 	subject: "name",
 	project: "projectId",
@@ -62,7 +67,7 @@ watch(
 	(newVal, oldVal) => {
 		if (lockedWP.value) return;
 		if (newVal !== oldVal) form.workPackageId = "";
-	},
+	}
 );
 
 function validate() {
@@ -89,15 +94,15 @@ async function save() {
 			form.endDate,
 			b.start,
 			b.end,
-			"project",
+			"project"
 		);
 		if (boundsErr) {
 			setErrors(
-				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr },
+				boundsErr.startsWith("Start") ? { startDate: boundsErr } : { endDate: boundsErr }
 			);
 			return;
 		}
-		const res = await adapter.create("Task", {
+		const payload = {
 			subject: form.name,
 			project: form.projectId,
 			work_package: form.workPackageId || null,
@@ -109,7 +114,11 @@ async function save() {
 			exp_end_date: form.endDate,
 			expected_time: Number(form.estimatedHours) || 0,
 			owner: form.assignee, // Map to owner for the adapter/Frappe consistency
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Task", payload);
+		await ext.afterSave(res, { isNew: true });
 
 		const createdTaskId =
 			res?.name ||
@@ -167,8 +176,9 @@ const breadcrumbs = [
 			<!-- Narrow centered column so the form doesn't feel sprawling. Save bar
            above stays full-width (matches Frappe Desk's form layout). -->
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Task details')" :cols="1">
-					<DeskField :label="__('Task name')" required :error="errors.name">
+				<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+				<DeskSection id="task-details" :title="__('Task details')" :cols="1">
+					<DeskField name="name" :label="__('Task name')" required :error="errors.name">
 						<DeskInput
 							v-model="form.name"
 							data-test="field-task-name"
@@ -176,14 +186,17 @@ const breadcrumbs = [
 						/>
 					</DeskField>
 					<DeskField
+						name="task_type"
 						:label="__('Task Type')"
 						:hint="__('Drives workflow + Gantt rendering. Milestone = zero-duration.')"
 					>
 						<DeskSelect v-model="form.taskType">
-							<option v-for="tt in taskTypes" :key="tt" :value="tt">{{ __(tt) }}</option>
+							<option v-for="tt in taskTypes" :key="tt" :value="tt">
+								{{ __(tt) }}
+							</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField :label="__('Description')">
+					<DeskField name="description" :label="__('Description')">
 						<DeskTextarea
 							v-model="form.description"
 							:rows="3"
@@ -192,8 +205,9 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Hierarchy')">
+				<DeskSection id="hierarchy" :title="__('Hierarchy')">
 					<DeskField
+						name="project_id"
 						:label="__('Project')"
 						required
 						:error="errors.projectId"
@@ -206,7 +220,7 @@ const breadcrumbs = [
 							label-field="project_name"
 							value-field="name"
 							:search-fields="['project_name', 'custom_project_id', 'name']"
-								:page-length="20"
+							:page-length="20"
 							:placeholder="__('— Select project —')"
 							:disabled="lockedProject"
 							:error="errors.projectId"
@@ -214,6 +228,7 @@ const breadcrumbs = [
 						/>
 					</DeskField>
 					<DeskField
+						name="work_package_id"
 						:label="__('Work Package')"
 						:hint="
 							lockedWP
@@ -232,8 +247,8 @@ const breadcrumbs = [
 								lockedWP
 									? []
 									: form.projectId
-										? [['project', '=', form.projectId]]
-										: []
+									? [['project', '=', form.projectId]]
+									: []
 							"
 							:page-length="20"
 							:placeholder="__('— None · Direct project task —')"
@@ -244,26 +259,27 @@ const breadcrumbs = [
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Schedule')" :cols="3">
+				<DeskSection id="schedule" :title="__('Schedule')" :cols="3">
 					<!-- A Milestone is a point in time: only a Due date, no start (the due
 					     date is the end date behind the scenes, used for delay). -->
 					<DeskField
+						name="start_date"
 						v-if="form.taskType !== 'Milestone'"
 						:label="__('Start date')"
 						:error="errors.startDate"
 					>
 						<DeskInput v-model="form.startDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Due date')" :error="errors.endDate">
+					<DeskField name="end_date" :label="__('Due date')" :error="errors.endDate">
 						<DeskInput v-model="form.endDate" type="date" />
 					</DeskField>
-					<DeskField :label="__('Estimated hours')">
+					<DeskField name="estimated_hours" :label="__('Estimated hours')">
 						<DeskInput v-model="form.estimatedHours" type="number" />
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Assignment')" :cols="3">
-					<DeskField :label="__('Assignee')">
+				<DeskSection id="assignment" :title="__('Assignment')" :cols="3">
+					<DeskField name="assignee" :label="__('Assignee')">
 						<DeskLinkPicker
 							v-model="form.assignee"
 							doctype="User"
@@ -274,7 +290,7 @@ const breadcrumbs = [
 							:placeholder="__('— Select assignee —')"
 						/>
 					</DeskField>
-					<DeskField :label="__('Status')">
+					<DeskField name="status" :label="__('Status')">
 						<DeskSelect v-model="form.status">
 							<option value="Yet To Start">{{ __("Yet To Start") }}</option>
 							<option value="In Progress">{{ __("In Progress") }}</option>
@@ -283,7 +299,7 @@ const breadcrumbs = [
 							<option value="Blocked">{{ __("Blocked") }}</option>
 						</DeskSelect>
 					</DeskField>
-					<DeskField :label="__('Priority')">
+					<DeskField name="priority" :label="__('Priority')">
 						<DeskSelect v-model="form.priority">
 							<option value="Low">{{ __("Low") }}</option>
 							<option value="Medium">{{ __("Medium") }}</option>
@@ -292,6 +308,7 @@ const breadcrumbs = [
 						</DeskSelect>
 					</DeskField>
 				</DeskSection>
+				<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 			</div>
 		</DeskForm>
 	</DeskPage>

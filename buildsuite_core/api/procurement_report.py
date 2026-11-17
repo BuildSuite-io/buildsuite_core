@@ -231,17 +231,25 @@ def site_stock(project: str | None = None):
 	return rows
 
 
-@frappe.whitelist()
-def rate_check(project: str | None = None):
-	"""Purchase rate vs estimate — the latest order line per item that carries a Rate Master
-	code, against the Rate Master's current QS rate. Lines without a code are counted as
-	`unlinked` rather than silently dropped."""
-	scope = _scoped_projects(project)
+# A paid rate counts as above the estimate once it is more than this % over the Rate Master rate (a
+# little slack for rounding). The report colours the Variance cell red above it, and the dashboard's
+# "Above estimated rate" KPI counts the same rows, so the two always agree.
+ABOVE_ESTIMATE_PCT = 0.5
+
+
+def rate_check_rows(projects=None, company: str | None = None):
+	"""(rows, unlinked) for Purchase rate vs estimate: the latest submitted order line per item that
+	carries a Rate Master code, against the Rate Master's current QS rate. `projects` limits it to
+	those projects and `company` to that company's orders (None = no limit). Lines without a code
+	are counted as `unlinked` rather than silently dropped."""
 	where = "po.docstatus = 1"
 	params = []
-	if scope is not None:
+	if projects is not None:
 		where += " AND po.project IN %s"
-		params.append(tuple(scope))
+		params.append(tuple(projects))
+	if company:
+		where += " AND po.company = %s"
+		params.append(company)
 	lines = frappe.db.sql(
 		"""SELECT poi.item_code, poi.item_name, poi.uom, poi.rate, poi.custom_rate_master AS code,
 			po.supplier_name AS supplier, po.supplier AS supplier_id, po.name AS po, po.transaction_date AS order_date
@@ -258,7 +266,8 @@ def rate_check(project: str | None = None):
 			unlinked += 1
 			continue
 		prev = latest.get(ln.item_code)
-		if not prev or (str(ln.order_date) or "") > (str(prev["order_date"]) or ""):
+		# Latest by order date; two orders on one day: the later PO number wins.
+		if not prev or (str(ln.order_date), ln.po) > (str(prev["order_date"]), prev["po"]):
 			latest[ln.item_code] = ln
 
 	# Current QS rate + unit from the Rate Master, resolved once for the codes in play.
@@ -291,6 +300,18 @@ def rate_check(project: str | None = None):
 			}
 		)
 	rows.sort(key=lambda r: (r["variance"] if r["variance"] is not None else -999), reverse=True)
+	return rows, unlinked
+
+
+def count_above_estimate(rows) -> int:
+	"""How many rate-check rows are priced above their Rate Master rate."""
+	return sum(1 for r in rows if r["variance"] is not None and r["variance"] > ABOVE_ESTIMATE_PCT)
+
+
+@frappe.whitelist()
+def rate_check(project: str | None = None):
+	"""Purchase rate vs estimate — see rate_check_rows."""
+	rows, unlinked = rate_check_rows(_scoped_projects(project))
 	return {"rows": rows, "unlinked": unlinked}
 
 

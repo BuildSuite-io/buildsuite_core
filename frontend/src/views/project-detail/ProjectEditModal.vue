@@ -8,6 +8,8 @@ import { ref } from "vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import CustomerCreateModal from "@/components/CustomerCreateModal.vue";
 import { __ } from "@/utils/translate";
+// Slots an installed app fills on this form (form.Project.top / .bottom), same as the create form.
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
 
 const props = defineProps({
 	open: { type: Boolean, default: false },
@@ -17,6 +19,11 @@ const props = defineProps({
 	isSubproject: { type: Boolean, default: false },
 	subsCount: { type: Number, default: 0 },
 	isMultiCompany: { type: Boolean, default: false },
+	extContext: { type: Object, default: null },
+	// Full day hours: who may set it, the company's value (what a blank one uses), and the rule error.
+	canEditFullDay: { type: Boolean, default: false },
+	companyFullDay: { type: Number, default: null },
+	fullDayError: { type: String, default: "" },
 });
 
 const emit = defineEmits(["close", "save", "clear-error"]);
@@ -63,14 +70,24 @@ function onCustomerCreated(name) {
 				</header>
 
 				<div class="p-5 overflow-y-auto flex-1">
-					<DeskSection :title="__('Basic information')">
-						<DeskField :label="__('Project name')" required :error="errors.name">
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.top"
+						:context="extContext"
+					/>
+					<DeskSection id="basic-information" :title="__('Basic information')">
+						<DeskField
+							name="name"
+							:label="__('Project name')"
+							required
+							:error="errors.name"
+						>
 							<DeskInput
 								v-model="editForm.name"
 								@input="emit('clear-error', 'name')"
 							/>
 						</DeskField>
-						<DeskField :label="__('Client')" :error="errors.client">
+						<DeskField name="client" :label="__('Client')" :error="errors.client">
 							<div class="flex items-center gap-2">
 								<div class="flex-1 min-w-0">
 									<DeskLinkPicker
@@ -98,6 +115,7 @@ function onCustomerCreated(name) {
 							</div>
 						</DeskField>
 						<DeskField
+							name="project_type"
 							:label="__('Project type')"
 							:hint="__('Internal or External (ERPNext).')"
 						>
@@ -111,7 +129,7 @@ function onCustomerCreated(name) {
 								:page-length="20"
 							/>
 						</DeskField>
-						<DeskField :label="__('Category')" :error="errors.type">
+						<DeskField name="type" :label="__('Category')" :error="errors.type">
 							<DeskLinkPicker
 								v-model="editForm.type"
 								doctype="Project Category"
@@ -128,20 +146,24 @@ function onCustomerCreated(name) {
 						<!-- Company is locked after create (§14). Shown read-only so the user
                  can see which company the project belongs to, but not change it. -->
 						<DeskField
+							name="company"
 							:label="__('Company')"
 							:hint="
-								__('Locked after create — a project can\'t be moved between companies.')
+								__(
+									'Locked after create — a project can\'t be moved between companies.'
+								)
 							"
 						>
 							<DeskInput :model-value="editForm.company" disabled />
 						</DeskField>
-						<DeskField :label="__('Location')">
+						<DeskField name="location" :label="__('Location')">
 							<DeskInput v-model="editForm.location" />
 						</DeskField>
-						<DeskField :label="__('Note')">
+						<DeskField name="description" :label="__('Note')">
 							<DeskTextarea v-model="editForm.description" :rows="3" />
 						</DeskField>
 						<DeskField
+							name="is_group"
 							v-if="!isSubproject"
 							:label="__('Subprojects')"
 							:hint="
@@ -150,14 +172,14 @@ function onCustomerCreated(name) {
 										? __(
 												'Locked on - this project has {0} subproject. Delete or move them out before turning this off.',
 												[subsCount]
-											)
+										  )
 										: __(
 												'Locked on - this project has {0} subprojects. Delete or move them out before turning this off.',
 												[subsCount]
-											)
+										  )
 									: __(
 											'Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).'
-										)
+									  )
 							"
 						>
 							<label
@@ -169,29 +191,65 @@ function onCustomerCreated(name) {
 									:disabled="subsCount > 0"
 									class="accent-brand-600 disabled:cursor-not-allowed"
 								/>
-								<span class="text-sm text-ink-700"
-									>{{ __("Allow subprojects under this project") }}</span
-								>
+								<span class="text-sm text-ink-700">{{
+									__("Allow subprojects under this project")
+								}}</span>
 							</label>
 						</DeskField>
 					</DeskSection>
 
-					<DeskSection :title="__('Schedule & cost')">
-						<DeskField :label="__('Start date')">
+					<DeskSection id="schedule-cost" :title="__('Schedule & cost')">
+						<DeskField name="start_date" :label="__('Start date')">
 							<DeskInput v-model="editForm.startDate" type="date" />
 						</DeskField>
-						<DeskField :label="__('End date')">
+						<DeskField name="end_date" :label="__('End date')">
 							<DeskInput v-model="editForm.endDate" type="date" />
 						</DeskField>
-						<DeskField :label="__('Budget')" :hint="__('In INR')">
+						<DeskField name="budget" :label="__('Budget')" :hint="__('In INR')">
 							<DeskInput v-model="editForm.budget" type="number" />
+						</DeskField>
+						<DeskField
+							name="full_day_hours"
+							:label="__('Full day hours')"
+							:error="fullDayError"
+							:hint="
+								!canEditFullDay
+									? __(
+											'Only a PM or an admin can set a full day for this project.'
+									  )
+									: editForm.fullDayHours === '' ||
+									  editForm.fullDayHours === null
+									? __('Uses company default: {0} h', [companyFullDay ?? '—'])
+									: __(
+											'Blank uses the company default ({0} h). Sheets already submitted keep the day they were made with.',
+											[companyFullDay ?? '—']
+									  )
+							"
+						>
+							<DeskInput
+								v-if="canEditFullDay"
+								v-model="editForm.fullDayHours"
+								type="number"
+								min="0.5"
+								max="24"
+								step="0.5"
+								:placeholder="companyFullDay != null ? String(companyFullDay) : ''"
+								:aria-label="__('Full day hours')"
+							/>
+							<div v-else class="text-sm text-ink-700 py-1 tabular-nums">
+								{{
+									editForm.fullDayHours
+										? editForm.fullDayHours + " h"
+										: __("Company default: {0} h", [companyFullDay ?? "—"])
+								}}
+							</div>
 						</DeskField>
 						<!-- Progress is the weighted rollup of task progress (server-derived) —
 							 not manually editable, so status and progress stay decoupled. -->
 					</DeskSection>
 
-					<DeskSection :title="__('Team & status')">
-						<DeskField :label="__('Project Manager')" :error="errors.pm">
+					<DeskSection id="team-status" :title="__('Team & status')">
+						<DeskField name="pm" :label="__('Project Manager')" :error="errors.pm">
 							<DeskLinkPicker
 								v-model="editForm.pm"
 								doctype="User"
@@ -206,7 +264,7 @@ function onCustomerCreated(name) {
 								@change="emit('clear-error', 'pm')"
 							/>
 						</DeskField>
-						<DeskField :label="__('Status')">
+						<DeskField name="status" :label="__('Status')">
 							<DeskSelect v-model="editForm.status">
 								<option value="New">{{ __("New") }}</option>
 								<option value="Ongoing">{{ __("Ongoing") }}</option>
@@ -214,7 +272,7 @@ function onCustomerCreated(name) {
 								<option value="Completed">{{ __("Completed") }}</option>
 							</DeskSelect>
 						</DeskField>
-						<DeskField :label="__('Priority')">
+						<DeskField name="priority" :label="__('Priority')">
 							<DeskSelect v-model="editForm.priority">
 								<option value="Low">{{ __("Low") }}</option>
 								<option value="Medium">{{ __("Medium") }}</option>
@@ -222,6 +280,11 @@ function onCustomerCreated(name) {
 							</DeskSelect>
 						</DeskField>
 					</DeskSection>
+					<ExtensionSlot
+						v-if="extContext"
+						name="form.Project.bottom"
+						:context="extContext"
+					/>
 				</div>
 
 				<footer

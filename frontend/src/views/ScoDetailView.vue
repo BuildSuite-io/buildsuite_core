@@ -54,8 +54,8 @@ const isRejected = computed(() => sco.value?.status === "Rejected");
 // Audit trail of workflow actions (approve / reject / revise), newest first.
 const activity = computed(() =>
 	[...(sco.value?.scope_change_order_activity || [])].sort((a, b) =>
-		(b.activity_on || "").localeCompare(a.activity_on || ""),
-	),
+		(b.activity_on || "").localeCompare(a.activity_on || "")
+	)
 );
 const editing = ref(false);
 const saving = ref(false);
@@ -79,7 +79,7 @@ watch(
 		if (v && !editing.value) form.value = snapshot();
 		if (v?.name) refreshWorkflow(v.name);
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function startEdit() {
@@ -172,7 +172,7 @@ async function onCreateBoqRevision() {
 	const ok = await confirmDialog({
 		title: __("Raise BOQ revision?"),
 		message: __(
-			"This clones the project's current BOQ into a new Draft revision linked to this change order.",
+			"This clones the project's current BOQ into a new Draft revision linked to this change order."
 		),
 		confirmLabel: __("Raise revision"),
 	});
@@ -356,7 +356,7 @@ const breadcrumbs = computed(() => [
 				</div>
 			</div>
 
-			<DeskSection :title="__('Justification')" :cols="1">
+			<DeskSection id="justification" :title="__('Justification')" :cols="1">
 				<DeskField :label="__('Reason')"
 					><div class="text-sm text-ink-800 whitespace-pre-line">
 						{{ sco.reason || "—" }}
@@ -364,7 +364,12 @@ const breadcrumbs = computed(() => [
 				>
 			</DeskSection>
 
-			<DeskSection v-if="isRejected && sco.rejection_reason" :title="__('Rejection')" :cols="1">
+			<DeskSection
+				id="rejection"
+				v-if="isRejected && sco.rejection_reason"
+				:title="__('Rejection')"
+				:cols="1"
+			>
 				<DeskField :label="__('Reason')"
 					><div class="text-sm text-danger-700 whitespace-pre-line">
 						{{ sco.rejection_reason }}
@@ -384,7 +389,7 @@ const breadcrumbs = computed(() => [
 				<div v-else-if="isApproved" class="text-xs text-ink-500 italic">
 					{{
 						__(
-							"No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ.",
+							"No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ."
 						)
 					}}
 				</div>
@@ -417,7 +422,7 @@ const breadcrumbs = computed(() => [
 
 		<!-- Edit mode -->
 		<div v-else>
-			<DeskSection :title="__('Change order')" :cols="2">
+			<DeskSection id="change-order" :title="__('Change order')" :cols="2">
 				<DeskField :label="__('Project')"
 					><div class="text-sm text-ink-700">
 						{{ sco.project_name || sco.project }}
@@ -425,10 +430,16 @@ const breadcrumbs = computed(() => [
 				>
 				<DeskField :label="__('Type')">
 					<DeskSelect v-model="form.type"
-						><option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option></DeskSelect
+						><option v-for="t in TYPES" :key="t" :value="t">
+							{{ __(t) }}
+						</option></DeskSelect
 					>
 				</DeskField>
-				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2"
+				<DeskField
+					:label="__('Title')"
+					required
+					:error="errors.title"
+					class="md:col-span-2"
 					><DeskInput v-model="form.title"
 				/></DeskField>
 				<DeskField
@@ -461,7 +472,9 @@ const breadcrumbs = computed(() => [
 					@click.stop
 				>
 					<header class="px-5 py-3 border-b border-ink-200">
-						<h2 class="text-sm font-semibold text-ink-900">{{ __("Reject {0}", [sco.name]) }}</h2>
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ __("Reject {0}", [sco.name]) }}
+						</h2>
 					</header>
 					<div class="p-5">
 						<DeskField :label="__('Rejection reason')"
@@ -497,5 +510,7 @@ const breadcrumbs = computed(() => [
 		</Teleport>
 	</DeskPage>
 
-	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading scope change order…") }}</div>
+	<div v-else class="px-3 py-2 text-sm text-ink-500">
+		{{ __("Loading scope change order…") }}
+	</div>
 </template>

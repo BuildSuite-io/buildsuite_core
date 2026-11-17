@@ -8,6 +8,9 @@
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { usePermissions } from "@/composables/usePermissions";
 import { getWorkOrder, getMeasurementBook, saveMeasurementBook } from "@/data/subcontractApi";
 import DeskPage from "@/components/desk/DeskPage.vue";
@@ -62,6 +65,8 @@ const form = ref({
 	remarks: "",
 	entries: [emptyEntry()],
 });
+const ext = useExtensionFields("Measurement Book", form);
+if (!editingId.value) ext.defaults();
 const woLines = ref([]); // [{ name, scope, cost_code_*, uom }]
 // Project + Subcontractor surface read-only on the header, derived from the WO.
 const woProjectName = ref("");
@@ -125,6 +130,7 @@ watch(
 					router.replace(`/measurement-books/${id}`);
 					return;
 				}
+				await ext.load(mb); // an installed app's Custom Fields
 				form.value = {
 					work_order: mb.work_order || "",
 					project: mb.project || "",
@@ -267,7 +273,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const mb = await saveMeasurementBook({
+		const payload = {
 			name: editingId.value || undefined,
 			work_order: form.value.work_order,
 			project: form.value.project,
@@ -275,7 +281,11 @@ async function onSave() {
 			measured_by: form.value.measured_by || null,
 			remarks: form.value.remarks,
 			entries: form.value.entries.map(entryForSave),
-		});
+			custom_fields: ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form.value);
+		const mb = await saveMeasurementBook(payload);
+		await ext.afterSave(mb, { isNew: !editingId.value });
 		router.push(`/measurement-books/${mb.name}`);
 	} catch (err) {
 		showToast(err.message || __("Failed to save measurement book"), "error");
@@ -328,9 +338,15 @@ const breadcrumbs = computed(() => [
 					@cancel="onCancel"
 				/>
 			</template>
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
 
-			<DeskSection :title="__('Header')" :cols="3">
-				<DeskField :label="__('Work order')" required :error="errors.work_order">
+			<DeskSection id="header" :title="__('Header')" :cols="3">
+				<DeskField
+					name="work_order"
+					:label="__('Work order')"
+					required
+					:error="errors.work_order"
+				>
 					<DeskLinkPicker
 						:model-value="form.work_order"
 						doctype="Subcontractor Work Order"
@@ -342,7 +358,11 @@ const breadcrumbs = computed(() => [
 					/>
 				</DeskField>
 				<!-- Read-only, derived from the work order. -->
-				<DeskField :label="__('Project')" :hint="__('Derived from the work order.')">
+				<DeskField
+					name="project"
+					:label="__('Project')"
+					:hint="__('Derived from the work order.')"
+				>
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
@@ -350,7 +370,11 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woProjectName || form.project || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField :label="__('Subcontractor')" :hint="__('Derived from the work order.')">
+				<DeskField
+					name="subcontractor"
+					:label="__('Subcontractor')"
+					:hint="__('Derived from the work order.')"
+				>
 					<div
 						class="text-sm pt-1.5"
 						:class="form.work_order ? 'text-ink-900' : 'text-ink-400'"
@@ -358,10 +382,10 @@ const breadcrumbs = computed(() => [
 						{{ form.work_order ? woSubName || "—" : "—" }}
 					</div>
 				</DeskField>
-				<DeskField :label="__('Date')" required
+				<DeskField name="date" :label="__('Date')" required
 					><DeskInput v-model="form.date" type="date"
 				/></DeskField>
-				<DeskField :label="__('Measured by')">
+				<DeskField name="measured_by" :label="__('Measured by')">
 					<DeskLinkPicker
 						v-model="form.measured_by"
 						doctype="User"
@@ -370,7 +394,7 @@ const breadcrumbs = computed(() => [
 						:placeholder="__('— Optional —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Remarks')" class="md:col-span-2"
+				<DeskField name="remarks" :label="__('Remarks')" class="md:col-span-2"
 					><DeskInput v-model="form.remarks"
 				/></DeskField>
 			</DeskSection>
@@ -400,7 +424,9 @@ const breadcrumbs = computed(() => [
 								<th class="text-left px-2 py-2 min-w-[130px]">
 									{{ __("WO line") }} <span class="text-danger-600">*</span>
 								</th>
-								<th class="text-left px-2 py-2 min-w-[130px]">{{ __("Cost code") }}</th>
+								<th class="text-left px-2 py-2 min-w-[130px]">
+									{{ __("Cost code") }}
+								</th>
 								<th class="text-right px-2 py-2 w-14">{{ __("Nos") }}</th>
 								<th class="text-right px-2 py-2 w-16">{{ __("L") }}</th>
 								<th class="text-right px-2 py-2 w-16">{{ __("B") }}</th>
@@ -499,7 +525,9 @@ const breadcrumbs = computed(() => [
 										class="w-full text-xs text-right tabular-nums py-1.5 focus:outline-none bg-transparent"
 										:title="
 											e._autoQty
-												? __('Derived from Nos × L × B × D — type to override.')
+												? __(
+														'Derived from Nos × L × B × D — type to override.'
+												  )
 												: __('Override active (clear to re-derive).')
 										"
 										@input="onQtyOverride(e)"
@@ -527,7 +555,11 @@ const breadcrumbs = computed(() => [
 										v-model="e.is_deduction"
 										type="checkbox"
 										class="accent-danger-600"
-										:title="__('Mark as a deduction (subtracts from measured total)')"
+										:title="
+											__(
+												'Mark as a deduction (subtracts from measured total)'
+											)
+										"
 									/>
 								</td>
 								<td class="px-2 py-1 text-center">
@@ -564,6 +596,7 @@ const breadcrumbs = computed(() => [
 					{{ errors.entries }}
 				</p>
 			</section>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

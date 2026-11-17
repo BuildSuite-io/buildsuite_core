@@ -126,7 +126,7 @@ async function save() {
 				>
 					{{ formError }}
 				</div>
-				<DeskSection :title="__('Account')">
+				<DeskSection id="account" :title="__('Account')">
 					<DeskField :label="__('Full name')" required :error="errors.fullName">
 						<DeskInput
 							v-model="form.fullName"
@@ -141,7 +141,11 @@ async function save() {
 						:label="__('Email')"
 						required
 						:error="errors.email"
-						:hint="__('Used as the login id + destination for the welcome and password-reset emails.')"
+						:hint="
+							__(
+								'Used as the login id + destination for the welcome and password-reset emails.'
+							)
+						"
 					>
 						<DeskInput
 							v-model="form.email"
@@ -153,8 +157,15 @@ async function save() {
 							"
 						/>
 					</DeskField>
-					<DeskField :label="__('Mobile')" :hint="__('Optional — contact number for this user.')">
-						<DeskInput v-model="form.mobile" type="tel" :placeholder="__('+91 98xxx xxxxx')" />
+					<DeskField
+						:label="__('Mobile')"
+						:hint="__('Optional — contact number for this user.')"
+					>
+						<DeskInput
+							v-model="form.mobile"
+							type="tel"
+							:placeholder="__('+91 98xxx xxxxx')"
+						/>
 					</DeskField>
 					<DeskField
 						:label="__('Account status')"
@@ -173,12 +184,16 @@ async function save() {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Persona')">
+				<DeskSection id="persona" :title="__('Persona')">
 					<DeskField
 						:label="__('Persona')"
 						required
 						:error="errors.persona"
-						:hint="__('Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user\'s day-to-day work.')"
+						:hint="
+							__(
+								'Frappe Roles are auto-assigned from the persona on the production side. Pick the one that matches the user\'s day-to-day work.'
+							)
+						"
 					>
 						<DeskLinkPicker
 							v-model="form.persona"
@@ -198,7 +213,7 @@ async function save() {
 					</DeskField>
 				</DeskSection>
 
-				<DeskSection :title="__('Onboarding')">
+				<DeskSection id="onboarding" :title="__('Onboarding')">
 					<DeskField :label="__('Emails')">
 						<div
 							v-if="mailConfigured === false"
@@ -207,7 +222,7 @@ async function save() {
 						>
 							{{
 								__(
-									"Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up.",
+									"Outgoing email isn't configured — these emails won't be sent until an outgoing Email Account is set up."
 								)
 							}}
 						</div>
@@ -222,7 +237,11 @@ async function save() {
 									{{ __("Send welcome email") }}
 								</div>
 								<div class="text-[11px] text-ink-500">
-									{{ __("Brief intro to BuildSuite Core, link to set up their profile.") }}
+									{{
+										__(
+											"Brief intro to BuildSuite Core, link to set up their profile."
+										)
+									}}
 								</div>
 							</div>
 						</label>
@@ -239,7 +258,7 @@ async function save() {
 								<div class="text-[11px] text-ink-500">
 									{{
 										__(
-											"Lets the user set their own password instead of you assigning one.",
+											"Lets the user set their own password instead of you assigning one."
 										)
 									}}
 								</div>

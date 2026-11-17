@@ -104,13 +104,13 @@ onMounted(() => {
 
 			<template v-else-if="report">
 				<!-- Plain-language read, surfaced first. -->
-				<DeskSection :title="__('Likely cause')">
+				<DeskSection id="likely-cause" :title="__('Likely cause')">
 					<ul class="list-disc pl-5 space-y-1.5 text-sm text-ink-800">
 						<li v-for="(h, i) in report.hints || []" :key="i">{{ h }}</li>
 					</ul>
 				</DeskSection>
 
-				<DeskSection :title="__('Full report')">
+				<DeskSection id="full-report" :title="__('Full report')">
 					<p class="text-[11px] text-ink-500 mb-2">
 						{{ __("Copy everything below and paste it back.") }}
 					</p>

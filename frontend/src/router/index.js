@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { instrumentRoutes } from "@/sdk/views";
 import { useSessionStore } from "@/stores/session";
 import { useDataStore } from "@/stores";
 import { usePermissions } from "@/composables/usePermissions";
@@ -107,6 +108,13 @@ const PAGE_TITLES = {
 	"labour-attendance": "Labour Attendance Register",
 	"overtime-attendance": "Overtime Attendance Register",
 	"attendance-summary": "Site Attendance Summary",
+	"labour-cost-summary": "Labour Cost Summary",
+	"workforce-dashboard": "Workforce Dashboard",
+	timesheets: "Timesheets",
+	"timesheet-new": "New Timesheet",
+	"timesheet-import": "Import Timesheets",
+	"timesheet-detail": "Timesheet",
+	"timesheet-edit": "Edit Timesheet",
 	"scope-change": "Scope Change",
 	"project-finance": "Project Finance",
 	"petty-cash": "Petty Cash",
@@ -125,6 +133,7 @@ const PAGE_TITLES = {
 	"settings-company-detail": "Company",
 	"settings-users": "Users",
 	"settings-user-new": "New User",
+	"settings-doc": "Settings",
 	"settings-data": "Data Tools",
 	"settings-core": "Core Settings",
 	"settings-app-icon-diagnostics": "App Icon Diagnostics",
@@ -144,6 +153,8 @@ const PAGE_TITLES = {
 const routes = [
 	{
 		path: "/",
+		// Named so an installed app's extension can add pages inside the shell (sdk.routes.add).
+		name: "shell",
 		component: () => import("@/layouts/DeskShell.vue"),
 		children: [
 			{ path: "", redirect: "/home" },
@@ -798,10 +809,48 @@ const routes = [
 				component: () => import("@/views/OvertimeAttendanceListView.vue"),
 			},
 			{
+				path: "timesheets",
+				name: "timesheets",
+				component: () => import("@/views/TimesheetsListView.vue"),
+			},
+			{
+				path: "timesheets/new",
+				name: "timesheet-new",
+				component: () => import("@/views/NewTimesheetView.vue"),
+			},
+			{
+				path: "timesheets/import",
+				name: "timesheet-import",
+				component: () => import("@/views/TimesheetImportView.vue"),
+			},
+			{
+				path: "timesheets/:id",
+				name: "timesheet-detail",
+				component: () => import("@/views/TimesheetDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "timesheets/:id/edit",
+				name: "timesheet-edit",
+				component: () => import("@/views/NewTimesheetView.vue"),
+			},
+			{
+				path: "workforce-dashboard",
+				name: "workforce-dashboard",
+				component: () => import("@/views/workspaces/WorkforceDashboardView.vue"),
+			},
+			{
 				path: "workforce/attendance-summary",
 				name: "attendance-summary",
 				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
 			},
+			{
+				path: "workforce/labour-cost-summary",
+				name: "labour-cost-summary",
+				component: () => import("@/views/workforce/LabourCostSummaryReport.vue"),
+			},
+			// "Labour cost from timesheets" was folded into Labour Cost Summary (Captured as Timesheet).
+			{ path: "workforce/timesheet-cost", redirect: "/workforce/labour-cost-summary" },
 			{
 				path: "scope-change",
 				name: "scope-change",
@@ -1010,6 +1059,14 @@ const routes = [
 				path: "settings/users/new",
 				name: "settings-user-new",
 				component: () => import("@/views/settings/NewUserView.vue"),
+			},
+			{
+				// A settings page that is a Single DocType (an installed app's, declared in hooks.py).
+				path: "settings/doc/:doctype",
+				name: "settings-doc",
+				component: () => import("@/views/settings/SettingsDocView.vue"),
+				props: true,
+				meta: { requiresAdmin: true },
 			},
 			{
 				path: "settings/data",
@@ -1232,6 +1289,13 @@ const ROUTE_CAPS = {
 	"labour-attendance": "fieldAttendance",
 	"overtime-attendance": "fieldAttendance",
 	"attendance-summary": "fieldAttendance",
+	"labour-cost-summary": "fieldAttendance",
+	"workforce-dashboard": "fieldAttendance",
+	timesheets: "fieldAttendance",
+	"timesheet-new": "fieldAttendance",
+	"timesheet-import": "fieldAttendance",
+	"timesheet-detail": "fieldAttendance",
+	"timesheet-edit": "fieldAttendance",
 	customers: "customer",
 	leads: "lead",
 	"lead-detail": "lead",
@@ -1266,7 +1330,8 @@ function inferCapAction(name = "") {
 
 const router = createRouter({
 	history: createWebHistory(APP_ROUTE),
-	routes,
+	// Every named lazy route resolves through the extension view registry (sdk.views).
+	routes: instrumentRoutes(routes),
 	scrollBehavior() {
 		return { top: 0 };
 	},
@@ -1292,6 +1357,7 @@ const GATED_REPORT_ROUTES = new Set([
 	"/labour-attendance",
 	"/overtime-attendance",
 	"/workforce/attendance-summary",
+	"/workforce/labour-cost-summary",
 	"/reports/delay-analysis",
 ]);
 

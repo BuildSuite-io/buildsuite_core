@@ -5,6 +5,9 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
+// Custom Fields, controls and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 import { useFormErrors } from "@/composables/useFormErrors";
 import { usePermissions } from "@/composables/usePermissions";
 import { createDataAdapter } from "@/data/adapters";
@@ -35,6 +38,8 @@ const form = reactive({
 	status: "Active",
 	company: "",
 });
+const ext = useExtensionFields("Machinery", form);
+ext.defaults();
 const { errors, applyServerErrors, setErrors } = useFormErrors({
 	machinery_name: "machinery_name",
 	machinery_type: "machinery_type",
@@ -66,7 +71,7 @@ async function onSave() {
 	if (!validate()) return;
 	saving.value = true;
 	try {
-		const res = await adapter.create("Machinery", {
+		const payload = {
 			machinery_name: form.machinery_name.trim(),
 			machinery_type: form.machinery_type,
 			ownership: form.ownership,
@@ -76,7 +81,11 @@ async function onSave() {
 			asset: form.ownership === "Owned" ? form.asset : "",
 			status: form.status,
 			company: form.company,
-		});
+			...ext.payload(), // an installed app's Custom Fields
+		};
+		await ext.beforeSave(payload, form);
+		const res = await adapter.create("Machinery", payload);
+		await ext.afterSave(res, { isNew: true });
 		router.push(`/machinery/${res.name}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Failed to create machinery"), "error");
@@ -112,11 +121,22 @@ const breadcrumbs = [
 				/>
 			</template>
 
-			<DeskSection :title="__('Machinery')" :cols="3">
-				<DeskField :label="__('Name')" required :error="errors.machinery_name">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+			<DeskSection id="machinery" :title="__('Machinery')" :cols="3">
+				<DeskField
+					name="machinery_name"
+					:label="__('Name')"
+					required
+					:error="errors.machinery_name"
+				>
 					<DeskInput v-model="form.machinery_name" />
 				</DeskField>
-				<DeskField :label="__('Type')" required :error="errors.machinery_type">
+				<DeskField
+					name="machinery_type"
+					:label="__('Type')"
+					required
+					:error="errors.machinery_type"
+				>
 					<DeskLinkPicker
 						v-model="form.machinery_type"
 						doctype="Machinery Type"
@@ -125,37 +145,42 @@ const breadcrumbs = [
 						:placeholder="__('Pick a type…')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Ownership')">
+				<DeskField name="ownership" :label="__('Ownership')">
 					<DeskSelect v-model="form.ownership">
 						<option value="Owned">{{ __("Owned") }}</option>
 						<option value="Hired">{{ __("Hired") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+				<DeskField name="rate" :label="`${__('Rate')} (${currencySymbol()})`">
 					<DeskInput v-model.number="form.rate" type="number" min="0" />
 				</DeskField>
-				<DeskField :label="__('Rate unit')">
+				<DeskField name="rate_unit" :label="__('Rate unit')">
 					<DeskSelect v-model="form.rate_unit">
 						<option value="Hour">{{ __("Hour") }}</option>
 						<option value="Day">{{ __("Day") }}</option>
 						<option value="Month">{{ __("Month") }}</option>
 					</DeskSelect>
 				</DeskField>
-				<DeskField :label="__('Status')">
+				<DeskField name="status" :label="__('Status')">
 					<DeskSelect v-model="form.status">
 						<option value="Active">{{ __("Active") }}</option>
 						<option value="Inactive">{{ __("Inactive") }}</option>
 					</DeskSelect>
 				</DeskField>
 
-				<DeskField :label="__('Owner / Vendor')">
+				<DeskField name="owner_vendor" :label="__('Owner / Vendor')">
 					<DeskInput v-model="form.owner_vendor" />
 				</DeskField>
 				<DeskField
+					name="asset"
 					v-if="form.ownership === 'Owned'"
 					:label="__('Linked asset (ERPNext)')"
-					:hint="__('Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant.')"
+					:hint="
+						__(
+							'Optional — the owned fixed asset in ERPNext Assets. Leave blank for hired plant.'
+						)
+					"
 				>
 					<DeskLinkPicker
 						v-model="form.asset"
@@ -165,7 +190,7 @@ const breadcrumbs = [
 						:placeholder="__('— No linked asset —')"
 					/>
 				</DeskField>
-				<DeskField :label="__('Company')" required :error="errors.company">
+				<DeskField name="company" :label="__('Company')" required :error="errors.company">
 					<DeskLinkPicker
 						v-model="form.company"
 						doctype="Company"
@@ -175,6 +200,7 @@ const breadcrumbs = [
 					/>
 				</DeskField>
 			</DeskSection>
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 	</DeskPage>
 </template>

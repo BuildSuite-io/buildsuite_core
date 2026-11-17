@@ -23,6 +23,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DocTypeFieldControl from "@/components/doctype/DocTypeFieldControl.vue";
 import DocTypeChildTable from "@/components/doctype/DocTypeChildTable.vue";
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { runDocHook } from "@/sdk/registry";
 
 const props = defineProps({
 	doctype: { type: String, required: true },
@@ -49,6 +51,9 @@ const perms = ref({
 const isEdit = computed(() => !!props.name);
 const docstatus = computed(() => Number(form.docstatus || 0));
 const submittable = computed(() => !!meta.value?.is_submittable);
+// A Single DocType (a settings page): one record, named after the doctype. It can't be deleted and
+// has no list to go back to.
+const single = computed(() => !!meta.value?.issingle);
 const isDraft = computed(() => isEdit.value && docstatus.value === 0);
 const isSubmitted = computed(() => isEdit.value && docstatus.value === 1);
 const isCancelled = computed(() => isEdit.value && docstatus.value === 2);
@@ -173,6 +178,7 @@ function seedNew() {
 		if (dv !== undefined) form[f.fieldname] = dv;
 		else if (f.fieldtype === "Check" && form[f.fieldname] === undefined) form[f.fieldname] = 0;
 	}
+	runDocHook(props.doctype, "defaults", form); // installed apps' starting values
 }
 
 async function load() {
@@ -184,6 +190,7 @@ async function load() {
 			const doc = await getRecord(props.doctype, props.name);
 			Object.keys(form).forEach((k) => delete form[k]);
 			Object.assign(form, doc);
+			await runDocHook(props.doctype, "onLoad", form, doc);
 		} else if (meta.value) {
 			seedNew();
 		}
@@ -208,7 +215,8 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 
 // --- navigation --------------------------------------------------------------
 function goList() {
-	router.push({ name: "records-list", params: { doctype: props.doctype } });
+	if (single.value) router.push("/settings");
+	else router.push({ name: "records-list", params: { doctype: props.doctype } });
 }
 function goEdit(name) {
 	router.replace({ name: "record-edit", params: { doctype: props.doctype, name } });
@@ -254,7 +262,12 @@ async function onSave() {
 	if (!guardRequired()) return;
 	busy.value = true;
 	try {
-		const doc = isEdit.value ? await saveRecord({ ...form }) : await insertRecord({ ...form });
+		// Installed apps may add fields to, or veto (by throwing), what is saved.
+		const payload = { ...form };
+		await runDocHook(props.doctype, "beforeSave", payload, form);
+		const isNew = !isEdit.value;
+		const doc = isNew ? await insertRecord(payload) : await saveRecord(payload);
+		await runDocHook(props.doctype, "afterSave", doc, { isNew });
 		showToast(isEdit.value ? "Saved." : "Created.");
 		if (!isEdit.value && doc?.name) goEdit(doc.name);
 		else await load();
@@ -397,7 +410,7 @@ const DANGER =
 						Submit
 					</button>
 					<button
-						v-if="perms.delete"
+						v-if="perms.delete && !single"
 						type="button"
 						:class="DANGER"
 						:disabled="busy"
@@ -466,6 +479,8 @@ const DANGER =
 				</button>
 			</div>
 
+			<ExtensionSlot :name="`form.${doctype}.top`" :context="{ form, doctype }" />
+
 			<section v-for="(s, si) in currentTab.sections" :key="si" class="mb-6">
 				<h3
 					v-if="s.label"
@@ -506,6 +521,8 @@ const DANGER =
 					/>
 				</div>
 			</section>
+
+			<ExtensionSlot :name="`form.${doctype}.bottom`" :context="{ form, doctype }" />
 		</form>
 	</div>
 </template>

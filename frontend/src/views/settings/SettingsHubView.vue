@@ -14,6 +14,8 @@ import DeskPage from "@/components/desk/DeskPage.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import WorkspaceIcon from "@/components/WorkspaceIcon.vue";
 import { __ } from "@/utils/translate";
+import { listSettingsPages } from "@/data/settingsPagesApi";
+import { settingsTilesList } from "@/sdk/registry";
 
 const store = useDataStore();
 const router = useRouter();
@@ -24,8 +26,40 @@ const isAdmin = computed(() => store.isAdmin);
 const isBSA = computed(() => store.isBSA);
 
 const userCount = ref(undefined);
+// Settings pages installed apps declare (each a Single DocType), shown as tiles of their own.
+const appPages = ref([]);
 onMounted(async () => {
 	if (isAdmin.value) userCount.value = (await listBuildsuiteUsers()).length;
+	try {
+		appPages.value = (await listSettingsPages()) || [];
+	} catch {
+		appPages.value = []; // the hub still works without them
+	}
+});
+
+// Tiles from installed apps: declared pages (hook) and tiles an extension registered (sdk), grouped
+// by their own group name, after Core's groups. Settings is admin-only, so they are too.
+const extensionGroups = computed(() => {
+	const byGroup = {};
+	const add = (group, tile) =>
+		(byGroup[group] ||= []).push({ icon: "settings", adminOnly: true, ...tile });
+	for (const p of appPages.value) {
+		add(p.group, {
+			icon: p.icon || "settings",
+			label: p.label,
+			desc: p.description,
+			to: `/settings/doc/${encodeURIComponent(p.doctype)}`,
+		});
+	}
+	for (const t of settingsTilesList()) {
+		add(t.group, {
+			icon: t.icon || "settings",
+			label: t.label,
+			desc: t.description || "",
+			to: t.to,
+		});
+	}
+	return Object.entries(byGroup).map(([title, tiles]) => ({ title, tiles }));
 });
 
 // Tile groups. `adminOnly: true` filters the tile out for non-admin roles; `bsaOnly: true` for
@@ -157,6 +191,8 @@ const groups = computed(() => [
 			},
 		],
 	},
+	// Tiles installed apps add (hook-declared Single DocTypes and sdk.settings.addTile).
+	...extensionGroups.value,
 ]);
 
 // Filter groups + tiles by role. Hide whole groups if every tile inside is

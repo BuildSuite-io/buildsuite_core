@@ -20,17 +20,17 @@ const { contractorOptions } = useContractorOptions();
 </script>
 
 <template>
-	<DeskSection title="Worker" :cols="3">
-		<DeskField label="Employee code" hint="Auto (HR-EMP-#####) if blank.">
+	<DeskSection id="worker" title="Worker" :cols="3">
+		<DeskField name="employee" label="Employee code" hint="Auto (HR-EMP-#####) if blank.">
 			<DeskInput v-model="form.employee" placeholder="HR-EMP-00015" :disabled="isExisting" />
 		</DeskField>
-		<DeskField label="First name" required :error="errors.first_name">
+		<DeskField name="first_name" label="First name" required :error="errors.first_name">
 			<DeskInput v-model="form.first_name" />
 		</DeskField>
-		<DeskField label="Last name">
+		<DeskField name="last_name" label="Last name">
 			<DeskInput v-model="form.last_name" />
 		</DeskField>
-		<DeskField label="Gender" required :error="errors.gender">
+		<DeskField name="gender" label="Gender" required :error="errors.gender">
 			<DeskLinkPicker
 				v-model="form.gender"
 				doctype="Gender"
@@ -39,13 +39,23 @@ const { contractorOptions } = useContractorOptions();
 			/>
 		</DeskField>
 
-		<DeskField label="Date of birth" required :error="errors.date_of_birth">
+		<DeskField
+			name="date_of_birth"
+			label="Date of birth"
+			required
+			:error="errors.date_of_birth"
+		>
 			<DeskInput v-model="form.date_of_birth" type="date" />
 		</DeskField>
-		<DeskField label="Date of joining" required :error="errors.date_of_joining">
+		<DeskField
+			name="date_of_joining"
+			label="Date of joining"
+			required
+			:error="errors.date_of_joining"
+		>
 			<DeskInput v-model="form.date_of_joining" type="date" />
 		</DeskField>
-		<DeskField label="Status">
+		<DeskField name="status" label="Status">
 			<!-- ERPNext also has Suspended and Left, but Left demands a
 			     relieving date this form doesn't collect, so it can never save. -->
 			<DeskSelect v-model="form.status">
@@ -54,7 +64,7 @@ const { contractorOptions } = useContractorOptions();
 			</DeskSelect>
 		</DeskField>
 
-		<DeskField label="Trade">
+		<DeskField name="custom_trade" label="Trade">
 			<DeskLinkPicker
 				v-model="form.custom_trade"
 				doctype="Labour Trade"
@@ -64,6 +74,7 @@ const { contractorOptions } = useContractorOptions();
 			/>
 		</DeskField>
 		<DeskField
+			name="custom_contractor"
 			label="Contractor"
 			hint="Labour contractor, if engaged through one. Leave blank if engaged directly."
 		>
@@ -77,10 +88,10 @@ const { contractorOptions } = useContractorOptions();
 				allow-clear
 			/>
 		</DeskField>
-		<DeskField label="Phone">
+		<DeskField name="cell_number" label="Phone">
 			<DeskInput v-model="form.cell_number" />
 		</DeskField>
-		<DeskField label="Company" required :error="errors.company">
+		<DeskField name="company" label="Company" required :error="errors.company">
 			<DeskLinkPicker
 				v-model="form.company"
 				doctype="Company"
@@ -90,8 +101,9 @@ const { contractorOptions } = useContractorOptions();
 		</DeskField>
 	</DeskSection>
 
-	<DeskSection title="Wages" :cols="2">
+	<DeskSection id="wages" title="Wages" :cols="2">
 		<DeskField
+			name="custom_wage"
 			label="Daily wage"
 			required
 			hint="Daily wage — read at attendance posting."
@@ -99,7 +111,11 @@ const { contractorOptions } = useContractorOptions();
 		>
 			<DeskInput v-model.number="form.custom_wage" type="number" min="0" />
 		</DeskField>
-		<DeskField label="Overtime wage" hint="Overtime wage per hour.">
+		<DeskField
+			name="custom_wage_for_overtime"
+			label="Overtime wage"
+			hint="Overtime wage per hour."
+		>
 			<DeskInput v-model.number="form.custom_wage_for_overtime" type="number" min="0" />
 		</DeskField>
 	</DeskSection>

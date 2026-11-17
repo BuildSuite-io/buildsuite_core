@@ -353,6 +353,7 @@ async function removeRate() {
 			:rows="rows"
 			:columns="columns"
 			row-key="id"
+			ext-doctype="Construction Rate Master"
 			:search-placeholder="__('Search code or description…')"
 			:dynamic-filters="dynFilters"
 			:server-paginated="true"

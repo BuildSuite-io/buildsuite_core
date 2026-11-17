@@ -1,6 +1,6 @@
 <script setup>
 // Companies — Settings sub-page. The generic DocTypeListView over Company (server paging, sort and
-// the Add-filter editor); the colour badge, short name and per-company project count come from the
+// the Add-filter editor); the colour badge and short name come from the
 // store's company list, keyed by company id. CRUD is admin-only (route is gated below); non-admins
 // who hit /app/settings/companies directly land on the empty-state redirect.
 
@@ -15,7 +15,7 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 const store = useDataStore();
 const router = useRouter();
 
-// Derived company facts the Company doctype itself doesn't carry (colour, short name, projects).
+// Derived company facts the Company doctype itself doesn't carry (colour, short name).
 const byId = computed(() => Object.fromEntries(store.companies.map((c) => [c.id, c])));
 const meta = (id) => byId.value[id] || {};
 
@@ -23,7 +23,6 @@ const meta = (id) => byId.value[id] || {};
 const columns = [
 	{ key: "name", label: __("ID") },
 	{ key: "company_name", label: __("Company"), fields: ["company_name", "abbr"] },
-	{ key: "projects", label: __("Projects"), align: "right", fields: ["name"] },
 	{ key: "active", label: __("Active"), fields: ["name"] },
 ];
 
@@ -99,16 +98,6 @@ function onRowClick(row) {
 						<div class="text-[11px] text-ink-500">{{ row.abbr || row.name }}</div>
 					</div>
 				</div>
-			</template>
-			<template #cell-projects="{ row }">
-				<span
-					class="text-xs tabular-nums"
-					:class="
-						meta(row.name).projectCount ? 'text-ink-900 font-medium' : 'text-ink-400'
-					"
-				>
-					{{ meta(row.name).projectCount ?? 0 }}
-				</span>
 			</template>
 			<template #cell-active="{ row }">
 				<span

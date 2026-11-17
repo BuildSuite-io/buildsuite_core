@@ -12,7 +12,12 @@ import { myUnseenNotificationCount } from "@/data/notificationApi";
 import { getProjectSettings, setProjectSettings } from "@/data/projectSettingsApi";
 import { PROJECT_TYPE_TEMPLATES, templateForType } from "@/data/projectTypeTemplates";
 import { COMPANIES, DEFAULT_COMPANY_ID } from "@/data/companies";
-import { listCompanies, setActiveCompanyRemote, getCompanyContext } from "@/data/companyApi";
+import {
+	listCompanies,
+	setActiveCompanyRemote,
+	getCompanyContext,
+	renameCompany,
+} from "@/data/companyApi";
 import { setDisplayCurrency } from "@/utils/format";
 import { colourClass, colourNameForClass } from "@/utils/companyColours";
 import { insertRecord, saveRecord, deleteRecord, getRecord } from "@/data/doctypeRecordApi";
@@ -39,6 +44,17 @@ function colourForId(id) {
 	let sum = 0;
 	for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
 	return COMPANY_COLOURS[sum % COMPANY_COLOURS.length];
+}
+
+// A persona an admin created, in the shape of a ROLES entry (what currentRole returns).
+function customPersonaRole(persona) {
+	return {
+		id: persona.id,
+		name: persona.name,
+		shortName: persona.name,
+		description: "",
+		color: "bg-ink-600",
+	};
 }
 
 const STORAGE_KEY = "buildsuite:data:v1";
@@ -192,6 +208,9 @@ export const useDataStore = defineStore("data", {
 		multiCompanyEnabled: false,
 		// Active role id. NOT persisted via _persist() — see ROLE_STORAGE_KEY above.
 		role: DEFAULT_ROLE,
+		// The logged-in user's persona when an admin created it ({ id, name, baseRole }), else null.
+		// Set by setPersona; `role` then holds its id.
+		customPersona: null,
 		// Active company id. Same independent-persistence rationale as `role` — lives
 		// in COMPANY_STORAGE_KEY so resetAll() preserves it as a UI preference.
 		activeCompany: DEFAULT_COMPANY_ID,
@@ -432,7 +451,17 @@ export const useDataStore = defineStore("data", {
 
 		// ===== Role system (see src/data/roles.js, CLAUDE.md §12) =====
 		currentRole: (s) =>
-			ROLES.find((r) => r.id === s.role) || ROLES.find((r) => r.id === DEFAULT_ROLE),
+			ROLES.find((r) => r.id === s.role) ||
+			(s.customPersona?.id === s.role ? customPersonaRole(s.customPersona) : null) ||
+			ROLES.find((r) => r.id === DEFAULT_ROLE),
+		// The built-in persona id the per-persona UI defaults (e.g. Home quick actions) key on: the
+		// active persona when it is built in, else the one a custom persona's roles are closest to.
+		baseRole: (s) =>
+			ROLES.some((r) => r.id === s.role)
+				? s.role
+				: s.customPersona?.id === s.role
+				? s.customPersona.baseRole || null
+				: null,
 		// Workspace slugs visible to the logged-in user, ordered — sourced from the backend
 		// registry (api.workspace_setting.get_visible_workspaces), loaded on boot into
 		// `workspaces`. Replaces the old client WORKSPACE_VISIBILITY / WORKSPACE_ORDER matrices.
@@ -693,6 +722,19 @@ export const useDataStore = defineStore("data", {
 			this.role = roleId;
 			saveRoleToStorage(roleId);
 		},
+		// The logged-in user's persona (data/roles.resolvePersona). A custom persona — one an admin
+		// created — is held for the session only: it is not in ROLES, so it is never persisted as
+		// the switcher's choice, and the next load resolves it from the backend again.
+		setPersona(resolved) {
+			if (!resolved) return;
+			if (!resolved.custom) {
+				this.customPersona = null;
+				this.setRole(resolved.id);
+				return;
+			}
+			this.customPersona = resolved.custom;
+			this.role = resolved.custom.id;
+		},
 
 		// ===== Theme (UI preference, persisted to THEME_STORAGE_KEY) =====
 		setTheme(theme) {
@@ -803,6 +845,7 @@ export const useDataStore = defineStore("data", {
 				color: colourClass(r.colour) || colourForId(r.id),
 				colourName: r.colour || colourNameForClass(colourForId(r.id)),
 				colourSaved: !!r.colour,
+				fullDayHours: r.full_day_hours ?? null,
 				logo: r.logo,
 				currency: r.currency || null,
 				projectCount: r.project_count ?? 0,
@@ -904,14 +947,21 @@ export const useDataStore = defineStore("data", {
 			// Round-trip the FULL doc: frappe.client.save instantiates the doc from exactly
 			// what we send, so a partial { name, company_name } would blank Company's mandatory
 			// fields (abbr / currency / country) and fail its modified-timestamp check. Fetch
-			// the current doc, apply the editable identity fields, save. id (docname) is immutable;
+			// the current doc, apply the short name, save; a changed name is a rename (below).
 			// colour + description are store-derived and not persisted.
 			const doc = await getRecord("Company", id);
-			if (patch.name !== undefined) doc.company_name = patch.name;
 			if (patch.shortName !== undefined && patch.shortName) doc.abbr = patch.shortName;
 			await saveRecord(doc);
+			// The company is named after its name, so a new name is a rename (the server keeps
+			// every link, the Letter Head and company_name in step) and the id changes with it.
+			let newId = id;
+			const wanted = (patch.name || "").trim();
+			if (wanted && wanted !== doc.company_name) {
+				newId = (await renameCompany(id, wanted)).company;
+				if (this.activeCompany === id) this.activeCompany = newId;
+			}
 			await this.loadCompanies();
-			return this.companies.find((c) => c.id === id) || null;
+			return this.companies.find((c) => c.id === newId) || null;
 		},
 		async deleteCompany(id) {
 			try {

@@ -24,11 +24,22 @@ function snapshot() {
 	for (const t of PROJECT_TABS) tabs[t.id] = store.siteProjectTabVisible(t.id);
 	return { tabs };
 }
-watch(() => store.projectSettings, () => { if (!editing.value) form.value = snapshot(); },
-	{ immediate: true, deep: true });
+watch(
+	() => store.projectSettings,
+	() => {
+		if (!editing.value) form.value = snapshot();
+	},
+	{ immediate: true, deep: true }
+);
 
-function startEdit() { form.value = snapshot(); editing.value = true; }
-function cancelEdit() { form.value = snapshot(); editing.value = false; }
+function startEdit() {
+	form.value = snapshot();
+	editing.value = true;
+}
+function cancelEdit() {
+	form.value = snapshot();
+	editing.value = false;
+}
 async function saveEdit() {
 	if (!store.isAdmin) return;
 	saving.value = true;
@@ -42,13 +53,17 @@ async function saveEdit() {
 		saving.value = false;
 	}
 }
-function onPrimary() { editing.value ? saveEdit() : startEdit(); }
+function onPrimary() {
+	editing.value ? saveEdit() : startEdit();
+}
 
 function setAll(on) {
 	for (const t of PROJECT_TABS) form.value.tabs[t.id] = on;
 }
 
-const shownCount = computed(() => PROJECT_TABS.filter((t) => store.siteProjectTabVisible(t.id)).length);
+const shownCount = computed(
+	() => PROJECT_TABS.filter((t) => store.siteProjectTabVisible(t.id)).length
+);
 
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
@@ -74,20 +89,43 @@ const breadcrumbs = [
 					@save="onPrimary"
 					@cancel="cancelEdit"
 				/>
-				<div v-else class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700">
-					{{ __("Read-only. Editing requires the Admin or BuildSuite Administrator role.") }}
+				<div
+					v-else
+					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
+				>
+					{{
+						__(
+							"Read-only. Editing requires the Admin or BuildSuite Administrator role."
+						)
+					}}
 				</div>
 			</template>
 
 			<div class="max-w-3xl mx-auto">
-				<DeskSection :title="__('Project page tabs')" :cols="1">
+				<DeskSection id="project-page-tabs" :title="__('Project page tabs')" :cols="1">
 					<div class="text-xs text-ink-600 mb-3">
-						{{ __('Which tabs every project offers. Overview is always shown, so it is not listed here. Any project can overrule these for itself from its own "…" menu.') }}
+						{{
+							__(
+								'Which tabs every project offers. Overview is always shown, so it is not listed here. Any project can overrule these for itself from its own "…" menu.'
+							)
+						}}
 					</div>
 
 					<div v-if="editing" class="flex items-center gap-2 mb-3">
-						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(true)">{{ __("Show all") }}</button>
-						<button type="button" class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50" @click="setAll(false)">{{ __("Hide all") }}</button>
+						<button
+							type="button"
+							class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50"
+							@click="setAll(true)"
+						>
+							{{ __("Show all") }}
+						</button>
+						<button
+							type="button"
+							class="text-xs px-2.5 py-1 rounded-md border border-ink-200 text-ink-700 hover:bg-ink-50"
+							@click="setAll(false)"
+						>
+							{{ __("Hide all") }}
+						</button>
 					</div>
 
 					<div class="border border-ink-200 rounded-lg overflow-hidden">
@@ -98,32 +136,54 @@ const breadcrumbs = [
 							:class="i ? 'border-t border-ink-100' : ''"
 						>
 							<div class="flex-1 min-w-0">
-								<div class="text-sm font-medium text-ink-900">{{ __(t.label) }}</div>
+								<div class="text-sm font-medium text-ink-900">
+									{{ __(t.label) }}
+								</div>
 								<div class="text-[11px] text-ink-500 mt-0.5">{{ __(t.desc) }}</div>
 							</div>
 
 							<div class="flex-shrink-0 pt-0.5">
-								<label v-if="editing" class="flex items-center gap-2 text-xs cursor-pointer whitespace-nowrap">
-									<input type="checkbox" v-model="form.tabs[t.id]" class="accent-brand-600" />
-									<span :class="form.tabs[t.id] ? 'text-ink-900' : 'text-ink-500'">
+								<label
+									v-if="editing"
+									class="flex items-center gap-2 text-xs cursor-pointer whitespace-nowrap"
+								>
+									<input
+										type="checkbox"
+										v-model="form.tabs[t.id]"
+										class="accent-brand-600"
+									/>
+									<span
+										:class="form.tabs[t.id] ? 'text-ink-900' : 'text-ink-500'"
+									>
 										{{ form.tabs[t.id] ? __("Shown") : __("Hidden") }}
 									</span>
 								</label>
 								<span
 									v-else
 									class="text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap"
-									:class="store.siteProjectTabVisible(t.id)
-										? 'bg-success-50 text-success-700'
-										: 'bg-ink-100 text-ink-600'"
+									:class="
+										store.siteProjectTabVisible(t.id)
+											? 'bg-success-50 text-success-700'
+											: 'bg-ink-100 text-ink-600'
+									"
 								>
-									{{ store.siteProjectTabVisible(t.id) ? __("Shown") : __("Hidden") }}
+									{{
+										store.siteProjectTabVisible(t.id)
+											? __("Shown")
+											: __("Hidden")
+									}}
 								</span>
 							</div>
 						</div>
 					</div>
 
 					<div class="text-[11px] text-ink-500 mt-2">
-						{{ __("{0} of {1} tabs shown by default.", [shownCount, PROJECT_TABS.length]) }}
+						{{
+							__("{0} of {1} tabs shown by default.", [
+								shownCount,
+								PROJECT_TABS.length,
+							])
+						}}
 					</div>
 				</DeskSection>
 			</div>

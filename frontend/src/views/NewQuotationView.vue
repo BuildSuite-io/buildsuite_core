@@ -26,6 +26,9 @@ import { showToast } from "@/utils/appToast";
 import { getInvoiceTerms } from "@/data/invoiceApi";
 import { daysBetween, fmtCurrency } from "@/utils/format";
 import { __ } from "@/utils/translate";
+// Custom Fields, sections and save hooks an installed app adds to this form (sdk/useExtensionFields).
+import ExtensionSlot from "@/components/ExtensionSlot.vue";
+import { useExtensionFields } from "@/sdk/useExtensionFields";
 // Rich text (Text Editor) is heavy (TipTap) — load it only when this form is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -84,6 +87,15 @@ const form = reactive({
 // body rather than reporting it as an edit and dropping the template link.
 const editorKey = ref(0);
 
+const ext = useExtensionFields("Quotation", form);
+// An installed app that picks terms for the quotation sets them through this, so the editor
+// below is remounted with the new body.
+ext.context.setTerms = (text) => {
+	form.terms = text;
+	editorKey.value += 1;
+};
+if (!props.id) ext.defaults();
+
 // Read straight off the doctype — no endpoint. Only the line text needs translating: the form
 // calls it `description`, and on a Quotation Item that text lives in `item_name`.
 const adapter = createDataAdapter(useDataStore());
@@ -121,9 +133,11 @@ watch(
 		}));
 		// The margin is stored per line, which is where ERPNext keeps it; the form shows one
 		// figure for the document, so read it back off the lines.
-		if (doc.items?.length) form.margin_percent = Number(doc.items[0].margin_rate_or_amount) || 0;
+		if (doc.items?.length)
+			form.margin_percent = Number(doc.items[0].margin_rate_or_amount) || 0;
 		if (!form.items.length) form.items = [blankLine()];
 		editorKey.value += 1;
+		ext.load(doc);
 	},
 	{ immediate: true }
 );
@@ -243,7 +257,9 @@ function validate() {
 	if (!form.title.trim()) found.title = __("Say what the quotation is for.");
 	if (!form.transaction_date) found.transaction_date = __("An issue date is required.");
 	if (form.validity_days !== "" && Number(form.validity_days) < 0)
-		found.validity_days = __("Cannot be negative — a price cannot expire before it is offered.");
+		found.validity_days = __(
+			"Cannot be negative — a price cannot expire before it is offered."
+		);
 	if (Number(form.margin_percent) < 0)
 		found.margin_percent = __("Cannot be negative — that would quote below cost.");
 	// Rows with no description are dropped on save, so only the ones that will be sent count.
@@ -274,7 +290,9 @@ async function onSave() {
 		project: form.project || null,
 		transaction_date: form.transaction_date,
 		valid_till:
-			form.validity_days === "" ? null : isoPlusDays(form.transaction_date, form.validity_days),
+			form.validity_days === ""
+				? null
+				: isoPlusDays(form.transaction_date, form.validity_days),
 		tc_name: form.tc_name || null,
 		terms: form.terms || null,
 		internal_note: form.internal_note || null,
@@ -295,12 +313,17 @@ async function onSave() {
 				code: l.code || null,
 				source_ref: l.source_ref || null,
 			})),
+		// An installed app's Custom Fields ride along with the document.
+		...ext.payload(),
 	};
 	try {
+		await ext.beforeSave(payload, form);
 		// Sending the whole `items` array replaces the child table, so an edit never appends.
-		const doc = editing.value
-			? await adapter.update("Quotation", props.id, payload)
-			: await adapter.create("Quotation", payload);
+		const isNew = !editing.value;
+		const doc = isNew
+			? await adapter.create("Quotation", payload)
+			: await adapter.update("Quotation", props.id, payload);
+		await ext.afterSave(doc, { isNew });
 		router.push(`/quotations/${encodeURIComponent(doc?.name || props.id)}`);
 	} catch (err) {
 		showToast(applyServerErrors(err) ?? __("Could not save the quotation."), "error");
@@ -318,28 +341,44 @@ const breadcrumbs = computed(() => [
 </script>
 
 <template>
-	<DeskPage :title="editing ? __('Edit {0}', [id]) : __('New Quotation')"
+	<DeskPage
+		:title="editing ? __('Edit {0}', [id]) : __('New Quotation')"
 		:subtitle="__('Type the items straight in, or pull them from an assembly.')"
-		:breadcrumbs="breadcrumbs">
+		:breadcrumbs="breadcrumbs"
+	>
 		<DeskForm>
 			<template #action-bar>
-				<DeskActionBar :save-label="editing ? __('Save changes') : __('Create quotation')"
-					:saving-label="editing ? __('Saving…') : __('Creating…')" :saving="saving" @save="onSave"
-					@cancel="router.back()" />
+				<DeskActionBar
+					:save-label="editing ? __('Save changes') : __('Create quotation')"
+					:saving-label="editing ? __('Saving…') : __('Creating…')"
+					:saving="saving"
+					@save="onSave"
+					@cancel="router.back()"
+				/>
 			</template>
 
-			<DeskSection :title="__('Who and what')" :cols="2">
+			<ExtensionSlot :name="ext.slot('top')" :context="ext.context" />
+
+			<DeskSection id="who-and-what" :title="__('Who and what')" :cols="2">
 				<div class="md:col-span-2">
-					<DeskField :label="__('For')" required :error="errors.title">
+					<DeskField name="title" :label="__('For')" required :error="errors.title">
 						<DeskInput
 							v-model="form.title"
-							:placeholder="__('e.g. Interior fit-out — Level 8, Brigade Tech Gardens')"
+							:placeholder="
+								__('e.g. Interior fit-out — Level 8, Brigade Tech Gardens')
+							"
 						/>
 					</DeskField>
 				</div>
 
 				<div class="md:col-span-2">
-					<DeskField :label="__('Quotation to')" required :hint="partyHint" :error="errors.party_name">
+					<DeskField
+						name="party_name"
+						:label="__('Quotation to')"
+						required
+						:hint="partyHint"
+						:error="errors.party_name"
+					>
 						<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 							<DeskSegmented
 								v-model="form.quotation_to"
@@ -380,7 +419,7 @@ const breadcrumbs = computed(() => [
 					</DeskField>
 				</div>
 
-				<DeskField :label="__('Customer type')">
+				<DeskField name="customer_type" :label="__('Customer type')">
 					<DeskSelect v-model="form.customer_type">
 						<option value="">{{ __("— Select —") }}</option>
 						<option value="Homebuyer">{{ __("Homebuyer") }}</option>
@@ -390,8 +429,11 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="project"
 					:label="__('Project')"
-					:hint="__('Optional — a quotation usually goes out before there is a project.')"
+					:hint="
+						__('Optional — a quotation usually goes out before there is a project.')
+					"
 				>
 					<DeskSearchableSelect
 						v-model="form.project"
@@ -403,23 +445,36 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Dates and pricing')" :cols="3">
-				<DeskField :label="__('Date issued')" required :error="errors.transaction_date">
+			<DeskSection id="dates-and-pricing" :title="__('Dates and pricing')" :cols="3">
+				<DeskField
+					name="transaction_date"
+					:label="__('Date issued')"
+					required
+					:error="errors.transaction_date"
+				>
 					<DeskInput v-model="form.transaction_date" type="date" />
 				</DeskField>
 
-				<DeskField :label="__('Valid for (days)')" :error="errors.validity_days"
-					:hint="__('Counted from the issue date. Leave blank for no expiry.')">
+				<DeskField
+					name="validity_days"
+					:label="__('Valid for (days)')"
+					:error="errors.validity_days"
+					:hint="__('Counted from the issue date. Leave blank for no expiry.')"
+				>
 					<DeskInput v-model="form.validity_days" type="number" min="0" />
 				</DeskField>
 
-				<DeskField :label="__('Margin %')" :error="errors.margin_percent"
-					:hint="__('Added to every line, so the rate quoted is the rate charged.')">
+				<DeskField
+					name="margin_percent"
+					:label="__('Margin %')"
+					:error="errors.margin_percent"
+					:hint="__('Added to every line, so the rate quoted is the rate charged.')"
+				>
 					<DeskInput v-model="form.margin_percent" type="number" min="0" step="any" />
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Items')" :cols="1">
+			<DeskSection id="items" :title="__('Items')" :cols="1">
 				<div class="border border-ink-200 overflow-hidden" style="border-radius: 8px">
 					<div class="overflow-x-auto">
 						<table class="w-full text-sm" style="min-width: 780px">
@@ -427,18 +482,35 @@ const breadcrumbs = computed(() => [
 								<tr
 									class="bg-ink-50 border-b border-ink-200 text-[11px] uppercase tracking-wider text-ink-500"
 								>
-									<th class="text-left font-medium px-3 py-2 w-24">{{ __("Source") }}</th>
-									<th class="text-left font-medium px-3 py-2">{{ __("Description") }}</th>
-									<th class="text-left font-medium px-3 py-2 w-32">{{ __("Unit") }}</th>
-									<th class="text-right font-medium px-3 py-2 w-24">{{ __("Qty") }}</th>
-									<th class="text-right font-medium px-3 py-2 w-32">{{ __("Rate") }}</th>
-									<th v-if="hasMargin" class="text-right font-medium px-3 py-2 w-32">
+									<th class="text-left font-medium px-3 py-2 w-24">
+										{{ __("Source") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2">
+										{{ __("Description") }}
+									</th>
+									<th class="text-left font-medium px-3 py-2 w-32">
+										{{ __("Unit") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2 w-24">
+										{{ __("Qty") }}
+									</th>
+									<th class="text-right font-medium px-3 py-2 w-32">
+										{{ __("Rate") }}
+									</th>
+									<th
+										v-if="hasMargin"
+										class="text-right font-medium px-3 py-2 w-32"
+									>
 										{{ __("Sell rate") }}
-										<span class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal">
+										<span
+											class="block normal-case tracking-normal text-[10px] text-ink-400 font-normal"
+										>
 											+{{ marginPct }}% {{ __("margin") }}
 										</span>
 									</th>
-									<th class="text-right font-medium px-3 py-2 w-36">{{ __("Amount") }}</th>
+									<th class="text-right font-medium px-3 py-2 w-36">
+										{{ __("Amount") }}
+									</th>
 									<th class="w-10"></th>
 								</tr>
 							</thead>
@@ -488,7 +560,10 @@ const breadcrumbs = computed(() => [
 									</td>
 									<!-- Not editable: it is the rate plus the margin, and typing over it
 										 would only be recomputed on save. -->
-									<td v-if="hasMargin" class="px-3 py-2 text-right tabular-nums text-ink-600">
+									<td
+										v-if="hasMargin"
+										class="px-3 py-2 text-right tabular-nums text-ink-600"
+									>
 										{{ fmtCurrency(sellRate(l)) }}
 									</td>
 									<td class="px-3 py-2 text-right tabular-nums text-ink-900">
@@ -526,9 +601,9 @@ const breadcrumbs = computed(() => [
 											>
 												{{ __("+ Add from library") }}
 											</button>
-											<span class="text-[11px] text-ink-400"
-												>{{ __("an assembly") }}</span
-											>
+											<span class="text-[11px] text-ink-400">{{
+												__("an assembly")
+											}}</span>
 										</div>
 									</td>
 								</tr>
@@ -556,10 +631,15 @@ const breadcrumbs = computed(() => [
 				<p v-if="errors.items" class="text-xs text-danger-700 mt-2">{{ errors.items }}</p>
 			</DeskSection>
 
-			<DeskSection :title="__('Terms')" :cols="1">
+			<DeskSection id="terms" :title="__('Terms')" :cols="1">
 				<DeskField
+					name="tc_name"
 					:label="__('Start from a template')"
-					:hint="__('Pulls the clause in as editable text — change it afterwards and it stays yours.')"
+					:hint="
+						__(
+							'Pulls the clause in as editable text — change it afterwards and it stays yours.'
+						)
+					"
 				>
 					<DeskLinkPicker
 						:model-value="form.tc_name"
@@ -573,22 +653,35 @@ const breadcrumbs = computed(() => [
 				</DeskField>
 
 				<DeskField
+					name="terms"
 					:label="__('Terms & conditions')"
 					:hint="
 						form.tc_name
-							? __('Pulled from a template. Editing it here does not change the library.')
+							? __(
+									'Pulled from a template. Editing it here does not change the library.'
+							  )
 							: __('Typed for this quotation.')
 					"
 				>
-					<RichTextEditor :key="editorKey" v-model="form.terms" @update:model-value="onTermsEdited" />
+					<RichTextEditor
+						:key="editorKey"
+						v-model="form.terms"
+						@update:model-value="onTermsEdited"
+					/>
 				</DeskField>
 			</DeskSection>
 
-			<DeskSection :title="__('Internal notes')" :cols="1">
-				<DeskField :label="__('Notes')" :hint="__('Not printed — for whoever picks this up next.')">
+			<DeskSection id="internal-notes" :title="__('Internal notes')" :cols="1">
+				<DeskField
+					name="internal_note"
+					:label="__('Notes')"
+					:hint="__('Not printed — for whoever picks this up next.')"
+				>
 					<DeskTextarea v-model="form.internal_note" :rows="3" />
 				</DeskField>
 			</DeskSection>
+
+			<ExtensionSlot :name="ext.slot('bottom')" :context="ext.context" />
 		</DeskForm>
 
 		<QuotationLineModal

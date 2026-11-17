@@ -842,6 +842,8 @@ CREW_ROLE_PERMS = {
 
 def setup_workforce_permissions():
 	_apply_role_perms("Field Attendance", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
+	# Timesheets (native ERPNext doctype) are entered by whoever keeps the muster, with the same rights.
+	_apply_role_perms("Timesheet", FIELD_ATTENDANCE_ROLE_PERMS, _SUBMIT_PTYPES)
 	# Worker master + Crew (the M3 matrix missed both — Crew had no BuildSuite grant at all,
 	# and Employee was read-only via the picker mirror, so HR/PM/admin couldn't maintain it).
 	_upgrade_role_perms("Employee", EMPLOYEE_WRITE_ROLE_PERMS)
@@ -1005,6 +1007,10 @@ def setup_project_finance_report_access():
 				).insert(ignore_permissions=True)
 	# Read + report on GL Entry (the reports' ref doctype), layered on ERPNext's own perms.
 	_upgrade_role_perms("GL Entry", {role: _READ for role in _PF_REPORT_ROLES})
+	# ERPNext's report filter scripts read the dimension list with a permission-checked
+	# frappe.db.get_list("Accounting Dimension"); without read the Desk shows "Insufficient
+	# Permission for Accounting Dimension" to these personas (only System/Accounts Manager have it).
+	_upgrade_role_perms("Accounting Dimension", {role: {"read": 1} for role in _PF_REPORT_ROLES})
 
 
 def _ensure_workflow_state(name):

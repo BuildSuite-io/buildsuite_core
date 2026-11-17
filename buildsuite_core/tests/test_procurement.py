@@ -139,10 +139,41 @@ class TestProcurementDashboard(BuildSuiteTestCase):
 
 		self._submit_po(p.name, supplier.name, over_item.name, qty=1, rate=200)  # 2x RM rate -> flagged
 		self._submit_po(p.name, supplier.name, under_item.name, qty=1, rate=100)  # at RM rate -> not flagged
-		self._submit_po(p.name, supplier.name, unlinked_item.name, qty=1, rate=999)  # no RM link -> not flagged
+		self._submit_po(
+			p.name, supplier.name, unlinked_item.name, qty=1, rate=999
+		)  # no RM link -> not flagged
 
 		after = api.get_dashboard()["above_estimated_rate"]["count"]
 		self.assertEqual(after, before + 1)
+
+	def test_above_rate_kpi_counts_what_the_report_shows(self):
+		# The KPI and Purchase rate vs estimate are one measure: the latest order line per item
+		# against the Rate Master's CURRENT rate. An old line that was dear when ordered, a later
+		# order back at the estimate, or a Rate Master raised since, must not light the KPI while
+		# the report shows nothing above estimate.
+		from buildsuite_core.api.procurement_report import rate_check
+
+		p = self._make_project(company=self.company)
+		supplier = self._supplier()
+		rm = self._make_rate_master(rate=100)
+		superseded = self._item(rate_master=rm.name)
+		raised_since = self._item(rate_master=rm.name)
+		still_over = self._item(rate_master=rm.name)
+		before = api.get_dashboard()["above_estimated_rate"]["count"]
+
+		self._submit_po(p.name, supplier.name, superseded.name, rate=200)  # dear when ordered ...
+		self._submit_po(p.name, supplier.name, superseded.name, rate=100)  # ... re-ordered at estimate
+		self._submit_po(p.name, supplier.name, raised_since.name, rate=130)  # 30% over at the time
+		self._submit_po(p.name, supplier.name, still_over.name, rate=150)  # 50% over, still
+		frappe.db.set_value("Construction Rate Master", rm.name, "current_rate", 135)  # raised since
+		# only still_over (150 vs 135) is above the current estimate; superseded and raised_since are not
+		self.assertEqual(api.get_dashboard()["above_estimated_rate"]["count"], before + 1)
+
+		rows = rate_check(project=p.name)["rows"]
+		self.assertEqual(
+			sorted(r["item"] for r in rows if r["variance"] is not None and r["variance"] > 0.5),
+			[still_over.item_name],
+		)
 
 	def test_procurement_kpi_endpoint_values(self):
 		# PRC-002 — the parts of the KPI strip not covered above: a submitted
