@@ -501,11 +501,77 @@ def list_billable_purchase_orders(company: str | None = None):
 	)
 
 
+def _billed_qty_by_po_item(purchase_order, exclude_bill=None):
+	"""Quantity already on the PO's live bills (Draft or Submitted, not Cancelled), per PO item.
+	Drafts count too, so a second bill started while one is in progress can't bill the same
+	quantity again."""
+	filters = {"purchase_order": purchase_order, "docstatus": ["<", 2], "parenttype": "Purchase Invoice"}
+	if exclude_bill:
+		filters["parent"] = ["!=", exclude_bill]
+	out = {}
+	for row in frappe.get_all("Purchase Invoice Item", filters=filters, fields=["po_detail", "qty"]):
+		if row.po_detail:
+			out[row.po_detail] = out.get(row.po_detail, 0) + flt(row.qty)
+	return out
+
+
+def has_billable_quantity(po):
+	"""Whether a submitted PO (a Purchase Order doc) still has quantity to bill — the same count
+	get_po_bill_lines makes, without building the lines. Drives the PO page's "+ Create supplier
+	bill"."""
+	if po.docstatus != 1 or po.status == "Closed":
+		return False
+	basis = "receipt" if flt(po.per_received) > 0 else "order"
+	billed = _billed_qty_by_po_item(po.name)
+	return any(
+		(flt(row.received_qty) if basis == "receipt" else flt(row.qty)) - billed.get(row.name, 0) > 1e-6
+		for row in po.items
+	)
+
+
+def _check_po_bill_limits(items, exclude_bill=None):
+	"""A bill line linked to a PO line may not take it past what is left: the larger of ordered
+	and received, less what the PO's other live bills hold (_billed_qty_by_po_item)."""
+	asked = {}
+	for r in items:
+		if r.get("purchase_order") and r.get("po_detail"):
+			key = (r["purchase_order"], r["po_detail"])
+			asked[key] = asked.get(key, 0) + (flt(r.get("qty")) or 1)
+	billed_by_po = {}
+	for (po_name, po_detail), qty in asked.items():
+		row = frappe.db.get_value(
+			"Purchase Order Item",
+			{"name": po_detail, "parent": po_name},
+			["qty", "received_qty", "uom", "item_name"],
+			as_dict=True,
+		)
+		if not row:
+			frappe.throw(_("Line {0} is not on purchase order {1}.").format(po_detail, po_name))
+		if po_name not in billed_by_po:
+			billed_by_po[po_name] = _billed_qty_by_po_item(po_name, exclude_bill)
+		left = max(flt(row.qty), flt(row.received_qty)) - billed_by_po[po_name].get(po_detail, 0)
+		if qty > left + 1e-6:
+			frappe.throw(
+				_("Only {0} {1} of {2} is left to bill on {3}.").format(
+					frappe.format(max(left, 0), {"fieldtype": "Float"}), row.uom, row.item_name, po_name
+				)
+			)
+
+
 @frappe.whitelist()
-def get_po_bill_lines(purchase_order: str):
-	"""Confirm-don't-construct: map a Purchase Order to its unbilled bill lines (item, remaining
-	qty, uom, PO rate) via ERPNext's native mapper, so the covered PO lines flip billed on submit.
-	Returns the supplier + project too, to lock the bill header to the PO."""
+def get_po_bill_lines(purchase_order: str, exclude_bill: str | None = None):
+	"""Everything a supplier bill raised from a Purchase Order starts with: its supplier, project
+	and currency, its taxes, and one line per PO item with what is left to bill, at the PO rate
+	and linked to the PO line (po_detail), so the PO is marked billed when the bill is submitted.
+
+	What is left to bill (`basis`):
+	- "receipt": once anything has been received, what was received and is not yet billed;
+	- "order": with nothing received, the ordered quantity not yet billed — as ERPNext's own
+	  PO -> Purchase Invoice does.
+	Billed means on any of the PO's live bills (_billed_qty_by_po_item), so nothing is billed
+	twice. `max_qty` is a line's ceiling: the larger of ordered and received, less billed.
+	`exclude_bill` leaves out a bill being edited, so its own quantities are not counted against it.
+	"""
 	# ERPNext moved make_purchase_invoice into a `mapper` submodule in newer versions;
 	# older versions keep it in purchase_order.py. Support both.
 	try:
@@ -515,25 +581,53 @@ def get_po_bill_lines(purchase_order: str):
 
 	po = frappe.get_doc("Purchase Order", purchase_order)
 	po.check_permission("read")
-	mapped = make_purchase_invoice(purchase_order)  # unsaved Purchase Invoice, unbilled qty only
-	lines = [
-		{
-			"item_code": it.item_code,
-			"description": it.item_name or it.description,
-			"qty": flt(it.qty),
-			"uom": it.uom,
-			"rate": flt(it.rate),
-			"purchase_order": it.get("purchase_order") or purchase_order,
-			"po_detail": it.get("po_detail"),
-		}
-		for it in mapped.items
-		if flt(it.qty) > 0
-	]
+	if po.docstatus != 1:
+		frappe.throw(_("Only a submitted purchase order can be billed."))
+
+	basis = "receipt" if flt(po.per_received) > 0 else "order"
+	billed = _billed_qty_by_po_item(po.name, exclude_bill)
+	# Rates, UOMs, item names and the order's taxes, as ERPNext maps a PO to a Purchase Invoice.
+	mapped = make_purchase_invoice(purchase_order)
+	mapped_by_detail = {it.get("po_detail"): it for it in mapped.items}
+
+	lines = []
+	for row in po.items:
+		done = billed.get(row.name, 0)
+		left = (flt(row.received_qty) if basis == "receipt" else flt(row.qty)) - done
+		ceiling = max(flt(row.qty), flt(row.received_qty)) - done
+		if left <= 0:
+			continue
+		it = mapped_by_detail.get(row.name)
+		lines.append(
+			{
+				"item_code": row.item_code,
+				"description": (it.item_name if it else None) or row.item_name or row.description,
+				"qty": left,
+				"max_qty": ceiling,
+				"uom": row.uom,
+				"rate": flt(it.rate if it else row.rate),
+				"purchase_order": po.name,
+				"po_detail": row.name,
+			}
+		)
 	return {
 		"purchase_order": po.name,
 		"supplier": po.supplier,
 		"supplier_name": po.supplier_name,
 		"project": po.project,
+		"currency": po.currency,
+		"basis": basis,
+		# The bill starts with the order's taxes, as ERPNext copies them.
+		"taxes_and_charges": mapped.get("taxes_and_charges") or po.get("taxes_and_charges") or "",
+		"taxes": [
+			{
+				"charge_type": t.charge_type,
+				"account_head": t.account_head,
+				"rate": flt(t.rate),
+				"description": t.description,
+			}
+			for t in (mapped.get("taxes") or po.get("taxes") or [])
+		],
 		"lines": lines,
 	}
 
@@ -608,6 +702,7 @@ def save_bill(payload: str):
 	pi.update_stock = 0
 
 	fallback_item = ensure_bill_item()
+	_check_po_bill_limits(items, exclude_bill=pi.name if not pi.is_new() else None)
 	expense = _expense_account(company)
 	cost_center = frappe.db.get_value("Company", company, "cost_center")
 	for r in items:

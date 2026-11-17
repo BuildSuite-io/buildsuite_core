@@ -60,6 +60,11 @@ const isDraft = computed(() => po.value?.state === "Draft");
 const isSubmitted = computed(() => po.value?.state === "Submitted");
 const isCancelled = computed(() => po.value?.state === "Cancelled");
 const canReceive = computed(() => isSubmitted.value && (po.value?.per_received || 0) < 100);
+// A supplier bill straight from the order: on any submitted PO with something left to bill,
+// received or not. With nothing received it bills the ordered quantity not yet billed, as
+// ERPNext's PO -> Purchase Invoice does; once goods are in, what was received and not yet billed.
+// `billable` counts draft bills too, so the button goes once everything is on a bill.
+const canBill = computed(() => isSubmitted.value && !!po.value?.billable);
 
 function onEdit() {
 	router.push(`/procurement/purchase-orders/${po.value.name}/edit`);
@@ -71,6 +76,9 @@ function onPrint() {
 }
 function onCreateReceipt() {
 	router.push(`/procurement/receipts/new?po=${po.value.name}`);
+}
+function onCreateBill() {
+	router.push(`/project-finance/supplier-bills/new?po=${encodeURIComponent(po.value.name)}`);
 }
 
 async function onSubmit() {
@@ -224,6 +232,21 @@ const breadcrumbs = computed(() => [
 				@click="onCreateReceipt"
 			>
 				+ {{ __("Create Receipt") }}
+			</button>
+			<button
+				v-if="canBill && canCreate('supplierBill')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				data-test="po-create-supplier-bill"
+				:title="
+					(po.per_received || 0) > 0
+						? __('Bills what was received and not yet billed')
+						: __('Nothing received yet: bills the ordered quantity not yet billed')
+				"
+				@click="onCreateBill"
+			>
+				+ {{ __("Create supplier bill") }}
 			</button>
 			<button
 				v-if="!wfActive && isSubmitted && canSubmit('purchaseOrder')"
