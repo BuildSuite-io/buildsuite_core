@@ -16,6 +16,8 @@
   "backend_only",
   "section_break_roles",
   "roles",
+  "section_break_project_access",
+  "project_visibility",
   "section_break_desc",
   "description"
  ],
@@ -89,11 +91,25 @@
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "section_break_project_access",
+   "fieldtype": "Section Break",
+   "label": "Project Access"
+  },
+  {
+   "default": "Team projects only",
+   "fieldname": "project_visibility",
+   "fieldtype": "Select",
+   "label": "Project Visibility",
+   "options": "Team projects only\nAll projects until added to a team\nAll projects",
+   "reqd": 1,
+   "description": "Which projects this persona's users see — and with them the projects' tasks, work packages, progress entries and stage plans. 'Team projects only': only projects whose team they are on. 'All projects until added to a team': every project until they join any project team, then only their teams. 'All projects': every project their role permissions allow. System Manager always sees all projects."
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-06 00:00:00.000000",
+ "modified": "2026-11-17 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Persona",

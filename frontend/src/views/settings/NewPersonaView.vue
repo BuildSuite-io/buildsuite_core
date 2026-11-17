@@ -6,7 +6,12 @@ import { reactive, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { showToast } from "@/utils/appToast";
-import { savePersona, listAssignableRoles } from "@/data/personaApi";
+import {
+	savePersona,
+	listAssignableRoles,
+	PROJECT_VISIBILITY_OPTIONS,
+	DEFAULT_PROJECT_VISIBILITY,
+} from "@/data/personaApi";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskForm from "@/components/desk/DeskForm.vue";
@@ -14,6 +19,7 @@ import DeskActionBar from "@/components/desk/DeskActionBar.vue";
 import DeskSection from "@/components/desk/DeskSection.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
 import PersonaRolesField from "@/components/PersonaRolesField.vue";
 
 const router = useRouter();
@@ -26,7 +32,12 @@ const form = reactive({
 	enabled: true,
 	description: "",
 	roles: [],
+	// New personas start team-scoped — the safe default; widen it here if this persona should
+	// see more.
+	projectVisibility: DEFAULT_PROJECT_VISIBILITY,
 });
+const visibilityHint = () =>
+	__(PROJECT_VISIBILITY_OPTIONS.find((o) => o.value === form.projectVisibility)?.hint || "");
 const errors = ref({});
 const saving = ref(false);
 const assignableRoles = ref([]);
@@ -50,6 +61,7 @@ async function save() {
 			enabled: form.enabled ? 1 : 0,
 			sort_order: Number(form.sortOrder) || 0,
 			roles: form.roles,
+			project_visibility: form.projectVisibility,
 		});
 		showToast(__("Persona created"));
 		router.push(`/settings/personas/${encodeURIComponent(res.name)}`);
@@ -141,6 +153,32 @@ onMounted(async () => {
 						:hint="__('Assigning this persona to a user grants these Frappe roles.')"
 					>
 						<PersonaRolesField v-model="form.roles" :available="assignableRoles" />
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection id="project-access" :title="__('Project access')" :cols="1">
+					<DeskField
+						:label="__('Project visibility')"
+						:hint="
+							visibilityHint() +
+							' ' +
+							__(
+								'Applies to projects and their tasks, work packages, progress entries and stage plans. System Manager always sees all projects.'
+							)
+						"
+					>
+						<DeskSelect
+							v-model="form.projectVisibility"
+							data-test="project-visibility"
+						>
+							<option
+								v-for="o in PROJECT_VISIBILITY_OPTIONS"
+								:key="o.value"
+								:value="o.value"
+							>
+								{{ __(o.label) }}
+							</option>
+						</DeskSelect>
 					</DeskField>
 				</DeskSection>
 

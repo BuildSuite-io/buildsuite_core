@@ -33,6 +33,27 @@ PERSONAS = (
 )
 
 
+# Persona.project_visibility for the defaults — the team scoping each had when it was hard-coded
+# per role in permissions/project.py. A seed value only: an admin may change it per persona.
+ALL_PROJECTS = "All projects"
+UNTIL_TEAMED = "All projects until added to a team"
+TEAM_ONLY = "Team projects only"
+DEFAULT_PROJECT_VISIBILITY = {
+	"Director / Owner": ALL_PROJECTS,
+	"System Manager (Admin)": ALL_PROJECTS,
+	"BuildSuite Administrator": ALL_PROJECTS,
+	"Project Manager": UNTIL_TEAMED,
+	"Estimator": UNTIL_TEAMED,
+	"Quantity Surveyor": UNTIL_TEAMED,
+	"Procurement Officer": UNTIL_TEAMED,
+	"Store Keeper": UNTIL_TEAMED,
+	"Accountant": UNTIL_TEAMED,
+	"HR Manager": UNTIL_TEAMED,
+	"Site Engineer": TEAM_ONLY,
+	"Foreman / Supervisor": TEAM_ONLY,
+}
+
+
 def seed_personas():
 	"""Create any missing default persona. Idempotent; leaves existing personas
 	(and any admin edits to them) untouched."""
@@ -49,6 +70,7 @@ def seed_personas():
 				"enabled": 1,
 				"is_default": 1,
 				"backend_only": backend_only,
+				"project_visibility": DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY),
 			}
 		)
 		for role in roles:
@@ -120,6 +142,7 @@ def repair_default_personas():
 				"enabled": 1,
 				"is_default": 1,
 				"backend_only": backend_only,
+				"project_visibility": DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY),
 			}
 		)
 		for role in roles:

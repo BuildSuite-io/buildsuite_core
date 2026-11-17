@@ -8,18 +8,26 @@ beyond DocPerm, it only declines to object.
 
 import frappe
 
-# Never scoped — see every project regardless of team membership. The org-wide admin roles
-# (System Manager + BuildSuite Administrator) and the Director sit here so that adding them to a
-# Project Team never narrows their global visibility.
+# Persona.project_visibility — how much of the project tree a persona's users see. Set per persona
+# (Settings > Personas, or the Persona form in the desk), so a site can scope a persona differently
+# without a code change.
+ALL_PROJECTS = "All projects"  # every project their role permissions allow
+UNTIL_TEAMED = "All projects until added to a team"  # then only the projects whose team they're on
+TEAM_ONLY = "Team projects only"  # only the projects whose team they're on
+
+# System Manager is the platform administrator: never scoped, whatever their persona says.
+ALWAYS_ALL_ROLES = {"System Manager"}
+
+# --------------------------------------------------------------------------------------------- #
+# The role-based rule this replaced. Still used, but only for a user who has NO persona (one who
+# predates personas, or was given BuildSuite roles by hand) and to seed each existing custom
+# persona's setting from its roles when the field arrived (patches/set_persona_project_visibility).
+# --------------------------------------------------------------------------------------------- #
 EXEMPT_ROLES = {
 	"BuildSuite Director",
 	"System Manager",
 	"BuildSuite Administrator",
 }
-
-# Unrestricted until the user joins any team; scoped to their teamed projects thereafter. These
-# are the office/back-office roles that browse everything by default but narrow to their projects
-# once explicitly teamed onto some. HR Manager's read-only is enforced by DocPerm, not here.
 FLIP_ROLES = {
 	"BuildSuite PM",
 	"BuildSuite HR Manager",
@@ -30,12 +38,37 @@ FLIP_ROLES = {
 	"BuildSuite Accountant",
 }
 
-# Always scoped to projects the user is a team member of — the site roles, who see nothing until
-# teamed onto a project.
 TEAM_ONLY_ROLES = {
 	"BuildSuite Site Engineer",
 	"BuildSuite Foreman",
 }
+
+
+def visibility_from_roles(roles):
+	"""The project visibility the role-based rule gives a set of roles: the widest any role allows.
+	Anyone without a BuildSuite role was team-scoped."""
+	roles = set(roles)
+	if roles & EXEMPT_ROLES:
+		return ALL_PROJECTS
+	if roles & FLIP_ROLES:
+		return UNTIL_TEAMED
+	return TEAM_ONLY
+
+
+def project_visibility(user):
+	"""How much of the project tree this user sees: their persona's setting, else (no persona) the
+	role-based rule. Administrator and System Manager always see everything."""
+	if user == "Administrator":
+		return ALL_PROJECTS
+	roles = set(frappe.get_roles(user))
+	if roles & ALWAYS_ALL_ROLES:
+		return ALL_PROJECTS
+	persona = frappe.get_cached_value("User", user, "persona")
+	if persona:
+		visibility = frappe.get_cached_value("Persona", persona, "project_visibility")
+		if visibility:
+			return visibility
+	return visibility_from_roles(roles)
 
 
 def _has_any_membership(user):
@@ -60,15 +93,12 @@ def _is_project_member(user, project):
 
 def _is_scoped(user):
 	"""Whether this user's project visibility should be restricted to team membership."""
-	if user == "Administrator":
+	visibility = project_visibility(user)
+	if visibility == ALL_PROJECTS:
 		return False
-
-	roles = set(frappe.get_roles(user))
-	if roles & EXEMPT_ROLES:
-		return False
-	if roles & FLIP_ROLES:
+	if visibility == UNTIL_TEAMED:
 		return _has_any_membership(user)
-	# TEAM_ONLY roles, and anyone without a BuildSuite role, are scoped.
+	# Team projects only — and any value this code does not know, the safe side.
 	return True
 
 
