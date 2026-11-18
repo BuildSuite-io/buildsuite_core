@@ -330,7 +330,11 @@ async function deleteUser() {
 							</DeskField>
 							<DeskField
 								:label="__('Mobile')"
-								:hint="__('Optional — contact number for this user.')"
+								:hint="
+									__(
+										'Optional — printed on Purchase Orders when this user is the site contact.'
+									)
+								"
 							>
 								<DeskInput
 									v-model="editForm.mobile"

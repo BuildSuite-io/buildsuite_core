@@ -323,6 +323,12 @@ const breadcrumbs = computed(() => [
 							: fmtDate(po.transaction_date)
 					}}
 				</div>
+				<div v-if="po.site_contact" class="text-[11px] text-ink-500 mt-0.5">
+					{{ __("Site contact: {0}", [po.site_contact.full_name])
+					}}<span v-if="po.site_contact.mobile_no">
+						· {{ po.site_contact.mobile_no }}</span
+					>
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500">
