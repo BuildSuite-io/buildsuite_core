@@ -941,3 +941,53 @@ class TestSupplierBill(BuildSuiteTestCase):
 		line = get_po_bill_lines(po.name)["lines"][0]
 		self._draft(supp, line, 10)  # all of it on a draft bill
 		self.assertFalse(get_purchase_order(po.name)["billable"])
+
+
+class TestReceivablesPayablesCompanies(BuildSuiteTestCase):
+	"""Project Finance > Reports > Receivables & Payables lists the same bills as the Bills list:
+	every company's while multi-company is off, the working company's while it is on. A bill
+	follows its project's company, so a project under another company must not drop its bills."""
+
+	def setUp(self):
+		super().setUp()
+		self.company = frappe.db.get_single_value("Global Defaults", "default_company") or self.company
+		self.project = self._make_project(company=self.company).name
+
+	_supplier = TestSupplierBill._supplier
+
+	def _open_bill(self, company):
+		from buildsuite_core.api.supplier_bill import save_bill, submit_bill
+
+		name = save_bill(
+			json.dumps(
+				{
+					"supplier": self._supplier(),
+					"project": self.project,
+					"date": "2026-07-20",
+					"items": [{"description": "Steel", "qty": 1, "rate": 5000}],
+				}
+			)
+		)["name"]
+		submit_bill(name)
+		# The report only reads the company on the row; another company's bill, posted, looks so.
+		frappe.db.set_value("Purchase Invoice", name, "company", company, update_modified=False)
+		return name
+
+	def _payable_ids(self):
+		from buildsuite_core.api.finance_report import receivables_and_payables
+
+		return {r["id"] for r in receivables_and_payables()["payables"]}
+
+	def test_other_companies_bills_shown_when_multi_company_off(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "multi_company_enabled", 0)
+		own, other = self._open_bill(self.company), self._open_bill("_Test Other Company")
+		ids = self._payable_ids()
+		self.assertIn(own, ids)
+		self.assertIn(other, ids)
+
+	def test_working_company_only_when_multi_company_on(self):
+		frappe.db.set_single_value("BuildSuite Core Settings", "multi_company_enabled", 1)
+		own, other = self._open_bill(self.company), self._open_bill("_Test Other Company")
+		ids = self._payable_ids()
+		self.assertIn(own, ids)
+		self.assertNotIn(other, ids)
