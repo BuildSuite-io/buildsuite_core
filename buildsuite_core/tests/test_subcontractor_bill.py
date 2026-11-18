@@ -115,6 +115,47 @@ class TestSubcontractorBill(BuildSuiteTestCase):
 		self.assertTrue(any("Retention" in (t.description or "") for t in deduct))
 		self.assertAlmostEqual(flt(pi.grand_total), 90000, places=2)
 
+	def _service_item_on(self, stock_uom, units):
+		"""Put the service item on `stock_uom` with exactly `units` in its unit table."""
+		from buildsuite_core.utils.subcontract_billing import SERVICE_ITEM, ensure_service_item
+
+		ensure_service_item()
+		frappe.db.set_value("Item", SERVICE_ITEM, "stock_uom", stock_uom)
+		frappe.db.delete("UOM Conversion Detail", {"parenttype": "Item", "parent": SERVICE_ITEM})
+		item = frappe.get_doc("Item", SERVICE_ITEM)
+		for uom in units:
+			item.append("uoms", {"uom": uom, "conversion_factor": 1}).db_insert()
+		return SERVICE_ITEM
+
+	def _direct_pi_line(self, amount=25000):
+		bill = self._direct_bill(self._subcontractor(), amount=amount, retention=0)
+		self.assertEqual((flt(bill.lines[0].this_period_qty), flt(bill.lines[0].rate)), (1, amount))
+		bill.submit()
+		return frappe.get_doc("Purchase Invoice", bill.reload().purchase_invoice).items[0]
+
+	def test_direct_bill_posts_one_unit_in_the_items_stock_unit(self):
+		"""A direct line is a lump sum: it saves as qty 1 at rate = amount and posts in the service
+		item's own stock unit. An item still on 'Nos' stays on 'Nos'; a direct bill doesn't move
+		it to the fractional subcontract unit, which a site may not even have."""
+		item = self._service_item_on("Nos", ["Nos"])
+		frappe.db.delete("UOM", {"name": "Subcontract Unit"})
+
+		line = self._direct_pi_line()
+		self.assertEqual((line.uom, flt(line.qty), flt(line.rate)), ("Nos", 1, 25000))
+		self.assertEqual(frappe.db.get_value("Item", item, "stock_uom"), "Nos")
+
+	def test_direct_bill_lists_a_stock_unit_missing_from_the_items_unit_table(self):
+		"""ERPNext refuses the invoice ("UOM ... not found in Item") when the item's stock unit
+		isn't in its own unit table. The direct bill adds it there and posts."""
+		from buildsuite_core.utils.subcontract_billing import SERVICE_UOM
+
+		item = self._service_item_on(SERVICE_UOM, ["Nos"])
+
+		line = self._direct_pi_line()
+		self.assertEqual((line.uom, flt(line.qty)), (SERVICE_UOM, 1))
+		units = frappe.get_all("UOM Conversion Detail", filters={"parent": item}, pluck="uom")
+		self.assertEqual(sorted(units), sorted(["Nos", SERVICE_UOM]))
+
 	def test_expense_account_flows_to_pi(self):
 		from buildsuite_core.utils.subcontract_billing import resolve_accounts
 

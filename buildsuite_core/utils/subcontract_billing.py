@@ -117,9 +117,31 @@ def _ensure_service_uom():
 	return SERVICE_UOM
 
 
-def ensure_service_item():
+def _list_stock_uom(item_code):
+	"""ERPNext records an Item Price in the item's stock unit for every invoice line, and refuses
+	one ("UOM ... not found in Item") when the item's own unit table doesn't list that unit. Add
+	the stock unit to the table if it's missing, without otherwise touching the item."""
+	stock_uom = frappe.db.get_value("Item", item_code, "stock_uom")
+	if stock_uom == SERVICE_UOM:
+		_ensure_service_uom()
+	if frappe.db.exists(
+		"UOM Conversion Detail", {"parenttype": "Item", "parent": item_code, "uom": stock_uom}
+	):
+		return stock_uom
+	item = frappe.get_doc("Item", item_code)
+	item.append("uoms", {"uom": stock_uom, "conversion_factor": 1}).db_insert()
+	return stock_uom
+
+
+def ensure_service_item(fractional_uom=True):
 	"""The single non-stock service Item all bill lines map to on the PI. Its description
-	carries the real work; users never pick it on the Vue screen."""
+	carries the real work; users never pick it on the Vue screen.
+
+	`fractional_uom=False` (a direct bill, whose lines are whole lump sums) leaves an existing
+	item on whatever unit it has, so a direct bill never depends on the fractional unit."""
+	if frappe.db.exists("Item", SERVICE_ITEM) and not fractional_uom:
+		_list_stock_uom(SERVICE_ITEM)
+		return SERVICE_ITEM
 	uom = _ensure_service_uom()
 	if frappe.db.exists("Item", SERVICE_ITEM):
 		# Older installs created this on ERPNext's default 'Nos' (whole-number only), so fractional
@@ -200,7 +222,8 @@ def generate_purchase_invoice(bill):
 		return bill.purchase_invoice
 
 	supplier = ensure_supplier(bill.subcontractor)
-	item_code = ensure_service_item()
+	item_code = ensure_service_item(fractional_uom=not bill.is_direct)
+	item_uom = frappe.db.get_value("Item", item_code, "stock_uom")
 	accts = resolve_accounts(bill.company)
 	expense_account = resolve_expense_account(bill, accts["expense"])
 
@@ -226,8 +249,13 @@ def generate_purchase_invoice(bill):
 		amount = flt(line.this_period_amount)
 		if amount <= 0:
 			continue
-		qty = flt(line.this_period_qty) or 1
-		rate = flt(line.rate) or (amount / qty if qty else amount)
+		if bill.is_direct:
+			# A direct line is a typed lump sum: one unit of the item's own stock unit at the amount.
+			qty, rate, uom = 1, amount, item_uom
+		else:
+			qty = flt(line.this_period_qty) or 1
+			rate = flt(line.rate) or (amount / qty if qty else amount)
+			uom = line.uom or None
 		pi.append(
 			"items",
 			{
@@ -236,7 +264,7 @@ def generate_purchase_invoice(bill):
 				"qty": qty,
 				"rate": rate,
 				"amount": amount,
-				"uom": line.uom or None,
+				"uom": uom,
 				"expense_account": expense_account,
 				"cost_center": accts["cost_center"],
 				"project": bill.project,
