@@ -228,6 +228,8 @@ _PO_PRINT_HTML = """
 			<div class="label">Deliver to project</div>
 			<div style="font-weight:500;">{{ proj.project_name if proj else doc.project or "&mdash;" }}</div>
 			{% if proj and proj.custom_project_id %}<div class="muted">{{ proj.custom_project_id }}{% if proj.location %} &middot; {{ proj.location }}{% endif %}</div>{% endif %}
+			{% set site_contact = frappe.db.get_value("User", doc.custom_site_contact, ["full_name", "mobile_no"], as_dict=True) if doc.custom_site_contact else None %}
+			{% if site_contact %}<div style="color:#475569; margin-top:2px;">Site contact: <span style="font-weight:500;">{{ site_contact.full_name | e }}</span>{% if site_contact.mobile_no %} &middot; {{ site_contact.mobile_no | e }}{% endif %}</div>{% endif %}
 		</div>
 		<div><div class="label">Required by</div><div style="font-weight:500;">{{ frappe.utils.format_date(doc.schedule_date) if doc.schedule_date else "&mdash;" }}</div></div>
 		<div><div class="label">Order date</div><div style="font-weight:500;">{{ frappe.utils.format_date(doc.transaction_date) }}</div></div>

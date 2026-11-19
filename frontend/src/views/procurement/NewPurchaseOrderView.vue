@@ -77,6 +77,7 @@ const form = ref({
 	supplier: "",
 	project: route.query.project || "",
 	schedule_date: inDays(10),
+	site_contact: "",
 	material_request: null,
 	tc_name: "",
 	terms: "",
@@ -124,6 +125,7 @@ watch(
 				supplier: po.supplier || "",
 				project: po.project || "",
 				schedule_date: po.schedule_date || inDays(10),
+				site_contact: po.site_contact?.user || "",
 				material_request: null,
 				tc_name: po.tc_name || "",
 				terms: po.terms || "",
@@ -211,6 +213,7 @@ async function onSave() {
 			supplier: form.value.supplier,
 			project: form.value.project,
 			schedule_date: form.value.schedule_date,
+			site_contact: form.value.site_contact || "",
 			material_request: form.value.material_request || undefined,
 			terms: form.value.terms || "",
 			tc_name: form.value.tc_name || "",
@@ -316,6 +319,26 @@ const saveLabel = computed(() =>
 				</DeskField>
 				<DeskField :label="__('Required by')">
 					<DeskInput v-model="form.schedule_date" type="date" />
+				</DeskField>
+				<DeskField
+					:label="__('Site contact')"
+					:hint="
+						__(
+							'Optional — printed on the PO with their mobile so the supplier knows who to coordinate delivery with.'
+						)
+					"
+				>
+					<DeskLinkPicker
+						v-model="form.site_contact"
+						doctype="User"
+						label-field="full_name"
+						value-field="name"
+						:search-fields="['full_name', 'name']"
+						:filters="[['enabled', '=', 1]]"
+						order-by="full_name asc"
+						allow-clear
+						:placeholder="__('— Optional —')"
+					/>
 				</DeskField>
 			</DeskSection>
 
