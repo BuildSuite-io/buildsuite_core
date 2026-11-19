@@ -34,7 +34,9 @@ def previously_billed_by_line(work_order, exclude_bill=None):
 	return out
 
 
-class SubcontractorBill(Document):  # nosemgrep: frappe-modifying-but-not-comitting-other-method -- validate() helpers set self.* fields, persisted by the normal save (db_set not appropriate in validate)
+class SubcontractorBill(
+	Document
+):  # nosemgrep: frappe-modifying-but-not-comitting-other-method -- validate() helpers set self.* fields, persisted by the normal save (db_set not appropriate in validate)
 	def validate(self):
 		self._sync_from_work_order()
 		if self.work_order and not self.is_direct:
@@ -200,11 +202,15 @@ class SubcontractorBill(Document):  # nosemgrep: frappe-modifying-but-not-comitt
 
 	def _compute_totals(self):
 		"""The prototype waterfall: gross → (net discount) → taxable → +taxes → grand total
-		→ (grand discount) → invoice value → −tds −retention −advance → net payable."""
+		→ (grand discount) → invoice value → minus tds, retention, advance → net payable."""
 		gross = 0.0
 		for row in self.lines:
-			# WO lines carry qty×rate; direct lines carry a typed amount only.
-			if flt(row.this_period_qty) and flt(row.rate):
+			# WO lines carry qty x rate. A direct line carries a typed amount, stored as one unit
+			# at that amount so the line reads (and posts) as qty 1, not qty 0.
+			if self.is_direct:
+				row.this_period_qty = 1
+				row.rate = flt(row.this_period_amount)
+			elif flt(row.this_period_qty) and flt(row.rate):
 				row.this_period_amount = flt(row.this_period_qty) * flt(row.rate)
 			gross += flt(row.this_period_amount)
 		self.gross = gross
