@@ -1,5 +1,5 @@
 import { frappeRequest } from "frappe-ui-frappe-request";
-import { parseFrappeError } from "@/utils/frappeError";
+import { parseFrappeError, serverErrorMessage } from "@/utils/frappeError";
 
 async function call(method, params) {
 	try {
@@ -54,7 +54,7 @@ export async function uploadCompanyLogo(file) {
 		let msg = "Upload failed.";
 		try {
 			const j = await res.json();
-			if (j._server_messages) msg = JSON.parse(j._server_messages)[0];
+			msg = serverErrorMessage(j._server_messages) || msg;
 		} catch {
 			/* keep default */
 		}

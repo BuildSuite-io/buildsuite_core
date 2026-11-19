@@ -49,31 +49,58 @@ function stripHtml(html) {
 
 /**
  * Frappe encodes _server_messages as a JSON string whose elements are
- * themselves JSON strings or objects. Unwrap both layers safely.
+ * themselves JSON strings or objects. Unwrap both layers safely into
+ * { text, raised, alert } entries, in the order the server logged them.
  */
-function parseServerMessages(raw) {
+function serverMessageEntries(raw) {
 	if (!raw) return [];
 	try {
 		const arr = typeof raw === "string" ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
 		return arr
 			.map((item) => {
-				let text;
+				let entry = item;
 				if (typeof item === "string") {
 					try {
-						const inner = JSON.parse(item);
-						text = typeof inner === "object" ? inner.message ?? "" : String(inner);
+						entry = JSON.parse(item);
 					} catch {
-						text = item;
+						entry = item;
 					}
-				} else {
-					text = typeof item === "object" ? item.message ?? "" : String(item);
 				}
-				return stripHtml(text);
+				if (entry && typeof entry === "object") {
+					return {
+						text: stripHtml(entry.message ?? ""),
+						raised: Boolean(entry.raise_exception),
+						alert: Boolean(entry.alert),
+					};
+				}
+				return { text: stripHtml(String(entry ?? "")), raised: false, alert: false };
 			})
-			.filter(Boolean);
+			.filter((e) => e.text);
 	} catch {
 		return [];
 	}
+}
+
+function parseServerMessages(raw) {
+	return serverMessageEntries(raw).map((e) => e.text);
+}
+
+/**
+ * The message a failed call should show, from its raw `_server_messages`.
+ *
+ * A request can log several messages before it fails: ERPNext validation shows an
+ * "Item Price added for …" alert, say, and then throws "The item … is not marked as purchase
+ * item". Showing the first hid the real error. Prefer the message raised as the exception, then
+ * the last one that isn't a passing alert, then the last. Returns null when there are none.
+ */
+export function serverErrorMessage(raw) {
+	const entries = serverMessageEntries(raw);
+	const last = (test) => {
+		for (let i = entries.length - 1; i >= 0; i--) if (test(entries[i])) return entries[i];
+		return null;
+	};
+	const pick = last((e) => e.raised) ?? last((e) => !e.alert) ?? last(() => true);
+	return pick?.text || null;
 }
 
 /**
@@ -139,9 +166,16 @@ export function parseFrappeError(err) {
 		};
 	}
 
-	// For any other error type use the first server message, then err.message.
+	// Any other error: the message that failed the request. With the raw _server_messages we can
+	// pick the one raised as the exception. frappe-ui's err.messages are plain text in the order
+	// the server logged them, and the thrown error is logged last, after any passing alert (e.g.
+	// ERPNext's "Item Price added for …"), so take the last, not the first.
 	return {
-		summary: messages[0] ?? stripHtml(err.message) ?? "An unexpected error occurred",
+		summary:
+			serverErrorMessage(err._server_messages) ??
+			messages[messages.length - 1] ??
+			stripHtml(err.message) ??
+			"An unexpected error occurred",
 		fieldErrors: {},
 	};
 }

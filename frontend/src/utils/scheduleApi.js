@@ -3,20 +3,15 @@
 // GET; mutations are POST with the CSRF token. Throws Error(<server message>) so
 // callers can surface the cycle-guard message etc.
 
+import { serverErrorMessage } from "@/utils/frappeError";
+
 const BASE = "/api/method/buildsuite_core.api.schedule.";
 const ENGINE_BASE = "/api/method/buildsuite_core.api.schedule_engine.";
 
 function serverMessage(payload, status) {
-	// Frappe puts thrown messages in _server_messages: a JSON array of JSON strings.
-	try {
-		const sm = payload?._server_messages;
-		if (sm) {
-			const first = JSON.parse(JSON.parse(sm)[0]);
-			if (first?.message) return first.message;
-		}
-	} catch (_) {
-		/* fall through to generic */
-	}
+	// Frappe puts thrown messages in _server_messages; pick the one that failed the request.
+	const message = serverErrorMessage(payload?._server_messages);
+	if (message) return message;
 	return payload?.exception || `Request failed (${status})`;
 }
 
@@ -31,7 +26,7 @@ async function request(method, { params, body, base = BASE } = {}) {
 				? {
 						"Content-Type": "application/json",
 						"X-Frappe-CSRF-Token": window.csrf_token || "",
-					}
+				  }
 				: {}),
 		},
 		...(body ? { body: JSON.stringify(body) } : {}),

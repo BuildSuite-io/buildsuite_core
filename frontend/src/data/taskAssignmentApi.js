@@ -1,17 +1,11 @@
 // Thin wrappers around the buildsuite_core.api.task_assignment whitelisted
 // methods. Mirrors data/projectTeamApi.js. Assignee is Frappe-native `_assign`
 // (single-assignee semantics enforced server-side).
+import { serverErrorMessage } from "@/utils/frappeError";
 
 function serverMessage(data, status) {
-	if (data?._server_messages) {
-		try {
-			const first = JSON.parse(data._server_messages)[0];
-			const parsed = JSON.parse(first);
-			if (parsed?.message) return String(parsed.message).replace(/<[^>]*>/g, "");
-		} catch {
-			/* fall through */
-		}
-	}
+	const message = serverErrorMessage(data?._server_messages);
+	if (message) return message;
 	return data?.exception || data?.exc_type || `Request failed (${status})`;
 }
 
