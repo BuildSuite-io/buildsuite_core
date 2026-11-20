@@ -383,9 +383,8 @@ class TestRfqPermissionPatch(RfqTestCase):
 
 		# The automatic rule a link brings: pick only (what existing sites had before this feature).
 		picker = self._rule("BuildSuite Procurement Officer", select=1, print=1)
-		# An admin's own edit: read and print, no write. (A read WITHOUT print is still lowered by the
-		# link-pick grant, review issue #3, fixed and tested separately.)
-		edited = self._rule("BuildSuite Director", read=1, print=1)
+		# An admin's own edit: read only (no print, no write).
+		edited = self._rule("BuildSuite Director", read=1)
 
 		grant_missing_rfq_permissions()
 
@@ -395,6 +394,33 @@ class TestRfqPermissionPatch(RfqTestCase):
 		self.assertEqual(dict(raised), {"read": 1, "write": 1, "create": 1, "submit": 1, "select": 1})
 		kept = frappe.db.get_value("Custom DocPerm", edited, ["read", "write", "create"], as_dict=True)
 		self.assertEqual(dict(kept), {"read": 1, "write": 0, "create": 0})
+
+	def test_the_link_pick_grant_never_lowers_an_existing_read(self):
+		"""The update grants `select` on every doctype the RFQ / quotation link to. A role that
+		already reads one (an admin's grant, even without print) keeps that read; a role that had
+		no rule at all gets pick-only (select, no read)."""
+		from buildsuite_core.permissions.setup import grant_missing_rfq_permissions
+
+		def rule(role):
+			return frappe.db.get_value(
+				"Custom DocPerm",
+				{"parent": "Incoterm", "role": role, "permlevel": 0},
+				["select", "read"],
+				as_dict=True,
+			)
+
+		reader = frappe.db.get_value(
+			"Custom DocPerm", {"parent": "Incoterm", "role": "BuildSuite Procurement Officer", "permlevel": 0}
+		)
+		if not reader:
+			self.skipTest("Incoterm has no customised rules on this site")
+		frappe.db.set_value("Custom DocPerm", reader, {"select": 0, "read": 1, "print": 0})
+		frappe.db.delete("Custom DocPerm", {"parent": "Incoterm", "role": "BuildSuite Director"})
+
+		grant_missing_rfq_permissions()
+
+		self.assertEqual(dict(rule("BuildSuite Procurement Officer")), {"select": 1, "read": 1})
+		self.assertEqual(dict(rule("BuildSuite Director")), {"select": 1, "read": 0})
 
 
 class TestQuotationsRespectRecordAccess(RfqTestCase):

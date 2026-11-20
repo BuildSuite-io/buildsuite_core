@@ -1297,13 +1297,28 @@ def _grant_mirror_read(desired):
 		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
 
 
+def _had_rule(doctype, roles):
+	"""The roles that already have a level-0 rule on `doctype`: a Custom DocPerm row, or, while the
+	doctype still runs on its standard permissions (no Custom DocPerm yet), a standard DocPerm row.
+	add_permission copies those standard rows in on the first change, so they count as existing."""
+	source = "Custom DocPerm" if frappe.db.exists("Custom DocPerm", {"parent": doctype}) else "DocPerm"
+	return set(
+		frappe.get_all(
+			source,
+			filters={"parent": doctype, "permlevel": 0, "role": ["in", list(roles)]},
+			pluck="role",
+		)
+	)
+
+
 def _grant_link_select(link_targets):
 	"""Grant `select` (pick-only) on each link target to the roles that lack it.
 
 	`add_permission` seeds read=1 on a fresh Custom DocPerm row — the exact over-grant we are
-	removing — so for a role that holds NO authored grant on the target (print=0) we strip that read
-	straight back off, leaving `select` alone. A role that already holds an authored grant (print=1,
-	e.g. Account, or Item/UOM via the mobile sheet) keeps its read; we only add select alongside it."""
+	removing — so on a row this call CREATES for a role with no authored grant (print=0) that read
+	is stripped straight back off, leaving `select` alone. A rule the role already had is never
+	lowered: its read stays whatever it was (an admin may have granted read without print), and
+	select is only added alongside it."""
 	if not link_targets:
 		return
 	have_select, have_authored = {}, {}
@@ -1323,8 +1338,9 @@ def _grant_link_select(link_targets):
 			continue
 		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
 			continue
+		existing = _had_rule(ref, missing)
 		_upgrade_role_perms(ref, {role: {"select": 1} for role in missing}, ptypes=("select",))
-		for role in missing - have_authored.get(ref, set()):
+		for role in missing - have_authored.get(ref, set()) - existing:
 			# pick-only role: drop the read add_permission seeded so this reference is select-only.
 			frappe.db.set_value(
 				"Custom DocPerm",
