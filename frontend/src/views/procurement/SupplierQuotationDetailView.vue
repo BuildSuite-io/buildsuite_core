@@ -167,7 +167,7 @@ async function onDelete() {
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Supplier Quotations"), to: "/procurement/supplier-quotations" },
+	{ label: __("Supplier Quotation"), to: "/procurement/supplier-quotations" },
 	{ label: sq.value?.name || props.id },
 ]);
 </script>
@@ -182,6 +182,7 @@ const breadcrumbs = computed(() => [
 		<template #actions>
 			<ProcurementStatusPill
 				:status="sq.status"
+				kind="quotation"
 				class="self-center mr-1"
 				data-test="sq-status"
 			/>

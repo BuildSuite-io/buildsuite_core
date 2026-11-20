@@ -36,7 +36,7 @@ const FIELDS = [
 	"status",
 ];
 const columns = [
-	{ key: "name", label: __("Quotation") },
+	{ key: "name", label: __("ID") },
 	{ key: "supplier_name", label: __("Supplier") },
 	{ key: "custom_request_for_quotation", label: __("Request") },
 	{ key: "project", label: __("Project") },
@@ -81,13 +81,13 @@ function openCompare() {
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Supplier Quotations") },
+	{ label: __("Supplier Quotation") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		:title="__('Supplier Quotations')"
+		:title="__('Supplier Quotation')"
 		:subtitle="
 			__('What suppliers quoted, item by item. Compare them before placing the order.')
 		"
@@ -110,7 +110,7 @@ const breadcrumbs = [
 				data-test="sq-new"
 				@click="openNew"
 			>
-				+ {{ __("New quotation") }}
+				+ {{ __("New") }}
 			</button>
 		</template>
 
@@ -136,7 +136,7 @@ const breadcrumbs = [
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">
-					<option value="">{{ __("Status: Any") }}</option>
+					<option value="">{{ __("All statuses") }}</option>
 					<option value="Draft">{{ __("Draft") }}</option>
 					<option value="Submitted">{{ __("Submitted") }}</option>
 					<option value="Expired">{{ __("Expired") }}</option>
@@ -186,7 +186,7 @@ const breadcrumbs = [
 				<span class="tabular-nums text-ink-900">{{ fmtINR(row.total) }}</span>
 			</template>
 			<template #cell-status="{ row }">
-				<ProcurementStatusPill :status="row.status" />
+				<ProcurementStatusPill :status="row.status" kind="quotation" />
 			</template>
 		</DocTypeListView>
 	</DeskPage>

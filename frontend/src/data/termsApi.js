@@ -22,3 +22,6 @@ export const listTerms = () => call("list_terms");
 // Create / update. payload: { name?, title, applicable_for, terms (HTML), disabled }.
 export const saveTerms = (payload) => call("save_terms", payload);
 export const deleteTerms = (name) => call("delete_terms", { name });
+// The clause a new document of this kind starts with ("Offer this one first"), or null.
+export const getDefaultTerms = (applicableFor) =>
+	call("default_terms", { applicable_for: applicableFor });

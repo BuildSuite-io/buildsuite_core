@@ -259,7 +259,7 @@ async function sendMail() {
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Requests for Quotation"), to: "/procurement/rfqs" },
+	{ label: __("Request for Quotation"), to: "/procurement/rfqs" },
 	{ label: rfq.value?.name || props.id },
 ]);
 </script>
@@ -294,11 +294,7 @@ const breadcrumbs = computed(() => [
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 flex items-center gap-1.5"
 				style="border-radius: 6px"
-				:title="
-					__(
-						'See the request as a supplier will, and print it (Save as PDF from the print dialog)'
-					)
-				"
+				:title="__('See the request as the supplier will, and print or save it as a PDF')"
 				@click="onPrint()"
 			>
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +305,7 @@ const breadcrumbs = computed(() => [
 						d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
 					/>
 				</svg>
-				{{ __("Print / PDF") }}
+				{{ __("Preview / Print") }}
 			</button>
 			<button
 				v-if="isDraft && canEdit('rfq')"
@@ -703,7 +699,7 @@ const breadcrumbs = computed(() => [
 							{{ fmtINR(q.total) }}
 						</td>
 						<td class="px-3 py-2.5 text-right">
-							<ProcurementStatusPill :status="q.status" />
+							<ProcurementStatusPill :status="q.status" kind="quotation" />
 						</td>
 					</tr>
 				</tbody>

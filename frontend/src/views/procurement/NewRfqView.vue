@@ -31,6 +31,7 @@ import CostCodePicker from "@/components/CostCodePicker.vue";
 import ItemFormModal from "@/components/ItemFormModal.vue";
 import PartyFormModal from "@/views/finance/PartyFormModal.vue";
 import { usePermissions } from "@/composables/usePermissions";
+import { getDefaultTerms } from "@/data/termsApi";
 import { __ } from "@/utils/translate";
 
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
@@ -182,6 +183,21 @@ function onTermsEdited() {
 	form.value.tc_name = "";
 }
 
+// A new request starts with the standard clause, where one is set ("Offer this one first" under
+// Settings › Terms & conditions › Request for Quotation).
+if (!isEdit.value) {
+	getDefaultTerms("Request for Quotation")
+		.then((def) => {
+			if (!def || form.value.terms) return;
+			form.value.tc_name = def.name;
+			form.value.terms = def.terms || "";
+			editorKey.value += 1;
+		})
+		.catch(() => {
+			// no default: the terms start empty
+		});
+}
+
 // Edit mode: load the draft request.
 watch(
 	editingId,
@@ -322,7 +338,7 @@ function onCancel() {
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Requests for Quotation"), to: "/procurement/rfqs" },
+	{ label: __("Request for Quotation"), to: "/procurement/rfqs" },
 	isEdit.value
 		? { label: editingId.value, to: `/procurement/rfqs/${editingId.value}` }
 		: { label: __("New") },
@@ -337,7 +353,13 @@ const saveLabel = computed(() =>
 </script>
 
 <template>
-	<DeskPage :title="pageTitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="pageTitle"
+		:breadcrumbs="breadcrumbs"
+		:subtitle="
+			form.material_request ? __('From material request {0}', [form.material_request]) : ''
+		"
+	>
 		<div
 			v-if="!canSaveForm"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
@@ -358,15 +380,6 @@ const saveLabel = computed(() =>
 					@cancel="onCancel"
 				/>
 			</template>
-
-			<div
-				v-if="form.material_request"
-				class="mb-4 px-4 py-2 bg-info-50 border border-info-200 rounded-md text-xs text-info-700"
-			>
-				{{ __("From Material Request") }}
-				<span class="font-mono">{{ form.material_request }}</span> —
-				{{ __("lines pre-filled; add the suppliers to ask.") }}
-			</div>
 
 			<DeskSection id="request" :title="__('Request')" :cols="4">
 				<DeskField
@@ -616,7 +629,7 @@ const saveLabel = computed(() =>
 					:label="__('Import from template')"
 					:hint="
 						__(
-							'Templates are kept under Settings › Terms & conditions › Request for Quotation. Picking one fills the box below; you can edit the text after.'
+							'Templates are kept under Settings › Terms & conditions › Request for Quotation. Picking one replaces the text below.'
 						)
 					"
 				>
@@ -626,7 +639,7 @@ const saveLabel = computed(() =>
 						label-field="name"
 						value-field="name"
 						:filters="{ custom_applicable_for: 'Request for Quotation' }"
-						:placeholder="__('— Choose a terms template —')"
+						:placeholder="__('Import from template…')"
 						@update:model-value="onPickTerms"
 					/>
 				</DeskField>

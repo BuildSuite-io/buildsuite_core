@@ -107,7 +107,7 @@ async function send() {
 		<template #actions>
 			<button
 				v-if="canSend"
-				class="text-xs px-3 py-1.5 rounded border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				class="text-xs px-3 py-1.5 rounded bg-ink-900 text-white hover:bg-ink-800"
 				:disabled="sending"
 				data-test="rfq-print-send"
 				@click="send"

@@ -1203,6 +1203,16 @@ CUSTOM_FIELD = {
 			"in_standard_filter": 1,
 			"module": "BuildSuite Core",
 		},
+		{
+			# The clause a new document of that kind starts with (one per "Applicable For"); the
+			# Terms settings screen's "Offer this one first".
+			"fieldname": "custom_is_default",
+			"fieldtype": "Check",
+			"label": "Offer This One First",
+			"insert_after": "custom_applicable_for",
+			"default": "0",
+			"module": "BuildSuite Core",
+		},
 	],
 	# Resend as an Email Account service (see buildsuite_core.resend). The section shows only for the
 	# Resend service; the API key is the account's own Password field.

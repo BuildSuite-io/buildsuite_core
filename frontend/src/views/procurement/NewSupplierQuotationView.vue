@@ -240,7 +240,7 @@ function onCancel() {
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Supplier Quotations"), to: "/procurement/supplier-quotations" },
+	{ label: __("Supplier Quotation"), to: "/procurement/supplier-quotations" },
 	isEdit.value
 		? { label: editingId.value, to: `/procurement/supplier-quotations/${editingId.value}` }
 		: { label: __("New") },
@@ -255,7 +255,13 @@ const saveLabel = computed(() =>
 </script>
 
 <template>
-	<DeskPage :title="pageTitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		:title="pageTitle"
+		:breadcrumbs="breadcrumbs"
+		:subtitle="
+			form.request_for_quotation ? __('Against {0}', [form.request_for_quotation]) : ''
+		"
+	>
 		<div
 			v-if="!canSaveForm"
 			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
@@ -276,15 +282,6 @@ const saveLabel = computed(() =>
 					@cancel="onCancel"
 				/>
 			</template>
-
-			<div
-				v-if="rfq"
-				class="mb-4 px-4 py-2 bg-info-50 border border-info-200 rounded-md text-xs text-info-700"
-			>
-				{{ __("Answering") }}
-				<span class="font-mono">{{ rfq.request_for_quotation }}</span>
-				<template v-if="rfq.subject"> — {{ rfq.subject }}</template>
-			</div>
 
 			<DeskSection id="quotation" :title="__('Quotation')" :cols="3">
 				<DeskField

@@ -25,12 +25,13 @@ const baseFilters = activeCompanyFilter();
 
 const FIELDS = ["name", "subject", "project", "transaction_date", "status"];
 const columns = [
-	{ key: "name", label: __("Request") },
+	{ key: "name", label: __("ID") },
 	{ key: "subject", label: __("Subject") },
 	{ key: "project", label: __("Project") },
 	{ key: "transaction_date", label: __("Date") },
-	// Not a field: filled from the summaries (so it is neither fetched nor offered as a sort).
+	// Not fields: filled from the summaries (so neither is fetched nor offered as a sort).
 	{ key: "suppliers", label: __("Suppliers") },
+	{ key: "quotes", label: __("Quotations") },
 	{ key: "status", label: __("Status") },
 ];
 
@@ -67,13 +68,13 @@ function openNew() {
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
 	{ label: __("Procurement"), to: "/procurement" },
-	{ label: __("Requests for Quotation") },
+	{ label: __("Request for Quotation") },
 ];
 </script>
 
 <template>
 	<DeskPage
-		:title="__('Requests for Quotation')"
+		:title="__('Request for Quotation')"
 		:subtitle="
 			__(
 				'Ask suppliers to quote for the same list of material, then compare what comes back.'
@@ -89,7 +90,7 @@ const breadcrumbs = [
 				data-test="rfq-new"
 				@click="openNew"
 			>
-				+ {{ __("New request") }}
+				+ {{ __("New") }}
 			</button>
 		</template>
 
@@ -108,7 +109,7 @@ const breadcrumbs = [
 			:search-placeholder="__('Search request, subject…')"
 			:empty-message="
 				__(
-					'No requests for quotation yet. Raise one here, or from a submitted material request.'
+					'No requests for quotation yet. Raise one, or start from a submitted material request.'
 				)
 			"
 			@row-click="openDetail"
@@ -116,7 +117,7 @@ const breadcrumbs = [
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-40">
-					<option value="">{{ __("Status: Any") }}</option>
+					<option value="">{{ __("All statuses") }}</option>
 					<option value="Draft">{{ __("Draft") }}</option>
 					<option value="Submitted">{{ __("Submitted") }}</option>
 					<option value="Cancelled">{{ __("Cancelled") }}</option>
@@ -161,22 +162,23 @@ const breadcrumbs = [
 				}}</span>
 			</template>
 			<template #cell-suppliers="{ row }">
-				<template v-if="summary(row)">
-					<span class="block text-ink-700">{{
-						summary(row).suppliers.join(", ") || "—"
-					}}</span>
-					<span
-						class="block text-[11px] tabular-nums"
-						:class="summary(row).received ? 'text-success-700' : 'text-ink-500'"
-					>
-						{{
-							__("{0} of {1} quoted", [
-								summary(row).received,
-								summary(row).suppliers.length,
-							])
-						}}
-					</span>
-				</template>
+				<span class="text-xs text-ink-600">{{
+					summary(row)?.suppliers.join(", ") || "—"
+				}}</span>
+			</template>
+			<template #cell-quotes="{ row }">
+				<span
+					v-if="summary(row)"
+					class="text-xs tabular-nums whitespace-nowrap"
+					:class="summary(row).received ? 'text-ink-900' : 'text-ink-500'"
+				>
+					{{
+						__("{0} of {1} received", [
+							summary(row).received,
+							summary(row).suppliers.length,
+						])
+					}}
+				</span>
 				<span v-else class="text-ink-400">—</span>
 			</template>
 			<template #cell-status="{ row }">

@@ -226,6 +226,7 @@ const breadcrumbs = [
 								<ProcurementStatusPill
 									v-if="t.status !== 'Submitted'"
 									:status="t.status"
+									kind="quotation"
 									class="!text-[10px] mt-0.5 inline-block"
 								/>
 							</th>

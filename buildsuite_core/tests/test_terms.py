@@ -5,7 +5,7 @@ manage the native Terms and Conditions doctype; every other role gets select-onl
 
 import frappe
 
-from buildsuite_core.api.terms import list_terms, save_terms, terms_access
+from buildsuite_core.api.terms import default_terms, list_terms, save_terms, terms_access
 from buildsuite_core.permissions.setup import setup_terms_permissions
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
@@ -85,3 +85,31 @@ class TestTerms(BuildSuiteTestCase):
 			self.assertEqual(list_terms(), [])  # no read perm → empty, not a 403
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_one_default_per_kind_and_the_new_document_gets_it(self):
+		"""'Offer this one first': at most one clause per kind is the default; a new document of
+		that kind starts with it, and a disabled default isn't offered."""
+		frappe.db.set_value(
+			DOCTYPE, {"custom_applicable_for": "Request for Quotation"}, "custom_is_default", 0
+		)
+		first = save_terms(
+			title=f"RFQ terms A {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Quote valid 30 days.</p>",
+			is_default=1,
+		)["name"]
+		self.assertEqual(default_terms("Request for Quotation")["name"], first)
+
+		second = save_terms(
+			title=f"RFQ terms B {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Quote valid 15 days.</p>",
+			is_default=1,
+		)["name"]
+		self.assertEqual(
+			default_terms("Request for Quotation"), {"name": second, "terms": "<p>Quote valid 15 days.</p>"}
+		)
+		self.assertEqual(frappe.db.get_value(DOCTYPE, first, "custom_is_default"), 0)
+
+		frappe.db.set_value(DOCTYPE, second, "disabled", 1)
+		self.assertIsNone(default_terms("Request for Quotation"))

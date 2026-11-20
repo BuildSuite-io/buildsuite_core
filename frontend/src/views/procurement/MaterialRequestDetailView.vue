@@ -211,7 +211,7 @@ const breadcrumbs = computed(() => [
 				data-test="mr-create-rfq"
 				@click="onCreateRfq"
 			>
-				{{ __("+ Create Request for Quotation") }}
+				{{ __("Create Request for Quotation") }}
 			</button>
 			<button
 				v-if="canOrder && canCreate('purchaseOrder')"
