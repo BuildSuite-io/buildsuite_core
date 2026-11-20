@@ -343,6 +343,48 @@ class TestSupplierQuotationComparison(RfqTestCase):
 		self.assertNotEqual(cmp["best_quotation"], part["name"])  # cheaper, but not complete
 
 
+class TestQuotationsRespectRecordAccess(RfqTestCase):
+	"""A user restricted to some quotations (a User Permission on Supplier for quotations) sees only those on
+	the request page and in the comparison, and only those are counted in the request picker."""
+
+	def _restricted_user(self, supplier):
+		email = f"rfq-restricted-{self._n}-{frappe.generate_hash(length=6)}@example.com"
+		user = frappe.get_doc(
+			{"doctype": "User", "email": email, "first_name": "Restricted", "send_welcome_email": 0}
+		).insert(ignore_permissions=True)
+		user.add_roles("BuildSuite Procurement Officer")
+		frappe.get_doc(
+			{
+				"doctype": "User Permission",
+				"user": email,
+				"allow": "Supplier",
+				"for_value": supplier,
+				# Only quotations are restricted ("this buyer handles JSW's quotes"); a request lists
+				# every supplier, so a restriction on all doctypes would hide the request itself.
+				"apply_to_all_doctypes": 0,
+				"applicable_for": "Supplier Quotation",
+			}
+		).insert(ignore_permissions=True)
+		return email
+
+	def test_only_the_quotations_the_user_may_read(self):
+		rfq = self._rfq()
+		mine = self._quote(rfq["name"], self.jsw, [66.5, 82])
+		self._quote(rfq["name"], self.shree, [67.75, 80])
+
+		frappe.set_user(self._restricted_user(self.jsw))
+		self.addCleanup(frappe.set_user, "Administrator")
+
+		page = api.get_request_for_quotation(rfq["name"])
+		self.assertEqual([q["name"] for q in page["quotations"]], [mine["name"]])
+
+		cmp = api.supplier_quotation_comparison(rfq["name"])
+		self.assertEqual([t["quotation"] for t in cmp["totals"]], [mine["name"]])
+
+		picker = {r["name"]: r for r in api.comparison_requests()}
+		self.assertEqual(picker[rfq["name"]]["quoted"], 1)
+
+
 class TestPurchaseOrderFromQuotation(RfqTestCase):
 	def _order(self, pre, lines=None, submit=False):
 		po = docs.save_purchase_order(

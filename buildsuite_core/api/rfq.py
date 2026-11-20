@@ -114,10 +114,12 @@ def _rfq_material_request(doc):
 
 
 def _rfq_quotations(name):
-	"""Every supplier quotation raised against a request, newest first."""
+	"""Every supplier quotation raised against a request that the user may read, newest first."""
 	if not frappe.has_permission(SQ, "read"):
 		return []
-	rows = frappe.get_all(
+	# get_list, not get_all: a user restricted to some quotations (User Permissions on supplier,
+	# project or company) sees only those.
+	rows = frappe.get_list(
 		SQ,
 		filters={"custom_request_for_quotation": name},
 		fields=[
@@ -132,6 +134,7 @@ def _rfq_quotations(name):
 			"docstatus",
 		],
 		order_by="creation desc",
+		limit_page_length=0,
 	)
 	for r in rows:
 		r["status"] = _sq_status(r)
@@ -1148,10 +1151,11 @@ def comparison_requests():
 	if not rows:
 		return []
 	quoted = {}
-	for q in frappe.get_all(
+	for q in frappe.get_list(  # only the quotations this user may read are counted
 		SQ,
 		filters={"custom_request_for_quotation": ["in", [r.name for r in rows]], "docstatus": 1},
 		fields=["custom_request_for_quotation as rfq"],
+		limit_page_length=0,
 	):
 		quoted[q.rfq] = quoted.get(q.rfq, 0) + 1
 	return [
@@ -1182,7 +1186,8 @@ def supplier_quotation_comparison(request_for_quotation: str):
 		frappe.throw(_("You are not permitted to read supplier quotations."), frappe.PermissionError)
 
 	order = {s.supplier: i for i, s in enumerate(rfq.suppliers)}
-	quotes = frappe.get_all(
+	# Only the quotations this user may read; their lines are then read for those alone.
+	quotes = frappe.get_list(
 		SQ,
 		filters={"custom_request_for_quotation": rfq.name, "docstatus": 1},
 		fields=[
@@ -1197,6 +1202,7 @@ def supplier_quotation_comparison(request_for_quotation: str):
 			"docstatus",
 			"custom_payment_terms as payment_terms",
 		],
+		limit_page_length=0,
 	)
 	quotes.sort(key=lambda q: (order.get(q.supplier, 999), q.name))
 
