@@ -44,6 +44,8 @@ from buildsuite_core.utils.party import primary_contact, upsert_primary_contact
 
 RFQ = "Request for Quotation"
 RFQ_SUPPLIER = "Request for Quotation Supplier"
+# Most rows one list summary call answers: a list page is far smaller.
+MAX_LIST_SUMMARIES = 500
 SQ = "Supplier Quotation"
 SQ_ITEM = "Supplier Quotation Item"
 MATERIAL_REQUEST = "Material Request"
@@ -628,10 +630,16 @@ def send_rfq_emails(name: str, suppliers: str | None = None):
 
 
 @frappe.whitelist()
-def rfq_list_summaries():
-	"""Per request, what its list row shows beyond the parent's own fields: the suppliers asked,
-	how many have quoted, the number of items and the Material Request it came from."""
-	names = frappe.get_list(RFQ, pluck="name", limit_page_length=0)
+def rfq_list_summaries(names: str | list | None = None):
+	"""Per request in `names` (the rows the list is showing), what its row shows beyond the
+	parent's own fields: the suppliers asked, how many have quoted, the number of items and the
+	Material Request it came from. Only the requests asked for are read, and only those the user
+	may read, so the cost follows the page, not the whole history."""
+	names = frappe.parse_json(names) if isinstance(names, str) else names
+	names = [n for n in (names or []) if isinstance(n, str)][:MAX_LIST_SUMMARIES]
+	if not names:
+		return {}
+	names = frappe.get_list(RFQ, filters={"name": ["in", names]}, pluck="name", limit_page_length=0)
 	if not names:
 		return {}
 	out = {n: {"suppliers": [], "received": 0, "items": 0, "material_request": None} for n in names}

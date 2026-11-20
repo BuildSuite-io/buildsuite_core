@@ -1,8 +1,8 @@
 <script setup>
 // Requests for Quotation — ERPNext's Request for Quotation, in-app list via DocTypeListView
 // (pagination / sort / search for free). The suppliers asked and how many have quoted live on
-// child rows, so they come from one summary call (rfq_list_summaries) keyed by request.
-import { computed, onMounted, ref } from "vue";
+// child rows, so they come from a summary call (rfq_list_summaries) for the rows on screen.
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -23,24 +23,30 @@ const activeCompany = useActiveCompany();
 // Toggle-gated: [] when company awareness is off, so the list shows every company.
 const baseFilters = activeCompanyFilter();
 
-const FIELDS = ["name", "subject", "project", "transaction_date", "schedule_date", "status"];
+const FIELDS = ["name", "subject", "project", "transaction_date", "status"];
 const columns = [
 	{ key: "name", label: __("Request") },
 	{ key: "subject", label: __("Subject") },
 	{ key: "project", label: __("Project") },
 	{ key: "transaction_date", label: __("Date") },
-	{ key: "schedule_date", label: __("Suppliers"), fields: ["schedule_date"] },
+	// Not a field: filled from the summaries (so it is neither fetched nor offered as a sort).
+	{ key: "suppliers", label: __("Suppliers") },
 	{ key: "status", label: __("Status") },
 ];
 
+// Summaries for the rows on screen, fetched whenever the page changes (paging, filters, search,
+// company) and kept for rows already seen. A request whose suppliers change is re-read on the
+// next visit to the list.
 const summaries = ref({});
-onMounted(async () => {
+async function onRowsChange(rows) {
+	const names = (rows || []).map((r) => r.name).filter((n) => n && !(n in summaries.value));
+	if (!names.length) return;
 	try {
-		summaries.value = (await getRfqListSummaries()) || {};
+		summaries.value = { ...summaries.value, ...((await getRfqListSummaries(names)) || {}) };
 	} catch {
-		summaries.value = {}; // the list still shows; only the supplier column goes blank
+		// the list still shows; only the supplier column stays blank for these rows
 	}
-});
+}
 const summary = (row) => summaries.value[row.name] || null;
 
 const statusFilter = ref("");
@@ -106,6 +112,7 @@ const breadcrumbs = [
 				)
 			"
 			@row-click="openDetail"
+			@rows-change="onRowsChange"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-40">
@@ -153,7 +160,7 @@ const breadcrumbs = [
 					fmtDate(row.transaction_date)
 				}}</span>
 			</template>
-			<template #cell-schedule_date="{ row }">
+			<template #cell-suppliers="{ row }">
 				<template v-if="summary(row)">
 					<span class="block text-ink-700">{{
 						summary(row).suppliers.join(", ") || "—"

@@ -30,7 +30,8 @@ export const submitRfq = (name) => call("submit_request_for_quotation", { name }
 export const cancelRfq = (name) => call("cancel_request_for_quotation", { name });
 export const amendRfq = (name) => call("amend_request_for_quotation", { name });
 export const deleteRfq = (name) => call("delete_request_for_quotation", { name });
-export const getRfqListSummaries = () => call("rfq_list_summaries");
+export const getRfqListSummaries = (names) =>
+	call("rfq_list_summaries", { names: JSON.stringify(names || []) });
 
 // The person / address a request goes to, corrected on the request and offered back to the master.
 export const setRfqSupplierContact = (name, supplier, values) =>

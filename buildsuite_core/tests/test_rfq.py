@@ -243,6 +243,24 @@ class TestRequestForQuotation(RfqTestCase):
 		self.assertTrue(all(s["quote_status"] == "Pending" for s in amended["suppliers"]))
 
 
+class TestRfqListSummaries(RfqTestCase):
+	def test_summaries_cover_only_the_requests_asked_for(self):
+		"""The list asks for the rows on screen; only those are read and returned."""
+		shown = self._rfq()
+		self._rfq()  # another request, not on this page
+		self._quote(shown["name"], self.jsw, [66.5, 82])
+
+		out = api.rfq_list_summaries(frappe.as_json([shown["name"]]))
+		self.assertEqual(list(out), [shown["name"]])
+		row = out[shown["name"]]
+		self.assertEqual((len(row["suppliers"]), row["received"], row["items"]), (3, 1, 2))
+
+	def test_no_names_reads_nothing(self):
+		self._rfq()
+		self.assertEqual(api.rfq_list_summaries(), {})
+		self.assertEqual(api.rfq_list_summaries("[]"), {})
+
+
 class TestSupplierQuotation(RfqTestCase):
 	def test_quotation_answers_the_request(self):
 		rfq = self._rfq()
