@@ -25,6 +25,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { useReportAccess } from "@/composables/useReportAccess";
 import { __ } from "@/utils/translate";
 
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
@@ -32,7 +33,7 @@ const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextE
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
-const { canEdit, canSubmit, canCreate, canDelete, canRead } = usePermissions();
+const { canEdit, canSubmit, canCreate, canDelete } = usePermissions();
 
 // Defer to an active Frappe Workflow on Request for Quotation when one is configured; with
 // none, the plain Submit / Cancel lifecycle shows.
@@ -47,6 +48,8 @@ const {
 const rfq = ref(null);
 const loading = ref(true);
 const busy = ref(false);
+
+const { canOpenReport } = useReportAccess();
 
 async function load() {
 	loading.value = true;
@@ -108,6 +111,7 @@ async function onSubmit() {
 	busy.value = true;
 	try {
 		rfq.value = await submitRfq(rfq.value.name);
+		await refreshWorkflow(rfq.value.name);
 		showToast(__("Request submitted."));
 	} catch (err) {
 		showToast(err.message || __("Submit failed"), "error");
@@ -129,6 +133,7 @@ async function onCancel() {
 	busy.value = true;
 	try {
 		rfq.value = await cancelRfq(rfq.value.name);
+		await refreshWorkflow(rfq.value.name);
 		showToast(__("Request cancelled."));
 	} catch (err) {
 		showToast(err.message || __("Cancel failed"), "error");
@@ -316,7 +321,10 @@ const breadcrumbs = computed(() => [
 				{{ __("Edit") }}
 			</button>
 			<button
-				v-if="anySubmittedQuote && canRead('supplierQuotation')"
+				v-if="
+					anySubmittedQuote &&
+					canOpenReport('/procurement/supplier-quotation-comparison')
+				"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"

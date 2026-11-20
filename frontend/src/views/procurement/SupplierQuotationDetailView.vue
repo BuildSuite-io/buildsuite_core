@@ -20,6 +20,7 @@ import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPil
 import { usePermissions } from "@/composables/usePermissions";
 import { useWorkflow } from "@/composables/useWorkflow";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { useReportAccess } from "@/composables/useReportAccess";
 import { __ } from "@/utils/translate";
 
 const props = defineProps({ id: String });
@@ -38,6 +39,8 @@ const {
 const sq = ref(null);
 const loading = ref(true);
 const busy = ref(false);
+
+const { canOpenReport } = useReportAccess();
 
 async function load() {
 	loading.value = true;
@@ -91,6 +94,7 @@ async function onSubmit() {
 	busy.value = true;
 	try {
 		sq.value = await submitSupplierQuotation(sq.value.name);
+		await refreshWorkflow(sq.value.name);
 		showToast(__("Quotation submitted."));
 	} catch (err) {
 		showToast(err.message || __("Submit failed"), "error");
@@ -112,6 +116,7 @@ async function onCancel() {
 	busy.value = true;
 	try {
 		sq.value = await cancelSupplierQuotation(sq.value.name);
+		await refreshWorkflow(sq.value.name);
 		showToast(__("Quotation cancelled."));
 	} catch (err) {
 		showToast(err.message || __("Cancel failed"), "error");
@@ -195,7 +200,11 @@ const breadcrumbs = computed(() => [
 				{{ __("Edit") }}
 			</button>
 			<button
-				v-if="isSubmitted && sq.request_for_quotation"
+				v-if="
+					isSubmitted &&
+					sq.request_for_quotation &&
+					canOpenReport('/procurement/supplier-quotation-comparison')
+				"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"

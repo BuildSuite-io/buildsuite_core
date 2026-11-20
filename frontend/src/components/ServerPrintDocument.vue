@@ -43,7 +43,11 @@ function goBack() {
 	if (props.backTo) router.push(props.backTo);
 }
 
+// Each load is numbered; only the latest one may write, so a slow earlier response (e.g. the
+// copy for the supplier picked before) can't land on top of the one now asked for.
+let latest = 0;
 async function load() {
+	const mine = ++latest;
 	loading.value = true;
 	html.value = "";
 	style.value = "";
@@ -51,12 +55,13 @@ async function load() {
 		const res = props.loader
 			? await props.loader()
 			: await getPrintHtml(props.doctype, props.name);
+		if (mine !== latest) return;
 		html.value = res?.html || "";
 		style.value = res?.style || "";
 	} catch (err) {
-		showToast(err.message || "Failed to load print", "error");
+		if (mine === latest) showToast(err.message || "Failed to load print", "error");
 	} finally {
-		loading.value = false;
+		if (mine === latest) loading.value = false;
 	}
 }
 watch(() => [props.doctype, props.name, props.loader], load, { immediate: true });

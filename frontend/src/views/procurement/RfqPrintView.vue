@@ -20,16 +20,19 @@ const router = useRouter();
 const { canEdit } = usePermissions();
 
 const rfq = ref(null);
+const loadError = ref("");
 const supplier = ref(route.query.supplier || "");
 const sending = ref(false);
 
 async function load() {
+	loadError.value = "";
 	try {
 		rfq.value = await getRfq(props.id);
 		if (!rfq.value.suppliers.some((s) => s.supplier === supplier.value))
 			supplier.value = rfq.value.suppliers[0]?.supplier || "";
 	} catch (err) {
-		showToast(err.message || __("Failed to load request"), "error");
+		loadError.value = err.message || __("Failed to load request");
+		showToast(loadError.value, "error");
 	}
 }
 watch(() => props.id, load, { immediate: true });
@@ -38,9 +41,12 @@ watch(supplier, (v) => {
 	if (v !== (route.query.supplier || "")) router.replace({ query: v ? { supplier: v } : {} });
 });
 
-// A new function per supplier, so ServerPrintDocument re-renders the copy addressed to it.
+// A new function per supplier, so ServerPrintDocument re-renders the copy addressed to it. It
+// depends on the request being loaded, not on its contents: sending an email replaces `rfq`, and
+// that must not re-download the same copy.
+const loaded = computed(() => !!rfq.value);
 const loader = computed(() => {
-	if (!rfq.value) return null;
+	if (!loaded.value) return null;
 	const name = props.id;
 	const who = supplier.value;
 	return () => getRfqPrintHtml(name, who);
@@ -148,4 +154,10 @@ async function send() {
 			</p>
 		</template>
 	</ServerPrintDocument>
+	<div v-else-if="loadError" class="p-8 text-sm text-ink-600">
+		<p class="mb-3">{{ loadError }}</p>
+		<router-link :to="`/procurement/rfqs/${props.id}`" class="text-brand-600 hover:underline">
+			{{ __("Back to request") }}
+		</router-link>
+	</div>
 </template>
