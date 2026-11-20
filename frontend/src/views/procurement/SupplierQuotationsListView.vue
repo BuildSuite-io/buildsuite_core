@@ -2,7 +2,7 @@
 // Supplier Quotations — ERPNext's Supplier Quotation, in-app list via DocTypeListView
 // (pagination / sort / search for free). What suppliers quoted, item by item; compare them
 // before placing the order. Row click / New open the in-app detail + form.
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -12,8 +12,9 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { usePermissions } from "@/composables/usePermissions";
-import { todayISO } from "@/data/rfqApi";
+import { expireLapsedQuotations } from "@/data/rfqApi";
 import { fmtDate, fmtINR } from "@/utils/format";
+import { useReportAccess } from "@/composables/useReportAccess";
 import { __ } from "@/utils/translate";
 
 const router = useRouter();
@@ -45,12 +46,17 @@ const columns = [
 	{ key: "status", label: __("Status") },
 ];
 
-// A submitted quotation past its validity reads Expired at once (a daily job stamps the status).
-const today = todayISO();
-function statusOf(row) {
-	if (row.status === "Submitted" && row.valid_till && row.valid_till < today) return "Expired";
-	return row.status;
-}
+// ERPNext's daily job stamps Expired on lapsed quotations; run it before the list loads so a
+// quotation that ran out this morning already reads (and filters as) Expired.
+const ready = ref(false);
+onMounted(async () => {
+	try {
+		await expireLapsedQuotations();
+	} catch {
+		// the list still loads; a lapsed quotation reads Expired after the nightly job
+	}
+	ready.value = true;
+});
 
 const statusFilter = ref("");
 const supplierFilter = ref("");
@@ -59,6 +65,8 @@ const filterValues = computed(() => ({
 	supplier: supplierFilter.value,
 }));
 const filterFieldMap = { status: "status", supplier: "supplier" };
+
+const { canOpenReport } = useReportAccess();
 
 function openDetail(row) {
 	router.push(`/procurement/supplier-quotations/${row.name}`);
@@ -87,6 +95,7 @@ const breadcrumbs = [
 	>
 		<template #actions>
 			<button
+				v-if="canOpenReport('/procurement/supplier-quotation-comparison')"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
@@ -106,7 +115,7 @@ const breadcrumbs = [
 		</template>
 
 		<DocTypeListView
-			v-if="activeCompany"
+			v-if="activeCompany && ready"
 			doctype="Supplier Quotation"
 			:field-order="FIELDS"
 			:columns="columns"
@@ -177,7 +186,7 @@ const breadcrumbs = [
 				<span class="tabular-nums text-ink-900">{{ fmtINR(row.total) }}</span>
 			</template>
 			<template #cell-status="{ row }">
-				<ProcurementStatusPill :status="statusOf(row)" />
+				<ProcurementStatusPill :status="row.status" />
 			</template>
 		</DocTypeListView>
 	</DeskPage>

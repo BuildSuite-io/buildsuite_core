@@ -232,14 +232,18 @@ def get_request_for_quotation(name: str):
 	out["actions"] = _rfq_actions(doc)
 	out["email"] = _rfq_email_preview(doc)
 	# Saving a corrected contact back needs the Supplier master, which not every role may edit.
-	out["can_edit_supplier"] = bool(frappe.has_permission("Supplier", "write"))
+	# Only a flag for the screen; save_rfq_contact_to_supplier enforces the permission itself.
+	out["can_edit_supplier"] = bool(
+		frappe.has_permission("Supplier", "write")
+	)  # nosemgrep: unchecked-frappe-permission-call
 	return out
 
 
 @frappe.whitelist()
 def get_supplier_contact(supplier: str):
-	"""The contact person and email a new supplier row on a request starts with."""
-	if not frappe.has_permission("Supplier", "read") and not frappe.has_permission("Supplier", "select"):
+	"""The contact person and email a new supplier row on a request starts with. Needs read on
+	the supplier: picking a supplier in a list (select) doesn't open its contact details."""
+	if not frappe.has_permission("Supplier", "read", doc=supplier):
 		frappe.throw(_("You are not permitted to read suppliers."), frappe.PermissionError)
 	c = primary_contact("Supplier", supplier)
 	return {
@@ -421,6 +425,7 @@ def amend_request_for_quotation(name: str):
 @frappe.whitelist()
 def delete_request_for_quotation(name: str):
 	doc = frappe.get_doc(RFQ, name)
+	doc.check_permission("delete")  # before any business rule tells the caller about the request
 	if doc.docstatus == 1:
 		frappe.throw(_("A submitted request is cancelled first."))
 	if frappe.db.exists(SQ, {"custom_request_for_quotation": name}):
@@ -447,17 +452,21 @@ def set_rfq_supplier_contact(
 	if doc.docstatus == 2:
 		frappe.throw(_("This request is cancelled."))
 	row = _supplier_row(doc, supplier)
-	values = {}
-	if contact_person is not None:
-		values["custom_contact_person"] = contact_person.strip()
+	changed = False
+	if contact_person is not None and (row.get("custom_contact_person") or "") != contact_person.strip():
+		row.custom_contact_person = contact_person.strip()
+		changed = True
 	if email_id is not None:
 		email_id = email_id.strip()
 		if email_id and not _is_email(email_id):
 			frappe.throw(_("That email address does not look right."))
-		values["email_id"] = email_id
-	if values:
-		frappe.db.set_value(RFQ_SUPPLIER, row.name, values)
-		doc.notify_update()
+		if (row.email_id or "") != email_id:
+			row.email_id = email_id
+			changed = True
+	if changed:
+		# A normal save, so the change is validated and kept in the request's history. On a
+		# submitted request both fields are allowed on submit (custom field / property setter).
+		doc.save()
 	return get_request_for_quotation(name)
 
 
@@ -817,6 +826,29 @@ def _sq_actions(doc):
 	return ["amend", "delete"]
 
 
+@frappe.whitelist(methods=["POST"])
+def expire_lapsed_quotations():
+	"""Stamp Expired on quotations past their validity now, rather than waiting for ERPNext's daily
+	job, so the quotation list's status filter, its pills and the quotation page all agree. Runs
+	ERPNext's own job function (the same single UPDATE); falls back to that statement where an
+	older ERPNext lacks it."""
+	if not frappe.has_permission(SQ, "read"):
+		frappe.throw(_("You are not permitted to read supplier quotations."), frappe.PermissionError)
+	try:
+		from erpnext.buying.doctype.supplier_quotation.supplier_quotation import set_expired_status
+	except ImportError:
+		set_expired_status = None
+	if set_expired_status:
+		set_expired_status()
+	else:
+		frappe.db.sql(
+			"""UPDATE `tabSupplier Quotation` SET `status` = 'Expired'
+			WHERE `status` not in ('Cancelled', 'Stopped') AND `valid_till` < %s""",
+			(nowdate(),),
+		)
+	return {"ok": True}
+
+
 @frappe.whitelist()
 def get_supplier_quotation(name: str):
 	doc = frappe.get_doc(SQ, name)
@@ -926,8 +958,11 @@ def save_supplier_quotation(
 	else:
 		doc = frappe.new_doc(SQ)
 
+	rfq_items = set()
 	if request_for_quotation:
 		rfq = frappe.get_doc(RFQ, request_for_quotation)
+		rfq.check_permission("read")
+		rfq_items = {it.name for it in rfq.items}
 		if rfq.docstatus != 1:
 			frappe.throw(_("Quotations are recorded against a submitted request."))
 		if not any(s.supplier == supplier for s in rfq.suppliers):
@@ -954,6 +989,11 @@ def save_supplier_quotation(
 	for row in items:
 		if not row.get("item_code") or flt(row.get("qty")) <= 0:
 			continue
+		rfq_line = row.get("request_for_quotation_item") if request_for_quotation else None
+		if rfq_line and rfq_line not in rfq_items:
+			# A line from another request would put this supplier's rate against the wrong item
+			# in the comparison.
+			frappe.throw(_("A line does not belong to {0}.").format(request_for_quotation))
 		lead = row.get("lead_time_days")
 		doc.append(
 			"items",
@@ -968,9 +1008,7 @@ def save_supplier_quotation(
 				"project": project,
 				# The line link is what marks the request answered and feeds the comparison.
 				"request_for_quotation": request_for_quotation or None,
-				"request_for_quotation_item": (
-					row.get("request_for_quotation_item") if request_for_quotation else None
-				),
+				"request_for_quotation_item": rfq_line or None,
 			},
 		)
 	if not doc.get("items"):
@@ -1067,6 +1105,7 @@ def amend_supplier_quotation(name: str):
 @frappe.whitelist()
 def delete_supplier_quotation(name: str):
 	doc = frappe.get_doc(SQ, name)
+	doc.check_permission("delete")
 	if doc.docstatus == 1:
 		frappe.throw(_("A submitted quotation is cancelled first."))
 	frappe.delete_doc(SQ, name)

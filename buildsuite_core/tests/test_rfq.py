@@ -174,6 +174,12 @@ class TestRequestForQuotation(RfqTestCase):
 		row = next(s for s in out["suppliers"] if s["supplier"] == self.tata)
 		self.assertEqual((row["contact_person"], row["email_id"]), ("Meera Iyer", "meera@tata.example"))
 		self.assertTrue(row["differs_from_master"])
+		# Saved through the document: allowed on submit, and the request tracks changes, so the
+		# correction is kept in its history. (Frappe writes no Version while tests run.)
+		self.assertTrue(frappe.get_meta("Request for Quotation").track_changes)
+		self.assertTrue(
+			frappe.get_meta("Request for Quotation Supplier").get_field("email_id").allow_on_submit
+		)
 		with self.assertRaises(frappe.ValidationError):
 			api.set_rfq_supplier_contact(rfq["name"], self.tata, email_id="nope")
 
@@ -481,6 +487,76 @@ class TestQuotationsRespectRecordAccess(RfqTestCase):
 
 		picker = {r["name"]: r for r in api.comparison_requests()}
 		self.assertEqual(picker[rfq["name"]]["quoted"], 1)
+
+
+class TestRfqGuards(RfqTestCase):
+	def _user(self, role):
+		email = f"rfq-{role.split()[-1].lower()}-{self._n}-{frappe.generate_hash(length=6)}@example.com"
+		user = frappe.get_doc(
+			{"doctype": "User", "email": email, "first_name": role, "send_welcome_email": 0}
+		).insert(ignore_permissions=True)
+		user.add_roles(role)
+		return email
+
+	def _as(self, role):
+		frappe.set_user(self._user(role))
+		self.addCleanup(frappe.set_user, "Administrator")
+
+	def test_a_pm_is_refused_requests_quotations_and_the_comparison(self):
+		rfq = self._rfq()
+		sq = self._quote(rfq["name"], self.jsw, [66.5, 82])
+		self._as("BuildSuite PM")
+		for call in (
+			lambda: api.get_request_for_quotation(rfq["name"]),
+			lambda: api.get_supplier_quotation(sq["name"]),
+			lambda: api.supplier_quotation_comparison(rfq["name"]),
+			lambda: api.get_sq_for_po(sq["name"]),
+			lambda: api.save_supplier_quotation(
+				supplier=self.shree, request_for_quotation=rfq["name"], items="[]"
+			),
+		):
+			with self.assertRaises(frappe.PermissionError):
+				call()
+
+	def test_delete_checks_permission_before_saying_anything_about_the_request(self):
+		rfq = self._rfq()
+		self._quote(rfq["name"], self.jsw, [66.5, 82])
+		self._as("BuildSuite PM")
+		with self.assertRaises(frappe.PermissionError):
+			api.delete_request_for_quotation(rfq["name"])
+
+	def test_a_line_from_another_request_is_refused(self):
+		rfq = self._rfq()
+		other = self._rfq()
+		lines = api.get_rfq_for_sq(rfq["name"])["lines"]
+		lines[0]["request_for_quotation_item"] = other["items"][0]["name"]
+		for line in lines:
+			line["rate"] = 50
+		with self.assertRaises(frappe.ValidationError):
+			api.save_supplier_quotation(
+				supplier=self.jsw, request_for_quotation=rfq["name"], items=frappe.as_json(lines)
+			)
+
+	def test_contact_details_need_read_on_the_supplier(self):
+		self._as("BuildSuite Foreman")  # may pick a supplier in a list, not open it
+		with self.assertRaises(frappe.PermissionError):
+			api.get_supplier_contact(self.jsw)
+
+	def test_the_request_project_is_required(self):
+		self.assertTrue(frappe.get_meta("Request for Quotation").get_field("project").reqd)
+
+	def test_a_lapsed_quotation_reads_expired_in_the_list(self):
+		rfq = self._rfq()
+		sq = self._quote(
+			rfq["name"],
+			self.jsw,
+			[66.5, 82],
+			transaction_date=add_days(nowdate(), -10),
+			valid_till=add_days(nowdate(), -1),
+		)
+		self.assertEqual(frappe.db.get_value("Supplier Quotation", sq["name"], "status"), "Submitted")
+		api.expire_lapsed_quotations()
+		self.assertEqual(frappe.db.get_value("Supplier Quotation", sq["name"], "status"), "Expired")
 
 
 class TestPurchaseOrderFromQuotation(RfqTestCase):

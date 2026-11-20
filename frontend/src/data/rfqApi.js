@@ -47,6 +47,12 @@ export const sendRfqEmails = (name, suppliers) =>
 
 // Supplier Quotation
 export const getSupplierQuotation = (name) => call("get_supplier_quotation", { name });
+// Stamp Expired on lapsed quotations before the list loads (ERPNext's daily job, run now).
+export const expireLapsedQuotations = () =>
+	frappeRequest({
+		url: "buildsuite_core.api.rfq.expire_lapsed_quotations",
+		method: "POST",
+	});
 export const getRfqForSq = (rfq) => call("get_rfq_for_sq", { request_for_quotation: rfq });
 export const saveSupplierQuotation = (payload) =>
 	call("save_supplier_quotation", { ...payload, items: JSON.stringify(payload.items || []) });

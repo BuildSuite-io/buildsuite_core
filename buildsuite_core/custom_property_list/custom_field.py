@@ -556,6 +556,10 @@ CUSTOM_FIELD = {
 			"options": "Project",
 			"in_standard_filter": 1,
 			"read_only": 0,
+			# Required, as on Material Request: the company comes from the project, so a request
+			# made in Desk without one would fall back to the default company.
+			"reqd": 1,
+			"module": "BuildSuite Core",
 		},
 		{
 			"fieldname": "custom_closing_date",
