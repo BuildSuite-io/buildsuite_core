@@ -526,6 +526,7 @@ def grant_missing_rfq_permissions():
 		if not frappe.db.exists("DocType", doctype):
 			continue
 		had_custom = frappe.db.exists("Custom DocPerm", {"parent": doctype})
+		_raise_pick_only_rules(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
 		_grant_missing_role_perms(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
 		if not had_custom:
 			# The first Custom DocPerm on a doctype overrides its standard perms, System Manager's
@@ -545,6 +546,31 @@ def grant_missing_rfq_permissions():
 				link_targets.setdefault(df.options, set()).update(roles)
 	_grant_mirror_read(child_targets)
 	_grant_link_select(link_targets)
+
+
+def _raise_pick_only_rules(doctype, role_perms, ptypes):
+	"""For a PATCH: a role whose only rule on the doctype lets it pick the record in a link field
+	(no read, write, create, submit or delete) gets its default rights added to that rule.
+
+	_grant_missing_role_perms skips any role that already has a rule, but a pick-only rule is the
+	automatic one a link to the doctype brings (Purchase Order Item links Supplier Quotation, so
+	every persona has one there). Skipping those left no persona able to read supplier quotations
+	on existing sites. Rights are only ever raised, never lowered; a rule with any real right on
+	it, shipped or an admin's edit, is left exactly as it is."""
+	from frappe.permissions import update_permission_property
+
+	for role, perms in role_perms.items():
+		rule = frappe.db.get_value(
+			"Custom DocPerm",
+			{"parent": doctype, "role": role, "permlevel": 0},
+			["read", "write", "create", "submit", "delete"],
+			as_dict=True,
+		)
+		if not rule or any(rule.values()):
+			continue
+		for ptype in ptypes:
+			if perms.get(ptype):
+				update_permission_property(doctype, role, 0, ptype, 1, validate=False)
 
 
 def _readonly_mirror(role_perms):

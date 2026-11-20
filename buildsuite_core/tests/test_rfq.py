@@ -343,6 +343,60 @@ class TestSupplierQuotationComparison(RfqTestCase):
 		self.assertNotEqual(cmp["best_quotation"], part["name"])  # cheaper, but not complete
 
 
+class TestRfqPermissionPatch(RfqTestCase):
+	def _rule(self, role, **values):
+		name = frappe.db.get_value(
+			"Custom DocPerm", {"parent": "Supplier Quotation", "role": role, "permlevel": 0}
+		)
+		if not name:
+			name = (
+				frappe.get_doc(
+					{
+						"doctype": "Custom DocPerm",
+						"parent": "Supplier Quotation",
+						"role": role,
+						"permlevel": 0,
+					}
+				)
+				.insert(ignore_permissions=True)
+				.name
+			)
+		flags = (
+			"select",
+			"read",
+			"write",
+			"create",
+			"delete",
+			"submit",
+			"cancel",
+			"amend",
+			"print",
+			"export",
+			"report",
+			"email",
+		)
+		frappe.db.set_value("Custom DocPerm", name, {f: values.get(f, 0) for f in flags})
+		return name
+
+	def test_a_pick_only_rule_is_raised_and_an_edited_rule_is_left_alone(self):
+		from buildsuite_core.permissions.setup import grant_missing_rfq_permissions
+
+		# The automatic rule a link brings: pick only (what existing sites had before this feature).
+		picker = self._rule("BuildSuite Procurement Officer", select=1, print=1)
+		# An admin's own edit: read and print, no write. (A read WITHOUT print is still lowered by the
+		# link-pick grant, review issue #3, fixed and tested separately.)
+		edited = self._rule("BuildSuite Director", read=1, print=1)
+
+		grant_missing_rfq_permissions()
+
+		raised = frappe.db.get_value(
+			"Custom DocPerm", picker, ["read", "write", "create", "submit", "select"], as_dict=True
+		)
+		self.assertEqual(dict(raised), {"read": 1, "write": 1, "create": 1, "submit": 1, "select": 1})
+		kept = frappe.db.get_value("Custom DocPerm", edited, ["read", "write", "create"], as_dict=True)
+		self.assertEqual(dict(kept), {"read": 1, "write": 0, "create": 0})
+
+
 class TestQuotationsRespectRecordAccess(RfqTestCase):
 	"""A user restricted to some quotations (a User Permission on Supplier for quotations) sees only those on
 	the request page and in the comparison, and only those are counted in the request picker."""
