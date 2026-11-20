@@ -56,8 +56,8 @@ const isDraft = computed(() => sq.value?.state === "Draft");
 const isSubmitted = computed(() => sq.value?.state === "Submitted");
 const isCancelled = computed(() => sq.value?.state === "Cancelled");
 const isExpired = computed(() => sq.value?.status === "Expired");
-// Something the supplier priced is still to be ordered (ERPNext's own Ordered status says not).
-const canOrder = computed(() => isSubmitted.value && sq.value?.status !== "Ordered");
+// Something the supplier priced is still to be ordered (the server counts it off the orders).
+const canOrder = computed(() => isSubmitted.value && !!sq.value?.to_order);
 
 function onEdit() {
 	router.push(`/procurement/supplier-quotations/${sq.value.name}/edit`);

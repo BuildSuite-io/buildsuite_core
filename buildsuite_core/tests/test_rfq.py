@@ -344,7 +344,19 @@ class TestSupplierQuotationComparison(RfqTestCase):
 
 
 class TestPurchaseOrderFromQuotation(RfqTestCase):
-	def test_order_takes_rates_links_and_marks_the_quotation_ordered(self):
+	def _order(self, pre, lines=None, submit=False):
+		po = docs.save_purchase_order(
+			supplier=pre["supplier"],
+			project=pre["project"],
+			schedule_date=pre["schedule_date"],
+			supplier_quotation=pre["supplier_quotation"],
+			items=frappe.as_json(lines if lines is not None else pre["lines"]),
+		)
+		if submit:
+			docs.submit_purchase_order(po["name"])
+		return po
+
+	def test_order_takes_rates_and_links_and_leaves_nothing_to_order(self):
 		rfq = self._rfq()
 		sq = self._quote(rfq["name"], self.shree, [67.75, 0])
 		pre = api.get_sq_for_po(sq["name"])
@@ -352,25 +364,44 @@ class TestPurchaseOrderFromQuotation(RfqTestCase):
 		self.assertEqual(len(pre["lines"]), 1)  # only what the supplier priced
 		self.assertEqual(pre["lines"][0]["rate"], 67.75)
 		self.assertEqual(pre["schedule_date"], rfq["schedule_date"])
+		self.assertTrue(api.get_supplier_quotation(sq["name"])["to_order"])
 
-		po = docs.save_purchase_order(
-			supplier=pre["supplier"],
-			project=pre["project"],
-			schedule_date=pre["schedule_date"],
-			supplier_quotation=sq["name"],
-			items=frappe.as_json(pre["lines"]),
-		)
+		po = self._order(pre)
 		self.assertEqual(po["supplier_quotation"], sq["name"])
 		self.assertEqual(
 			po["items"][0]["supplier_quotation_item"], pre["lines"][0]["supplier_quotation_item"]
 		)
-		self.assertEqual(api.get_supplier_quotation(sq["name"])["purchase_orders"][0]["name"], po["name"])
+		got = api.get_supplier_quotation(sq["name"])
+		self.assertEqual(got["purchase_orders"][0]["name"], po["name"])
 		with self.assertRaises(frappe.ValidationError):
 			api.cancel_supplier_quotation(sq["name"])  # a live order was raised from it
 
-		docs.submit_purchase_order(po["name"])
-		self.assertEqual(api.get_supplier_quotation(sq["name"])["status"], "Partially Ordered")
-		self.assertEqual(api.get_sq_for_po(sq["name"])["lines"], [])  # nothing left to order
+		# Even the draft order counts: the quotation can't be ordered from a second time.
+		self.assertEqual(api.get_sq_for_po(sq["name"])["lines"], [])
+		self.assertFalse(got["to_order"])
+		self.assertEqual(got["items"][0]["ordered_qty"], 6800)
+		# ERPNext's own status: Supplier Quotation has no Ordered state.
+		self.assertEqual(got["status"], "Submitted")
+
+	def test_a_part_order_leaves_the_rest_to_order(self):
+		rfq = self._rfq()
+		sq = self._quote(rfq["name"], self.jsw, [66.5, 82])
+		pre = api.get_sq_for_po(sq["name"])
+		first = [dict(pre["lines"][0], qty=2000), pre["lines"][1]]
+		self._order(pre, first, submit=True)
+
+		again = api.get_sq_for_po(sq["name"])
+		self.assertEqual([(ln["item_code"], ln["qty"]) for ln in again["lines"]], [(self.steel, 4800)])
+		self.assertTrue(api.get_supplier_quotation(sq["name"])["to_order"])
+
+	def test_a_cancelled_order_frees_its_quantity_again(self):
+		rfq = self._rfq()
+		sq = self._quote(rfq["name"], self.shree, [67.75, 0])
+		po = self._order(api.get_sq_for_po(sq["name"]), submit=True)
+		self.assertEqual(api.get_sq_for_po(sq["name"])["lines"], [])
+
+		docs.cancel_purchase_order(po["name"])
+		self.assertEqual([ln["qty"] for ln in api.get_sq_for_po(sq["name"])["lines"]], [6800])
 
 	def test_order_date_is_the_users_but_never_in_the_future(self):
 		line = frappe.as_json([{"item_code": self.steel, "qty": 5, "rate": 10}])

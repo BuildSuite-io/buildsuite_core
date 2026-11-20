@@ -482,8 +482,8 @@ def save_purchase_order(
 				# Material Request through the line link, not the request name alone.
 				"material_request": row.get("material_request") or material_request or None,
 				"material_request_item": row.get("material_request_item") or None,
-				# Likewise the Supplier Quotation line: ERPNext reads the ordered qty (and the
-				# quotation's Ordered / Partially Ordered status) through this link.
+				# The Supplier Quotation line it was ordered from: api.rfq counts what is already
+				# ordered from a quotation through this link (ERPNext keeps no such total).
 				"supplier_quotation": row.get("supplier_quotation") or None,
 				"supplier_quotation_item": row.get("supplier_quotation_item") or None,
 				**_po_cost_code_fields(row.get("cost_code")),

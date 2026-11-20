@@ -130,8 +130,6 @@ const breadcrumbs = [
 					<option value="">{{ __("Status: Any") }}</option>
 					<option value="Draft">{{ __("Draft") }}</option>
 					<option value="Submitted">{{ __("Submitted") }}</option>
-					<option value="Partially Ordered">{{ __("Partially Ordered") }}</option>
-					<option value="Ordered">{{ __("Ordered") }}</option>
 					<option value="Expired">{{ __("Expired") }}</option>
 					<option value="Cancelled">{{ __("Cancelled") }}</option>
 				</DeskSelect>

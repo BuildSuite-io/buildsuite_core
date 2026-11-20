@@ -690,6 +690,36 @@ def _sq_status(doc):
 	return status
 
 
+def _sq_ordered_stock_qty(item_names):
+	"""Stock quantity already ordered against each Supplier Quotation line, from the Purchase Order
+	lines raised from it (drafts count, so a second order can't be started twice over the same
+	quote; cancelled orders don't). ERPNext keeps no ordered quantity on Supplier Quotation Item
+	and no Ordered status on Supplier Quotation, so it is read off the orders themselves."""
+	if not item_names:
+		return {}
+	rows = frappe.get_all(
+		"Purchase Order Item",
+		filters={
+			"supplier_quotation_item": ["in", list(item_names)],
+			"parenttype": PURCHASE_ORDER,
+			"docstatus": ["<", 2],
+		},
+		fields=["supplier_quotation_item", {"SUM": "stock_qty", "as": "stock_qty"}],
+		group_by="supplier_quotation_item",
+	)
+	return {r.supplier_quotation_item: flt(r.stock_qty) for r in rows}
+
+
+def _sq_remaining(doc):
+	"""Per priced line: (line, quantity still to order in the quotation's unit)."""
+	priced = [it for it in doc.items if flt(it.rate) > 0]
+	ordered = _sq_ordered_stock_qty([it.name for it in priced])
+	return [
+		(it, max(flt(it.qty) - ordered.get(it.name, 0) / (flt(it.conversion_factor) or 1), 0))
+		for it in priced
+	]
+
+
 def _sq_purchase_orders(name):
 	if not frappe.has_permission(PURCHASE_ORDER, "read"):
 		return []
@@ -710,6 +740,7 @@ def _sq_purchase_orders(name):
 
 
 def _serialize_sq(doc):
+	remaining = {it.name: left for it, left in _sq_remaining(doc)} if doc.docstatus == 1 else {}
 	return {
 		"name": doc.name,
 		"supplier": doc.supplier,
@@ -740,6 +771,8 @@ def _serialize_sq(doc):
 		"docstatus": doc.docstatus,
 		"state": _state(doc),
 		"status": _sq_status(doc),
+		# Something the supplier priced is still to be ordered (drives "Create purchase order").
+		"to_order": any(left > 0 for left in remaining.values()),
 		"amended_from": doc.get("amended_from"),
 		"items": [
 			{
@@ -752,6 +785,8 @@ def _serialize_sq(doc):
 				"rate": flt(it.rate),
 				"amount": flt(it.amount),
 				"lead_time_days": it.lead_time_days if it.lead_time_days else None,
+				# Quantity already on purchase orders, in the quotation's unit (submitted only).
+				"ordered_qty": flt(it.qty) - remaining[it.name] if it.name in remaining else 0,
 				"cost_code": _po_cost_code_obj(it),
 				"request_for_quotation": it.request_for_quotation,
 				"request_for_quotation_item": it.request_for_quotation_item,
@@ -1039,11 +1074,7 @@ def get_sq_for_po(supplier_quotation: str):
 	rfq = doc.get("custom_request_for_quotation")
 	schedule_date = frappe.db.get_value(RFQ, rfq, "schedule_date") if rfq else None
 	lines = []
-	for it in doc.items:
-		if flt(it.rate) <= 0:
-			continue
-		factor = flt(it.conversion_factor) or 1
-		remaining = flt(it.qty) - flt(it.get("ordered_qty")) / factor
+	for it, remaining in _sq_remaining(doc):
 		if remaining <= 0:
 			continue
 		lines.append(
