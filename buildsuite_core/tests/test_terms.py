@@ -113,3 +113,31 @@ class TestTerms(BuildSuiteTestCase):
 
 		frappe.db.set_value(DOCTYPE, second, "disabled", 1)
 		self.assertIsNone(default_terms("Request for Quotation"))
+
+	def test_the_standard_rfq_clause_is_seeded_as_the_default(self):
+		"""A site gets one standard Request for Quotation clause, offered first; seeding again
+		keeps it as it is and doesn't make a second default."""
+		from buildsuite_core.install import RFQ_TERMS_TITLE, seed_rfq_terms
+
+		frappe.delete_doc(DOCTYPE, RFQ_TERMS_TITLE, force=1, ignore_missing=True)
+		frappe.db.set_value(
+			DOCTYPE, {"custom_applicable_for": "Request for Quotation"}, "custom_is_default", 0
+		)
+		seed_rfq_terms()
+		self.assertEqual(default_terms("Request for Quotation")["name"], RFQ_TERMS_TITLE)
+
+		frappe.db.set_value(DOCTYPE, RFQ_TERMS_TITLE, "terms", "<p>Edited by an admin.</p>")
+		seed_rfq_terms()
+		self.assertEqual(frappe.db.get_value(DOCTYPE, RFQ_TERMS_TITLE, "terms"), "<p>Edited by an admin.</p>")
+
+		# Another clause already the default: a freshly seeded standard clause is not.
+		frappe.delete_doc(DOCTYPE, RFQ_TERMS_TITLE, force=1)
+		mine = save_terms(
+			title=f"Our RFQ terms {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Ours.</p>",
+			is_default=1,
+		)["name"]
+		seed_rfq_terms()
+		self.assertEqual(default_terms("Request for Quotation")["name"], mine)
+		self.assertEqual(frappe.db.get_value(DOCTYPE, RFQ_TERMS_TITLE, "custom_is_default"), 0)
