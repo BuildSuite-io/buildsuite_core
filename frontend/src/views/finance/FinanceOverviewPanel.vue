@@ -15,6 +15,7 @@ import { useDocTypeList } from "@/composables/useDocTypeList";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import { getFinancialPosition, getReceivablesPayables } from "@/data/financeReportApi";
 import { listFinanceAccounts } from "@/data/financeAccountApi";
+import { pettyCashCanDisburse } from "@/data/pettyCashApi";
 import { useActiveCompany } from "@/composables/useActiveCompany";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
 import { usePermissions } from "@/composables/usePermissions";
@@ -74,6 +75,21 @@ const invoiceDraftsRes = useDocTypeList("Sales Invoice", {
 	cache: "buildsuite-finance-overview-invoice-drafts",
 });
 const expensesAwaitingSubmit = computed(() => (expenseDraftsRes.data || []).length);
+// Petty cash requests waiting to be paid out: the Petty Cash "To Disburse" queue (status
+// Requested). Only a user who can disburse acts on it, so only they get the alert.
+const pettyToDisburseRes = useDocTypeList("Petty Cash Request", {
+	fields: ["name"],
+	filters: [["status", "=", "Requested"]],
+	pageLength: 0,
+	cache: "buildsuite-finance-overview-petty-to-disburse",
+});
+const canDisbursePetty = ref(false);
+pettyCashCanDisburse()
+	.then((r) => (canDisbursePetty.value = !!r?.can_disburse))
+	.catch(() => (canDisbursePetty.value = false));
+const pettyToDisburse = computed(() =>
+	canDisbursePetty.value ? (pettyToDisburseRes.data || []).length : 0
+);
 
 // ---- KPIs (live) ----
 const accounts = computed(() => financeAccounts.value);
@@ -113,13 +129,24 @@ const attention = computed(() => {
 			to: "/project-finance/expenses?tab=queue",
 			tone: "warning",
 		});
+	if (pettyToDisburse.value > 0)
+		out.push({
+			text:
+				pettyToDisburse.value === 1
+					? __("{0} petty cash request to disburse", [pettyToDisburse.value])
+					: __("{0} petty cash requests to disburse", [pettyToDisburse.value]),
+			// Opens Petty Cash on its "To Disburse" queue.
+			to: "/project-finance/petty-cash?tab=disburse",
+			tone: "warning",
+		});
 	if (draftInvoices.value > 0)
 		out.push({
 			text:
 				draftInvoices.value === 1
 					? __("{0} draft invoice not yet posted", [draftInvoices.value])
 					: __("{0} draft invoices not yet posted", [draftInvoices.value]),
-			section: "invoices",
+			// Opens Invoices filtered to drafts.
+			to: "/project-finance/invoices?status=Draft",
 			tone: "info",
 		});
 	if (overdueCount.value > 0)
@@ -128,7 +155,8 @@ const attention = computed(() => {
 				overdueCount.value === 1
 					? __("{0} invoice overdue — chase receivables", [overdueCount.value])
 					: __("{0} invoices overdue — chase receivables", [overdueCount.value]),
-			section: "invoices",
+			// Opens Invoices filtered to the overdue ones (the same rule as this count).
+			to: "/project-finance/invoices?status=Overdue",
 			tone: "danger",
 		});
 	return out;
