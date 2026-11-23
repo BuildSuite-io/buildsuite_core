@@ -101,11 +101,13 @@ def rebuild_letter_head(company: str | None = None) -> None:
 
 	meta = frappe.get_meta("Company")
 	name = frappe.db.get_value("Company", company, "company_name") or company
+	# The logo set under Settings > Company > Branding, else ERPNext's own Company logo (set on the
+	# Company form in Desk), so a company with either prints its logo rather than its initials.
 	logo = (
 		frappe.db.get_value("Company", company, "custom_company_logo")
 		if meta.has_field("custom_company_logo")
 		else None
-	)
+	) or frappe.db.get_value("Company", company, "company_logo")
 	subtext = (
 		frappe.db.get_value("Company", company, "custom_letter_head_subtext")
 		if meta.has_field("custom_letter_head_subtext")
