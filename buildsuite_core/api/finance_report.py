@@ -53,7 +53,7 @@ def receivables_and_payables(company: str | None = None):
 			pi.outstanding_amount AS outstanding, GREATEST(DATEDIFF(CURDATE(), pi.due_date), 0) AS days_overdue,
 			IFNULL((SELECT SUM(sb.retention_amount) FROM `tabSubcontractor Bill` sb
 				WHERE sb.purchase_invoice = pi.name AND sb.docstatus = 1), 0) AS retention,
-			(SELECT s.supplier_group FROM `tabSupplier` s WHERE s.name = pi.supplier) AS supplier_group
+			pi.subcontractor_bill AS subcontractor_bill
 		FROM `tabPurchase Invoice` pi
 		WHERE pi.docstatus = 1 AND pi.outstanding_amount > 0
 			AND (%(company)s IS NULL OR pi.company = %(company)s)
@@ -67,8 +67,11 @@ def receivables_and_payables(company: str | None = None):
 	for r in payables:
 		r["bucket"] = _bucket(r["days_overdue"])
 		r["due"] = str(r["due"]) if r.get("due") else None
-		r["kind"] = "subcontractor" if (r.get("supplier_group") == "Subcontractor") else "supplier"
-		r.pop("supplier_group", None)
+		# A payable is a subcontractor bill when it is a Subcontractor Bill's generated invoice, the
+		# same rule as the Bills and Supplier Bills lists. Not the supplier's group: a site whose
+		# only (or default) supplier group is "Subcontractor" put ordinary suppliers in it, and
+		# their bills then read as subcontractor rows, as if the supplier bills were missing.
+		r["kind"] = "subcontractor" if r.pop("subcontractor_bill", None) else "supplier"
 	return {"receivables": receivables, "payables": payables, "buckets": BUCKETS}
 
 
