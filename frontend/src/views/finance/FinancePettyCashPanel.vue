@@ -2,8 +2,8 @@
 // Petty Cash — the LIVE part of Project Finance. Request → Disburse (posts a Journal Entry
 // server-side). Everything else in the finance workspace is mock data.
 
-import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useConfirm } from "@/composables/useConfirm";
 import { showToast } from "@/utils/appToast";
@@ -91,6 +91,23 @@ const tabs = computed(() => [
 	{ id: "balances", label: __("Balances"), count: null },
 	{ id: "mine", label: __("My Requests"), count: counts.value.mine ?? 0 },
 ]);
+// Deep-link: `?tab=<id>` opens that tab (e.g. disburse, from the Financial Overview's "Needs
+// attention"). The To Disburse tab only appears once the disburse permission has loaded, so the
+// requested tab is applied as soon as it is offered.
+const route = useRoute();
+const requestedTab = typeof route.query.tab === "string" ? route.query.tab : "";
+if (requestedTab) {
+	const stop = watch(
+		tabs,
+		(list) => {
+			if (list.some((t) => t.id === requestedTab)) {
+				tab.value = requestedTab;
+				stop();
+			}
+		},
+		{ immediate: true }
+	);
+}
 
 // Raised FOR me by someone else: I'm the holder (owner), but another user created it.
 // Raised FOR me: I'm the holder (requested_by) but someone else created it (owner != me).

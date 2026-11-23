@@ -4,7 +4,7 @@
 // Sales Invoice. Rows show two status badges — submission (Draft/Submitted/Cancelled) and, for
 // submitted invoices, the payment status (Unpaid/Overdue/Partly Paid/Paid) — both colour-coded.
 import { computed, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { showToast } from "@/utils/appToast";
 import {
 	recordInvoiceReceipt,
@@ -14,6 +14,7 @@ import {
 	listInvoicePaymentModes,
 } from "@/data/invoiceApi";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { localToday } from "@/utils/pettyCash";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskField from "@/components/desk/DeskField.vue";
 import DeskInput from "@/components/desk/DeskInput.vue";
@@ -87,12 +88,27 @@ function aging(row) {
 	return { label: __("{0} d", [bucket]), cls };
 }
 
-const statusFilter = ref("");
+// `?status=<Draft|Overdue|…>` seeds the status filter (the Financial Overview's "Needs attention"
+// links open the list already filtered).
+const route = useRoute();
+const statusFilter = ref(typeof route.query.status === "string" ? route.query.status : "");
 const projectFilter = ref("");
 const fromDate = ref("");
 const toDate = ref("");
+// "Overdue" is worked out from the dates, as the Financial Overview counts it (submitted, money
+// still owed, due date passed): ERPNext's stored "Overdue" status is set by a daily job and lags.
+const overdueFilters = computed(() =>
+	statusFilter.value === "Overdue"
+		? [
+				["docstatus", "=", 1],
+				["outstanding_amount", ">", 0],
+				["due_date", "<", localToday()],
+		  ]
+		: []
+);
+const listBaseFilters = computed(() => [...baseFilters.value, ...overdueFilters.value]);
 const filterValues = computed(() => ({
-	status: statusFilter.value,
+	status: statusFilter.value === "Overdue" ? "" : statusFilter.value,
 	project: projectFilter.value,
 	fromDate: fromDate.value,
 	toDate: toDate.value,
@@ -214,7 +230,8 @@ async function openAdvance() {
 }
 async function saveAdvance() {
 	if (!adv.customer) return showToast(__("Pick a customer."), "error");
-	if (!(Number(adv.amount) > 0)) return showToast(__("Enter an amount greater than zero."), "error");
+	if (!(Number(adv.amount) > 0))
+		return showToast(__("Enter an amount greater than zero."), "error");
 	if (!adv.deposit_to) return showToast(__("Pick the account to deposit into."), "error");
 	adv.saving = true;
 	try {
@@ -249,7 +266,14 @@ async function saveAdvance() {
 				>
 					{{ __("Record advance") }}
 				</button>
-				<button v-if="canCreate('salesInvoice')" type="button" class="desk-save-btn" @click="openNew">{{ __("+ New invoice") }}</button>
+				<button
+					v-if="canCreate('salesInvoice')"
+					type="button"
+					class="desk-save-btn"
+					@click="openNew"
+				>
+					{{ __("+ New invoice") }}
+				</button>
 			</div>
 		</template>
 
@@ -295,11 +319,15 @@ async function saveAdvance() {
 					},
 					{ key: 'grand_total', label: __('Total'), align: 'right' },
 					{ key: 'outstanding_amount', label: __('Outstanding'), align: 'right' },
-					{ key: 'status', label: __('Status'), fields: ['status', 'outstanding_amount'] },
+					{
+						key: 'status',
+						label: __('Status'),
+						fields: ['status', 'outstanding_amount'],
+					},
 					{ key: 'actions', label: '', align: 'right' },
 				]"
 				:search-fields="['name', 'customer_name']"
-				:base-filters="baseFilters"
+				:base-filters="listBaseFilters"
 				:filter-values="filterValues"
 				:filter-field-map="filterFieldMap"
 				cache-key="buildsuite-invoice-list"
@@ -469,7 +497,9 @@ async function saveAdvance() {
 							></DeskField
 						>
 						<DeskField :label="__('Reference no.')"
-							><DeskInput v-model="rec.reference_no" :placeholder="__('UTR / cheque no.')"
+							><DeskInput
+								v-model="rec.reference_no"
+								:placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
@@ -508,7 +538,9 @@ async function saveAdvance() {
 				<header
 					class="px-4 py-3 border-b border-ink-200 flex items-center justify-between"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ __("Record customer advance") }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ __("Record customer advance") }}
+					</h2>
 					<button
 						type="button"
 						class="text-ink-400 hover:text-ink-900"
@@ -563,7 +595,9 @@ async function saveAdvance() {
 							></DeskField
 						>
 						<DeskField :label="__('Reference no.')"
-							><DeskInput v-model="adv.reference_no" :placeholder="__('UTR / cheque no.')"
+							><DeskInput
+								v-model="adv.reference_no"
+								:placeholder="__('UTR / cheque no.')"
 						/></DeskField>
 					</div>
 				</div>
