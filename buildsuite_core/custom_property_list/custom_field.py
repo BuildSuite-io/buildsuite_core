@@ -703,6 +703,17 @@ CUSTOM_FIELD = {
 			"insert_after": "items_section",
 			"module": "BuildSuite Core",
 		},
+		{
+			# The person on site the supplier coordinates delivery with. Printed on the PO with
+			# their mobile (User.mobile_no).
+			"fieldname": "custom_site_contact",
+			"fieldtype": "Link",
+			"label": "Site Contact",
+			"options": "User",
+			"insert_after": "schedule_date",
+			"description": "Printed on the PO with their mobile so the supplier knows who to coordinate delivery with.",
+			"module": "BuildSuite Core",
+		},
 	],
 	"Purchase Invoice": [
 		{

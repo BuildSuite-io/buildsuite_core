@@ -81,6 +81,7 @@ const form = ref({
 	// entered with that day. Never a day still to come.
 	transaction_date: todayISO(),
 	schedule_date: inDays(10),
+	site_contact: "",
 	material_request: null,
 	// The supplier quotation the order is raised from (/new?sq=<id>).
 	supplier_quotation: null,
@@ -131,6 +132,7 @@ watch(
 				project: po.project || "",
 				transaction_date: po.transaction_date || todayISO(),
 				schedule_date: po.schedule_date || inDays(10),
+				site_contact: po.site_contact?.user || "",
 				material_request: null,
 				supplier_quotation: po.supplier_quotation || null,
 				tc_name: po.tc_name || "",
@@ -271,6 +273,7 @@ async function onSave() {
 			project: form.value.project,
 			transaction_date: form.value.transaction_date,
 			schedule_date: form.value.schedule_date,
+			site_contact: form.value.site_contact || "",
 			material_request: form.value.material_request || undefined,
 			supplier_quotation: form.value.supplier_quotation || undefined,
 			terms: form.value.terms || "",
@@ -409,6 +412,26 @@ const saveLabel = computed(() =>
 				</DeskField>
 				<DeskField :label="__('Required by')">
 					<DeskInput v-model="form.schedule_date" type="date" />
+				</DeskField>
+				<DeskField
+					:label="__('Site contact')"
+					:hint="
+						__(
+							'Optional — printed on the PO with their mobile so the supplier knows who to coordinate delivery with.'
+						)
+					"
+				>
+					<DeskLinkPicker
+						v-model="form.site_contact"
+						doctype="User"
+						label-field="full_name"
+						value-field="name"
+						:search-fields="['full_name', 'name']"
+						:filters="[['enabled', '=', 1]]"
+						order-by="full_name asc"
+						allow-clear
+						:placeholder="__('— Optional —')"
+					/>
 				</DeskField>
 			</DeskSection>
 

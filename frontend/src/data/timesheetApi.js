@@ -1,5 +1,5 @@
 import { frappeRequest } from "frappe-ui-frappe-request";
-import { parseFrappeError } from "@/utils/frappeError";
+import { parseFrappeError, serverErrorMessage } from "@/utils/frappeError";
 
 // Thin wrappers over buildsuite_core.api.timesheet — timesheets on the native Timesheet doctype:
 // one worker, one day, rows of hours against a project and cost code.
@@ -56,8 +56,7 @@ async function post(method, body) {
 	if (!res.ok) {
 		let msg = "Request failed.";
 		try {
-			if (json._server_messages)
-				msg = JSON.parse(JSON.parse(json._server_messages)[0]).message;
+			msg = serverErrorMessage(json._server_messages) || msg;
 		} catch {
 			/* keep default */
 		}

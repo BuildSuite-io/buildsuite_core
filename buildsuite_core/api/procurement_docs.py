@@ -256,6 +256,17 @@ def _po_cost_code_obj(it):
 	}
 
 
+def _site_contact(user):
+	"""The PO's site contact with their name and mobile. Read here rather than by the SPA: users
+	who aren't admins can list Users but don't get their mobile numbers."""
+	if not user:
+		return None
+	row = frappe.db.get_value("User", user, ["full_name", "mobile_no"], as_dict=True)
+	if not row:
+		return None
+	return {"user": user, "full_name": row.full_name or user, "mobile_no": row.mobile_no or ""}
+
+
 def _serialize_po(doc):
 	return {
 		"name": doc.name,
@@ -282,6 +293,7 @@ def _serialize_po(doc):
 		"terms": doc.terms,
 		"tc_name": doc.tc_name,
 		"company": doc.company,
+		"site_contact": _site_contact(doc.get("custom_site_contact")),
 		"items": [
 			{
 				"name": it.name,
@@ -420,18 +432,22 @@ def save_purchase_order(
 	tc_name: str | None = None,
 	material_request: str | None = None,
 	supplier_quotation: str | None = None,
+	site_contact: str | None = None,
 ):
 	"""Create / update a draft Purchase Order. Rate is entered by hand (single
 	company currency, conversion 1); line amounts are computed by the controller.
 
 	`transaction_date` is the order's own date: today unless the order was placed earlier, never
 	a day still to come. `supplier_quotation` names the quotation a NEW order is raised from: its
-	lines carry the quotation line links (so ERPNext marks the quotation ordered) and the order
-	starts with the taxes the supplier quoted.
+	lines carry the quotation line links (api.rfq counts what is ordered from the quotation through
+	them) and the order starts with the taxes the supplier quoted.
 
 	`terms` is the PO's own Terms & conditions (rich text, copied from a Terms and Conditions
 	template or typed) and `tc_name` the template it came from. Left out (None), the PO keeps the
-	terms it has; an empty string clears them."""
+	terms it has; an empty string clears them.
+
+	`site_contact` is the optional User printed on the PO with their mobile. Likewise, None keeps
+	it and an empty string clears it."""
 	items = frappe.parse_json(items) or []
 	if not supplier:
 		frappe.throw(_("Pick a supplier."))
@@ -459,6 +475,10 @@ def save_purchase_order(
 	if terms is not None:
 		doc.terms = terms
 		doc.tc_name = tc_name or None
+	if site_contact is not None:
+		if site_contact and not frappe.db.get_value("User", site_contact, "enabled"):
+			frappe.throw(_("Pick an active user as the site contact."))
+		doc.custom_site_contact = site_contact or None
 
 	# Stock lines need a delivery warehouse (see save_material_request); default it to the
 	# project's site store (or the company default).

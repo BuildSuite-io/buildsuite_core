@@ -30,6 +30,9 @@ const route = useRoute();
 const router = useRouter();
 // Scope the Work Order / Project pickers to the active company; re-queries on switch.
 const companyFilter = activeCompanyFilter();
+// Only a submitted work order can be billed (SubcontractorBill._require_submitted_work_order):
+// drafts aren't committed yet and cancelled ones are void, so the picker offers neither.
+const workOrderFilters = computed(() => [["docstatus", "=", 1], ...companyFilter.value]);
 
 const editingId = computed(() => route.params.id || null);
 const isEdit = computed(() => !!editingId.value);
@@ -347,7 +350,7 @@ const breadcrumbs = computed(() => [
 							doctype="Subcontractor Work Order"
 							label-field="name"
 							value-field="name"
-							:filters="companyFilter"
+							:filters="workOrderFilters"
 							:placeholder="__('Pick a work order…')"
 							:disabled="isEdit"
 							@update:model-value="onWorkOrderChange"

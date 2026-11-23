@@ -31,15 +31,21 @@ def _bucket(days):
 @frappe.whitelist()
 def receivables_and_payables(company: str | None = None):
 	"""Aged open receivables (Sales Invoices) and payables (Purchase Invoices), each row bucketed
-	by days overdue. Payables carry a supplier/subcontractor kind + any retention withheld."""
-	company = company or default_company()
+	by days overdue. Payables carry a supplier/subcontractor kind + any retention withheld.
+
+	Scoped like the Supplier Bills and Payments lists (company_scope): every company while
+	multi-company is off, the working company while it is on. A bill follows its project's company,
+	so pinning this to the default company dropped the bills of projects under any other company."""
+	from buildsuite_core.utils.project import company_scope
+
+	company = company or company_scope()
 	receivables = frappe.db.sql(
 		"""SELECT name AS id, customer_name AS party, due_date AS due,
 			outstanding_amount AS outstanding, GREATEST(DATEDIFF(CURDATE(), due_date), 0) AS days_overdue
 		FROM `tabSales Invoice`
-		WHERE docstatus = 1 AND outstanding_amount > 0 AND company = %s
+		WHERE docstatus = 1 AND outstanding_amount > 0 AND (%(company)s IS NULL OR company = %(company)s)
 		ORDER BY due_date""",
-		(company,),
+		{"company": company},
 		as_dict=True,
 	)
 	payables = frappe.db.sql(
@@ -49,9 +55,10 @@ def receivables_and_payables(company: str | None = None):
 				WHERE sb.purchase_invoice = pi.name AND sb.docstatus = 1), 0) AS retention,
 			(SELECT s.supplier_group FROM `tabSupplier` s WHERE s.name = pi.supplier) AS supplier_group
 		FROM `tabPurchase Invoice` pi
-		WHERE pi.docstatus = 1 AND pi.outstanding_amount > 0 AND pi.company = %s
+		WHERE pi.docstatus = 1 AND pi.outstanding_amount > 0
+			AND (%(company)s IS NULL OR pi.company = %(company)s)
 		ORDER BY pi.due_date""",
-		(company,),
+		{"company": company},
 		as_dict=True,
 	)
 	for r in receivables:

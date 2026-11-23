@@ -33,6 +33,8 @@ const props = defineProps({
 	// Item form on a PO / MR line). Off by default, so every existing picker is unchanged.
 	allowCreate: { type: Boolean, default: false },
 	createLabel: { type: String, default: "record" },
+	// Opt-in × to empty an optional field. Off by default, so every existing picker is unchanged.
+	allowClear: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "change", "create"]);
@@ -66,7 +68,7 @@ const resolvedFields = computed(() => {
 			props.labelField,
 			...resolvedSearchFields.value,
 			...filterFieldNames.value,
-		]),
+		])
 	);
 });
 
@@ -146,7 +148,8 @@ function applyClientFilters(rows, filters = []) {
 	// applied every serverFilter to the query, so the rows are correct. Skip such a clause rather
 	// than drop the row: otherwise a company-scoped picker (filtered by `company`, but fetching
 	// only name + the label field) would client-filter every row out and show "No results".
-	const fetched = (row, fieldname) => row && Object.prototype.hasOwnProperty.call(row, fieldname);
+	const fetched = (row, fieldname) =>
+		row && Object.prototype.hasOwnProperty.call(row, fieldname);
 
 	if (!Array.isArray(filters) && typeof filters === "object") {
 		return rows.filter((row) => {
@@ -239,7 +242,7 @@ watchDebounced(
 		});
 		optionsResource.list.fetch();
 	},
-	{ debounce: 250, immediate: true },
+	{ debounce: 250, immediate: true }
 );
 
 watch(
@@ -256,7 +259,7 @@ watch(
 		});
 		optionsResource.list.fetch();
 		fetchSelectedRecord();
-	},
+	}
 );
 
 // Watch the RESOLVED serverFilters (not just props.filters) so the picker also re-queries when
@@ -274,7 +277,7 @@ watch(
 		});
 		optionsResource.list.fetch();
 	},
-	{ deep: true },
+	{ deep: true }
 );
 
 watch(
@@ -282,7 +285,7 @@ watch(
 	() => {
 		fetchSelectedRecord();
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function fetchSelectedRecord() {
@@ -318,6 +321,13 @@ function onChange(option) {
 	emit("change", nextValue);
 }
 
+const showClear = computed(() => props.allowClear && !props.disabled && !!props.modelValue);
+
+function onClear() {
+	emit("update:modelValue", "");
+	emit("change", "");
+}
+
 function onQueryUpdate(value) {
 	query.value = value || "";
 }
@@ -349,25 +359,37 @@ function onCreate(togglePopover) {
 			@update:query="onQueryUpdate"
 		>
 			<template #target="{ togglePopover, isOpen }">
-				<button
-					type="button"
-					:data-test="dataTest || undefined"
-					class="flex h-7 w-full items-center justify-between gap-2 border bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
-					style="border-radius: 6px"
-					:class="{
-						'border-ink-200': !error && !isOpen,
-						'ring-2 ring-brand-100 border-brand-300': isOpen && !error,
-						'border-danger-500 ring-2 ring-danger-100': error,
-						'opacity-60 cursor-not-allowed': disabled,
-					}"
-					:disabled="disabled"
-					@click="togglePopover"
-				>
-					<span class="min-w-0 flex-1 truncate">
-						{{ selectedOption?.label || placeholder }}
-					</span>
-					<span class="text-[10px] text-ink-400">▾</span>
-				</button>
+				<div class="relative">
+					<button
+						type="button"
+						:data-test="dataTest || undefined"
+						class="flex h-7 w-full items-center justify-between gap-2 border bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
+						style="border-radius: 6px"
+						:class="{
+							'border-ink-200': !error && !isOpen,
+							'ring-2 ring-brand-100 border-brand-300': isOpen && !error,
+							'border-danger-500 ring-2 ring-danger-100': error,
+							'opacity-60 cursor-not-allowed': disabled,
+						}"
+						:disabled="disabled"
+						@click="togglePopover"
+					>
+						<span class="min-w-0 flex-1 truncate">
+							{{ selectedOption?.label || placeholder }}
+						</span>
+						<span v-if="showClear" class="w-4" aria-hidden="true"></span>
+						<span class="text-[10px] text-ink-400">▾</span>
+					</button>
+					<button
+						v-if="showClear"
+						type="button"
+						class="absolute right-6 top-1/2 -translate-y-1/2 px-0.5 text-xs leading-none text-ink-400 hover:text-ink-700"
+						:aria-label="__('Clear')"
+						@click.stop="onClear"
+					>
+						×
+					</button>
+				</div>
 			</template>
 
 			<!-- Inline "create new" row: only when allow-create is set. Reuses the parent's create
@@ -392,7 +414,11 @@ function onCreate(togglePopover) {
 						<line x1="5" y1="12" x2="19" y2="12" />
 					</svg>
 					<span class="truncate">
-						{{ query.trim() ? __("Create “{0}”", [query.trim()]) : __("New {0}", [__(createLabel)]) }}
+						{{
+							query.trim()
+								? __("Create “{0}”", [query.trim()])
+								: __("New {0}", [__(createLabel)])
+						}}
 					</span>
 				</button>
 			</template>
@@ -414,9 +440,7 @@ function onCreate(togglePopover) {
 	z-index: 80 !important;
 	border: 1px solid theme("colors.ink.200") !important;
 	border-radius: 6px !important;
-	box-shadow:
-		0 4px 6px -1px rgba(0, 0, 0, 0.1),
-		0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Force compact typography inside teleported popover */

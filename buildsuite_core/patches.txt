@@ -87,4 +87,5 @@ buildsuite_core.patches.drop_workspace_shortcut_role_restrictions # 2026-11-17 w
 buildsuite_core.patches.setup_lead_permissions # 2026-11-10 Sales › Leads: Lead + UTM Source DocPerms, lead sources
 buildsuite_core.patches.backfill_petty_cash_paid_on # 2026-11-17 Petty Cash Request Paid On: disbursed requests take their Journal Entry's posting date (empty values only; no ledger change)
 buildsuite_core.patches.grant_hr_manager_attendance_registers # 2026-11-17 HR Manager may create + delete Labour / Overtime Attendance Registers (adds those two flags to its rule only)
+buildsuite_core.patches.add_po_site_contact_to_print_format # 2026-11-18 Purchase Order print: the optional site contact (name + mobile) under Deliver to project (only if the format was never edited)
 buildsuite_core.patches.add_rfq_supplier_quotation # 2026-11-20 Request for Quotation + Supplier Quotation: default permissions (where a role has none, or only the pick-only rule a link brings), the comparison report anchor and its Procurement tile

@@ -1,16 +1,10 @@
 // Thin wrapper around the buildsuite_core.api.suppliers whitelisted methods
 // (Project Finance › Suppliers master). Mirrors data/customersApi.js.
+import { serverErrorMessage } from "@/utils/frappeError";
 
 function serverMessage(data, status) {
-	if (data?._server_messages) {
-		try {
-			const first = JSON.parse(data._server_messages)[0];
-			const parsed = JSON.parse(first);
-			if (parsed?.message) return String(parsed.message).replace(/<[^>]*>/g, "");
-		} catch {
-			/* fall through */
-		}
-	}
+	const message = serverErrorMessage(data?._server_messages);
+	if (message) return message;
 	return data?.exception || data?.exc_type || `Request failed (${status})`;
 }
 
