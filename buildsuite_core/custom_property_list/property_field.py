@@ -15,6 +15,26 @@ def _email_service_options():
 def get_property_setters():
 	return [
 		{
+			# Keep a request's history: its supplier contacts / emails are corrected after submit,
+			# and who changed an address the request went to must be traceable.
+			"doctype_or_field": "DocType",
+			"doctype": "Request for Quotation",
+			"fieldname": None,
+			"property": "track_changes",
+			"value": "1",
+			"property_type": "Check",
+		},
+		{
+			# A request's supplier email is corrected after submit (a wrong address is found when
+			# the mail is about to go); ERPNext allows its contact on submit but not its email.
+			"doctype_or_field": "DocField",
+			"doctype": "Request for Quotation Supplier",
+			"fieldname": "email_id",
+			"property": "allow_on_submit",
+			"value": "1",
+			"property_type": "Check",
+		},
+		{
 			# Add "Petty Cash" as a Journal Entry Entry Type. The petty-cash disbursement JE
 			# uses it, and the Petty Cash Request link field shows only for this type.
 			"doctype_or_field": "DocField",

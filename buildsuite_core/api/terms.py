@@ -22,13 +22,20 @@ DOCTYPE = "Terms and Conditions"
 APPLICABLE_FOR = [
 	"Quotation",
 	"Tender",
+	"Request for Quotation",
 	"Purchase Order",
 	"Subcontractor Work Order",
 	"Subcontractor Bill",
 	"Sales Invoice",
 	"Purchase Invoice",
 ]
-_BUYING = {"Purchase Order", "Purchase Invoice", "Subcontractor Work Order", "Subcontractor Bill"}
+_BUYING = {
+	"Request for Quotation",
+	"Purchase Order",
+	"Purchase Invoice",
+	"Subcontractor Work Order",
+	"Subcontractor Bill",
+}
 _SELLING = {"Quotation", "Tender", "Sales Invoice"}
 
 
@@ -53,15 +60,31 @@ def list_terms():
 		return []
 	return frappe.get_list(
 		DOCTYPE,
-		fields=["name", "title", "custom_applicable_for", "terms", "disabled", "modified"],
+		fields=[
+			"name",
+			"title",
+			"custom_applicable_for",
+			"custom_is_default",
+			"terms",
+			"disabled",
+			"modified",
+		],
 		order_by="custom_applicable_for asc, title asc",
 		limit_page_length=0,
 	)
 
 
 @frappe.whitelist()
-def save_terms(name=None, title=None, applicable_for=None, terms=None, disabled=0):
-	"""Create / update a clause. `terms` is rich-text HTML (native Text Editor field)."""
+def save_terms(
+	name: str | None = None,
+	title: str | None = None,
+	applicable_for: str | None = None,
+	terms: str | None = None,
+	disabled: int | str = 0,
+	is_default: int | str = 0,
+):
+	"""Create / update a clause. `terms` is rich-text HTML (native Text Editor field). `is_default`
+	makes it the clause a new document of its kind starts with; only one per kind is."""
 	title = (title or "").strip()
 	if not title:
 		frappe.throw(_("Give the clause a name — it's what the picker shows."))
@@ -78,16 +101,42 @@ def save_terms(name=None, title=None, applicable_for=None, terms=None, disabled=
 	doc.custom_applicable_for = applicable_for
 	doc.terms = terms or ""
 	doc.disabled = 1 if cint(disabled) else 0
+	doc.custom_is_default = 1 if cint(is_default) and applicable_for else 0
 	# Keep the native pickers working: a clause is offered on a transaction only when its
 	# buying/selling flag matches, so derive them from the chosen document.
 	doc.buying = 1 if applicable_for in _BUYING else 0
 	doc.selling = 1 if applicable_for in _SELLING else 0
 	doc.save()
+	if doc.custom_is_default:
+		# One default per kind: the others of the same kind stop being offered first.
+		for other in frappe.get_all(
+			DOCTYPE,
+			filters={
+				"custom_applicable_for": applicable_for,
+				"custom_is_default": 1,
+				"name": ["!=", doc.name],
+			},
+			pluck="name",
+		):
+			frappe.db.set_value(DOCTYPE, other, "custom_is_default", 0)
 	return {"name": doc.name, "title": doc.title}
 
 
 @frappe.whitelist()
-def delete_terms(name):
+def default_terms(applicable_for: str):
+	"""The clause a new document of this kind starts with (its "offer this one first" clause),
+	if one is set, enabled and readable by the user: {name, terms}, or None."""
+	rows = frappe.get_list(
+		DOCTYPE,
+		filters={"custom_applicable_for": applicable_for, "custom_is_default": 1, "disabled": 0},
+		fields=["name", "terms"],
+		limit_page_length=1,
+	)
+	return rows[0] if rows else None
+
+
+@frappe.whitelist()
+def delete_terms(name: str):
 	doc = frappe.get_doc(DOCTYPE, name)
 	doc.check_permission("delete")
 	frappe.delete_doc(DOCTYPE, name)

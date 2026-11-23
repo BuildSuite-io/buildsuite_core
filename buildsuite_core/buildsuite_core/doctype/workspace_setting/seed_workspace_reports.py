@@ -33,6 +33,15 @@ REPORTS = (
 )
 
 
+# The Procurement tile for the Supplier Quotation Comparison (a bespoke in-app view). Named so
+# the patch that adds it to existing sites (patches.add_rfq_supplier_quotation) seeds the same row.
+SUPPLIER_QUOTATION_COMPARISON_TILE = {
+	"label": "Supplier quotation comparison",
+	"icon": "tag",
+	"route": "/procurement/supplier-quotation-comparison",
+	"description": "What each supplier quoted for a request, item by item, with the lowest rate on every line.",
+}
+
 # Former hardcoded workspace tiles (functional ones only — the "coming soon" placeholder
 # tiles had no destination and are dropped). Seeded as explicit routes / report references.
 _SEED = {
@@ -145,6 +154,7 @@ _SEED = {
 			"route": "/procurement/report/rate-check",
 			"description": "What you are paying against the QS rate in the Rate Master.",
 		},
+		SUPPLIER_QUOTATION_COMPARISON_TILE,
 		{
 			"label": "Purchase register",
 			"icon": "file-text",

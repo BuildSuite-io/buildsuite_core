@@ -26,7 +26,7 @@ const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextE
 const props = defineProps({ id: String });
 const router = useRouter();
 const confirmDialog = useConfirm();
-const { canEdit, canSubmit, canCreate, canDelete } = usePermissions();
+const { canEdit, canSubmit, canCreate, canDelete, canRead } = usePermissions();
 
 // Defer to an active Frappe Workflow on Purchase Order when one is configured — the
 // transition that submits still runs the doc's on_submit, so PO submit side effects are
@@ -308,6 +308,16 @@ const breadcrumbs = computed(() => [
 				<div class="text-sm text-ink-900 mt-0.5 truncate">
 					{{ po.supplier_name || po.supplier }}
 				</div>
+				<!-- The supplier quotation the order was raised from. -->
+				<div v-if="po.supplier_quotation" class="text-[10px] text-ink-500">
+					{{ __("From quotation") }}
+					<DeskLink
+						v-if="canRead('supplierQuotation')"
+						:to="`/procurement/supplier-quotations/${po.supplier_quotation}`"
+						>{{ po.supplier_quotation }}</DeskLink
+					>
+					<span v-else class="font-mono">{{ po.supplier_quotation }}</span>
+				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
 				<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -317,11 +327,10 @@ const breadcrumbs = computed(() => [
 					po.project_name || po.project
 				}}</DeskLink>
 				<div class="text-[10px] text-ink-500">
-					{{
-						po.schedule_date
-							? __("Required by {0}", [fmtDate(po.schedule_date)])
-							: fmtDate(po.transaction_date)
-					}}
+					{{ __("Ordered {0}", [fmtDate(po.transaction_date)])
+					}}<template v-if="po.schedule_date">
+						· {{ __("required by {0}", [fmtDate(po.schedule_date)]) }}</template
+					>
 				</div>
 				<div v-if="po.site_contact" class="text-[11px] text-ink-500 mt-0.5">
 					{{ __("Site contact: {0}", [po.site_contact.full_name])
@@ -336,6 +345,12 @@ const breadcrumbs = computed(() => [
 				</div>
 				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
 					{{ fmtINR(po.grand_total) }}
+				</div>
+				<div
+					v-if="po.total_taxes_and_charges"
+					class="text-[10px] text-ink-500 tabular-nums"
+				>
+					{{ __("incl. {0} tax", [fmtINR(po.total_taxes_and_charges)]) }}
 				</div>
 			</div>
 			<div class="bg-white border border-ink-200 rounded-lg p-3">
@@ -417,6 +432,28 @@ const breadcrumbs = computed(() => [
 					</tr>
 				</tbody>
 				<tfoot>
+					<!-- An order raised from a supplier quotation carries the taxes quoted: show the
+					     net and the tax, so the total below adds up. -->
+					<template v-if="po.total_taxes_and_charges">
+						<tr class="border-t-2 border-ink-200 bg-ink-50">
+							<td colspan="4" class="px-3 py-1.5 text-right text-xs text-ink-600">
+								{{ __("Net total") }}
+							</td>
+							<td class="px-3 py-1.5 text-right tabular-nums text-ink-700">
+								{{ fmtINR(po.total) }}
+							</td>
+							<td></td>
+						</tr>
+						<tr class="bg-ink-50">
+							<td colspan="4" class="px-3 py-1.5 text-right text-xs text-ink-600">
+								{{ __("Taxes and charges") }}
+							</td>
+							<td class="px-3 py-1.5 text-right tabular-nums text-ink-700">
+								{{ fmtINR(po.total_taxes_and_charges) }}
+							</td>
+							<td></td>
+						</tr>
+					</template>
 					<tr class="border-t-2 border-ink-200 bg-ink-50">
 						<td
 							colspan="4"

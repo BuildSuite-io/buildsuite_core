@@ -543,6 +543,158 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Request for Quotation (ERPNext's): a request is for ONE project, as a Material Request is, so
+	# the project sits on the parent (and anchors the company). `custom_closing_date` is the day
+	# suppliers are asked to reply by; ERPNext has only the date the material is required.
+	"Request for Quotation": [
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"insert_after": "naming_series",
+			"is_system_generated": 0,
+			"label": "Project",
+			"options": "Project",
+			"in_standard_filter": 1,
+			"read_only": 0,
+			# Required, as on Material Request: the company comes from the project, so a request
+			# made in Desk without one would fall back to the default company.
+			"reqd": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_closing_date",
+			"fieldtype": "Date",
+			"label": "Quote By",
+			"description": "The closing date suppliers are asked to reply by.",
+			"insert_after": "schedule_date",
+			"module": "BuildSuite Core",
+		},
+	],
+	# The person the request is addressed to, as typed on the request (the native `contact` Link
+	# stays the Supplier's Contact record), and when it was last emailed. Both change after submit:
+	# a wrong address is found when the mail is about to go.
+	"Request for Quotation Supplier": [
+		{
+			"fieldname": "custom_contact_person",
+			"fieldtype": "Data",
+			"label": "Contact Person",
+			"insert_after": "contact",
+			"allow_on_submit": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_email_sent_at",
+			"fieldtype": "Datetime",
+			"label": "Email Sent At",
+			"insert_after": "email_sent",
+			"read_only": 1,
+			"allow_on_submit": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# The BOQ cost code a requested line is for. Same four fields as Material Request Item /
+	# Purchase Order Item, so CostCodePicker.vue works unchanged; the code rides from the Material
+	# Request through the request and the supplier's quotation into the Purchase Order.
+	"Request for Quotation Item": [
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "uom",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Supplier Quotation (ERPNext's): the request it answers on the parent (ERPNext keeps it on
+	# the lines only), so lists, filters and the comparison can find a request's quotations; and
+	# the payment terms and remarks the supplier quoted under, as free text.
+	"Supplier Quotation": [
+		{
+			"fieldname": "custom_request_for_quotation",
+			"fieldtype": "Link",
+			"label": "Request for Quotation",
+			"options": "Request for Quotation",
+			"insert_after": "supplier_name",
+			"in_standard_filter": 1,
+			"read_only": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_payment_terms",
+			"fieldtype": "Data",
+			"label": "Payment Terms Quoted",
+			"insert_after": "quotation_number",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_supplier_notes",
+			"fieldtype": "Small Text",
+			"label": "Supplier's Notes",
+			"insert_after": "custom_payment_terms",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Supplier Quotation Item": [
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "uom",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order": [
 		{
 			"fieldname": "custom_rate_master_banner",
@@ -1057,9 +1209,19 @@ CUSTOM_FIELD = {
 			"fieldname": "custom_applicable_for",
 			"fieldtype": "Select",
 			"label": "Applicable For",
-			"options": "\nQuotation\nTender\nPurchase Order\nSubcontractor Work Order\nSubcontractor Bill\nSales Invoice\nPurchase Invoice",
+			"options": "\nQuotation\nTender\nRequest for Quotation\nPurchase Order\nSubcontractor Work Order\nSubcontractor Bill\nSales Invoice\nPurchase Invoice",
 			"insert_after": "title",
 			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			# The clause a new document of that kind starts with (one per "Applicable For"); the
+			# Terms settings screen's "Offer this one first".
+			"fieldname": "custom_is_default",
+			"fieldtype": "Check",
+			"label": "Offer This One First",
+			"insert_after": "custom_applicable_for",
+			"default": "0",
 			"module": "BuildSuite Core",
 		},
 	],

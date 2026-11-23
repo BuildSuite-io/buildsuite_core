@@ -414,7 +414,119 @@ _TENDER_HTML = """
 </div>
 """
 
+# The supplier's copy of a Request for Quotation. One request goes to several suppliers, so the
+# copy is addressed to `doc.vendor` (ERPNext's own "the supplier this print is for" field, set by
+# api.rfq for the print view and for each email's attachment), else to the first supplier asked.
+# It lists what to quote for and leaves the rate and delivery columns for the supplier to fill.
+_RFQ_CSS = (
+	_WO_CSS
+	+ """
+.bs-print .bs-metastrip.three { grid-template-columns: repeat(3, 1fr); }
+.bs-print .co-lines { font-size: 9pt; color: #475569; line-height: 1.5; margin-top: 4px; }
+.bs-print .co-lines .pre { white-space: pre-line; }
+.bs-print .bs-subject { font-size: 10.5pt; font-weight: 600; margin-bottom: 4px; }
+.bs-print .bs-message { font-size: 9.5pt; color: #334155; white-space: pre-line; line-height: 1.55; margin-bottom: 20px; }
+.bs-print table.bs-lines td.fill { border-left: 1px solid #e2e8f0; }
+/* A request's terms are a numbered list suppliers answer by number; the page it is shown in resets list markers. */
+.bs-print .bs-terms-text.bs-rich ol { list-style: decimal; padding-left: 18px; margin: 0; }
+.bs-print .bs-terms-text.bs-rich ul { list-style: disc; padding-left: 18px; margin: 0; }
+.bs-print .bs-terms-text.bs-rich li { margin-bottom: 3px; }
+"""
+)
+
+_RFQ_HTML = """
+{% set row = (doc.suppliers | selectattr("supplier", "equalto", doc.vendor) | list | first) if doc.vendor else (doc.suppliers | first) %}
+{% set sup = (frappe.db.get_value("Supplier", row.supplier, ["supplier_name", "mobile_no", "tax_id"], as_dict=True) if row else None) or {} %}
+{% set proj = (frappe.db.get_value("Project", doc.project, ["project_name", "custom_project_id", "location"], as_dict=True) if doc.project else None) or {} %}
+{% set co = (frappe.db.get_value("Company", doc.company, ["custom_letter_head_subtext", "tax_id", "registration_details", "phone_no", "email"], as_dict=True) if doc.company else None) or {} %}
+{% set co_text = co.custom_letter_head_subtext or "" %}
+{% set contact = (row.custom_contact_person or "") if row else "" %}
+{% set msg = (frappe.utils.strip_html(doc.message_for_supplier or "") if "<" in (doc.message_for_supplier or "") else (doc.message_for_supplier or "")).strip() %}
+{% set msg_lines = msg.split("\\n") %}
+<div class="bs-print">
+  <div class="bs-title-row">
+    <div class="bs-lh">{% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}</div>
+    <div class="bs-doc-ref">
+      <div class="bs-doc-title">REQUEST FOR QUOTATION</div>
+      {% if doc.docstatus == 0 %}<div class="bs-marker draft">Draft</div>
+      {% elif doc.docstatus == 2 %}<div class="bs-marker cancelled">Cancelled</div>{% endif %}
+      <div class="bold mono" style="margin-top:4px">{{ doc.name }}</div>
+      <div class="muted">{{ frappe.utils.formatdate(doc.transaction_date) }}</div>
+    </div>
+  </div>
+
+  <div class="bs-parties">
+    <div class="bs-party">
+      <div class="bs-label">From</div>
+      <div class="bs-name">{{ doc.company or "&mdash;" }}</div>
+      <div class="co-lines">
+        {% if co_text %}<div class="pre">{{ co_text }}</div>{% endif %}
+        {% if co.tax_id and co.tax_id not in co_text %}<div>GSTIN / Tax ID: {{ co.tax_id }}</div>{% endif %}
+        {% if co.phone_no and co.phone_no not in co_text %}<div>Phone: {{ co.phone_no }}</div>{% endif %}
+        {% if co.email and co.email not in co_text %}<div>Email: {{ co.email }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="bs-party">
+      <div class="bs-label">To &mdash; Supplier</div>
+      <div class="bs-name">{{ sup.supplier_name or (row.supplier if row else "&mdash;") }}</div>
+      {% if contact %}<div class="muted small" style="margin-top:2px">Attn: {{ contact }}</div>{% endif %}
+      {% if row and (sup.mobile_no or row.email_id) %}<div class="muted small" style="margin-top:4px">{% if sup.mobile_no %}{{ sup.mobile_no }}{% endif %}{% if sup.mobile_no and row.email_id %} &middot; {% endif %}{% if row.email_id %}{{ row.email_id }}{% endif %}</div>{% endif %}
+      {% if sup.tax_id %}<div class="muted small" style="margin-top:2px">GSTIN: {{ sup.tax_id }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="bs-metastrip three">
+    <div><div class="bs-label">Deliver to project</div><div class="bold">{{ proj.project_name or doc.project or "&mdash;" }}</div>{% if proj.custom_project_id or proj.location %}<div class="muted">{{ proj.custom_project_id or "" }}{% if proj.custom_project_id and proj.location %} &middot; {% endif %}{{ proj.location or "" }}</div>{% endif %}</div>
+    <div><div class="bs-label">Quote by</div><div class="bold">{{ frappe.utils.formatdate(doc.custom_closing_date) if doc.custom_closing_date else "&mdash;" }}</div></div>
+    <div><div class="bs-label">Material required by</div><div class="bold">{{ frappe.utils.formatdate(doc.schedule_date) if doc.schedule_date else "&mdash;" }}</div></div>
+  </div>
+
+  {% if doc.subject %}<div class="bs-subject">{{ doc.subject }}</div>{% endif %}
+  {# The copy greets the person it is addressed to, as the email does: a named contact replaces the message's own opening "Dear ..." line. #}
+  {% if msg or contact %}<div class="bs-message">{% if contact %}Dear {{ contact }},
+{% if msg_lines and msg_lines[0].lower().startswith("dear") %}{{ msg_lines[1:] | join("\\n") }}{% else %}
+{{ msg }}{% endif %}{% else %}{{ msg }}{% endif %}</div>{% endif %}
+
+  <div class="bs-h2">Items to quote</div>
+  <table class="bs-lines bordered">
+    <thead><tr><th class="l" style="width:24px">#</th><th class="l">Item</th><th class="l">Description</th><th class="r" style="width:64px">Qty</th><th class="l" style="width:56px">UOM</th><th class="r" style="width:90px">Your rate</th><th class="r" style="width:90px">Delivery</th></tr></thead>
+    <tbody>
+      {% for line in doc.items %}
+      {% set desc = (frappe.utils.strip_html(line.description or "") if "<" in (line.description or "") else (line.description or "")).strip() %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td>{{ line.item_name or line.item_code }}</td>
+        <td class="muted">{{ desc if desc and desc != line.item_name and desc != line.item_code else "&mdash;" }}</td>
+        <td class="r nums">{{ line.get_formatted("qty") }}</td>
+        <td>{{ line.uom or "" }}</td>
+        <td class="fill"></td>
+        <td class="fill"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if doc.terms %}
+  <div class="bs-h3">Terms &amp; conditions</div>
+  <div class="bs-terms-text{{ ' bs-rich' if '<' in (doc.terms or '') else '' }}" style="margin-bottom:24px;">{{ doc.terms }}</div>
+  {% endif %}
+
+  <div class="bs-sign">
+    <div class="c"><div class="sig">For {{ doc.company or "" }}</div><div class="muted small">Authorised signatory &middot; Date</div></div>
+    <div class="c"><div class="sig">For {{ sup.supplier_name or (row.supplier if row else "") }}</div><div class="muted small">Quotation reference &middot; Date</div></div>
+  </div>
+
+  <div class="bs-footer">{{ doc.name }} &middot; Generated {{ frappe.utils.format_datetime(frappe.utils.now()) }} using <span class="bold">BuildSuite</span></div>
+</div>
+"""
+
 _FORMATS = (
+	{
+		"name": "BuildSuite Request for Quotation",
+		"doc_type": "Request for Quotation",
+		"html": _RFQ_HTML,
+		"css": _RFQ_CSS,
+	},
 	{
 		"name": "BuildSuite Tax Invoice",
 		"doc_type": "Sales Invoice",

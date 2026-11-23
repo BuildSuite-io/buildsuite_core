@@ -72,7 +72,14 @@ async function load() {
 onMounted(load);
 
 // ---- editor ----
-const BLANK = { name: "", title: "", applicable_for: "", terms: "", disabled: false };
+const BLANK = {
+	name: "",
+	title: "",
+	applicable_for: "",
+	terms: "",
+	is_default: false,
+	disabled: false,
+};
 const form = reactive({ ...BLANK });
 const editing = ref(false);
 const error = ref("");
@@ -95,6 +102,7 @@ function startEdit(c) {
 		title: c.title,
 		applicable_for: c.custom_applicable_for || "",
 		terms: c.terms || "",
+		is_default: c.custom_is_default === 1,
 		disabled: c.disabled === 1,
 	});
 	error.value = "";
@@ -118,6 +126,7 @@ async function save() {
 			title: form.title,
 			applicable_for: form.applicable_for || undefined,
 			terms: form.terms || "",
+			is_default: form.is_default ? 1 : 0,
 			disabled: form.disabled ? 1 : 0,
 		});
 		if (form.applicable_for) activeCat.value = form.applicable_for;
@@ -284,10 +293,16 @@ const breadcrumbs = [
 					>
 						<RichTextEditor :key="editorKey" v-model="form.terms" min-height="12rem" />
 					</DeskField>
-					<label class="inline-flex items-center gap-2 text-xs text-ink-700 mt-3">
-						<input v-model="form.disabled" type="checkbox" />
-						<span>{{ __("Disabled (not offered on documents)") }}</span>
-					</label>
+					<div class="flex flex-wrap items-center gap-4 mt-3">
+						<label class="inline-flex items-center gap-2 text-xs text-ink-700">
+							<input v-model="form.is_default" type="checkbox" />
+							<span>{{ __("Offer this one first") }}</span>
+						</label>
+						<label class="inline-flex items-center gap-2 text-xs text-ink-700">
+							<input v-model="form.disabled" type="checkbox" />
+							<span>{{ __("Disabled (not offered on documents)") }}</span>
+						</label>
+					</div>
 					<p v-if="error" class="text-xs text-danger-700 mt-2">{{ error }}</p>
 					<div class="flex justify-end gap-2 mt-3">
 						<button
@@ -335,6 +350,12 @@ const breadcrumbs = [
 							</div>
 						</div>
 						<div class="flex items-center gap-1.5 shrink-0">
+							<span
+								v-if="c.custom_is_default === 1"
+								class="text-[10px] px-1.5 py-0.5 bg-success-50 text-success-700"
+								style="border-radius: 9999px"
+								>{{ __("Offered first") }}</span
+							>
 							<span
 								v-if="c.disabled === 1"
 								class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-600"

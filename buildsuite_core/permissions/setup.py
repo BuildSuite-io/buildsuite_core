@@ -154,6 +154,17 @@ PURCHASE_ORDER_ROLE_PERMS = {
 	"BuildSuite Store Keeper": _READ,
 	"BuildSuite Accountant": _READ,
 }
+# Request for Quotation + Supplier Quotation (and so their comparison): the admin, the Director
+# and the Procurement Officer ONLY, to read as well as to write. What competing suppliers quoted
+# is narrower than a purchase order: a PM, store keeper or accountant works from the order that
+# results, not from what the others quoted. One matrix for both doctypes, so they cannot drift.
+_RFQ_FULL = {**_FULL_SUB, "email": 1}  # CRWDSX + send it to the suppliers
+RFQ_ROLE_PERMS = {
+	"BuildSuite Administrator": _RFQ_FULL,
+	"BuildSuite Director": _RFQ_FULL,
+	"BuildSuite Procurement Officer": _RFQ_FULL,
+}
+RFQ_DOCTYPES = ("Request for Quotation", "Supplier Quotation")
 PURCHASE_RECEIPT_ROLE_PERMS = {
 	"BuildSuite Administrator": _FULL_SUB,
 	"BuildSuite Director": _READ,
@@ -345,6 +356,9 @@ _SUBMIT_PTYPES = (*_PTYPES, "submit", "cancel", "amend")
 # Picker-only reference masters carry `select` too — include it so a _SELECT grant sets select=1
 # AND clears read/report/export/print (which are in _PTYPES).
 _SELECT_PTYPES = (*_PTYPES, "select")
+# A Request for Quotation is emailed to its suppliers from its own page, which Frappe gates on
+# the `email` ptype; RFQ_ROLE_PERMS is _FULL_SUB plus that.
+_RFQ_PTYPES = (*_SUBMIT_PTYPES, "email")
 
 
 def _ensure_role(role_name):
@@ -488,6 +502,8 @@ def setup_purchase_stock_permissions():
 	"""BuildSuite-role DocPerms on the native ERPNext buying / stock doctypes."""
 	_apply_role_perms("Material Request", MATERIAL_REQUEST_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Purchase Order", PURCHASE_ORDER_ROLE_PERMS, _SUBMIT_PTYPES)
+	for doctype in RFQ_DOCTYPES:
+		_apply_role_perms(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
 	_apply_role_perms("Purchase Receipt", PURCHASE_RECEIPT_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Purchase Invoice", PURCHASE_INVOICE_ROLE_PERMS, _SUBMIT_PTYPES)
 	_apply_role_perms("Stock Entry", STOCK_ENTRY_ROLE_PERMS, _SUBMIT_PTYPES)
@@ -498,6 +514,63 @@ def setup_purchase_stock_permissions():
 	# ERPNext roles (Purchase User / Stock Manager / …) read Item Group, so a BuildSuite persona had
 	# no grant and the picker 403'd on a clean site.
 	_apply_role_perms("Item Group", {role: _SELECT for role in ITEM_ROLE_PERMS}, _SELECT_PTYPES)
+
+
+def grant_missing_rfq_permissions():
+	"""Existing sites: give the Request for Quotation / Supplier Quotation roles their default rule
+	where they have none (see _grant_missing_role_perms), and the read on those two doctypes' child
+	tables and the pick on their link targets that the screens need. Additive only: a rule a site
+	already has, shipped or edited, is left as it is; nothing is reset, lowered or deleted."""
+	child_targets, link_targets = {}, {}
+	for doctype in RFQ_DOCTYPES:
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		had_custom = frappe.db.exists("Custom DocPerm", {"parent": doctype})
+		_raise_pick_only_rules(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
+		_grant_missing_role_perms(doctype, RFQ_ROLE_PERMS, _RFQ_PTYPES)
+		if not had_custom:
+			# The first Custom DocPerm on a doctype overrides its standard perms, System Manager's
+			# included (see _grant_system_manager).
+			_grant_system_manager(doctype)
+		roles = {
+			role
+			for role in RFQ_ROLE_PERMS
+			if frappe.db.exists("Custom DocPerm", {"parent": doctype, "role": role, "read": 1})
+		}
+		meta = frappe.get_meta(doctype)
+		for df in meta.get_table_fields():
+			if df.options:
+				child_targets.setdefault(df.options, set()).update(roles)
+		for df in meta.get_link_fields():
+			if df.options and df.options not in _READ_MIRROR_DENYLIST:
+				link_targets.setdefault(df.options, set()).update(roles)
+	_grant_mirror_read(child_targets)
+	_grant_link_select(link_targets)
+
+
+def _raise_pick_only_rules(doctype, role_perms, ptypes):
+	"""For a PATCH: a role whose only rule on the doctype lets it pick the record in a link field
+	(no read, write, create, submit or delete) gets its default rights added to that rule.
+
+	_grant_missing_role_perms skips any role that already has a rule, but a pick-only rule is the
+	automatic one a link to the doctype brings (Purchase Order Item links Supplier Quotation, so
+	every persona has one there). Skipping those left no persona able to read supplier quotations
+	on existing sites. Rights are only ever raised, never lowered; a rule with any real right on
+	it, shipped or an admin's edit, is left exactly as it is."""
+	from frappe.permissions import update_permission_property
+
+	for role, perms in role_perms.items():
+		rule = frappe.db.get_value(
+			"Custom DocPerm",
+			{"parent": doctype, "role": role, "permlevel": 0},
+			["read", "write", "create", "submit", "delete"],
+			as_dict=True,
+		)
+		if not rule or any(rule.values()):
+			continue
+		for ptype in ptypes:
+			if perms.get(ptype):
+				update_permission_property(doctype, role, 0, ptype, 1, validate=False)
 
 
 def _readonly_mirror(role_perms):
@@ -1224,13 +1297,28 @@ def _grant_mirror_read(desired):
 		_upgrade_role_perms(ref, {role: {"read": 1} for role in missing}, ptypes=("read",))
 
 
+def _had_rule(doctype, roles):
+	"""The roles that already have a level-0 rule on `doctype`: a Custom DocPerm row, or, while the
+	doctype still runs on its standard permissions (no Custom DocPerm yet), a standard DocPerm row.
+	add_permission copies those standard rows in on the first change, so they count as existing."""
+	source = "Custom DocPerm" if frappe.db.exists("Custom DocPerm", {"parent": doctype}) else "DocPerm"
+	return set(
+		frappe.get_all(
+			source,
+			filters={"parent": doctype, "permlevel": 0, "role": ["in", list(roles)]},
+			pluck="role",
+		)
+	)
+
+
 def _grant_link_select(link_targets):
 	"""Grant `select` (pick-only) on each link target to the roles that lack it.
 
 	`add_permission` seeds read=1 on a fresh Custom DocPerm row — the exact over-grant we are
-	removing — so for a role that holds NO authored grant on the target (print=0) we strip that read
-	straight back off, leaving `select` alone. A role that already holds an authored grant (print=1,
-	e.g. Account, or Item/UOM via the mobile sheet) keeps its read; we only add select alongside it."""
+	removing — so on a row this call CREATES for a role with no authored grant (print=0) that read
+	is stripped straight back off, leaving `select` alone. A rule the role already had is never
+	lowered: its read stays whatever it was (an admin may have granted read without print), and
+	select is only added alongside it."""
 	if not link_targets:
 		return
 	have_select, have_authored = {}, {}
@@ -1250,8 +1338,9 @@ def _grant_link_select(link_targets):
 			continue
 		if not frappe.db.exists("DocType", ref) or frappe.get_meta(ref).issingle:
 			continue
+		existing = _had_rule(ref, missing)
 		_upgrade_role_perms(ref, {role: {"select": 1} for role in missing}, ptypes=("select",))
-		for role in missing - have_authored.get(ref, set()):
+		for role in missing - have_authored.get(ref, set()) - existing:
 			# pick-only role: drop the read add_permission seeded so this reference is select-only.
 			frappe.db.set_value(
 				"Custom DocPerm",

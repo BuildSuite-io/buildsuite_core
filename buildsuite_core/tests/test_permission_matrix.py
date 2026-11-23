@@ -238,6 +238,13 @@ REPORT_MATRIX = {
 		"System Manager (Admin)",
 		"BuildSuite Administrator",
 	},
+	# Procurement > Supplier Quotation Comparison (an anchor for the bespoke Vue report).
+	"BuildSuite Supplier Quotation Comparison": {
+		"Director / Owner",
+		"Procurement Officer",
+		"System Manager (Admin)",
+		"BuildSuite Administrator",
+	},
 }
 
 
@@ -294,6 +301,8 @@ _NONSUB_UNIVERSE = "crwd"
 #   Payment Entry backs the Supplier/Customer "advances" (there is no Advance doctype).
 PERSONA_CRUD_MATRIX = {
 	"Director / Owner": {
+		"Request for Quotation": "crwdsx",
+		"Supplier Quotation": "crwdsx",
 		"Subcontractor Work Order": "crwdsx",
 		"Measurement Book": "r",
 		"Subcontractor Bill": "r",
@@ -312,6 +321,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "crwd",  # Sales > Leads — full
 	},
 	"Foreman / Supervisor": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Lead": "",  # Sales > Leads — no access
 		"Purchase Invoice": "",  # Supplier Bill — no access at all (not even read)
 		"Employee": "r",  # Field Employee — read-only
@@ -324,6 +335,8 @@ PERSONA_CRUD_MATRIX = {
 		"Project": "r",  # must read Project or the project-field selector is empty
 	},
 	"Project Manager": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Supplier": "crw",  # Subcontractor — maintain, but no delete
 		"Subcontractor Work Order": "crwdsx",  # full — PM owns the commitment doc
 		"Subcontractor Bill": "crw",  # prepare bills; QS/Procurement submit, so no D/S/X
@@ -341,6 +354,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "r",  # Sales > Leads — read-only (a quotation's lead on their project)
 	},
 	"Store Keeper": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Supplier": "r",  # read-only — Store Keeper reads suppliers in its receipt/custody context
 		"Purchase Invoice": "r",  # Supplier Bill — read-only, no create
 		"Payment Entry": "",  # advances — no access at all
@@ -351,6 +366,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "",  # Sales > Leads — no access
 	},
 	"Procurement Officer": {
+		"Request for Quotation": "crwdsx",
+		"Supplier Quotation": "crwdsx",
 		"Subcontractor Work Order": "crwdsx",  # full — Procurement owns the commitment doc
 		"Measurement Book": "",  # no access at all
 		"Subcontractor Bill": "crw",  # prepares bills; QS submits, so no D/S/X
@@ -367,6 +384,8 @@ PERSONA_CRUD_MATRIX = {
 	# access" therefore can't be asserted at the DocPerm layer; the Subcontractors / Supplier-Bill
 	# SCREENS are hidden at the Vue layer (roles.js) instead.
 	"Quantity Surveyor": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Supplier": "crwd",  # full — QS maintains subcontractors (per the QS ruling)
 		"Subcontractor Work Order": "crwdsx",  # full
 		"Subcontractor Bill": "crwdsx",  # full — QS raises + submits progress bills
@@ -379,6 +398,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "crwd",  # Sales > Leads — manages them (converting needs Customer create: no)
 	},
 	"Site Engineer": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Measurement Book": "cr",  # raise only — create + read, no edit/delete/certify
 		"Payment Entry": "",  # advances — no access
 		"Employee": "crw",  # Field Employee — create + edit, no delete
@@ -396,6 +417,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "",  # Sales > Leads — no access
 	},
 	"Estimator": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Supplier": "r",  # read-only
 		"Subcontractor Work Order": "r",  # read-only
 		"Measurement Book": "r",  # read-only
@@ -411,6 +434,8 @@ PERSONA_CRUD_MATRIX = {
 	# linked-master read-mirror (HR reads Project/Employee), so a hard "no access" can't be
 	# asserted at the DocPerm layer — the Customer/Supplier SCREENS are hidden at the Vue layer.
 	"HR Manager": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Employee": "crwd",  # Field Employee — full
 		"Crew": "crwd",  # full
 		"Labour Attendance Register": "crd",  # keeps the books: add + delete, no edit
@@ -425,6 +450,8 @@ PERSONA_CRUD_MATRIX = {
 		"Lead": "",  # Sales > Leads — no access
 	},
 	"Accountant": {
+		"Request for Quotation": "",  # RFQ / quotations: Director + Procurement only
+		"Supplier Quotation": "",
 		"Supplier": "crwd",  # full — maintains subcontractors
 		"Subcontractor Work Order": "r",  # read-only
 		"Measurement Book": "r",  # read-only

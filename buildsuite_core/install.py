@@ -135,6 +135,7 @@ def seed_master_data():
 
 	seed_employee_accounting_dimension()
 	seed_invoice_terms()
+	seed_rfq_terms()
 	seed_finance_accounts()
 	seed_lead_sources()
 
@@ -218,6 +219,54 @@ def seed_lead_sources():
 		if not frappe.db.exists("UTM Source", source):
 			# UTM Source is named by prompt: the name IS the source.
 			frappe.get_doc({"doctype": "UTM Source", "name": source}).insert(ignore_permissions=True)
+
+
+# The standard clause a new Request for Quotation starts with ("Offer this one first" under
+# Settings > Terms & conditions). Rich text: it prints on the request each supplier receives.
+RFQ_TERMS_TITLE = "Request for Quotation: standard terms"
+RFQ_TERMS = """<ol>
+<li><strong>Reference and closing date.</strong> Quote against the request number above and send
+your quotation by the "Quote by" date. A late quotation may not be considered.</li>
+<li><strong>Validity.</strong> Your quotation stays valid for at least 30 days from its date.</li>
+<li><strong>Prices.</strong> Quote a rate per unit for each item, in the currency of this request,
+including packing, loading, transport and unloading at the project site. Show applicable taxes
+separately.</li>
+<li><strong>Specification.</strong> Supply material that meets the description and any standard
+given for each item, and state the make or brand offered. Test certificates are to come with the
+delivery where the item calls for them.</li>
+<li><strong>Delivery.</strong> State your lead time from the date of order. Deliveries are to the
+project site during working hours; part deliveries are accepted unless the order says otherwise.</li>
+<li><strong>Part quotations.</strong> You may quote for some items only; leave out the ones you
+cannot supply. We may order all, part, or none of the items, and may order items from different
+suppliers.</li>
+<li><strong>Payment.</strong> State your payment terms. Payment is made against your invoice and
+the material received at site.</li>
+<li><strong>No commitment.</strong> This request and your quotation do not commit either side. An
+order is placed only by our purchase order.</li>
+</ol>"""
+
+
+def seed_rfq_terms():
+	"""Seed the standard Request for Quotation clause (idempotent: created only if missing, so an
+	admin's edits survive). It is the default ("Offer this one first") unless the site already has
+	another Request for Quotation clause marked default."""
+	if frappe.db.exists("Terms and Conditions", RFQ_TERMS_TITLE):
+		return
+	has_default = frappe.db.exists(
+		"Terms and Conditions",
+		{"custom_applicable_for": "Request for Quotation", "custom_is_default": 1},
+	)
+	frappe.get_doc(
+		{
+			"doctype": "Terms and Conditions",
+			"title": RFQ_TERMS_TITLE,
+			"custom_applicable_for": "Request for Quotation",
+			"custom_is_default": 0 if has_default else 1,
+			"buying": 1,
+			"selling": 0,
+			"terms": RFQ_TERMS,
+		}
+	).insert(ignore_permissions=True)
 
 
 def seed_invoice_terms():

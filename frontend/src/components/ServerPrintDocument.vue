@@ -18,6 +18,11 @@ const props = defineProps({
 	name: { type: String, required: true },
 	backTo: { type: String, default: "" },
 	backLabel: { type: String, default: "Back" },
+	// Optional: fetch the print HTML some other way, as `async () => ({ html, style })`. For a
+	// document that prints one copy per party (a Request for Quotation, addressed to one of its
+	// suppliers) the caller passes a loader for the copy picked; a new function reloads the view.
+	// Unset, the doctype's default Print Format is rendered, as before.
+	loader: { type: Function, default: null },
 });
 const router = useRouter();
 
@@ -38,21 +43,28 @@ function goBack() {
 	if (props.backTo) router.push(props.backTo);
 }
 
+// Each load is numbered; only the latest one may write, so a slow earlier response (e.g. the
+// copy for the supplier picked before) can't land on top of the one now asked for.
+let latest = 0;
 async function load() {
+	const mine = ++latest;
 	loading.value = true;
 	html.value = "";
 	style.value = "";
 	try {
-		const res = await getPrintHtml(props.doctype, props.name);
+		const res = props.loader
+			? await props.loader()
+			: await getPrintHtml(props.doctype, props.name);
+		if (mine !== latest) return;
 		html.value = res?.html || "";
 		style.value = res?.style || "";
 	} catch (err) {
-		showToast(err.message || "Failed to load print", "error");
+		if (mine === latest) showToast(err.message || "Failed to load print", "error");
 	} finally {
-		loading.value = false;
+		if (mine === latest) loading.value = false;
 	}
 }
-watch(() => [props.doctype, props.name], load, { immediate: true });
+watch(() => [props.doctype, props.name, props.loader], load, { immediate: true });
 </script>
 
 <template>
@@ -67,6 +79,8 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 				>
 					<span>←</span><span>{{ backLabel }}</span>
 				</button>
+				<!-- Extra controls for this document (e.g. which supplier the copy is for). -->
+				<slot name="controls" />
 				<button
 					v-if="html"
 					@click="printDoc"
@@ -91,8 +105,14 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 					</svg>
 					<span>Export PDF</span>
 				</button>
+				<slot name="actions" />
 			</div>
 		</header>
+
+		<!-- Shown above the document on screen, never printed (e.g. the email that carries it). -->
+		<div v-if="$slots.above" class="max-w-4xl mx-auto px-6 pt-6 print:hidden">
+			<slot name="above" />
+		</div>
 
 		<!-- ===== Document (Frappe print format HTML + its style) ===== -->
 		<main
@@ -113,11 +133,7 @@ watch(() => [props.doctype, props.name], load, { immediate: true });
 				No printable document for <span class="font-mono">{{ name }}</span
 				>.
 			</div>
-			<button
-				v-if="backTo"
-				@click="goBack"
-				class="text-xs text-brand-700 hover:underline"
-			>
+			<button v-if="backTo" @click="goBack" class="text-xs text-brand-700 hover:underline">
 				← {{ backLabel }}
 			</button>
 		</main>

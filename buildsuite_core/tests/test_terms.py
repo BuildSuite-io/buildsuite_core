@@ -5,7 +5,7 @@ manage the native Terms and Conditions doctype; every other role gets select-onl
 
 import frappe
 
-from buildsuite_core.api.terms import list_terms, save_terms, terms_access
+from buildsuite_core.api.terms import default_terms, list_terms, save_terms, terms_access
 from buildsuite_core.permissions.setup import setup_terms_permissions
 from buildsuite_core.tests.base import BuildSuiteTestCase
 
@@ -85,3 +85,59 @@ class TestTerms(BuildSuiteTestCase):
 			self.assertEqual(list_terms(), [])  # no read perm → empty, not a 403
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_one_default_per_kind_and_the_new_document_gets_it(self):
+		"""'Offer this one first': at most one clause per kind is the default; a new document of
+		that kind starts with it, and a disabled default isn't offered."""
+		frappe.db.set_value(
+			DOCTYPE, {"custom_applicable_for": "Request for Quotation"}, "custom_is_default", 0
+		)
+		first = save_terms(
+			title=f"RFQ terms A {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Quote valid 30 days.</p>",
+			is_default=1,
+		)["name"]
+		self.assertEqual(default_terms("Request for Quotation")["name"], first)
+
+		second = save_terms(
+			title=f"RFQ terms B {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Quote valid 15 days.</p>",
+			is_default=1,
+		)["name"]
+		self.assertEqual(
+			default_terms("Request for Quotation"), {"name": second, "terms": "<p>Quote valid 15 days.</p>"}
+		)
+		self.assertEqual(frappe.db.get_value(DOCTYPE, first, "custom_is_default"), 0)
+
+		frappe.db.set_value(DOCTYPE, second, "disabled", 1)
+		self.assertIsNone(default_terms("Request for Quotation"))
+
+	def test_the_standard_rfq_clause_is_seeded_as_the_default(self):
+		"""A site gets one standard Request for Quotation clause, offered first; seeding again
+		keeps it as it is and doesn't make a second default."""
+		from buildsuite_core.install import RFQ_TERMS_TITLE, seed_rfq_terms
+
+		frappe.delete_doc(DOCTYPE, RFQ_TERMS_TITLE, force=1, ignore_missing=True)
+		frappe.db.set_value(
+			DOCTYPE, {"custom_applicable_for": "Request for Quotation"}, "custom_is_default", 0
+		)
+		seed_rfq_terms()
+		self.assertEqual(default_terms("Request for Quotation")["name"], RFQ_TERMS_TITLE)
+
+		frappe.db.set_value(DOCTYPE, RFQ_TERMS_TITLE, "terms", "<p>Edited by an admin.</p>")
+		seed_rfq_terms()
+		self.assertEqual(frappe.db.get_value(DOCTYPE, RFQ_TERMS_TITLE, "terms"), "<p>Edited by an admin.</p>")
+
+		# Another clause already the default: a freshly seeded standard clause is not.
+		frappe.delete_doc(DOCTYPE, RFQ_TERMS_TITLE, force=1)
+		mine = save_terms(
+			title=f"Our RFQ terms {frappe.generate_hash(length=4)}",
+			applicable_for="Request for Quotation",
+			terms="<p>Ours.</p>",
+			is_default=1,
+		)["name"]
+		seed_rfq_terms()
+		self.assertEqual(default_terms("Request for Quotation")["name"], mine)
+		self.assertEqual(frappe.db.get_value(DOCTYPE, RFQ_TERMS_TITLE, "custom_is_default"), 0)

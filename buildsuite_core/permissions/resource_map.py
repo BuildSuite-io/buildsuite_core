@@ -37,6 +37,8 @@ RESOURCE_DOCTYPES = {
 	"sco": "Scope Change Order",
 	# Procurement
 	"materialRequest": "Material Request",
+	"rfq": "Request for Quotation",
+	"supplierQuotation": "Supplier Quotation",
 	"purchaseOrder": "Purchase Order",
 	"purchaseReceipt": "Purchase Receipt",
 	"materialConsumption": "Stock Entry",  # type "Material Issue"
@@ -94,6 +96,8 @@ SHORTCUT_ROUTE_RESOURCES = {
 	"/estimate-template": "estimateTemplate",
 	# Procurement
 	"/procurement/material-requests": "materialRequest",
+	"/procurement/rfqs": "rfq",
+	"/procurement/supplier-quotations": "supplierQuotation",
 	"/procurement/purchase-orders": "purchaseOrder",
 	"/procurement/receipts": "purchaseReceipt",
 	"/items": "item",
