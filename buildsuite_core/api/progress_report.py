@@ -65,8 +65,29 @@ def _in(d, start, end):
 	return bool(d) and start <= getdate(d) <= end
 
 
+def _company_branding(company):
+	"""The issuing company's branding as its Letter Head shows it (seed_print_assets.rebuild_letter_head):
+	the logo and subtext set under Settings > Company > Branding (custom fields), falling back to
+	ERPNext's own Company logo. Read without a permission check: it is what every print of the
+	company's documents already shows."""
+	if not company or not frappe.db.exists("Company", company):
+		return None
+	meta = frappe.get_meta("Company")
+	fields = ["company_name", "company_logo"] + [
+		f for f in ("custom_company_logo", "custom_letter_head_subtext") if meta.has_field(f)
+	]
+	row = frappe.db.get_value("Company", company, fields, as_dict=True)
+	return frappe._dict(
+		company_name=row.company_name,
+		logo=row.get("custom_company_logo") or row.company_logo or None,
+		subtext=row.get("custom_letter_head_subtext") or None,
+	)
+
+
 @frappe.whitelist()
-def get_progress_report(project: str, period: str = "weekly", date: str | None = None, audience: str = "client"):
+def get_progress_report(
+	project: str, period: str = "weekly", date: str | None = None, audience: str = "client"
+):
 	if not project or not frappe.db.exists("Project", project):
 		frappe.throw(frappe._("Project not found."))
 	period = period if period in _SPANS else "weekly"
@@ -385,11 +406,7 @@ def get_progress_report(project: str, period: str = "weekly", date: str | None =
 	variations_value = sum(s["impact"] for s in variations if s["status"] == "Approved")
 
 	# --- issuing company (letterhead) ---
-	company_row = (
-		frappe.db.get_value("Company", proj.company, ["company_name", "company_logo"], as_dict=True)
-		if proj.company
-		else None
-	)
+	company_row = _company_branding(proj.company)
 
 	# --- look-ahead: tasks due in the next same-length window ---
 	la_start = add_days(end, 1)
@@ -422,7 +439,8 @@ def get_progress_report(project: str, period: str = "weekly", date: str | None =
 		},
 		"company": {
 			"name": (company_row.company_name if company_row else None) or proj.company or "BuildSuite",
-			"logo": company_row.company_logo if company_row else None,
+			"logo": company_row.logo if company_row else None,
+			"subtext": company_row.subtext if company_row else None,
 		},
 		"audience": audience,
 		"period": period,

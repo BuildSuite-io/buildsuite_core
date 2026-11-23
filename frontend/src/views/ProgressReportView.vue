@@ -249,9 +249,7 @@ const photoCap = computed(() => PHOTO_CAP[period.value] ?? 12);
 const shownPhotos = computed(() =>
 	showAllPhotos.value ? photos.value : photos.value.slice(0, photoCap.value)
 );
-const photosCurated = computed(
-	() => !showAllPhotos.value && photos.value.length > photoCap.value
-);
+const photosCurated = computed(() => !showAllPhotos.value && photos.value.length > photoCap.value);
 // Distinct activities (by task caption) the photos span — for the curation caption.
 const photoActivityCount = computed(() => new Set(photos.value.map((p) => p.caption)).size);
 // The grid densifies as the set grows: a few photos get room; many go compact. Print
@@ -259,9 +257,16 @@ const photoActivityCount = computed(() => new Set(photos.value.map((p) => p.capt
 //   ≤4 → 2-up large · ≤9 → 3-up medium · 10+ → 4-up compact
 const photoLayout = computed(() => {
 	const n = shownPhotos.value.length;
-	if (n <= 4) return { grid: "grid-cols-1 sm:grid-cols-2", img: "h-52", cols: 2, printH: "58mm" };
-	if (n <= 9) return { grid: "grid-cols-2 sm:grid-cols-3", img: "h-36", cols: 3, printH: "40mm" };
-	return { grid: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", img: "h-28", cols: 4, printH: "30mm" };
+	if (n <= 4)
+		return { grid: "grid-cols-1 sm:grid-cols-2", img: "h-52", cols: 2, printH: "58mm" };
+	if (n <= 9)
+		return { grid: "grid-cols-2 sm:grid-cols-3", img: "h-36", cols: 3, printH: "40mm" };
+	return {
+		grid: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+		img: "h-28",
+		cols: 4,
+		printH: "30mm",
+	};
 });
 
 function generatedOnLabel() {
@@ -375,7 +380,12 @@ function backToProject() {
 				class="report-section mb-5 flex items-center gap-2 px-3 py-2 rounded-lg bg-warning-50 border border-warning-200"
 			>
 				<span class="text-[11px] text-warning-700">
-					<strong>{{ __("Internal report.") }}</strong> {{ __("Contains supplier pricing and procurement commitments — not for issue to the client. Switch to the client audience before sharing.") }}
+					<strong>{{ __("Internal report.") }}</strong>
+					{{
+						__(
+							"Contains supplier pricing and procurement commitments — not for issue to the client. Switch to the client audience before sharing."
+						)
+					}}
 				</span>
 			</div>
 
@@ -400,8 +410,11 @@ function backToProject() {
 					<div class="text-lg font-semibold text-ink-900 leading-tight">
 						{{ company.name }}
 					</div>
-					<div class="text-[11px] text-ink-500 mt-0.5">
-						{{ __("Registered office address · GSTIN · Contact") }}
+					<div
+						v-if="company.subtext"
+						class="text-[11px] text-ink-500 mt-0.5 whitespace-pre-line"
+					>
+						{{ company.subtext }}
 					</div>
 				</div>
 			</section>
@@ -409,27 +422,47 @@ function backToProject() {
 			<!-- Cover header — title band -->
 			<section class="report-section mb-6 rounded-xl overflow-hidden border border-ink-200">
 				<div class="px-5 py-4 bg-ink-900 text-white">
-					<div class="text-[10px] uppercase tracking-[0.18em] text-white/70">{{ periodLabel }}</div>
+					<div class="text-[10px] uppercase tracking-[0.18em] text-white/70">
+						{{ periodLabel }}
+					</div>
 					<h1 class="text-2xl font-semibold mt-1 leading-tight">{{ project.name }}</h1>
-					<div class="text-sm text-white/80 mt-1">{{ project.client || "—" }} · {{ project.code }}</div>
+					<div class="text-sm text-white/80 mt-1">
+						{{ project.client || "—" }} · {{ project.code }}
+					</div>
 				</div>
 				<div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-ink-100 bg-white">
 					<div class="px-4 py-3">
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">{{ __("Reporting period") }}</div>
-						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ fmtDate(window_.start) }} → {{ fmtDate(window_.end) }}</div>
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
+							{{ __("Reporting period") }}
+						</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">
+							{{ fmtDate(window_.start) }} → {{ fmtDate(window_.end) }}
+						</div>
 					</div>
 					<div class="px-4 py-3">
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">{{ __("Contract programme") }}</div>
-						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ fmtDate(project.start_date) }} → {{ fmtDate(project.end_date) }}</div>
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
+							{{ __("Contract programme") }}
+						</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">
+							{{ fmtDate(project.start_date) }} → {{ fmtDate(project.end_date) }}
+						</div>
 					</div>
 					<div class="px-4 py-3">
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">{{ __("Project Manager") }}</div>
-						<div class="text-ink-900 font-medium mt-0.5 text-xs">{{ project.pm_name || "—" }}</div>
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
+							{{ __("Project Manager") }}
+						</div>
+						<div class="text-ink-900 font-medium mt-0.5 text-xs">
+							{{ project.pm_name || "—" }}
+						</div>
 					</div>
 					<div class="px-4 py-3">
-						<div class="text-ink-500 uppercase tracking-wider text-[10px]">{{ __("Progress") }}</div>
+						<div class="text-ink-500 uppercase tracking-wider text-[10px]">
+							{{ __("Progress") }}
+						</div>
 						<div class="flex items-baseline gap-1.5 mt-0.5">
-							<span class="text-ink-900 font-semibold tabular-nums">{{ programme.actual }}%</span>
+							<span class="text-ink-900 font-semibold tabular-nums"
+								>{{ programme.actual }}%</span
+							>
 							<StatusBadge :status="project.status" />
 						</div>
 					</div>
@@ -562,7 +595,9 @@ function backToProject() {
 						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
 							{{ kpis.tasks_completed }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-0.5">{{ __("in this period") }}</div>
+						<div class="text-[10px] text-ink-400 mt-0.5">
+							{{ __("in this period") }}
+						</div>
 					</div>
 					<div v-if="!isClient" class="p-3 border border-ink-200 rounded-lg">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -571,7 +606,9 @@ function backToProject() {
 						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
 							{{ kpis.entries }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-0.5">{{ __("site updates filed") }}</div>
+						<div class="text-[10px] text-ink-400 mt-0.5">
+							{{ __("site updates filed") }}
+						</div>
 					</div>
 					<div
 						class="card p-3 border border-ink-200 border-l-2 border-l-brand-500 rounded-lg"
@@ -583,7 +620,8 @@ function backToProject() {
 							{{ labour.total }}
 						</div>
 						<div class="text-[10px] text-ink-400 mt-0.5">
-							{{ labour.skilled }} {{ __("skilled") }} · {{ labour.unskilled }} {{ __("unskilled") }}
+							{{ labour.skilled }} {{ __("skilled") }} · {{ labour.unskilled }}
+							{{ __("unskilled") }}
 						</div>
 					</div>
 					<div
@@ -595,7 +633,9 @@ function backToProject() {
 						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
 							{{ kpis.deliveries }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-0.5">{{ __("goods receipts") }}</div>
+						<div class="text-[10px] text-ink-400 mt-0.5">
+							{{ __("goods receipts") }}
+						</div>
 					</div>
 					<!-- Commercial: internal only. -->
 					<div v-if="!isClient" class="p-3 border border-ink-200 rounded-lg">
@@ -606,7 +646,8 @@ function backToProject() {
 							{{ fmtCompactINR(kpis.po_value) }}
 						</div>
 						<div class="text-[10px] text-ink-400 mt-0.5">
-							{{ kpis.po_count }} PO{{ kpis.po_count === 1 ? "" : "s" }} {{ __("placed") }}
+							{{ kpis.po_count }} PO{{ kpis.po_count === 1 ? "" : "s" }}
+							{{ __("placed") }}
 						</div>
 					</div>
 					<div
@@ -619,7 +660,8 @@ function backToProject() {
 							{{ isClient ? variations.items.length : kpis.scope_changes }}
 						</div>
 						<div class="text-[10px] text-ink-400 mt-0.5">
-							{{ kpis.scos_approved }} {{ __("approved") }} · {{ kpis.scos_pending }} {{ __("pending") }}
+							{{ kpis.scos_approved }} {{ __("approved") }} ·
+							{{ kpis.scos_pending }} {{ __("pending") }}
 						</div>
 					</div>
 					<div
@@ -635,7 +677,9 @@ function backToProject() {
 						>
 							{{ kpis.blockers }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-0.5">{{ __("via progress entries") }}</div>
+						<div class="text-[10px] text-ink-400 mt-0.5">
+							{{ __("via progress entries") }}
+						</div>
 					</div>
 					<div class="p-3 border border-ink-200 rounded-lg">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -644,7 +688,9 @@ function backToProject() {
 						<div class="text-xl font-semibold text-ink-900 tabular-nums mt-1">
 							{{ kpis.attachments }}
 						</div>
-						<div class="text-[10px] text-ink-400 mt-0.5">{{ __("files uploaded") }}</div>
+						<div class="text-[10px] text-ink-400 mt-0.5">
+							{{ __("files uploaded") }}
+						</div>
 					</div>
 				</div>
 			</section>
@@ -703,79 +749,168 @@ function backToProject() {
 
 				<!-- Current stage(s) get the space; the rest is context underneath. -->
 				<div v-if="currentStages.length" class="mb-3">
-					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">
+					<div
+						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5"
+					>
 						{{ __("Current stage") }}{{ currentStages.length === 1 ? "" : "s" }}
 					</div>
 					<div class="grid grid-cols-1 gap-3">
-						<div v-for="s in currentStages" :key="s.id" class="card p-4 border border-brand-200 bg-brand-50/30 rounded-lg">
+						<div
+							v-for="s in currentStages"
+							:key="s.id"
+							class="card p-4 border border-brand-200 bg-brand-50/30 rounded-lg"
+						>
 							<div class="flex items-start justify-between gap-3 mb-2">
 								<div class="min-w-0">
-									<div class="text-base font-semibold text-ink-900">{{ s.name }}</div>
+									<div class="text-base font-semibold text-ink-900">
+										{{ s.name }}
+									</div>
 									<div class="text-[11px] text-ink-600 mt-0.5">
-										{{ fmtDate(s.planned_start) }} → {{ fmtDate(s.planned_end) }}
-										<template v-if="s.days_left !== null && s.days_left !== undefined">
+										{{ fmtDate(s.planned_start) }} →
+										{{ fmtDate(s.planned_end) }}
+										<template
+											v-if="
+												s.days_left !== null && s.days_left !== undefined
+											"
+										>
 											·
-											<span :class="s.days_left < 0 ? 'text-danger-700 font-medium' : 'text-ink-600'">
-												{{ s.days_left >= 0 ? `${s.days_left} day${s.days_left === 1 ? "" : "s"} remaining` : `${-s.days_left} days overdue` }}
+											<span
+												:class="
+													s.days_left < 0
+														? 'text-danger-700 font-medium'
+														: 'text-ink-600'
+												"
+											>
+												{{
+													s.days_left >= 0
+														? `${s.days_left} day${
+																s.days_left === 1 ? "" : "s"
+														  } remaining`
+														: `${-s.days_left} days overdue`
+												}}
 											</span>
 										</template>
 									</div>
 								</div>
 								<div class="text-right flex-shrink-0">
-									<div class="text-2xl font-semibold text-ink-900 tabular-nums leading-none">
+									<div
+										class="text-2xl font-semibold text-ink-900 tabular-nums leading-none"
+									>
 										<template v-if="s.pct !== null">{{ s.pct }}%</template>
 										<span v-else class="text-ink-400 text-base">—</span>
 									</div>
-									<div class="text-[10px] uppercase tracking-wider text-ink-500 mt-1">{{ __("complete") }}</div>
+									<div
+										class="text-[10px] uppercase tracking-wider text-ink-500 mt-1"
+									>
+										{{ __("complete") }}
+									</div>
 								</div>
 							</div>
-							<div class="h-2.5 bg-white border border-ink-200 rounded-full overflow-hidden">
-								<div class="h-full rounded-full" :class="STAGE_BAR[s.state]" :style="`width:${s.pct || 0}%`"></div>
+							<div
+								class="h-2.5 bg-white border border-ink-200 rounded-full overflow-hidden"
+							>
+								<div
+									class="h-full rounded-full"
+									:class="STAGE_BAR[s.state]"
+									:style="`width:${s.pct || 0}%`"
+								></div>
 							</div>
-							<div class="flex items-center justify-between text-[11px] text-ink-600 mt-1.5">
-								<span>{{ s.done_count }} of {{ s.task_count }} activit{{ s.task_count === 1 ? "y" : "ies" }} complete</span>
-								<span :class="['px-2 py-0.5 rounded-full font-medium', STAGE_TONE[s.state]]">{{ __(s.state) }}</span>
+							<div
+								class="flex items-center justify-between text-[11px] text-ink-600 mt-1.5"
+							>
+								<span
+									>{{ s.done_count }} of {{ s.task_count }} activit{{
+										s.task_count === 1 ? "y" : "ies"
+									}}
+									complete</span
+								>
+								<span
+									:class="[
+										'px-2 py-0.5 rounded-full font-medium',
+										STAGE_TONE[s.state],
+									]"
+									>{{ __(s.state) }}</span
+								>
 							</div>
-							<div v-if="s.description" class="text-xs text-ink-700 mt-2">{{ s.description }}</div>
+							<div v-if="s.description" class="text-xs text-ink-700 mt-2">
+								{{ s.description }}
+							</div>
 						</div>
 					</div>
 				</div>
 
 				<!-- Remaining stages that touch the period -->
 				<div v-if="otherStages.length">
-					<div v-if="currentStages.length" class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5">
+					<div
+						v-if="currentStages.length"
+						class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1.5"
+					>
 						{{ __("Other stages in this period") }}
 					</div>
 					<div class="card border border-ink-200 rounded-lg overflow-hidden">
 						<table class="w-full text-xs">
-							<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+							<thead
+								class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]"
+							>
 								<tr>
 									<th class="text-left px-3 py-2">{{ __("Stage") }}</th>
 									<th class="text-left px-3 py-2">{{ __("Planned") }}</th>
-									<th class="text-left px-3 py-2 w-32">{{ __("Completion") }}</th>
+									<th class="text-left px-3 py-2 w-32">
+										{{ __("Completion") }}
+									</th>
 									<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 								</tr>
 							</thead>
 							<tbody>
-								<tr v-for="s in otherStages" :key="s.id" class="border-t border-ink-100">
+								<tr
+									v-for="s in otherStages"
+									:key="s.id"
+									class="border-t border-ink-100"
+								>
 									<td class="px-3 py-2 text-ink-900">
 										{{ s.name }}
-										<span v-if="!isClient && s.workflow_state && s.workflow_state !== 'Approved'" class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-warning-50 text-warning-700">{{ __("plan") }} {{ s.workflow_state.toLowerCase() }}</span>
+										<span
+											v-if="
+												!isClient &&
+												s.workflow_state &&
+												s.workflow_state !== 'Approved'
+											"
+											class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-warning-50 text-warning-700"
+											>{{ __("plan") }}
+											{{ s.workflow_state.toLowerCase() }}</span
+										>
 									</td>
-									<td class="px-3 py-2 text-ink-500 whitespace-nowrap">{{ fmtDate(s.planned_start) }} → {{ fmtDate(s.planned_end) }}</td>
+									<td class="px-3 py-2 text-ink-500 whitespace-nowrap">
+										{{ fmtDate(s.planned_start) }} →
+										{{ fmtDate(s.planned_end) }}
+									</td>
 									<td class="px-3 py-2">
 										<div class="flex items-center gap-2">
-											<div class="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden">
-												<div class="h-full rounded-full" :class="STAGE_BAR[s.state]" :style="`width:${s.pct || 0}%`"></div>
+											<div
+												class="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden"
+											>
+												<div
+													class="h-full rounded-full"
+													:class="STAGE_BAR[s.state]"
+													:style="`width:${s.pct || 0}%`"
+												></div>
 											</div>
 											<span class="tabular-nums text-ink-700 w-9 text-right">
-												<template v-if="s.pct !== null">{{ s.pct }}%</template>
+												<template v-if="s.pct !== null"
+													>{{ s.pct }}%</template
+												>
 												<template v-else>—</template>
 											</span>
 										</div>
 									</td>
 									<td class="px-3 py-2">
-										<span :class="['text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap', STAGE_TONE[s.state]]">{{ __(s.state) }}</span>
+										<span
+											:class="[
+												'text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
+												STAGE_TONE[s.state],
+											]"
+											>{{ __(s.state) }}</span
+										>
 									</td>
 								</tr>
 							</tbody>
@@ -783,12 +918,19 @@ function backToProject() {
 					</div>
 				</div>
 
-				<div v-if="![...currentStages, ...otherStages].length" class="text-xs text-ink-500 italic">{{ __("No stages touch this period.") }}</div>
+				<div
+					v-if="![...currentStages, ...otherStages].length"
+					class="text-xs text-ink-500 italic"
+				>
+					{{ __("No stages touch this period.") }}
+				</div>
 			</section>
 
 			<!-- Materials (deliveries always; commercial figures internal only) -->
 			<section class="report-section mb-6 page-break-inside-avoid">
-				<h2 class="rpt-h2">{{ isClient ? __("Materials received on site") : __("Materials") }}</h2>
+				<h2 class="rpt-h2">
+					{{ isClient ? __("Materials received on site") : __("Materials") }}
+				</h2>
 				<div v-if="!isClient" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
 					<div class="p-3 border border-ink-200 rounded-lg">
 						<div class="text-[10px] uppercase tracking-wider text-ink-500">
@@ -827,7 +969,9 @@ function backToProject() {
 							<tr>
 								<th class="text-left px-3 py-2">{{ __("Date") }}</th>
 								<th class="text-left px-3 py-2">{{ __("Item") }}</th>
-								<th v-if="!isClient" class="text-left px-3 py-2">{{ __("Supplier") }}</th>
+								<th v-if="!isClient" class="text-left px-3 py-2">
+									{{ __("Supplier") }}
+								</th>
 								<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
 								<th class="text-left px-3 py-2">{{ __("Status") }}</th>
 							</tr>
@@ -946,7 +1090,9 @@ function backToProject() {
 
 			<!-- Delays & constraints -->
 			<section v-if="report.blockers.length" class="report-section mb-6">
-				<h2 class="rpt-h2">{{ isClient ? __("Delays & constraints") : __("Issues raised") }}</h2>
+				<h2 class="rpt-h2">
+					{{ isClient ? __("Delays & constraints") : __("Issues raised") }}
+				</h2>
 				<ul class="space-y-2">
 					<li
 						v-for="b in report.blockers"
@@ -970,7 +1116,8 @@ function backToProject() {
 			<!-- Look-ahead -->
 			<section class="report-section mb-6">
 				<h2 class="rpt-h2">
-					{{ __("Coming up") }} · {{ fmtDate(lookAhead.start) }} → {{ fmtDate(lookAhead.end) }}
+					{{ __("Coming up") }} · {{ fmtDate(lookAhead.start) }} →
+					{{ fmtDate(lookAhead.end) }}
 				</h2>
 				<div
 					v-if="report.look_ahead_tasks.length"
@@ -1021,13 +1168,15 @@ function backToProject() {
 				>
 					<p class="text-[11px] text-ink-500">
 						<template v-if="photosCurated">
-							Showing {{ shownPhotos.length }} of {{ photos.length }} photographs — a spread across
-							{{ photoActivityCount }} activit{{ photoActivityCount === 1 ? "y" : "ies" }} recorded in
-							this period.
+							Showing {{ shownPhotos.length }} of {{ photos.length }} photographs — a
+							spread across {{ photoActivityCount }} activit{{
+								photoActivityCount === 1 ? "y" : "ies"
+							}}
+							recorded in this period.
 						</template>
 						<template v-else>
-							{{ photos.length }} photograph{{ photos.length === 1 ? "" : "s" }} recorded in this
-							period.
+							{{ photos.length }} photograph{{ photos.length === 1 ? "" : "s" }}
+							recorded in this period.
 						</template>
 					</p>
 					<button
@@ -1036,7 +1185,11 @@ function backToProject() {
 						class="print:hidden text-[11px] text-brand-700 hover:underline"
 						@click="showAllPhotos = !showAllPhotos"
 					>
-						{{ showAllPhotos ? __("Show a selection ({0})", [photoCap]) : __("Show all {0}", [photos.length]) }}
+						{{
+							showAllPhotos
+								? __("Show a selection ({0})", [photoCap])
+								: __("Show all {0}", [photos.length])
+						}}
 					</button>
 				</div>
 
@@ -1082,9 +1235,12 @@ function backToProject() {
 							<span class="text-[10px]">{{ __("Photograph on file") }}</span>
 						</div>
 						<figcaption class="px-2 py-1.5 border-t border-ink-100">
-							<div class="text-[10px] font-medium text-ink-800 truncate">{{ p.caption }}</div>
+							<div class="text-[10px] font-medium text-ink-800 truncate">
+								{{ p.caption }}
+							</div>
 							<div class="text-[10px] text-ink-500 truncate">
-								{{ fmtDate(p.taken_on) }}<template v-if="p.by"> · {{ p.by }}</template>
+								{{ fmtDate(p.taken_on)
+								}}<template v-if="p.by"> · {{ p.by }}</template>
 							</div>
 						</figcaption>
 					</figure>
@@ -1098,10 +1254,19 @@ function backToProject() {
 			     to say who stands behind it and be acknowledgeable. -->
 			<section v-if="isClient" class="report-section report-signatures mt-8">
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-					<div v-for="sig in [__('Prepared by'), __('Reviewed by'), __('Acknowledged by client')]" :key="sig">
+					<div
+						v-for="sig in [
+							__('Prepared by'),
+							__('Reviewed by'),
+							__('Acknowledged by client'),
+						]"
+						:key="sig"
+					>
 						<div class="h-12 border-b border-ink-400"></div>
 						<div class="text-[11px] text-ink-600 mt-1.5">{{ sig }}</div>
-						<div class="text-[10px] text-ink-400">{{ __("Name · Signature · Date") }}</div>
+						<div class="text-[10px] text-ink-400">
+							{{ __("Name · Signature · Date") }}
+						</div>
 					</div>
 				</div>
 			</section>
@@ -1114,8 +1279,11 @@ function backToProject() {
 					<div>{{ company.name }} · {{ project.code }}</div>
 				</div>
 				<!-- Attribution line closing the document. -->
-				<div class="mt-3 pt-3 border-t border-ink-100 text-center text-[10px] text-ink-400">
-					{{ __("Generated using") }} <span class="font-semibold text-brand-600">BuildSuite</span>
+				<div
+					class="mt-3 pt-3 border-t border-ink-100 text-center text-[10px] text-ink-400"
+				>
+					{{ __("Generated using") }}
+					<span class="font-semibold text-brand-600">BuildSuite</span>
 				</div>
 			</footer>
 		</main>

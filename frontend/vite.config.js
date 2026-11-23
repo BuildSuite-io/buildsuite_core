@@ -112,6 +112,11 @@ export default defineConfig(({ command }) => ({
 				changeOrigin: true,
 				secure: false,
 			},
+			// Uploaded files (company logos, attachments) live on the Frappe site too. Without
+			// this the dev server answers /files/... with the SPA's index.html, so every uploaded
+			// image shows broken in dev (production serves both from the same origin).
+			"/files": { target: frappeBackend(), changeOrigin: true, secure: false },
+			"/private/files": { target: frappeBackend(), changeOrigin: true, secure: false },
 		},
 	},
 }));
