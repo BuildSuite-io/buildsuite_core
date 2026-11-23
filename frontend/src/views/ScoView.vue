@@ -12,6 +12,8 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
 import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
 import { useProjectOptions } from "@/composables/useProjectOptions";
+import { useProjectNames } from "@/composables/useProjectNames";
+import UserAvatar from "@/components/UserAvatar.vue";
 import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { fmtINR, fmtCompactINR, fmtDate } from "@/utils/format";
@@ -46,6 +48,8 @@ const filterValues = computed(() => ({
 }));
 const filterFieldMap = { project: "project", status: "status" };
 
+const { projectNamesMap } = useProjectNames();
+
 const FIELDS = [
 	"name",
 	"project",
@@ -67,6 +71,7 @@ const columns = [
 	{ key: "impact", label: __("Impact"), align: "right" },
 	{ key: "recoverable", label: __("Recoverable") },
 	{ key: "status", label: __("Status") },
+	{ key: "raised_by", label: __("Raised by") },
 	{ key: "raised_date", label: __("Date") },
 ];
 
@@ -171,7 +176,10 @@ function onRowClick(row) {
 				<span class="text-ink-900 font-medium text-sm">{{ row.title }}</span>
 			</template>
 			<template #cell-project="{ row }">
-				<span class="text-ink-700 text-xs">{{ row.project_name || row.project }}</span>
+				<!-- The project's current name (the stored project_name can be empty or stale). -->
+				<span class="text-ink-700 text-xs">{{
+					projectNamesMap[row.project] || row.project_name || row.project
+				}}</span>
 			</template>
 			<template #cell-type="{ row }">
 				<span class="text-ink-700 text-xs">{{ __(row.type) }}</span>
@@ -199,6 +207,10 @@ function onRowClick(row) {
 			</template>
 			<template #cell-status="{ row }">
 				<StatusBadge :status="row.status" />
+			</template>
+			<template #cell-raised_by="{ row }">
+				<UserAvatar v-if="row.raised_by" :user-id="row.raised_by" size="xs" />
+				<span v-else class="text-ink-400">—</span>
 			</template>
 			<template #cell-raised_date="{ row }">
 				<span class="text-xs text-ink-500">{{ fmtDate(row.raised_date) }}</span>
