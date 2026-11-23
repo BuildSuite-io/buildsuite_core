@@ -187,10 +187,11 @@ override_doctype_class = {  # nosemgrep: override-doctype-class -- intentional, 
 # Hook on document methods and events
 
 doc_events = {
-	# Team-scoped workflow notifications: for the document types listed in Project Settings, the
-	# next step's role holders on the project team are notified when the workflow state changes
-	# (utils.team_workflow_notifications). Any other document type returns at once.
+	# Team-scoped workflow notifications (utils.team_workflow_notifications): for a workflow ticked
+	# "Team-scoped notifications", the next step's users are notified, following their persona's
+	# project-team setting. A document type without such a workflow returns at once.
 	"*": {"on_change": "buildsuite_core.utils.team_workflow_notifications.notify_on_workflow_change"},
+	"Workflow": {"validate": "buildsuite_core.utils.team_workflow_notifications.workflow_validate"},
 	# Resend as an Email Account service: pin the account to Resend's SMTP relay before core's
 	# validate tests the connection.
 	"Email Account": {"before_validate": "buildsuite_core.resend.account.apply_resend_defaults"},

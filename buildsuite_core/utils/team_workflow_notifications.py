@@ -3,41 +3,37 @@
 
 """Team-scoped workflow notifications.
 
-For each document type listed under Project Settings > Team-scoped workflow notifications: when a
-document's workflow state changes, the users who can act next are notified in-app (Notification Log,
-so the BuildSuite bell and Desk, emailed per each user's own notification settings). Only those of
-them on the document's project team are told; when nobody with that role is on the team (or the
-document has no project), everyone with the role who can read the document is told, so an approval
-is never left with nobody aware of it.
+Two switches:
+- Workflow.custom_team_scoped_notifications (on the Workflow form): which workflows use this. Their
+  own Frappe email alert is switched off when ticked (workflow_validate), so nobody is told twice.
+- Persona.team_scoped_notifications: whose notifications follow the project team.
 
-Built on public Frappe mechanisms only (a doc_events hook, the workflow's own next-transition lookup,
-Notification Log): Frappe's workflow itself (states, transitions, Workflow Action, its optional
-"Send Email Alert") is untouched. A document type not in the list is skipped at once."""
+When a document of a ticked workflow reaches a state marked "Send Email" (the workflow's own per-state
+setting), the users who can act next (the next transitions' roles) are notified in-app (Notification
+Log: the BuildSuite bell and Desk, emailed per each user's notification settings):
+- a user whose persona follows the project team, and who is on at least one project team, only when
+  they are on this document's project team;
+- everyone else holding the role, as usual (including a team-scoped user not on any team yet);
+- if that leaves nobody for the role (or the document has no project), all its holders, so an
+  approval is never missed.
+Only users who can read the document, and never the user who just moved it.
+
+Built on public Frappe mechanisms only (doc_events, the workflow's next-transition lookup,
+Notification Log): nothing in Frappe/ERPNext is overridden. It reads only on a workflow state change,
+through Frappe's document cache for the workflow and personas, so it needs no cache of its own."""
 
 import frappe
 from frappe import _
 
-CACHE_KEY = "buildsuite_team_scoped_workflows"
-SETTINGS = "Project Settings"
+WORKFLOW_FLAG = "custom_team_scoped_notifications"
+PERSONA_FLAG = "team_scoped_notifications"
 
 
-def team_scoped_doctypes():
-	"""The document types listed in Project Settings (cached; cleared when the settings are saved)."""
-
-	def load():
-		if not frappe.db.exists("DocType", "Team Scoped Workflow"):
-			return []
-		return frappe.get_all(
-			"Team Scoped Workflow",
-			filters={"parenttype": SETTINGS, "parent": SETTINGS, "parentfield": "team_scoped_workflows"},
-			pluck="document_type",
-		)
-
-	return frappe.cache.get_value(CACHE_KEY, generator=load) or []
-
-
-def clear_cache():
-	frappe.cache.delete_value(CACHE_KEY)
+def workflow_validate(doc, method=None):
+	"""Workflow validate: a team-scoped workflow's notifications are sent by BuildSuite, so its own
+	Frappe email alert (which goes to every holder of the role) is switched off."""
+	if doc.get(WORKFLOW_FLAG) and doc.send_email_alert:
+		doc.send_email_alert = 0
 
 
 def _project_of(doc):
@@ -51,23 +47,38 @@ def _project_of(doc):
 	return None
 
 
-def _next_roles(doc, workflow):
-	"""The roles that can act on the document in its new state (the workflow's own lookup)."""
+def _next_roles(doc, workflow, state):
+	"""The roles that can act on the document in this state (the workflow's own lookup)."""
 	try:
-		from frappe.workflow.doctype.workflow_action.workflow_action import (
-			get_doc_workflow_state,
-			get_next_possible_transitions,
-		)
-	except ImportError:  # an older / newer Frappe without these helpers: no team notifications
-		return set(), None
-	state = get_doc_workflow_state(doc)
+		from frappe.workflow.doctype.workflow_action.workflow_action import get_next_possible_transitions
+	except ImportError:  # a Frappe without this helper: no team-scoped notifications
+		return set()
 	transitions = get_next_possible_transitions(workflow, state, doc) or []
-	return {t.allowed for t in transitions if t.get("allowed")}, state
+	return {t.allowed for t in transitions if t.get("allowed")}
+
+
+def _team_scoped_users(users):
+	"""The users among `users` whose persona follows the project team AND who are on a team."""
+	personas = dict(
+		frappe.get_all(
+			"User", filters={"name": ["in", list(users)]}, fields=["name", "persona"], as_list=True
+		)
+	)
+	flagged = {u for u, p in personas.items() if p and frappe.get_cached_value("Persona", p, PERSONA_FLAG)}
+	if not flagged:
+		return set()
+	return set(
+		frappe.get_all(
+			"Project Team",
+			filters={"user": ["in", list(flagged)], "parenttype": "Project"},
+			pluck="user",
+			distinct=True,
+		)
+	)
 
 
 def recipients(doc, roles):
-	"""Per role: its holders on the project's team, else all its holders; only users who can read
-	the document, never the user who just moved it."""
+	"""Who is told about the document's next step: see the module docstring."""
 	from frappe.utils.user import get_users_with_role
 
 	project = _project_of(doc)
@@ -81,32 +92,37 @@ def recipients(doc, roles):
 	actor = frappe.session.user
 	out = set()
 	for role in roles:
-		holders = [u for u in get_users_with_role(role) if u not in ("Administrator", "Guest")]
-		on_team = [u for u in holders if u in team]
-		for user in on_team or holders:
+		holders = {u for u in get_users_with_role(role) if u not in ("Administrator", "Guest")}
+		if not holders:
+			continue
+		scoped = _team_scoped_users(holders) if project else set()
+		chosen = {u for u in holders if u not in scoped or u in team} or holders
+		for user in chosen:
 			if user != actor and frappe.has_permission(doc.doctype, "read", doc=doc, user=user):
 				out.add(user)
 	return out
 
 
 def notify_on_workflow_change(doc, method=None):
-	"""doc_events["*"]["on_change"]: notify the project team when a listed document's workflow
-	state changes."""
-	if doc.doctype not in team_scoped_doctypes():
-		return
+	"""doc_events["*"]["on_change"]: for a team-scoped workflow, notify the next step's users when the
+	document reaches a state marked "Send Email"."""
 	from frappe.model.workflow import get_workflow_name
 
-	workflow = get_workflow_name(doc.doctype)
+	workflow = get_workflow_name(doc.doctype)  # cached by Frappe; None for most document types
 	if not workflow:
 		return
-	state_field = frappe.get_cached_value("Workflow", workflow, "workflow_state_field") or "workflow_state"
+	wf = frappe.get_cached_doc("Workflow", workflow)
+	if not wf.get(WORKFLOW_FLAG):
+		return
+	state_field = wf.workflow_state_field or "workflow_state"
 	if not doc.has_value_changed(state_field):
 		return
-
-	roles, state = _next_roles(doc, workflow)
-	if not roles:
+	state = doc.get(state_field)
+	if not any(s.state == state and s.send_email for s in wf.states):
 		return
-	users = recipients(doc, roles)
+
+	roles = _next_roles(doc, workflow, state)
+	users = recipients(doc, roles) if roles else set()
 	if not users:
 		return
 

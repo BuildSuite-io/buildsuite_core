@@ -55,30 +55,17 @@ def _rows(parenttype, parentfield, parent):
 # --------------------------------------------------------------------------- #
 # Level 1 — site-wide template
 # --------------------------------------------------------------------------- #
-def _workflow_doctypes():
-	"""Document types that have a workflow (active or not): the ones that can be team-scoped."""
-	return sorted(set(frappe.get_all("Workflow", pluck="document_type")))
-
-
 @frappe.whitelist()
 def get_project_settings():
-	"""The tab template: {tabs: {tabId: shown}}, plus the team-scoped workflow document types and
-	the document types that have a workflow to choose from. Any signed-in user (the project view
-	resolves visibility against it)."""
-	from buildsuite_core.utils.team_workflow_notifications import team_scoped_doctypes
-
-	return {
-		"tabs": _rows(SETTINGS, "tab_defaults", SETTINGS),
-		"team_scoped_workflows": team_scoped_doctypes(),
-		"workflow_doctypes": _workflow_doctypes(),
-	}
+	"""The tab template: {tabs: {tabId: shown}}. Any signed-in user (the project view resolves
+	visibility against it)."""
+	return {"tabs": _rows(SETTINGS, "tab_defaults", SETTINGS)}
 
 
 @frappe.whitelist()
-def set_project_settings(tabs: str | dict | None = None, team_scoped_workflows: str | list | None = None):
-	"""Replace the tab template, and (when given) the team-scoped workflow document types. Admin
-	only. `tabs` = {tabId: shown}; a tab absent from the map is treated as shown.
-	`team_scoped_workflows` = [document type]; left out, the list is kept as it is."""
+def set_project_settings(tabs=None):
+	"""Replace the tab template. Admin only. `tabs` = {tabId: shown}; a tab absent from the map is
+	treated as shown."""
 	_require_admin()
 	tabs = frappe.parse_json(tabs) or {}
 	doc = frappe.get_single(SETTINGS)
@@ -87,18 +74,6 @@ def set_project_settings(tabs: str | dict | None = None, team_scoped_workflows: 
 		doc.append(
 			"tab_defaults", {"tab": tab_id, "label": label, "shown": 1 if tabs.get(tab_id, True) else 0}
 		)
-	if team_scoped_workflows is not None:
-		chosen = (
-			frappe.parse_json(team_scoped_workflows)
-			if isinstance(team_scoped_workflows, str)
-			else team_scoped_workflows
-		)
-		allowed = set(_workflow_doctypes())
-		doc.set("team_scoped_workflows", [])
-		for dt in dict.fromkeys(chosen or []):
-			if dt not in allowed:
-				frappe.throw(_("{0} has no workflow to team-scope.").format(dt))
-			doc.append("team_scoped_workflows", {"document_type": dt})
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return get_project_settings()

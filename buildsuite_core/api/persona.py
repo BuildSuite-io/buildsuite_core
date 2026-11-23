@@ -31,6 +31,7 @@ def _serialize(doc):
 		"sort_order": doc.sort_order,
 		"is_default": doc.is_default,
 		"project_visibility": doc.project_visibility,
+		"team_scoped_notifications": doc.get("team_scoped_notifications") or 0,
 		"roles": [r.role for r in doc.roles],
 	}
 
@@ -91,6 +92,7 @@ def save_persona(
 	sort_order: int = 0,
 	roles: str | None = None,
 	project_visibility: str | None = None,
+	team_scoped_notifications: int | str | None = None,
 ):
 	"""Create or update a persona. The persona_name is the record key and is only
 	settable on create (renaming would orphan the User.persona links that point at
@@ -117,6 +119,8 @@ def save_persona(
 	if project_visibility:
 		# The doctype's Select validation rejects anything that is not one of its options.
 		doc.project_visibility = project_visibility
+	if team_scoped_notifications is not None:
+		doc.team_scoped_notifications = 1 if cint(team_scoped_notifications) else 0
 
 	doc.set("roles", [])
 	for role in roles:

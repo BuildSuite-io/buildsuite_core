@@ -5,9 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "tabs_section",
-  "tab_defaults",
-  "workflow_section",
-  "team_scoped_workflows"
+  "tab_defaults"
  ],
  "fields": [
   {
@@ -21,24 +19,12 @@
    "fieldtype": "Table",
    "label": "Tab Defaults",
    "options": "Project Tab Visibility"
-  },
-  {
-   "fieldname": "workflow_section",
-   "fieldtype": "Section Break",
-   "label": "Workflow notifications"
-  },
-  {
-   "fieldname": "team_scoped_workflows",
-   "fieldtype": "Table MultiSelect",
-   "label": "Team-scoped Workflow Notifications",
-   "options": "Team Scoped Workflow",
-   "description": "Document types whose workflow notifications go to the project team: when a document reaches a state, the users who can act next are told only if they are on its project's team; when nobody with that role is on the team, everyone with the role is told."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-23 12:00:00.000000",
+ "modified": "2026-09-24 00:00:00",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Project Settings",

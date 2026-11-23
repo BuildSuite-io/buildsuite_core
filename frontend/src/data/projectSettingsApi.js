@@ -20,14 +20,8 @@ async function call(method, args) {
 export const getProjectSettings = () => call("get_project_settings");
 
 // Replace the template (admin only). `tabs` = { tabId: shown }.
-export const setProjectSettings = (tabs, teamScopedWorkflows) =>
-	call("set_project_settings", {
-		tabs: JSON.stringify(tabs || {}),
-		// Left out (undefined), the server keeps the team-scoped workflow list as it is.
-		...(teamScopedWorkflows
-			? { team_scoped_workflows: JSON.stringify(teamScopedWorkflows) }
-			: {}),
-	});
+export const setProjectSettings = (tabs) =>
+	call("set_project_settings", { tabs: JSON.stringify(tabs || {}) });
 
 // A project's sparse overrides: { tabId: shown } for tabs it explicitly Shows/Hides.
 export const getProjectTabOverrides = (project) => call("get_project_tab_overrides", { project });
