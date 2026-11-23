@@ -22,7 +22,11 @@ import DeskTextarea from "@/components/desk/DeskTextarea.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
+import { useUserNames } from "@/composables/useUserNames";
 import { __ } from "@/utils/translate";
+
+// Users show by full name, never by their email id.
+const { userName } = useUserNames();
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -350,7 +354,7 @@ const breadcrumbs = computed(() => [
 						{{ __("Raised") }}
 					</div>
 					<div class="text-sm text-ink-900 mt-0.5 truncate">
-						{{ sco.raised_by || "—" }}
+						{{ userName(sco.raised_by) || "—" }}
 					</div>
 					<div class="text-[10px] text-ink-500">{{ fmtDate(sco.raised_date) }}</div>
 				</div>
@@ -410,7 +414,7 @@ const breadcrumbs = computed(() => [
 						class="flex items-start gap-1.5 text-xs flex-wrap"
 					>
 						<span class="font-medium text-ink-800">{{ __(a.action) }}</span>
-						<span class="text-ink-500">{{ __("by {0}", [a.user]) }}</span>
+						<span class="text-ink-500">{{ __("by {0}", [userName(a.user)]) }}</span>
 						<span class="text-ink-400">
 							· {{ a.activity_on ? fmtDate(a.activity_on.slice(0, 10)) : "" }}</span
 						>

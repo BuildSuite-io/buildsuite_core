@@ -25,9 +25,10 @@ export function useUserNames() {
 		const adapter = createDataAdapter(useDataStore());
 		_resource = adapter.list("User", {
 			fields: ["name", "full_name", "user_image"],
-			filters: [["enabled", "=", 1]],
-			pageLength: 0, // every enabled user — the map must resolve any assignee
-			cache: "buildsuite-user-directory",
+			// Disabled users too: their past entries, comments and approvals must still read
+			// by name, not email. This map only resolves names; it is not a picker.
+			pageLength: 0,
+			cache: "buildsuite-user-directory-all",
 		});
 	}
 
