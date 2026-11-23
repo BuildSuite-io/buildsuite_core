@@ -85,12 +85,13 @@ function assignedUser(row) {
 }
 
 // Honor ?status= deep links from the dashboards. "open" = the one definition of an open task
-// (home.py _OPEN_TASK_FILTERS): Task Status not Completed, templates excluded; "overdue" = open and
+// (home.py _OPEN_TASK_FILTERS): on a project, Task Status not Completed, templates excluded; "overdue" = open and
 // past its end date. Both become base filters; any real status just seeds the status chip.
 const route = useRoute();
 const OPEN_TASK_FILTERS = [
 	["task_status", "!=", "Completed"],
 	["is_template", "=", 0],
+	["project", "is", "set"],
 ];
 const queryStatus = route.query.status || "";
 if (queryStatus && queryStatus !== "open" && queryStatus !== "overdue") {

@@ -27,11 +27,16 @@ _BOQ_RANK = {"Approved": 2, "Submitted": 1}
 _PROJECT_LIMIT = 12
 _TASK_LIMIT = 6
 _SCO_LIMIT = 8
-# One definition of an OPEN task, shared by Home, the Tasks list it opens and Insights: a task the
-# user can see whose BuildSuite Task Status is not Completed, templates excluded, with or without a
-# project. (ERPNext's own `status` is not used: it can disagree with the Task Status users set.)
+# One definition of an OPEN task, shared by Home and the Tasks list it opens: a task the user can
+# see, on a project (BuildSuite works with project tasks only), whose BuildSuite Task Status is not
+# Completed, templates excluded. (ERPNext's own `status` is not used: it can disagree with the Task
+# Status users set.)
 _CLOSED_TASK_STATUS = ("Completed",)
-_OPEN_TASK_FILTERS = {"task_status": ["not in", list(_CLOSED_TASK_STATUS)], "is_template": 0}
+_OPEN_TASK_FILTERS = {
+	"task_status": ["not in", list(_CLOSED_TASK_STATUS)],
+	"is_template": 0,
+	"project": ["is", "set"],
+}
 
 # Roles that see the whole company (no team scoping) — mirrors permissions._is_scoped.
 _ADMIN_ROLES = ("admin", "bsa")
@@ -166,6 +171,7 @@ def _open_tasks_link(overdue_before=None):
 	filters = [
 		["task_status", "not in", list(_CLOSED_TASK_STATUS)],
 		["is_template", "=", 0],
+		["project", "is", "set"],
 	]
 	if overdue_before:
 		filters.append(["exp_end_date", "<", overdue_before])
