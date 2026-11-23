@@ -764,6 +764,32 @@ def save_purchase_receipt(
 
 
 @frappe.whitelist()
+def receipt_purchase_orders(names: str | list | None = None):
+	"""{receipt: [purchase orders]} for the receipts the list is showing: ERPNext keeps the PO on
+	each receipt LINE (a receipt can take lines from several orders), not on the receipt. Only the
+	receipts the user may read are answered; a receipt with no PO maps to []."""
+	names = frappe.parse_json(names) if isinstance(names, str) else names
+	names = [n for n in (names or []) if isinstance(n, str)][:500]
+	if not names:
+		return {}
+	readable = frappe.get_list(
+		PURCHASE_RECEIPT, filters={"name": ["in", names]}, pluck="name", limit_page_length=0
+	)
+	out = {n: [] for n in readable}
+	if not readable:
+		return out
+	for row in frappe.get_all(
+		"Purchase Receipt Item",
+		filters={"parent": ["in", readable], "parenttype": PURCHASE_RECEIPT},
+		fields=["parent", "purchase_order"],
+		order_by="parent, idx",
+	):
+		if row.purchase_order and row.purchase_order not in out[row.parent]:
+			out[row.parent].append(row.purchase_order)
+	return out
+
+
+@frappe.whitelist()
 def get_purchase_receipt(name: str):
 	doc = frappe.get_doc(PURCHASE_RECEIPT, name)
 	doc.check_permission("read")

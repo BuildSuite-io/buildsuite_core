@@ -786,6 +786,13 @@ watch(effectiveTotalRows, (n) => emit("total-change", n), { immediate: true });
 // The search box, for a parent whose summary figures should follow it (register subtitles).
 watch(search, (value) => emit("search-change", value));
 
+// Whether DeskList draws its pager — the same rule (DeskList.showPagination): a server-paged list
+// once it has more rows than the smallest page size, or is already past page 1.
+const pagerShown = computed(
+	() =>
+		props.paginated &&
+		(currentPage.value > 1 || effectiveTotalRows.value > Math.min(...props.pageSizeOptions))
+);
 const listCountText = computed(() => {
 	if (!props.paginated) {
 		return `${filteredRows.value.length} of ${resource.data?.length ?? 0}`;
@@ -990,6 +997,10 @@ function onPageSizeChange(value) {
 			</template>
 		</DeskList>
 
-		<div class="mt-2 text-xs text-ink-500 tabular-nums">{{ listCountText }}</div>
+		<!-- The count line only when the list has no pager: the pager's own "Showing 1–10 of N"
+		     already says it (two counts read as a mistake). -->
+		<div v-if="!pagerShown" class="mt-2 text-xs text-ink-500 tabular-nums">
+			{{ listCountText }}
+		</div>
 	</div>
 </template>

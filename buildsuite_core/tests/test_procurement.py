@@ -192,3 +192,21 @@ class TestProcurementDashboard(BuildSuiteTestCase):
 		self.assertIsNotNone(receipt)
 		self.assertEqual(receipt["status"], "Full")
 		self.assertEqual(receipt["item_count"], 1)
+
+	def test_receipt_purchase_orders_reads_the_po_off_the_lines(self):
+		"""The receipts list's PO column: a receipt made from an order lists it; one with no order
+		lists none (the list shows "No PO — resolve")."""
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
+
+		from buildsuite_core.api.procurement_docs import receipt_purchase_orders
+
+		project = self._make_project(company=self.company).name
+		supplier, item = self._supplier().name, self._item().name
+		po = self._submit_po(project, supplier, item, qty=2)
+		from_po = make_purchase_receipt(po.name)
+		from_po.insert(ignore_permissions=True)
+		direct = self._submit_pr(project, supplier, item)
+
+		out = receipt_purchase_orders(frappe.as_json([from_po.name, direct.name]))
+		self.assertEqual(out, {from_po.name: [po.name], direct.name: []})
+		self.assertEqual(receipt_purchase_orders("[]"), {})
