@@ -46,17 +46,20 @@ const columns = [
 
 const statusFilter = ref("");
 const projectFilter = ref("");
+const requesterFilter = ref("");
 const fromDate = ref("");
 const toDate = ref("");
 const filterValues = computed(() => ({
 	status: statusFilter.value,
 	project: projectFilter.value,
+	requester: requesterFilter.value,
 	fromDate: fromDate.value,
 	toDate: toDate.value,
 }));
 const filterFieldMap = {
 	status: "status",
 	project: "project",
+	requester: "owner",
 	fromDate: { field: "transaction_date", op: ">=" },
 	toDate: { field: "transaction_date", op: "<=" },
 };
@@ -122,6 +125,17 @@ const breadcrumbs = [
 						label-field="project_name"
 						value-field="name"
 						:placeholder="__('All projects')"
+					/>
+				</div>
+				<div class="w-48">
+					<DeskLinkPicker
+						v-model="requesterFilter"
+						doctype="User"
+						label-field="full_name"
+						value-field="name"
+						:search-fields="['full_name', 'name']"
+						allow-clear
+						:placeholder="__('All requesters')"
 					/>
 				</div>
 				<input
