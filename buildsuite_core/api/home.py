@@ -27,7 +27,11 @@ _BOQ_RANK = {"Approved": 2, "Submitted": 1}
 _PROJECT_LIMIT = 12
 _TASK_LIMIT = 6
 _SCO_LIMIT = 8
-_OPEN_TASK = ("Completed", "Cancelled", "Template")
+# One definition of an OPEN task, shared by Home, the Tasks list it opens and Insights: a task the
+# user can see whose BuildSuite Task Status is not Completed, templates excluded, with or without a
+# project. (ERPNext's own `status` is not used: it can disagree with the Task Status users set.)
+_CLOSED_TASK_STATUS = ("Completed",)
+_OPEN_TASK_FILTERS = {"task_status": ["not in", list(_CLOSED_TASK_STATUS)], "is_template": 0}
 
 # Roles that see the whole company (no team scoping) — mirrors permissions._is_scoped.
 _ADMIN_ROLES = ("admin", "bsa")
@@ -145,9 +149,24 @@ def _filtered(route, filters):
 	return f"{route}?filters={quote(json.dumps(filters))}"
 
 
+def _visible_count(doctype, filters):
+	"""Count of the records the user can see (permission query conditions apply). 0 for a user who
+	may not read the doctype, rather than an error that would break the whole landing page."""
+	try:
+		if not frappe.has_permission(doctype, "read"):
+			return 0
+		rows = frappe.get_list(doctype, filters=filters, fields=[{"COUNT": "name", "as": "n"}])
+		return int(rows[0].n) if rows else 0
+	except Exception:
+		return 0
+
+
 def _open_tasks_link(overdue_before=None):
 	"""The Tasks list as the Open / Overdue tile counts it — carried as visible, removable filter chips."""
-	filters = [["task_status", "not in", list(_OPEN_TASK)]]
+	filters = [
+		["task_status", "not in", list(_CLOSED_TASK_STATUS)],
+		["is_template", "=", 0],
+	]
 	if overdue_before:
 		filters.append(["exp_end_date", "<", overdue_before])
 	return _filtered("/tasks", filters)
@@ -351,10 +370,8 @@ def get_home_dashboard():
 			)
 
 	# --- common counts (scoped) ---
-	open_tasks = _count("Task", {**proj_in, "status": ["not in", _OPEN_TASK]})
-	overdue_tasks = _count(
-		"Task", {**proj_in, "status": ["not in", _OPEN_TASK], "exp_end_date": ["<", str(today)]}
-	)
+	open_tasks = _visible_count("Task", _OPEN_TASK_FILTERS)
+	overdue_tasks = _visible_count("Task", {**_OPEN_TASK_FILTERS, "exp_end_date": ["<", str(today)]})
 	progress_today = _count("Task Progress Entry", {"entry_date": str(today)})
 	# Count the team — enabled users carrying a BuildSuite persona (what Settings > Users lists) —
 	# not every enabled Frappe user (which pulled in integration/system accounts).
@@ -388,10 +405,10 @@ def get_home_dashboard():
 
 	# --- my-task metrics (field roles) ---
 	def _my(extra=None):
-		f = {**proj_in, "status": ["not in", _OPEN_TASK], "_assign": ["like", f"%{user}%"]}
+		f = {**_OPEN_TASK_FILTERS, "_assign": ["like", f"%{user}%"]}
 		if extra:
 			f.update(extra)
-		return _count("Task", f)
+		return _visible_count("Task", f)
 
 	my_open = _my()
 	my_overdue = _my({"exp_end_date": ["<", str(today)]})

@@ -84,23 +84,23 @@ function assignedUser(row) {
 	}
 }
 
-// Honor ?status= deep links from the Home dashboard tiles. "open" = every non-closed task,
-// "overdue" = non-closed and past its end date — both become base filters; any real status just
-// seeds the status chip. Mirrors home.py's _OPEN_TASK closed set.
+// Honor ?status= deep links from the dashboards. "open" = the one definition of an open task
+// (home.py _OPEN_TASK_FILTERS): Task Status not Completed, templates excluded; "overdue" = open and
+// past its end date. Both become base filters; any real status just seeds the status chip.
 const route = useRoute();
-const CLOSED_TASK_STATUSES = ["Completed", "Cancelled", "Template"];
+const OPEN_TASK_FILTERS = [
+	["task_status", "!=", "Completed"],
+	["is_template", "=", 0],
+];
 const queryStatus = route.query.status || "";
 if (queryStatus && queryStatus !== "open" && queryStatus !== "overdue") {
 	statusFilter.value = queryStatus;
 }
 const baseFilters = computed(() => {
-	if (queryStatus === "open") return [["task_status", "not in", CLOSED_TASK_STATUSES]];
+	if (queryStatus === "open") return OPEN_TASK_FILTERS;
 	if (queryStatus === "overdue") {
 		const today = new Date().toISOString().slice(0, 10);
-		return [
-			["task_status", "not in", CLOSED_TASK_STATUSES],
-			["exp_end_date", "<", today],
-		];
+		return [...OPEN_TASK_FILTERS, ["exp_end_date", "<", today]];
 	}
 	return [];
 });
@@ -123,9 +123,9 @@ function onRowClick(row) {
 <template>
 	<DeskPage :title="__('Task')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn"
-				>{{ __("+ New") }}</RouterLink
-			>
+			<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn">{{
+				__("+ New")
+			}}</RouterLink>
 		</template>
 
 		<DocTypeListView
@@ -302,9 +302,9 @@ function onRowClick(row) {
 			<template #empty>
 				<div class="text-sm text-ink-500">
 					{{ __("No tasks match these filters") }} ·
-					<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-link"
-						>{{ __("Create a task →") }}</RouterLink
-					>
+					<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-link">{{
+						__("Create a task →")
+					}}</RouterLink>
 				</div>
 			</template>
 		</DocTypeListView>

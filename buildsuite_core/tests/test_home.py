@@ -95,3 +95,28 @@ class TestHomeDashboard(BuildSuiteTestCase):
 		admin = get_home_dashboard()
 		self.assertEqual(admin["role"], "admin")
 		self.assertIn("Users", [t["label"] for t in admin["snapshot"]])
+
+	def test_open_tasks_follow_the_one_definition(self):
+		"""Open task = a task the user can see whose Task Status is not Completed, templates
+		excluded, with or without a project; the tile opens the list with the same filters."""
+		frappe.set_user("Administrator")
+		frappe.db.set_value("User", "Administrator", "persona", None)
+
+		def open_count():
+			return get_home_dashboard()["kpis"]["open_tasks"]
+
+		before = open_count()
+		frappe.get_doc(
+			{"doctype": "Task", "subject": f"No project {self._n}", "task_status": "In Delay"}
+		).insert(ignore_permissions=True)
+		self.assertEqual(open_count(), before + 1)  # a task without a project counts
+
+		project = self._home_project().name
+		self._make_task(project, task_status="Completed")
+		template = self._make_task(project, task_status="Yet To Start")
+		template.db_set("is_template", 1)
+		self.assertEqual(open_count(), before + 1)  # neither a completed task nor a template
+
+		tile = next(t for t in get_home_dashboard()["snapshot"] if t["label"] == "Open tasks")
+		self.assertIn("task_status", tile["to"])
+		self.assertIn("is_template", tile["to"])
