@@ -817,8 +817,10 @@ export const useDataStore = defineStore("data", {
 		},
 
 		// Persist the template (admin only) and reflect it locally.
-		async updateProjectSettings(tabs) {
-			this.projectSettings = (await setProjectSettings(tabs)) || { tabs: { ...tabs } };
+		async updateProjectSettings(tabs, teamScopedWorkflows) {
+			this.projectSettings = (await setProjectSettings(tabs, teamScopedWorkflows)) || {
+				tabs: { ...tabs },
+			};
 			if (!this.projectSettings.tabs) this.projectSettings.tabs = { ...tabs };
 			return this.projectSettings;
 		},

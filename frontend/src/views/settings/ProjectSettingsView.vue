@@ -17,12 +17,21 @@ const store = useDataStore();
 
 const editing = ref(false);
 const saving = ref(false);
-const form = ref({ tabs: {} });
+const form = ref({ tabs: {}, teamScoped: [] });
+
+// Document types with a workflow, and those whose workflow notifications go to the project team.
+const workflowDoctypes = computed(() => store.projectSettings?.workflow_doctypes || []);
+const teamScoped = computed(() => store.projectSettings?.team_scoped_workflows || []);
 
 function snapshot() {
 	const tabs = {};
 	for (const t of PROJECT_TABS) tabs[t.id] = store.siteProjectTabVisible(t.id);
-	return { tabs };
+	return { tabs, teamScoped: [...teamScoped.value] };
+}
+function toggleTeamScoped(dt, on) {
+	const set = new Set(form.value.teamScoped);
+	on ? set.add(dt) : set.delete(dt);
+	form.value.teamScoped = [...set];
 }
 watch(
 	() => store.projectSettings,
@@ -44,7 +53,7 @@ async function saveEdit() {
 	if (!store.isAdmin) return;
 	saving.value = true;
 	try {
-		await store.updateProjectSettings({ ...form.value.tabs });
+		await store.updateProjectSettings({ ...form.value.tabs }, [...form.value.teamScoped]);
 		editing.value = false;
 		showToast(__("Project Settings saved"), "success");
 	} catch (e) {
@@ -184,6 +193,76 @@ const breadcrumbs = [
 								PROJECT_TABS.length,
 							])
 						}}
+					</div>
+				</DeskSection>
+
+				<DeskSection
+					id="team-scoped-workflows"
+					:title="__('Team-scoped workflow notifications')"
+					:cols="1"
+					class="mt-6"
+				>
+					<div class="text-xs text-ink-600 mb-3">
+						{{
+							__(
+								"For the document types ticked here, when a document reaches a workflow step, the people who can act on it next are notified only if they are on its project's team. When nobody with that role is on the team, everyone with the role is notified, so an approval is never missed. Document types not ticked notify everyone with the role, as before."
+							)
+						}}
+					</div>
+					<div
+						v-if="!workflowDoctypes.length"
+						class="text-xs text-ink-500 italic border border-ink-200 rounded-lg px-4 py-3"
+					>
+						{{ __("No document type has a workflow yet.") }}
+					</div>
+					<div v-else class="border border-ink-200 rounded-lg overflow-hidden">
+						<div
+							v-for="(dt, i) in workflowDoctypes"
+							:key="dt"
+							class="flex items-center gap-3 px-4 py-2.5"
+							:class="i ? 'border-t border-ink-100' : ''"
+						>
+							<div class="flex-1 min-w-0 text-sm text-ink-900">{{ __(dt) }}</div>
+							<label
+								v-if="editing"
+								class="flex items-center gap-2 text-xs cursor-pointer whitespace-nowrap"
+							>
+								<input
+									type="checkbox"
+									:checked="form.teamScoped.includes(dt)"
+									class="accent-brand-600"
+									@change="toggleTeamScoped(dt, $event.target.checked)"
+								/>
+								<span
+									:class="
+										form.teamScoped.includes(dt)
+											? 'text-ink-900'
+											: 'text-ink-500'
+									"
+								>
+									{{
+										form.teamScoped.includes(dt)
+											? __("Project team")
+											: __("Everyone with the role")
+									}}
+								</span>
+							</label>
+							<span
+								v-else
+								class="text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap"
+								:class="
+									teamScoped.includes(dt)
+										? 'bg-success-50 text-success-700'
+										: 'bg-ink-100 text-ink-600'
+								"
+							>
+								{{
+									teamScoped.includes(dt)
+										? __("Project team")
+										: __("Everyone with the role")
+								}}
+							</span>
+						</div>
 					</div>
 				</DeskSection>
 			</div>
