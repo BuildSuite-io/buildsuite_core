@@ -18,6 +18,7 @@
   "roles",
   "section_break_project_access",
   "project_visibility",
+  "team_scoped_notifications",
   "section_break_desc",
   "description"
  ],
@@ -104,12 +105,19 @@
    "label": "Project Visibility",
    "options": "Team projects only\nAll projects until added to a team\nAll projects",
    "reqd": 1,
-   "description": "Which projects this persona's users see — and with them the projects' tasks, work packages, progress entries and stage plans. 'Team projects only': only projects whose team they are on. 'All projects until added to a team': every project until they join any project team, then only their teams. 'All projects': every project their role permissions allow. System Manager always sees all projects."
+   "description": "Which projects this persona's users see \u2014 and with them the projects' tasks, work packages, progress entries and stage plans. 'Team projects only': only projects whose team they are on. 'All projects until added to a team': every project until they join any project team, then only their teams. 'All projects': every project their role permissions allow. System Manager always sees all projects."
+  },
+  {
+   "default": "0",
+   "fieldname": "team_scoped_notifications",
+   "fieldtype": "Check",
+   "label": "Workflow notifications follow the project team",
+   "description": "For workflows marked \"Team-scoped notifications\": once a user of this persona is on a project team, they are notified of a document's next workflow step only when they are on its project's team. Until then, and for other workflows, they are notified as usual."
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-17 10:00:00.000000",
+ "modified": "2026-11-23 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "Persona",

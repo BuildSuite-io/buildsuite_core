@@ -71,7 +71,9 @@ def set_project_settings(tabs=None):
 	doc = frappe.get_single(SETTINGS)
 	doc.set("tab_defaults", [])
 	for tab_id, label in PROJECT_TABS:
-		doc.append("tab_defaults", {"tab": tab_id, "label": label, "shown": 1 if tabs.get(tab_id, True) else 0})
+		doc.append(
+			"tab_defaults", {"tab": tab_id, "label": label, "shown": 1 if tabs.get(tab_id, True) else 0}
+		)
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return get_project_settings()
@@ -114,7 +116,9 @@ def set_project_tab_overrides(project, overrides=None):
 	doc.set("custom_tab_overrides", [])
 	for tab_id, shown in overrides.items():
 		if tab_id in _LABELS and isinstance(shown, bool):
-			doc.append("custom_tab_overrides", {"tab": tab_id, "label": _LABELS[tab_id], "shown": 1 if shown else 0})
+			doc.append(
+				"custom_tab_overrides", {"tab": tab_id, "label": _LABELS[tab_id], "shown": 1 if shown else 0}
+			)
 	doc.flags.ignore_permissions = True  # write already checked above
 	doc.save()
 	return get_project_tab_overrides(project)

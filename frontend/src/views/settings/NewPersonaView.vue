@@ -35,6 +35,8 @@ const form = reactive({
 	// New personas start team-scoped — the safe default; widen it here if this persona should
 	// see more.
 	projectVisibility: DEFAULT_PROJECT_VISIBILITY,
+	// On for a persona scoped to its teams' projects (the seed default), off for "All projects".
+	teamScopedNotifications: true,
 });
 const visibilityHint = () =>
 	__(PROJECT_VISIBILITY_OPTIONS.find((o) => o.value === form.projectVisibility)?.hint || "");
@@ -62,6 +64,7 @@ async function save() {
 			sort_order: Number(form.sortOrder) || 0,
 			roles: form.roles,
 			project_visibility: form.projectVisibility,
+			team_scoped_notifications: form.teamScopedNotifications ? 1 : 0,
 		});
 		showToast(__("Persona created"));
 		router.push(`/settings/personas/${encodeURIComponent(res.name)}`);
@@ -180,6 +183,26 @@ onMounted(async () => {
 							</option>
 						</DeskSelect>
 					</DeskField>
+					<label
+						class="flex items-start gap-2 text-xs text-ink-700 mt-3 cursor-pointer"
+						data-test="team-scoped-notifications"
+					>
+						<input
+							v-model="form.teamScopedNotifications"
+							type="checkbox"
+							class="mt-0.5 accent-brand-600"
+						/>
+						<span>
+							<span class="font-medium text-ink-900">{{
+								__("Workflow notifications follow the project team")
+							}}</span>
+							<span class="block text-[11px] text-ink-500 mt-0.5">{{
+								__(
+									"For workflows marked \"Team-scoped notifications\": once a user of this persona is on a project team, they are told about a document's next workflow step only when they are on its project's team. Until then, and for other workflows, they are told as usual."
+								)
+							}}</span>
+						</span>
+					</label>
 				</DeskSection>
 
 				<DeskSection id="description" :title="__('Description')" :cols="1">
