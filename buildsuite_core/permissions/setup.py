@@ -1473,3 +1473,11 @@ def setup_record_permissions():
 	# Sales reports for the sales personas — after the tiles and the registry above, so only roles
 	# that can see where a report is tiled are given it.
 	_add_report_roles(SALES_REPORTS, LEAD_ROLE_PERMS)
+	# The bespoke reports' Report anchors (Project Finance, Procurement, Workforce, the quotation
+	# comparison) get their persona roles here, now that the roles exist. On a fresh install the
+	# anchors are first created by seed_master_data BEFORE this runs, when no BuildSuite role exists
+	# yet, so they were left with the admin roles only and no persona could see a procurement report.
+	from buildsuite_core.report_access import reset_report_roles_to_matrix, seed_report_anchors
+
+	seed_report_anchors()
+	reset_report_roles_to_matrix()
