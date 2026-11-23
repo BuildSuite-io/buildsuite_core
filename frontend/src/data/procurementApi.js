@@ -53,6 +53,9 @@ export const getOpenPurchaseOrders = () => docCall("get_open_purchase_orders");
 export const getReceiptDraft = (purchaseOrder) =>
 	docCall("get_receipt_draft", { purchase_order: purchaseOrder });
 export const getPurchaseReceipt = (name) => docCall("get_purchase_receipt", { name });
+// {receipt: [purchase orders]} for the receipts a list is showing (the PO lives on the lines).
+export const getReceiptPurchaseOrders = (names) =>
+	docCall("receipt_purchase_orders", { names: JSON.stringify(names || []) });
 export const savePurchaseReceipt = (payload) =>
 	docCall("save_purchase_receipt", { ...payload, items: JSON.stringify(payload.items || []) });
 export const submitPurchaseReceipt = (name) => docCall("submit_purchase_receipt", { name });
