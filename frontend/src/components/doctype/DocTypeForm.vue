@@ -4,8 +4,9 @@
 // hidden / depends_on, plus full-width child-table grids (DocTypeChildTable) and
 // Dynamic Links. For submittable DocTypes the action bar follows docstatus:
 // Draft → Save / Submit / Delete; Submitted → Cancel; Cancelled → Amend / Delete.
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import {
 	getRecord,
@@ -181,7 +182,77 @@ function seedNew() {
 	runDocHook(props.doctype, "defaults", form); // installed apps' starting values
 }
 
+// --- fetch_from: fill a field from the record its Link points at, as Desk does --------------------
+// e.g. Timesheet.employee_name has fetch_from "employee.employee_name": picking an employee fills
+// the name at once (the server fills it too, but only on save).
+// { linkField: { doctype, targets: [{ field, source, ifEmpty }] } }
+const fetchMap = computed(() => {
+	const fields = meta.value?.fields || [];
+	const byName = Object.fromEntries(fields.map((f) => [f.fieldname, f]));
+	const out = {};
+	for (const f of fields) {
+		const [link, source] = (f.fetch_from || "").split(".");
+		const linkField = byName[link];
+		if (!source || linkField?.fieldtype !== "Link" || !linkField.options) continue;
+		out[link] ??= { doctype: linkField.options, targets: [] };
+		out[link].targets.push({ field: f.fieldname, source, ifEmpty: !!f.fetch_if_empty });
+	}
+	return out;
+});
+
+async function fetchLinked(doctype, docname, sources) {
+	// Frappe 16 (Desk's link control); older versions have validate_link with the same answer.
+	try {
+		return await frappeRequest({
+			url: "frappe.client.validate_link_and_fetch",
+			params: { doctype, docname, fields_to_fetch: JSON.stringify(sources) },
+		});
+	} catch {
+		return await frappeRequest({
+			url: "frappe.client.validate_link",
+			params: { doctype, docname, fields: JSON.stringify(sources) },
+		});
+	}
+}
+
+// While a record loads its stored values are kept: only a change the user makes fetches.
+let suppressFetch = false;
+async function applyFetch(link) {
+	const spec = fetchMap.value[link];
+	if (!spec) return;
+	const value = form[link];
+	let values = {};
+	if (value) {
+		try {
+			values =
+				(await fetchLinked(
+					spec.doctype,
+					value,
+					spec.targets.map((t) => t.source)
+				)) || {};
+		} catch {
+			return; // can't read the linked record here: the server still fills these on save
+		}
+		if (form[link] !== value) return; // changed again while this was in flight
+	}
+	for (const t of spec.targets) {
+		if (t.ifEmpty && form[t.field]) continue;
+		form[t.field] = values[t.source] ?? (value ? form[t.field] : "");
+	}
+}
+watch(
+	() => Object.keys(fetchMap.value).map((link) => [link, form[link]]),
+	(now, before) => {
+		if (suppressFetch || loading.value) return;
+		const prev = Object.fromEntries(before || []);
+		for (const [link, value] of now) {
+			if (link in prev && prev[link] !== value) applyFetch(link);
+		}
+	}
+);
+
 async function load() {
+	suppressFetch = true;
 	loading.value = true;
 	formError.value = "";
 	try {
@@ -199,6 +270,8 @@ async function load() {
 		formError.value = err.message || "Failed to load record.";
 	} finally {
 		loading.value = false;
+		await nextTick();
+		suppressFetch = false;
 	}
 }
 
