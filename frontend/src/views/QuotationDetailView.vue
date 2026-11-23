@@ -8,6 +8,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { usePageTitle } from "@/composables/usePageTitle";
 import { showToast } from "@/utils/appToast";
 import { fmtCurrency, fmtDate, daysBetween } from "@/utils/format";
+import { useUserNames } from "@/composables/useUserNames";
 import { __ } from "@/utils/translate";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
@@ -17,6 +18,9 @@ import { usePermissions } from "@/composables/usePermissions";
 import { offerStatus } from "@/data/offerStatus";
 import { acceptQuotation, rejectQuotation, sendQuotation } from "@/data/quotationApi";
 import { convertLead } from "@/data/leadsApi";
+
+// Users show by full name, never by their email id.
+const { userName } = useUserNames();
 // Rich text (Text Editor) is heavy (TipTap) — load it only when a quotation is opened.
 const RichTextEditor = defineAsyncComponent(() => import("@/components/RichTextEditor.vue"));
 
@@ -421,7 +425,7 @@ const breadcrumbs = computed(() => [
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
 					{{ __("Prepared by") }}
 				</div>
-				<div class="text-sm text-ink-900 truncate">{{ doc.owner || "—" }}</div>
+				<div class="text-sm text-ink-900 truncate">{{ userName(doc.owner) || "—" }}</div>
 			</div>
 
 			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">

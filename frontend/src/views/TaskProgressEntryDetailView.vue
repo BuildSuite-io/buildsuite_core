@@ -6,6 +6,7 @@ import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
 import { usePermissions } from "@/composables/usePermissions";
 import { showToast } from "@/utils/appToast";
+import { useUserNames } from "@/composables/useUserNames";
 import { __ } from "@/utils/translate";
 import { parseFrappeError, isPermissionDenied } from "@/utils/frappeError";
 import AccessDenied from "@/components/AccessDenied.vue";
@@ -24,6 +25,9 @@ import DeskLink from "@/components/desk/DeskLink.vue";
 import FileUploadHandler from "frappe-ui-file-upload-handler";
 import { fmtDate } from "@/utils/format";
 import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+
+// Users show by full name, never by their email id.
+const { userName } = useUserNames();
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -863,7 +867,9 @@ usePageTitle(() => task.value?.name || entry.value?.id);
 						</div>
 						<div class="inline-flex items-center gap-2">
 							<UserAvatar :user-id="entry.enteredBy" />
-							<span class="text-sm text-ink-700">{{ entry.enteredBy || "—" }}</span>
+							<span class="text-sm text-ink-700">{{
+								userName(entry.enteredBy) || "—"
+							}}</span>
 						</div>
 					</div>
 					<div
