@@ -16,6 +16,7 @@ import {
 	submitRecord,
 	cancelRecord,
 	amendRecord,
+	newRecordDefaults,
 } from "@/data/doctypeRecordApi";
 import { getDoctypePermissions } from "@/data/workspaceSettingApi";
 import { useConfirm } from "@/composables/useConfirm";
@@ -89,10 +90,15 @@ function evalDependsOn(expr) {
 	}
 }
 
+const isEmpty = (v) => v === undefined || v === null || v === "";
+
 function isRenderable(f) {
 	if (SKIP.has(f.fieldtype)) return false;
 	if (f.hidden) return false;
 	if (f.fieldname === "naming_series" && !f.reqd) return false;
+	// As in Desk: a read-only field with nothing in it is hidden until it has a value (e.g. a new
+	// Timesheet's Sales Invoice, Salary Slip, User, Start/End Date).
+	if (f.read_only && f.fieldtype !== "Table" && isEmpty(form[f.fieldname])) return false;
 	return evalDependsOn(f.depends_on);
 }
 
@@ -168,7 +174,7 @@ function resolveDefault(f) {
 	return f.fieldtype === "Check" ? (Number(d) ? 1 : 0) : d;
 }
 
-function seedNew() {
+async function seedNew() {
 	for (const f of meta.value?.fields || []) {
 		if (f.fieldtype === "Table") {
 			if (!Array.isArray(form[f.fieldname])) form[f.fieldname] = [];
@@ -178,6 +184,16 @@ function seedNew() {
 		const dv = resolveDefault(f);
 		if (dv !== undefined) form[f.fieldname] = dv;
 		else if (f.fieldtype === "Check" && form[f.fieldname] === undefined) form[f.fieldname] = 0;
+	}
+	// The values Desk starts a new document with (the user's Company and Currency, a naming
+	// series, …), from Frappe's own new-document builder; only for fields still empty.
+	try {
+		const defaults = (await newRecordDefaults(props.doctype)) || {};
+		for (const [key, value] of Object.entries(defaults)) {
+			if (isEmpty(form[key])) form[key] = value;
+		}
+	} catch {
+		// not allowed to create / unknown doctype: the static defaults above stand
 	}
 	runDocHook(props.doctype, "defaults", form); // installed apps' starting values
 }
@@ -263,7 +279,7 @@ async function load() {
 			Object.assign(form, doc);
 			await runDocHook(props.doctype, "onLoad", form, doc);
 		} else if (meta.value) {
-			seedNew();
+			await seedNew();
 		}
 		snapshot();
 	} catch (err) {
@@ -279,8 +295,10 @@ watch(
 	() => meta.value,
 	(m) => {
 		if (m && !isEdit.value && !loading.value) {
-			seedNew();
-			snapshot();
+			suppressFetch = true; // starting values aren't a user's change: don't re-fetch over them
+			seedNew()
+				.then(snapshot)
+				.finally(() => nextTick(() => (suppressFetch = false)));
 		}
 	}
 );
