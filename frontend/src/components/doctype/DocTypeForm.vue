@@ -4,8 +4,9 @@
 // hidden / depends_on, plus full-width child-table grids (DocTypeChildTable) and
 // Dynamic Links. For submittable DocTypes the action bar follows docstatus:
 // Draft → Save / Submit / Delete; Submitted → Cancel; Cancelled → Amend / Delete.
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { frappeRequest } from "frappe-ui-frappe-request";
 import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
 import {
 	getRecord,
@@ -15,6 +16,7 @@ import {
 	submitRecord,
 	cancelRecord,
 	amendRecord,
+	newRecordDefaults,
 } from "@/data/doctypeRecordApi";
 import { getDoctypePermissions } from "@/data/workspaceSettingApi";
 import { useConfirm } from "@/composables/useConfirm";
@@ -88,10 +90,15 @@ function evalDependsOn(expr) {
 	}
 }
 
+const isEmpty = (v) => v === undefined || v === null || v === "";
+
 function isRenderable(f) {
 	if (SKIP.has(f.fieldtype)) return false;
 	if (f.hidden) return false;
 	if (f.fieldname === "naming_series" && !f.reqd) return false;
+	// As in Desk: a read-only field with nothing in it is hidden until it has a value (e.g. a new
+	// Timesheet's Sales Invoice, Salary Slip, User, Start/End Date).
+	if (f.read_only && f.fieldtype !== "Table" && isEmpty(form[f.fieldname])) return false;
 	return evalDependsOn(f.depends_on);
 }
 
@@ -167,7 +174,7 @@ function resolveDefault(f) {
 	return f.fieldtype === "Check" ? (Number(d) ? 1 : 0) : d;
 }
 
-function seedNew() {
+async function seedNew() {
 	for (const f of meta.value?.fields || []) {
 		if (f.fieldtype === "Table") {
 			if (!Array.isArray(form[f.fieldname])) form[f.fieldname] = [];
@@ -178,10 +185,90 @@ function seedNew() {
 		if (dv !== undefined) form[f.fieldname] = dv;
 		else if (f.fieldtype === "Check" && form[f.fieldname] === undefined) form[f.fieldname] = 0;
 	}
+	// The values Desk starts a new document with (the user's Company and Currency, a naming
+	// series, …), from Frappe's own new-document builder; only for fields still empty.
+	try {
+		const defaults = (await newRecordDefaults(props.doctype)) || {};
+		for (const [key, value] of Object.entries(defaults)) {
+			if (isEmpty(form[key])) form[key] = value;
+		}
+	} catch {
+		// not allowed to create / unknown doctype: the static defaults above stand
+	}
 	runDocHook(props.doctype, "defaults", form); // installed apps' starting values
 }
 
+// --- fetch_from: fill a field from the record its Link points at, as Desk does --------------------
+// e.g. Timesheet.employee_name has fetch_from "employee.employee_name": picking an employee fills
+// the name at once (the server fills it too, but only on save).
+// { linkField: { doctype, targets: [{ field, source, ifEmpty }] } }
+const fetchMap = computed(() => {
+	const fields = meta.value?.fields || [];
+	const byName = Object.fromEntries(fields.map((f) => [f.fieldname, f]));
+	const out = {};
+	for (const f of fields) {
+		const [link, source] = (f.fetch_from || "").split(".");
+		const linkField = byName[link];
+		if (!source || linkField?.fieldtype !== "Link" || !linkField.options) continue;
+		out[link] ??= { doctype: linkField.options, targets: [] };
+		out[link].targets.push({ field: f.fieldname, source, ifEmpty: !!f.fetch_if_empty });
+	}
+	return out;
+});
+
+async function fetchLinked(doctype, docname, sources) {
+	// Frappe 16 (Desk's link control); older versions have validate_link with the same answer.
+	try {
+		return await frappeRequest({
+			url: "frappe.client.validate_link_and_fetch",
+			params: { doctype, docname, fields_to_fetch: JSON.stringify(sources) },
+		});
+	} catch {
+		return await frappeRequest({
+			url: "frappe.client.validate_link",
+			params: { doctype, docname, fields: JSON.stringify(sources) },
+		});
+	}
+}
+
+// While a record loads its stored values are kept: only a change the user makes fetches.
+let suppressFetch = false;
+async function applyFetch(link) {
+	const spec = fetchMap.value[link];
+	if (!spec) return;
+	const value = form[link];
+	let values = {};
+	if (value) {
+		try {
+			values =
+				(await fetchLinked(
+					spec.doctype,
+					value,
+					spec.targets.map((t) => t.source)
+				)) || {};
+		} catch {
+			return; // can't read the linked record here: the server still fills these on save
+		}
+		if (form[link] !== value) return; // changed again while this was in flight
+	}
+	for (const t of spec.targets) {
+		if (t.ifEmpty && form[t.field]) continue;
+		form[t.field] = values[t.source] ?? (value ? form[t.field] : "");
+	}
+}
+watch(
+	() => Object.keys(fetchMap.value).map((link) => [link, form[link]]),
+	(now, before) => {
+		if (suppressFetch || loading.value) return;
+		const prev = Object.fromEntries(before || []);
+		for (const [link, value] of now) {
+			if (link in prev && prev[link] !== value) applyFetch(link);
+		}
+	}
+);
+
 async function load() {
+	suppressFetch = true;
 	loading.value = true;
 	formError.value = "";
 	try {
@@ -192,13 +279,15 @@ async function load() {
 			Object.assign(form, doc);
 			await runDocHook(props.doctype, "onLoad", form, doc);
 		} else if (meta.value) {
-			seedNew();
+			await seedNew();
 		}
 		snapshot();
 	} catch (err) {
 		formError.value = err.message || "Failed to load record.";
 	} finally {
 		loading.value = false;
+		await nextTick();
+		suppressFetch = false;
 	}
 }
 
@@ -206,8 +295,10 @@ watch(
 	() => meta.value,
 	(m) => {
 		if (m && !isEdit.value && !loading.value) {
-			seedNew();
-			snapshot();
+			suppressFetch = true; // starting values aren't a user's change: don't re-fetch over them
+			seedNew()
+				.then(snapshot)
+				.finally(() => nextTick(() => (suppressFetch = false)));
 		}
 	}
 );

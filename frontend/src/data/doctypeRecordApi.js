@@ -27,5 +27,8 @@ export const deleteRecord = (doctype, name) => call("frappe.client.delete", { do
 // Submittable lifecycle (allow-list-guarded, permission-enforced server-side).
 const M = "buildsuite_core.api.workspace_setting";
 export const submitRecord = (doctype, name) => call(`${M}.submit_record`, { doctype, name });
+// The starting values Desk gives a new document (static + user defaults, a required Select's first
+// option): Frappe's own new-document builder, server-side.
+export const newRecordDefaults = (doctype) => call(`${M}.new_record_defaults`, { doctype });
 export const cancelRecord = (doctype, name) => call(`${M}.cancel_record`, { doctype, name });
 export const amendRecord = (doctype, name) => call(`${M}.amend_record`, { doctype, name });

@@ -359,6 +359,30 @@ def get_doctype_permissions(doctype: str):
 	}
 
 
+# Bookkeeping fields of a new document that a form must not send back as values.
+_NEW_DOC_SKIP = {"name", "owner", "creation", "modified", "modified_by", "docstatus", "idx", "doctype"}
+
+
+@frappe.whitelist()
+def new_record_defaults(doctype: str):
+	"""The starting values Desk would give a new document of an allow-listed DocType: Frappe's own
+	new-document builder (frappe.new_doc), so the static defaults, the user's defaults (Company,
+	Currency, …) and the first option of a required Select (e.g. the naming series) all apply.
+	Only for a user who may create one."""
+	_require_allowed(doctype)
+	if not frappe.has_permission(doctype, "create"):
+		frappe.throw(_("You are not permitted to create {0}.").format(_(doctype)), frappe.PermissionError)
+	doc = frappe.new_doc(doctype)
+	out = {}
+	for key, value in doc.as_dict(no_default_fields=False).items():
+		if key in _NEW_DOC_SKIP or key.startswith("__") or value in (None, "", []):
+			continue
+		if isinstance(value, list):  # child tables: the form starts them empty
+			continue
+		out[key] = value
+	return out
+
+
 @frappe.whitelist()
 def submit_record(doctype: str, name: str):
 	"""Submit a saved draft of an allow-listed DocType (doc.submit enforces the submit
