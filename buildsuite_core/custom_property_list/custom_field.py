@@ -695,6 +695,22 @@ CUSTOM_FIELD = {
 			"module": "BuildSuite Core",
 		},
 	],
+	# Team-scoped workflow notifications (utils.team_workflow_notifications): ticked, BuildSuite
+	# notifies the next step's role holders per their persona's "Workflow notifications follow the
+	# project team", on the states marked "Send Email"; Frappe's own workflow email for this
+	# workflow is switched off so nobody is told twice.
+	"Workflow": [
+		{
+			"fieldname": "custom_team_scoped_notifications",
+			"fieldtype": "Check",
+			"label": "Team-scoped Notifications (BuildSuite)",
+			"insert_after": "send_email_alert",
+			"description": "BuildSuite notifies the users who can act next (bell + email), on the states marked "
+			"Send Email: users whose persona follows the project team only for their team's projects, "
+			"everyone else as usual. Replaces this workflow's own email alert.",
+			"module": "BuildSuite Core",
+		},
+	],
 	"Purchase Order": [
 		{
 			"fieldname": "custom_rate_master_banner",

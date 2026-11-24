@@ -51,3 +51,46 @@ class TestProgressReport(BuildSuiteTestCase):
 
 	def test_missing_project_throws(self):
 		self.assertRaises(frappe.ValidationError, pr.get_progress_report, project="NOPE-DOES-NOT-EXIST")
+
+	def test_letterhead_follows_the_company_branding(self):
+		"""The report's letterhead uses the logo and subtext set under Settings > Company >
+		Branding (what every print's Letter Head shows), and falls back to ERPNext's own Company
+		logo; with neither it has no logo (the report shows the initials)."""
+		p = self._make_project()
+		company = frappe.db.get_value("Project", p.name, "company")
+		frappe.db.set_value(
+			"Company",
+			company,
+			{"custom_company_logo": None, "company_logo": None, "custom_letter_head_subtext": None},
+		)
+		self.assertIsNone(pr.get_progress_report(p.name)["company"]["logo"])
+
+		frappe.db.set_value("Company", company, "company_logo", "/files/erpnext-logo.png")
+		self.assertEqual(pr.get_progress_report(p.name)["company"]["logo"], "/files/erpnext-logo.png")
+
+		frappe.db.set_value(
+			"Company",
+			company,
+			{
+				"custom_company_logo": "/files/brand-logo.png",
+				"custom_letter_head_subtext": "12 MG Road, Bengaluru",
+			},
+		)
+		head = pr.get_progress_report(p.name)["company"]
+		self.assertEqual((head["logo"], head["subtext"]), ("/files/brand-logo.png", "12 MG Road, Bengaluru"))
+
+	def test_letter_head_falls_back_to_the_erpnext_company_logo(self):
+		from buildsuite_core.buildsuite_core.doctype.subcontractor.seed_print_assets import (
+			letter_head_name,
+			rebuild_letter_head,
+		)
+
+		company = frappe.db.get_value("Project", self._make_project().name, "company")
+		frappe.db.set_value(
+			"Company", company, {"custom_company_logo": None, "company_logo": "/files/erpnext-logo.png"}
+		)
+		rebuild_letter_head(company)
+		self.assertIn(
+			"/files/erpnext-logo.png",
+			frappe.db.get_value("Letter Head", letter_head_name(company), "content"),
+		)

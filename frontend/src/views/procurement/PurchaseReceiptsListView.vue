@@ -10,6 +10,7 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useProjectNames } from "@/composables/useProjectNames";
+import { getReceiptPurchaseOrders } from "@/data/procurementApi";
 import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
 import { fmtDate, fmtCompactINR } from "@/utils/format";
 import { usePermissions } from "@/composables/usePermissions";
@@ -33,6 +34,8 @@ const FIELDS = [
 ];
 const columns = [
 	{ key: "name", label: __("Receipt") },
+	// Not a field: the receipt's order(s), read off its lines for the rows on screen.
+	{ key: "purchase_order", label: __("PO") },
 	{ key: "supplier_name", label: __("Supplier") },
 	{ key: "project", label: __("Project") },
 	{ key: "posting_date", label: __("Received") },
@@ -41,19 +44,38 @@ const columns = [
 	{ key: "status", label: __("Status") },
 ];
 
+// The PO(s) each receipt on screen was received against — fetched per page (paging, filters,
+// search) for rows not seen yet.
+const receiptPOs = ref({});
+async function onRowsChange(rows) {
+	const names = (rows || []).map((r) => r.name).filter((n) => n && !(n in receiptPOs.value));
+	if (!names.length) return;
+	try {
+		receiptPOs.value = {
+			...receiptPOs.value,
+			...((await getReceiptPurchaseOrders(names)) || {}),
+		};
+	} catch {
+		// the list still shows; only the PO column stays blank for these rows
+	}
+}
+
 const statusFilter = ref("");
 const projectFilter = ref("");
+const supplierFilter = ref("");
 const fromDate = ref("");
 const toDate = ref("");
 const filterValues = computed(() => ({
 	status: statusFilter.value,
 	project: projectFilter.value,
+	supplier: supplierFilter.value,
 	fromDate: fromDate.value,
 	toDate: toDate.value,
 }));
 const filterFieldMap = {
 	status: "status",
 	project: "project",
+	supplier: "supplier",
 	fromDate: { field: "posting_date", op: ">=" },
 	toDate: { field: "posting_date", op: "<=" },
 };
@@ -100,6 +122,7 @@ const breadcrumbs = [
 			:search-placeholder="__('Search receipt, supplier…')"
 			:empty-message="__('No purchase receipts yet.')"
 			@row-click="openDetail"
+			@rows-change="onRowsChange"
 		>
 			<template #filter-chips>
 				<DeskSelect v-model="statusFilter" class="!w-44">
@@ -120,6 +143,17 @@ const breadcrumbs = [
 						:placeholder="__('All projects')"
 					/>
 				</div>
+				<div class="w-48">
+					<DeskLinkPicker
+						v-model="supplierFilter"
+						doctype="Supplier"
+						label-field="supplier_name"
+						value-field="name"
+						:search-fields="['supplier_name', 'name']"
+						allow-clear
+						:placeholder="__('All suppliers')"
+					/>
+				</div>
 				<input
 					v-model="fromDate"
 					type="date"
@@ -136,6 +170,21 @@ const breadcrumbs = [
 
 			<template #cell-name="{ row }">
 				<span class="font-mono text-[11px] text-ink-600">{{ row.name }}</span>
+			</template>
+			<template #cell-purchase_order="{ row }">
+				<template v-if="row.name in receiptPOs">
+					<span
+						v-if="receiptPOs[row.name].length"
+						class="font-mono text-xs text-ink-600 whitespace-nowrap"
+						>{{ receiptPOs[row.name].join(", ") }}</span
+					>
+					<span
+						v-else
+						class="text-[11px] px-2 py-0.5 rounded-full bg-danger-50 text-danger-700 whitespace-nowrap"
+						>{{ __("No PO — resolve") }}</span
+					>
+				</template>
+				<span v-else class="text-ink-400">—</span>
 			</template>
 			<template #cell-supplier_name="{ row }">
 				<span class="text-ink-900 font-medium">{{ row.supplier_name || "—" }}</span>

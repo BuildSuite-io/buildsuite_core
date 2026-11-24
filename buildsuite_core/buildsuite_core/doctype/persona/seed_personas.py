@@ -54,6 +54,12 @@ DEFAULT_PROJECT_VISIBILITY = {
 }
 
 
+def default_team_scoped_notifications(visibility):
+	"""The persona's "Workflow notifications follow the project team" seed: on for a persona scoped
+	to its teams' projects, off for one that sees all projects. A seed only: editable per persona."""
+	return 0 if visibility == ALL_PROJECTS else 1
+
+
 def seed_personas():
 	"""Create any missing default persona. Idempotent; leaves existing personas
 	(and any admin edits to them) untouched."""
@@ -71,6 +77,9 @@ def seed_personas():
 				"is_default": 1,
 				"backend_only": backend_only,
 				"project_visibility": DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY),
+				"team_scoped_notifications": default_team_scoped_notifications(
+					DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY)
+				),
 			}
 		)
 		for role in roles:
@@ -143,6 +152,9 @@ def repair_default_personas():
 				"is_default": 1,
 				"backend_only": backend_only,
 				"project_visibility": DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY),
+				"team_scoped_notifications": default_team_scoped_notifications(
+					DEFAULT_PROJECT_VISIBILITY.get(persona_name, TEAM_ONLY)
+				),
 			}
 		)
 		for role in roles:

@@ -12,7 +12,11 @@ import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import { usePermissions } from "@/composables/usePermissions";
 import { useListCounts } from "@/composables/useListCounts";
 import { fmtDate } from "@/utils/format";
+import { useUserNames } from "@/composables/useUserNames";
 import { __ } from "@/utils/translate";
+
+// Users show by full name, never by their email id.
+const { userName } = useUserNames();
 
 const store = useDataStore();
 const router = useRouter();
@@ -311,7 +315,7 @@ function onRowClick(row) {
 			<template #cell-owner="{ row }">
 				<div v-if="row.owner" class="inline-flex items-center gap-2">
 					<UserAvatar :user-id="row.owner" size="xs" />
-					<span class="text-xs text-ink-700">{{ row.owner }}</span>
+					<span class="text-xs text-ink-700">{{ userName(row.owner) }}</span>
 				</div>
 				<span v-else class="text-[10px] text-ink-300">—</span>
 			</template>

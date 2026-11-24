@@ -262,6 +262,13 @@ const PLACES = [
 		words: ["purchase receipt", "grn", "receipt", "delivery"],
 	},
 	{
+		label: "Supplier bills",
+		icon: "wallet",
+		to: "/procurement/supplier-bills",
+		cap: "supplierBill",
+		words: ["supplier bill", "supplier bills", "purchase invoice"],
+	},
+	{
 		label: "Items",
 		icon: "tag",
 		to: "/items",
@@ -325,7 +332,7 @@ const PLACES = [
 		icon: "receipt",
 		to: "/project-finance/bills",
 		cap: "supplierBill",
-		words: ["bill", "bills", "supplier bill", "purchase invoice"],
+		words: ["bill", "bills", "payables"],
 	},
 	{
 		label: "Payments",

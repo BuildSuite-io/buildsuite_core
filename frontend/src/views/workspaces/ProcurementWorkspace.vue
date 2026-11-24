@@ -48,9 +48,14 @@ const shortcuts = [
 		to: "/procurement/receipts",
 		cap: "purchaseReceipt",
 	},
-	// Supplier bills (money out) — opens the Bills register, where direct supplier bills
-	// are listed and a new one can be raised. Matches the prototype's "Supplier Bills" tile.
-	{ label: "Supplier Bills", icon: "wallet", to: "/project-finance/bills", cap: "supplierBill" },
+	// Supplier bills — Procurement's own list of direct supplier bills (no subcontractor bills,
+	// which belong to Subcontract). Matches the prototype's "Supplier Bills" tile.
+	{
+		label: "Supplier Bills",
+		icon: "wallet",
+		to: "/procurement/supplier-bills",
+		cap: "supplierBill",
+	},
 	{
 		label: "Material Consumption",
 		icon: "stock",

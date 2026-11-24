@@ -17,6 +17,9 @@ async function call(method, args) {
 export const listPayables = (args = {}) => call("list_payables", args);
 export const payablesSummary = () => call("payables_summary", {});
 export const getSupplierBill = (name) => call("get_bill", { name });
+// {bill: [purchase orders]} for the supplier bills a list is showing (the PO lives on the lines).
+export const getSupplierBillPurchaseOrders = (names) =>
+	call("supplier_bill_purchase_orders", { names: JSON.stringify(names || []) });
 export const saveSupplierBill = (payload) =>
 	call("save_bill", { payload: JSON.stringify(payload) });
 export const submitSupplierBill = (name) => call("submit_bill", { name });

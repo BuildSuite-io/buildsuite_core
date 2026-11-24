@@ -606,6 +606,13 @@ const routes = [
 				props: true,
 			},
 			{
+				// Procurement's own supplier bill list: direct supplier bills only (no subcontractor
+				// bills, which live under Subcontract). A row opens the supplier bill screens.
+				path: "procurement/supplier-bills",
+				name: "procurement-supplier-bills",
+				component: () => import("@/views/procurement/SupplierBillsListView.vue"),
+			},
+			{
 				path: "procurement/receipts",
 				name: "purchase-receipts",
 				component: () => import("@/views/procurement/PurchaseReceiptsListView.vue"),
@@ -1308,6 +1315,7 @@ const ROUTE_CAPS = {
 	"purchase-order-detail": "purchaseOrder",
 	"purchase-order-edit": "purchaseOrder",
 	"purchase-order-print": "purchaseOrder",
+	"procurement-supplier-bills": "supplierBill",
 	"purchase-receipts": "purchaseReceipt",
 	"purchase-receipt-new": "purchaseReceipt",
 	"purchase-receipt-detail": "purchaseReceipt",

@@ -1191,3 +1191,27 @@ def get_terms(name: str):
 @frappe.whitelist()
 def list_payment_modes():
 	return frappe.get_all("Mode of Payment", fields=["name"], order_by="name", pluck="name")
+
+
+@frappe.whitelist()
+def supplier_bill_purchase_orders(names: str | list | None = None):
+	"""{bill: [purchase orders]} for the supplier bills a list is showing. ERPNext keeps the order on
+	each bill LINE (a bill can take lines from several orders), not on the bill. Only bills the user
+	may read are answered; a bill raised directly (no order) maps to []."""
+	names = frappe.parse_json(names) if isinstance(names, str) else names
+	names = [n for n in (names or []) if isinstance(n, str)][:500]
+	if not names:
+		return {}
+	readable = frappe.get_list(PI, filters={"name": ["in", names]}, pluck="name", limit_page_length=0)
+	out = {n: [] for n in readable}
+	if not readable:
+		return out
+	for row in frappe.get_all(
+		"Purchase Invoice Item",
+		filters={"parent": ["in", readable], "parenttype": PI},
+		fields=["parent", "purchase_order"],
+		order_by="parent, idx",
+	):
+		if row.purchase_order and row.purchase_order not in out[row.parent]:
+			out[row.parent].append(row.purchase_order)
+	return out

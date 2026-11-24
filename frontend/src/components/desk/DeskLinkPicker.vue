@@ -359,7 +359,7 @@ function onCreate(togglePopover) {
 			@update:query="onQueryUpdate"
 		>
 			<template #target="{ togglePopover, isOpen }">
-				<div class="relative">
+				<div class="relative w-full">
 					<button
 						type="button"
 						:data-test="dataTest || undefined"
