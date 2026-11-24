@@ -985,6 +985,34 @@ class TestReceivablesPayablesCompanies(BuildSuiteTestCase):
 		self.assertIn(own, ids)
 		self.assertIn(other, ids)
 
+	def test_a_supplier_bill_reads_supplier_even_in_the_subcontractor_group(self):
+		"""The kind follows the bill, not the supplier's group: a site whose only (or default)
+		supplier group is "Subcontractor" puts ordinary suppliers in it, and their bills must still
+		read as supplier bills. Only a Subcontractor Bill's generated invoice is a subcontractor row."""
+		from buildsuite_core.api.finance_report import receivables_and_payables
+
+		frappe.db.set_single_value("BuildSuite Core Settings", "multi_company_enabled", 0)
+		bill = self._open_bill(self.company)
+		supplier = frappe.db.get_value("Purchase Invoice", bill, "supplier")
+		if not frappe.db.exists("Supplier Group", "Subcontractor"):
+			frappe.get_doc(
+				{
+					"doctype": "Supplier Group",
+					"supplier_group_name": "Subcontractor",
+					"parent_supplier_group": "All Supplier Groups",
+				}
+			).insert(ignore_permissions=True)
+		frappe.db.set_value("Supplier", supplier, "supplier_group", "Subcontractor")
+
+		kinds = {r["id"]: r["kind"] for r in receivables_and_payables()["payables"]}
+		self.assertEqual(kinds[bill], "supplier")
+
+		frappe.db.set_value(
+			"Purchase Invoice", bill, "subcontractor_bill", "SB-TEST-0001", update_modified=False
+		)
+		kinds = {r["id"]: r["kind"] for r in receivables_and_payables()["payables"]}
+		self.assertEqual(kinds[bill], "subcontractor")
+
 	def test_working_company_only_when_multi_company_on(self):
 		frappe.db.set_single_value("BuildSuite Core Settings", "multi_company_enabled", 1)
 		own, other = self._open_bill(self.company), self._open_bill("_Test Other Company")
