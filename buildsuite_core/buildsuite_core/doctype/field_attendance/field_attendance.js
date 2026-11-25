@@ -34,7 +34,7 @@ frappe.ui.form.on("Field Attendance Employee", {
     employee_list_add(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         if (frm.doc.status && !row.status) row.status = frm.doc.status;
-        if (!row.overtime_hours && row.status !== 'Absent') row.overtime_hours = frm.doc.overtime_hours || 0;
+        if (!row.overtime_hours) row.overtime_hours = row.status === 'Absent' ? 0 : (frm.doc.overtime_hours || 0);
         if (frm.doc.comments && !row.comments) row.comments = frm.doc.comments;
         frm.refresh_field('employee_list');
     },
