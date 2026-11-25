@@ -27,6 +27,20 @@ frappe.ui.form.on("Field Attendance", {
 });
 
 
+// A row added by hand (Add Row) starts from the header's Status, Overtime Hours and
+// Comments, as Bulk Select's rows and /core's rows do (useAttendanceSheet newRow).
+// Without it, rows added after the Status was picked stayed blank.
+frappe.ui.form.on("Field Attendance Employee", {
+    employee_list_add(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (frm.doc.status && !row.status) row.status = frm.doc.status;
+        if (!row.overtime_hours && row.status !== 'Absent') row.overtime_hours = frm.doc.overtime_hours || 0;
+        if (frm.doc.comments && !row.comments) row.comments = frm.doc.comments;
+        frm.refresh_field('employee_list');
+    },
+});
+
+
 function copy_to_rows(frm, field) {
     (frm.doc.employee_list || []).forEach(row => {
         row[field] = frm.doc[field];
