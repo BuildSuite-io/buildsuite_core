@@ -20,10 +20,23 @@ frappe.ui.form.on("Field Attendance", {
         add_bulk_select_button(frm);
     },
 
-    // Registered once at module level, not inside onload
-    status(frm) { copy_to_rows(frm, 'status'); },
-    overtime_hours(frm) { copy_to_rows(frm, 'overtime_hours'); },
-    comments(frm) { copy_to_rows(frm, 'comments'); },
+    // The header's Status, Overtime Hours and Comments go to every row; a row can then be
+    // changed on its own. An Absent row carries no overtime (the server refuses it), as on
+    // /core's sheet (useAttendanceSheet setHeaderStatus / setHeaderOvertime).
+    status(frm) {
+        each_row(frm, row => {
+            row.status = frm.doc.status;
+            row.overtime_hours = header_ot(frm);
+        });
+    },
+    overtime_hours(frm) {
+        each_row(frm, row => {
+            if (row.status !== 'Absent') row.overtime_hours = frm.doc.overtime_hours || 0;
+        });
+    },
+    comments(frm) {
+        each_row(frm, row => { row.comments = frm.doc.comments; });
+    },
 });
 
 
@@ -41,10 +54,14 @@ frappe.ui.form.on("Field Attendance Employee", {
 });
 
 
-function copy_to_rows(frm, field) {
-    (frm.doc.employee_list || []).forEach(row => {
-        row[field] = frm.doc[field];
-    });
+// The header's overtime as a row takes it: none when the header is Absent.
+function header_ot(frm) {
+    return frm.doc.status === 'Absent' ? 0 : (frm.doc.overtime_hours || 0);
+}
+
+
+function each_row(frm, fn) {
+    (frm.doc.employee_list || []).forEach(fn);
     frm.refresh_field('employee_list');
 }
 
@@ -143,7 +160,7 @@ function show_bulk_select_dialog(frm, employees) {
 
                 // copy parent defaults down
                 row.status = frm.doc.status || '';
-                row.overtime_hours = frm.doc.overtime_hours || 0;
+                row.overtime_hours = header_ot(frm);
                 row.comments = frm.doc.comments || '';
             });
 
