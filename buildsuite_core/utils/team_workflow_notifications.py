@@ -11,11 +11,12 @@ Two switches:
 When a document of a ticked workflow reaches a state marked "Send Email" (the workflow's own per-state
 setting), the users who can act next (the next transitions' roles) are notified in-app (Notification
 Log: the BuildSuite bell and Desk, emailed per each user's notification settings):
-- a user whose persona follows the project team, and who is on at least one project team, only when
-  they are on this document's project team;
-- everyone else holding the role, as usual (including a team-scoped user not on any team yet);
-- if that leaves nobody for the role (or the document has no project), all its holders, so an
-  approval is never missed.
+- when the document's project has a team: a user whose persona follows the project team (or who has
+  no persona, unless they are a System Manager, who sees every project), only when they are on that
+  team, whether or not they are on any other team;
+- everyone else holding the role, as usual (a persona that does not follow the team overrides it);
+- if that leaves nobody for the role (or the document has no project, or its project has no team),
+  all its holders, so an approval is never missed.
 Only users who can read the document, and never the user who just moved it.
 
 Built on public Frappe mechanisms only (doc_events, the workflow's next-transition lookup,
@@ -58,23 +59,19 @@ def _next_roles(doc, workflow, state):
 
 
 def _team_scoped_users(users):
-	"""The users among `users` whose persona follows the project team AND who are on a team."""
-	personas = dict(
-		frappe.get_all(
-			"User", filters={"name": ["in", list(users)]}, fields=["name", "persona"], as_list=True
-		)
+	"""The users among `users` whose notifications follow the project team: their persona's switch is
+	on, or they have no persona (and are not a System Manager, who sees every project)."""
+	personas = frappe.get_all(
+		"User", filters={"name": ["in", list(users)]}, fields=["name", "persona"], as_list=True
 	)
-	flagged = {u for u, p in personas.items() if p and frappe.get_cached_value("Persona", p, PERSONA_FLAG)}
-	if not flagged:
-		return set()
-	return set(
-		frappe.get_all(
-			"Project Team",
-			filters={"user": ["in", list(flagged)], "parenttype": "Project"},
-			pluck="user",
-			distinct=True,
-		)
-	)
+	scoped = set()
+	for user, persona in personas:
+		if persona:
+			if frappe.get_cached_value("Persona", persona, PERSONA_FLAG):
+				scoped.add(user)
+		elif "System Manager" not in frappe.get_roles(user):
+			scoped.add(user)
+	return scoped
 
 
 def recipients(doc, roles):
@@ -95,7 +92,7 @@ def recipients(doc, roles):
 		holders = {u for u in get_users_with_role(role) if u not in ("Administrator", "Guest")}
 		if not holders:
 			continue
-		scoped = _team_scoped_users(holders) if project else set()
+		scoped = _team_scoped_users(holders) if team else set()
 		chosen = {u for u in holders if u not in scoped or u in team} or holders
 		for user in chosen:
 			if user != actor and frappe.has_permission(doc.doctype, "read", doc=doc, user=user):

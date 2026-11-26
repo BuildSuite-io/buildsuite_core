@@ -198,7 +198,7 @@ onMounted(async () => {
 							}}</span>
 							<span class="block text-[11px] text-ink-500 mt-0.5">{{
 								__(
-									"For workflows marked \"Team-scoped notifications\": once a user of this persona is on a project team, they are told about a document's next workflow step only when they are on its project's team. Until then, and for other workflows, they are told as usual."
+									"For workflows marked \"Team-scoped notifications\": users of this persona are told about a document's next workflow step only when they are on its project's team (if the project has a team). Turn this off for a persona that oversees every project. Other workflows are unaffected."
 								)
 							}}</span>
 						</span>

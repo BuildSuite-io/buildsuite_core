@@ -28,7 +28,11 @@ class TestTeamScopedWorkflowNotifications(BuildSuiteTestCase):
 		self.on_team = self._user("on-team", persona="Project Manager", team=self.project)
 		self.elsewhere = self._user("elsewhere", persona="Project Manager", team=other)
 		self.no_team = self._user("no-team", persona="Project Manager")
-		self.not_scoped = self._user("not-scoped", role=PM_ROLE)
+		self.no_persona = self._user("no-persona", role=PM_ROLE)
+		# a persona that oversees every project overrides the workflow's team scoping
+		frappe.db.set_value("Persona", "Director / Owner", "team_scoped_notifications", 0)
+		frappe.clear_document_cache("Persona", "Director / Owner")
+		self.not_scoped = self._user("not-scoped", persona="Director / Owner", role=PM_ROLE)
 
 	def _configure(self, ticked, send_email):
 		frappe.db.set_value("Workflow", self.workflow, "custom_team_scoped_notifications", ticked)
@@ -89,8 +93,21 @@ class TestTeamScopedWorkflowNotifications(BuildSuiteTestCase):
 		sco = self._raise_sco()
 		self.assertTrue(self._notified(self.on_team, sco))  # on this project's team
 		self.assertFalse(self._notified(self.elsewhere, sco))  # scoped, on another project's team
-		self.assertTrue(self._notified(self.no_team, sco))  # scoped, but on no team yet
-		self.assertTrue(self._notified(self.not_scoped, sco))  # persona not team-scoped
+		self.assertFalse(self._notified(self.no_team, sco))  # scoped, on no team: still not this one
+		self.assertFalse(self._notified(self.no_persona, sco))  # no persona: scoped by default
+		self.assertTrue(self._notified(self.not_scoped, sco))  # persona not team-scoped overrides
+
+	def test_a_project_without_a_team_notifies_all_holders(self):
+		role = f"TWN Role {frappe.generate_hash(length=5)}"
+		frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(
+			ignore_permissions=True
+		)
+		for user in (self.on_team, self.no_team, self.no_persona):
+			frappe.get_doc("User", user).add_roles(role)
+		self.project.set("custom_team_members", [])
+		self.project.save(ignore_permissions=True)
+		sco = self._raise_sco()
+		self.assertEqual(recipients(sco, {role}), {self.on_team, self.no_team, self.no_persona})
 
 	def test_everyone_with_the_role_when_nobody_would_be_told(self):
 		"""If every holder of the role is scoped away, all of them are told: never nobody."""
