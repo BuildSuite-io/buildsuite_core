@@ -13,6 +13,7 @@ from frappe import _
 from frappe.utils import flt
 
 from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+from buildsuite_core.utils.amend import amended_copy
 
 BILL = "Subcontractor Bill"
 WORK_ORDER = "Subcontractor Work Order"
@@ -460,9 +461,7 @@ def amend_bill(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled bill can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	amended.purchase_invoice = None  # a fresh Purchase Invoice is generated on resubmit
 	amended.flags.ignore_permissions = True
 	amended.insert()

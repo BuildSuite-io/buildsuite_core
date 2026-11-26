@@ -40,6 +40,7 @@ from buildsuite_core.api.procurement_docs import (
 	_project_name,
 	_state,
 )
+from buildsuite_core.utils.amend import amended_copy
 from buildsuite_core.utils.party import primary_contact, upsert_primary_contact
 
 RFQ = "Request for Quotation"
@@ -410,9 +411,7 @@ def amend_request_for_quotation(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled request can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	for row in amended.suppliers:
 		row.send_email = 0
 		row.email_sent = 0
@@ -1093,9 +1092,7 @@ def amend_supplier_quotation(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled quotation can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	# no_copy drops the parent link on a copy; an amendment answers the same request.
 	amended.custom_request_for_quotation = src.get("custom_request_for_quotation")
 	amended.insert()

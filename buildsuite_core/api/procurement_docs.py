@@ -16,6 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, nowdate
 
+from buildsuite_core.utils.amend import amended_copy
 from buildsuite_core.utils.project import default_company
 
 MATERIAL_REQUEST = "Material Request"
@@ -206,9 +207,7 @@ def amend_material_request(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled request can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	amended.insert()
 	return get_material_request(amended.name)
 
@@ -545,9 +544,7 @@ def amend_purchase_order(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled order can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	amended.insert()
 	return get_purchase_order(amended.name)
 
@@ -827,9 +824,7 @@ def amend_purchase_receipt(name: str):
 	src.check_permission("amend")
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled receipt can be amended."))
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
+	amended = amended_copy(src)
 	amended.insert()
 	return get_purchase_receipt(amended.name)
 
