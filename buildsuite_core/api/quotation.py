@@ -13,9 +13,10 @@ utils.quotation.offer_status. Nothing here changes what `status` holds.
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import flt, getdate, now_datetime, today
 
 from buildsuite_core.utils.lead import convert_lead_to_customer
+from buildsuite_core.utils.quotation import offer_status
 
 
 def _names(value):
@@ -80,3 +81,33 @@ def reject_quotation(
 		frappe.throw(_("Say why the quotation was lost."))
 	doc.declare_enquiry_lost(reasons, [{"competitor": c} for c in _names(competitors)], detailed_reason)
 	return {"name": doc.name, "status": doc.status}
+
+
+@frappe.whitelist()
+def quotation_kpis():
+	"""The Quotations list's figures, over the quotations the user can read, in company currency:
+	- awaiting_value: sent and not answered yet;
+	- won_value: accepted;
+	- win_rate: accepted out of those decided (accepted or rejected), None when nothing is decided;
+	- past_validity: sent and past their valid-till date (ERPNext's daily job marks them Expired)."""
+	rows = frappe.get_list(
+		"Quotation",
+		fields=["docstatus", "status", "accepted_on", "valid_till", "base_grand_total"],
+		limit_page_length=0,
+	)
+	now = getdate(today())
+	by_status = {}
+	past_validity = 0
+	for r in rows:
+		label = offer_status(r.docstatus, r.status, r.accepted_on)
+		by_status.setdefault(label, []).append(r)
+		if label == "Expired" or (label == "Sent" and r.valid_till and getdate(r.valid_till) < now):
+			past_validity += 1
+	accepted = len(by_status.get("Accepted", []))
+	decided = accepted + len(by_status.get("Rejected", []))
+	return {
+		"awaiting_value": sum(flt(r.base_grand_total) for r in by_status.get("Sent", [])),
+		"won_value": sum(flt(r.base_grand_total) for r in by_status.get("Accepted", [])),
+		"win_rate": round(accepted * 100 / decided) if decided else None,
+		"past_validity": past_validity,
+	}

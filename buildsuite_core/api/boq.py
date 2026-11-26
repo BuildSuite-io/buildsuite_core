@@ -440,9 +440,9 @@ def _set_up_work_from_boq(src, work: str, group_ids=None) -> dict:
 
 def _won_offer_for_boq(src):
 	"""The bid a project should be made from: a Quotation or BuildSuite Tender raised from this
-	estimate's lineage (``source_boq``) that isn't attached to a project yet. Live has no formal
-	"awarded" status, so a raised, still-unattached bid is taken as the winning one; the most recent
-	wins. Returns ``{kind, doctype, name, taxable}`` (``taxable`` = the priced total before tax) or
+	estimate's lineage (``source_boq``) that isn't attached to a project yet. An accepted quotation
+	or an awarded tender is the winning one; otherwise the most recent raised bid that was not
+	turned down. Returns ``{kind, doctype, name, taxable}`` (``taxable`` = the priced total before tax) or
 	``None``."""
 	lineage = _revision_peers(src)
 	if not lineage:
@@ -460,6 +460,10 @@ def _won_offer_for_boq(src):
 			filters["docstatus"] = ("!=", 2)
 			filters["status"] = ("!=", "Lost")
 			fields.append("accepted_on")
+		else:
+			# Nor does a tender that was not awarded.
+			filters["status"] = ("!=", "Rejected")
+			fields.append("status")
 		for r in frappe.get_all(doctype, filters=filters, fields=fields):
 			cands.append(
 				{
@@ -468,12 +472,12 @@ def _won_offer_for_boq(src):
 					"name": r.name,
 					"taxable": flt(r.taxable),
 					"decided": str(r.decided or ""),
-					"accepted": bool(r.get("accepted_on")),
+					"accepted": bool(r.get("accepted_on")) or r.get("status") == "Awarded",
 				}
 			)
 	if not cands:
 		return None
-	# An accepted quotation is the winning one; otherwise the most recent raised bid.
+	# An accepted quotation or awarded tender is the winning one; otherwise the most recent bid.
 	cands.sort(key=lambda c: (c["accepted"], c["decided"]), reverse=True)
 	top = cands[0]
 	return {"kind": top["kind"], "doctype": top["doctype"], "name": top["name"], "taxable": top["taxable"]}

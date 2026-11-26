@@ -60,7 +60,7 @@ function confirm() {
 				</header>
 
 				<!-- Body -->
-				<div class="px-5 py-4 text-sm text-ink-700 leading-relaxed">
+				<div class="px-5 py-4 text-sm text-ink-700 leading-relaxed whitespace-pre-line">
 					{{ message }}
 				</div>
 

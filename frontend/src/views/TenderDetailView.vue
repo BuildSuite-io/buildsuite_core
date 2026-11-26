@@ -1,7 +1,11 @@
 <script setup>
 // Tender detail — header, summary cards, items and actions.
+//
+// A tender is a draft until it is marked submitted; it may then sit Under Evaluation before it
+// is Awarded or not. Only a draft can be edited: once submitted, the bid is what was sent, and
+// re-pricing means copying it (api.tender, which also enforces all of this).
 
-import { computed } from "vue";
+import { computed, shallowRef, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useDataStore } from "@/stores";
 import { createDataAdapter } from "@/data/adapters";
@@ -18,6 +22,7 @@ import UserAvatar from "@/components/UserAvatar.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import TenderSections from "@/components/TenderSections.vue";
 import OfferPaymentTerms from "@/components/OfferPaymentTerms.vue";
+import { copyTender, setTenderStatus } from "@/data/tenderApi";
 
 // Users show by full name, never by their email id.
 const { userName } = useUserNames();
@@ -27,14 +32,22 @@ const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const confirmDialog = useConfirm();
 const adapter = createDataAdapter(useDataStore());
-const resource = adapter.read("BuildSuite Tenders", props.id);
-const doc = computed(() => resource?.doc || null);
+// Re-read when the id changes: "Copy & re-price" opens the copy on this same page.
+const resource = shallowRef(null);
+watch(
+	() => props.id,
+	(id) => {
+		resource.value = adapter.read("BuildSuite Tenders", id);
+	},
+	{ immediate: true }
+);
+const doc = computed(() => resource.value?.doc || null);
 // `doc` is null while the fetch is in flight too, so the empty state has to wait for it.
-const loading = computed(() => !!(resource?.loading ?? resource?.get?.loading));
+const loading = computed(() => !!(resource.value?.loading ?? resource.value?.get?.loading));
 
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Sales"), to: "/sales" },
 	{ label: __("Tenders"), to: "/tenders" },
 	{ label: doc.value?.title || props.id },
 ]);
@@ -53,16 +66,21 @@ const margin = computed(() => Number(doc.value?.margin_amount) || 0);
 const tax = computed(() => Number(doc.value?.tax_amount) || 0);
 const pbg = computed(() => Number(doc.value?.performance_guarantee_percent) || 0);
 
+const status = computed(() => doc.value?.status || "Draft");
+const isDraft = computed(() => status.value === "Draft");
+
 const TODAY = toDateInputValue(new Date());
+// Only a draft can miss its deadline: a submitted bid made it in time.
 const deadlineGone = computed(
-	() => !!doc.value?.submission_deadline && doc.value.submission_deadline < TODAY
+	() =>
+		isDraft.value && !!doc.value?.submission_deadline && doc.value.submission_deadline < TODAY
 );
 
 // Saved as each change is made — there is no Save button on this page.
 async function persist(values) {
 	try {
 		await adapter.update("BuildSuite Tenders", props.id, values);
-		await resource?.reload?.();
+		await resource.value?.reload?.();
 	} catch (err) {
 		showToast(parseFrappeError(err).summary ?? __("Failed to update tender"), "error");
 	}
@@ -70,6 +88,46 @@ async function persist(values) {
 
 function persistSections(field, rows) {
 	return persist({ [field]: rows });
+}
+
+// --- lifecycle -------------------------------------------------------------------------------
+async function move(next) {
+	try {
+		await setTenderStatus(props.id, next);
+		await resource.value?.reload?.();
+	} catch (err) {
+		showToast(err.message || __("Failed to update tender"), "error");
+	}
+}
+
+async function markSubmitted() {
+	const lines = [
+		__("{0} — {1} to {2}.", [
+			props.id,
+			fmtCurrency(total.value),
+			doc.value?.issuing_body || "",
+		]),
+	];
+	if (Number(doc.value?.emd_amount))
+		lines.push(
+			__("Earnest money of {0} is lodged against it.", [fmtCurrency(doc.value.emd_amount)])
+		);
+	lines.push(__("Once submitted the lines are frozen. Re-pricing means copying the bid."));
+	const ok = await confirmDialog({
+		title: __("Submit this tender"),
+		message: lines.join("\n\n"),
+		confirmLabel: __("Mark submitted"),
+	});
+	if (ok) await move("Submitted");
+}
+
+async function reprice() {
+	try {
+		const { name } = await copyTender(props.id);
+		router.push(`/tenders/${name}`);
+	} catch (err) {
+		showToast(err.message || __("Failed to copy tender"), "error");
+	}
 }
 
 async function onDelete() {
@@ -102,7 +160,13 @@ async function onDelete() {
 		</template>
 	</div>
 
-	<DeskPage v-else :title="doc?.title || id" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+	<DeskPage
+		v-else
+		:title="doc?.title || id"
+		:subtitle="subtitle"
+		:status="status"
+		:breadcrumbs="breadcrumbs"
+	>
 		<template #actions>
 			<RouterLink
 				:to="`/tenders/${id}/print`"
@@ -112,13 +176,53 @@ async function onDelete() {
 				{{ __("Print / PDF") }}
 			</RouterLink>
 			<RouterLink
+				v-if="isDraft"
 				:to="`/tenders/${id}/edit`"
 				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
 				style="border-radius: 6px"
 			>
 				{{ __("Edit") }}
 			</RouterLink>
+			<button v-if="isDraft" type="button" class="desk-save-btn" @click="markSubmitted">
+				{{ __("Mark submitted") }}
+			</button>
 			<button
+				v-if="status === 'Submitted'"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				@click="move('Under Evaluation')"
+			>
+				{{ __("Under evaluation") }}
+			</button>
+			<button
+				v-if="['Submitted', 'Under Evaluation'].includes(status)"
+				type="button"
+				class="desk-save-btn"
+				@click="move('Awarded')"
+			>
+				{{ __("Awarded") }}
+			</button>
+			<button
+				v-if="['Submitted', 'Under Evaluation'].includes(status)"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px"
+				@click="move('Rejected')"
+			>
+				{{ __("Not awarded") }}
+			</button>
+			<button
+				v-if="!isDraft"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				@click="reprice"
+			>
+				{{ __("Copy & re-price") }}
+			</button>
+			<button
+				v-if="status !== 'Awarded'"
 				type="button"
 				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
 				style="border-radius: 6px"
@@ -128,6 +232,34 @@ async function onDelete() {
 			</button>
 		</template>
 
+		<!-- Won: the project is created from the estimate, not from here. -->
+		<div
+			v-if="status === 'Awarded' && !doc.project"
+			class="bg-info-50 border border-info-200 px-3 py-2.5 mb-3 flex items-center justify-between gap-3"
+			style="border-radius: 6px"
+		>
+			<div class="text-xs text-ink-900 leading-relaxed">
+				<template v-if="!doc.source_boq">{{
+					__(
+						"Won. This tender was not priced from an estimate, so make an estimate for the job and create the project from it."
+					)
+				}}</template>
+				<template v-else>{{
+					__(
+						"Won. Create the project from the estimate. Its groups become work packages and its lines tasks, and this tender's price comes with it."
+					)
+				}}</template>
+			</div>
+			<RouterLink
+				v-if="doc.source_boq"
+				:to="`/boq/${doc.source_boq}`"
+				class="desk-save-btn text-xs shrink-0"
+				>{{ __("Open the estimate") }}</RouterLink
+			>
+		</div>
+
+		<!-- The deadline gets the loudest banner on the page, because missing it is the one
+		     failure here that cannot be recovered from. -->
 		<div
 			v-if="deadlineGone"
 			class="bg-danger-50 border border-danger-200 px-3 py-2.5 mb-3"
@@ -135,7 +267,7 @@ async function onDelete() {
 		>
 			<div class="text-xs text-ink-900 font-medium">
 				{{
-					__("The submission deadline passed on {0}.", [
+					__("The submission deadline passed on {0} and this is still a draft.", [
 						fmtDate(doc.submission_deadline),
 					])
 				}}
@@ -218,9 +350,18 @@ async function onDelete() {
 		</div>
 
 		<div
-			v-if="doc?.portal || doc?.emd_valid_until || doc?.project"
+			v-if="doc?.portal || doc?.emd_valid_until || doc?.project || doc?.source_boq"
 			class="text-xs text-ink-600 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1"
 		>
+			<!-- Which estimate this was priced from: its rates are a copy, so naming the source and
+			     its revision is the only way to check the price came from where you think. -->
+			<span v-if="doc.source_boq">
+				{{ __("Priced from") }}
+				<DeskLink :to="`/boq/${doc.source_boq}`">{{ doc.source_boq }}</DeskLink>
+				<span class="text-ink-500">{{
+					__("R{0} · rates copied, not linked", [doc.source_boq_revision || 0])
+				}}</span>
+			</span>
 			<span v-if="doc.portal"
 				>{{ __("Portal:") }} <span class="text-ink-900">{{ doc.portal }}</span></span
 			>
@@ -235,8 +376,9 @@ async function onDelete() {
 		</div>
 
 		<TenderSections
+			v-if="isDraft || (doc?.preamble_sections || []).length"
 			:sections="doc?.preamble_sections || []"
-			editable
+			:editable="isDraft"
 			:title="__('Before the items')"
 			class="mb-4"
 			applicable-for="Tender"
@@ -253,6 +395,7 @@ async function onDelete() {
 			{{
 				rows.length === 1 ? __("{0} line", [rows.length]) : __("{0} lines", [rows.length])
 			}}
+			<span v-if="!isDraft"> · {{ __("frozen, this bid has been submitted") }}</span>
 		</div>
 
 		<div class="border border-ink-200 overflow-x-auto" style="border-radius: 2px">
@@ -346,13 +489,15 @@ async function onDelete() {
 			kind="Tender"
 			:base="taxable"
 			class="mt-4"
+			:class="isDraft ? '' : 'opacity-70'"
+			:inert="!isDraft"
 			@save="persist"
 		/>
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
 			<TenderSections
 				:sections="doc?.terms_sections || []"
-				editable
+				:editable="isDraft"
 				class="lg:col-span-2"
 				applicable-for="Tender"
 				:title="__('Terms & conditions')"

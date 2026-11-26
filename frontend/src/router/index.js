@@ -53,7 +53,7 @@ const PAGE_TITLES = {
 	assembly: "Assemblies",
 	"assembly-new": "New Assembly",
 	"assembly-detail": "Assembly",
-	"payment-term-templates": "Payment Term Templates",
+	"payment-term-templates": "Payment terms templates",
 	"site-execution": "Site Execution",
 	"project-dashboard": "Project Dashboard",
 	"report-stub": "Report",

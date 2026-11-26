@@ -40,7 +40,7 @@ const envelopeOptions = computed(() => selectOptions("envelope_structure"));
 
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Sales"), to: "/sales" },
 	{ label: __("Tenders"), to: "/tenders" },
 	{ label: props.id || __("New") },
 ];

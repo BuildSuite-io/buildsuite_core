@@ -22,8 +22,8 @@ const SETUP = [
 	{
 		to: "/payment-term-templates",
 		icon: "calendar",
-		label: "Payment Term Templates",
-		description: "Reusable payment schedules for quotations and tenders.",
+		label: "Payment terms templates",
+		description: "Reusable payment schedules to load into a quotation or tender.",
 	},
 ];
 </script>

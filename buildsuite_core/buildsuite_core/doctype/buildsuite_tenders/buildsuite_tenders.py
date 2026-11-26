@@ -9,6 +9,16 @@ from frappe.utils import flt, formatdate, getdate
 from buildsuite_core.utils.payment_terms import clear_unused_timing
 from buildsuite_core.utils.project import anchor_company_to_project
 
+# A tender's lifecycle. Longer than a quotation's: it is submitted, then sits with the client
+# while they evaluate it, and only then is awarded or not. Rejected can be reopened as a draft.
+TENDER_TRANSITIONS = {
+	"Draft": ("Submitted",),
+	"Submitted": ("Under Evaluation", "Awarded", "Rejected", "Draft"),
+	"Under Evaluation": ("Awarded", "Rejected"),
+	"Awarded": (),
+	"Rejected": ("Draft",),
+}
+
 
 class BuildSuiteTenders(Document):
 	# begin: auto-generated types
@@ -17,10 +27,17 @@ class BuildSuiteTenders(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
-		from buildsuite_core.buildsuite_core.doctype.buildsuite_payment_milestone.buildsuite_payment_milestone import BuildSuitePaymentMilestone
-		from buildsuite_core.buildsuite_core.doctype.buildsuite_tender_section.buildsuite_tender_section import BuildSuiteTenderSection
-		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import BuildSuiteTendersItems
 		from frappe.types import DF
+
+		from buildsuite_core.buildsuite_core.doctype.buildsuite_payment_milestone.buildsuite_payment_milestone import (
+			BuildSuitePaymentMilestone,
+		)
+		from buildsuite_core.buildsuite_core.doctype.buildsuite_tender_section.buildsuite_tender_section import (
+			BuildSuiteTenderSection,
+		)
+		from buildsuite_core.buildsuite_core.doctype.buildsuite_tenders_items.buildsuite_tenders_items import (
+			BuildSuiteTendersItems,
+		)
 
 		bid_before_tax: DF.Currency
 		bid_value: DF.Currency
@@ -44,6 +61,7 @@ class BuildSuiteTenders(Document):
 		preamble_sections: DF.Table[BuildSuiteTenderSection]
 		project: DF.Link | None
 		project_category: DF.Link | None
+		status: DF.Literal["Draft", "Submitted", "Under Evaluation", "Awarded", "Rejected"]
 		submission_deadline: DF.Date
 		subtotal: DF.Currency
 		tax_amount: DF.Currency
@@ -54,12 +72,49 @@ class BuildSuiteTenders(Document):
 	# end: auto-generated types
 
 	def validate(self):
-		
+		self.validate_lifecycle()
 		anchor_company_to_project(self)
 		self.items_count = len(self.buildsuite_tenders_items)
 		self.validate_dates()
 		self.calculate_items()
 		clear_unused_timing(self.payment_milestones)
+
+	def validate_lifecycle(self):
+		"""The status moves only through set_status (the tender's actions), and only a draft can be
+		edited: once submitted, the bid is what was sent, and re-pricing means copying it."""
+		if self.flags.tender_status_change:
+			return
+		if self.is_new():
+			self.status = "Draft"
+			return
+		before = self.get_doc_before_save()
+		if not before:
+			return
+		if self.status != before.status:
+			frappe.throw(_("A tender's status changes through its actions, not by editing it."))
+		if (before.status or "Draft") != "Draft":
+			frappe.throw(
+				_("Tender {0} is {1}, so it can't be changed. Copy it to re-price.").format(
+					self.name, _(before.status)
+				),
+				title=_("Tender frozen"),
+			)
+
+	def set_status(self, status):
+		"""Move the tender to `status`, if its lifecycle allows it from the current one."""
+		current = self.status or "Draft"
+		if status not in TENDER_TRANSITIONS.get(current, ()):
+			frappe.throw(
+				_("A tender can't go from {0} to {1}.").format(_(current), _(status)),
+				title=_("Not allowed"),
+			)
+		self.status = status
+		self.flags.tender_status_change = True
+		self.save()
+
+	def on_trash(self):
+		if self.status == "Awarded":
+			frappe.throw(_("Tender {0} won the work, so it can't be deleted.").format(self.name))
 
 	def calculate_items(self):
 		# Sell rate is the cost rate plus the margin; the amount is the qty at that sell rate.

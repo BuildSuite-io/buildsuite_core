@@ -3,7 +3,7 @@
 // The status shown is the offer's (Draft / Sent / Accepted / Rejected / Expired / Cancelled),
 // derived from ERPNext's fields in data/offerStatus.js; the status filter uses the same table.
 
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import DeskPage from "@/components/desk/DeskPage.vue";
 import DeskSelect from "@/components/desk/DeskSelect.vue";
@@ -13,7 +13,8 @@ import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
 import { useCustomerOptions } from "@/composables/useCustomerOptions";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { OFFER_STATUSES, OFFER_STATUS_FILTERS, offerStatus } from "@/data/offerStatus";
-import { fmtCurrency, fmtDate } from "@/utils/format";
+import { getQuotationKpis } from "@/data/quotationApi";
+import { fmtCompactCurrency, fmtCurrency, fmtDate } from "@/utils/format";
 import { __ } from "@/utils/translate";
 
 const router = useRouter();
@@ -43,13 +44,24 @@ const filterValues = computed(() => ({
 	to: toFilter.value,
 }));
 
+// The figures above the list (api.quotation.quotation_kpis). A failure leaves them out rather
+// than showing zeros.
+const kpis = ref(null);
+onMounted(async () => {
+	try {
+		kpis.value = await getQuotationKpis();
+	} catch {
+		kpis.value = null;
+	}
+});
+
 // A quotation past its validity date is not wrong, but it is no longer an offer — worth
 // spotting in the column before someone quotes it back at you.
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const breadcrumbs = [
 	{ label: __("BuildSuite Core"), to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Sales"), to: "/sales" },
 	{ label: __("Quotations") },
 ];
 
@@ -94,6 +106,56 @@ const columns = [
 				__("+ New")
 			}}</RouterLink>
 		</template>
+
+		<div v-if="kpis" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Awaiting an answer") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums">
+					{{ fmtCompactCurrency(kpis.awaiting_value) }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ __("sent to leads and customers") }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Won") }}
+				</div>
+				<div class="text-base font-semibold text-success-700 tabular-nums">
+					{{ fmtCompactCurrency(kpis.won_value) }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ __("accepted by the customer") }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Win rate") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums">
+					{{ kpis.win_rate === null ? "—" : `${kpis.win_rate}%` }}
+				</div>
+				<!-- Says what it counts: a win rate that quietly includes unanswered quotes measures
+				     how much you send, not how much you win. -->
+				<div class="text-[10px] text-ink-500">
+					{{
+						kpis.win_rate === null
+							? __("nothing decided yet")
+							: __("of quotations actually decided")
+					}}
+				</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Past their validity") }}
+				</div>
+				<div
+					class="text-base font-semibold tabular-nums"
+					:class="kpis.past_validity ? 'text-warning-700' : 'text-ink-900'"
+				>
+					{{ kpis.past_validity }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ __("chase, or let them go") }}</div>
+			</div>
+		</div>
 
 		<DocTypeListView
 			doctype="Quotation"
