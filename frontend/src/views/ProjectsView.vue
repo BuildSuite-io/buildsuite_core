@@ -8,6 +8,7 @@ import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
 import DeskLink from "@/components/desk/DeskLink.vue";
 import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
 import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 import { fmtCompactINR } from "@/utils/format";
 import { useDocTypeList } from "@/composables/useDocTypeList";
 import { usePermissions } from "@/composables/usePermissions";
@@ -19,7 +20,7 @@ const { canCreate } = usePermissions();
 
 const statusFilter = ref("");
 const typeFilter = ref("");
-// The project list follows the topbar company switcher: it defaults to the working company
+// Company is a filter, not a column (as in the prototype). The project list follows the topbar company switcher: it defaults to the working company
 // and re-queries when the user switches. Empty = all companies (single-company site or an
 // explicit "All companies" pick in the filter chip).
 const companyFilter = ref(store.activeCompany || "");
@@ -78,9 +79,9 @@ function onRowClick(row) {
 <template>
 	<DeskPage :title="__('Project')" :breadcrumbs="breadcrumbs">
 		<template #actions>
-			<RouterLink v-if="canCreate('project')" to="/projects/new" class="desk-save-btn"
-				>{{ __("+ New") }}</RouterLink
-			>
+			<RouterLink v-if="canCreate('project')" to="/projects/new" class="desk-save-btn">{{
+				__("+ New")
+			}}</RouterLink>
 		</template>
 
 		<DocTypeListView
@@ -95,7 +96,7 @@ function onRowClick(row) {
 				'percent_complete',
 				'expected_start_date',
 				'expected_end_date',
-				'company',
+				'project_manager',
 			]"
 			:columns="[
 				{ key: 'custom_project_id', label: __('Project ID') },
@@ -115,7 +116,7 @@ function onRowClick(row) {
 					preset: 'timeline',
 					fields: ['expected_start_date', 'expected_end_date'],
 				},
-				{ key: 'company', label: __('Company') },
+				{ key: 'project_manager', label: __('PM') },
 			]"
 			:search-fields="['project_name', 'custom_project_id', 'customer', 'name']"
 			:base-filters="baseFilters"
@@ -173,6 +174,10 @@ function onRowClick(row) {
 
 			<template #cell-estimated_costing="{ row }">
 				<span class="tabular-nums">{{ fmtCompactINR(row.estimated_costing || 0) }}</span>
+			</template>
+
+			<template #cell-project_manager="{ row }">
+				<UserAvatar v-if="row.project_manager" :user-id="row.project_manager" size="xs" />
 			</template>
 
 			<template #empty>
