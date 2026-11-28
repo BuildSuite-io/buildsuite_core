@@ -18,6 +18,7 @@
   "column_break_vvzt",
   "issued_by",
   "date_issued",
+  "status",
   "section_break_cxmw",
   "tender_reference",
   "portal",
@@ -100,6 +101,18 @@
    "fieldname": "date_issued",
    "fieldtype": "Date",
    "label": "Date issued"
+  },
+  {
+   "default": "Draft",
+   "description": "Moved by the tender's actions: Mark submitted, Under evaluation, Awarded, Not awarded.",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Draft\nSubmitted\nUnder Evaluation\nAwarded\nRejected",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_cxmw",
@@ -346,7 +359,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-22 20:11:26.376240",
+ "modified": "2026-11-26 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "BuildSuite Core",
  "name": "BuildSuite Tenders",
@@ -372,5 +385,6 @@
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "title_field": "title"
+ "title_field": "title",
+ "track_changes": 1
 }

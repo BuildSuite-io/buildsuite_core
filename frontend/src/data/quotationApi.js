@@ -29,3 +29,6 @@ export const rejectQuotation = (
 		competitors: JSON.stringify(competitors),
 		detailed_reason: detailedReason,
 	});
+// The Quotations list's figures: { awaiting_value, won_value, win_rate (null when nothing is
+// decided), past_validity }
+export const getQuotationKpis = () => call("quotation_kpis");

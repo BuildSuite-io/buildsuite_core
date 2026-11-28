@@ -236,7 +236,7 @@ usePageTitle(() => doc.value?.title || props.id);
 
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Sales"), to: "/sales" },
 	{ label: __("Quotations"), to: "/quotations" },
 	{ label: props.id },
 ]);

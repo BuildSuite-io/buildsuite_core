@@ -334,7 +334,7 @@ async function onSave() {
 
 const breadcrumbs = computed(() => [
 	{ label: __("BuildSuite Core"), to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Sales"), to: "/sales" },
 	{ label: __("Quotations"), to: "/quotations" },
 	{ label: editing.value ? props.id : __("New") },
 ]);
@@ -392,7 +392,13 @@ const breadcrumbs = computed(() => [
 									v-model="form.lead"
 									doctype="Lead"
 									label-field="title"
-									:search-fields="['lead_name', 'company_name', 'mobile_no', 'city', 'name']"
+									:search-fields="[
+										'lead_name',
+										'company_name',
+										'mobile_no',
+										'city',
+										'name',
+									]"
 									:filters="LEAD_FILTERS"
 									order-by="creation desc"
 									:page-length="20"

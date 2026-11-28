@@ -20,8 +20,8 @@ function openModal(name = null) {
 
 const breadcrumbs = [
 	{ label: "BuildSuite Core", to: "/" },
-	{ label: __("Estimation"), to: "/estimation" },
-	{ label: __("Payment Term Templates") },
+	{ label: __("Sales"), to: "/sales" },
+	{ label: __("Payment terms templates") },
 ];
 
 const FIELDS = [
@@ -48,7 +48,7 @@ const columns = [
 </script>
 
 <template>
-	<DeskPage :title="__('Payment Term Templates')" :breadcrumbs="breadcrumbs">
+	<DeskPage :title="__('Payment terms templates')" :breadcrumbs="breadcrumbs">
 		<template #actions>
 			<button type="button" class="desk-save-btn" @click="openModal()">
 				{{ __("+ New template") }}
@@ -58,7 +58,7 @@ const columns = [
 		<p class="text-xs text-ink-500 mb-3 max-w-3xl">
 			{{
 				__(
-					"A template is copied into a quotation, tender or project when it is loaded, so changing one here never moves an offer that already went out.",
+					"A template is copied into a quotation, tender or project when it is loaded, so changing one here never moves an offer that already went out."
 				)
 			}}
 		</p>
