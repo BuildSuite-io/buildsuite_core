@@ -19,6 +19,7 @@ import frappe
 from frappe import _
 
 from buildsuite_core.permissions.resource_map import route_doctype
+from buildsuite_core.utils.amend import amended_copy
 
 ADMIN_ROLES = {"System Manager", "BuildSuite Administrator"}
 SETTINGS = "Workspace Setting"
@@ -409,8 +410,7 @@ def amend_record(doctype: str, name: str):
 	src = frappe.get_doc(doctype, name)
 	if src.docstatus != 2:
 		frappe.throw(_("Only a cancelled document can be amended."))
-	new = frappe.copy_doc(src)
-	new.amended_from = name
+	new = amended_copy(src)
 	new.insert()
 	return {"name": new.name, "docstatus": new.docstatus}
 

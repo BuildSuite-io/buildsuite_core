@@ -17,6 +17,7 @@ from frappe import _
 from frappe.utils import cint, flt
 
 from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+from buildsuite_core.utils.amend import amended_copy
 from buildsuite_core.utils.list_filters import parse_list_filters
 from buildsuite_core.utils.project import default_company
 from buildsuite_core.utils.stock_entry import get_warehouse_from_project
@@ -195,10 +196,7 @@ def amend_material_consumption(name: str) -> dict:
 	if frappe.db.exists(STOCK_ENTRY, {"amended_from": name}):
 		frappe.throw(_("This entry is already amended."))
 
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
-	amended.workflow_state = None
+	amended = amended_copy(src)
 	amended.insert()
 	return _serialize(amended)
 

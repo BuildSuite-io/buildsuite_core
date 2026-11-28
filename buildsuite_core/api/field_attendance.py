@@ -19,6 +19,7 @@ from buildsuite_core.buildsuite_core.doctype.field_attendance.field_attendance i
 	uncoded_wage,
 )
 from buildsuite_core.sdk.custom_fields import apply_custom_fields, custom_field_values
+from buildsuite_core.utils.amend import amended_copy
 
 FIELD_ATTENDANCE = "Field Attendance"
 
@@ -213,10 +214,7 @@ def amend_field_attendance(name: str) -> dict:
 	if frappe.db.exists(FIELD_ATTENDANCE, {"amended_from": name}):
 		frappe.throw(_("This sheet is already amended."))
 
-	amended = frappe.copy_doc(src)
-	amended.amended_from = name
-	amended.docstatus = 0
-	amended.workflow_state = None
+	amended = amended_copy(src)
 	amended.insert()
 	return _serialize(amended)
 
